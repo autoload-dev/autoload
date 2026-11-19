@@ -56,7 +56,7 @@ class TargetNamesTest(RepositoryTest):
 
     def test_dotted_helpers_stay_with_the_complete_authored_root(self) -> None:
         call = Call(
-            Location("BUILD.bazel", 1), "godot_binary", frozenset({"name"}), "game_debug"
+            Location("BUILD.bazel", 1), "godot_run", frozenset({"name"}), "game_debug"
         )
         for emitted, accepted in (
             ("game_debug.project.imports", True),
@@ -67,8 +67,8 @@ class TargetNamesTest(RepositoryTest):
                 {
                     "name": "//:" + emitted,
                     "path": "BUILD.bazel",
-                    "strings": {"generator_function": "godot_binary"},
-                    "owner": "//godot/private:run.bzl%godot_binary",
+                    "strings": {"generator_function": "godot_run"},
+                    "owner": "//godot/private:run.bzl%godot_run",
                 }
             ]
             self.assertEqual(
@@ -77,16 +77,16 @@ class TargetNamesTest(RepositoryTest):
             )
 
     def test_unresolved_owned_computed_root_requires_coverage(self) -> None:
-        call = Call(Location("BUILD.bazel", 1), "godot_binary", frozenset({"name"}))
+        call = Call(Location("BUILD.bazel", 1), "godot_run", frozenset({"name"}))
         records: list[Record] = [
             {
                 "name": "//:game.project",
                 "path": "BUILD.bazel",
                 "strings": {
-                    "generator_function": "godot_binary",
+                    "generator_function": "godot_run",
                     "generator_name": "game.project",
                 },
-                "owner": "//godot/private:run.bzl%godot_binary",
+                "owner": "//godot/private:run.bzl%godot_run",
             }
         ]
         findings = list(TargetNames({}).evaluate(self.context((call,), records)))

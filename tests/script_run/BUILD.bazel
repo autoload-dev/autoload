@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_binary", "godot_project", "godot_resources", "godot_test")
+load("@rules_godot//godot:defs.bzl", "godot_project", "godot_resources", "godot_run", "godot_test")
 
 godot_resources(
     name = "icon",
@@ -32,7 +32,7 @@ godot_test(
     ],
 )
 
-godot_binary(
+godot_run(
     name = "direct_run",
     args = [
         "--",

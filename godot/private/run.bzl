@@ -235,7 +235,7 @@ def _executable_impl(ctx, test, tc = None, foreign = None):
     executable, manifest = launcher(ctx, data)
     return executable, manifest, _runfiles(ctx, tc, manifest, inputs)
 
-# The godot_binary and godot_test macros document these attributes.
+# The godot_run and godot_test macros document these attributes.
 _ATTRS = {
     # A source run runs the project with the editor, in the editor variant; a pack run keeps
     # the variant of its pack.
@@ -275,7 +275,7 @@ def _test_impl(ctx):
     return [DefaultInfo(executable = executable, runfiles = runfiles)]
 
 def _source_application_impl(ctx):
-    # godot_binary's runner stages and runs the project with its manifest; the application
+    # godot_run's runner stages and runs the project with its manifest; the application
     # launcher starts it with the options every application backend shares.
     # The application runs on its target platform, which its execution platform matches.
     _, manifest, runfiles = _executable_impl(ctx, test = False, tc = ctx.toolchains[EDITOR_TOOLCHAIN].godot, foreign = False)
@@ -301,9 +301,9 @@ godot_source_application = rule(
     toolchains = [EDITOR_TOOLCHAIN, Label("//godot/private/config:target_execution_toolchain_type")],
 )
 
-_godot_binary = rule(
+_godot_run = rule(
     doc = """
-    Run a project or PCK in a writable, isolated workspace; the rule behind godot_binary.
+    Run a project or PCK in a writable, isolated workspace; the rule behind godot_run.
     """,
     implementation = _binary_impl,
     attrs = _ATTRS | _runner("run"),
@@ -337,7 +337,7 @@ def validate_run_sources(name, deps, project, pack, _fail = fail):
     Reject deps or a project together with a pack.
 
     Args:
-        name: Name of the godot_binary or godot_test, for the failure message.
+        name: Name of the godot_run or godot_test, for the failure message.
         deps: The deps argument.
         project: The project argument.
         pack: The pack argument.
@@ -360,7 +360,7 @@ def _executable(name, rule_, deps, project, pack, kwargs, test):
         )
     rule_(name = name, view = view, pack = pack, **kwargs)
 
-def godot_binary(
+def godot_run(
         name,
         deps = [],
         main = "",
@@ -375,15 +375,15 @@ def godot_binary(
     """
     Run a Godot project or exported PCK with `bazel run`, like py_binary.
 
-    The binary runs on the registered editor toolchain in a fresh, writable copy of
-    the project, so nothing in the checkout changes. Give it what to run in one of
+    The run uses the registered editor toolchain in a fresh, writable copy of the
+    project, so nothing in the checkout changes. Give it what to run in one of
     two ways: a project and the resources it runs in deps, or an exported pack. `args` are Godot's command line, which
     Bazel splits like a shell; arguments for the running script follow Godot's `--`
     separator.
 
     Example:
     ```starlark
-    godot_binary(
+    godot_run(
         name = "game",
         project = ":project",
         deps = [":main", ":assets"],
@@ -437,7 +437,7 @@ def godot_binary(
     """
     _executable(
         name,
-        _godot_binary,
+        _godot_run,
         deps,
         project,
         pack,

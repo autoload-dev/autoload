@@ -6,7 +6,7 @@ which resource paths, prefixes, settings and autoloads analysis rejects.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
-load("//godot:defs.bzl", "godot_binary", "godot_project", "godot_resources")
+load("//godot:defs.bzl", "godot_project", "godot_resources", "godot_run")
 load("//godot:providers.bzl", "GodotResourcesInfo")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load(":expected_failures.bzl", "failure_test")
@@ -198,7 +198,7 @@ def _test_undeclared_autoload_fails(name):
 
 # Like main_scene, run entry points accept an optional res:// prefix.
 def _test_run_entry_point_accepts_res_prefix(name):
-    godot_binary(
+    godot_run(
         name = name + "_run",
         main = "res://main/configured_test.gd",
         project = _FIXTURE + ":configured_project",

@@ -68,71 +68,6 @@ none
 | <a id="godot_resources-strip_prefix"></a>strip_prefix |  Package-relative prefix removed from srcs paths; empty uses the package root.   | String | optional |  `""`  |
 
 
-<a id="godot_binary"></a>
-
-## godot_binary
-
-<pre>
-load("@rules_godot//godot:defs.bzl", "godot_binary")
-
-godot_binary(<a href="#godot_binary-name">name</a>, <a href="#godot_binary-deps">deps</a>, <a href="#godot_binary-main">main</a>, <a href="#godot_binary-project">project</a>, <a href="#godot_binary-pack">pack</a>, <a href="#godot_binary-data">data</a>, <a href="#godot_binary-env">env</a>, <a href="#godot_binary-headless">headless</a>, <a href="#godot_binary-engine_errors">engine_errors</a>, <a href="#godot_binary-additional_packs">additional_packs</a>,
-             <a href="#godot_binary-kwargs">**kwargs</a>)
-</pre>
-
-Run a Godot project or exported PCK with `bazel run`, like py_binary.
-
-The binary runs on the registered editor toolchain in a fresh, writable copy of
-the project, so nothing in the checkout changes. Give it what to run in one of
-two ways: a project and the resources it runs in deps, or an exported pack. `args` are Godot's command line, which
-Bazel splits like a shell; arguments for the running script follow Godot's `--`
-separator.
-
-Example:
-```starlark
-godot_binary(
-    name = "game",
-    project = ":project",
-    deps = [":main", ":assets"],
-    headless = False,
-)
-```
-
-`bazel run :game` opens the game's window. See
-[execution and tests](../../development.md#execution-and-tests).
-
-### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| executable | one | always | run Godot with project or PCK; project and editor data are runfiles |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
-
-
-**PARAMETERS**
-
-
-| Name  | Description | Default Value |
-| :------------- | :------------- | :------------- |
-| <a id="godot_binary-name"></a>name |  Name of the executable target.   |  none |
-| <a id="godot_binary-deps"></a>deps |  godot_resources and godot_extension targets the run contains, such as code, assets and add-ons. The project's autoloads and main scene must be among them.   |  `[]` |
-| <a id="godot_binary-main"></a>main |  Resource path, with optional res:// prefix, of what Godot starts: a SceneTree or MainLoop script runs with --script, a .tscn or .scn scene replaces the main scene. Empty starts the project's main scene.   |  `""` |
-| <a id="godot_binary-project"></a>project |  The godot_project whose configuration the run uses; defaults to a minimal project.   |  `None` |
-| <a id="godot_binary-pack"></a>pack |  An exported godot_pack to run instead of a project.   |  `None` |
-| <a id="godot_binary-data"></a>data |  Files available at run time through runfiles, outside the Godot project. Godot receives Bazel's runfiles directory/manifest variables when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.   |  `[]` |
-| <a id="godot_binary-env"></a>env |  Environment variables set for Godot.   |  `{}` |
-| <a id="godot_binary-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a target that must render. Unset follows the --@rules_godot//godot:headless flag, which is true by default.   |  `None` |
-| <a id="godot_binary-engine_errors"></a>engine_errors |  "fail" or "report": what an error Godot reports while the game's tree exists, such as a script error, does to the run. Godot can report one and still exit with 0. "fail" ends the run with 1 instead; "report" keeps Godot's exit status. Either names the number of recorded errors.   |  `"fail"` |
-| <a id="godot_binary-additional_packs"></a>additional_packs |  Pack -> file name in the working directory, for the running project to load with ProjectSettings.load_resource_pack().   |  `{}` |
-| <a id="godot_binary-kwargs"></a>kwargs |  Common attributes such as args and visibility.   |  none |
-
-
 <a id="godot_editor"></a>
 
 ## godot_editor
@@ -337,6 +272,71 @@ none
 | <a id="godot_resource_graph-validate"></a>validate |  Fail on missing static references, invalid UID ownership or conflicting identities. Dynamic references remain warnings.   |  `True` |
 | <a id="godot_resource_graph-require_declared"></a>require_declared |  Require inferred runtime file references to have matching runtime_references entries. Project configuration references are implicit; import inputs are checked for availability.   |  `False` |
 | <a id="godot_resource_graph-kwargs"></a>kwargs |  Common attributes, such as tags and visibility.   |  none |
+
+
+<a id="godot_run"></a>
+
+## godot_run
+
+<pre>
+load("@rules_godot//godot:defs.bzl", "godot_run")
+
+godot_run(<a href="#godot_run-name">name</a>, <a href="#godot_run-deps">deps</a>, <a href="#godot_run-main">main</a>, <a href="#godot_run-project">project</a>, <a href="#godot_run-pack">pack</a>, <a href="#godot_run-data">data</a>, <a href="#godot_run-env">env</a>, <a href="#godot_run-headless">headless</a>, <a href="#godot_run-engine_errors">engine_errors</a>, <a href="#godot_run-additional_packs">additional_packs</a>,
+          <a href="#godot_run-kwargs">**kwargs</a>)
+</pre>
+
+Run a Godot project or exported PCK with `bazel run`, like py_binary.
+
+The run uses the registered editor toolchain in a fresh, writable copy of the
+project, so nothing in the checkout changes. Give it what to run in one of
+two ways: a project and the resources it runs in deps, or an exported pack. `args` are Godot's command line, which
+Bazel splits like a shell; arguments for the running script follow Godot's `--`
+separator.
+
+Example:
+```starlark
+godot_run(
+    name = "game",
+    project = ":project",
+    deps = [":main", ":assets"],
+    headless = False,
+)
+```
+
+`bazel run :game` opens the game's window. See
+[execution and tests](../../development.md#execution-and-tests).
+
+### Default outputs
+| kind | cardinality | availability | behavior |
+| --- | --- | --- | --- |
+| executable | one | always | run Godot with project or PCK; project and editor data are runfiles |
+
+### Output groups
+none
+
+### Generated targets
+none
+
+### Providers
+none
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="godot_run-name"></a>name |  Name of the executable target.   |  none |
+| <a id="godot_run-deps"></a>deps |  godot_resources and godot_extension targets the run contains, such as code, assets and add-ons. The project's autoloads and main scene must be among them.   |  `[]` |
+| <a id="godot_run-main"></a>main |  Resource path, with optional res:// prefix, of what Godot starts: a SceneTree or MainLoop script runs with --script, a .tscn or .scn scene replaces the main scene. Empty starts the project's main scene.   |  `""` |
+| <a id="godot_run-project"></a>project |  The godot_project whose configuration the run uses; defaults to a minimal project.   |  `None` |
+| <a id="godot_run-pack"></a>pack |  An exported godot_pack to run instead of a project.   |  `None` |
+| <a id="godot_run-data"></a>data |  Files available at run time through runfiles, outside the Godot project. Godot receives Bazel's runfiles directory/manifest variables when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.   |  `[]` |
+| <a id="godot_run-env"></a>env |  Environment variables set for Godot.   |  `{}` |
+| <a id="godot_run-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a target that must render. Unset follows the --@rules_godot//godot:headless flag, which is true by default.   |  `None` |
+| <a id="godot_run-engine_errors"></a>engine_errors |  "fail" or "report": what an error Godot reports while the game's tree exists, such as a script error, does to the run. Godot can report one and still exit with 0. "fail" ends the run with 1 instead; "report" keeps Godot's exit status. Either names the number of recorded errors.   |  `"fail"` |
+| <a id="godot_run-additional_packs"></a>additional_packs |  Pack -> file name in the working directory, for the running project to load with ProjectSettings.load_resource_pack().   |  `{}` |
+| <a id="godot_run-kwargs"></a>kwargs |  Common attributes such as args and visibility.   |  none |
 
 
 <a id="godot_test"></a>
@@ -596,7 +596,7 @@ Declare the configuration context of a product: its project.godot, settings,
 autoloads, main scene and the add-ons it names.
 
 The project holds no resources. Every operation that runs Godot, such as
-godot_pack, godot_binary or godot_test, names a project and the
+godot_pack, godot_run or godot_test, names a project and the
 resources it works on; each resources target imports once under the project's
 configuration, and every operation of the project for the same target platform
 reuses that import. Settings that reach imports are the project's own, filtered by

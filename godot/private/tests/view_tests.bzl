@@ -7,7 +7,7 @@ and the project names `tool`, an editor-only add-on.
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//godot:defs.bzl", "godot_binary", "godot_pack", "godot_test")
+load("//godot:defs.bzl", "godot_pack", "godot_run", "godot_test")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(":action_inputs.bzl", "GodotActionsInfo", "actions_of", "expect_not_read", "expect_reads", "godot_actions")
 
@@ -81,7 +81,7 @@ def _test_program_entry_checks_authored_entries(name):
         tags = ["manual"],
         deps = [_FIXTURE + ":other"],
     )
-    godot_binary(
+    godot_run(
         name = name + "_run",
         project = _FIXTURE + ":project",
         tags = ["manual"],

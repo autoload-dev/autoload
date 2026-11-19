@@ -3,7 +3,7 @@
 Declare project inputs explicitly so Bazel can reuse unrelated imports. A
 `godot_project` is the configuration of a product: its `project.godot`, settings,
 autoloads, main scene and the add-ons it names. It holds no resources. Every operation that runs Godot, such
-as `godot_pack`, `godot_binary` or `godot_test`, names its
+as `godot_pack`, `godot_run` or `godot_test`, names its
 `project` and lists what it works on in its own `deps`, as an IDE project view lists
 targets.
 
@@ -328,7 +328,7 @@ loading semantics.
 | `godot_resources` | One import unit: stable paths, transitive membership, import inputs, runtime relationships and the add-ons its files use | Declaring resources needs neither Godot nor a particular project configuration; only genuinely independent conversion work gets a separate cache entry. |
 | `godot_addon` | One add-on: its runtime part, its editor part with its roles, extensions, platform libraries, Info.plist fragments, autoloads and settings | Declared once, it reaches every operation and application containing the resources that use it, and its files never become inputs of their imports. |
 | `godot_project` | The configuration context: `project.godot`, settings, autoloads, main scene and the add-ons it names; every unit imports under it | Holding no resources, one context serves the game's packs, runs, tests and editor views alike, which share each unit's import. |
-| `godot_pack`, `godot_binary`, `godot_test`, `godot_gdunit_test`, `godot_editor`, `godot_metadata_sync` | A concrete export, execution, test or editor view of one project over its own `deps` | A test does not need an export; a data pack does not need an app bundle. |
+| `godot_pack`, `godot_run`, `godot_test`, `godot_gdunit_test`, `godot_editor`, `godot_metadata_sync` | A concrete export, execution, test or editor view of one project over its own `deps` | A test does not need an export; a data pack does not need an app bundle. |
 | `godot_resource_graph` | Optional static resource diagnostics | Analysis never adds undeclared Bazel dependencies during an action. |
 
 Resource references can cycle. Bazel target dependencies cannot: declare mutually
@@ -439,10 +439,10 @@ compose per operation. An autoload, the main scene or a setting naming a file of
 such as a custom theme, translations or an add-on's own key whose value is a `res://`
 path, is part of an operation only when its file is among the operation's `deps` or what
 they depend on; otherwise the operation leaves it out. A setting may name a directory, which
-counts when a file below it is among them; the project never depends on what it holds. A program entry, a `godot_binary`
+counts when a file below it is among them; the project never depends on what it holds. A program entry, a `godot_run`
 or a pack without `required_packs`, fails instead, since it starts the game itself: during
 analysis for what `godot_project` and add-ons declare, and in a build for what the
-authored `project.godot` names, whose values only a build reads: a `godot_binary` while
+authored `project.godot` names, whose values only a build reads: a `godot_run` while
 building its configuration, a pack in a check of its `_validation` output group. A program
 entry skips a feature override whose tags it never has, neither one of Godot's own nor among
 its project's [custom features](configuration.md#custom-features), such as
@@ -627,7 +627,7 @@ with them.
 | `import` | every import, and the probe for the file types Godot imports | the [importers](#importers) of named add-ons whose suffixes match the unit's own files; the probe stages every one | those of the importers it stages |
 | `initialize` | the initialization of each operation | the importers of named add-ons whose suffixes match the operation's files | those of the importers it stages |
 | `export` | each pack's export and the probe of an application's export | the importers of named add-ons whose suffixes match the pack's files, in the export only | every one of the pack's; the PCK lists them in `.godot/extension_list.cfg` |
-| `runtime` | packs, source runs (`godot_binary`, `godot_test`) and applications | none | every one of the operation's |
+| `runtime` | packs, source runs (`godot_run`, `godot_test`) and applications | none | every one of the operation's |
 | `editor` | the editor of a `godot_editor` [editor view](development.md#editor-view) | every add-on's, for docks and inspectors | every one of the operation's |
 
 Plugins the authored `project.godot` enables in `editor_plugins/enabled` never run. A pack
@@ -649,7 +649,7 @@ libraries or link archives. A resource that merely has a library-like name, such
 
 ```starlark
 godot_pack(name = "pack", project = ":project", deps = [":game"])
-godot_binary(name = "run", pack = ":pack")
+godot_run(name = "run", pack = ":pack")
 ```
 
 Every pack checks what its files reference, such as
@@ -658,7 +658,7 @@ of all members runs the check beside its export as a Bazel validation action, wh
 `--norun_validations` skips. Its errors fail the build; its warnings are printed in the build
 output when the check runs and listed in the `selection` output group's report.
 
-`godot_binary`, pack-based tests and `godot_app` deliver the pack's extension libraries
+`godot_run`, pack-based tests and `godot_app` deliver the pack's extension libraries
 beside the PCK or link them into the application. A PCK used elsewhere, including
 an additional or required pack, needs its extension libraries delivered at the paths its
 descriptors name, or its static extension libraries linked into the application. Libraries stored in a

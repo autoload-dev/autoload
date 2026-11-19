@@ -1,10 +1,10 @@
 load(
     "@rules_godot//godot:defs.bzl",
-    "godot_binary",
     "godot_editor",
     "godot_metadata_sync",
     "godot_pack",
     "godot_project",
+    "godot_run",
 )
 load("//addons/dart:defs.bzl", "godot_dart_extension")
 
@@ -30,7 +30,7 @@ godot_pack(
     deps = ["//addons/dart/demo/main"],
 )
 
-godot_binary(
+godot_run(
     name = "run",
     headless = False,
     pack = ":pack",

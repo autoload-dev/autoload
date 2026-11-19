@@ -184,7 +184,7 @@ wildcard build skips it, and an explicit request fails.
 
 The project, its resources, add-ons, settings and the custom features of the build come
 from the application's start pack, as an export of it gets them; its extensions build for
-the target platform. The run happens in a writable copy of the project, as `godot_binary`
+the target platform. The run happens in a writable copy of the project, as `godot_run`
 runs one. `--headless`, `--detach`, `--env` and Godot's arguments apply; Godot options that
 would replace the project, such as `--path` or `--main-pack`, fail.
 

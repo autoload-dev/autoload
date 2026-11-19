@@ -33,7 +33,7 @@ class CommandLabelsTest(RepositoryTest):
         self.assertEqual(
             [(3, "//projects/demo:run"), (4, "//:consumer_snippet"), (5, "//tools/docs")],
             command_labels("""
-load("@rules_godot//godot:defs.bzl", "godot_binary")
+load("@rules_godot//godot:defs.bzl", "godot_run")
 `bazel run //projects/demo:run -- //application:argument`
 bazel build //path/to:target //docs/... //:consumer_snippet
 `bazel run //tools/docs`

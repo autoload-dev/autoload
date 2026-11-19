@@ -1,6 +1,6 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
-load("//godot:defs.bzl", "godot_addon", "godot_binary", "godot_pack", "godot_project", "godot_resources")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources", "godot_run")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/private/tests:content_validation.bzl", "in_context", "reported_build")
 
@@ -28,7 +28,7 @@ godot_resources(
     strip_prefix = "fixtures",
 )
 
-godot_binary(
+godot_run(
     name = "classes_run",
     project = ":project",
     tags = ["manual"],
@@ -313,7 +313,7 @@ godot_pack(
     ],
 )
 
-godot_binary(
+godot_run(
     name = "broken_run",
     project = ":project",
     tags = ["manual"],

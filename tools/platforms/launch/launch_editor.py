@@ -1,7 +1,7 @@
 """
 Run an application's project from sources with Godot's editor binary on this host.
 
-godot_binary's runner, tools/godot_run.py, stages the project from its run manifest and
+godot_run's runner, tools/godot_run.py, stages the project from its run manifest and
 runs Godot; this module starts it with the options every application backend shares.
 """
 

@@ -51,7 +51,7 @@ godot_project(
     visibility = ["//visibility:public"],
 )
 
-# godot_binary and godot_test targets without headless select on this; the
+# godot_run and godot_test targets without headless select on this; the
 # select runs in the caller's package.
 config_setting(
     name = "display",

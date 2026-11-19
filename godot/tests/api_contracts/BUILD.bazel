@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//godot:defs.bzl", "godot_addon", "godot_binary", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resource_graph", "godot_resources", "godot_test")
+load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resource_graph", "godot_resources", "godot_run", "godot_test")
 load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
 load("//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
@@ -39,8 +39,8 @@ godot_pack(
     project = ":project",
 )
 
-godot_binary(
-    name = "binary",
+godot_run(
+    name = "run",
     project = ":project",
 )
 

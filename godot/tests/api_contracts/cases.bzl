@@ -83,7 +83,7 @@ API_CASES = {
     "//godot:defs.bzl%godot_pack": {"target": _FIXTURES + "pack"},
     "//godot:defs.bzl%godot_pack#reachable": {"target": _FIXTURES + "reachable_pack", "conditions": ["filtered"]},
     "//godot:defs.bzl%godot_pack#required": {"target": _FIXTURES + "required_pack", "conditions": ["filtered"]},
-    "//godot:defs.bzl%godot_binary": {"target": _FIXTURES + "binary"},
+    "//godot:defs.bzl%godot_run": {"target": _FIXTURES + "run"},
     "//godot:defs.bzl%godot_test": {"target": _FIXTURES + "game_test"},
     "//godot:defs.bzl%godot_editor": {"target": _FIXTURES + "editor"},
     "//godot:defs.bzl%godot_metadata_sync": {"target": _FIXTURES + "metadata"},

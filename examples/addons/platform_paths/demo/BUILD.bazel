@@ -1,11 +1,11 @@
 load("@rules_godot//godot:app.bzl", "godot_app")
 load(
     "@rules_godot//godot:defs.bzl",
-    "godot_binary",
     "godot_editor",
     "godot_metadata_sync",
     "godot_pack",
     "godot_project",
+    "godot_run",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -24,7 +24,7 @@ godot_pack(
     deps = ["//addons/platform_paths/demo/main"],
 )
 
-godot_binary(
+godot_run(
     name = "run",
     headless = False,
     pack = ":pack",

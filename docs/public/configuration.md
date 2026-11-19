@@ -121,7 +121,7 @@ bazel build //path/to:app --//path/to:channel=internal --//path/to:debug_tools
 | string, such as `channel=internal` | its value, `internal`; none when empty |
 | boolean, such as `debug_tools` | its own name, `debug_tools`, when true |
 
-- Every pack of the project exports with these tags, and every source run (`godot_binary`,
+- Every pack of the project exports with these tags, and every source run (`godot_run`,
   `godot_test` from sources) starts with them, so `OS.has_feature("internal")` and
   feature overrides such as `key.debug_tools` see them alike. The editor and the build's own
   Godot processes never have them, so a variant reuses the imports of every other.

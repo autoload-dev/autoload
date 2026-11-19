@@ -35,13 +35,13 @@ class StarlarkTranslationTest(unittest.TestCase):
 
     def test_macro_handing_its_name_to_a_declaring_function_is_exempt(self) -> None:
         self.assertEqual(
-            ["godot_binary"],
+            ["godot_run"],
             self.macros("""
                 def _executable(rule_, name, a, b, c):
                     rule_(name = name, a = a, b = b, c = c)
 
-                def godot_binary(name, a, b, c, d):
-                    _executable(_godot_binary, name, a, b, c)
+                def godot_run(name, a, b, c, d):
+                    _executable(_godot_run, name, a, b, c)
                 """),
         )
 

@@ -1,7 +1,7 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:defs.bzl", "py_test")
-load("//godot:defs.bzl", "godot_binary", "godot_pack", "godot_test")
+load("//godot:defs.bzl", "godot_pack", "godot_run", "godot_test")
 load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
 load("//godot/extension/tests:extension_contracts.bzl", "extension_library_fixture")
 load(":cc_extension_tests.bzl", "cc_extension_test_suite")
@@ -130,7 +130,7 @@ godot_test(
 )
 
 # bazel run for a target platform the host cannot run, analyzed only.
-godot_binary(
+godot_run(
     name = "foreign_target_platform_project_run",
     tags = ["manual"],
     deps = [":cross_extension"],
@@ -143,7 +143,7 @@ godot_pack(
     deps = [":cross_extension"],
 )
 
-godot_binary(
+godot_run(
     name = "foreign_target_platform_pack_run",
     pack = ":foreign_target_platform_pack",
     tags = ["manual"],
@@ -158,7 +158,7 @@ godot_extension(
     tags = ["manual"],
 )
 
-godot_binary(
+godot_run(
     name = "multi_platform_slice_run",
     tags = ["manual"],
     deps = [":multi_platform_slice_extension"],
@@ -172,7 +172,7 @@ godot_pack(
 )
 
 # bazel run on the host's own platform loads the extension runtime library.
-godot_binary(
+godot_run(
     name = "host_platform_run",
     tags = ["manual"],
     deps = ["//godot/extension/tests/fixtures/c_abi:hello"],

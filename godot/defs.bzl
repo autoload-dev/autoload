@@ -12,7 +12,7 @@ load("//godot/private:project.bzl", _godot_project = "godot_project")
 load("//godot/private:resources.bzl", _godot_resources = "godot_resources")
 load(
     "//godot/private:run.bzl",
-    _godot_binary = "godot_binary",
+    _godot_run = "godot_run",
     _godot_test = "godot_test",
 )
 
@@ -20,7 +20,7 @@ godot_resources = _godot_resources
 godot_addon = _godot_addon
 godot_project = _godot_project
 godot_pack = _godot_pack
-godot_binary = _godot_binary
+godot_run = _godot_run
 godot_test = _godot_test
 godot_editor = _godot_editor
 godot_metadata_sync = _godot_metadata_sync

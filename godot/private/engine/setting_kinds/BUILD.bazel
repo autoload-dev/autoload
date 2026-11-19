@@ -1,5 +1,5 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
-load("//godot:defs.bzl", "godot_binary", "godot_project", "godot_resources", "godot_test")
+load("//godot:defs.bzl", "godot_project", "godot_resources", "godot_run", "godot_test")
 load("//godot/private/engine:setting_kinds.bzl", "ENGINE_SECTION_TABLES", "SETTING_KIND_TABLES")
 
 # `bazel run //godot/private/engine/setting_kinds:list` prints the project settings the
@@ -16,7 +16,7 @@ godot_project(
     project_file = "project.godot",
 )
 
-godot_binary(
+godot_run(
     name = "list",
     main = "setting_kinds.gd",
     project = ":project",

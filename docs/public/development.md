@@ -8,7 +8,7 @@ From `examples/`, run `bazel test //projects/lichtpost/tests` for the Lichtpost 
 For repository test locations and production/test package boundaries, see
 [test ownership](project-layout.md#test-ownership).
 
-`godot_binary` and `godot_test` work like `py_binary` and `py_test`. Each runs
+`godot_run` and `godot_test` work like `py_binary` and `py_test`. Each runs
 one of two things: the resources and add-ons in its `deps` under the configuration
 of its `project`, a minimal project when unset, or an exported `pack`; see
 [program entries](resources.md#import-context-and-cache-correctness) for the project's

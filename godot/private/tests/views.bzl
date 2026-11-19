@@ -1,6 +1,6 @@
 """The view an operation declares over a project and the resources it names."""
 
-load("//godot:defs.bzl", "godot_binary")
+load("//godot:defs.bzl", "godot_run")
 
 visibility(["//godot/private/tests/..."])
 
@@ -19,5 +19,5 @@ def run_view(name, project, deps):
     Returns:
         The label string of the run's view, relative to the package.
     """
-    godot_binary(name = name, project = project, tags = ["manual"], deps = deps)
+    godot_run(name = name, project = project, tags = ["manual"], deps = deps)
     return name + ".view"

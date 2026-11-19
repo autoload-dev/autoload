@@ -102,7 +102,7 @@ application still loads at runtime. An extension without any library for the
 operating system, such as a desktop-only one in a mobile app, is left out, and one disabled
 for `runtime` is not delivered.
 
-A pack contains the extension's descriptor but never its libraries; `godot_binary` and
+A pack contains the extension's descriptor but never its libraries; `godot_run` and
 applications deliver or link those from the project. A PCK used elsewhere needs its extension
 libraries delivered separately, see [export membership](resources.md#export-membership).
 
@@ -212,9 +212,9 @@ library in the tool configuration: the same declaration built for their platform
 `@rules_godot//godot:tool` and `:editor` match and the feature tags end in `editor`.
 Projects, packs and applications receive the target configuration's fragment. Source runs
 run in the [editor variant](platforms.md#the-editor-variant), whatever variant the build
-selects: `godot_binary` and `godot_test` with `deps`, `godot_gdunit_test` and a
+selects: `godot_run` and `godot_test` with `deps`, `godot_gdunit_test` and a
 `godot_app` of the editor variant load the library of that variant for their target
-platform, the `:editor` branch of a `select()`. A `godot_binary` or `godot_test` of a
+platform, the `:editor` branch of a `select()`. A `godot_run` or `godot_test` of a
 `pack` runs the pack with the editor in the pack's variant; for a `release` pack it lists
 each desktop library under `<operating system>.<cpu>.editor_runtime` too, the feature tag
 of an editor running a project, so the editor loads it. `bazel run` for a target platform

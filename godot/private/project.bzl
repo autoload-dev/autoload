@@ -526,7 +526,7 @@ godot_project = macro(
     autoloads, main scene and the add-ons it names.
 
     The project holds no resources. Every operation that runs Godot, such as
-    godot_pack, godot_binary or godot_test, names a project and the
+    godot_pack, godot_run or godot_test, names a project and the
     resources it works on; each resources target imports once under the project's
     configuration, and every operation of the project for the same target platform
     reuses that import. Settings that reach imports are the project's own, filtered by

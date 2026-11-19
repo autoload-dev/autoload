@@ -22,7 +22,7 @@ config_setting(
     flag_values = {":engine": ""},
 )
 
-# Whether godot_binary and godot_test targets that leave headless unset run headless.
+# Whether godot_run and godot_test targets that leave headless unset run headless.
 bool_flag(
     name = "headless",
     build_setting_default = True,

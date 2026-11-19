@@ -57,7 +57,7 @@ tests and every application package.
    ```starlark
    load(
        "@rules_godot//godot:defs.bzl",
-       "godot_binary",
+       "godot_run",
        "godot_editor",
        "godot_pack",
        "godot_project",
@@ -70,7 +70,7 @@ tests and every application package.
    godot_project(name = "game", project_file = "project.godot")
 
    godot_pack(name = "content", project = ":game", deps = [":logo", ":main"])
-   godot_binary(name = "play", pack = ":content", headless = False)
+   godot_run(name = "play", pack = ":content", headless = False)
    godot_editor(name = "edit", project = ":game", deps = [":logo", ":main"])
    ```
 

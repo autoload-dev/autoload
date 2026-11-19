@@ -13,7 +13,7 @@ def _probe_impl(ctx):
         test = exec_group_editor(ctx, "test").provenance,
     )]
 
-# The exec groups of godot_binary/godot_editor and godot_test, without the project graph
+# The exec groups of godot_run/godot_editor and godot_test, without the project graph
 # whose build tools a stand-in execution platform cannot run.
 _execution_probe = rule(
     implementation = _probe_impl,
