@@ -1,0 +1,50 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("//godot:defs.bzl", "godot_binary", "godot_project", "godot_resources", "godot_test")
+load("//godot/private/engine:setting_kinds.bzl", "ENGINE_SECTION_TABLES", "SETTING_KIND_TABLES")
+
+# `bazel run //godot/private/engine/setting_kinds:list` prints the project settings the
+# registered Godot hints as naming a file or directory, to classify a new minor in
+# //godot/private/engine:setting_kinds.bzl.
+
+godot_resources(
+    name = "script",
+    srcs = ["setting_kinds.gd"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+)
+
+godot_binary(
+    name = "list",
+    main = "setting_kinds.gd",
+    project = ":project",
+    deps = [":script"],
+)
+
+# Every minor's table and sections as one JSON object, each keyed by minor.
+write_file(
+    name = "tables",
+    testonly = True,
+    out = "tables.json",
+    content = [json.encode({
+        "kinds": SETTING_KIND_TABLES,
+        "sections": ENGINE_SECTION_TABLES,
+    })],
+)
+
+# Fails when the registered Godot hints a setting the table does not classify, or no longer
+# hints one it does, or registers a section the sections do not list, or no longer one they do.
+godot_test(
+    name = "setting_kinds_match_godot_test",
+    size = "small",
+    args = [
+        "--",
+        "$(rlocationpath :tables)",
+    ],
+    data = [":tables"],
+    main = "setting_kinds.gd",
+    project = ":project",
+    deps = [":script"],
+)

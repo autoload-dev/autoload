@@ -1,0 +1,572 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_addon", "godot_binary", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/private/tests:content_validation.bzl", "in_context", "reported_build")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests:__subpackages__"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "fixtures/project.godot",
+)
+
+# Script headers whose global classes Godot's scan records: @abstract, one-line
+# class_name ... extends ..., bases written as script paths and inner classes.
+filegroup(
+    name = "class_headers",
+    srcs = glob(["fixtures/classes/*.gd"]),
+    visibility = ["//tools/tests:__pkg__"],
+)
+
+godot_resources(
+    name = "classes",
+    srcs = glob(["fixtures/classes/*.gd"]),
+    strip_prefix = "fixtures",
+)
+
+godot_binary(
+    name = "classes_run",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":classes"],
+)
+
+in_context(
+    name = "class_cache_inputs",
+    operations = [":classes_run"],
+    project = ":project",
+    deps = [":classes"],
+)
+
+# The class fragments merged into the cache Godot's own scan writes in the initialization.
+py_test(
+    name = "class_cache_matches_godot_test",
+    size = "small",
+    srcs = ["class_cache_test.py"],
+    args = ["$(rootpaths :class_cache_inputs)"],
+    data = [":class_cache_inputs"],
+    main = "class_cache_test.py",
+    deps = ["//tools:class_fragment_lib"],
+)
+
+# A unit whose closure holds a global class with an authored UID, used by a scene through
+# both, and which uses an extension; and a script outside its closure.
+godot_resources(
+    name = "thing",
+    srcs = [
+        "fixtures/closure/thing.gd",
+        "fixtures/closure/thing.gd.uid",
+    ],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "level",
+    srcs = [
+        "fixtures/unit/level.gd",
+        "fixtures/unit/level.tscn",
+    ],
+    strip_prefix = "fixtures",
+    deps = [
+        ":thing",
+        "//godot/private/tests/fixtures/project_with_native_extension:hello",
+    ],
+)
+
+godot_resources(
+    name = "outside",
+    srcs = ["fixtures/outside/outside.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":level",
+        ":outside",
+    ],
+)
+
+# FR-033: the validation runs no project code. Every kind of code that loading could run
+# calls the guard (fixtures/guard/guard.gd), which fails the validation: the autoloads'
+# constructors and notifications, static initializers of scripts, tool scripts, scripts
+# built into scenes and preloaded scripts, and the constructors, member initializers and
+# setters of custom resources that scenes and scripts load.
+godot_project(
+    name = "autoload_project",
+    autoloads = {
+        "Hud": "*res://autoloads/hud.tscn",
+        "ToolTracker": "*res://autoloads/tool_tracker.gd",
+        "Tracker": "*res://autoloads/tracker.gd",
+    },
+    project_file = "fixtures/project.godot",
+)
+
+# The same autoloads declared in the authored project.godot, as Godot's editor writes
+# them, the scene by its UID.
+godot_project(
+    name = "authored_autoload_project",
+    project_file = "fixtures/authored/project.godot",
+)
+
+godot_resources(
+    name = "guard",
+    srcs = ["fixtures/guard/guard.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "autoloads",
+    srcs = glob(["fixtures/autoloads/*"]),
+    strip_prefix = "fixtures",
+    deps = [":guard"],
+)
+
+godot_resources(
+    name = "autoload_user",
+    srcs = ["fixtures/autoload_users/uses.gd"],
+    strip_prefix = "fixtures",
+    deps = [":autoloads"],
+)
+
+godot_resources(
+    name = "autoload_misuse",
+    srcs = [
+        "fixtures/autoload_users/wrong_scene_call.gd",
+        "fixtures/autoload_users/wrong_script_call.gd",
+    ],
+    strip_prefix = "fixtures",
+    deps = [":autoloads"],
+)
+
+godot_resources(
+    name = "code",
+    srcs = glob(["fixtures/code/*"]),
+    strip_prefix = "fixtures",
+    deps = [":guard"],
+)
+
+# Scripts of :code reach its validation through a preload and a global class.
+godot_resources(
+    name = "preloader",
+    srcs = ["fixtures/preloader/preloader.gd"],
+    strip_prefix = "fixtures",
+    deps = [":code"],
+)
+
+[
+    in_context(
+        name = project + "_validations",
+        project = ":" + project,
+        tags = ["manual"],
+        deps = [
+            ":autoload_misuse",
+            ":autoload_user",
+            ":code",
+            ":preloader",
+        ],
+    )
+    for project in [
+        "autoload_project",
+        "authored_autoload_project",
+    ]
+]
+
+# The misuse fails its validation, so the validations are built with failures reported.
+[
+    reported_build(
+        name = project + "_validations_reported",
+        tags = ["manual"],
+        deps = [":" + project + "_validations"],
+    )
+    for project in [
+        "autoload_project",
+        "authored_autoload_project",
+    ]
+]
+
+[
+    py_test(
+        name = "validation_runs_no_project_code_%s_test" % project,
+        size = "small",
+        srcs = ["project_code_validation_test.py"],
+        args = ["$(rootpaths :%s_validations_reported)" % project],
+        data = [":%s_validations_reported" % project],
+        main = "project_code_validation_test.py",
+    )
+    for project in [
+        "autoload_project",
+        "authored_autoload_project",
+    ]
+]
+
+# The validation follows the project's GDScript warning settings: a project raising
+# untyped declarations to errors fails a unit's untyped script, while an add-on below
+# res://addons stays exempt, as Godot's default directory_rules exempt res://addons,
+# unless the project's directory_rules include its directory.
+godot_project(
+    name = "warnings_project",
+    project_file = "fixtures/project.godot",
+    settings = {"debug/gdscript/warnings/untyped_declaration": "2"},
+)
+
+godot_project(
+    name = "addon_warnings_project",
+    project_file = "fixtures/project.godot",
+    settings = {
+        "debug/gdscript/warnings/directory_rules": '{"res://addons": 0, "res://addons/checked": 1}',
+        "debug/gdscript/warnings/untyped_declaration": "2",
+    },
+)
+
+godot_resources(
+    name = "untyped",
+    srcs = ["fixtures/warnings/untyped.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_addon(
+    name = "checked",
+    srcs = ["fixtures/addons/checked/untyped.gd"],
+    strip_prefix = "fixtures/addons/checked",
+)
+
+[
+    in_context(
+        name = project + "_validations",
+        project = ":" + project,
+        tags = ["manual"],
+        deps = [
+            ":checked",
+            ":untyped",
+        ],
+    )
+    for project in [
+        "project",
+        "warnings_project",
+        "addon_warnings_project",
+    ]
+]
+
+# Each raised warning fails its validation, so the validations are built with failures
+# reported.
+[
+    reported_build(
+        name = project + "_validations_reported",
+        tags = ["manual"],
+        deps = [":" + project + "_validations"],
+    )
+    for project in [
+        "project",
+        "warnings_project",
+        "addon_warnings_project",
+    ]
+]
+
+[
+    py_test(
+        name = "validation_follows_warning_settings_%s_test" % project,
+        size = "small",
+        srcs = ["warning_validation_test.py"],
+        args = [
+            project,
+            "$(rootpaths :%s_validations_reported)" % project,
+        ],
+        data = [":%s_validations_reported" % project],
+        main = "warning_validation_test.py",
+    )
+    for project in [
+        "project",
+        "warnings_project",
+        "addon_warnings_project",
+    ]
+]
+
+# US4 AS3: a parse error fails exactly the validation of its unit; the imports, the
+# initialization and the export over it succeed. Built with validations reported, so the
+# test reads each unit's verdict instead of the build failing.
+godot_resources(
+    name = "abstract_class",
+    srcs = ["fixtures/valid_scripts/abstract.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "parse_error_script",
+    srcs = ["fixtures/script_errors/parse_error.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_pack(
+    name = "broken_pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":abstract_class",
+        ":parse_error_script",
+    ],
+)
+
+godot_binary(
+    name = "broken_run",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":abstract_class",
+        ":parse_error_script",
+    ],
+)
+
+reported_build(
+    name = "broken_build",
+    tags = ["manual"],
+    deps = [
+        ":broken_pack",
+        ":broken_run",
+    ],
+)
+
+py_test(
+    name = "parse_error_fails_only_its_validation_test",
+    size = "small",
+    srcs = ["parse_error_validation_test.py"],
+    args = ["$(rootpaths :broken_build)"],
+    data = [":broken_build"],
+    main = "parse_error_validation_test.py",
+)
+
+# Errors that fail a unit's validation with Godot's message: a type error; a base script
+# with a parse error, which fails both its own unit and the unit whose script extends it;
+# and a global class of a unit the using unit does not depend on, which resolves once it
+# does.
+godot_resources(
+    name = "type_error_script",
+    srcs = ["fixtures/script_errors/type_error.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "failing_base_script",
+    srcs = ["fixtures/script_errors/dependent.gd"],
+    strip_prefix = "fixtures",
+    deps = [":parse_error_script"],
+)
+
+godot_resources(
+    name = "shape",
+    srcs = ["fixtures/shapes/shape.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "undeclared_class_user",
+    srcs = ["fixtures/shape_users/undeclared.gd"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "declared_class_user",
+    srcs = ["fixtures/shape_users/declared.gd"],
+    strip_prefix = "fixtures",
+    deps = [":shape"],
+)
+
+in_context(
+    name = "script_error_validations",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":declared_class_user",
+        ":failing_base_script",
+        ":type_error_script",
+        ":undeclared_class_user",
+    ],
+)
+
+# The errors fail their validations, so the validations are built with failures reported.
+reported_build(
+    name = "script_error_validations_reported",
+    tags = ["manual"],
+    deps = [":script_error_validations"],
+)
+
+py_test(
+    name = "script_errors_fail_their_validations_test",
+    size = "small",
+    srcs = ["script_error_validation_test.py"],
+    args = ["$(rootpaths :script_error_validations_reported)"],
+    data = [":script_error_validations_reported"],
+    main = "script_error_validation_test.py",
+)
+
+# A unit's dependents validate against its interface (#158): the base's declarations, the
+# coroutine flags of its functions and the classes of its imported assets, as the analyzer
+# and the loader read them from its sources, decide the users' validations; an error in a
+# function body of the base fails only the base's own validation.
+godot_resources(
+    name = "interface_base",
+    srcs = glob(["fixtures/interface/base/*"]),
+    strip_prefix = "fixtures",
+)
+
+# An asset without an .import file of its own: Godot writes it during the import, so the
+# unit's dependents stage its import result as it is.
+godot_resources(
+    name = "interface_plain",
+    srcs = ["fixtures/interface/plain/plain.png"],
+    strip_prefix = "fixtures",
+)
+
+godot_resources(
+    name = "interface_user",
+    srcs = [
+        "fixtures/interface/users/scene_user.tscn",
+        "fixtures/interface/users/uses.gd",
+    ],
+    strip_prefix = "fixtures",
+    deps = [
+        ":interface_base",
+        ":interface_plain",
+    ],
+)
+
+godot_resources(
+    name = "interface_misuser",
+    srcs = ["fixtures/interface/users/misuses.gd"],
+    strip_prefix = "fixtures",
+    deps = [":interface_base"],
+)
+
+godot_resources(
+    name = "interface_body_error_user",
+    srcs = ["fixtures/interface/users/body_error_user.gd"],
+    strip_prefix = "fixtures",
+    deps = [":interface_base"],
+)
+
+in_context(
+    name = "interface_validations",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":interface_body_error_user",
+        ":interface_misuser",
+        ":interface_user",
+    ],
+)
+
+reported_build(
+    name = "interface_validations_reported",
+    tags = ["manual"],
+    deps = [":interface_validations"],
+)
+
+py_test(
+    name = "dependents_validate_against_interfaces_test",
+    size = "small",
+    srcs = ["interface_validation_test.py"],
+    args = ["$(rootpaths :interface_validations_reported)"],
+    data = [":interface_validations_reported"],
+    main = "interface_validation_test.py",
+)
+
+# A script fails the validation of a platform whose runtime cannot load the extension it
+# uses, one without a library for that platform, unless it guards the use with ClassDB. The
+# editor knows the class in every configuration, so only the platform's library decides.
+cc_binary(
+    name = "libplatform_probe.so",
+    srcs = ["fixtures/platform_probe/probe.cc"],
+    linkshared = True,
+    deps = ["@godot_cpp"],
+)
+
+godot_extension(
+    name = "platform_probe_absent",
+    entry_symbol = "platform_probe_init",
+    library = select({
+        "//godot:tool": ":libplatform_probe.so",
+        "//conditions:default": None,
+    }),
+    resource_path = "platform_probe/absent/probe.gdextension",
+)
+
+# A library for the platform but none in the tool configuration, as for an extension without a
+# library for a remote executor.
+godot_extension(
+    name = "platform_probe_toolless",
+    entry_symbol = "platform_probe_init",
+    library = select({
+        "//godot:tool": None,
+        "//conditions:default": ":libplatform_probe.so",
+    }),
+    resource_path = "platform_probe/toolless/probe.gdextension",
+)
+
+godot_extension(
+    name = "platform_probe_everywhere",
+    entry_symbol = "platform_probe_init",
+    library = ":libplatform_probe.so",
+    resource_path = "platform_probe/everywhere/probe.gdextension",
+)
+
+[
+    godot_resources(
+        name = "platform_probe_%s_%s" % (case, use),
+        srcs = ["fixtures/platform_probe/%s/%s.gd" % (case, use)],
+        strip_prefix = "fixtures",
+        deps = [":platform_probe_" + case],
+    )
+    for case, use in [
+        ("absent", "direct"),
+        ("absent", "guarded"),
+        ("everywhere", "direct"),
+        ("toolless", "direct"),
+    ]
+]
+
+# An editor part runs in the editor, which loads the extension on every platform.
+godot_addon(
+    name = "platform_probe_editor",
+    directory = "addons/platform_probe_editor",
+    editor_srcs = [
+        "fixtures/addons/platform_probe_editor/editor.gd",
+        "fixtures/addons/platform_probe_editor/plugin.cfg",
+    ],
+    strip_prefix = "fixtures/addons/platform_probe_editor",
+    deps = [":platform_probe_absent"],
+)
+
+in_context(
+    name = "platform_probe_validations",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":platform_probe_absent_direct",
+        ":platform_probe_absent_guarded",
+        ":platform_probe_editor",
+        ":platform_probe_everywhere_direct",
+        ":platform_probe_toolless_direct",
+    ],
+)
+
+# The direct use fails its validation, so the validations are built with failures reported.
+reported_build(
+    name = "platform_probe_validations_reported",
+    tags = ["manual"],
+    deps = [":platform_probe_validations"],
+)
+
+py_test(
+    name = "extension_without_platform_library_fails_its_users_test",
+    size = "small",
+    srcs = ["absent_extension_validation_test.py"],
+    args = ["$(rootpaths :platform_probe_validations_reported)"],
+    data = [":platform_probe_validations_reported"],
+    main = "absent_extension_validation_test.py",
+)

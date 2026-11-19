@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://main/main.gd" id="1"]
+
+[node name="AddonDemo" type="Control" unique_id=1845532016]
+script = ExtResource("1")
+
+[node name="Count" type="Label" parent="." unique_id=1017959139]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 300.0
+offset_bottom = 64.0
+text = "Add-on count"

@@ -1,0 +1,45 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/platforms/private/tests:backends.bzl", "godot_macos_application", "godot_macos_sign")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+
+# A macOS application over Godot's export of a project that sets a name and a version, with
+# the stub macOS runtime.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack_declared",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+# The application writes its shell files from what Godot decides for the macOS export.
+in_export_platform(
+    name = "pack",
+    export_platform = "//godot/platforms:macos_arm64",
+    tags = ["manual"],
+    deps = [":pack_declared"],
+)
+
+godot_macos_application(
+    name = "app",
+    app_name = "Game",
+    bundle_id = "org.example.game",
+    pack = ":pack",
+    runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:macos_runtime",
+    tags = ["manual"],
+)
+
+# Signs only in adhoc or certificate mode.
+godot_macos_sign(
+    name = "signed_app",
+    app = ":app",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+)

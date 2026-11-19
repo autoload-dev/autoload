@@ -1,0 +1,141 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources", "godot_test")
+
+# A project whose brand file is chosen per pack, with a shared script, a glob of
+# level files, a generated resource, a dependent pack with its own entry point and a
+# test-only script that no pack reaches.
+package(default_visibility = ["//godot:__subpackages__"])
+
+godot_resources(
+    name = "math",
+    srcs = ["main/shared/math.gd"],
+    tags = ["manual"],
+)
+
+genrule(
+    name = "version",
+    outs = ["version.json"],
+    cmd = "echo '{\"version\": 1}' > $@",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "shared",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    runtime_references = {
+        "main/main.gd": ["main/shared/math.gd"],
+        "main/main.tscn": ["main/main.gd"],
+    },
+    tags = ["manual"],
+    deps = [":math"],
+)
+
+godot_resources(
+    name = "levels",
+    srcs = glob(["main/levels/*.json"]),
+    resource_paths = {":version": "main/data/version.json"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "blue",
+    resource_paths = {"main/blue.json": "main/data/brand.json"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "red",
+    resource_paths = {"main/red.json": "main/data/brand.json"},
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "blue_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":levels",
+        ":shared",
+    ],
+)
+
+godot_pack(
+    name = "red_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":levels",
+        ":red",
+        ":shared",
+    ],
+)
+
+godot_resources(
+    name = "dlc",
+    srcs = [
+        "main/dlc/level.gd",
+        "main/dlc/level.tscn",
+    ],
+    tags = ["manual"],
+    deps = [":math"],
+)
+
+godot_pack(
+    name = "base_pack",
+    entry_points = [],
+    packing = "reachable",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":levels",
+        ":shared",
+    ],
+)
+
+godot_pack(
+    name = "dlc_pack",
+    entry_points = ["main/dlc/level.tscn"],
+    packing = "reachable",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    required_packs = [":base_pack"],
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":dlc",
+        ":levels",
+        ":shared",
+    ],
+)
+
+godot_resources(
+    name = "math_check",
+    testonly = True,
+    srcs = ["tests/math_test.gd"],
+    tags = ["manual"],
+)
+
+godot_test(
+    name = "math_test",
+    size = "small",
+    main = "tests/math_test.gd",
+    tags = ["manual"],
+    deps = [
+        ":math",
+        ":math_check",
+    ],
+)

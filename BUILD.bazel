@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "LICENSE",
+    "android_ide_common_30_1_3_install.json",
+    "bazel_worker_maven_install.json",
+    "maven_install.json",
+    "README.md",
+    "rules_android_maven_install.json",
+])
+
+exports_files(
+    ["mise.toml"],
+    visibility = ["//tools/android:__pkg__"],
+)

@@ -1,0 +1,21 @@
+load("//godot/engine:defs.bzl", "godot_editor_component")
+
+# Editors of the stand-in remote execution platforms: tests may run there, bazel run
+# launches never do. execution_test.bzl picks the one whose operating system differs from
+# the host.
+
+godot_editor_component(
+    name = "editor_linux_x86_64",
+    cpu = "x86_64",
+    editor = "//godot/engine/private/tests/fixtures:editor_stand_in",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_editor_component(
+    name = "editor_macos_x86_64",
+    cpu = "x86_64",
+    editor = "//godot/engine/private/tests/fixtures:editor_stand_in",
+    platform = "macos",
+    version = "4.7.2",
+)

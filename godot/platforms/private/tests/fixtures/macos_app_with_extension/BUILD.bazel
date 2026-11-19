@@ -1,0 +1,50 @@
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A macOS application with declared entitlements whose pack ships a native extension.
+package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+
+# The native extension the pack ships; the library name libhello_native.so follows the
+# target name.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.extension",
+    macos_entitlements = "signing.entitlements",
+    pack = ":pack",
+    tags = ["manual"],
+)

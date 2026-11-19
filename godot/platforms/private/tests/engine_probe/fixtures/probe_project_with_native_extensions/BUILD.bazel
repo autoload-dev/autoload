@@ -1,0 +1,111 @@
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/platforms/private/tests:ios_link.bzl", "ios_unsigned_link")
+
+# A project with a godot-cpp and a C ABI extension, packaged into Android and iOS
+# applications for whichever engine the test's configuration selects. main/main.gd is the
+# manual mobile runtime acceptance probe; no test runs it.
+package(default_visibility = ["//godot/platforms/private/tests/engine_probe:__subpackages__"])
+
+godot_cc_extension(
+    name = "extension",
+    srcs = ["example.cc"],
+    entry_symbol = "example_library_init",
+    resource_path = "native/cpp_example.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+# The library name libhello_native.so follows the target name.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "android_pack",
+    export_options = {"package/name": '"Bazel Godot Beta"'},
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":extension",
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_pack(
+    name = "ios_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":extension",
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "android_beta_app",
+    application_id = "org.example.rulesgodot.beta",
+    pack = ":android_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "android_beta_source_built_app",
+    application_id = "org.example.rulesgodot.beta.source",
+    pack = ":android_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "android_source_built_app",
+    application_id = "org.example.rulesgodot.source",
+    pack = ":android_pack",
+    tags = ["manual"],
+)
+
+# The prebuilt beta's simulator engine and AccessKit slices have incompatible CPUs, and a
+# device application needs a provisioning profile: link the device executable unsigned.
+ios_unsigned_link(
+    name = "ios_beta_link",
+    pack = ":ios_pack",
+    runtime = "@godot_beta_templates//:ios_release",
+)
+
+godot_app(
+    name = "ios_beta_source_built_app",
+    application_id = "org.example.rulesgodot.beta.source",
+    pack = ":ios_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "ios_source_built_app",
+    application_id = "org.example.rulesgodot.source",
+    pack = ":ios_pack",
+    tags = ["manual"],
+)

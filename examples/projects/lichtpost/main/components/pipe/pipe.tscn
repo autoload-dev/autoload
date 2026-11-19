@@ -1,0 +1,60 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://main/components/pipe/pipe.gd" id="1"]
+[ext_resource type="Material" path="res://main/shared/palette/coral.tres" id="coral"]
+[ext_resource type="Material" path="res://main/shared/palette/ivory.tres" id="ivory"]
+
+[sub_resource type="CylinderMesh" id="Mesh_0"]
+top_radius = 0.28
+bottom_radius = 0.28
+height = 0.9
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="Mesh_1"]
+top_radius = 0.32
+bottom_radius = 0.32
+height = 0.16
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="Mesh_2"]
+top_radius = 0.3
+bottom_radius = 0.3
+height = 0.09
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="Mesh_3"]
+top_radius = 0.3
+bottom_radius = 0.3
+height = 0.09
+radial_segments = 12
+
+[node name="StripedPipe" type="Node3D" unique_id=567112340]
+script = ExtResource("1")
+
+[node name="Pipe" type="MeshInstance3D" parent="." unique_id=2099729984]
+position = Vector3(0.35, 0.45, 0)
+mesh = SubResource("Mesh_0")
+material_override = ExtResource("coral")
+metadata/palette = "coral"
+rotation = Vector3(0, 0, 1.57079632679)
+
+[node name="Lip" type="MeshInstance3D" parent="." unique_id=1360675393]
+position = Vector3(0.12, 0.78, 0)
+mesh = SubResource("Mesh_1")
+material_override = ExtResource("coral")
+metadata/palette = "coral"
+
+
+[node name="Band0" type="MeshInstance3D" parent="." unique_id=369911076]
+position = Vector3(0.1, 0.45, 0)
+mesh = SubResource("Mesh_2")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+rotation = Vector3(0, 0, 1.57079632679)
+
+[node name="Band1" type="MeshInstance3D" parent="." unique_id=1291082312]
+position = Vector3(0.6, 0.45, 0)
+mesh = SubResource("Mesh_3")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+rotation = Vector3(0, 0, 1.57079632679)

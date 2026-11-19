@@ -1,0 +1,30 @@
+load("@rules_android//rules:rules.bzl", "android_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//addons/app_auth:__subpackages__"])
+
+cc_library(
+    name = "android",
+    srcs = ["android_backend.cc"],
+    target_compatible_with = ["@platforms//os:android"],
+    deps = [
+        "//addons/app_auth/native:backend_api",
+        "@godot_cpp",
+    ],
+)
+
+# The Godot Android plugin with AppAuth for Android from the module's shared Maven graph;
+# applications of a project containing the add-on package it without listing it.
+android_library(
+    name = "plugin",
+    srcs = ["org/example/appauth/AppAuthAndroidPlugin.java"],
+    custom_package = "org.example.appauth",
+    exports_manifest = 1,
+    manifest = "AndroidManifest.xml",
+    proguard_specs = ["consumer-rules.pro"],
+    target_compatible_with = ["@platforms//os:android"],
+    deps = [
+        "@godot//android:plugin_api",
+        "@maven//:net_openid_appauth",
+    ],
+)

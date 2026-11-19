@@ -1,0 +1,67 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" uid="uid://ocv5aul2y71a" path="res://main/petri.gd" id="1"]
+[ext_resource type="PackedScene" path="res://main/hud/hud.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://main/dish/dish.tscn" id="3"]
+
+[sub_resource type="Gradient" id="top_gradient"]
+offsets = PackedFloat32Array(0, 0.45, 1)
+colors = PackedColorArray(0.0235, 0.0784, 0.1059, 0.9, 0.0235, 0.0784, 0.1059, 0.55, 0.0235, 0.0784, 0.1059, 0)
+
+[sub_resource type="GradientTexture2D" id="top_scrim"]
+gradient = SubResource("top_gradient")
+width = 4
+height = 128
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="Gradient" id="bottom_gradient"]
+offsets = PackedFloat32Array(0, 0.55, 1)
+colors = PackedColorArray(0.0235, 0.0784, 0.1059, 0, 0.0235, 0.0784, 0.1059, 0.6, 0.0235, 0.0784, 0.1059, 0.94)
+
+[sub_resource type="GradientTexture2D" id="bottom_scrim"]
+gradient = SubResource("bottom_gradient")
+width = 4
+height = 128
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[node name="Petri" type="Control" unique_id=16561716]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Dish" parent="." unique_id=1027898099 instance=ExtResource("3")]
+layout_mode = 1
+
+[node name="TopScrim" type="TextureRect" parent="." unique_id=1159105640]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+anchor_bottom = 0.34
+grow_horizontal = 2
+mouse_filter = 2
+texture = SubResource("top_scrim")
+expand_mode = 1
+stretch_mode = 0
+
+[node name="BottomScrim" type="TextureRect" parent="." unique_id=1716634501]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 0.62
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+texture = SubResource("bottom_scrim")
+expand_mode = 1
+stretch_mode = 0
+
+[node name="Hud" parent="." unique_id=1926525120 instance=ExtResource("2")]
+layout_mode = 1

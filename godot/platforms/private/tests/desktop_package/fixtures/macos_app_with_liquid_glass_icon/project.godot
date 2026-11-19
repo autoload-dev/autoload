@@ -1,0 +1,7 @@
+; Project settings of the Liquid Glass icon fixture's pack.
+
+config_version=5
+
+[application]
+
+config/name="Icon Game"

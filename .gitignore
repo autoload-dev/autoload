@@ -1,0 +1,43 @@
+# Bazel convenience symlinks for this module. Standalone examples have their own
+# ignore files; MODULE.bazel.lock and maven_install.json remain versioned.
+/bazel-*
+/e2e/*/bazel-*
+# Personal Bazel settings every module of this repository imports.
+/user.bazelrc
+
+# Local development caches, Python environments and agent worktrees.
+/.claude/worktrees/
+/.cache/
+/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Godot-generated caches. Keep authored *.uid and *.import sidecar files.
+.godot/
+.import/
+export_credentials.cfg
+
+# Private signing material and machine-local settings.
+.secrets/
+.signing/
+*.p12
+*.pfx
+*.p8
+*.keystore
+*.jks
+*.mobileprovision
+*.provisionprofile
+.env
+.env.local
+.env.*.local
+xcuserdata/
+.DS_Store
+
+# Diagnostic logs of the last Bazel invocation (shared.bazelrc).
+bazel-remote-grpc.log
+/execution_log.binpb.zst
+# Swift Package Manager's scratch directory beside examples/Package.swift.
+/examples/.build/

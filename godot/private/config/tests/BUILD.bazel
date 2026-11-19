@@ -1,0 +1,346 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/platforms:defs.bzl", "godot_export_platform")
+load(":app_tests.bzl", "app_test_suite", "runtime_fixture")
+load(":bundle_format_tests.bzl", "bundle_format_test_suite")
+load(":configuration_tests.bzl", "capture", "configuration_test_suite", "context_fixture")
+load(":export_platform_tests.bzl", "export_platform_test_suite")
+load(":inheritance_tests.bzl", "inheritance_test_suite", "properties", "property_platform_slices")
+load(":isolation_tests.bzl", "isolation_test_suite")
+load(":signing_tests.bzl", "signing_test_suite")
+load(":transition_tests.bzl", "export_fixture", "platform_slice_fixture", "platform_slices_fixture", "runtime_platform_slice_fixture", "transition_test_suite")
+
+app_test_suite(name = "app_test_suite")
+
+bundle_format_test_suite(name = "bundle_format_test_suite")
+
+configuration_test_suite(name = "configuration_test_suite")
+
+export_platform_test_suite(name = "export_platform_test_suite")
+
+inheritance_test_suite(name = "inheritance_test_suite")
+
+isolation_test_suite(name = "isolation_test_suite")
+
+signing_test_suite(name = "signing_test_suite")
+
+transition_test_suite(name = "transition_test_suite")
+
+config_setting(
+    name = "android_cpus",
+    flag_values = {"@rules_android//flags:android_platforms": "@@//godot/platforms:android_arm64.platform_slice_arm64"},
+)
+
+config_setting(
+    name = "ios_cpus",
+    values = {"ios_multi_cpus": "arm64"},
+)
+
+config_setting(
+    name = "independent_policy",
+    values = {
+        "compilation_mode": "opt",
+        "copt": "-DRULES_GODOT_INDEPENDENT",
+    },
+)
+
+capture(
+    name = "android_configuration",
+    configured = select({
+        ":android_cpus": True,
+        "//conditions:default": False,
+    }),
+    independent = select({
+        ":independent_policy": True,
+        "//conditions:default": False,
+    }),
+    tags = ["manual"],
+)
+
+capture(
+    name = "ios_configuration",
+    configured = select({
+        ":ios_cpus": True,
+        "//conditions:default": False,
+    }),
+    independent = select({
+        ":independent_policy": True,
+        "//conditions:default": False,
+    }),
+    tags = ["manual"],
+)
+
+godot_export_platform(
+    name = "android_distribution",
+    cpus = [
+        "@platforms//cpu:x86_64",
+        "@platforms//cpu:aarch64",
+    ],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "simulator_distribution",
+    cpus = [
+        "@platforms//cpu:x86_64",
+        "@platforms//cpu:aarch64",
+    ],
+    environment = "simulator",
+    operating_system = "ios",
+)
+
+platform(
+    name = "contradictory_child",
+    constraint_values = ["@platforms//os:linux"],
+    parents = [":android_distribution"],
+)
+
+context_fixture(
+    name = "context",
+    tags = ["manual"],
+)
+
+export_fixture(
+    name = "export",
+    tags = ["manual"],
+)
+
+platform_slice_fixture(
+    name = "platform_slice",
+    export = ":export",
+    tags = ["manual"],
+)
+
+platform_slices_fixture(
+    name = "platform_slices",
+    platform_slice = ":platform_slice",
+    tags = ["manual"],
+)
+
+# Each platform slice resolves its own runtime component; arm64 device and simulator differ.
+runtime_platform_slice_fixture(
+    name = "runtime_platform_slice",
+    export = ":export",
+    tags = ["manual"],
+)
+
+platform_slices_fixture(
+    name = "runtime_platform_slices",
+    platform_slice = ":runtime_platform_slice",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "app_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "app_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":app_project",
+    tags = ["manual"],
+)
+
+runtime_fixture(
+    name = "macos_runtime",
+    platform = "macos",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "app",
+    pack = select({"//conditions:default": ":app_pack"}),
+    tags = ["manual"],
+)
+
+# Runtimes that declare deployment targets, the payloads of the engines/floor slots that the
+# minimum operating-system version tests register.
+
+runtime_fixture(
+    name = "macos_floor_runtime",
+    minimum_os = "11.0",
+    platform = "macos",
+    tags = ["manual"],
+    visibility = ["//godot/private/config/tests:__subpackages__"],
+)
+
+runtime_fixture(
+    name = "ios_floor_runtime",
+    environment = "simulator",
+    minimum_os = "12.0",
+    platform = "ios",
+    tags = ["manual"],
+    variant = "debug",
+    visibility = ["//godot/private/config/tests:__subpackages__"],
+)
+
+genrule(
+    name = "demanding_library",
+    outs = ["demanding_library/libdemanding.dylib"],
+    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "demanding_extension",
+    entry_symbol = "demanding_init",
+    library = select({
+        # A macOS-only library; the editor loads none.
+        "//godot:tool": None,
+        "//conditions:default": ":demanding_library",
+    }),
+    minimum_os_versions = {"macos": "13.0"},
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "demanding_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "demanding_pack",
+    project = ":demanding_project",
+    tags = ["manual"],
+    deps = [":demanding_extension"],
+)
+
+godot_app(
+    name = "mobile_only",
+    application_id = "org.example.mobileonly",
+    pack = ":app_pack",
+    target_compatible_with = select({
+        "//godot/platforms:is_android": [],
+        "//godot/platforms:is_ios_device": [],
+        "//godot/platforms:is_ios_simulator": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+# Desktop slots come from the runtime toolchain; godot_app neither asserts nor compares a
+# desktop engine. Slot selection is covered in //godot/engine/private/tests.
+
+# A stand-in for the templates archive's XCFramework import, the payload of the iOS
+# runtime component in engines/.
+cc_library(
+    name = "runtime_payload",
+    tags = ["manual"],
+    visibility = ["//godot/private/config/tests:__subpackages__"],
+)
+
+# Development builds keep the bundle a directory; optimized device builds archive it.
+genrule(
+    name = "provisioning_profile",
+    outs = ["fixture.mobileprovision"],
+    cmd = "echo 'Analysis-only stand-in' > $@",
+    tags = ["manual"],
+)
+
+# Its device and simulator runtimes come from the platform_slice_engines registration set.
+godot_app(
+    name = "bundle_format_app",
+    application_id = "org.example.bundleformat",
+    ios_provisioning_profile = ":provisioning_profile",
+    pack = ":app_pack",
+    tags = ["manual"],
+)
+
+constraint_setting(name = "shared_policy")
+
+constraint_value(
+    name = "common_property",
+    constraint_setting = ":shared_policy",
+)
+
+constraint_setting(name = "child_policy")
+
+constraint_value(
+    name = "child_property",
+    constraint_setting = ":child_policy",
+)
+
+platform(
+    name = "neutral_base",
+    constraint_values = [":common_property"],
+)
+
+godot_export_platform(
+    name = "common_export_platform",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+    parents = [":neutral_base"],
+)
+
+platform(
+    name = "consumer_child",
+    constraint_values = [":child_property"],
+    parents = [":common_export_platform"],
+)
+
+properties(
+    name = "properties",
+    tags = ["manual"],
+)
+
+property_platform_slices(
+    name = "property_platform_slices",
+    platform_slices = ":properties",
+    tags = ["manual"],
+)
+
+platform(
+    name = "competing_base",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:ios",
+    ],
+    flags = [
+        "--cpu=x86_64",
+        "--ios_multi_cpus=x86_64",
+    ],
+)
+
+godot_export_platform(
+    name = "competing_export_platform",
+    cpus = ["@platforms//cpu:aarch64"],
+    operating_system = "android",
+    parents = [":competing_base"],
+)
+
+genrule(
+    name = "signing_entitlements",
+    outs = ["generated.entitlements"],
+    cmd = "echo '<plist version=\"1.0\"><dict/></plist>' > $@",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "signing_app",
+    macos_entitlements = ":signing_entitlements",
+    macos_signing_identity = "analysis-only certificate",
+    pack = ":app_pack",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+)
+
+# A platform library and a platform resource that a desktop app rejects instead of dropping.
+cc_library(
+    name = "composition_private_library",
+    visibility = ["//visibility:private"],
+)
+
+genrule(
+    name = "composition_private_resource",
+    outs = ["composition-resource.txt"],
+    cmd = "echo resource > $@",
+    tags = ["manual"],
+    visibility = ["//visibility:private"],
+)

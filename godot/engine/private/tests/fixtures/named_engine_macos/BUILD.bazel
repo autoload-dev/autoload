@@ -1,0 +1,12 @@
+load("//godot/engine:defs.bzl", "godot_editor_component")
+
+# The engine "custom" with a macOS editor only: on Linux execution platforms only the
+# default engine has an editor.
+godot_editor_component(
+    name = "editor_macos_x86_64",
+    cpu = "x86_64",
+    editor = "//godot/engine/private/tests/fixtures:editor_stand_in",
+    engine = "custom",
+    platform = "macos",
+    version = "4.7.2",
+)

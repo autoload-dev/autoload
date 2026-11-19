@@ -1,0 +1,20 @@
+load("//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+exports_files(
+    ["helper.gd.uid"],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)
+
+# A package with its own prefix and a file of its parent package at an explicit path.
+godot_resources(
+    name = "shared",
+    srcs = [
+        "helper.gd",
+        "helper.gd.uid",
+    ],
+    prefix = "main/shared",
+    resource_paths = {"//godot/private/tests/fixtures/import_context:foreign/main.gd": "foreign/main.gd"},
+    tags = ["manual"],
+)

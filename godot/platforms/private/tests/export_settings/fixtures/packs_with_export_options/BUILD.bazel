@@ -1,0 +1,94 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+
+# Android and iOS packs that set the exporters' export options, and the project's macOS
+# pack, which sets none.
+package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "android_pack_declared",
+    export_options = {
+        "command_line/extra_args": '"--verbose  --audio-driver Dummy"',
+        "package/name": '"Configured & Game"',
+        "package/app_category": "7",
+        "package/show_in_android_tv": "true",
+        "package/retain_data_on_uninstall": "true",
+        "permissions/internet": "true",
+        "permissions/vibrate": "true",
+        "permissions/custom_permissions": 'PackedStringArray("org.example.permission.CUSTOM")',
+        "screen/immersive_mode": "false",
+        "screen/edge_to_edge": "true",
+        "screen/background_color": "Color(1, 0.5, 0, 1)",
+        "screen/support_small": "false",
+        "splash_screen/background_color": "Color(0, 0, 1, 1)",
+        "user_data_backup/allow": "true",
+        "version/code": "7",
+        "version/name": '"2.0"',
+    },
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "ios_pack_declared",
+    export_options = {
+        # Godot's own Info.plist route to iPad multitasking and a visible status bar.
+        "application/additional_plist_content": (
+            '"<key>ExtraKey</key>\\n<string>extra</string>\\n' +
+            "<key>UIRequiresFullScreen</key>\\n<false/>\\n" +
+            '<key>UIStatusBarHidden</key>\\n<false/>"'
+        ),
+        "application/short_version": '"2.1"',
+        "application/version": '"42"',
+        "capabilities/access_wifi": "true",
+        "capabilities/additional": 'PackedStringArray("metal")',
+        "privacy/camera_usage_description": '"Scan & play"',
+        "privacy/collected_data/email_address/collected": "true",
+        "privacy/collected_data/email_address/collection_purposes": "3",
+        "privacy/collected_data/email_address/linked_to_user": "true",
+        "privacy/tracking_domains": 'PackedStringArray("tracker.example.org")',
+        "privacy/tracking_enabled": "true",
+        "privacy/user_defaults_access_reasons": "4",
+        "storyboard/custom_bg_color": "Color(1, 0, 0, 1)",
+        "storyboard/use_custom_bg_color": "true",
+        "user_data/accessible_from_files_app": "true",
+    },
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "macos_pack_declared",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+in_export_platform(
+    name = "android_pack",
+    export_platform = "//godot/platforms:android_arm64",
+    tags = ["manual"],
+    deps = [":android_pack_declared"],
+)
+
+in_export_platform(
+    name = "ios_pack",
+    export_platform = "//godot/platforms:ios_arm64",
+    tags = ["manual"],
+    deps = [":ios_pack_declared"],
+)
+
+in_export_platform(
+    name = "macos_pack",
+    export_platform = "//godot/platforms:macos_arm64",
+    tags = ["manual"],
+    deps = [":macos_pack_declared"],
+)

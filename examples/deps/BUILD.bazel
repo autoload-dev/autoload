@@ -1,0 +1,8 @@
+exports_files([
+    "dart_sdk.BUILD.bazel",
+    "dart_sdk.patch",
+    "gdunit4.BUILD.bazel",
+    "godot_ios_simulator.BUILD.bazel",
+    "godot_ios_simulator_xcframework.patch",
+    "sqlite.BUILD.bazel",
+])

@@ -1,0 +1,63 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_resources", "godot_test")
+
+_FIXTURE = "//godot/private/tests/pack_membership/fixtures/project_with_pack_variants"
+
+# Build-output test: each pack's members match its export report, and the reports place
+# declared raw files, extension descriptors and the base and DLC content in the right packs.
+py_test(
+    name = "pack_membership_test",
+    size = "small",
+    srcs = ["pack_membership_test.py"],
+    data = [
+        _FIXTURE + ":base_pack",
+        _FIXTURE + ":blue_pack",
+        _FIXTURE + ":data_pack",
+        _FIXTURE + ":dlc_pack",
+        _FIXTURE + ":export_reports",
+        _FIXTURE + ":extension_pack",
+        _FIXTURE + ":extension_required_pack",
+        _FIXTURE + ":red_pack",
+        _FIXTURE + ":selection_reports",
+    ],
+    deps = ["//tools:pck_lib"],
+)
+
+# Run tests: the main scene checks the brand after Godot's -- separator, the shared script
+# and the raw data it reads through literal paths.
+godot_test(
+    name = "blue_pack_runs_with_blue_brand_test",
+    size = "small",
+    args = [
+        "--",
+        "blue",
+    ],
+    pack = _FIXTURE + ":blue_pack",
+)
+
+godot_test(
+    name = "red_pack_runs_with_red_brand_test",
+    size = "small",
+    args = [
+        "--",
+        "red",
+    ],
+    pack = _FIXTURE + ":red_pack",
+)
+
+# The shared script also runs in a small test project composed from deps, like a py_test.
+godot_resources(
+    name = "shared_script_runs_in_composed_project_test_script",
+    testonly = True,
+    srcs = ["math_test.gd"],
+    prefix = "tests",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":math"],
+)
+
+godot_test(
+    name = "shared_script_runs_in_composed_project_test",
+    size = "small",
+    main = "tests/math_test.gd",
+    deps = [":shared_script_runs_in_composed_project_test_script"],
+)

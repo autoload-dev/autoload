@@ -1,0 +1,283 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//godot:defs.bzl", "godot_addon", "godot_binary", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resource_graph", "godot_resources", "godot_test")
+load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
+load("//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")
+load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/gdunit:defs.bzl", "godot_gdunit_test")
+load(":cases.bzl", "API_CASES", "BEHAVIOR_TESTS")
+load(":mismatch.bzl", "alias_executable_companion", "alias_files_companion", "executable_claim", "good", "missing_group", "pretend_test_companion", "restricted_companion")
+load(":visibility_fixture.bzl", "same_package_leak")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:public"],
+)
+
+godot_resources(name = "resources")
+
+godot_addon(name = "addon")
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+)
+
+godot_binary(
+    name = "binary",
+    project = ":project",
+)
+
+godot_test(
+    name = "game_test",
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_editor(
+    name = "editor",
+    project = ":project",
+)
+
+godot_metadata_sync(
+    name = "metadata",
+    size = "small",
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_resource_graph(
+    name = "graph",
+    project = ":project",
+)
+
+write_file(
+    name = "case_manifest",
+    out = "case_manifest.json",
+    content = [json.encode({
+        "behavior": BEHAVIOR_TESTS,
+        "cases": API_CASES,
+    })],
+    visibility = ["//tools/docs:__pkg__"],
+)
+
+godot_gdunit_test(
+    name = "gdunit_test",
+    suites = [":main"],
+    tags = ["manual"],
+)
+
+genrule(
+    name = "fake_editor",
+    outs = ["fake_editor.sh"],
+    cmd = "echo exit 0 > $@",
+    executable = True,
+)
+
+genrule(
+    name = "fake_shared",
+    outs = ["fake.so"],
+    cmd = "touch $@",
+)
+
+godot_extension(
+    name = "extension",
+    entry_symbol = "initialize",
+    library = ":fake_shared",
+)
+
+prebuilt_runtime(
+    name = "runtime",
+    binary = ":fake_editor",
+    cpu = "x86_64",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_editor_component(
+    name = "editor_component",
+    cpu = "x86_64",
+    editor = ":fake_editor",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_component",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = ":fake_editor",
+    variant = "release",
+    version = "4.7.2",
+)
+
+# Components of a named engine, which also declare their <name>.engine setting.
+godot_editor_component(
+    name = "editor_component_named",
+    cpu = "x86_64",
+    editor = ":fake_editor",
+    engine = "contract",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_component_named",
+    cpu = "x86_64",
+    engine = "contract",
+    platform = "linux",
+    runtime = ":fake_editor",
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_pack(
+    name = "reachable_pack",
+    packing = "reachable",
+    project = ":project",
+)
+
+godot_pack(
+    name = "required_pack",
+    project = ":project",
+    required_packs = [":pack"],
+)
+
+# iOS links a static library, whose CcInfo the extension forwards; other operating systems
+# load the shared library.
+godot_extension(
+    name = "imported_cc",
+    entry_symbol = "rules_godot_library_init",
+    library = select({
+        "@platforms//os:ios": ":api_contract_static",
+        "//conditions:default": ":libapi_contract.so",
+    }),
+)
+
+cc_library(
+    name = "api_contract_static",
+    srcs = ["native.cc"],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libapi_contract.so",
+    srcs = ["native.cc"],
+    linkshared = True,
+)
+
+repository_test(
+    name = "repository_cpp",
+    size = "small",
+    cc = True,
+    generated_bindings = True,
+    target = "@godot_cpp",
+)
+
+repository_test(
+    name = "repository_editor",
+    executable = True,
+    tags = ["manual"],
+    target = select({
+        "@platforms//os:linux": "@godot_editor_linux_x86_64//:editor",
+        "//conditions:default": "@godot_editor_macos//:editor",
+    }),
+)
+
+repository_test(
+    name = "repository_templates",
+    runtime = True,
+    tags = ["manual"],
+    target = "@godot_templates//:linux_x86_64_release",
+)
+
+repository_test(
+    name = "repository_hub",
+    tags = ["manual"],
+    target = "@godot//toolchains:runtime_linux_x86_64_release",
+)
+
+# The source descriptor is a file, which Bazel reports as its own executable.
+repository_test(
+    name = "repository_source",
+    executable = True,
+    tags = ["manual"],
+    target = "@godot_sources//:source.json",
+)
+
+# The consumer extension fixture's source build: configures one macOS recipe when run.
+repository_test(
+    name = "repository_source_build",
+    tags = ["manual"],
+    target = "@godot_source_build_fixture//toolchains:runtime_macos_arm64_release",
+)
+
+# Needs the Android SDK, which only the mobile consumer configures; its contract case
+# runs there.
+repository_test(
+    name = "repository_android_shell",
+    tags = ["manual"],
+    target = "@godot_android_shell_fixture//:release",
+)
+
+repository_test(
+    name = "repository_templates_split",
+    size = "small",
+    runtime = True,
+    target = "@godot_split_templates//:macos_arm64_release",
+)
+
+good(name = "evaluated_good")
+
+missing_group(name = "evaluated_missing_group")
+
+executable_claim(name = "evaluated_not_a_test")
+
+exports_files(
+    [
+        "mismatch.bzl",
+        "visibility_fixture.bzl",
+    ],
+    visibility = ["//tools/docs:__pkg__"],
+)
+
+restricted_companion(
+    name = "evaluated_restricted_leak",
+    visibility = ["//visibility:public"],
+)
+
+pretend_test_companion(
+    name = "evaluated_pretend_test_companion",
+    visibility = ["//visibility:public"],
+)
+
+alias_files_companion(
+    name = "evaluated_alias_files",
+    visibility = ["//visibility:public"],
+)
+
+alias_executable_companion(
+    name = "evaluated_alias_executable",
+    visibility = ["//visibility:public"],
+)
+
+same_package_leak(
+    name = "evaluated_same_package_leak",
+    visibility = ["//visibility:public"],
+)

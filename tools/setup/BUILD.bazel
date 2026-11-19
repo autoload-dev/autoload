@@ -1,0 +1,27 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# The checkout's modules and their declarations, as the setup checks read them.
+py_library(
+    name = "modules_lib",
+    srcs = ["modules.py"],
+    visibility = ["//tools/android:__pkg__"],
+)
+
+py_test(
+    name = "modules_test",
+    size = "small",
+    srcs = ["modules_test.py"],
+    deps = [":modules_lib"],
+)
+
+# The shared-pin check of the root module and its consumer modules; `mise run test:setup`
+# runs pins.py on the checkout.
+py_test(
+    name = "pins_test",
+    size = "small",
+    srcs = [
+        "pins.py",
+        "pins_test.py",
+    ],
+    deps = [":modules_lib"],
+)

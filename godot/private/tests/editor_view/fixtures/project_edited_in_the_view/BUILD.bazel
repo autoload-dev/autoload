@@ -1,0 +1,95 @@
+load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A project the editor plugin of an add-on edits as a user would, with a plugin enabled
+# only in the authored project.godot, a C ABI extension, a contributed setting and checkout files
+# without declared sidecars; and the same project with the extension disabled for the
+# editor.
+package(default_visibility = ["//godot/private/tests/editor_view:__pkg__"])
+
+godot_resources(
+    name = "main",
+    srcs = ["main/main.gd"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "levels",
+    srcs = glob(["main/levels/*"]),
+    tags = ["manual"],
+)
+
+# The editor view loads the editor part of every add-on of the operation.
+godot_addon(
+    name = "view_check",
+    directory = "main/addons/view_check",
+    editor_srcs = glob(["main/addons/view_check/*"]),
+    strip_prefix = "main/addons/view_check",
+    tags = ["manual"],
+)
+
+# Resources with a plugin, which only the authored project.godot enables: it never runs.
+
+godot_resources(
+    name = "authored_only",
+    srcs = glob(["main/addons/authored_only/*"]),
+    tags = ["manual"],
+)
+
+# The extension's descriptor and editor library reach the view as copies from the build.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    settings = {"rules_godot/editor/contributed": "1"},
+    tags = ["manual"],
+)
+
+godot_editor(
+    name = "edit",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_only",
+        ":hello",
+        ":levels",
+        ":main",
+        ":view_check",
+    ],
+)
+
+# No sidecar is declared, so metadata.test fails; the editor view test runs it.
+godot_metadata_sync(
+    name = "metadata",
+    size = "small",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_only",
+        ":hello",
+        ":levels",
+        ":main",
+        ":view_check",
+    ],
+)
+
+# The checkout sources the editor view test copies into its own workspace; the
+# extension's source is no checkout file of the view.
+filegroup(
+    name = "checkout",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "BUILD.bazel",
+            "native/**",
+        ],
+    ),
+    tags = ["manual"],
+)

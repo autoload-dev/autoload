@@ -1,0 +1,13 @@
+config_version=5
+
+[application]
+config/name="Runtime inputs"
+run/main_scene="res://main/check.tscn"
+
+[internationalization]
+locale/translations=PackedStringArray("res://main/ja.po")
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

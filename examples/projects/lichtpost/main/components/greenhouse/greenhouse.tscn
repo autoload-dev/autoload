@@ -1,0 +1,70 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://main/components/greenhouse/greenhouse.gd" id="1"]
+[ext_resource type="Material" path="res://main/shared/palette/teal.tres" id="teal"]
+[ext_resource type="Material" path="res://main/shared/palette/moss.tres" id="moss"]
+[ext_resource type="Material" path="res://main/shared/palette/orange.tres" id="orange"]
+[ext_resource type="Material" path="res://main/shared/palette/ivory.tres" id="ivory"]
+
+[sub_resource type="BoxMesh" id="Mesh_0"]
+size = Vector3(3, 3.2, 2.5)
+
+[sub_resource type="SphereMesh" id="Mesh_1"]
+radius = 1.5
+height = 3
+
+[sub_resource type="BoxMesh" id="Mesh_2"]
+size = Vector3(1.4, 2.3, 0.1)
+
+[sub_resource type="BoxMesh" id="Mesh_3"]
+size = Vector3(0.08, 3.2, 0.15)
+
+[sub_resource type="BoxMesh" id="Mesh_4"]
+size = Vector3(0.08, 3.2, 0.15)
+
+[sub_resource type="BoxMesh" id="Mesh_5"]
+size = Vector3(0.08, 3.2, 0.15)
+
+[node name="Greenhouse" type="Node3D" unique_id=2069053788]
+script = ExtResource("1")
+
+[node name="Walls" type="MeshInstance3D" parent="." unique_id=1967930821]
+position = Vector3(2, 1.6, -0.8)
+mesh = SubResource("Mesh_0")
+material_override = ExtResource("teal")
+metadata/palette = "teal"
+
+
+[node name="Dome" type="MeshInstance3D" parent="." unique_id=991579135]
+position = Vector3(2, 3.3, -0.8)
+mesh = SubResource("Mesh_1")
+material_override = ExtResource("moss")
+metadata/palette = "moss"
+
+
+[node name="Window" type="MeshInstance3D" parent="." unique_id=225640305]
+position = Vector3(2, 1.4, 0.51)
+mesh = SubResource("Mesh_2")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="Frame0" type="MeshInstance3D" parent="." unique_id=945840718]
+position = Vector3(0.8999999999999999, 1.6, 0.6)
+mesh = SubResource("Mesh_3")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Frame1" type="MeshInstance3D" parent="." unique_id=1172131104]
+position = Vector3(2, 1.6, 0.6)
+mesh = SubResource("Mesh_4")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Frame2" type="MeshInstance3D" parent="." unique_id=818597757]
+position = Vector3(3.1, 1.6, 0.6)
+mesh = SubResource("Mesh_5")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"

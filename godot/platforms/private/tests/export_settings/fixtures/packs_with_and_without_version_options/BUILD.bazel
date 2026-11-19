@@ -1,0 +1,97 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+
+# Android and iOS packs that set no version export options and packs that set them, and
+# packs with and without their own application/config/version setting.
+package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "android_pack_declared",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "android_versioned_pack_declared",
+    export_options = {
+        "version/code": "7",
+        "version/name": '"2.0"',
+    },
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "ios_pack_declared",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "ios_versioned_pack_declared",
+    export_options = {
+        "application/short_version": '"2.1"',
+        "application/version": '"42"',
+    },
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+in_export_platform(
+    name = "android_pack",
+    export_platform = "//godot/platforms:android_arm64",
+    tags = ["manual"],
+    deps = [":android_pack_declared"],
+)
+
+in_export_platform(
+    name = "android_versioned_pack",
+    export_platform = "//godot/platforms:android_arm64",
+    tags = ["manual"],
+    deps = [":android_versioned_pack_declared"],
+)
+
+in_export_platform(
+    name = "ios_pack",
+    export_platform = "//godot/platforms:ios_arm64",
+    tags = ["manual"],
+    deps = [":ios_pack_declared"],
+)
+
+in_export_platform(
+    name = "ios_versioned_pack",
+    export_platform = "//godot/platforms:ios_arm64",
+    tags = ["manual"],
+    deps = [":ios_versioned_pack_declared"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack_with_version_setting",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    settings = {"application/config/version": '"9.9"'},
+    tags = ["manual"],
+)
+
+# The applications' runtime component; analysis tests read only their shell files.
+filegroup(
+    name = "runtime",
+    tags = ["manual"],
+)

@@ -1,0 +1,26 @@
+# Settings every module of this repository imports from its .bazelrc.
+
+# Fetch the source archives of Bazel Central Registry modules from the BCR's mirror before
+# their GitHub URLs, as Bazel's own repository does; the registry's hashes verify them.
+common --module_mirrors=https://bcr.cloudflaremirrors.com
+
+# Path mapping gives actions that do not depend on the target configuration one cache key
+# in every configuration: the dexing and desugaring of Android libraries, and the Godot
+# actions rules_godot opts in, such as the imports and validations of a project's units,
+# which a host test and an Android or macOS application share. Other actions keep their
+# paths: path-mapped Java compilations of tools miss the local action cache on every
+# build, and rules_go's standard library build fails.
+common --experimental_output_paths=strip
+common --modify_execution_info=(?!DexBuilder$|Desugar$|Godot).*=-supports-path-mapping
+
+# Actions run on this host unless a config such as --config=buildbuddy names remote execution
+# platforms. --config=host-execution restores this host after such a config, because a later
+# --extra_execution_platforms replaces earlier ones. Toolchains without execution constraints
+# that resolve binaries of this host use it, such as the formatters of rules_multirun and
+# rules_multitool that `bazel run` starts here. The default names the host as well, so the
+# config changes no option without a remote config and keeps Bazel's analysis cache.
+common --extra_execution_platforms=@platforms//host
+common:host-execution --extra_execution_platforms=@platforms//host
+
+# Print the logs of failing tests, which CI does not keep.
+test --test_output=errors

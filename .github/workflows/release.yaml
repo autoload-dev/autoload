@@ -1,0 +1,43 @@
+# Cut a release when a version tag is pushed, then publish it to the Bazel Central Registry.
+name: Release
+on:
+  push:
+    tags:
+      - "v*.*.*"
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+jobs:
+  release:
+    # https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml
+    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
+    with:
+      release_files: rules_godot-*.tar.gz
+      # The root module's //... builds engines and mobile packages; the registry's test
+      # module is the consumer check that matters for a release.
+      bazel_test_command: "cd e2e/smoke && bazel test //..."
+      prerelease: false
+      # Open the release as a draft so that publish.yaml can upload the attestations;
+      # finalize publishes it. See
+      # https://github.com/bazel-contrib/publish-to-bcr#immutable-releases
+      draft: true
+      tag_name: ${{ github.ref_name }}
+  publish:
+    needs: release
+    uses: ./.github/workflows/publish.yaml
+    with:
+      tag_name: ${{ github.ref_name }}
+    secrets:
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
+  finalize:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

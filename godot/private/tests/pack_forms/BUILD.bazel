@@ -1,0 +1,46 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_test")
+load("//godot/private/tests:pack_forms.bzl", "pack_form")
+
+_FIXTURE = "//godot/private/tests/pack_forms/fixtures/project_with_runtime_inputs"
+
+# The fixture's pack in each form: Godot's export, and written without Godot's conversions.
+pack_form(
+    name = "godot_pack",
+    form = "godot",
+    pack = _FIXTURE + ":pack",
+    tags = ["manual"],
+)
+
+pack_form(
+    name = "none_pack",
+    form = "none",
+    pack = _FIXTURE + ":pack",
+    tags = ["manual"],
+)
+
+# Run tests: the main scene checks the translation, the texture and the global class.
+godot_test(
+    name = "godot_pack_runtime_inputs_test",
+    size = "small",
+    pack = ":godot_pack",
+)
+
+godot_test(
+    name = "none_pack_runtime_inputs_test",
+    size = "small",
+    pack = ":none_pack",
+)
+
+# Build-output test: what both forms pack for the runtime besides the files.
+py_test(
+    name = "packs_carry_runtime_inputs_test",
+    size = "small",
+    srcs = ["runtime_inputs_test.py"],
+    data = [
+        ":godot_pack",
+        ":none_pack",
+    ],
+    main = "runtime_inputs_test.py",
+    deps = ["//tools:pck_lib"],
+)

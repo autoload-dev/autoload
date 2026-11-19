@@ -1,0 +1,10 @@
+load("@rules_godot//godot:defs.bzl", "godot_test")
+
+package(default_testonly = True)
+
+godot_test(
+    name = "exported",
+    size = "small",
+    headless = True,
+    pack = "//addons/sqlite/demo:pack",
+)

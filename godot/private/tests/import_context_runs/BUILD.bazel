@@ -1,0 +1,47 @@
+load("//godot:defs.bzl", "godot_test")
+
+_FIXTURE = "//godot/private/tests/import_context_runs/fixtures/composed_configuration"
+
+# Run tests: main/configured_test.gd checks the composed State autoload, the application
+# name after Godot's -- separator (default Configured) and that ImportInputState is absent.
+
+# The test applies its resources' autoload and its project's setting override.
+godot_test(
+    name = "composed_settings_and_autoloads_apply_test",
+    size = "small",
+    main = "main/configured_test.gd",
+    project = _FIXTURE + ":configured_project",
+    deps = [
+        _FIXTURE + ":configured_check",
+        _FIXTURE + ":configured_resources",
+    ],
+)
+
+# Settings and autoloads reach the test through a resource with an import input; the
+# import input's own setting and autoload do not.
+godot_test(
+    name = "import_input_configuration_stays_private_test",
+    size = "small",
+    args = [
+        "--",
+        "Resources",
+    ],
+    main = "main/configured_test.gd",
+    project = _FIXTURE + ":transitive_project",
+    deps = [
+        _FIXTURE + ":configured_check",
+        _FIXTURE + ":transitive_consumer",
+    ],
+)
+
+# The project overrides a setting and an autoload a dependency declares.
+godot_test(
+    name = "project_overrides_dependency_configuration_test",
+    size = "small",
+    main = "main/configured_test.gd",
+    project = _FIXTURE + ":overriding_project",
+    deps = [
+        _FIXTURE + ":configured_check",
+        _FIXTURE + ":overridden_consumer",
+    ],
+)

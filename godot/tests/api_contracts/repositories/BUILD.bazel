@@ -1,0 +1,4 @@
+exports_files([
+    "fixtures.bzl",
+    "split_templates.zip",
+])

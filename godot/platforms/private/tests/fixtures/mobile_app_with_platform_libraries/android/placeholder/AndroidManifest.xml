@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.example.placeholder">
+    <application>
+        <meta-data android:name="org.example.placeholder.SCHEME" android:value="${examplePlaceholder}" />
+    </application>
+</manifest>

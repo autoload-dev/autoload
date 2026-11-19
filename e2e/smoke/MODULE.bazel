@@ -1,0 +1,20 @@
+"""The Bazel Central Registry's test module of rules_godot: a consumer that exports a pack."""
+
+module(name = "rules_godot_e2e_smoke")
+
+bazel_dep(name = "rules_godot", version = "0.1.0")
+local_path_override(
+    module_name = "rules_godot",
+    path = "../..",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+
+godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+use_repo(godot_engines, "godot")
+
+register_toolchains("@godot//toolchains:all")

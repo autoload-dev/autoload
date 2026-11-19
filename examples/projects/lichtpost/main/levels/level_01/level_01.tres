@@ -1,0 +1,104 @@
+[gd_resource type="Resource" load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://main/run/level_definition.gd" id="1"]
+[ext_resource type="Script" path="res://main/run/section_pattern.gd" id="2"]
+[ext_resource type="Resource" path="res://main/shared/palette/garden_palette.tres" id="3"]
+[ext_resource type="Environment" path="res://main/levels/level_01/garden_environment.tres" id="7"]
+[ext_resource type="Texture2D" path="res://main/levels/level_01/sky.png" id="4"]
+[ext_resource type="Texture2D" path="res://main/levels/level_01/gardens-far.png" id="5"]
+[ext_resource type="Texture2D" path="res://main/levels/level_01/gardens-near.png" id="6"]
+
+[sub_resource type="Resource" id="Pattern_0"]
+script = ExtResource("2")
+gap_width = 1600
+gentle_gap_width = 1200
+has_pipe = false
+
+[sub_resource type="Resource" id="Pattern_1"]
+script = ExtResource("2")
+gap_width = 1800
+gentle_gap_width = 1400
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_2"]
+script = ExtResource("2")
+gap_width = 2000
+gentle_gap_width = 1200
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_3"]
+script = ExtResource("2")
+gap_width = 2200
+gentle_gap_width = 1400
+has_pipe = false
+
+[sub_resource type="Resource" id="Pattern_4"]
+script = ExtResource("2")
+gap_width = 1600
+gentle_gap_width = 1200
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_5"]
+script = ExtResource("2")
+gap_width = 1800
+gentle_gap_width = 1400
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_6"]
+script = ExtResource("2")
+gap_width = 2000
+gentle_gap_width = 1200
+has_pipe = false
+
+[sub_resource type="Resource" id="Pattern_7"]
+script = ExtResource("2")
+gap_width = 2200
+gentle_gap_width = 1400
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_8"]
+script = ExtResource("2")
+gap_width = 1600
+gentle_gap_width = 1200
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_9"]
+script = ExtResource("2")
+gap_width = 1800
+gentle_gap_width = 1400
+has_pipe = false
+
+[sub_resource type="Resource" id="Pattern_10"]
+script = ExtResource("2")
+gap_width = 2000
+gentle_gap_width = 1200
+has_pipe = true
+
+[sub_resource type="Resource" id="Pattern_11"]
+script = ExtResource("2")
+gap_width = 2200
+gentle_gap_width = 1400
+has_pipe = true
+
+[resource]
+script = ExtResource("1")
+display_name = "Floating gardens"
+speed = 90
+length = 180000
+section_count = 12
+section_origin = 6000
+section_stride = 14000
+gap_offset = 7000
+pipe_offset = 2000
+gentle_sections = 3
+light_offset = -600
+light_spacing = 900
+light_heights = PackedInt32Array(1800, 3000, 2200)
+seed_min = 0
+seed_max = 2147483647
+environment = ExtResource("7")
+palette = ExtResource("3")
+sky = ExtResource("4")
+far_gardens = ExtResource("5")
+near_gardens = ExtResource("6")
+patterns = Array[ExtResource("2")]([SubResource("Pattern_0"), SubResource("Pattern_1"), SubResource("Pattern_2"), SubResource("Pattern_3"), SubResource("Pattern_4"), SubResource("Pattern_5"), SubResource("Pattern_6"), SubResource("Pattern_7"), SubResource("Pattern_8"), SubResource("Pattern_9"), SubResource("Pattern_10"), SubResource("Pattern_11")])

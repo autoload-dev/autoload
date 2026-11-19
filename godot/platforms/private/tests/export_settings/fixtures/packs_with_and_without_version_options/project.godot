@@ -1,0 +1,18 @@
+; A portrait game on the Compatibility renderer, whose shell files follow these
+; settings as Godot's exporters do.
+
+config_version=5
+
+[application]
+
+config/name="Game & Test"
+
+[display]
+
+window/handheld/orientation=1
+window/size/resizable=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

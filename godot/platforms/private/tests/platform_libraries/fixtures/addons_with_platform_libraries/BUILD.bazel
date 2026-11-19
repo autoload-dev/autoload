@@ -1,0 +1,138 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/platforms/private/tests/platform_libraries:library_fixtures.bzl", "cc_fixture", "java_fixture")
+
+# A utility add-on, and an add-on using it and two extensions, whose Android and Apple
+# libraries and Info.plist fragment reach a project's applications.
+package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+
+# Stand-ins for an add-on's Android and Apple libraries: any target with JavaInfo or CcInfo
+# is one.
+java_fixture(
+    name = "addon_java",
+    tags = ["manual"],
+)
+
+cc_fixture(
+    name = "addon_apple",
+    linkopts = ["-framework GameController"],
+    tags = ["manual"],
+)
+
+cc_fixture(
+    name = "utility_apple",
+    tags = ["manual"],
+)
+
+cc_fixture(
+    name = "extension_apple",
+    tags = ["manual"],
+)
+
+config_setting(
+    name = "ios_arm64",
+    constraint_values = [
+        "@platforms//os:ios",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+config_setting(
+    name = "ios_x86_64",
+    constraint_values = [
+        "@platforms//os:ios",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+# The iOS libraries of one extension, by CPU.
+cc_fixture(
+    name = "ios_arm_library",
+    static_archive = True,
+    tags = ["manual"],
+)
+
+cc_fixture(
+    name = "ios_x86_library",
+    static_archive = True,
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "ios_extension",
+    entry_symbol = "ios_fixture_init",
+    library = select({
+        ":ios_arm64": ":ios_arm_library",
+        ":ios_x86_64": ":ios_x86_library",
+        "//conditions:default": None,
+    }),
+    tags = ["manual"],
+)
+
+genrule(
+    name = "extension_library",
+    outs = ["extension_library/libandroid_contract_fixture.so"],
+    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "extension",
+    entry_symbol = "platform_fixture_init",
+    library = select({
+        "@platforms//os:android": ":extension_library",
+        "//conditions:default": None,
+    }),
+    platform_deps = [":extension_apple"],
+    resource_path = "native/platform.gdextension",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "utility",
+    infoplists = ["addon.plist"],
+    platform_deps = [":utility_apple"],
+    tags = ["manual"],
+)
+
+# An add-on that needs the utility add-on.
+godot_addon(
+    name = "addon",
+    platform_deps = [
+        ":addon_apple",
+        ":addon_java",
+    ],
+    tags = ["manual"],
+    deps = [":utility"],
+)
+
+godot_resources(
+    name = "library_resources",
+    srcs = ["main/library_probe.gd"],
+    tags = ["manual"],
+    deps = [
+        ":addon",
+        ":extension",
+        ":ios_extension",
+    ],
+)
+
+# The extension has no extension editor library, so the project cannot import.
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [":library_resources"],
+)
+
+filegroup(
+    name = "runtime",
+    tags = ["manual"],
+)

@@ -1,0 +1,22 @@
+name: Stop Bazel at job end
+description: >-
+  Shut down Bazel servers and their persistent workers when the
+  job ends, before earlier steps clean up. Each module has a bounded best-effort shutdown.
+
+inputs:
+  bazel-modules:
+    description: Newline-separated Bazel module directories to shut down.
+    default: .
+
+  shutdown-timeout-seconds:
+    description: Maximum seconds per module before killing the cleanup client and continuing.
+    default: "30"
+
+  repository-cache:
+    description: Dedicated Linux cache mount whose remaining holders must exit before unmount.
+    default: ""
+
+runs:
+  using: node24
+  main: main.js
+  post: post.js

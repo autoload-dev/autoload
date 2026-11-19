@@ -1,0 +1,203 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_binary", "godot_pack", "godot_test")
+load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
+load("//godot/extension/tests:extension_contracts.bzl", "extension_library_fixture")
+load(":cc_extension_tests.bzl", "cc_extension_test_suite")
+load(":configured_library_tests.bzl", "configured_library_test_suite")
+load(":descriptor_tests.bzl", "descriptor_test_suite")
+load(":extension_platform_libraries_tests.bzl", "extension_platform_libraries_test_suite")
+load(":extension_tests.bzl", "extension_test_suite")
+load(":godot_cpp_bindings_tests.bzl", "godot_cpp_bindings_test_suite")
+load(":run_staging_tests.bzl", "run_staging_test_suite")
+load(":source_features_tests.bzl", "source_features_test_suite")
+
+godot_cc_extension(
+    name = "automatic_fixture",
+    srcs = ["static_fixture.cc"],
+    entry_symbol = "archive_fixture_init",
+)
+
+configured_library_test_suite(name = "configured_library_test_suite")
+
+# The tool configuration links other dependencies than the runtime, for example an
+# unsupported backend in place of one that needs a platform SDK.
+cc_library(
+    name = "editor_only_dependency",
+    srcs = ["static_fixture.cc"],
+)
+
+cc_library(
+    name = "runtime_only_dependency",
+    srcs = ["static_fixture.cc"],
+)
+
+extension_library_fixture(name = "android_fixture")
+
+# An extension whose tool configuration loads a library built from source and whose
+# runtime library is a prebuilt Android library.
+cc_binary(
+    name = "libcross_editor.so",
+    srcs = ["static_fixture.cc"],
+    linkshared = True,
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "cross_extension",
+    entry_symbol = "rules_godot_library_init",
+    library = select({
+        "//godot:tool": ":libcross_editor.so",
+        "//conditions:default": ":android_fixture",
+    }),
+    resource_path = "native/cross.gdextension",
+)
+
+py_test(
+    name = "cc_extension_initializes_through_the_godot_entry_abi_test",
+    size = "small",
+    srcs = ["cc_extension_abi_test.py"],
+    data = ["//godot/extension/tests/fixtures/c_abi:hello"],
+    legacy_create_init = False,
+    main = "cc_extension_abi_test.py",
+)
+
+godot_extension(
+    name = "dependency_extension",
+    data = ["dependency_fixture.txt"],
+    entry_symbol = "dependency_fixture_init",
+    library = ":android_fixture",
+    resource_path = "native/dependency.gdextension",
+    tags = ["manual"],
+)
+
+descriptor_test_suite(name = "descriptor_test_suite")
+
+godot_cpp_bindings_test_suite(name = "godot_cpp_bindings_test_suite")
+
+extension_test_suite(name = "extension_test_suite")
+
+cc_extension_test_suite(name = "cc_extension_test_suite")
+
+godot_cc_extension(
+    name = "cc_features_fixture",
+    srcs = ["static_fixture.cc"],
+    entry_symbol = "archive_fixture_init",
+    features = ["rules_godot_cc_feature_probe"],
+    tags = ["manual"],
+)
+
+source_features_test_suite(name = "source_features_test_suite")
+
+# Platform libraries are configurable, separate from C++ compilation deps.
+cc_library(
+    name = "private_platform_library",
+    visibility = ["//visibility:private"],
+)
+
+godot_extension(
+    name = "platform_library_extension",
+    entry_symbol = "platform_fixture_init",
+    library = ":android_fixture",
+    platform_deps = select({"//conditions:default": [":private_platform_library"]}),
+)
+
+extension_platform_libraries_test_suite(name = "extension_platform_libraries_test_suite")
+
+# The project of the runs here, which name none; their packs export it.
+_DEFAULT_PROJECT = "//godot/private:default_project"
+
+# Runs of a project and of its pack, analyzed only.
+godot_test(
+    name = "run_staging_project_run",
+    tags = ["manual"],
+    deps = ["//godot/extension/tests/fixtures/c_abi:hello"],
+)
+
+godot_pack(
+    name = "run_staging_pack",
+    testonly = True,
+    project = _DEFAULT_PROJECT,
+    tags = ["manual"],
+    deps = ["//godot/extension/tests/fixtures/c_abi:hello"],
+)
+
+godot_test(
+    name = "run_staging_pack_run",
+    pack = ":run_staging_pack",
+    tags = ["manual"],
+)
+
+# bazel run for a target platform the host cannot run, analyzed only.
+godot_binary(
+    name = "foreign_target_platform_project_run",
+    tags = ["manual"],
+    deps = [":cross_extension"],
+)
+
+godot_pack(
+    name = "foreign_target_platform_pack",
+    project = _DEFAULT_PROJECT,
+    tags = ["manual"],
+    deps = [":cross_extension"],
+)
+
+godot_binary(
+    name = "foreign_target_platform_pack_run",
+    pack = ":foreign_target_platform_pack",
+    tags = ["manual"],
+)
+
+# A pack of two Android platform slices, analyzed only.
+godot_extension(
+    name = "multi_platform_slice_extension",
+    entry_symbol = "multi_platform_slice_fixture_init",
+    library = ":android_fixture",
+    resource_path = "native/multi_platform_slice.gdextension",
+    tags = ["manual"],
+)
+
+godot_binary(
+    name = "multi_platform_slice_run",
+    tags = ["manual"],
+    deps = [":multi_platform_slice_extension"],
+)
+
+godot_pack(
+    name = "multi_platform_slice_pack",
+    project = _DEFAULT_PROJECT,
+    tags = ["manual"],
+    deps = [":multi_platform_slice_extension"],
+)
+
+# bazel run on the host's own platform loads the extension runtime library.
+godot_binary(
+    name = "host_platform_run",
+    tags = ["manual"],
+    deps = ["//godot/extension/tests/fixtures/c_abi:hello"],
+)
+
+run_staging_test_suite(name = "run_staging_test_suite")
+
+# A library per variant.
+extension_library_fixture(
+    name = "variant_debug_library",
+    filename = "libvariant_debug.so",
+)
+
+extension_library_fixture(
+    name = "variant_release_library",
+    filename = "libvariant_release.so",
+)
+
+godot_extension(
+    name = "variant_extension",
+    entry_symbol = "variant_fixture_init",
+    library = select({
+        "//godot:debug": ":variant_debug_library",
+        "//conditions:default": ":variant_release_library",
+    }),
+    resource_path = "native/variant.gdextension",
+    tags = ["manual"],
+)

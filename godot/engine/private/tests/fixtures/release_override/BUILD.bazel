@@ -1,0 +1,18 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+
+# Replaces only the desktop release runtime slots; registered ahead of the prebuilt hub, it
+# leaves the editor and every other slot to that hub.
+[godot_runtime_component(
+    name = "runtime_%s_%s_release" % (platform, cpu),
+    cpu = cpu,
+    origin = "consumer registration set",
+    platform = platform,
+    runtime = payload,
+    variant = "release",
+    version = "4.7.2",
+) for platform, cpu, payload in [
+    ("linux", "arm64", "linux_arm64_release.bin"),
+    ("linux", "x86_64", "linux_x86_64_release.bin"),
+    ("macos", "arm64", "macos_release.bin"),
+    ("macos", "x86_64", "macos_release.bin"),
+]]

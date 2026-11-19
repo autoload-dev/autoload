@@ -1,0 +1,187 @@
+"""The shared pins of the root module and its consumer modules must agree."""
+
+import contextlib
+import io
+import tempfile
+import textwrap
+import unittest
+from pathlib import Path
+
+from tools.setup.pins import main, module_pins
+
+MODULE = textwrap.dedent("""
+    module(name = "{name}")
+
+    bazel_dep(name = "rules_android", version = "{android}")
+    bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
+
+    android_sdk = use_extension(
+        "@rules_android//rules:rule.bzl", "android_sdk_repository_extension"
+    )
+    android_sdk.configure(api_level = 35, build_tools_version = "35.0.0")
+    toolchains = use_extension("//godot:extensions.bzl", "godot_android_toolchains")
+    toolchains.configure(ndk_api_level = 24)
+
+    godot_engines = use_extension("//godot:extensions.bzl", "godot_engines")
+    godot_engines.prebuilt(name = "godot", version = "4.7.2")
+    godot_engines.source(
+        name = "godot_sources",
+        sha256 = "abc",
+        strip_prefix = "godot-4.7.2-stable",
+        urls = ["https://example.com/godot.tar.gz"],
+        version = "4.7.2",
+    )
+
+    http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+    http_archive(name = "gdunit4", sha256 = "def", urls = ["https://example.com/gdunit.tar.gz"])
+
+    godot_cpp_bindings(name = "godot_cpp", api_path = "gdextension/extension_api-4-7.json")
+
+    maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+    maven.install(
+        name = "maven",
+        artifacts = ["androidx.fragment:fragment:{fragment}", "org.example:only:1.0"],
+    )
+""")
+
+
+class PinsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        (self.root / ".bazelignore").write_text("examples\ntests\n")
+        for module in (".", "examples", "tests"):
+            self.write(
+                module, MODULE.format(fragment="1.8.6", name=module, android="0.8.0")
+            )
+
+    def write(self, module: str, text: str, version: str = "9.3.0") -> None:
+        path = self.root / module
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "MODULE.bazel").write_text(text)
+        (path / ".bazelversion").write_text(version + "\n")
+
+    def run_check(self) -> tuple[int, str]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            status = main([str(self.root)])
+        return status, output.getvalue()
+
+    def test_equal_pins_pass_silently(self) -> None:
+        self.assertEqual((0, ""), self.run_check())
+
+    def test_a_drift_names_the_module_the_pin_and_both_values(self) -> None:
+        self.write(
+            "tests", MODULE.format(fragment="1.8.6", name="tests", android="0.8.1")
+        )
+        self.assertEqual(
+            (
+                1,
+                (
+                    "tests/MODULE.bazel: bazel_dep:rules_android is 0.8.1, "
+                    "examples/MODULE.bazel has 0.8.0\n"
+                ),
+            ),
+            self.run_check(),
+        )
+
+    def test_maven_artifact_versions_are_shared_pins(self) -> None:
+        self.write(
+            "tests",
+            MODULE.format(fragment="1.8.5", name="tests", android="0.8.0").replace(
+                '"org.example:only:1.0"', '"org.example:only:2.0"'
+            ),
+        )
+        self.write(
+            "examples",
+            MODULE.format(fragment="1.8.6", name="examples", android="0.8.0").replace(
+                '"org.example:only:1.0"', '"org.example:other:1.0"'
+            ),
+        )
+        self.write(
+            ".",
+            MODULE.format(fragment="1.8.6", name=".", android="0.8.0").replace(
+                ', "org.example:only:1.0"', ""
+            ),
+        )
+        self.assertEqual(
+            (
+                1,
+                (
+                    "tests/MODULE.bazel: maven.install:maven:androidx.fragment:fragment is 1.8.5, "
+                    "examples/MODULE.bazel has 1.8.6\n"
+                ),
+            ),
+            self.run_check(),
+        )
+
+    def test_bazel_versions_are_shared_pins(self) -> None:
+        self.write(
+            "examples",
+            MODULE.format(fragment="1.8.6", name="examples", android="0.8.0"),
+            "9.4.0",
+        )
+        status, output = self.run_check()
+        self.assertEqual(1, status)
+        self.assertIn("examples/.bazelversion: bazelversion is 9.4.0", output)
+
+    def test_pins_of_one_module_only_are_not_compared(self) -> None:
+        self.write(
+            "tests",
+            MODULE.format(fragment="1.8.6", name="tests", android="0.8.0")
+            + 'godot_engines.prebuilt(name = "godot_beta", version = "4.8.0-beta1")\n'
+            + 'http_file(name = "bundletool", sha256 = "x", urls = ["https://b"])\n',
+        )
+        self.assertEqual((0, ""), self.run_check())
+
+    def test_every_module_the_root_ignores_is_compared(self) -> None:
+        (self.root / ".bazelignore").write_text("examples\ntests\nconsumer\n")
+        self.write(
+            "consumer",
+            MODULE.format(fragment="1.8.6", name="consumer", android="0.9.0"),
+        )
+        status, output = self.run_check()
+        self.assertEqual(1, status)
+        self.assertIn("consumer/MODULE.bazel: bazel_dep:rules_android is 0.9.0", output)
+
+    def test_tags_of_other_extensions_are_no_pins(self) -> None:
+        other = (
+            'other = use_extension("//other:extensions.bzl", "other")\n'
+            "other.configure(api_level = {level})\n"
+        )
+        for module, level in (("examples", 1), ("tests", 2)):
+            self.write(
+                module,
+                MODULE.format(fragment="1.8.6", name=module, android="0.8.0")
+                + other.format(level=level),
+            )
+        self.assertEqual((0, ""), self.run_check())
+
+    def test_every_kind_of_pin_is_read(self) -> None:
+        self.assertEqual(
+            {
+                "bazel_dep:rules_android": "0.8.0",
+                "bazel_dep:toolchains_buildbuddy": "0.0.4",
+                "android_sdk_repository_extension.configure:api_level": 35,
+                "android_sdk_repository_extension.configure:build_tools_version": "35.0.0",
+                "godot_android_toolchains.configure:ndk_api_level": 24,
+                "godot_engines.prebuilt:godot.version": "4.7.2",
+                "godot_engines.source:godot_sources.sha256": "abc",
+                "godot_engines.source:godot_sources.strip_prefix": "godot-4.7.2-stable",
+                "godot_engines.source:godot_sources.urls": [
+                    "https://example.com/godot.tar.gz"
+                ],
+                "godot_engines.source:godot_sources.version": "4.7.2",
+                "http_archive:gdunit4.sha256": "def",
+                "http_archive:gdunit4.urls": ["https://example.com/gdunit.tar.gz"],
+                "godot_cpp_bindings:godot_cpp.api_path": "gdextension/extension_api-4-7.json",
+                "maven.install:maven:androidx.fragment:fragment": "1.8.6",
+                "maven.install:maven:org.example:only": "1.0",
+            },
+            module_pins(MODULE.format(fragment="1.8.6", name="root", android="0.8.0")),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

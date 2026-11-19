@@ -1,0 +1,206 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//docs/public/api:__pkg__"])
+
+exports_files([
+    "bcr_metadata_test.py",
+    "coverage_test.py",
+    "reference_test.py",
+    "rules_android_doc_visibility.patch",
+    "rules_android_ndk_doc_visibility.patch",
+])
+
+py_proto_library(
+    name = "stardoc_py",
+    deps = ["@stardoc//stardoc/proto:stardoc_output_proto"],
+)
+
+py_library(
+    name = "coverage_lib",
+    srcs = ["coverage.py"],
+    deps = [
+        ":output_contracts_lib",
+        ":stardoc_py",
+    ],
+)
+
+py_test(
+    name = "coverage_unit_test",
+    size = "small",
+    srcs = ["coverage_unit_test.py"],
+    deps = [":coverage_lib"],
+)
+
+py_library(
+    name = "inventory_lib",
+    srcs = ["api_docs.py"],
+    deps = ["//tools:tool_environment_lib"],
+)
+
+# `bazel run //tools/docs` updates the committed reference;
+# `bazel run //tools/docs:check` checks inventories and runs the docs tests.
+py_binary(
+    name = "docs",
+    srcs = ["api_docs.py"],
+    args = ["update"],
+    main = "api_docs.py",
+    tags = ["manual"],
+    visibility = ["//visibility:private"],
+    deps = ["//tools:tool_environment_lib"],
+)
+
+py_binary(
+    name = "check",
+    srcs = ["api_docs.py"],
+    args = ["check"],
+    main = "api_docs.py",
+    tags = ["manual"],
+    visibility = ["//visibility:private"],
+    deps = ["//tools:tool_environment_lib"],
+)
+
+py_library(
+    name = "surface_lib",
+    srcs = ["surface.py"],
+    deps = [":coverage_lib"],
+)
+
+py_library(
+    name = "render_reference_lib",
+    srcs = ["render_reference.py"],
+    deps = [
+        ":coverage_lib",
+        ":inventory_lib",
+        ":surface_lib",
+    ],
+)
+
+py_binary(
+    name = "render_reference",
+    srcs = ["render_reference.py"],
+    deps = [":render_reference_lib"],
+)
+
+py_test(
+    name = "inventory_test",
+    size = "small",
+    srcs = ["inventory_test.py"],
+    deps = [":inventory_lib"],
+)
+
+starlark_doc_extract(
+    name = "undocumented_fixture",
+    src = "undocumented.bzl",
+)
+
+py_test(
+    name = "evaluated_extraction_test",
+    size = "small",
+    srcs = ["evaluated_extraction_test.py"],
+    args = [
+        "$(rootpath :undocumented_fixture.textproto)",
+        "$(rootpath :undocumented.bzl)",
+    ],
+    data = [
+        "undocumented.bzl",
+        ":undocumented_fixture.textproto",
+    ],
+    deps = [":coverage_lib"],
+)
+
+py_test(
+    name = "surface_test",
+    size = "small",
+    srcs = ["surface_test.py"],
+    deps = [
+        ":coverage_lib",
+        ":render_reference_lib",
+        ":surface_lib",
+    ],
+)
+
+py_library(
+    name = "output_contracts_lib",
+    srcs = ["output_contracts.py"],
+    deps = ["//tools/ci:verification_lib"],
+)
+
+py_test(
+    name = "output_contracts_test",
+    size = "small",
+    srcs = ["output_contracts_test.py"],
+    deps = [":output_contracts_lib"],
+)
+
+py_library(
+    name = "evidence_lib",
+    srcs = ["evidence.py"],
+    deps = [
+        ":coverage_lib",
+        ":output_contracts_lib",
+        "//tools/conventions:context_lib",
+    ],
+)
+
+py_test(
+    name = "evidence_test",
+    size = "small",
+    srcs = ["evidence_test.py"],
+    deps = [":evidence_lib"],
+)
+
+py_library(
+    name = "contracts_lib",
+    srcs = [
+        "contracts.py",
+        "repository_contracts.py",
+    ],
+    deps = [
+        ":coverage_lib",
+        ":evidence_lib",
+        ":inventory_lib",
+        ":output_contracts_lib",
+        "//tools/conventions:context_lib",
+    ],
+)
+
+py_binary(
+    name = "contracts",
+    srcs = ["contracts.py"],
+    tags = ["manual"],
+    deps = [":contracts_lib"],
+)
+
+py_test(
+    name = "repository_contracts_test",
+    size = "small",
+    srcs = ["repository_contracts_test.py"],
+    deps = [":contracts_lib"],
+)
+
+bzl_library(
+    name = "evaluated_mismatch_sources",
+    testonly = True,
+    srcs = [
+        "//godot/tests/api_contracts:mismatch.bzl",
+        "//godot/tests/api_contracts:visibility_fixture.bzl",
+    ],
+)
+
+starlark_doc_extract(
+    name = "evaluated_mismatch_inventory",
+    testonly = True,
+    src = "//godot/tests/api_contracts:mismatch.bzl",
+    deps = [":evaluated_mismatch_sources"],
+)
+
+# Standalone, like the production contract check: nested Bazel invocations cannot
+# run as a sandboxed Bazel test against the same locked output base.
+py_binary(
+    name = "evaluated_mismatch_test",
+    srcs = ["evaluated_mismatch_test.py"],
+    tags = ["manual"],
+    deps = [":contracts_lib"],
+)

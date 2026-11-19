@@ -1,0 +1,46 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# A project with two imported SVG assets, a script and a main scene, exported with
+# an explicit script export mode.
+package(default_visibility = ["//godot:__subpackages__"])
+
+exports_files(["project.godot"])
+
+godot_resources(
+    name = "icon",
+    srcs = ["main/icon.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "other",
+    srcs = ["main/other.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":icon",
+        ":main",
+        ":other",
+    ],
+)

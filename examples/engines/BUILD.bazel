@@ -1,0 +1,3 @@
+# The lock file that pins the build graph of every recipe of Petri's source build; MODULE.bazel
+# names it, and `bazel run @godot_petri//:pin` rewrites it.
+exports_files(["godot_petri.lock.json"])

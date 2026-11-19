@@ -1,0 +1,29 @@
+load("@rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
+
+exports_files([
+    "Package.resolved",
+    "Package.swift",
+    "android_ide_common_30_1_3_install.json",
+    "bazel_worker_maven_install.json",
+    "maven_install.json",
+    "rules_android_maven_install.json",
+])
+
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+godot_export_platform(
+    name = "android_distribution",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+    visibility = ["//visibility:public"],
+)

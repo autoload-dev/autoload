@@ -1,0 +1,275 @@
+# The Dart VM's precompiled (AOT) runtime with the dart_engine embedding API, built from the
+# Dart SDK sources. GN builds this as runtime/engine:dart_engine_aot_shared; these targets
+# take the same source lists, which the archive's patch commands copy from the *.gni files
+# into loadable .bzl files.
+#
+# The runtime runs AOT snapshots that `dart compile aot-snapshot` of the same SDK release
+# writes: product mode, no compressed pointers, as the released SDK's gen_snapshot.
+
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("//:runtime/bin/builtin_impl_sources.bzl", "builtin_impl_sources")
+load("//:runtime/bin/io_impl_sources.bzl", "io_impl_sources")
+load("//:runtime/lib/async_sources.bzl", "async_runtime_cc_files")
+load("//:runtime/lib/concurrent_sources.bzl", "concurrent_runtime_cc_files")
+load("//:runtime/lib/core_sources.bzl", "core_runtime_cc_files")
+load("//:runtime/lib/developer_sources.bzl", "developer_runtime_cc_files")
+load("//:runtime/lib/ffi_sources.bzl", "ffi_runtime_cc_files")
+load("//:runtime/lib/isolate_sources.bzl", "isolate_runtime_cc_files")
+load("//:runtime/lib/math_sources.bzl", "math_runtime_cc_files")
+load("//:runtime/lib/mirrors_sources.bzl", "mirrors_runtime_cc_files")
+load("//:runtime/lib/typed_data_sources.bzl", "typed_data_runtime_cc_files")
+load("//:runtime/lib/vmservice_sources.bzl", "vmservice_runtime_cc_files")
+load("//:runtime/platform/platform_sources.bzl", "platform_sources")
+load("//:runtime/vm/compiler/compiler_sources.bzl", "compiler_api_sources", "disassembler_sources")
+load("//:runtime/vm/ffi/ffi_sources.bzl", vm_ffi_sources = "ffi_sources")
+load("//:runtime/vm/heap/heap_sources.bzl", "heap_sources")
+load("//:runtime/vm/regexp/regexp_sources.bzl", "regexp_sources")
+load("//:runtime/vm/vm_sources.bzl", "vm_sources")
+
+package(default_visibility = ["//visibility:private"])
+
+LIB_SOURCES = (
+    async_runtime_cc_files +
+    concurrent_runtime_cc_files +
+    core_runtime_cc_files +
+    developer_runtime_cc_files +
+    ffi_runtime_cc_files +
+    isolate_runtime_cc_files +
+    math_runtime_cc_files +
+    mirrors_runtime_cc_files +
+    typed_data_runtime_cc_files +
+    vmservice_runtime_cc_files
+)
+
+# runtime/BUILD.gn's dart_config, dart_aotruntime_config and dart_product_config, with
+# dart_arch_config and dart_os_config for the target platform.
+MODE_DEFINES = [
+    "DART_PRECOMPILED_RUNTIME",
+    "EXCLUDE_CFE_AND_KERNEL_PLATFORM",
+    "NDEBUG",
+    "PRODUCT",
+    # Without BoringSSL dart:io has no SecureSocket, as with dart_disable_secure_socket.
+    "DART_IO_SECURE_SOCKET_DISABLED",
+]
+
+DEFINES = MODE_DEFINES + select({
+    "@platforms//cpu:arm64": ["TARGET_ARCH_ARM64"],
+    "@platforms//cpu:x86_64": ["TARGET_ARCH_X64"],
+}) + select({
+    "@platforms//os:android": ["DART_TARGET_OS_ANDROID"],
+    "@platforms//os:ios": [
+        "DART_TARGET_OS_MACOS",
+        "DART_TARGET_OS_MACOS_IOS",
+    ],
+    # Linux leaves out the timeline, as Dart's release-mode Linux runtimes do; the snapshot
+    # does not depend on it.
+    "@platforms//os:linux": [
+        "DART_TARGET_OS_LINUX",
+        "DART_DISABLE_TIMELINE",
+    ],
+    "@platforms//os:macos": ["DART_TARGET_OS_MACOS"],
+})
+
+# runtime/BUILD.gn's dart_config flags. Both compilers ignore the other's -Wno- options.
+COPTS = [
+    # Apple's toolchain defines DEBUG outside optimized builds; Dart reads it as a debug VM.
+    "-UDEBUG",
+    "-std=c++20",
+    "-O2",
+    "-fno-rtti",
+    "-fno-exceptions",
+    "-Wno-unused-parameter",
+    "-Wno-unused-private-field",
+    "-Wno-comments",
+    "-Wno-deprecated-declarations",
+    "-Wno-cast-function-type",
+    "-Wno-dangling-reference",
+    "-Wno-unknown-warning-option",
+]
+
+# The files whose contents make the snapshot hash, as tools/make_version.py lists them.
+VM_SNAPSHOT_FILES = [
+    "app_snapshot.cc",
+    "app_snapshot.h",
+    "dart.cc",
+    "dart_api_impl.cc",
+    "datastream.h",
+    "image_snapshot.cc",
+    "image_snapshot.h",
+    "object.cc",
+    "object.h",
+    "raw_object.cc",
+    "raw_object.h",
+    "snapshot.cc",
+    "snapshot.h",
+    "symbols.cc",
+    "symbols.h",
+]
+
+# tools/make_version.py, which imports tools/utils.py and reads the snapshot files and
+# tools/VERSION beside it.
+py_binary(
+    name = "make_version",
+    srcs = [
+        "tools/make_version.py",
+        "tools/utils.py",
+    ],
+    data = ["tools/VERSION"] + ["runtime/vm/" + f for f in VM_SNAPSHOT_FILES],
+    imports = ["tools"],
+    main = "tools/make_version.py",
+)
+
+# runtime/BUILD.gn's generate_version_cc_file: the version and snapshot hash, which an AOT
+# snapshot must match, without a git checkout.
+genrule(
+    name = "version_cc",
+    srcs = ["runtime/vm/version_in.cc"],
+    outs = ["runtime/vm/version.cc"],
+    cmd = "$(execpath :make_version) --no-git-hash --no-sdk-hash " +
+          "--input $(execpath runtime/vm/version_in.cc) --output $@",
+    tools = [":make_version"],
+)
+
+# Every header of the runtime and of its vendored double-conversion, included as
+# "vm/...", "platform/...", "bin/...", "include/..." or from the SDK root.
+cc_library(
+    name = "headers",
+    hdrs = glob([
+        "runtime/**/*.h",
+        "third_party/double-conversion/src/*.h",
+    ]),
+    includes = [
+        ".",
+        "runtime",
+    ],
+)
+
+# Dart includes zlib as "zlib/zlib.h", its location in the SDK checkout.
+write_file(
+    name = "zlib_shim",
+    out = "zlib_shim/zlib/zlib.h",
+    content = ["#include <zlib.h>"],
+)
+
+cc_library(
+    name = "zlib",
+    hdrs = [":zlib_shim"],
+    includes = ["zlib_shim"],
+    deps = ["@zlib"],
+)
+
+cc_library(
+    name = "double_conversion",
+    srcs = glob(["third_party/double-conversion/src/*.cc"]),
+    copts = ["-Wno-unused-parameter"],
+    deps = [":headers"],
+)
+
+# runtime/vm:libdart_vm, libdart_lib and platform:libdart_platform with libdart's own sources.
+cc_library(
+    name = "libdart",
+    srcs = [
+               "runtime/vm/analyze_snapshot_api_impl.cc",
+               "runtime/vm/bootstrap.cc",
+               "runtime/vm/dart_api_impl.cc",
+               "runtime/vm/native_api_impl.cc",
+               "runtime/vm/version.cc",
+           ] + ["runtime/vm/" + f for f in vm_sources if not f.endswith(".h")] +
+           ["runtime/vm/compiler/" + f for f in compiler_api_sources + disassembler_sources] +
+           ["runtime/vm/ffi/" + f for f in vm_ffi_sources] +
+           ["runtime/vm/heap/" + f for f in heap_sources] +
+           ["runtime/vm/regexp/" + f for f in regexp_sources] +
+           ["runtime/lib/" + f for f in LIB_SOURCES] +
+           ["runtime/platform/" + f for f in platform_sources] + select({
+        "@platforms//os:windows": [],
+        "//conditions:default": ["runtime/vm/ffi_trampolines_arm64.S"],
+    }),
+    copts = COPTS,
+    linkopts = select({
+        "@platforms//os:linux": [
+            "-ldl",
+            "-lpthread",
+        ],
+        "//conditions:default": [],
+    }),
+    local_defines = DEFINES,
+    deps = [
+        ":double_conversion",
+        ":headers",
+        "@icu//icu4c/source/common:platform",
+    ],
+)
+
+objc_library(
+    name = "platform_macos_cocoa",
+    srcs = ["runtime/bin/platform_macos_cocoa.mm"],
+    # objc_library has no local_defines; its defines would reach every dependent.
+    copts = COPTS + ["-D" + d for d in MODE_DEFINES + ["DART_TARGET_OS_MACOS"]] + select({
+        "@platforms//cpu:arm64": ["-DTARGET_ARCH_ARM64"],
+        "@platforms//cpu:x86_64": ["-DTARGET_ARCH_X64"],
+    }),
+    sdk_frameworks = ["Foundation"],
+    deps = [":headers"],
+)
+
+# runtime/bin:libdart_builtin and common_embedder_dart_io: the embedder's dart:io.
+cc_library(
+    name = "dart_io",
+    srcs = ["runtime/bin/" + f for f in builtin_impl_sources + io_impl_sources + [
+        "builtin.cc",
+        "builtin_natives.cc",
+        "dart_io_api_impl.cc",
+        "io_natives.cc",
+    ]],
+    copts = COPTS,
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-framework CoreFoundation",
+            "-framework CoreServices",
+            "-framework Foundation",
+            "-framework Security",
+        ],
+        "//conditions:default": [],
+    }),
+    local_defines = DEFINES,
+    deps = [
+        ":headers",
+        ":libdart",
+        ":zlib",
+    ] + select({
+        "@platforms//os:macos": [":platform_macos_cocoa"],
+        "//conditions:default": [],
+    }),
+)
+
+# runtime/engine:engine_aot_set: dart_engine.h over the precompiled runtime.
+cc_library(
+    name = "dart_engine_aot",
+    srcs = [
+        "runtime/bin/dart_embedder_api_impl.cc",
+        "runtime/bin/vmservice_impl.cc",
+        "runtime/engine/dart_engine_impl.cc",
+        "runtime/engine/engine.cc",
+    ],
+    hdrs = [
+        "runtime/engine/include/dart_engine.h",
+        "runtime/include/dart_api.h",
+        "runtime/include/dart_native_api.h",
+    ],
+    copts = COPTS,
+    includes = [
+        "runtime",
+        "runtime/engine",
+    ],
+    local_defines = DEFINES,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":dart_io",
+        ":headers",
+        ":libdart",
+    ],
+    alwayslink = True,
+)

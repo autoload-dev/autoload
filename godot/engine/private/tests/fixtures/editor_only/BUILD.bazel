@@ -1,0 +1,10 @@
+load("//godot/engine:defs.bzl", "godot_editor_component")
+
+# An editor-only registration set: the runtime still comes from the registered hub.
+godot_editor_component(
+    name = "editor_linux_arm64",
+    cpu = "arm64",
+    editor = "//godot/engine/private/tests/fixtures:editor_stand_in",
+    platform = "linux",
+    version = "4.7.2",
+)

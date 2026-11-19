@@ -1,0 +1,168 @@
+load("@bazel_skylib//rules:common_settings.bzl", "int_flag", "string_flag")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+
+# The authored configuration names a theme only the whole project contains and enables a
+# plugin whose export hook always fails; no export runs an export plugin (D29). The project
+# names an add-on whose importer converts .greeting files and whose editor plugin crashes
+# Godot at shutdown.
+package(default_visibility = ["//godot/private/tests/import_export_plugins:__pkg__"])
+
+godot_resources(
+    name = "icon",
+    srcs = ["main/icon.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "ui",
+    srcs = ["main/ui/theme.tres"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "authored_hook",
+    srcs = glob(["main/addons/authored_hook/*"]),
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "export_marker",
+    directory = "main/addons/export_marker",
+    editor_srcs = glob(["main/addons/export_marker/*"]),
+    strip_prefix = "main/addons/export_marker",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "greeting_importer",
+    directory = "main/addons/greeting_importer",
+    editor_srcs = glob(["main/addons/greeting_importer/*"]),
+    importer_suffixes = ["greeting"],
+    strip_prefix = "main/addons/greeting_importer",
+    tags = ["manual"],
+)
+
+# Imported in its own unit by the importer of the named add-on.
+godot_resources(
+    name = "greeting",
+    srcs = ["main/hello.greeting"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":greeting_importer"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_hook",
+        ":export_marker",
+        ":greeting",
+        ":icon",
+        ":main",
+        ":ui",
+    ],
+)
+
+# The release channel as a custom feature: the release project's builds have the tag
+# integration_test, under which the authored override sets release/channel.
+string_flag(
+    name = "release_channel",
+    build_setting_default = "integration_test",
+)
+
+# The build number as a setting from a flag, as a pipeline would pass it per build.
+int_flag(
+    name = "build_number",
+    build_setting_default = 57,
+)
+
+godot_project(
+    name = "release_project",
+    custom_features = [":release_channel"],
+    project_file = "project.godot",
+    settings_from_flags = {":build_number": "release/build_number"},
+    tags = ["manual"],
+    deps = [":greeting_importer"],
+)
+
+# Release values and preset options belong to one export.
+godot_pack(
+    name = "release_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":release_project",
+    settings = {
+        "application/config/version": '"2.3.4"',
+    },
+    tags = ["manual"],
+    deps = [
+        ":authored_hook",
+        ":export_marker",
+        ":greeting",
+        ":icon",
+        ":main",
+        ":ui",
+    ],
+)
+
+# The packs the tests export for Android, iOS and macOS.
+godot_pack(
+    name = "android_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_hook",
+        ":export_marker",
+        ":greeting",
+        ":icon",
+        ":main",
+        ":ui",
+    ],
+)
+
+godot_pack(
+    name = "ios_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_hook",
+        ":export_marker",
+        ":greeting",
+        ":icon",
+        ":main",
+        ":ui",
+    ],
+)
+
+godot_pack(
+    name = "macos_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":authored_hook",
+        ":export_marker",
+        ":greeting",
+        ":icon",
+        ":main",
+        ":ui",
+    ],
+)

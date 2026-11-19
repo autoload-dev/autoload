@@ -1,0 +1,31 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# A project whose runtime reads a translation of a locale that needs the text server's
+# support data, a texture imported in feature-tagged variants and a global class.
+package(default_visibility = ["//godot/private/tests/pack_forms:__pkg__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/check.gd",
+        "main/check.tscn",
+        "main/greeter.gd",
+        "main/ja.po",
+        "main/tile.png",
+        "main/tile.png.import",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)

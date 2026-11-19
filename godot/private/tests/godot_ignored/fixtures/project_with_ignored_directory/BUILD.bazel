@@ -1,0 +1,87 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+
+# A project with files Godot ignores: report/ holds a .gdignore, demo/ is another project,
+# and main/.notes.txt is hidden. Their scripts have class names; the readers open the
+# report's template through FileAccess, as GdUnit's HTML reporter does.
+package(default_visibility = [
+    "//godot/private/tests:__pkg__",
+    "//godot/private/tests/godot_ignored:__subpackages__",
+])
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "report",
+    srcs = glob(["report/**"]),
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "demo",
+    srcs = glob(["demo/**"]),
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "reader",
+    srcs = glob(["main/**"]),
+    # Acknowledges a read that runs only from the sources, which packs leave out.
+    runtime_references = {"main/reader.gd": ["report/template.html"]},
+    tags = ["manual"],
+    deps = [
+        ":demo",
+        ":report",
+    ],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":reader"],
+)
+
+# The same read without the acknowledgement, which the pack's selection warns about.
+godot_resources(
+    name = "unacknowledged_reader",
+    srcs = ["unacknowledged/reader.gd"],
+    tags = ["manual"],
+    deps = [":report"],
+)
+
+godot_pack(
+    name = "unacknowledged_pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":unacknowledged_reader"],
+)
+
+# The .gdignore and a file below it in different targets, which sidecar_tests.bzl rejects.
+godot_resources(
+    name = "ignore_file",
+    srcs = ["report/.gdignore"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "template_without_its_ignore_file",
+    srcs = ["report/template.html"],
+    tags = ["manual"],
+    deps = [":ignore_file"],
+)
+
+# An add-on whose editor part holds the .gdignore of a directory with a runtime-part file.
+godot_addon(
+    name = "addon_split_at_ignored_directory",
+    srcs = ["report/template.html"],
+    directory = "addons/split",
+    editor_srcs = [
+        "plugin/plugin.cfg",
+        "report/.gdignore",
+    ],
+    tags = ["manual"],
+)

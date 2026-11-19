@@ -1,0 +1,21 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "route",
+    srcs = [
+        "route_model.gd",
+        "route_model.gd.uid",
+    ],
+    prefix = "main/rules",
+)
+
+godot_resources(
+    name = "replay",
+    srcs = [
+        "replay.gd",
+        "replay.gd.uid",
+    ],
+    prefix = "main/rules",
+)

@@ -1,0 +1,128 @@
+load(
+    ":settings.bzl",
+    "CPU_CONSTRAINTS",
+    "DISPATCH_CONDITIONS",
+    "OPERATING_SYSTEM_CONSTRAINTS",
+    "application_context_setting",
+    "export_platform_setting",
+    "tool_setting",
+)
+
+package(default_visibility = ["//godot:__subpackages__"])
+
+exports_files([
+    "application.bzl",
+    "settings.bzl",
+    "transitions.bzl",
+])
+
+# `platform(flags = ...)` of an export platform sets these values, also in consuming
+# modules. They remain implementation state, not supported independent CLI choices.
+[
+    export_platform_setting(
+        name = name,
+        build_setting_default = default,
+        visibility = ["//visibility:public"],
+    )
+    for name, default in {
+        "operating_system": "",
+        "environment": "",
+        "cpus": "",
+        "export_platform": "",
+        "platform_slices": "",
+    }.items()
+]
+
+application_context_setting(
+    name = "application_context",
+    build_setting_default = "{}",
+    visibility = ["//visibility:public"],
+)
+
+# A macOS application's edge records the build's minimum; the project context restores it.
+application_context_setting(
+    name = "macos_minimum_os_outside_application",
+    build_setting_default = "",
+)
+
+# An extension's tool view sets it; //godot:tool matches it.
+tool_setting(
+    name = "tool",
+    build_setting_default = False,
+)
+
+[
+    config_setting(
+        name = name,
+        constraint_values = condition.constraint_values,
+        flag_values = condition.flag_values,
+        visibility = ["//visibility:public"],
+    )
+    for name, condition in DISPATCH_CONDITIONS.items()
+]
+
+# Bazel runs a test on an execution platform with every constraint of the target
+# platform. A desktop export platform also carries Apple or consumer constraints that
+# execution platforms lack, so its tests run on any execution platform with the export
+# platform's operating system and CPU instead.
+[
+    config_setting(
+        name = operating_system + "_export_platform",
+        flag_values = {":operating_system": operating_system},
+    )
+    for operating_system in [
+        "linux",
+        "macos",
+    ]
+]
+
+[
+    toolchain(
+        name = "%s_%s_test_toolchain" % (operating_system, cpu),
+        exec_compatible_with = [
+            OPERATING_SYSTEM_CONSTRAINTS[operating_system],
+            constraint,
+        ],
+        target_compatible_with = [
+            OPERATING_SYSTEM_CONSTRAINTS[operating_system],
+            constraint,
+        ],
+        target_settings = [":%s_export_platform" % operating_system],
+        toolchain = "@bazel_tools//tools/test:empty_toolchain",
+        toolchain_type = "@bazel_tools//tools/test:default_test_toolchain_type",
+    )
+    for operating_system in [
+        "linux",
+        "macos",
+    ]
+    for cpu, constraint in CPU_CONSTRAINTS.items()
+]
+
+# An application of the editor variant runs on its target platform, so its editor and
+# runner are those of an execution platform with the target platform's operating system
+# and CPU: these toolchains carry nothing and only choose that execution platform.
+toolchain_type(
+    name = "target_execution_toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+[
+    toolchain(
+        name = "%s_%s_target_execution_toolchain" % (operating_system, cpu),
+        exec_compatible_with = [
+            OPERATING_SYSTEM_CONSTRAINTS[operating_system],
+            constraint,
+        ],
+        target_compatible_with = [
+            OPERATING_SYSTEM_CONSTRAINTS[operating_system],
+            constraint,
+        ],
+        toolchain = "@bazel_tools//tools/test:empty_toolchain",
+        toolchain_type = ":target_execution_toolchain_type",
+    )
+    for operating_system in [
+        "linux",
+        "macos",
+    ]
+    for cpu, constraint in CPU_CONSTRAINTS.items()
+]

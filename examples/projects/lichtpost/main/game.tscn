@@ -1,0 +1,14 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://main/game.gd" id="1"]
+[ext_resource type="PackedScene" path="res://main/run/run.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://main/ui/interface/interface.tscn" id="3"]
+[ext_resource type="Resource" path="res://main/levels/level_01/level_01.tres" id="4"]
+
+[node name="LichtpostGame" type="Node" unique_id=1974899225]
+script = ExtResource("1")
+level = ExtResource("4")
+
+[node name="Run" parent="." unique_id=608964511 instance=ExtResource("2")]
+
+[node name="Interface" parent="." unique_id=1639229962 instance=ExtResource("3")]

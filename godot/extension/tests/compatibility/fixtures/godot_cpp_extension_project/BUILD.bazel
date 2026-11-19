@@ -1,0 +1,48 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A pack whose main scene loads a godot-cpp extension built against the 4.7 extension API
+# and an imported texture, then checks the running engine's version.
+package(default_visibility = ["//godot/extension/tests/compatibility:__pkg__"])
+
+godot_cc_extension(
+    name = "extension",
+    srcs = ["example.cc"],
+    compatibility_minimum = "4.7.2",
+    entry_symbol = "example_library_init",
+    resource_path = "native/cpp_example.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "icon",
+    srcs = ["main/icon.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":extension",
+        ":icon",
+        ":main",
+    ],
+)

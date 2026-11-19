@@ -1,0 +1,21 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+py_library(
+    name = "android",
+    srcs = ["sdk.py"],
+    data = ["//:mise.toml"],
+)
+
+py_library(
+    name = "requirements_lib",
+    srcs = ["requirements.py"],
+    visibility = ["//tools/platforms:__pkg__"],
+    deps = ["//tools/setup:modules_lib"],
+)
+
+py_test(
+    name = "sdk_test",
+    size = "small",
+    srcs = ["sdk_test.py"],
+    deps = [":android"],
+)

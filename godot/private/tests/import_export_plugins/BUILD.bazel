@@ -1,0 +1,147 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_test")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+load("//godot/private/tests:views.bzl", "run_view")
+load(":outputs.bzl", "import_results", "shell_images")
+
+_FIXTURE = "//godot/private/tests/import_export_plugins/fixtures/project_with_import_and_export_plugins"
+
+# Build-output test: of a source run's imports, only the .greeting unit's stages the
+# importer, and no two units import the same file: the importer's editor part imports its
+# own icon (FR-017, FR-020).
+run_view(
+    name = "run",
+    project = _FIXTURE + ":project",
+    deps = [
+        _FIXTURE + ":authored_hook",
+        _FIXTURE + ":export_marker",
+        _FIXTURE + ":greeting",
+        _FIXTURE + ":icon",
+        _FIXTURE + ":main",
+        _FIXTURE + ":ui",
+    ],
+)
+
+import_results(
+    name = "run_imports",
+    tags = ["manual"],
+    view = ":run.view",
+)
+
+py_test(
+    name = "each_file_is_imported_by_one_unit_test",
+    size = "small",
+    srcs = ["import_results_test.py"],
+    data = [":run_imports"],
+    main = "import_results_test.py",
+)
+
+# Build-output test: the pack holds no file of its add-ons' editor parts, and the export
+# plugin one of them registers did not run (FR-015, FR-019, SC-005, D29).
+py_test(
+    name = "pack_holds_no_editor_part_test",
+    size = "small",
+    srcs = ["pack_contents_test.py"],
+    data = [_FIXTURE + ":pack"],
+    main = "pack_contents_test.py",
+    deps = ["//tools:pck_lib"],
+)
+
+# Run tests: the packs build although the importer's editor plugin crashes Godot at
+# shutdown in every process that stages it, the importer probe, imports, initializations and
+# exports, after each recorded its result (FR-030); main/main.gd checks the theme, the
+# imported texture and the greeting the named add-on's importer converted, and compares the
+# release values it sees with its argument after Godot's -- separator.
+godot_test(
+    name = "pack_runs_with_project_configuration_test",
+    size = "small",
+    args = [
+        "--",
+        "'/0 store'",
+    ],
+    pack = _FIXTURE + ":pack",
+)
+
+godot_test(
+    name = "pack_runs_with_release_settings_test",
+    size = "small",
+    args = [
+        "--",
+        "'2.3.4/57 integration'",
+    ],
+    pack = _FIXTURE + ":release_pack",
+)
+
+# A source run of the release project starts with its custom feature, so the authored
+# override applies as in the release pack, and with its build number from a flag.
+godot_test(
+    name = "source_run_has_custom_features_test",
+    size = "small",
+    args = [
+        "--",
+        "'/57 integration'",
+    ],
+    project = _FIXTURE + ":release_project",
+    deps = [
+        _FIXTURE + ":authored_hook",
+        _FIXTURE + ":export_marker",
+        _FIXTURE + ":greeting",
+        _FIXTURE + ":icon",
+        _FIXTURE + ":main",
+        _FIXTURE + ":ui",
+    ],
+)
+
+# Build-output test: the icons and splash images Godot's exporters render for the shells of
+# the packs, per platform and variant.
+in_export_platform(
+    name = "android_pack",
+    export_platform = "//godot/platforms:android_arm64",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":android_pack"],
+)
+
+in_export_platform(
+    name = "ios_pack",
+    export_platform = "//godot/platforms:ios_arm64",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":ios_pack"],
+)
+
+in_export_platform(
+    name = "macos_pack",
+    export_platform = "//godot/platforms:macos_arm64",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":macos_pack"],
+)
+
+shell_images(
+    name = "android_debug_images",
+    pack = ":android_pack",
+    tags = ["manual"],
+    variant = "debug",
+)
+
+shell_images(
+    name = "ios_release_images",
+    pack = ":ios_pack",
+    tags = ["manual"],
+)
+
+shell_images(
+    name = "macos_release_images",
+    pack = ":macos_pack",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "export_shells_render_icons_and_splash_test",
+    size = "small",
+    srcs = ["shell_images_test.py"],
+    data = [
+        ":android_debug_images",
+        ":ios_release_images",
+        ":macos_release_images",
+    ],
+    main = "shell_images_test.py",
+)

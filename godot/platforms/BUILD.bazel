@@ -1,0 +1,123 @@
+load(":defs.bzl", "godot_export_platform")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(glob([
+    "*.bzl",
+    "*.mm",
+    "*.pb.json",
+]))
+
+godot_export_platform(
+    name = "linux_x86_64",
+    cpus = ["@platforms//cpu:x86_64"],
+    operating_system = "linux",
+)
+
+godot_export_platform(
+    name = "linux_arm64",
+    cpus = ["@platforms//cpu:aarch64"],
+    operating_system = "linux",
+)
+
+godot_export_platform(
+    name = "linux_x86_32",
+    cpus = ["@platforms//cpu:x86_32"],
+    operating_system = "linux",
+)
+
+godot_export_platform(
+    name = "linux_arm32",
+    cpus = ["@platforms//cpu:armv7"],
+    operating_system = "linux",
+)
+
+godot_export_platform(
+    name = "macos_arm64",
+    cpus = ["@platforms//cpu:aarch64"],
+    operating_system = "macos",
+)
+
+godot_export_platform(
+    name = "macos_x86_64",
+    cpus = ["@platforms//cpu:x86_64"],
+    operating_system = "macos",
+)
+
+godot_export_platform(
+    name = "android_arm64",
+    cpus = ["@platforms//cpu:aarch64"],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "android_x86_64",
+    cpus = ["@platforms//cpu:x86_64"],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "android_arm32",
+    cpus = ["@platforms//cpu:armv7"],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "android_x86_32",
+    cpus = ["@platforms//cpu:x86_32"],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "ios_arm64",
+    cpus = ["@platforms//cpu:aarch64"],
+    environment = "device",
+    operating_system = "ios",
+)
+
+godot_export_platform(
+    name = "ios_sim_arm64",
+    cpus = ["@platforms//cpu:aarch64"],
+    environment = "simulator",
+    operating_system = "ios",
+)
+
+godot_export_platform(
+    name = "ios_sim_x86_64",
+    cpus = ["@platforms//cpu:x86_64"],
+    environment = "simulator",
+    operating_system = "ios",
+)
+
+# Public operating system predicates are reusable for libraries, engines and compatibility.
+
+config_setting(
+    name = "is_linux",
+    constraint_values = ["@platforms//os:linux"],
+)
+
+config_setting(
+    name = "is_macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+config_setting(
+    name = "is_android",
+    constraint_values = ["@platforms//os:android"],
+)
+
+config_setting(
+    name = "is_ios_device",
+    constraint_values = [
+        "@platforms//os:ios",
+        "@apple_support//constraints:device",
+    ],
+)
+
+config_setting(
+    name = "is_ios_simulator",
+    constraint_values = [
+        "@platforms//os:ios",
+        "@apple_support//constraints:simulator",
+    ],
+)

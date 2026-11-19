@@ -1,0 +1,28 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# The smallest consumer of the ruleset: a GDScript scene exported as a PCK with the
+# registered prebuilt engine. It builds on every host the engine supports.
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    deps = [":main"],
+)
+
+build_test(
+    name = "pack_build_test",
+    targets = [":pack"],
+)

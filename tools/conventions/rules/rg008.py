@@ -1,0 +1,132 @@
+"""RG008: application-owned resource inputs live under their physical project's main/."""
+
+from collections.abc import Iterable
+from pathlib import Path
+
+from tools.conventions.context import (
+    Context,
+    GeneratedFile,
+    Location,
+    SourceFile,
+    Target,
+    Workspace,
+)
+from tools.conventions.framework import Finding, RuleInfo
+
+# Godot test suite categories of an add-on's tests/ project.
+SUITE_CATEGORIES = frozenset({"unit", "integration"})
+
+
+class ApplicationContent:
+    info = RuleInfo(
+        "RG008",
+        "Application content lives under main",
+        "docs/public/conventions.md#rg008",
+    )
+
+    def evaluate(self, context: Context) -> Iterable[Finding]:
+        workspace = context.workspace
+        configurations = {path.parent for path in workspace.godot_configurations}
+        sources: dict[Path, bool] = {}
+        for module in workspace.modules:
+            resources = [
+                target
+                for target in context.bazel.rules(module)
+                if target.kind == "godot_resources"
+            ]
+            members: list[tuple[Target, str]] = []
+            for target in resources:
+                if "testonly" not in target.booleans:
+                    yield Finding(
+                        target.location,
+                        f"cannot determine resource role for {target.label}",
+                        "not_checked",
+                    )
+                    continue
+                if (
+                    "srcs" not in target.label_lists
+                    or "resource_paths" not in target.label_keyed_strings
+                ):
+                    yield Finding(
+                        target.location,
+                        f"cannot determine resource membership for {target.label}",
+                        "not_checked",
+                    )
+                    continue
+                members.extend((target, label) for label in target.label_lists["srcs"])
+                members.extend(
+                    (target, label)
+                    for label in target.label_keyed_strings["resource_paths"]
+                )
+            labels = tuple(sorted({label for _, label in members}))
+            facts = context.bazel.inspect(module, labels) if labels else {}
+            seen: set[tuple[Location, str]] = set()
+            for target, label in members:
+                fact = facts[label]
+                if isinstance(fact, GeneratedFile) or (
+                    isinstance(fact, Target) and fact.outputs
+                ):
+                    continue
+                if isinstance(fact, SourceFile):
+                    sources[fact.path] = (
+                        sources.get(fact.path, True) and target.booleans["testonly"]
+                    )
+                elif (target.location, label) not in seen:
+                    seen.add((target.location, label))
+                    yield Finding(
+                        target.location,
+                        f"cannot determine authored files supplied by {label}",
+                        "not_checked",
+                    )
+        for absolute, test_only in sorted(sources.items()):
+            if not absolute.is_relative_to(workspace.root):
+                continue
+            path = absolute.relative_to(workspace.root)
+            if path.name == "project.godot":
+                continue
+            owner = self._owner(workspace, path, configurations)
+            if (
+                owner is not None
+                and test_only
+                and self._test_input(workspace, path, owner)
+            ):
+                continue
+            if owner is not None and not path.is_relative_to(owner / "main"):
+                yield Finding(
+                    Location(path.as_posix(), 1),
+                    f"application content must live under {owner / 'main'}/",
+                )
+
+    @staticmethod
+    def _test_input(workspace: Workspace, path: Path, owner: Path) -> bool:
+        parts = path.relative_to(owner).parts
+        if len(parts) < 2:
+            return False
+        if parts[0] == "tests":
+            return True
+        kind = workspace.typed_directory(owner)
+        return (
+            kind is not None
+            and kind[0] == "addons"
+            and owner.name == "tests"
+            and parts[0] in SUITE_CATEGORIES
+        )
+
+    @staticmethod
+    def _owner(
+        workspace: Workspace, path: Path, configurations: set[Path]
+    ) -> Path | None:
+        owner = workspace.typed_directory(path)
+        if owner is None:
+            return None
+        kind, root = owner
+        if kind == "addons":
+            scope = path.relative_to(root).parts[0]
+            # Typed add-on implementation keeps its own resource ownership.
+            return root / scope if scope in {"demo", "tests"} else None
+        candidates = [
+            config
+            for config in configurations
+            if config.is_relative_to(root) and path.is_relative_to(config)
+        ]
+        return max(candidates, key=lambda config: len(config.parts), default=root)

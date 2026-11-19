@@ -1,0 +1,15 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "bindings",
+    srcs = ["bindings.py"],
+    main = "bindings.py",
+)
+
+py_library(
+    name = "bindings_lib",
+    srcs = ["bindings.py"],
+    visibility = ["//tools:ruleset"],
+)

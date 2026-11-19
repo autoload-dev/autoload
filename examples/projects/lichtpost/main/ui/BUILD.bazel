@@ -1,0 +1,60 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "hud",
+    srcs = [
+        "hud/hud.gd",
+        "hud/hud.gd.uid",
+        "hud/hud.tscn",
+    ],
+    prefix = "main/ui",
+)
+
+godot_resources(
+    name = "title_dialog",
+    srcs = [
+        "title_dialog/title_dialog.gd",
+        "title_dialog/title_dialog.gd.uid",
+        "title_dialog/title_dialog.tscn",
+    ],
+    prefix = "main/ui",
+)
+
+godot_resources(
+    name = "result_dialog",
+    srcs = [
+        "result_dialog/result_dialog.gd",
+        "result_dialog/result_dialog.gd.uid",
+        "result_dialog/result_dialog.tscn",
+    ],
+    prefix = "main/ui",
+)
+
+godot_resources(
+    name = "options_dialog",
+    srcs = [
+        "options_dialog/options_dialog.gd",
+        "options_dialog/options_dialog.gd.uid",
+        "options_dialog/options_dialog.tscn",
+    ],
+    prefix = "main/ui",
+)
+
+godot_resources(
+    name = "ui",
+    srcs = [
+        "interface/interface.gd",
+        "interface/interface.gd.uid",
+        "interface/interface.tscn",
+    ],
+    prefix = "main/ui",
+    deps = [
+        ":hud",
+        ":options_dialog",
+        ":result_dialog",
+        ":title_dialog",
+        "//projects/lichtpost/main/shared/ui",
+    ],
+)

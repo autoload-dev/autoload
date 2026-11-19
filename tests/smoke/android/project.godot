@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+config/name="rules_godot Android smoke"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

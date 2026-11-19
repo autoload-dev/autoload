@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.example.platformpaths">
+    <application>
+        <meta-data android:name="org.godotengine.plugin.v2.PlatformPathsAndroid" android:value="org.example.platformpaths.PlatformPathsAndroidPlugin" />
+    </application>
+</manifest>

@@ -1,0 +1,38 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+
+package(default_testonly = True)
+
+filegroup(
+    name = "fixtures",
+    srcs = [
+        "fixtures/plain.dart",
+        "fixtures/probe.dart",
+    ],
+    visibility = ["//addons/dart/tests:__pkg__"],
+)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "ScriptTest.gd",
+        "ScriptTest.gd.uid",
+        "fixtures/plain.dart",
+        "fixtures/plain.dart.uid",
+        "fixtures/probe.dart",
+        "fixtures/probe.dart.uid",
+    ],
+    prefix = "unit",
+    visibility = ["//addons/dart/tests:__pkg__"],
+    deps = [
+        "//addons/dart/tests:dart",
+        "@gdunit4",
+    ],
+)
+
+godot_gdunit_test(
+    name = "unit",
+    size = "small",
+    project = "//addons/dart/tests:tests",
+    suites = [":suites"],
+)

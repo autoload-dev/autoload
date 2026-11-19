@@ -1,0 +1,29 @@
+load("@rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
+load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+
+package(default_testonly = True)
+
+# The add-on's own GdUnit suites in a test project of the add-on.
+godot_resources(
+    name = "suites",
+    srcs = [
+        "unit/CounterTest.gd",
+        "unit/CounterTest.gd.uid",
+    ],
+    deps = [
+        "//shared_addon:native_counter",
+        "@gdunit4",
+    ],
+)
+
+godot_gdunit_test(
+    name = "counter_increments_and_resets_test",
+    size = "small",
+    project = ":counter_increments_and_resets_test_project",
+    suites = [":suites"],
+)
+
+godot_project(
+    name = "counter_increments_and_resets_test_project",
+    project_file = "project.godot",
+)

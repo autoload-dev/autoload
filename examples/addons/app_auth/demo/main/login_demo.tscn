@@ -1,0 +1,57 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://main/login_demo.gd" id="1"]
+
+[node name="LoginDemo" type="Control" unique_id=781940314]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=319524991]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Rows" type="VBoxContainer" parent="Margin" unique_id=1774304757]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="Platform" type="Label" parent="Margin/Rows" unique_id=2086332592]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "AppAuth"
+autowrap_mode = 3
+
+[node name="Explanation" type="Label" parent="Margin/Rows" unique_id=771243731]
+layout_mode = 2
+text = "Log in with OpenID Connect through AppAuth. The login page opens in the system browser or authentication sheet; the identity provider is Duende's public demo server, client interactive.public. Use the demo user from its page."
+autowrap_mode = 3
+
+[node name="LogIn" type="Button" parent="Margin/Rows" unique_id=74310978]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Log in"
+
+[node name="Status" type="Label" parent="Margin/Rows" unique_id=1288568862]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Not signed in"
+autowrap_mode = 3
+
+[node name="Details" type="Label" parent="Margin/Rows" unique_id=697722793]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3

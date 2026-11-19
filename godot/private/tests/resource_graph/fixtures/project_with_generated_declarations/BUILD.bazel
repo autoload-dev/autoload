@@ -1,0 +1,30 @@
+load("//godot:defs.bzl", "godot_project", "godot_resource_graph")
+load(":godot_files.bzl", "godot_package_resources")
+
+# A project whose sources come from the macro that godot_build_files generates, with the
+# runtime references declared beside it, and its resource graph that requires declared
+# edges.
+package(default_visibility = ["//godot/private/tests/resource_graph:__pkg__"])
+
+godot_package_resources(
+    name = "sources",
+    runtime_references = {
+        "main/main.gd": ["main/content.tres"],
+        "main/main.tscn": ["main/main.gd"],
+    },
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_resource_graph(
+    name = "graph",
+    project = ":project",
+    require_declared = True,
+    tags = ["manual"],
+    deps = [":sources"],
+)

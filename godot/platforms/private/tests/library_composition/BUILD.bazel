@@ -1,0 +1,317 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+load(":library_composition_tests.bzl", "library_composition_test_suite")
+
+# How platform libraries reach Android and iOS applications through a project's add-on, an
+# extension or the application, as each export configuration packages them.
+
+_ANDROID_APPS = "//godot/platforms/private/tests/library_composition/fixtures/android_apps_with_transitive_platform_libraries:"
+
+_IOS_APPS = "//godot/platforms/private/tests/library_composition/fixtures/ios_apps_with_transitive_platform_libraries:"
+
+_REQUIRES_ANDROID_SDK = ["//godot/platforms/private/tests:requires_android_sdk"]
+
+_REQUIRES_MACOS = ["@platforms//os:macos"]
+
+library_composition_test_suite(name = "library_composition_test_suite")
+
+# The tools that turn an App Bundle into its universal APK: bundletool-all, which carries
+# aapt2, and a Java runtime.
+_BUNDLE_TOOLS = [
+    "@bazel_tools//tools/jdk:current_java_runtime",
+    "@bundletool//file",
+]
+
+_BUNDLE_TOOL_ARGS = [
+    "--bundletool=$(rootpath @bundletool//file)",
+    "--java=$(JAVA_ROOTPATH)",
+]
+
+py_library(
+    name = "android_apps",
+    testonly = True,
+    srcs = ["android_apps.py"],
+    deps = ["//tools/platforms:native_symbols_lib"],
+)
+
+py_library(
+    name = "ios_apps",
+    testonly = True,
+    srcs = ["ios_apps.py"],
+    deps = [
+        "//tools/platforms:apple_bundle_lib",
+        "//tools/platforms:native_symbols_lib",
+    ],
+)
+
+# The multi-ABI App Bundle as --config=multi_abi --config=aab builds it.
+configured_outputs(
+    name = "android_multi_abi_bundles_carry_platform_libraries_test_app",
+    android = True,
+    android_format = "aab",
+    platform = _ANDROID_APPS + "android_distribution",
+    tags = ["manual"],
+    target = _ANDROID_APPS + "app",
+)
+
+# Build-output test: every ABI of the universal APK gets the engine and the extension, and
+# the project's add-on libraries reach its dex files and manifest.
+py_test(
+    name = "android_multi_abi_bundles_carry_platform_libraries_test",
+    size = "small",
+    srcs = ["android_bundles_test.py"],
+    args = _BUNDLE_TOOL_ARGS + [
+        "--app=$(rootpath :android_multi_abi_bundles_carry_platform_libraries_test_app)",
+    ],
+    data = _BUNDLE_TOOLS + [
+        ":android_multi_abi_bundles_carry_platform_libraries_test_app",
+    ],
+    main = "android_bundles_test.py",
+    target_compatible_with = _REQUIRES_ANDROID_SDK,
+    toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    deps = [":android_apps"],
+)
+
+# The App Bundle and its debug symbols as --config=android-release --config=aab builds them.
+configured_outputs(
+    name = "android_release_bundle_symbols_match_stripped_extension_test_app",
+    android = True,
+    android_format = "aab",
+    compilation_mode = "opt",
+    copts = [
+        "-g",
+        "-fdebug-compilation-dir=.",
+    ],
+    platform = "//godot/platforms:android_arm64",
+    strip = "always",
+    tags = ["manual"],
+    target = _ANDROID_APPS + "app",
+)
+
+configured_outputs(
+    name = "android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
+    android = True,
+    android_format = "aab",
+    compilation_mode = "opt",
+    copts = [
+        "-g",
+        "-fdebug-compilation-dir=.",
+    ],
+    platform = "//godot/platforms:android_arm64",
+    strip = "always",
+    tags = ["manual"],
+    target = _ANDROID_APPS + "app.debug_symbols",
+)
+
+# Build-output test: the release bundle packages the extension stripped, and its debug
+# symbols hold the same library with DWARF.
+py_test(
+    name = "android_release_bundle_symbols_match_stripped_extension_test",
+    size = "small",
+    srcs = ["android_debug_symbols_test.py"],
+    args = _BUNDLE_TOOL_ARGS + [
+        "--app=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_app)",
+        "--debug-symbols=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_debug_symbols)",
+    ],
+    data = _BUNDLE_TOOLS + [
+        ":android_release_bundle_symbols_match_stripped_extension_test_app",
+        ":android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
+    ],
+    main = "android_debug_symbols_test.py",
+    target_compatible_with = _REQUIRES_ANDROID_SDK,
+    toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    deps = [":android_apps"],
+)
+
+# The APKs of the composed applications as --config=android builds them, by the role the
+# test checks for each.
+_ANDROID_COMPOSITION = {
+    "absent": "app",
+    "direct": "composition_direct",
+    "loadable": "composition_loadable",
+    "overlay": "composition_overlay",
+    "permissions_application_manifest": "permissions_application_manifest",
+    "permissions_breadth_first": "permissions_breadth_first",
+    "permissions_declarer_first": "permissions_declarer_first",
+    "permissions_export_options": "permissions_export_options",
+    "permissions_remover_first": "permissions_remover_first",
+    "permissions_transitive_remover": "permissions_transitive_remover",
+    "placeholder": "manifest_values_set",
+    "source": "composition_source",
+    "transitive": "composition_transitive",
+}
+
+[
+    configured_outputs(
+        name = "android_apks_compose_platform_libraries_test_" + role,
+        android = True,
+        platform = "//godot/platforms:android_arm64",
+        tags = ["manual"],
+        target = _ANDROID_APPS + app,
+    )
+    for role, app in _ANDROID_COMPOSITION.items()
+]
+
+# Build-output test: library permissions and resources reach the APK through the
+# application's platform_deps, an add-on the project names, a loadable pack and an
+# extension's platform_deps; application
+# resources override library values; the application's manifest values fill a library's
+# placeholder; an application that reaches no such library carries none of its effects;
+# library permissions merge with their tools: markers in dependency order.
+py_test(
+    name = "android_apks_compose_platform_libraries_test",
+    size = "small",
+    srcs = ["android_composition_test.py"],
+    args = ["--aapt=$(rootpath @android_toolchains//:aapt)"] + [
+        "--%s $(rootpaths :android_apks_compose_platform_libraries_test_%s)" % (role, role)
+        for role in _ANDROID_COMPOSITION
+    ],
+    data = ["@android_toolchains//:aapt"] + [
+        ":android_apks_compose_platform_libraries_test_" + role
+        for role in _ANDROID_COMPOSITION
+    ],
+    main = "android_composition_test.py",
+    target_compatible_with = _REQUIRES_ANDROID_SDK,
+    deps = [":android_apps"],
+)
+
+# The iOS applications as --config=official builds them.
+_IOS_OFFICIAL = "//godot/platforms:ios_sim_x86_64"
+
+configured_outputs(
+    name = "ios_app_carries_project_platform_libraries_test_app",
+    platform = _IOS_OFFICIAL,
+    tags = ["manual"],
+    target = _IOS_APPS + "app",
+)
+
+# Build-output test: the add-on's libraries, resources and Info.plist entries and the
+# extension's native dependencies reach the application through its project.
+py_test(
+    name = "ios_app_carries_project_platform_libraries_test",
+    size = "small",
+    srcs = ["ios_app_test.py"],
+    args = ["$(rootpaths :ios_app_carries_project_platform_libraries_test_app)"],
+    data = [":ios_app_carries_project_platform_libraries_test_app"],
+    main = "ios_app_test.py",
+    target_compatible_with = _REQUIRES_MACOS,
+    deps = [":ios_apps"],
+)
+
+_IOS_COMPOSITION = {
+    "app_only": "composition_app_only",
+    "base": "composition_base",
+    "direct": "composition_direct",
+    "loadable": "composition_loadable",
+    "source": "composition_source",
+    "transitive": "composition_transitive",
+}
+
+[
+    configured_outputs(
+        name = "ios_apps_compose_platform_resources_test_" + role,
+        platform = _IOS_OFFICIAL,
+        tags = ["manual"],
+        target = _IOS_APPS + app,
+    )
+    for role, app in _IOS_COMPOSITION.items()
+]
+
+# Build-output test: a platform library's code and resources reach the application through
+# its platform_deps, its resources also through an add-on the project names, a loadable
+# pack and an extension's platform_deps; application resources reach only their own application.
+py_test(
+    name = "ios_apps_compose_platform_resources_test",
+    size = "small",
+    srcs = ["ios_composition_test.py"],
+    args = [
+        "--%s $(rootpaths :ios_apps_compose_platform_resources_test_%s)" % (role, role)
+        for role in _IOS_COMPOSITION
+    ],
+    data = [
+        ":ios_apps_compose_platform_resources_test_" + role
+        for role in _IOS_COMPOSITION
+    ],
+    main = "ios_composition_test.py",
+    target_compatible_with = _REQUIRES_MACOS,
+    deps = [":ios_apps"],
+)
+
+# The application and its dSYM as --config=ios-release builds them.
+configured_outputs(
+    name = "ios_release_dsym_matches_executable_test_app",
+    apple_generate_dsym = True,
+    compilation_mode = "opt",
+    objc_enable_binary_stripping = True,
+    platform = _IOS_OFFICIAL,
+    tags = ["manual"],
+    target = _IOS_APPS + "app",
+)
+
+configured_outputs(
+    name = "ios_release_dsym_matches_executable_test_debug_symbols",
+    apple_generate_dsym = True,
+    compilation_mode = "opt",
+    objc_enable_binary_stripping = True,
+    platform = _IOS_OFFICIAL,
+    tags = ["manual"],
+    target = _IOS_APPS + "app.debug_symbols",
+)
+
+# Build-output test: the dSYM rules_apple generates has the executable's UUIDs.
+py_test(
+    name = "ios_release_dsym_matches_executable_test",
+    size = "small",
+    srcs = ["ios_debug_symbols_test.py"],
+    args = [
+        "--app $(rootpaths :ios_release_dsym_matches_executable_test_app)",
+        "--dsym $(rootpaths :ios_release_dsym_matches_executable_test_debug_symbols)",
+    ],
+    data = [
+        ":ios_release_dsym_matches_executable_test_app",
+        ":ios_release_dsym_matches_executable_test_debug_symbols",
+    ],
+    main = "ios_debug_symbols_test.py",
+    target_compatible_with = _REQUIRES_MACOS,
+    deps = [":ios_apps"],
+)
+
+configured_outputs(
+    name = "ios_prebuilt_xcframework_app_builds_test_app",
+    platform = _IOS_OFFICIAL,
+    tags = ["manual"],
+    target = _IOS_APPS + "prebuilt_app",
+)
+
+configured_outputs(
+    name = "ios_dynamic_framework_app_embeds_framework_test_app",
+    platform = _IOS_OFFICIAL,
+    tags = ["manual"],
+    target = _IOS_APPS + "dynamic_app",
+)
+
+# Build-output test: an application of an extension whose library is a prebuilt dynamic
+# XCFramework embeds and signs the framework and the one it loads, without linking them, and
+# its pack names the framework for Godot to load.
+py_test(
+    name = "ios_dynamic_framework_app_embeds_framework_test",
+    size = "small",
+    srcs = ["ios_dynamic_framework_test.py"],
+    args = ["$(rootpaths :ios_dynamic_framework_app_embeds_framework_test_app)"],
+    data = [":ios_dynamic_framework_app_embeds_framework_test_app"],
+    main = "ios_dynamic_framework_test.py",
+    target_compatible_with = _REQUIRES_MACOS,
+    deps = [
+        ":ios_apps",
+        "//tools:pck_lib",
+    ],
+)
+
+# Build-output test: an application of an extension whose library is a prebuilt static
+# XCFramework builds, linking the slice the target platform selects.
+build_test(
+    name = "ios_prebuilt_xcframework_app_builds_test",
+    target_compatible_with = _REQUIRES_MACOS,
+    targets = [":ios_prebuilt_xcframework_app_builds_test_app"],
+)

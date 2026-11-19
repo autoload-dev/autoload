@@ -1,0 +1,16 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//addons/platform_paths/demo:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "path_results.gd",
+        "path_results.gd.uid",
+        "paths_demo.gd",
+        "paths_demo.gd.uid",
+        "paths_demo.tscn",
+    ],
+    prefix = "main",
+    deps = ["//addons/platform_paths"],
+)

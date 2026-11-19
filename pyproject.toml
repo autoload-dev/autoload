@@ -1,0 +1,26 @@
+[tool.ruff]
+target-version = "py314"
+line-length = 90
+force-exclude = true
+
+[tool.ruff.lint]
+# Ruff's default rules plus required annotations.
+extend-select = ["ANN"]
+ignore = ["ANN401"]
+
+[tool.ty.environment]
+# Bazel runs these tools with the registered Python toolchain.
+python-version = "3.14"
+# The launcher imports its sibling modules, as the host's python3 runs it.
+extra-paths = ["tools/platforms/launch"]
+
+[tool.ty.analysis]
+# Available only inside Bazel runfiles or Godot's SCons environment.
+allowed-unresolved-imports = [
+  "google.protobuf.**",
+  "stardoc.**",
+  "SCons.**",
+  "methods",
+]
+
+[tool.ty.src]

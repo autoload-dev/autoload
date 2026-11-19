@@ -1,0 +1,12 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "shared",
+    srcs = [
+        "primitives.gd",
+        "primitives.gd.uid",
+    ],
+    prefix = "main/shared",
+)

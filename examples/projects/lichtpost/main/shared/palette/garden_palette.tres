@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://main/shared/palette/palette.gd" id="1"]
+[ext_resource type="Material" path="res://main/shared/palette/ivory.tres" id="ivory"]
+[ext_resource type="Material" path="res://main/shared/palette/moss.tres" id="moss"]
+[ext_resource type="Material" path="res://main/shared/palette/orange.tres" id="orange"]
+[ext_resource type="Material" path="res://main/shared/palette/coral.tres" id="coral"]
+[ext_resource type="Material" path="res://main/shared/palette/night.tres" id="night"]
+[ext_resource type="Material" path="res://main/shared/palette/teal.tres" id="teal"]
+[ext_resource type="Material" path="res://main/shared/palette/earth.tres" id="earth"]
+[ext_resource type="Material" path="res://main/shared/palette/rock.tres" id="rock"]
+
+[resource]
+script = ExtResource("1")
+ivory = ExtResource("ivory")
+moss = ExtResource("moss")
+orange = ExtResource("orange")
+coral = ExtResource("coral")
+night = ExtResource("night")
+teal = ExtResource("teal")
+earth = ExtResource("earth")
+rock = ExtResource("rock")

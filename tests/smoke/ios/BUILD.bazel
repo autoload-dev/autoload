@@ -1,0 +1,63 @@
+load("@rules_godot//godot:app.bzl", "godot_app")
+load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
+
+# The iOS smoke path: an iOS application that links a godot-cpp extension statically and
+# exports its entry symbol, inspected with the public artifact test. Every target is
+# manual: //:ios_official runs it with --config=official.
+
+godot_cc_extension(
+    name = "counter",
+    srcs = ["native/counter.cc"],
+    entry_symbol = "native_counter_init",
+    resource_path = "main/native_counter/counter.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.gd.uid",
+        "main/main.tscn",
+        "main/native_counter/counter.gd",
+        "main/native_counter/counter.gd.uid",
+    ],
+    tags = ["manual"],
+    deps = [":counter"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":counter",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.smoke.ios",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+ios_app_test(
+    name = "app_links_extension_test",
+    size = "small",
+    app = ":app",
+    symbols = ["native_counter_init"],
+    tags = ["manual"],
+)

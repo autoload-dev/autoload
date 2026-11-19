@@ -1,0 +1,46 @@
+"""Select enabled rules without adding rule-specific behavior to the checker."""
+
+from tools.conventions.framework import Rule
+from tools.conventions.rules.rg001 import PackageNames
+from tools.conventions.rules.rg002 import TargetNames
+from tools.conventions.rules.rg003 import ExplicitNames
+from tools.conventions.rules.rg004 import FixtureReferences
+from tools.conventions.rules.rg006 import CommandLabels
+from tools.conventions.rules.rg007 import TestOnlyOperations
+from tools.conventions.rules.rg008 import ApplicationContent
+from tools.conventions.rules.rg009 import TypedRootLayout
+from tools.conventions.rules.rg010 import AddonProjects
+from tools.conventions.rules.rg011 import AddonIndependence
+from tools.conventions.rules.rg012 import ProductionIsolation
+from tools.conventions.rules.rg013 import PublicDocumentationLinks
+from tools.conventions.rules.rg014 import EngineLayout
+
+RULES: tuple[Rule, ...] = (
+    PackageNames(),
+    TargetNames(),
+    ExplicitNames(),
+    FixtureReferences(),
+    CommandLabels(),
+    TestOnlyOperations(),
+    ApplicationContent(),
+    TypedRootLayout(),
+    AddonProjects(),
+    AddonIndependence(),
+    ProductionIsolation(),
+    PublicDocumentationLinks(),
+    EngineLayout(),
+)
+
+
+def select(
+    ids: list[str] | None = None, exclude: list[str] | None = None
+) -> tuple[Rule, ...]:
+    excluded = set(exclude or [])
+    unknown = (set(ids or []) | excluded) - {rule.info.id for rule in RULES}
+    if unknown:
+        raise ValueError("Unknown convention rule IDs: " + ", ".join(sorted(unknown)))
+    return tuple(
+        rule
+        for rule in RULES
+        if (ids is None or rule.info.id in ids) and rule.info.id not in excluded
+    )

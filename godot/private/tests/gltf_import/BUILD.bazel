@@ -1,0 +1,23 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_test")
+
+_FIXTURE = "//godot/private/tests/gltf_import/fixtures/gltf_with_external_buffer:"
+
+# Run test: a glTF scene imported with its external buffer as an import input instantiates
+# with its mesh from the exported pack.
+godot_test(
+    name = "gltf_imported_with_buffer_input_instantiates_test",
+    size = "small",
+    pack = _FIXTURE + "pack",
+)
+
+# Build-output test: the import input's .bin is absent from the pack.
+py_test(
+    name = "pack_excludes_gltf_buffer_input_test",
+    size = "small",
+    srcs = ["gltf_pack_test.py"],
+    args = ["$(rootpath %spack)" % _FIXTURE],
+    data = [_FIXTURE + "pack"],
+    main = "gltf_pack_test.py",
+    deps = ["//tools:pck_lib"],
+)

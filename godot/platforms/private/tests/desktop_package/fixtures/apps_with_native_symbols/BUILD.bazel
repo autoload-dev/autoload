@@ -1,0 +1,35 @@
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/platforms/private/tests:backends.bzl", "godot_linux_application")
+load("//godot/private/tests:packaging.bzl", "fixture_pack")
+
+# A Linux application whose runtime and extension library Bazel's --strip may strip.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+genrule(
+    name = "library",
+    outs = ["library/libandroid_contract_fixture.so"],
+    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "extension",
+    entry_symbol = "symbols_fixture_init",
+    library = ":library",
+    resource_path = "native/symbols.gdextension",
+    tags = ["manual"],
+)
+
+fixture_pack(
+    name = "pack",
+    extensions = [":extension"],
+    tags = ["manual"],
+)
+
+godot_linux_application(
+    name = "app",
+    app_name = "Game",
+    pack = ":pack",
+    runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:linux_runtime",
+    tags = ["manual"],
+)

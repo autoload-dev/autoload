@@ -1,0 +1,65 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/engine/private/tests:engines.bzl", "runtime_info_stand_in")
+
+package(default_visibility = ["//godot/engine/private/tests:__pkg__"])
+
+# Mobile runtimes need their payload provider, JavaInfo or CcInfo; a plain file has neither.
+godot_runtime_component(
+    name = "runtime_android_arm64_release",
+    cpu = "arm64",
+    platform = "android",
+    runtime = "payload.bin",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_device_release",
+    cpu = "arm64",
+    environment = "device",
+    platform = "ios",
+    runtime = "payload.bin",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+# A payload's own slot facts must match the declared slot, also through forwarding.
+runtime_info_stand_in(
+    name = "arm64_debug_payload",
+    cpu = "arm64",
+    platform = "linux",
+    tags = ["manual"],
+    variant = "debug",
+)
+
+godot_runtime_component(
+    name = "contradicting_payload",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = ":arm64_debug_payload",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "inner_arm64_release",
+    cpu = "arm64",
+    platform = "linux",
+    runtime = "payload.bin",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "contradicting_forward",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = ":inner_arm64_release",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

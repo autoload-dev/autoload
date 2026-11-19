@@ -1,0 +1,26 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# A one-scene project whose pack the action-input tests analyze.
+package(default_visibility = ["//godot:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)

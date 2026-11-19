@@ -1,0 +1,57 @@
+# Ruleset regressions
+
+This independent Bazel module, `rules_godot_tests`, holds the ruleset's regression
+projects and builds them as a consumer builds: through its own `MODULE.bazel`, with public
+`@rules_godot` labels only. This page describes the module as it exists. Where a new test
+goes, and what this module will contain, is owned by the
+[verification architecture](../docs/internal/verification-architecture.md).
+
+## Layout
+
+
+| Location | Responsibility |
+|---|---|
+| `smoke/<operating_system>/` | The smoke path of one platform: its own project, extensions and checks, through public labels only |
+| `shared_addon/`, `script_run/`, `patched_engine/` | A focused consumer scenario named after what the user does, with its own project files and native fixtures |
+| `BUILD.bazel` | The Maven lock exports and the configuration suites |
+
+## Common workflows
+
+From this directory, the host set runs every regression that needs no Android or Apple
+device toolchain:
+
+```sh
+bazel test //...
+```
+
+`mise run test:regressions` runs the same from the repository root. Android and iOS tests
+are `manual` and run in configuration suites: `test_suite` targets in `BUILD.bazel`, one per
+`.bazelrc` configuration, run with that `--config`. The `android:apps` and `ios:apps`
+tasks run them; the
+[fixture catalogue](../docs/internal/verification-recipes.md#mobile-artifact-checks)
+lists the suites. To preview the work a branch selects:
+
+```sh
+hk --profile host check --plan --from-ref origin/main
+```
+
+For a reproducer or existing fixture, use the relevant entry in the
+[fixture catalogue](../docs/internal/verification-recipes.md#regression-fixtures) and run
+its focused target from this directory. The root verification policy owns TDD, timing and
+evidence.
+
+## Public test helper
+
+To inspect a built Android App Bundle or iOS application, load
+`@rules_godot//godot/testing:artifact_tests.bzl`; the
+[API reference](../docs/public/api/index.md) documents it. The ruleset offers no other
+test labels: a scenario owns its project files, native fixtures and inspectors.
+
+## Fixture scope
+
+Keep project-specific assertions and drivers with their case; keep all regression inputs
+independent of examples. C++ test-input libraries do not need artificial add-on/demo
+projects. A project's mobile applications package that project; a case that needs another
+project's files gets a focused project of its own. When moving resources, update runtime
+paths, authored sidecars and assertions together; retain explicit resource paths when the
+resource path itself is the regression.

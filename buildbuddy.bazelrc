@@ -1,0 +1,40 @@
+# BuildBuddy remote cache, results UI and remote execution, opt-in with --config=buildbuddy.
+# Each module's .bazelrc imports this file and runs buildbuddy_status.sh as its
+# --workspace_status_command, from the module's directory. The API key stays outside the repository, for example a credential
+# helper for *.buildbuddy.io in ~/.bazelrc that answers with an x-buildbuddy-api-key header.
+build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/
+build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io
+build:buildbuddy --remote_cache=grpcs://remote.buildbuddy.io
+build:buildbuddy --remote_executor=grpcs://remote.buildbuddy.io
+build:buildbuddy --remote_timeout=10m
+build:buildbuddy --remote_cache_compression
+# Transfer only changed chunks of large blobs such as editor binaries and packs.
+build:buildbuddy --experimental_remote_cache_chunking
+# Keep every action with its target and output in the timing profile BuildBuddy shows.
+build:buildbuddy --noslim_profile
+build:buildbuddy --experimental_profile_include_target_label
+build:buildbuddy --experimental_profile_include_primary_output
+# Return without waiting for the upload of build events, profiles and logs.
+build:buildbuddy --bes_upload_mode=nowait_for_upload_complete
+# Fetch repository downloads, such as Godot archives, through BuildBuddy's cache; fall back to
+# the original URLs when it is unavailable.
+build:buildbuddy --experimental_remote_downloader=grpcs://remote.buildbuddy.io
+build:buildbuddy --experimental_remote_downloader_local_fallback
+
+# Actions that can run on Linux go to BuildBuddy's executors; actions only this host can run,
+# such as Xcode compiles and signing, stay local. Warm runners keep the container between
+# actions.
+build:buildbuddy --extra_execution_platforms=@toolchains_buildbuddy//platforms:linux_x86_64
+build:buildbuddy --extra_toolchains=@toolchains_buildbuddy//toolchains/cc:ubuntu_gcc_x86_64
+build:buildbuddy --remote_exec_header=x-buildbuddy-platform.recycle-runner=true
+build:buildbuddy --spawn_strategy=remote,worker,sandboxed,local
+build:buildbuddy --allowed_strategies_by_exec_platform=@toolchains_buildbuddy//platforms:linux_x86_64=remote
+build:buildbuddy --allowed_strategies_by_exec_platform=@platforms//host:host=worker,sandboxed,local
+# Concurrent actions, most of them remote; this host's own actions stay within its resources.
+build:buildbuddy --jobs=100
+
+# A test runs on an execution platform matching its target platform, so
+# --config=buildbuddy-linux targets Linux to run tests remotely too. It applies to every
+# command, so build, run and test share one configuration and its analysis cache.
+common:buildbuddy-linux --config=buildbuddy
+common:buildbuddy-linux --platforms=@rules_godot//godot/platforms:linux_x86_64

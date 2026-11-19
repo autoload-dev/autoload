@@ -1,0 +1,199 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# One game exported as packs that differ in brand, script export mode, selection and
+# prerequisite packs, plus packs that carry a C ABI extension.
+package(default_visibility = ["//godot/private/tests/pack_membership:__subpackages__"])
+
+exports_files(["project.godot"])
+
+godot_resources(
+    name = "math",
+    srcs = ["main/shared/math.gd"],
+    tags = ["manual"],
+)
+
+genrule(
+    name = "version",
+    outs = ["version.json"],
+    cmd = "echo '{\"version\": 1}' > $@",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "shared",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    runtime_references = {
+        "main/main.gd": ["main/shared/math.gd"],
+        "main/main.tscn": ["main/main.gd"],
+    },
+    tags = ["manual"],
+    deps = [":math"],
+)
+
+# Complete membership matters for dynamically chosen levels and raw files.
+godot_resources(
+    name = "levels",
+    srcs = glob(["main/levels/*.json"]),
+    resource_paths = {":version": "main/data/version.json"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "blue",
+    resource_paths = {"main/blue.json": "main/data/brand.json"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "red",
+    resource_paths = {"main/red.json": "main/data/brand.json"},
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+# For packs without the main scene.
+godot_project(
+    name = "data_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "blue_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":levels",
+        ":shared",
+    ],
+)
+
+godot_pack(
+    name = "red_pack",
+    preset_settings = {"script_export_mode": "2"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":levels",
+        ":red",
+        ":shared",
+    ],
+)
+
+godot_pack(
+    name = "data_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":data_project",
+    tags = ["manual"],
+    deps = [":levels"],
+)
+
+# The prerequisite pack owns shared content. The dependent pack contains only its
+# additional scene and script.
+godot_resources(
+    name = "dlc",
+    srcs = [
+        "main/dlc/level.gd",
+        "main/dlc/level.tscn",
+    ],
+    tags = ["manual"],
+    deps = [":math"],
+)
+
+godot_pack(
+    name = "base_pack",
+    entry_points = [],
+    packing = "reachable",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":levels",
+        ":shared",
+    ],
+)
+
+godot_pack(
+    name = "dlc_pack",
+    entry_points = ["main/dlc/level.tscn"],
+    packing = "reachable",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    required_packs = [":base_pack"],
+    tags = ["manual"],
+    deps = [
+        ":blue",
+        ":dlc",
+        ":levels",
+        ":shared",
+    ],
+)
+
+# Extension descriptors remain resource roots in both selection and composition modes.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "extension_pack",
+    packing = "reachable",
+    project = ":data_project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":levels",
+    ],
+)
+
+godot_pack(
+    name = "extension_required_pack",
+    project = ":data_project",
+    required_packs = [":data_pack"],
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":levels",
+    ],
+)
+
+filegroup(
+    name = "export_reports",
+    srcs = [
+        ":base_pack",
+        ":blue_pack",
+        ":data_pack",
+        ":dlc_pack",
+        ":extension_pack",
+        ":extension_required_pack",
+        ":red_pack",
+    ],
+    output_group = "report",
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "selection_reports",
+    srcs = [
+        ":base_pack",
+        ":dlc_pack",
+    ],
+    output_group = "selection",
+    tags = ["manual"],
+)

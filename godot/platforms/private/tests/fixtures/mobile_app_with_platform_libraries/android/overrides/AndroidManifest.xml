@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The application's own manifest: it removes a shell element and adds an entry. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.godot.game">
+
+    <uses-permission android:name="org.example.overrides.OWN" />
+
+    <application>
+        <meta-data
+            android:name="org.godotengine.rendering.method"
+            tools:node="remove" />
+
+        <activity
+            android:name="com.godot.game.GodotApp"
+            android:screenOrientation="portrait" />
+
+        <meta-data
+            android:name="org.example.overrides.marker"
+            android:value="application" />
+    </application>
+</manifest>

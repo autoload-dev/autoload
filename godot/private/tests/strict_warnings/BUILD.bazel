@@ -1,0 +1,48 @@
+load("//godot:defs.bzl", "godot_pack", "godot_test")
+load("//godot/gdunit:defs.bzl", "godot_gdunit_test")
+
+# Every GDScript rules_godot stages into a project loads in a project that treats every
+# GDScript warning as an error: building these tests runs the imports, the initialization,
+# the probes, the validation, the export and the shell probe, and running them the run logger
+# and the GdUnit adapter.
+
+_FIXTURE = "//godot/private/tests/strict_warnings/fixtures/project_with_strict_warnings"
+
+godot_pack(
+    name = "pack",
+    project = _FIXTURE + ":project",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":main"],
+)
+
+# What the shell probe reports about the pack's export.
+filegroup(
+    name = "export_facts",
+    srcs = [":pack"],
+    output_group = "export_facts",
+    tags = ["manual"],
+)
+
+# Run test: a source run passes with the default engine_errors, which needs the run logger.
+godot_test(
+    name = "source_run_under_strict_warnings_test",
+    size = "small",
+    project = _FIXTURE + ":project",
+    deps = [_FIXTURE + ":main"],
+)
+
+# Run test: a run of the exported pack passes the same way.
+godot_test(
+    name = "pack_run_under_strict_warnings_test",
+    size = "small",
+    data = [":export_facts"],
+    pack = ":pack",
+)
+
+# Run test: the GdUnit adapter runs a suite.
+godot_gdunit_test(
+    name = "gdunit_under_strict_warnings_test",
+    size = "small",
+    project = _FIXTURE + ":project",
+    suites = [_FIXTURE + ":suites"],
+)

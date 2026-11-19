@@ -1,0 +1,13 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+package(default_testonly = True)
+
+cc_test(
+    name = "tests",
+    size = "small",
+    srcs = ["xdg_directories_test.cc"],
+    deps = [
+        "//addons/platform_paths/backends/linux:policy",
+        "//addons/platform_paths/native:backend_api",
+    ],
+)

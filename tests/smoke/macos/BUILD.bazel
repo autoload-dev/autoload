@@ -1,0 +1,112 @@
+load("@rules_godot//godot:app.bzl", "godot_app")
+load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@rules_python//python:defs.bzl", "py_test")
+
+# The macOS smoke path: build, inspect and boot a macOS application whose C ABI and
+# godot-cpp extensions load and whose imported texture is usable, and sign it ad hoc.
+# macOS hosts only.
+_MACOS = ["@platforms//os:macos"]
+
+# The extensions build their editor libraries for the host too, where the host constraint
+# would fail them; they are manual instead, and the project carries the constraint.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "cpp_example",
+    srcs = ["native/cpp_example.cc"],
+    entry_symbol = "example_library_init",
+    resource_path = "native/cpp_example.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    target_compatible_with = _MACOS,
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    target_compatible_with = _MACOS,
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    target_compatible_with = _MACOS,
+    deps = [
+        ":cpp_example",
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.smoke.macos",
+    macos_entitlements = "signing.entitlements",
+    pack = ":pack",
+    target_compatible_with = _MACOS,
+)
+
+[
+    filegroup(
+        name = "app_" + group,
+        srcs = [":app"],
+        output_group = group,
+        target_compatible_with = _MACOS,
+    )
+    for group in [
+        "archive",
+        "bundle",
+    ]
+]
+
+py_test(
+    name = "app_boots_with_extensions_test",
+    size = "small",
+    srcs = ["app_boots_with_extensions_test.py"],
+    args = [
+        "$(rlocationpath :app_bundle)",
+        "$(rlocationpath :app_archive)",
+    ],
+    data = [
+        ":app_archive",
+        ":app_bundle",
+    ],
+    target_compatible_with = _MACOS,
+)
+
+# Signing is a build setting, so the signed application exists only in a build that sets
+# it: bazel test //smoke/macos/... --@rules_godot//godot:macos_signing=adhoc. Other builds
+# skip this test.
+config_setting(
+    name = "adhoc_signing",
+    flag_values = {"@rules_godot//godot:macos_signing": "adhoc"},
+)
+
+py_test(
+    name = "app_is_adhoc_signed_test",
+    size = "small",
+    srcs = ["app_is_adhoc_signed_test.py"],
+    args = ["$(rlocationpath :app_archive)"],
+    data = [":app_archive"],
+    target_compatible_with = _MACOS + select({
+        ":adhoc_signing": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)

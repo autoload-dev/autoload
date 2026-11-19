@@ -1,0 +1,19 @@
+config_version=5
+
+[application]
+config/name="Runtime configuration"
+config/icon="res://main/icon.svg"
+run/main_scene="res://main/main.tscn"
+
+[editor_plugins]
+enabled=PackedStringArray("res://main/addons/authored_hook/plugin.cfg")
+
+[gui]
+theme/custom="res://main/ui/theme.tres"
+
+[release]
+channel="store"
+channel.integration_test="integration"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

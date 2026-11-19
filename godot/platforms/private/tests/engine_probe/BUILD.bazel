@@ -1,0 +1,258 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+load(":beta_engine_test.bzl", "beta_engine_test", "cc_toolchain_files")
+
+# Build-output tests of applications built with the prebuilt beta engine and with
+# source-built engines. Tests tagged source_engine build an engine from source; the host
+# set excludes them.
+
+_PROBE = "//godot/platforms/private/tests/engine_probe/fixtures/probe_project_with_native_extensions:"
+
+_ANDROID = "//godot/platforms:android_arm64"
+
+_BETA = "@godot_beta//toolchains:all"
+
+_ANDROID_SDK = ["//godot/platforms/private/tests:requires_android_sdk"]
+
+_MACOS = ["@platforms//os:macos"]
+
+# The beta inspectors and their unit tests.
+
+py_library(
+    name = "validate_android_beta_lib",
+    srcs = ["validate_android_beta.py"],
+    deps = [
+        "//tools:digest_lib",
+        "//tools:pck_lib",
+        "//tools/platforms:native_symbols_lib",
+        "//tools/platforms:validate_artifacts_lib",
+    ],
+)
+
+py_binary(
+    name = "validate_android_beta",
+    srcs = ["validate_android_beta.py"],
+    deps = [":validate_android_beta_lib"],
+)
+
+py_test(
+    name = "validate_android_beta_test",
+    size = "small",
+    srcs = ["validate_android_beta_test.py"],
+    deps = [
+        ":validate_android_beta_lib",
+        "//tools/platforms:native_fixtures",
+    ],
+)
+
+py_library(
+    name = "validate_ios_beta_lib",
+    srcs = ["validate_ios_beta.py"],
+    deps = [
+        "//tools:digest_lib",
+        "//tools:pck_lib",
+        "//tools/platforms:apple_bundle_lib",
+        "//tools/platforms:validate_artifacts_lib",
+    ],
+)
+
+py_binary(
+    name = "validate_ios_beta",
+    srcs = ["validate_ios_beta.py"],
+    deps = [":validate_ios_beta_lib"],
+)
+
+py_test(
+    name = "validate_ios_beta_test",
+    size = "small",
+    srcs = ["validate_ios_beta_test.py"],
+    deps = [":validate_ios_beta_lib"],
+)
+
+# The NDK's host tools, for llvm-readelf in the Android beta tests.
+cc_toolchain_files(
+    name = "ndk_host_tools",
+    tags = ["manual"],
+)
+
+configured_outputs(
+    name = "android_ndk_host_tools",
+    android = True,
+    platform = _ANDROID,
+    tags = ["manual"],
+    target = ":ndk_host_tools",
+)
+
+# Build-output test: an App Bundle with the source-built Android engine packages that engine
+# and the C ABI extension with Godot's Java shell, and its debug symbols match them.
+[
+    configured_outputs(
+        name = "source_built_android_bundle_packages_engine_and_symbols_test_" + output,
+        android = True,
+        android_format = "aab",
+        extra_toolchains = ["@godot_source_build_android//toolchains:all"],
+        platform = _ANDROID,
+        tags = ["manual"],
+        target = _PROBE + target,
+    )
+    for output, target in [
+        ("bundle", "android_source_built_app"),
+        ("symbols", "android_source_built_app.debug_symbols"),
+    ]
+]
+
+py_test(
+    name = "source_built_android_bundle_packages_engine_and_symbols_test",
+    size = "small",
+    srcs = ["android_source_bundle_test.py"],
+    args = [
+        "$(rlocationpath :source_built_android_bundle_packages_engine_and_symbols_test_bundle)",
+        "$(rlocationpath :source_built_android_bundle_packages_engine_and_symbols_test_symbols)",
+        "$(rlocationpath @bundletool//file)",
+        "$(rlocationpaths @bazel_tools//tools/jdk:current_host_java_runtime)",
+    ],
+    data = [
+        ":source_built_android_bundle_packages_engine_and_symbols_test_bundle",
+        ":source_built_android_bundle_packages_engine_and_symbols_test_symbols",
+        "@bazel_tools//tools/jdk:current_host_java_runtime",
+        "@bundletool//file",
+    ],
+    main = "android_source_bundle_test.py",
+    tags = [
+        "manual",
+        "source_engine",
+    ],
+    target_compatible_with = _ANDROID_SDK,
+    deps = ["//tools/platforms:native_symbols_lib"],
+)
+
+# Build-output tests: an APK with the prebuilt beta engine packages the shell AAR's engine,
+# and one with the source-built beta engine packages the compiled, patched engine with its
+# custom module; both carry the 4.8 pack and the godot-cpp extension.
+configured_outputs(
+    name = "official_beta_android_app_packages_selected_engine_test_app",
+    android = True,
+    android_api_level = "36",
+    extra_toolchains = [_BETA],
+    platform = _ANDROID,
+    tags = ["manual"],
+    target = _PROBE + "android_beta_app",
+)
+
+beta_engine_test(
+    name = "official_beta_android_app_packages_selected_engine_test",
+    size = "small",
+    aapt = "@android_toolchains//:aapt",
+    apksigner = "@androidsdk//:apksigner",
+    app = ":official_beta_android_app_packages_selected_engine_test_app",
+    cc_toolchain_files = ":android_ndk_host_tools",
+    inspector = ":validate_android_beta",
+    kind = "official",
+    official_aar = "@godot_beta_shell_aar//file",
+    operating_system = "android",
+    target_compatible_with = _ANDROID_SDK,
+)
+
+configured_outputs(
+    name = "source_built_beta_android_app_packages_patched_engine_test_app",
+    android = True,
+    android_api_level = "36",
+    extra_toolchains = [
+        _BETA,
+        "@godot_beta_source_build_android//toolchains:all",
+    ],
+    platform = _ANDROID,
+    tags = ["manual"],
+    target = _PROBE + "android_beta_source_built_app",
+)
+
+beta_engine_test(
+    name = "source_built_beta_android_app_packages_patched_engine_test",
+    size = "small",
+    aapt = "@android_toolchains//:aapt",
+    apksigner = "@androidsdk//:apksigner",
+    app = ":source_built_beta_android_app_packages_patched_engine_test_app",
+    cc_toolchain_files = ":android_ndk_host_tools",
+    engine_manifest = "@godot_beta_source_build_android_android_arm64_template_release//:engine_manifest.json",
+    inspector = ":validate_android_beta",
+    kind = "source",
+    operating_system = "android",
+    tags = [
+        "manual",
+        "source_engine",
+    ],
+    target_compatible_with = _ANDROID_SDK,
+)
+
+# Build-output tests: an unsigned arm64 device link with the prebuilt beta engine links the
+# selected engine and AccessKit archives, and a Simulator application with the source-built
+# beta engine links its compile archives with the custom module; both link the godot-cpp
+# extension and carry the 4.8 pack.
+configured_outputs(
+    name = "official_beta_ios_link_links_selected_engine_test_link",
+    extra_toolchains = [_BETA],
+    platform = "//godot/platforms:ios_arm64",
+    tags = ["manual"],
+    target = _PROBE + "ios_beta_link",
+)
+
+beta_engine_test(
+    name = "official_beta_ios_link_links_selected_engine_test",
+    size = "small",
+    app = ":official_beta_ios_link_links_selected_engine_test_link",
+    inspector = ":validate_ios_beta",
+    kind = "official",
+    operating_system = "ios",
+    target_compatible_with = _MACOS,
+)
+
+configured_outputs(
+    name = "source_built_beta_ios_app_links_patched_engine_test_app",
+    extra_toolchains = [
+        _BETA,
+        "@godot_beta_source_build_ios//toolchains:all",
+    ],
+    platform = "//godot/platforms:ios_sim_arm64",
+    tags = ["manual"],
+    target = _PROBE + "ios_beta_source_built_app",
+)
+
+beta_engine_test(
+    name = "source_built_beta_ios_app_links_patched_engine_test",
+    size = "small",
+    app = ":source_built_beta_ios_app_links_patched_engine_test_app",
+    engine_manifest = "@godot_beta_source_build_ios_ios_arm64_simulator_template_release//:engine_manifest.json",
+    inspector = ":validate_ios_beta",
+    kind = "source",
+    operating_system = "ios",
+    tags = [
+        "manual",
+        "source_engine",
+    ],
+    target_compatible_with = _MACOS,
+)
+
+# Build-output test: a Simulator application with the source-built arm64 Simulator engine
+# defines its godot-cpp extension's entry symbol.
+configured_outputs(
+    name = "source_built_ios_app_defines_extension_entry_test_app",
+    extra_toolchains = ["@godot_source_build_ios//toolchains:all"],
+    platform = "//godot/platforms:ios_sim_arm64",
+    tags = ["manual"],
+    target = _PROBE + "ios_source_built_app",
+)
+
+py_test(
+    name = "source_built_ios_app_defines_extension_entry_test",
+    size = "small",
+    srcs = ["ios_source_app_test.py"],
+    args = ["$(rlocationpath :source_built_ios_app_defines_extension_entry_test_app)"],
+    data = [":source_built_ios_app_defines_extension_entry_test_app"],
+    main = "ios_source_app_test.py",
+    tags = [
+        "manual",
+        "source_engine",
+    ],
+    target_compatible_with = _MACOS,
+    deps = ["//tools/platforms:apple_bundle_lib"],
+)

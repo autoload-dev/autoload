@@ -1,0 +1,380 @@
+load("@rules_android//rules:rules.bzl", "aar_import", "android_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/platforms:defs.bzl", "godot_export_platform")
+
+# Android applications whose platform libraries arrive through an add-on of the pack, the
+# application's platform_deps or an extension's platform_deps, with an application
+# resource overlay, per-ABI library manifests and a manifest placeholder.
+package(default_visibility = ["//godot/platforms/private/tests/library_composition:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+# The add-on reaches the application through the pack's deps only.
+godot_addon(
+    name = "addon",
+    srcs = ["main/libraries/android_addon.gd"],
+    directory = "main/libraries",
+    platform_deps = [
+        ":addon_library",
+        ":plugin",
+    ],
+    strip_prefix = "main/libraries",
+    tags = ["manual"],
+)
+
+# exports_manifest passes the library's manifest entries to applications.
+android_library(
+    name = "addon_library",
+    srcs = ["addon/src/org/example/addon/Addon.java"],
+    custom_package = "org.example.addon",
+    exports_manifest = 1,
+    manifest = "addon/AndroidManifest.xml",
+    resource_files = ["addon/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+# Stands in for a downloaded Godot Android plugin AAR, which keeps its uses-permission
+# entries; an android_library's own .aar drops them.
+android_library(
+    name = "plugin_classes",
+    srcs = ["plugin/src/org/example/plugin/Plugin.java"],
+    custom_package = "org.example.plugin",
+    manifest = "plugin/AndroidManifest.xml",
+    tags = ["manual"],
+)
+
+genrule(
+    name = "plugin_aar",
+    srcs = [
+        "plugin/AndroidManifest.xml",
+        ":libplugin_classes.jar",
+    ],
+    outs = ["plugin.aar"],
+    cmd = " ".join([
+        "python3 $(execpath plugin/make_aar.py)",
+        "$(execpath plugin/AndroidManifest.xml)",
+        "$(execpath :libplugin_classes.jar)",
+        "$@",
+    ]),
+    tags = ["manual"],
+    tools = ["plugin/make_aar.py"],
+)
+
+aar_import(
+    name = "plugin",
+    aar = ":plugin.aar",
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":addon",
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.rulesgodot",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+# A library with a permission, its SDK 23 variant and a resource value, which reaches the
+# application through every public path: the application's platform_deps, an add-on the
+# project names, a loadable pack and an extension's platform_deps.
+android_library(
+    name = "composition",
+    exports_manifest = 1,
+    manifest = "composition/AndroidManifest.xml",
+    resource_files = ["composition/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "composition_direct",
+    application_id = "org.example.composition.direct",
+    pack = ":pack",
+    platform_deps = [":composition"],
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "composition_addon",
+    platform_deps = [":composition"],
+    tags = ["manual"],
+)
+
+# The project names the add-on; no content of the pack uses it.
+godot_project(
+    name = "composition_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":composition_addon"],
+)
+
+godot_pack(
+    name = "composition_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":composition_project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_app(
+    name = "composition_transitive",
+    application_id = "org.example.composition.transitive",
+    pack = ":composition_pack",
+    tags = ["manual"],
+)
+
+# The library arrives with a pack the application may load later.
+godot_app(
+    name = "composition_loadable",
+    application_id = "org.example.composition.loadable",
+    loadable_packs = [":composition_pack"],
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "composition_source_extension",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    platform_deps = [":composition"],
+    resource_path = "native/composition_source.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "composition_source_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "composition_source_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":composition_source_project",
+    tags = ["manual"],
+    deps = [
+        ":composition_source_extension",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "composition_source",
+    application_id = "org.example.composition.source",
+    pack = ":composition_source_pack",
+    tags = ["manual"],
+)
+
+# Application-only platform_resources override the library's resource value.
+godot_app(
+    name = "composition_overlay",
+    application_id = "org.example.composition.overlay",
+    pack = ":pack",
+    platform_deps = [":composition"],
+    platform_resources = ["app/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+# A platform library whose manifest needs a placeholder value from the application, as SDK
+# manifests with ${appAuthRedirectScheme} or similar entries do.
+android_library(
+    name = "placeholder",
+    exports_manifest = 1,
+    manifest = "placeholder/AndroidManifest.xml",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "manifest_values_set",
+    android_manifest_values = {"examplePlaceholder": "org.example.manifestvalues.scheme"},
+    application_id = "org.example.manifestvalues",
+    pack = ":pack",
+    platform_deps = [":placeholder"],
+    tags = ["manual"],
+)
+
+# Library permissions merge with their tools: markers in dependency order: a library's
+# tools:node="remove" drops BOOT from the libraries ranked below it only, never from the
+# application's manifest or the permissions its pack's export options declare.
+android_library(
+    name = "permission_remover",
+    exports_manifest = 1,
+    manifest = "permissions/remover.xml",
+    tags = ["manual"],
+)
+
+android_library(
+    name = "permission_declarer",
+    exports_manifest = 1,
+    manifest = "permissions/declarer.xml",
+    tags = ["manual"],
+)
+
+# The remover as a dependency of another library, as rules_jvm_external's aar_import of
+# Google's play-services-ads lists play-services-ads-api in its deps.
+android_library(
+    name = "permission_remover_parent",
+    srcs = ["permissions/src/org/example/permissions/ads/Ads.java"],
+    custom_package = "org.example.permissions.ads",
+    exports_manifest = 1,
+    manifest = "permissions/ads.xml",
+    tags = ["manual"],
+    deps = [":permission_remover"],
+)
+
+# Three levels: the remover is a dependency's dependency, the declarer a dependency, so the
+# declarer ranks above it breadth-first.
+android_library(
+    name = "permission_remover_grandparent",
+    srcs = ["permissions/src/org/example/permissions/ads/Ads.java"],
+    custom_package = "org.example.permissions.grandparent",
+    exports_manifest = 1,
+    manifest = "permissions/grandparent.xml",
+    tags = ["manual"],
+    deps = [":permission_remover_parent"],
+)
+
+android_library(
+    name = "permission_declarer_parent",
+    srcs = ["permissions/src/org/example/permissions/ads/Ads.java"],
+    custom_package = "org.example.permissions.declarerparent",
+    exports_manifest = 1,
+    manifest = "permissions/declarer_parent.xml",
+    tags = ["manual"],
+    deps = [":permission_declarer"],
+)
+
+godot_app(
+    name = "permissions_remover_first",
+    application_id = "org.example.permissions.removerfirst",
+    pack = ":pack",
+    platform_deps = [
+        ":permission_remover",
+        ":permission_declarer",
+    ],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "permissions_declarer_first",
+    application_id = "org.example.permissions.declarerfirst",
+    pack = ":pack",
+    platform_deps = [
+        ":permission_declarer",
+        ":permission_remover",
+    ],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "permissions_transitive_remover",
+    application_id = "org.example.permissions.transitiveremover",
+    pack = ":pack",
+    platform_deps = [
+        ":permission_remover_parent",
+        ":permission_declarer",
+    ],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "permissions_breadth_first",
+    application_id = "org.example.permissions.breadthfirst",
+    pack = ":pack",
+    platform_deps = [
+        ":permission_remover_grandparent",
+        ":permission_declarer_parent",
+    ],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "permissions_application_manifest",
+    android_manifest = "permissions/app.xml",
+    application_id = "org.example.permissions.applicationmanifest",
+    pack = ":pack",
+    platform_deps = [":permission_remover"],
+    tags = ["manual"],
+)
+
+# A library that limits a permission to older Android versions; the limit also applies to
+# the application's own declaration, as in a Gradle build.
+android_library(
+    name = "permission_limited",
+    exports_manifest = 1,
+    manifest = "permissions/limited.xml",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "permissions_pack",
+    export_options = {
+        "permissions/custom_permissions": 'PackedStringArray("org.example.permissions.BOOT", "org.example.permissions.LIMITED")',
+    },
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_app(
+    name = "permissions_export_options",
+    application_id = "org.example.permissions.exportoptions",
+    pack = ":permissions_pack",
+    platform_deps = [
+        ":permission_remover",
+        ":permission_limited",
+    ],
+    tags = ["manual"],
+)
+
+# A selected input that Android cannot use.
+filegroup(
+    name = "unsupported_input",
+    srcs = ["app/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+# Both Android CPUs; //godot/platforms:android_arm64 exports for arm64 only.
+godot_export_platform(
+    name = "android_distribution",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+)

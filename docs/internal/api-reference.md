@@ -1,0 +1,198 @@
+# Maintaining the Bazel API reference
+
+Browse the [API index](../public/api/index.md), organized by the task a caller wants to
+perform. Each symbol has one reference and one public load path.
+Platform setup, tutorials and architecture remain in the existing guides;
+reference pages link to them.
+
+## Public entrypoints and implementation modules
+
+[`modules.bzl`](../public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
+
+| Role | Purpose | Generated reference |
+| --- | --- | --- |
+| `PUBLIC_APIS` | Consumer entrypoints, grouped by task, with their exact public symbols | `reference/`: full contracts for public symbols |
+| `GENERATED_REPOSITORY_MODULES` | Implementation helpers loaded by generated repositories; external load access is required | No API reference page or BCR metadata |
+| `SUPPORT_MODULES` | Private implementation files without a standalone load contract | No consumer reference page |
+
+Use `godot:defs.bzl` for projects, resources, exports, runs and tests. Use the
+dedicated extension, platform, engine, toolchain, repository and provider
+entrypoints for those tasks. Application packaging and optional signing use the symbolic
+`godot:app.bzl` entrypoint; engine acquisition keeps dedicated modules. All public Godot
+providers live in `godot:providers.bzl`.
+
+Core rule implementations live in `godot/private/`; the shared desktop
+implementation lives in `godot/platforms/private/`. Their explicit Starlark
+load visibility permits the public entrypoints to load them and prevents
+direct consumer loads. Implementation re-exports expose each symbol through
+its sole public entrypoint.
+
+The binding and source-generation helpers are implementation details. Generated
+repositories can have caller-chosen names, so their source modules explicitly
+retain public load visibility. This technical requirement does not make them
+consumer entrypoints: they have no published API reference or BCR metadata.
+Keep implementation notes in source comments and docstrings.
+
+Consumers configure `godot_cpp_bindings` in `MODULE.bazel`, then pass its
+generated C++ library as `deps = ["@godot_cpp//:godot_cpp"]` to
+`godot_cc_extension`. These are the public contracts documented in the
+[repository reference](../public/api/reference/godot_extension_repositories.md#godot_cpp_bindings)
+and [C++ integration guide](../public/gdextension.md#c-bindings).
+
+Each public symbol identity (API kind plus its defining file and name) has
+exactly one public owner. A second public export fails CI even when it uses a
+different name. The module has not been released, so API moves update every
+repository consumer directly without retaining previous load paths.
+
+## Outputs and generated targets
+
+Document output access at the rule or macro that produces it. Keep four distinct contracts:
+
+| Interface | Purpose | Documentation required |
+| --- | --- | --- |
+| `DefaultInfo` | Default requested files and, for executable targets, run behavior | Artifact kind, cardinality, selected variant, launcher/runfiles semantics |
+| `OutputGroupInfo` | Explicitly requested output subsets such as archives or symbols | Exact group keys, contents, operating-system availability and relevant prerequisites |
+| Public companion target | A distinct operation or analysis/configuration boundary | Generated name pattern, justification beyond file selection, files/providers, visibility, testonly and configuration behavior |
+| Semantic provider | Structured input to consuming rules | Fields, types, producer/consumer relationships and selected-result meaning |
+
+Prefer an output group when the difference is only which files a build requests. A convenient
+label alone does not justify another public macro target: callers can select a group through
+`filegroup(output_group = "...")` when an attribute of another rule needs a label. Private
+filegroups of this kind inside a macro serve such attributes; they are not additional public APIs.
+
+Keep a separate target when it represents a runnable operation, a real Bazel test, or a
+required analysis/configuration boundary. Output groups select outputs/actions; they do not
+prune the producing target's configured dependency graph, analysis-time checks or toolchain
+resolution. Transitive validation still applies. Document that distinction whenever a
+companion target promises fewer prerequisites, for example symbol access independent of signing.
+Use providers for semantic file access in custom rules instead of scraping paths or selecting
+arbitrary default files. Test execution reports follow Bazel's test-result interfaces.
+
+Review the complete inventory in `modules.bzl`: public symbols, configuration targets,
+generated-repository contracts and the private expansions reached by public macros. Classify
+independently named repository datasets and toolchains separately from companion targets of a
+main target. Neither an output group per provider field nor a synthetic main target for an entire
+repository is required. Check actual visibility as well as documented support.
+
+Additional macro target names follow [RG002](../public/conventions.md#rg002): `<name>.<role>`.
+The convention, including slash-suffixed rules_android basenames, is owned there. A dotted name does
+not grant public visibility, and output-group keys and artifact filenames do not inherit
+the target separator. Document only the supported public companion targets as consumer interfaces.
+
+Each owning source docstring contains four Markdown sections: `### Default outputs`,
+`### Output groups`, `### Generated targets` and `### Providers`. Use the typed tables defined
+by the [output-contract parser](../../tools/docs/output_contracts.py), or literal `none`
+for an absent interface. The parser reads evaluated docstrings from Bazel's `starlark_doc_extract`;
+Stardoc renders the same source together with its signature and attributes.
+
+Default rows declare artifact kind, cardinality, availability and run/test behavior.
+Group rows declare exact keys, contents, availability and prerequisites. Companion target rows
+declare their name pattern, kind, purpose, concrete reason, visibility, testonly,
+prerequisites and availability. Provider rows declare public identity, role and
+availability; their fields remain documented at the provider definition. Providers produce
+no outputs and carry no contract sections. Conditional availability must have representative
+configured evidence. Configuration-only targets have explicit metadata roles; they must not
+invent files.
+
+The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
+and configurations, not another copy of the public prose. It also names the behavior tests
+that show why an API's public companion targets are separate; the checker requires them to
+resolve. A case or behavior test names its `module` when its fixture lives in a consumer
+module, such as the regression module `tests`; the checker evaluates it there, and
+resolves a consumer module's behavior tests in the host lane, whose cases evaluate that module
+anyway. The checker compares actual default files, executability, groups, public ruleset
+providers and public companion targets against the source in both directions. Bazel's loading facts
+establish target kinds, visibility, testonly and test behavior. Generated repositories have
+independent entrypoint checks instead of a fictitious repository-wide main target. Only
+interfaces the ruleset promises are compared: underscore-prefixed groups, upstream providers
+and, for roots that forward an upstream target, its groups are not. New public APIs or
+unsupported API kinds cannot silently escape required coverage.
+
+`mise run docs` checks source schema, inventory, reference freshness, registry coverage, the
+ruleset module's behavior tests and the cases of the docs lane. `mise run contracts:host`, `contracts:source-engine`,
+`contracts:android` and `contracts:ios` check the cases of each profile lane
+(`bazel run //tools/docs:contracts -- --lane <lane>`); the verification selector runs
+them in their lane when rules, contract sources, fixtures or the checker change.
+Missing evidence of a selected lane remains pending; a host documentation pass cannot replace it.
+
+Update source docs, inventories, consumers and generated references together when a public
+interface changes. Review actual behavior and the necessity of each companion target
+separately: a resolvable test and a structurally valid justification do not establish that
+another target is useful.
+Public guides link to the reference and show short build/run/group/companion examples.
+
+## Reference generation
+
+Follow the [reference generation recipe](verification-recipes.md#generated-api-reference)
+after an API source change.
+
+The generator runs Bazel again from the workspace root; pass
+`-- --bazel /path/to/bazelisk` or set `BAZEL` when Bazel is not on PATH.
+
+The repository skill
+[bazel-api-docs](../../.agents/skills/bazel-api-docs/SKILL.md) defines the writing
+and review standard. Its [upstream references](../../.agents/skills/bazel-api-docs/references/upstream.md)
+explain which practices come from established rule sets and which checks are
+specific to this repository.
+
+## Documentation contracts
+
+The [verification policy](verification.md) owns execution timing;
+[selection and lanes](verification-platforms.md) owns check selection.
+The documentation checker covers complete module and public target inventories, evaluated
+API descriptions, primary ownership, rendered symbols, internal boundaries and committed
+reference freshness. New modules must be explicitly classified in `modules.bzl`, including
+private support files.
+
+Extraction for coverage is unfiltered: every export of a public entrypoint
+is inspected. Selecting primary symbols for Stardoc's presentation cannot
+hide a new export. Every public export must
+belong to that entrypoint's exact symbol set. Duplicate ownership, additional
+public load paths, unowned exports, missing selections and internal helpers
+leaked through public entrypoints fail, even if selected explicitly for
+documentation. Private support modules must declare restricted load visibility;
+generated-repository implementation modules must retain public load visibility.
+All source modules remain classified even when excluded from the API reference.
+
+The coverage tests inspect Bazel's `starlark_doc_extract` metadata using
+Stardoc's Protobuf schema. They reject empty module/API descriptions,
+undocumented public attributes, function parameters, provider fields and
+extension tags, and exports omitted by extraction or rendering. Source checks
+also require documentation on short functions that Buildifier exempts.
+Semantic correctness, useful examples and accurate support claims need review;
+nonempty text alone cannot establish those qualities.
+
+The workspace-level discovery lives in the Python command
+because a Bazel sandbox only sees declared inputs and cannot discover an
+undeclared new source file.
+
+Reference diffs use the version in `.bazelversion`, Stardoc 0.8.1 and
+`stamp = 0`. Bazel's extracted common attributes can change between versions,
+so a Bazel upgrade may require deliberate regeneration. The updater removes obsolete
+generated pages when modules move, but refuses to delete
+pages without a generated-file marker.
+
+## Metadata for the BCR documentation archive
+
+`bazel build //docs/public/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
+for public primary references. CI checks that they contain every configured
+public symbol exactly once, with no implementation helpers or duplicate symbols.
+The release script (`.github/workflows/release_prep.sh`) packs exactly these files into
+`rules_godot-<tag>.docs.tar.gz`, which `docs_url` in `.bcr/source.template.json` names and
+the registry renders; see [Releasing](releasing.md).
+
+Do not collect every `starlark_doc_extract` output into an archive: unfiltered
+inventories and intentionally invalid test fixtures have different purposes.
+The curated BCR metadata contains public contracts only.
+
+## Third-party documentation dependencies
+
+`rules_android` 0.8.0 exports its API `.bzl` files, but its transitive
+`//rules:bzl` documentation library has restricted visibility. The root module
+applies `tools/docs/rules_android_doc_visibility.patch` to expose that single
+library for Stardoc. `rules_android_ndk` 0.1.5 exports no files; the root module
+applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export `rules.bzl`,
+which `godot_android_toolchains` loads. Both change BUILD visibility only.
+Root-module overrides do not apply when another project depends on `rules_godot`.
+Remove each patch once its upstream file is publicly accessible; do not disable
+Bazel's visibility checking.

@@ -1,0 +1,34 @@
+load("@rules_godot//godot:app.bzl", "godot_app")
+load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+package(default_visibility = ["//visibility:public"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    deps = [":main"],
+)
+
+# The engines/stable and engines/beta packages register the patched source-built runtimes;
+# each run prioritizes one of them with --extra_toolchains. The 4.8 beta compiles its arm64
+# runtime for macOS 13.0, so the app's minimum must cover both runtimes.
+godot_app(
+    name = "app",
+    macos_minimum_os_version = "13.0",
+    pack = ":pack",
+    tags = ["manual"],
+)

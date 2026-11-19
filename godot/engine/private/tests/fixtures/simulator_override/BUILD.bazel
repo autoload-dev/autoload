@@ -1,0 +1,22 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/engine/private/tests:engines.bzl", "cc_info_stand_in")
+
+# An iOS runtime payload needs CcInfo, as an XCFramework import supplies; it is never linked.
+cc_info_stand_in(
+    name = "simulator",
+    tags = ["manual"],
+)
+
+# One replaced slot; the mixed tests register this package ahead of the fixtures' full
+# registration set.
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_release",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = ":simulator",
+    # Its Apple aspects need an Apple toolchain; tests register it explicitly.
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

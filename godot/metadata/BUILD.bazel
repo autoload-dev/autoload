@@ -1,0 +1,31 @@
+load("//godot/private:flags.bzl", "string_flag")
+
+package(default_visibility = ["//visibility:public"])
+
+# Metadata Godot keeps in a project's text files. Both flags take the same values:
+# off leaves files as authored; assign completes the copy a pack exports; sync
+# (default) also lets godot_metadata_sync write the values into the checkout;
+# require fails packs while the checkout lacks them and lets
+# godot_metadata_sync's test fail as well.
+_VALUES = [
+    "off",
+    "assign",
+    "sync",
+    "require",
+]
+
+# The unique_id of each node a text scene declares. Godot gives a node without
+# one a random ID that the PCK keeps, so exports are reproducible only with it.
+string_flag(
+    name = "node_ids",
+    build_setting_default = "sync",
+    values = _VALUES,
+)
+
+# The uid of each ext_resource in text scenes and resources, matching the UID of
+# the file it names, so a reference survives the file being moved or renamed.
+string_flag(
+    name = "resource_uids",
+    build_setting_default = "sync",
+    values = _VALUES,
+)

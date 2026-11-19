@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.example.appauth">
+    <application>
+        <meta-data android:name="org.godotengine.plugin.v2.AppAuthAndroid" android:value="org.example.appauth.AppAuthAndroidPlugin" />
+        <!-- The application's android_manifest_values gives the scheme its value; AppAuth's
+             redirect activity uses the same placeholder. -->
+        <meta-data android:name="org.example.appauth.redirect_scheme" android:value="${appAuthRedirectScheme}" />
+        <!-- AppAuth's redirect activity is an AppCompatActivity without a theme of its own; the
+             application sets none either, so it would get the platform default and fail to start. -->
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:theme="@style/Theme.AppCompat.Translucent.NoTitleBar" />
+    </application>
+</manifest>

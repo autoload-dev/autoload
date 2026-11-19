@@ -1,0 +1,8 @@
+# The bazel_probe engine module of the ruleset's own source-built engines. A source recipe
+# names this config.py and copies the whole directory into the engine's modules; the
+# source-built runtime fixture compiles its sources.
+exports_files([
+    "config.py",
+    "register_types.cpp",
+    "register_types.h",
+])

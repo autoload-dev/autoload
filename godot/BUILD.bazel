@@ -1,0 +1,140 @@
+load("//godot/private:flags.bzl", "bool_flag", "int_flag", "string_flag")
+
+package(default_visibility = ["//visibility:public"])
+
+# Execution-platform Godot editors; godot_editor_component registers candidates.
+toolchain_type(name = "editor_toolchain_type")
+
+# Target-platform Godot runtimes; godot_runtime_component registers candidates.
+toolchain_type(name = "runtime_toolchain_type")
+
+# The engine a build uses, by name, such as --@rules_godot//godot:engine=petri: only the
+# components whose engine has this name fill its slots. Empty selects the default engine,
+# the components that name none, as the hubs of godot_engines do unless their tag names one.
+string_flag(
+    name = "engine",
+    build_setting_default = "",
+)
+
+# The default engine is selected; components that name no engine require it.
+config_setting(
+    name = "default_engine",
+    flag_values = {":engine": ""},
+)
+
+# Whether godot_binary and godot_test targets that leave headless unset run headless.
+bool_flag(
+    name = "headless",
+    build_setting_default = True,
+)
+
+# Release metadata a pipeline supplies, such as --@rules_godot//godot:app_version=2.3.4
+# and --@rules_godot//godot:build_number=57. Packs and applications that leave
+# their own version or build number unset use these; empty and 0 mean unset.
+string_flag(
+    name = "app_version",
+    build_setting_default = "",
+)
+
+int_flag(
+    name = "build_number",
+    build_setting_default = 0,
+)
+
+# Which of Godot's binaries a build is for: the release or debug export template, or the
+# editor. --@rules_godot//godot:variant=debug exports packs as debug builds and selects
+# debug runtimes and source-built extension libraries; editor runs an application's
+# project from its sources with Godot's editor binary, without an export.
+string_flag(
+    name = "variant",
+    build_setting_default = "release",
+    values = [
+        "debug",
+        "editor",
+        "release",
+    ],
+)
+
+config_setting(
+    name = "editor",
+    flag_values = {":variant": "editor"},
+)
+
+# Godot's editor runs a project on Linux and macOS. The editor backend of a godot_app is
+# incompatible with every other target platform through this constraint, which no platform
+# has and which Bazel names when such an application is requested explicitly.
+constraint_setting(
+    name = "editor_variant_support",
+    visibility = ["//visibility:private"],
+)
+
+constraint_value(
+    name = "editor_variant_needs_linux_or_macos",
+    constraint_setting = ":editor_variant_support",
+    visibility = ["//visibility:private"],
+)
+
+config_setting(
+    name = "debug",
+    flag_values = {":variant": "debug"},
+)
+
+config_setting(
+    name = "release",
+    flag_values = {":variant": "release"},
+)
+
+# The tool configuration, in which Godot runs as a build tool: imports, initialization,
+# exports and the editor. It refines :editor, so a select() may name both.
+config_setting(
+    name = "tool",
+    flag_values = {
+        "//godot/private/config:tool": "true",
+        ":variant": "editor",
+    },
+)
+
+exports_files(glob(["*.bzl"]))
+
+# How a pack's PCK is made: godot exports it with Godot's conversions (binary
+# scenes and resources, tokenized scripts); none writes the files as they are,
+# without Godot; auto is godot under --compilation_mode=opt and none otherwise.
+string_flag(
+    name = "pack_conversion",
+    build_setting_default = "auto",
+    values = [
+        "auto",
+        "godot",
+        "none",
+    ],
+)
+
+string_flag(
+    name = "android_format",
+    build_setting_default = "apk",
+    values = [
+        "apk",
+        "aab",
+    ],
+)
+
+config_setting(
+    name = "android_aab",
+    flag_values = {":android_format": "aab"},
+)
+
+string_flag(
+    name = "macos_signing",
+    build_setting_default = "unsigned",
+    values = [
+        "unsigned",
+        "adhoc",
+        "certificate",
+    ],
+)
+
+config_setting(
+    name = "macos_signing_unsigned",
+    flag_values = {":macos_signing": "unsigned"},
+    visibility = ["//visibility:private"],
+)

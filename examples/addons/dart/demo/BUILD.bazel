@@ -1,0 +1,50 @@
+load(
+    "@rules_godot//godot:defs.bzl",
+    "godot_binary",
+    "godot_editor",
+    "godot_metadata_sync",
+    "godot_pack",
+    "godot_project",
+)
+load("//addons/dart:defs.bzl", "godot_dart_extension")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["project.godot"])
+
+# The Dart language, with the demo's scripts compiled in.
+godot_dart_extension(
+    name = "dart",
+    srcs = ["//addons/dart/demo/main:scripts"],
+)
+
+godot_project(
+    name = "demo",
+    main_scene = "main/dart_demo.tscn",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":demo",
+    deps = ["//addons/dart/demo/main"],
+)
+
+godot_binary(
+    name = "run",
+    headless = False,
+    pack = ":pack",
+)
+
+godot_editor(
+    name = "edit",
+    project = ":demo",
+    deps = ["//addons/dart/demo/main"],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":demo",
+    deps = ["//addons/dart/demo/main"],
+)

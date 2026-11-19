@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "seed": 27,
+  "actions": [[130,true],[138,false],[286,true],[294,false],[441,true],[449,false],[541,true],[549,false],[597,true],[605,false],[753,true],[761,false],[853,true],[861,false],[908,true],[916,false],[1008,true],[1016,false],[1064,true],[1072,false],[1219,true],[1227,false],[1319,true],[1327,false],[1375,true],[1383,false],[1475,true],[1483,false],[1530,true],[1538,false],[1630,true],[1638,false],[1686,true],[1694,false],[1786,true],[1794,false],[1841,true],[1849,false]],
+  "expected": {"best_chain":12,"collected":36,"reason":"","score":1260,"seed":27,"status":"delivered","tick":2000,"x":180000,"y":0}
+}

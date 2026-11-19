@@ -1,0 +1,11 @@
+load("//godot:defs.bzl", "godot_resources")
+
+# Its package equals the name of //godot/private/tests/fixtures/import_context:textures; the
+# import units' output directories must still not nest. Keep that package identity while the
+# application source follows the owning project's main/ layout.
+godot_resources(
+    name = "icons",
+    resource_paths = {"//godot/private/tests/fixtures/import_context:main/marker.gd": "main/marker.gd"},
+    tags = ["manual"],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)

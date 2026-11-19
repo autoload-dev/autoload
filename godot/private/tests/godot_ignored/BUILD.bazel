@@ -1,0 +1,64 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_metadata_sync", "godot_resource_graph", "godot_test")
+
+# Godot-ignored files, which Godot never scans, imports or registers: packs leave out their
+# directories, source runs read them, and no rule asks for their sidecars.
+_FIXTURE = "//godot/private/tests/godot_ignored/fixtures/project_with_ignored_directory"
+
+# Build-output test: the pack builds without the ignored files and registers none of their
+# classes; the resource graph marks them ignored; each pack's selection warns about the
+# read of an ignored file unless its reader acknowledges it.
+py_test(
+    name = "ignored_files_stay_out_of_packs_test",
+    size = "small",
+    srcs = ["ignored_files_test.py"],
+    args = [
+        "$(rootpath %s:pack)" % _FIXTURE,
+        "$(rootpath :graph)",
+        "$(rootpath :selection)",
+        "$(rootpath :unacknowledged_selection)",
+    ],
+    data = [
+        ":graph",
+        ":selection",
+        ":unacknowledged_selection",
+        _FIXTURE + ":pack",
+    ],
+    main = "ignored_files_test.py",
+    deps = ["//tools:pck_lib"],
+)
+
+# Run test: a source run reads the ignored template through FileAccess, and Godot
+# registers no class of the ignored directory.
+godot_test(
+    name = "source_run_reads_ignored_files_test",
+    size = "small",
+    main = "main/reader.gd",
+    project = _FIXTURE + ":project",
+    deps = [_FIXTURE + ":reader"],
+)
+
+# Its update.test asks for no sidecar of a Godot-ignored file, which Godot never writes.
+godot_metadata_sync(
+    name = "update",
+    project = _FIXTURE + ":project",
+    deps = [_FIXTURE + ":reader"],
+)
+
+godot_resource_graph(
+    name = "graph",
+    project = _FIXTURE + ":project",
+    deps = [_FIXTURE + ":reader"],
+)
+
+filegroup(
+    name = "selection",
+    srcs = [_FIXTURE + ":pack"],
+    output_group = "selection",
+)
+
+filegroup(
+    name = "unacknowledged_selection",
+    srcs = [_FIXTURE + ":unacknowledged_pack"],
+    output_group = "selection",
+)

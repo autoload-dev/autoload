@@ -1,0 +1,13 @@
+load("@rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+
+# The patched snapshot runtime; prioritize it with
+# --extra_toolchains=//patched_engine/engines/stable:all.
+godot_runtime_component(
+    name = "runtime_macos_arm64_release",
+    cpu = "arm64",
+    platform = "macos",
+    runtime = "@godot_source//:godot",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.3-rc",
+)

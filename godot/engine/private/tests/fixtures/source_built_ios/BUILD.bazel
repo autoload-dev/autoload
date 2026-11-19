@@ -1,0 +1,44 @@
+load("@rules_swift//swift:swift.bzl", "swift_library")
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/engine/private:generator.bzl", "godot_source_library")
+
+# A source-built engine library with Swift code and a bundled resource: the replayed Apple
+# aspects must reach both through the godot_source_library's deps edge.
+swift_library(
+    name = "engine_swift",
+    srcs = ["Probe.swift"],
+    data = ["engine.txt"],
+    module_name = "EngineProbe",
+    tags = ["manual"],
+)
+
+godot_source_library(
+    name = "engine_library",
+    build = "build.txt",
+    canonical_version = "4.7.2",
+    cpu = "arm64",
+    customizations = {
+        "modules": ["gdscript"],
+        "patches": ["engine-name.patch"],
+    },
+    digest = "sha256:0123",
+    environment = "simulator",
+    hash = "hash.txt",
+    platform = "ios",
+    role = "runtime",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2.stable",
+    deps = [":engine_swift"],
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_release",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = ":engine_library",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

@@ -1,0 +1,124 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources", "godot_test")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# One unit that a pack and two tests of one project share, and a test of a second project
+# over it; beside it an import input, an extension, an autoload script, the main
+# scene and the editor part of an add-on the project names, whose edits rerun no import.
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# Files the analysis tests place in the projects they arrange.
+exports_files([
+    "main/icon.svg",
+    "project.godot",
+])
+
+godot_resources(
+    name = "base",
+    srcs = ["main/icon.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "home_buffer",
+    srcs = ["main/home_buffer.bin"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "home",
+    srcs = [
+        "main/home.gd",
+        "main/home.svg",
+    ],
+    import_inputs = [":home_buffer"],
+    tags = ["manual"],
+    deps = [":base"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.tscn",
+        "main/state.gd",
+    ],
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":home",
+    ],
+)
+
+# An editor-only add-on whose editor part registers an export plugin that would write a
+# marker into every pack; no export runs it (D29).
+godot_addon(
+    name = "export_marker",
+    editor_srcs = [
+        "export_marker/export_marker.gd",
+        "export_marker/plugin.cfg",
+        "export_marker/plugin.gd",
+    ],
+    strip_prefix = "export_marker",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    autoloads = {"State": "*res://main/state.gd"},
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":export_marker"],
+)
+
+godot_project(
+    name = "other_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+# Without native code, so it analyzes for a platform of two slices without their toolchains.
+godot_pack(
+    name = "home_pack",
+    project = ":other_project",
+    tags = ["manual"],
+    deps = [":home"],
+)
+
+godot_test(
+    name = "test",
+    size = "small",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_test(
+    name = "home_test",
+    size = "small",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":home"],
+)
+
+godot_test(
+    name = "other_home_test",
+    size = "small",
+    project = ":other_project",
+    tags = ["manual"],
+    deps = [":home"],
+)

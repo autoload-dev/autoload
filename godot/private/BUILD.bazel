@@ -1,0 +1,123 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//godot:defs.bzl", "godot_project", "godot_resources")
+load(":context.bzl", "no_project")
+load(":flags.bzl", "bool_value", "string_flag")
+
+package(default_visibility = ["//godot:__subpackages__"])
+
+exports_files(glob(["*.bzl"]))
+
+# Text templates the rules of this package expand.
+exports_files(glob(["*.tpl"]))
+
+# The godot_project whose configuration imports use. Operations set it for the
+# resources they reach; outside an operation it names no project and nothing imports.
+# godot_project, defined in this package, makes every project visible here.
+label_setting(
+    name = "project",
+    build_setting_default = ":no_project",
+    visibility = ["//visibility:public"],
+)
+
+# What a failed content validation does: fail, the default, fails the build; report
+# records the failures in the validation's output and succeeds, for the ruleset's own
+# tests of deliberately broken content, which set it through a transition.
+string_flag(
+    name = "content_validation",
+    build_setting_default = "fail",
+    values = [
+        "fail",
+        "report",
+    ],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)
+
+# The value of :project outside every operation: no context, no imports.
+no_project(
+    name = "no_project",
+    visibility = ["//visibility:public"],
+)
+
+# The project file of the default project, for projects that only add settings.
+exports_files(
+    ["default_project.godot"],
+    visibility = ["//visibility:public"],
+)
+
+# The project of operations that name none, such as a godot_test of a few scripts.
+godot_project(
+    name = "default_project",
+    project_file = "default_project.godot",
+    visibility = ["//visibility:public"],
+)
+
+# godot_binary and godot_test targets without headless select on this; the
+# select runs in the caller's package.
+config_setting(
+    name = "display",
+    flag_values = {"//godot:headless": "false"},
+    visibility = ["//visibility:public"],
+)
+
+# Bazel's sharding and test filter for the test adapters' cases, which every
+# adapter test contains.
+godot_resources(
+    name = "test_cases",
+    resource_paths = {"test_cases.gd": "addons/rules_godot_test/cases.gd"},
+    visibility = ["//visibility:public"],
+)
+
+# Bazel's --strip, as applications apply it to the native code they package.
+config_setting(
+    name = "strip_always",
+    values = {"strip": "always"},
+)
+
+config_setting(
+    name = "strip_fastbuild",
+    values = {
+        "compilation_mode": "fastbuild",
+        "strip": "sometimes",
+    },
+)
+
+bool_value(
+    name = "strip",
+    value = select({
+        ":strip_always": True,
+        ":strip_fastbuild": True,
+        "//conditions:default": False,
+    }),
+)
+
+py_library(
+    name = "project_config_lib",
+    srcs = ["project_config.py"],
+    visibility = [
+        "//godot/private/tests:__pkg__",
+        "//tools:__pkg__",
+        "//tools/platforms:__pkg__",
+    ],
+)
+
+py_binary(
+    name = "project_config",
+    srcs = ["project_config.py"],
+    main = "project_config.py",
+)
+
+config_setting(
+    name = "stamp_enabled",
+    values = {"stamp": "1"},
+)
+
+# Whether the build stamps, as Bazel's --stamp sets it. Generated engine
+# repositories read it, so it is public.
+bool_value(
+    name = "stamp",
+    value = select({
+        ":stamp_enabled": True,
+        "//conditions:default": False,
+    }),
+    visibility = ["//visibility:public"],
+)

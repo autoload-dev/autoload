@@ -1,0 +1,15 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "lint",
+    srcs = ["lint.py"],
+    args = [
+        "$(rootpath @aspect_rules_lint//lint:ruff_bin)",
+        "$(rootpath @aspect_rules_lint//lint:ty_bin)",
+    ],
+    data = [
+        "@aspect_rules_lint//lint:ruff_bin",
+        "@aspect_rules_lint//lint:ty_bin",
+    ],
+    tags = ["manual"],
+)

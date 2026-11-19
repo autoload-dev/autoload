@@ -1,0 +1,31 @@
+diff --git a/runtime/bin/dart_embedder_api_impl.cc b/runtime/bin/dart_embedder_api_impl.cc
+--- a/runtime/bin/dart_embedder_api_impl.cc
++++ b/runtime/bin/dart_embedder_api_impl.cc
+@@ -13,7 +13,6 @@
+ #endif  // defined(DART_IO_SECURE_SOCKET_DISABLED)
+ #include "bin/isolate_data.h"
+ #include "bin/process.h"
+-#include "bin/secure_socket_filter.h"
+ #include "bin/thread.h"
+ #include "bin/utils.h"
+ #include "bin/vmservice_impl.h"
+diff --git a/runtime/platform/utils_macos.cc b/runtime/platform/utils_macos.cc
+--- a/runtime/platform/utils_macos.cc
++++ b/runtime/platform/utils_macos.cc
+@@ -165,11 +165,15 @@
+     // Pretend that anything below Darwin v5 is just Mac OS X Cheetah (v10.0).
+     major_version = 10;
+     minor_version = Utils::Maximum(0, kernel_major_version - 4);
+-  } else {
++  } else if (kernel_major_version < 25) {
+     // Starting from Darwin v20 major version increment in lock-step:
+     // Darwin v20 - Mac OS X v11, Darwin v21 - Mac OS X v12, etc
+     major_version = (kernel_major_version - 9);
+     minor_version = 0;
++  } else {
++    // macOS 26 is Darwin 25; the OS version leads the kernel version since.
++    major_version = kernel_major_version + 1;
++    minor_version = kernel_minor_version;
+   }
+ 
+   // Caveat: MAC_OS_X_VERSION_* is encoded using decimal encoding.

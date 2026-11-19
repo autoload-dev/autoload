@@ -1,0 +1,1 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.example.composition"><uses-permission android:name="org.example.composition.PERMISSION" android:maxSdkVersion="32" android:usesPermissionFlags="neverForLocation"/><uses-permission-sdk-23 android:name="org.example.composition.PERMISSION"/></manifest>

@@ -1,0 +1,305 @@
+module(name = "rules_godot_examples")
+
+bazel_dep(name = "rules_godot", version = "0.1.0")
+local_path_override(
+    module_name = "rules_godot",
+    path = "..",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "rules_cc", version = "0.2.27")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_apple", version = "5.3.1")
+bazel_dep(name = "rules_swift", version = "4.1.1")
+bazel_dep(name = "rules_android", version = "0.8.0")
+bazel_dep(name = "rules_jvm_external", version = "6.10")
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    name = "maven",
+    aar_import_bzl_label = "@rules_android//rules:rules.bzl",
+    artifacts = [
+        "androidx.fragment:fragment:1.8.6",
+        # AppAuth for Android, consumed by the AppAuth example add-on.
+        "net.openid:appauth:0.11.1",
+    ],
+    known_contributing_modules = [
+        "protobuf",
+        "rules_godot",
+    ],
+    lock_file = "//:maven_install.json",
+    repositories = [
+        "https://repo.maven.apache.org/maven2",
+        "https://dl.google.com/dl/android/maven2",
+    ],
+    # Gradle resolves as Android libraries are published for: highest version wins and
+    # Gradle module metadata applies, as in Godot's own Gradle export; rules_godot's
+    # requests are floors. It records the repositories that actually contain each
+    # artifact, so AndroidX downloads never try Central.
+    resolver = "gradle",
+    use_starlark_android_rules = True,
+)
+use_repo(maven, "maven", "rules_android_maven")
+
+# rules_android and bazel_worker_java resolve their own tools from Maven without a lock file,
+# so every output base downloads all of them eagerly, including large test-only artifacts.
+# The root module may pin those repositories: pinned artifacts are fetched lazily through
+# Bazel's shared repository cache. Google's Maven Central mirror avoids Maven Central's rate
+# limits; the Maven resolver records which repository actually holds each artifact.
+maven.install(
+    name = "rules_android_maven",
+    known_contributing_modules = ["rules_android"],
+    lock_file = "//:rules_android_maven_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+maven.install(
+    name = "android_ide_common_30_1_3",
+    known_contributing_modules = ["rules_android"],
+    lock_file = "//:android_ide_common_30_1_3_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+maven.install(
+    name = "bazel_worker_maven",
+    known_contributing_modules = ["bazel_worker_java"],
+    lock_file = "//:bazel_worker_maven_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+
+android_sdk = use_extension(
+    "@rules_android//rules/android_sdk_repository:rule.bzl",
+    "android_sdk_repository_extension",
+)
+android_sdk.configure(
+    api_level = 35,
+    build_tools_version = "35.0.0",
+)
+use_repo(android_sdk, "androidsdk")
+
+# This host's NDK and, for remote Linux executors, the Linux SDK and NDK. Compile extension
+# libraries with NDK 29.0.14206865: set ANDROID_NDK_HOME to that installation; CI reuses or
+# installs the same pinned revision.
+godot_android_toolchains = use_extension(
+    "@rules_godot//godot:extensions.bzl",
+    "godot_android_toolchains",
+)
+godot_android_toolchains.configure(ndk_api_level = 24)
+use_repo(godot_android_toolchains, "android_toolchains")
+
+godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+
+# Petri's engine, named petri: the 4.7.2 release sources with its reaction_diffusion module,
+# built for the Linux and macOS editors and runtimes. --config=petri registers the hub and
+# selects the engine; nothing is compiled until a Petri build asks for a payload.
+godot_engines.source(
+    name = "godot_sources",
+    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
+    strip_prefix = "godot-4.7.2-stable",
+    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
+    version = "4.7.2",
+)
+godot_engines.source_build(
+    name = "godot_petri",
+    # The Compatibility renderer only; Vulkan would need the MoltenVK SDK on macOS hosts.
+    build_options = {
+        "vulkan": "no",
+        "opengl3": "yes",
+    },
+    build_targets = [
+        "editor",
+        "template_release",
+    ],
+    custom_modules = {"//projects/petri/engine/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+    # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "zip",
+        "reaction_diffusion",
+    ],
+    # Only builds with --@rules_godot//godot:engine=petri take these components, and they
+    # take no other engine's.
+    engine = "petri",
+    # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
+    # build any recipe, such as a Mac with remote execution the Linux editor.
+    lock_file = "//engines:godot_petri.lock.json",
+    platforms = [
+        "linux",
+        "macos",
+    ],
+    source = "@godot_sources//:source.json",
+)
+use_repo(godot_engines, "godot", "godot_petri", "godot_sources")
+
+# The official 4.7.2 iOS simulator libraries contain x86_64 code only, which current
+# simulators on Apple silicon refuse. godot-mobile-plugins/godot-ios-builds publishes the
+# arm64 simulator engine libraries of each release; //engines/ios_simulator registers them
+# for the arm64 simulator slots ahead of the official hub.
+register_toolchains(
+    "//engines/ios_simulator:all",
+    "@godot//toolchains:all",
+)
+
+# AppAuth for iOS and macOS from its Swift package, pinned in Package.resolved. Only the
+# Apple backend of iOS and macOS applications and source runs needs it; the add-on's editor
+# library uses the unsupported backend, so Linux and Android builds never resolve it.
+bazel_dep(name = "rules_swift_package_manager", version = "1.25.0")
+
+swift_deps = use_extension("@rules_swift_package_manager//:extensions.bzl", "swift_deps")
+swift_deps.from_package(
+    resolved = "//:Package.resolved",
+    swift = "//:Package.swift",
+)
+use_repo(swift_deps, "swift_package", "swiftpkg_appauth_ios")
+
+# rules_android's deploy_info tool and rules_swift_package_manager share Gazelle's Go
+# repositories; Gazelle 0.50.0 builds its tools with Go 1.24.12 or newer, while the first
+# registered SDK, rules_android's 1.22.4, is older. The root module's SDK takes precedence.
+# Remove this pin once rules_android registers a Go SDK that Gazelle's tools build with.
+bazel_dep(name = "rules_go", version = "0.60.0")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.27.0")
+
+godot_cpp_bindings = use_repo_rule(
+    "@rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    enabled_classes = [
+        "ClassDB",
+        "Engine",
+        "FileAccess",
+        "JSON",
+        "ProjectSettings",
+        "RefCounted",
+        "ResourceFormatLoader",
+        "ResourceFormatSaver",
+        "ResourceLoader",
+        "ResourceSaver",
+        "ScriptExtension",
+        "ScriptLanguageExtension",
+    ],
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "sqlite",
+    build_file = "//deps:sqlite.BUILD.bazel",
+    sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
+    strip_prefix = "sqlite-amalgamation-3540100",
+    urls = ["https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip"],
+)
+
+# Dart for the Dart scripting add-on: rules_dart compiles scripts with the SDK release whose
+# sources build the add-on's embedded runtime; an AOT snapshot runs only on the runtime of
+# its own release.
+bazel_dep(name = "rules_dart", version = "0.9.1")
+
+dart = use_extension("@rules_dart//dart:extensions.bzl", "dart")
+dart.toolchain(dart_version = "3.13.7")
+use_repo(dart, "dart_toolchains")
+
+register_toolchains("@dart_toolchains//:all")
+
+bazel_dep(name = "icu", version = "78.2.bcr.3")
+
+# The Python that generates the Dart runtime's version file, the version the parent module
+# pins.
+bazel_dep(name = "rules_python", version = "2.4.5")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.14")
+
+bazel_dep(name = "zlib", version = "1.3.2.bcr.3")
+
+http_archive(
+    name = "dart_sdk_source",
+    build_file = "//deps:dart_sdk.BUILD.bazel",
+    # Bazel loads the runtime's source lists from .bzl copies of GN's *_sources.gni files. The
+    # patch drops the embedder API's unused SecureSocket include, which needs BoringSSL, and
+    # corrects the macOS version the runtime derives from Darwin 25 and newer, which it
+    # compares with the deployment target before it starts an isolate.
+    patch_cmds = [
+        "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
+    ],
+    patch_strip = 1,
+    patches = ["//deps:dart_sdk.patch"],
+    sha256 = "cd2a1450f33cfeb35f180d33b836ab92a663d1335ee7f953ae3ebcb20308c99d",
+    strip_prefix = "sdk-3.13.7",
+    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.13.7.tar.gz"],
+)
+
+http_archive(
+    name = "godot_ios_simulator_arm64_release",
+    build_file = "//deps:godot_ios_simulator.BUILD.bazel",
+    # The patch adds the XCFramework manifest; the command moves the library into it.
+    patch_cmds = [
+        "mkdir -p libgodot.xcframework/ios-arm64-simulator && mv godot-4.7.2-stable/bin/libgodot.ios.template_release.arm64.simulator.a libgodot.xcframework/ios-arm64-simulator/libgodot.a",
+    ],
+    patch_strip = 1,
+    patches = ["//deps:godot_ios_simulator_xcframework.patch"],
+    sha256 = "6bc189d78aca76c799416382e8c40f023ab970b8c6d7225a390b5db07c48b34d",
+    urls = ["https://github.com/godot-mobile-plugins/godot-ios-builds/releases/download/4.7.2-stable/godot-ios-simulator-release-4.7.2-stable.zip"],
+)
+
+http_archive(
+    name = "godot_ios_simulator_arm64_debug",
+    build_file = "//deps:godot_ios_simulator.BUILD.bazel",
+    # The patch adds the XCFramework manifest; the command moves the library into it.
+    patch_cmds = [
+        "mkdir -p libgodot.xcframework/ios-arm64-simulator && mv godot-4.7.2-stable/bin/libgodot.ios.template_debug.arm64.simulator.a libgodot.xcframework/ios-arm64-simulator/libgodot.a",
+    ],
+    patch_strip = 1,
+    patches = ["//deps:godot_ios_simulator_xcframework.patch"],
+    sha256 = "bd354e44bb77d9f887ab42639031fdf7f7edaad16367014e2e0ea6938b6c387d",
+    urls = ["https://github.com/godot-mobile-plugins/godot-ios-builds/releases/download/4.7.2-stable/godot-ios-simulator-debug-4.7.2-stable.zip"],
+)
+
+http_archive(
+    name = "gdunit4",
+    build_file = "//deps:gdunit4.BUILD.bazel",
+    dev_dependency = True,
+    sha256 = "3b112b67f7cb85e59f3814ea81473e64b9ddfad351073ce89d496da749a6d1fe",
+    strip_prefix = "gdUnit4-0127a55f4543dfc24746f6e5c7ba6f94105d51f2",
+    urls = ["https://github.com/godot-gdunit-labs/gdUnit4/archive/0127a55f4543dfc24746f6e5c7ba6f94105d51f2.tar.gz"],
+)
+
+# BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
+# --config=buildbuddy selects; inert without it.
+bazel_dep(
+    name = "toolchains_buildbuddy",
+    version = "0.0.4",
+    dev_dependency = True,
+    repo_name = "toolchains_buildbuddy",
+)
+
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")

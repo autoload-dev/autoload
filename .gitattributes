@@ -1,0 +1,10 @@
+# Configuration for `git archive`, which builds the release archive
+# (.github/workflows/release_prep.sh). Development-only directories stay out of it;
+# e2e/ stays in, because the Bazel Central Registry runs its test module.
+examples export-ignore
+tests export-ignore
+.agents export-ignore
+.claude export-ignore
+.codex export-ignore
+.entire export-ignore
+.github export-ignore

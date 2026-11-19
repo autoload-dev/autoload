@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+
+config/name="Source-built runtime"
+run/main_scene="res://main/main.tscn"
+config/icon="res://main/icon.svg"

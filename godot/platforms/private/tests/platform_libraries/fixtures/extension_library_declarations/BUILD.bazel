@@ -1,0 +1,143 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/extension/tests:extension_contracts.bzl", "dynamic_xcframework_fixture")
+
+# Extensions whose library iOS cannot link, whose iOS library is a dynamic framework, whose
+# Android library has a runtime dependency, and two extensions whose Android libraries share
+# a file name.
+package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+
+[
+    genrule(
+        name = name,
+        outs = [name + "/" + filename],
+        cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
+        tags = ["manual"],
+    )
+    for name, filename in {
+        "extension_library": "libandroid_contract_fixture.so",
+        "android_helper": "libhelper.so",
+        "android_collision_a": "libcollision.so",
+        "android_collision_b": "libcollision.so",
+    }.items()
+]
+
+# A shared library where iOS links static libraries.
+godot_extension(
+    name = "shared_ios_extension",
+    entry_symbol = "shared_ios_init",
+    library = select({
+        "@platforms//os:ios": ":extension_library",
+        "//conditions:default": None,
+    }),
+    tags = ["manual"],
+)
+
+# A dynamic framework, which Godot loads at run time and the application embeds.
+dynamic_xcframework_fixture(
+    name = "framework",
+    binary = "libframework.ios.release",
+)
+
+godot_extension(
+    name = "framework_ios_extension",
+    entry_symbol = "framework_ios_init",
+    library = select({
+        "@platforms//os:ios": ":framework",
+        "//conditions:default": None,
+    }),
+    tags = ["manual"],
+)
+
+# An Android library with a shared library it loads from beside it.
+godot_extension(
+    name = "android_dependency_extension",
+    data = select({
+        "@platforms//os:android": [":android_helper"],
+        "//conditions:default": [],
+    }),
+    entry_symbol = "dependency_init",
+    library = select({
+        "@platforms//os:android": ":extension_library",
+        "//conditions:default": None,
+    }),
+    tags = ["manual"],
+)
+
+# Two extensions whose Android libraries have one file name.
+[
+    godot_extension(
+        name = name,
+        entry_symbol = "collision_init",
+        library = select({
+            "@platforms//os:android": ":android_" + name,
+            "//conditions:default": None,
+        }),
+        resource_path = "native/%s/%s.gdextension" % (name, name),
+        tags = ["manual"],
+    )
+    for name in [
+        "collision_a",
+        "collision_b",
+    ]
+]
+
+godot_project(
+    name = "android_collision_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "android_dependency_extension_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "framework_ios_extension_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "shared_ios_extension_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "android_collision_pack",
+    project = ":android_collision_project",
+    tags = ["manual"],
+    deps = [
+        ":collision_a",
+        ":collision_b",
+    ],
+)
+
+godot_pack(
+    name = "android_dependency_extension_pack",
+    project = ":android_dependency_extension_project",
+    tags = ["manual"],
+    deps = [":android_dependency_extension"],
+)
+
+godot_pack(
+    name = "framework_ios_extension_pack",
+    project = ":framework_ios_extension_project",
+    tags = ["manual"],
+    deps = [":framework_ios_extension"],
+)
+
+godot_pack(
+    name = "shared_ios_extension_pack",
+    project = ":shared_ios_extension_project",
+    tags = ["manual"],
+    deps = [":shared_ios_extension"],
+)
+
+filegroup(
+    name = "runtime",
+    tags = ["manual"],
+)

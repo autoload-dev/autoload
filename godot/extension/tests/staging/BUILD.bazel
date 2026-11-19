@@ -1,0 +1,32 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_test")
+
+_FIXTURE = "//godot/extension/tests/staging/fixtures/extension_load_probe"
+
+# Run test: main/loaded.gd compares whether the runtime loaded the descriptor after Godot's
+# -- separator with the expected "true" or "false". The export loaded the extension, and
+# the runtime loads it from the pack's list.
+godot_test(
+    name = "extension_loads_at_runtime_test",
+    size = "small",
+    args = [
+        "--",
+        "res://native/hello.gdextension",
+        "true",
+    ],
+    main = "main/loaded.gd",
+    pack = _FIXTURE + ":enabled_pack",
+)
+
+# Build-output test: which extension descriptors and extension lists the packs carry.
+py_test(
+    name = "packs_carry_runtime_extensions_test",
+    size = "small",
+    srcs = ["pack_test.py"],
+    data = [
+        _FIXTURE + ":enabled_pack",
+        _FIXTURE + ":hello",
+    ],
+    main = "pack_test.py",
+    deps = ["//tools:pck_lib"],
+)

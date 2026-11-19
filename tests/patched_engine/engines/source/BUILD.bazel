@@ -1,0 +1,23 @@
+load("@rules_godot//godot/engine:defs.bzl", "godot_editor_component")
+load(":components.bzl", "desktop_runtimes")
+
+_ORIGIN = "godotengine/godot@2ea68c7, a 4.7 maintenance-branch snapshot"
+
+# Separate recipes of one source: a fuller editor and a reduced runtime, both with the
+# bazel_probe module and the engine-name patch. Register with --extra_toolchains.
+godot_editor_component(
+    name = "editor_macos_arm64",
+    cpu = "arm64",
+    editor = "@godot_source_editor//:godot",
+    origin = _ORIGIN,
+    platform = "macos",
+    tags = ["manual"],
+    version = "4.7.3-rc",
+)
+
+desktop_runtimes(
+    name = "runtime",
+    origin = _ORIGIN,
+    payloads = {"macos/arm64/release": "@godot_source//:godot"},
+    version = "4.7.3-rc",
+)

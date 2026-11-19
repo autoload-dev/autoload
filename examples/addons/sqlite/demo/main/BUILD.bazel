@@ -1,0 +1,14 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//addons/sqlite/demo:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "database_demo.gd",
+        "database_demo.gd.uid",
+        "database_demo.tscn",
+    ],
+    prefix = "main",
+    deps = ["//addons/sqlite"],
+)

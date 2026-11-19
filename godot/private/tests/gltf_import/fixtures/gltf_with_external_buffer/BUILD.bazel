@@ -1,0 +1,50 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# A glTF scene whose external .bin buffer is an import input, and a pack of the project
+# whose main scene instantiates the imported scene.
+package(default_visibility = ["//godot/private/tests/gltf_import:__pkg__"])
+
+godot_resources(
+    name = "buffer",
+    srcs = ["main/triangle.bin"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "model",
+    srcs = ["main/triangle.gltf"],
+    import_inputs = [":buffer"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "imported_model",
+    tags = ["manual"],
+    deps = [":model"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":imported_model",
+        ":main",
+    ],
+)

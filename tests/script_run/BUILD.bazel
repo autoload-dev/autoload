@@ -1,0 +1,47 @@
+load("@rules_godot//godot:defs.bzl", "godot_binary", "godot_project", "godot_resources", "godot_test")
+
+godot_resources(
+    name = "icon",
+    srcs = ["main/icon.svg"],
+)
+
+godot_resources(
+    name = "direct",
+    srcs = ["main/direct.gd"],
+)
+
+godot_project(
+    name = "direct_project",
+    project_file = "project.godot",
+)
+
+# Bazel splits args like a shell.
+godot_test(
+    name = "script_runs_with_imports_and_arguments_test",
+    size = "small",
+    args = [
+        "--",
+        "'declared value'",
+    ],
+    main = "main/direct.gd",
+    project = ":direct_project",
+    tags = ["integration"],
+    deps = [
+        ":direct",
+        ":icon",
+    ],
+)
+
+godot_binary(
+    name = "direct_run",
+    args = [
+        "--",
+        "'declared value'",
+    ],
+    main = "main/direct.gd",
+    project = ":direct_project",
+    deps = [
+        ":direct",
+        ":icon",
+    ],
+)

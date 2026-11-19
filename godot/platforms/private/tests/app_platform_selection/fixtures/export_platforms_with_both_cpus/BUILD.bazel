@@ -1,0 +1,56 @@
+load("//godot/platforms:defs.bzl", "godot_export_platform")
+
+# Export platforms with both CPUs of Android and of the iOS Simulator, each with a
+# constraint of its own; common_android also inherits a base platform's constraint.
+package(default_visibility = ["//godot/platforms/private/tests/app_platform_selection:__subpackages__"])
+
+constraint_setting(name = "cpu_selection")
+
+constraint_value(
+    name = "multiple_cpus",
+    constraint_setting = ":cpu_selection",
+)
+
+godot_export_platform(
+    name = "android_distribution",
+    constraint_values = [":multiple_cpus"],
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+)
+
+godot_export_platform(
+    name = "simulator_distribution",
+    constraint_values = [":multiple_cpus"],
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    environment = "simulator",
+    operating_system = "ios",
+)
+
+constraint_setting(name = "base_policy")
+
+constraint_value(
+    name = "base_property",
+    constraint_setting = ":base_policy",
+)
+
+platform(
+    name = "base",
+    constraint_values = [":base_property"],
+)
+
+godot_export_platform(
+    name = "common_android",
+    constraint_values = [":multiple_cpus"],
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+    parents = [":base"],
+)

@@ -1,0 +1,170 @@
+load("@rules_android//rules:rules.bzl", "android_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/platforms:defs.bzl", "godot_export_platform")
+
+# One mobile application for Android and iOS: its pack selects each operating system's
+# add-on with a platform library, the application adds a platform library, a platform resource and, on
+# Android, a manifest placeholder value; the pack ships a native extension.
+package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+
+# The native extension the pack ships; the library name libhello_native.so follows the
+# target name.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+android_library(
+    name = "android_addon",
+    srcs = ["android/addon/src/org/example/addon/Addon.java"],
+    custom_package = "org.example.addon",
+    manifest = "android/addon/AndroidManifest.xml",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "android_libraries",
+    platform_deps = [":android_addon"],
+    tags = ["manual"],
+)
+
+swift_library(
+    name = "ios_addon",
+    srcs = ["ios/Addon.swift"],
+    module_name = "ExampleAddon",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "ios_libraries",
+    platform_deps = [":ios_addon"],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":main",
+    ] + select({
+        "//godot/platforms:is_android": [":android_libraries"],
+        "@platforms//os:ios": [":ios_libraries"],
+        "//conditions:default": [],
+    }),
+)
+
+# Platform libraries of the application only.
+android_library(
+    name = "android_composition",
+    exports_manifest = 1,
+    manifest = "android/composition/AndroidManifest.xml",
+    resource_files = ["android/composition/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+# A manifest that needs a placeholder value from the application.
+android_library(
+    name = "android_placeholder",
+    exports_manifest = 1,
+    manifest = "android/placeholder/AndroidManifest.xml",
+    tags = ["manual"],
+)
+
+objc_library(
+    name = "ios_composition",
+    data = ["ios/composition_notice.txt"],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "app",
+    android_manifest_values = {"examplePlaceholder": "org.example.manifestvalues.scheme"},
+    application_id = "org.example.platformlibraries",
+    pack = ":pack",
+    platform_deps = select({
+        "//godot/platforms:is_android": [
+            ":android_composition",
+            ":android_placeholder",
+        ],
+        "@platforms//os:ios": [":ios_composition"],
+        "//conditions:default": [],
+    }),
+    platform_resources = select({
+        "//godot/platforms:is_android": ["android/app/res/values/strings.xml"],
+        "@platforms//os:ios": ["ios/app_notice.txt"],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],
+)
+
+# Both Android CPUs; //godot/platforms:android_arm64 exports for arm64 only.
+godot_export_platform(
+    name = "android_distribution",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+)
+
+# The same pack with shell overrides: on Android its own manifest, a splash theme and a
+# launcher icon of one density replace the shell's; a platform library's permission still
+# reaches the application's manifest. On iOS an Info.plist key, the app icons, the launch
+# screen and the privacy manifest replace the shell's.
+godot_app(
+    name = "app_with_overrides",
+    android_manifest = "android/overrides/AndroidManifest.xml",
+    application_id = "org.example.shelloverrides",
+    ios_app_icons = glob(["ios/overrides/Assets.xcassets/**"]),
+    ios_infoplists = ["ios/overrides/Overrides.plist"],
+    ios_launch_storyboard = "ios/overrides/LaunchScreen.storyboard",
+    pack = ":pack",
+    platform_deps = select({
+        "//godot/platforms:is_android": [":android_composition"],
+        "//conditions:default": [],
+    }),
+    platform_resources = select({
+        "//godot/platforms:is_android": [
+            "android/overrides/res/drawable/start.xml",
+            "android/overrides/res/mipmap-xxxhdpi/icon.png",
+            "android/overrides/res/values/themes.xml",
+        ],
+        "@platforms//os:ios": ["ios/overrides/PrivacyInfo.xcprivacy"],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],
+)
+
+# An Icon Composer icon as the application's app icon; building it needs Xcode 26.
+godot_app(
+    name = "app_with_icon_composer",
+    application_id = "org.example.iconcomposer",
+    ios_app_icons = glob(["ios/icon_composer/AppIcon.icon/**"]),
+    pack = ":pack",
+    tags = ["manual"],
+)

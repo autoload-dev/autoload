@@ -1,0 +1,117 @@
+"""
+Require the pins that the root module and its consumer modules share to agree.
+
+Each module declares its own dependencies, as a consumer of rules_godot does, so Bazel
+cannot see that they drift apart. This check reads every MODULE.bazel with Python's
+ast and compares each pin that two or more modules declare.
+"""
+
+import ast
+import sys
+from collections import Counter
+from pathlib import Path
+from typing import Any
+
+from tools.setup.modules import declarations, module_paths
+
+ARCHIVE = ("sha256", "urls")
+# The attributes compared for each kind of declaration: a function, a repository rule or
+# an `<extension>.<tag>`. Tags of other extensions are no pins.
+ATTRIBUTES = {
+    "bazel_dep": ("version",),
+    "http_archive": ARCHIVE,
+    "http_file": ARCHIVE,
+    "godot_cpp_bindings": ("api_path",),
+    "android_sdk_repository_extension.configure": ("api_level", "build_tools_version"),
+    "godot_android_toolchains.configure": ("ndk_api_level",),
+    "godot_engines.prebuilt": ("version",),
+    "godot_engines.source": ("version", "sha256", "urls", "strip_prefix"),
+}
+MAVEN = "maven.install"
+
+
+def _literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
+    values = {}
+    for keyword, value in keywords.items():
+        try:
+            values[keyword] = ast.literal_eval(value)
+        except ValueError:
+            # A computed value, such as a comprehension's variable, is no pin.
+            continue
+    return values
+
+
+def _key(kind: str, name: str | None, attribute: str) -> str:
+    if kind == "bazel_dep":
+        return f"bazel_dep:{name}"
+    if name is None:
+        return f"{kind}:{attribute}"
+    return f"{kind}:{name}.{attribute}"
+
+
+def module_pins(source: str) -> dict[str, Any]:
+    """Pins of one MODULE.bazel by `kind:name` key, such as `bazel_dep:rules_android`."""
+    pins: dict[str, Any] = {}
+    for declaration in declarations(source):
+        kind = declaration.kind
+        values = _literals(declaration.keywords)
+        name = values.get("name")
+        if kind == MAVEN:
+            # Maven coordinates group:artifact[:packaging[:classifier]]:version.
+            for coordinate in values.get("artifacts", []):
+                artifact, _, version = coordinate.rpartition(":")
+                pins[f"{MAVEN}:{name}:{artifact}"] = version
+        for attribute in ATTRIBUTES.get(kind, ()):
+            if attribute in values:
+                pins[_key(kind, name, attribute)] = values[attribute]
+    return pins
+
+
+def _format(value: Any) -> str:
+    return ", ".join(value) if isinstance(value, list) else str(value)
+
+
+def drifts(root: Path) -> list[str]:
+    """One line per module whose shared pin differs from the most common value."""
+    declared: dict[str, dict[str, tuple[str, Any]]] = {}
+    for module in module_paths(root):
+        path = root / module
+        locations = {
+            "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
+            ".bazelversion": {
+                "bazelversion": (path / ".bazelversion").read_text().strip()
+            },
+        }
+        for file, pins in locations.items():
+            location = (Path(module) / file).as_posix()
+            for key, value in pins.items():
+                declared.setdefault(key, {})[module] = (location, value)
+    lines = []
+    for key, modules in declared.items():
+        if len(modules) < 2:
+            continue
+        counts = Counter(repr(value) for _, value in modules.values())
+        if len(counts) == 1:
+            continue
+        reference = counts.most_common(1)[0][0]
+        location, value = [
+            entry for entry in modules.values() if repr(entry[1]) == reference
+        ][-1]
+        for other, actual in modules.values():
+            if repr(actual) != reference:
+                lines.append(
+                    f"{other}: {key} is {_format(actual)}, {location} has {_format(value)}"
+                )
+    return lines
+
+
+def main(argv: list[str]) -> int:
+    root = Path(argv[0]) if argv else Path(__file__).resolve().parents[2]
+    lines = drifts(root)
+    for line in lines:
+        print(line)
+    return 1 if lines else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

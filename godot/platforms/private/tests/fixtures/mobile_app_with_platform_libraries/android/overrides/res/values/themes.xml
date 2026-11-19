@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Replaces the shell's splash theme as a whole. -->
+    <style name="GodotAppSplashTheme" parent="Theme.SplashScreen">
+        <item name="android:windowBackground">@drawable/start</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/icon</item>
+        <item name="postSplashScreenTheme">@style/GodotAppMainTheme</item>
+    </style>
+</resources>

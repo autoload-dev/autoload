@@ -1,0 +1,352 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# The ruleset's own packages. Tool libraries are visible to them only.
+package_group(
+    name = "ruleset",
+    packages = [
+        "//godot/...",
+        "//tools/...",
+    ],
+)
+
+py_library(
+    name = "resource_graph_lib",
+    srcs = ["resource_graph.py"],
+    deps = [
+        ":godot_files_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "resource_graph",
+    srcs = ["resource_graph.py"],
+    deps = [
+        ":godot_files_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_library(
+    name = "godot_build_files_lib",
+    srcs = ["godot_build_files.py"],
+    deps = [
+        ":godot_files_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_build_files",
+    srcs = ["godot_build_files.py"],
+    deps = [
+        ":godot_files_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+py_library(
+    name = "godot_files_lib",
+    srcs = ["godot_files.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_library(
+    name = "digest_lib",
+    srcs = ["digest.py"],
+)
+
+py_library(
+    name = "pck_lib",
+    srcs = ["pck.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_library(
+    name = "template_lib",
+    srcs = ["template.py"],
+)
+
+# Output paths that manifests name as path mapping stages them.
+py_library(
+    name = "mapped_paths_lib",
+    srcs = ["mapped_paths.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+# Project actions (imports, initialization, probes) and pack exports are separate
+# tools on shared staging, so a change to one does not rerun the other's actions.
+py_library(
+    name = "godot_staging_lib",
+    srcs = ["godot_staging.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [
+        ":godot_files_lib",
+        ":mapped_paths_lib",
+        ":node_ids_lib",
+        ":pck_lib",
+        ":resource_graph_lib",
+        ":resource_uids_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_library(
+    name = "godot_actions_lib",
+    srcs = ["godot_actions.py"],
+    # The action plugin that records each editor action's result; data of the
+    # two tools that run editor actions only, so editing it reruns only those.
+    data = glob(["action/*"]),
+    deps = [
+        ":godot_files_lib",
+        ":godot_staging_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_actions",
+    srcs = ["godot_actions.py"],
+    deps = [":godot_actions_lib"],
+)
+
+py_library(
+    name = "class_fragment_lib",
+    srcs = ["class_fragment.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [
+        ":mapped_paths_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+py_binary(
+    name = "class_fragment",
+    srcs = ["class_fragment.py"],
+    deps = [
+        ":mapped_paths_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+# What the validations of a unit's dependents read from it (#158): a tool of its own, so a
+# change to it reruns only interfaces.
+py_library(
+    name = "unit_interface_lib",
+    srcs = ["unit_interface.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [
+        ":class_fragment_lib",
+        ":godot_files_lib",
+        ":godot_staging_lib",
+        ":mapped_paths_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+py_binary(
+    name = "unit_interface",
+    srcs = ["unit_interface.py"],
+    deps = [":unit_interface_lib"],
+)
+
+# The per-unit content validation: a tool of its own, so a change to it reruns only
+# validations.
+py_library(
+    name = "godot_validation_lib",
+    srcs = ["godot_validation.py"],
+    data = glob(["action/*"]) + ["validation/validate.gd"],
+    deps = [
+        ":class_fragment_lib",
+        ":godot_staging_lib",
+        ":resource_uids_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_validation",
+    srcs = ["godot_validation.py"],
+    deps = [":godot_validation_lib"],
+)
+
+py_library(
+    name = "pack_contents_lib",
+    srcs = ["pack_contents.py"],
+    deps = [
+        ":digest_lib",
+        ":godot_files_lib",
+    ],
+)
+
+py_library(
+    name = "godot_export_lib",
+    srcs = ["godot_export.py"],
+    data = glob(["action/*"]) + [
+        "adaptive_icon.xml.tpl",
+        "export_presets.cfg.tpl",
+    ],
+    deps = [
+        ":godot_staging_lib",
+        ":pack_contents_lib",
+        ":pck_lib",
+        ":template_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_export",
+    srcs = ["godot_export.py"],
+    deps = [":godot_export_lib"],
+)
+
+# Writes a pack's PCK without Godot; a tool of its own, without the editor's action
+# plugin, so a change to either tool reruns only its own actions.
+py_library(
+    name = "pack_writer_lib",
+    srcs = ["pack_writer.py"],
+    deps = [
+        ":class_fragment_lib",
+        ":godot_files_lib",
+        ":godot_staging_lib",
+        ":pack_contents_lib",
+        ":pck_lib",
+        ":resource_graph_lib",
+        ":resource_uids_lib",
+    ],
+)
+
+py_binary(
+    name = "pack_writer",
+    srcs = ["pack_writer.py"],
+    deps = [":pack_writer_lib"],
+)
+
+py_library(
+    name = "godot_run_lib",
+    srcs = ["godot_run.py"],
+    deps = [
+        ":godot_staging_lib",
+        ":pck_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+exports_files(
+    ["run/errors.gd"],
+    visibility = ["//tools/tests:__pkg__"],
+)
+
+# The run logger is data of the runner of runs and tests only, not of the
+# editor view and metadata sync that share godot_run_lib.
+py_binary(
+    name = "godot_run",
+    srcs = ["godot_run.py"],
+    data = ["run/errors.gd"],
+    deps = [":godot_run_lib"],
+)
+
+py_library(
+    name = "godot_editor_lib",
+    srcs = ["godot_editor.py"],
+    data = ["editor_view.gitignore.tpl"],
+    deps = [
+        ":godot_files_lib",
+        ":godot_metadata_sync_lib",
+        ":godot_run_lib",
+        ":godot_staging_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_editor",
+    srcs = ["godot_editor.py"],
+    data = ["editor_view.gitignore.tpl"],
+    deps = [
+        ":godot_files_lib",
+        ":godot_metadata_sync_lib",
+        ":godot_run_lib",
+        ":godot_staging_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_library(
+    name = "godot_metadata_sync_lib",
+    srcs = ["godot_metadata_sync.py"],
+    deps = [
+        ":godot_files_lib",
+        ":godot_run_lib",
+        ":godot_staging_lib",
+        ":metadata_index_lib",
+        ":node_ids_lib",
+        ":resource_uids_lib",
+    ],
+)
+
+py_library(
+    name = "node_ids_lib",
+    srcs = ["node_ids.py"],
+    deps = [":resource_graph_lib"],
+)
+
+py_library(
+    name = "metadata_index_lib",
+    srcs = ["metadata_index.py"],
+    deps = [
+        ":godot_files_lib",
+        ":godot_staging_lib",
+        ":node_ids_lib",
+        ":resource_uids_lib",
+    ],
+)
+
+py_binary(
+    name = "metadata_index",
+    srcs = ["metadata_index.py"],
+    deps = [":metadata_index_lib"],
+)
+
+py_library(
+    name = "resource_uids_lib",
+    srcs = ["resource_uids.py"],
+    deps = [
+        ":godot_files_lib",
+        ":resource_graph_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_metadata_sync",
+    srcs = ["godot_metadata_sync.py"],
+    deps = [
+        ":godot_files_lib",
+        ":godot_run_lib",
+        ":godot_staging_lib",
+        ":metadata_index_lib",
+        ":node_ids_lib",
+        ":resource_uids_lib",
+    ],
+)
+
+py_library(
+    name = "common_content_lib",
+    srcs = ["common_content.py"],
+    deps = ["//godot/private:project_config_lib"],
+)
+
+py_binary(
+    name = "common_content",
+    srcs = ["common_content.py"],
+    deps = ["//godot/private:project_config_lib"],
+)
+
+py_library(
+    name = "tool_environment_lib",
+    srcs = ["tool_environment.py"],
+    visibility = ["//tools:__subpackages__"],
+)

@@ -1,0 +1,44 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/engine/private/tests:engines.bzl", "cc_info_stand_in")
+
+# An iOS runtime payload needs CcInfo, as an XCFramework import supplies; it is never linked.
+cc_info_stand_in(
+    name = "ios",
+    tags = ["manual"],
+)
+
+# One iOS release component per slot, so each platform slice's resolution is observable;
+# arm64 device and arm64 simulator are distinct slots.
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_device_release",
+    cpu = "arm64",
+    environment = "device",
+    platform = "ios",
+    runtime = ":ios",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_release",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = ":ios",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_x86_64_simulator_release",
+    cpu = "x86_64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = ":ios",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

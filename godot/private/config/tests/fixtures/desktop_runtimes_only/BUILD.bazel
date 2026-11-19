@@ -1,0 +1,23 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+
+# The only runtime components a desktop consumer registers: release slots for Linux and macOS,
+# no Android or iOS runtime and no mobile SDK.
+[
+    godot_runtime_component(
+        name = "runtime_%s_%s" % (platform, cpu),
+        cpu = cpu,
+        platform = platform,
+        runtime = "runtime.sh",
+        tags = ["manual"],
+        variant = "release",
+        version = "4.7.2",
+    )
+    for platform in [
+        "linux",
+        "macos",
+    ]
+    for cpu in [
+        "arm64",
+        "x86_64",
+    ]
+]

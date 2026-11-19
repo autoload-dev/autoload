@@ -1,0 +1,22 @@
+load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
+
+# The engine "custom": a Linux x86_64 editor and release runtime that fill slots only in
+# builds with --@rules_godot//godot:engine=custom, whatever their registration order.
+godot_editor_component(
+    name = "editor_linux_x86_64",
+    cpu = "x86_64",
+    editor = "//godot/engine/private/tests/fixtures:editor_stand_in",
+    engine = "custom",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_linux_x86_64_release",
+    cpu = "x86_64",
+    engine = "custom",
+    platform = "linux",
+    runtime = "//godot/engine/private/tests/fixtures:linux_x86_64_release.bin",
+    variant = "release",
+    version = "4.7.2",
+)

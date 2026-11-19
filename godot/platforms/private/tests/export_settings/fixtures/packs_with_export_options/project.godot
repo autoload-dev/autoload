@@ -1,0 +1,8 @@
+; A project with its own name and version, whose Android and iOS packs set export options.
+
+config_version=5
+
+[application]
+
+config/name="Fixture Game"
+config/version="2.3.4"

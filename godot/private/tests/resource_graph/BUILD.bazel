@@ -1,0 +1,17 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load(":resource_graph_tests.bzl", "resource_graph_test_suite")
+
+_FIXTURE = "//godot/private/tests/resource_graph/fixtures/project_with_generated_declarations:"
+
+# Build-output test: the graph action over generated source declarations infers the
+# project's edges and finds each of them declared.
+py_test(
+    name = "resource_graph_infers_declared_edges_test",
+    size = "small",
+    srcs = ["resource_graph_test.py"],
+    args = ["$(rootpath %sgraph)" % _FIXTURE],
+    data = [_FIXTURE + "graph"],
+    main = "resource_graph_test.py",
+)
+
+resource_graph_test_suite(name = "resource_graph_test_suite")

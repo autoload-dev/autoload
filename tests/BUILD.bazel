@@ -1,0 +1,25 @@
+exports_files([
+    "android_ide_common_30_1_3_install.json",
+    "bazel_worker_maven_install.json",
+    "maven_install.json",
+    "rules_android_maven_install.json",
+])
+
+# Configuration suites: the mobile tests of each Bazel configuration of .bazelrc, run as
+# `bazel test //:<suite> --config=<configuration>` from this directory. Each suite is
+# manual, so //... stays the host set; a test is listed in every suite whose
+# configuration it runs under.
+
+# --config=android --config=aab
+test_suite(
+    name = "android_aab",
+    tags = ["manual"],
+    tests = ["//smoke/android:bundle_packages_extension_and_pack_test"],
+)
+
+# --config=official
+test_suite(
+    name = "ios_official",
+    tags = ["manual"],
+    tests = ["//smoke/ios:app_links_extension_test"],
+)

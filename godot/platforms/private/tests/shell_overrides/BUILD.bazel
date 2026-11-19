@@ -1,0 +1,81 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+
+# Applications whose own files replace shell defaults, as their platforms build them.
+
+_FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"
+
+# The APKs as --config=android builds them: without and with overrides.
+_ANDROID_APPS = {
+    "shell": "app",
+    "overrides": "app_with_overrides",
+}
+
+[
+    configured_outputs(
+        name = "android_overrides_replace_shell_defaults_test_" + role,
+        android = True,
+        platform = "//godot/platforms:android_arm64",
+        tags = ["manual"],
+        target = _FIXTURE + app,
+    )
+    for role, app in _ANDROID_APPS.items()
+]
+
+# Build-output test: the application's manifest is the main manifest, its tools:node
+# marker removes a shell element, its activity attribute wins and the shell's activity and
+# version stay; its splash
+# theme and launcher icon replace the shell's, and the application without overrides keeps
+# the shell's.
+py_test(
+    name = "android_overrides_replace_shell_defaults_test",
+    size = "small",
+    srcs = ["android_overrides_test.py"],
+    args = ["--aapt=$(rootpath @android_toolchains//:aapt)"] + [
+        "--%s $(rootpaths :android_overrides_replace_shell_defaults_test_%s)" % (role, role)
+        for role in _ANDROID_APPS
+    ],
+    data = ["@android_toolchains//:aapt"] + [
+        ":android_overrides_replace_shell_defaults_test_" + role
+        for role in _ANDROID_APPS
+    ],
+    main = "android_overrides_test.py",
+    target_compatible_with = ["//godot/platforms/private/tests:requires_android_sdk"],
+)
+
+# The Simulator applications as --config=official builds them: without and with overrides.
+_IOS_APPS = {
+    "shell": "app",
+    "overrides": "app_with_overrides",
+    "icon_composer": "app_with_icon_composer",
+}
+
+[
+    configured_outputs(
+        name = "ios_overrides_replace_shell_defaults_test_" + role,
+        platform = "//godot/platforms:ios_sim_x86_64",
+        tags = ["manual"],
+        target = _FIXTURE + app,
+    )
+    for role, app in _IOS_APPS.items()
+]
+
+# Build-output test: the application's Info.plist key, launch storyboard, privacy manifest
+# and app icons, including an Icon Composer icon (Xcode 26), replace the shell's, and the
+# application without overrides keeps the shell's.
+py_test(
+    name = "ios_overrides_replace_shell_defaults_test",
+    size = "small",
+    srcs = ["ios_overrides_test.py"],
+    args = [
+        "--%s $(rootpaths :ios_overrides_replace_shell_defaults_test_%s)" % (role, role)
+        for role in _IOS_APPS
+    ],
+    data = [
+        ":ios_overrides_replace_shell_defaults_test_" + role
+        for role in _IOS_APPS
+    ],
+    main = "ios_overrides_test.py",
+    target_compatible_with = ["@platforms//os:macos"],
+    deps = ["//tools/platforms:apple_bundle_lib"],
+)

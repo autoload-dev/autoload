@@ -1,0 +1,143 @@
+load("@rules_android//rules:rules.bzl", "aar_import", "android_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# One application declaration for desktop, Android and iOS. Its project ships a C ABI
+# extension and selects each mobile operating system's add-on: on Android a Java library
+# and an AAR, on iOS a Swift and an Objective-C library with an Info.plist fragment. The
+# export context plugin records what each export saw.
+package(default_visibility = ["//godot/platforms/private/tests/app_platform_selection:__subpackages__"])
+
+_PROJECT = "//godot/platforms/private/tests/app_platform_selection/fixtures/project_with_desktop_apps:"
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+# Android add-on: a Java library whose manifest entries reach the application.
+android_library(
+    name = "android_library",
+    srcs = ["android/src/org/example/addon/Addon.java"],
+    custom_package = "org.example.addon",
+    exports_manifest = 1,
+    manifest = "android/AndroidManifest.xml",
+    resource_files = ["android/res/values/strings.xml"],
+    tags = ["manual"],
+)
+
+# Stands in for a downloaded Godot Android plugin AAR.
+android_library(
+    name = "android_plugin_classes",
+    srcs = ["android/plugin/src/org/example/plugin/Plugin.java"],
+    custom_package = "org.example.plugin",
+    manifest = "android/plugin/AndroidManifest.xml",
+    tags = ["manual"],
+)
+
+py_binary(
+    name = "make_aar",
+    srcs = ["android/make_aar.py"],
+    main = "android/make_aar.py",
+    tags = ["manual"],
+)
+
+genrule(
+    name = "android_plugin_aar",
+    srcs = [
+        "android/plugin/AndroidManifest.xml",
+        ":libandroid_plugin_classes.jar",
+    ],
+    outs = ["android_plugin.aar"],
+    cmd = "$(execpath :make_aar) $(execpath android/plugin/AndroidManifest.xml) $(execpath :libandroid_plugin_classes.jar) $@",
+    tags = ["manual"],
+    tools = [":make_aar"],
+)
+
+aar_import(
+    name = "android_plugin",
+    aar = ":android_plugin.aar",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "android_addon",
+    srcs = ["main/libraries/android_addon.gd"],
+    directory = "main/libraries",
+    platform_deps = [
+        ":android_library",
+        ":android_plugin",
+    ],
+    strip_prefix = "main/libraries",
+    tags = ["manual"],
+)
+
+# iOS add-on: the linker flags keep the probed symbols when dead stripping is enabled.
+swift_library(
+    name = "ios_swift",
+    srcs = ["ios/Addon.swift"],
+    linkopts = ["-Wl,-u,_rules_godot_example_swift"],
+    module_name = "ExampleAddon",
+    tags = ["manual"],
+    alwayslink = True,
+)
+
+objc_library(
+    name = "ios_controller",
+    srcs = ["ios/controller.m"],
+    data = ["ios/addon_notice.txt"],
+    linkopts = ["-Wl,-u,_rules_godot_example_controllers"],
+    sdk_frameworks = ["GameController"],
+    tags = ["manual"],
+    alwayslink = True,
+)
+
+godot_addon(
+    name = "ios_addon",
+    srcs = ["main/libraries/ios_addon.gd"],
+    directory = "main/libraries",
+    infoplists = ["ios/addon.plist"],
+    platform_deps = [
+        ":ios_controller",
+        ":ios_swift",
+    ],
+    strip_prefix = "main/libraries",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = _PROJECT + "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        _PROJECT + "main",
+    ] + select({
+        "//godot/platforms:is_android": [":android_addon"],
+        "@platforms//os:ios": [":ios_addon"],
+        "//conditions:default": [],
+    }),
+)
+
+# The unchanged declaration serves desktop, Android and both iOS environments.
+godot_app(
+    name = "app",
+    application_id = "org.example.contract",
+    pack = ":pack",
+    tags = ["manual"],
+)

@@ -1,0 +1,181 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "zip_archive_lib",
+    srcs = ["zip_archive.py"],
+)
+
+py_binary(
+    name = "package_desktop",
+    srcs = ["package_desktop.py"],
+    deps = [
+        ":native_symbols_lib",
+        ":zip_archive_lib",
+    ],
+)
+
+py_library(
+    name = "package_desktop_lib",
+    srcs = ["package_desktop.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [
+        ":native_symbols_lib",
+        ":zip_archive_lib",
+    ],
+)
+
+py_binary(
+    name = "sign_macos",
+    srcs = ["sign_macos.py"],
+    deps = [":package_desktop_lib"],
+)
+
+py_binary(
+    name = "check_engine_version",
+    srcs = ["check_engine_version.py"],
+    deps = [":native_symbols_lib"],
+)
+
+py_library(
+    name = "check_engine_version_lib",
+    srcs = ["check_engine_version.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [":native_symbols_lib"],
+)
+
+py_binary(
+    name = "shell_overrides",
+    srcs = ["shell_overrides.py"],
+    deps = [":godot_shell_lib"],
+)
+
+py_binary(
+    name = "godot_shell",
+    srcs = ["godot_shell.py"],
+    deps = [":godot_shell_lib"],
+)
+
+py_library(
+    name = "godot_shell_lib",
+    srcs = [
+        "godot_shell.py",
+        "shell_android.py",
+        "shell_apple.py",
+        "shell_common.py",
+        "shell_overrides.py",
+    ],
+    data = glob(["templates/*.tpl"]),
+    visibility = ["//tools:ruleset"],
+    deps = ["//tools:template_lib"],
+)
+
+py_binary(
+    name = "compile_icon",
+    srcs = ["compile_icon.py"],
+)
+
+py_library(
+    name = "compile_icon_lib",
+    srcs = ["compile_icon.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_binary(
+    name = "package_android",
+    srcs = ["package_android.py"],
+    deps = [":zip_archive_lib"],
+)
+
+py_library(
+    name = "package_android_lib",
+    srcs = ["package_android.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [":zip_archive_lib"],
+)
+
+py_binary(
+    name = "native_symbols",
+    srcs = ["native_symbols.py"],
+)
+
+py_library(
+    name = "native_symbols_lib",
+    srcs = ["native_symbols.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_library(
+    name = "native_fixtures",
+    testonly = True,
+    srcs = ["native_fixtures.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_binary(
+    name = "package_symbols",
+    srcs = ["package_symbols.py"],
+    deps = [
+        ":native_symbols_lib",
+        ":package_desktop_lib",
+        ":zip_archive_lib",
+    ],
+)
+
+py_library(
+    name = "package_symbols_lib",
+    srcs = ["package_symbols.py"],
+    visibility = ["//tools:ruleset"],
+    deps = [
+        ":native_symbols_lib",
+        ":package_desktop_lib",
+        ":zip_archive_lib",
+    ],
+)
+
+py_binary(
+    name = "validate_artifacts",
+    srcs = ["validate_artifacts.py"],
+    deps = [
+        ":apple_bundle_lib",
+        "//tools:digest_lib",
+        "//tools:pck_lib",
+        "//tools/android:requirements_lib",
+    ],
+)
+
+py_library(
+    name = "validate_artifacts_lib",
+    srcs = ["validate_artifacts.py"],
+    deps = [
+        ":apple_bundle_lib",
+        "//tools:digest_lib",
+        "//tools:pck_lib",
+        "//tools/android:requirements_lib",
+    ],
+)
+
+py_library(
+    name = "apple_bundle_lib",
+    srcs = ["apple_bundle.py"],
+    visibility = ["//tools:ruleset"],
+    deps = ["//tools:digest_lib"],
+)
+
+py_library(
+    name = "sign_macos_lib",
+    srcs = ["sign_macos.py"],
+    deps = [":package_desktop_lib"],
+)
+
+py_binary(
+    name = "check_maven_minimums",
+    srcs = ["check_maven_minimums.py"],
+)
+
+py_library(
+    name = "check_maven_minimums_lib",
+    srcs = ["check_maven_minimums.py"],
+    visibility = ["//tools:ruleset"],
+)

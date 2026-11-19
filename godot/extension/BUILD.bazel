@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "defs.bzl",
+    "repositories.bzl",
+])
+
+# Text templates the rules and repository rules of this package expand.
+exports_files(glob(["*.tpl"]))

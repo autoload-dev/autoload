@@ -1,0 +1,30 @@
+load("//godot:defs.bzl", "godot_project", "godot_resources")
+
+# A project that treats every GDScript warning as an error, with a main scene, an imported
+# texture and a GdUnit suite.
+package(default_visibility = ["//godot/private/tests/strict_warnings:__pkg__"])
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.png",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "suites",
+    testonly = True,
+    srcs = ["suites/strict_test.gd"],
+    tags = ["manual"],
+    deps = ["@gdunit4"],
+)

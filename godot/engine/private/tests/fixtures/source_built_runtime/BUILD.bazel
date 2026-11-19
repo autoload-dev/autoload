@@ -1,0 +1,83 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/engine/private/tests:engines.bzl", "godot_source_binary")
+
+# A macOS app whose runtime is built from engine sources with the bazel_probe module, in the
+# shape a generated source-build repository declares it, while the registered prebuilt editor
+# imports and exports. The native graph is analyzed, never built.
+package(default_visibility = ["//godot/engine/private/tests:__pkg__"])
+
+_MODULE = "//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe"
+
+cc_library(
+    name = "engine_library",
+    srcs = [_MODULE + ":register_types.cpp"],
+    hdrs = [_MODULE + ":register_types.h"],
+    tags = ["manual"],
+)
+
+cc_binary(
+    name = "engine_binary",
+    linkstatic = True,
+    tags = ["manual"],
+    deps = [":engine_library"],
+)
+
+godot_source_binary(
+    name = "godot",
+    build = "build.txt",
+    canonical_version = "4.7.2",
+    cpu = "arm64",
+    customizations = {"custom_modules": ["bazel_probe"]},
+    hash = "hash.txt",
+    minimum_os = "11.0",
+    platform = "macos",
+    role = "runtime",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2.stable",
+    deps = [":engine_binary"],
+)
+
+godot_runtime_component(
+    name = "runtime_macos_arm64_release",
+    cpu = "arm64",
+    platform = "macos",
+    runtime = ":godot",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.source_built_runtime",
+    pack = ":pack",
+    tags = ["manual"],
+)

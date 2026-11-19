@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[sub_resource type="GDScript" id="GDScript_built_in"]
+script/source = "@tool
+extends Node
+
+const Guard = preload(\"res://guard/guard.gd\")
+
+static var marker: int = Guard.value(\"built_in.tscn static var\")
+
+@export_tool_button(\"Press\") var press: Callable = func() -> void: Guard.ran(\"built_in.tscn tool button\")
+
+
+static func _static_init() -> void:
+	Guard.ran(\"built_in.tscn _static_init\")
+
+
+func _init() -> void:
+	Guard.ran(\"built_in.tscn _init\")
+"
+
+[node name="Root" type="Node"]
+script = SubResource("GDScript_built_in")

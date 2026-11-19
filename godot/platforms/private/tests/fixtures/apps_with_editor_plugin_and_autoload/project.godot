@@ -1,0 +1,6 @@
+config_version=5
+
+[application]
+
+config/name="Apps with an editor plugin and an autoload"
+run/main_scene="res://main/main.tscn"

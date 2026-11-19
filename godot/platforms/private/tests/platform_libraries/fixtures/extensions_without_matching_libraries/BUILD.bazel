@@ -1,0 +1,73 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/platforms/private/tests/platform_libraries:library_fixtures.bzl", "cc_fixture")
+
+# Extensions without a library for an application's operating system, and projects that
+# disable extensions for the runtime, deliver none to the application.
+package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+
+genrule(
+    name = "extension_library",
+    outs = ["extension_library/libandroid_contract_fixture.so"],
+    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
+    tags = ["manual"],
+)
+
+cc_fixture(
+    name = "ios_library",
+    static_archive = True,
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "android_extension",
+    entry_symbol = "android_fixture_init",
+    library = select({
+        "@platforms//os:android": ":extension_library",
+        "//conditions:default": None,
+    }),
+    resource_path = "native/android.gdextension",
+    tags = ["manual"],
+)
+
+godot_extension(
+    name = "ios_extension",
+    entry_symbol = "ios_fixture_init",
+    library = select({
+        "@platforms//os:ios": ":ios_library",
+        "//conditions:default": None,
+    }),
+    resource_path = "native/ios.gdextension",
+    tags = ["manual"],
+)
+
+# No library for Android or iOS, as a desktop-only extension.
+godot_extension(
+    name = "desktop_extension",
+    entry_symbol = "desktop_fixture_init",
+    library = select({
+        "@platforms//os:linux": ":extension_library",
+        "//conditions:default": None,
+    }),
+    resource_path = "native/desktop.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "desktop_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "desktop_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":desktop_project",
+    tags = ["manual"],
+    deps = [":desktop_extension"],
+)
+
+filegroup(
+    name = "runtime",
+    tags = ["manual"],
+)

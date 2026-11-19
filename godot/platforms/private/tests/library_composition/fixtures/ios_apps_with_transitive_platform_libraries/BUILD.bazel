@@ -1,0 +1,451 @@
+load("@apple_support//rules:apple_genrule.bzl", "apple_genrule")
+load("@rules_apple//apple:apple.bzl", "apple_dynamic_xcframework_import", "apple_static_xcframework_import")
+load("@rules_apple//apple:resources.bzl", "apple_resource_bundle")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
+
+# iOS applications whose platform libraries, resources and Info.plist fragments arrive
+# through an add-on and an extension of the pack, an add-on the project names, the
+# application's platform_deps or an extension's platform_deps; an application of a prebuilt static XCFramework extension.
+package(default_visibility = ["//godot/platforms/private/tests/library_composition:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+cc_library(
+    name = "hello_support",
+    srcs = ["hello_support.cc"],
+    tags = ["manual"],
+)
+
+# An SDK among the extension's native dependencies that carries a resource bundle, as a
+# Swift package target carries its privacy manifest. The application bundles it although no
+# platform_deps names it.
+apple_resource_bundle(
+    name = "hello_sdk_resources",
+    resources = ["hello_sdk_notice.txt"],
+    tags = ["manual"],
+)
+
+objc_library(
+    name = "hello_sdk",
+    data = [":hello_sdk_resources"],
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+    # The tool configuration builds for the execution platform of editor actions, such as
+    # a remote Linux one, where the Objective-C SDK cannot build.
+    deps = [":hello_support"] + select({
+        "//godot:tool": [],
+        "//conditions:default": [":hello_sdk"],
+    }),
+)
+
+# The add-on reaches the application through the pack's deps only.
+godot_addon(
+    name = "addon",
+    srcs = ["main/libraries/ios_addon.gd"],
+    directory = "main/libraries",
+    infoplists = ["addon/addon.plist"],
+    platform_deps = [
+        ":controller",
+        ":swift",
+    ],
+    strip_prefix = "main/libraries",
+    tags = ["manual"],
+)
+
+# Retain the named probes even when a selected source-built engine enables dead stripping;
+# these link flags must propagate through the project.
+swift_library(
+    name = "swift",
+    srcs = ["addon/Addon.swift"],
+    linkopts = ["-Wl,-u,_rules_godot_example_swift"],
+    module_name = "ExampleAddon",
+    tags = ["manual"],
+    alwayslink = True,
+)
+
+objc_library(
+    name = "controller",
+    srcs = ["addon/controller.m"],
+    data = ["addon/addon_notice.txt"],
+    linkopts = ["-Wl,-u,_rules_godot_example_controllers"],
+    sdk_frameworks = ["GameController"],
+    tags = ["manual"],
+    alwayslink = True,
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":addon",
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.rulesgodot",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+# A prebuilt static XCFramework, as vendors ship extensions such as Sentry's, assembled
+# from hello.cc so it needs no download.
+cc_library(
+    name = "hello_archive",
+    srcs = [
+        "hello.cc",
+        "hello_support.cc",
+    ],
+    tags = ["manual"],
+)
+
+_SLICES = [
+    "ios-arm64",
+    "ios-arm64_x86_64-simulator",
+]
+
+genrule(
+    name = "hello_xcframework_files",
+    srcs = [":hello_archive"],
+    outs = ["HelloPrebuilt.xcframework/Info.plist"] + [
+        "HelloPrebuilt.xcframework/%s/libhello_prebuilt.a" % slice
+        for slice in _SLICES
+    ],
+    cmd = (
+        "$(execpath make_xcframework.sh) static " +
+        "$(RULEDIR)/HelloPrebuilt.xcframework $(execpaths :hello_archive)"
+    ),
+    tags = ["manual"],
+    tools = ["make_xcframework.sh"],
+)
+
+apple_static_xcframework_import(
+    name = "hello_xcframework",
+    tags = ["manual"],
+    xcframework_imports = [":hello_xcframework_files"],
+)
+
+# The C ABI library that editor actions load.
+cc_binary(
+    name = "libeditor_hello.so",
+    srcs = ["editor_hello.cc"],
+    linkshared = True,
+    tags = ["manual"],
+)
+
+# The import links the slice the target platform selects; Godot finds the entry symbol in
+# the executable.
+godot_extension(
+    name = "hello_prebuilt",
+    entry_symbol = "rules_godot_library_init",
+    library = select({
+        "@platforms//os:ios": ":hello_xcframework",
+        "//godot:tool": ":libeditor_hello.so",
+        "//conditions:default": None,
+    }),
+    resource_path = "native/hello_prebuilt.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "prebuilt_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "prebuilt_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":prebuilt_project",
+    tags = ["manual"],
+    deps = [
+        ":hello_prebuilt",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "prebuilt_app",
+    application_id = "org.example.rulesgodot.prebuilt",
+    pack = ":prebuilt_pack",
+    tags = ["manual"],
+)
+
+# A prebuilt dynamic XCFramework, as Sentry for Godot ships its iOS extension: the binary's
+# name has dots, which rules_cc takes for an extension of a library to link, and it loads a
+# framework of its own through @rpath. Assembled from hello.cc so it needs no download.
+cc_binary(
+    name = "libhello_dynamic_support.dylib",
+    srcs = ["hello_support.cc"],
+    linkshared = True,
+    tags = ["manual"],
+)
+
+cc_import(
+    name = "hello_dynamic_support_library",
+    shared_library = ":libhello_dynamic_support.dylib",
+    tags = ["manual"],
+)
+
+cc_binary(
+    name = "libhello_dynamic.dylib",
+    srcs = ["hello.cc"],
+    # Beside the frameworks it needs, as an application's Frameworks directory holds them.
+    linkopts = ["-Wl,-rpath,@loader_path/.."],
+    linkshared = True,
+    tags = ["manual"],
+    deps = [":hello_dynamic_support_library"],
+)
+
+# Rewriting install names takes Xcode's install_name_tool, so the action runs on macOS.
+[
+    apple_genrule(
+        name = target,
+        srcs = [library],
+        outs = ["%s.xcframework/Info.plist" % name] + [
+            "%s.xcframework/%s/%s.framework/%s" % (name, slice, name, file)
+            for slice in _SLICES
+            for file in [
+                name,
+                "Info.plist",
+            ]
+        ],
+        cmd = "$(execpath make_xcframework.sh) dynamic $(@D)/%s.xcframework %s $(execpath %s) %s" % (
+            name,
+            name,
+            library,
+            " ".join(dependencies),
+        ),
+        tags = ["manual"],
+        tools = ["make_xcframework.sh"],
+    )
+    for target, name, library, dependencies in [
+        (
+            "hello_dynamic_files",
+            "libhello_dynamic.ios.release",
+            ":libhello_dynamic.dylib",
+            ["HelloDynamicSupport=libhello_dynamic_support.dylib"],
+        ),
+        ("hello_dynamic_support_files", "HelloDynamicSupport", ":libhello_dynamic_support.dylib", []),
+    ]
+]
+
+# Godot loads the framework at run time, so nothing links it: bundle_only. Linking it would
+# also fail, since rules_cc rejects a library to link whose name has dots.
+apple_dynamic_xcframework_import(
+    name = "hello_dynamic_xcframework",
+    bundle_only = True,
+    tags = ["manual"],
+    xcframework_imports = [":hello_dynamic_files"],
+)
+
+# The framework the extension's framework loads, which the application embeds beside it.
+apple_dynamic_xcframework_import(
+    name = "hello_dynamic_support_xcframework",
+    bundle_only = True,
+    tags = ["manual"],
+    xcframework_imports = [":hello_dynamic_support_files"],
+)
+
+godot_extension(
+    name = "hello_dynamic",
+    entry_symbol = "rules_godot_library_init",
+    library = select({
+        "@platforms//os:ios": ":hello_dynamic_xcframework",
+        "//godot:tool": ":libeditor_hello.so",
+        "//conditions:default": None,
+    }),
+    platform_deps = select({
+        "@platforms//os:ios": [":hello_dynamic_support_xcframework"],
+        "//conditions:default": [],
+    }),
+    resource_path = "native/hello_dynamic.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "dynamic_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "dynamic_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":dynamic_project",
+    tags = ["manual"],
+    deps = [
+        ":hello_dynamic",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "dynamic_app",
+    application_id = "org.example.rulesgodot.dynamic",
+    pack = ":dynamic_pack",
+    tags = ["manual"],
+)
+
+# A platform resource that reaches applications through the application's platform_deps,
+# an add-on the project names, a loadable pack and an extension's platform_deps.
+objc_library(
+    name = "composition_resources",
+    data = ["composition_notice.txt"],
+    tags = ["manual"],
+    deps = [":controller"],
+)
+
+godot_cc_extension(
+    name = "composition_source_extension",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    platform_deps = select({
+        "@platforms//os:ios": [":composition_resources"],
+        "//conditions:default": [],
+    }),
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+    deps = [":hello_support"],
+)
+
+godot_project(
+    name = "composition_base_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "composition_base_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":composition_base_project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_addon(
+    name = "composition_addon",
+    platform_deps = [":composition_resources"],
+    tags = ["manual"],
+)
+
+# The project names the add-on; no content of the pack uses it.
+godot_project(
+    name = "composition_transitive_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":composition_addon"],
+)
+
+godot_pack(
+    name = "composition_transitive_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":composition_transitive_project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":main",
+    ],
+)
+
+godot_project(
+    name = "composition_source_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "composition_source_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":composition_source_project",
+    tags = ["manual"],
+    deps = [
+        ":composition_source_extension",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "composition_base",
+    application_id = "org.example.composition.base",
+    pack = ":composition_base_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "composition_direct",
+    application_id = "org.example.composition.direct",
+    pack = ":composition_base_pack",
+    platform_deps = [":composition_resources"],
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "composition_transitive",
+    application_id = "org.example.composition.transitive",
+    pack = ":composition_transitive_pack",
+    tags = ["manual"],
+)
+
+# The library arrives with packs the application may load later: the add-on one uses and
+# the one the other's project names.
+godot_app(
+    name = "composition_loadable",
+    application_id = "org.example.composition.loadable",
+    loadable_packs = [
+        ":composition_transitive_pack",
+        ":pack",
+    ],
+    pack = ":composition_base_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "composition_source",
+    application_id = "org.example.composition.source",
+    pack = ":composition_source_pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "composition_app_only",
+    application_id = "org.example.composition.apponly",
+    pack = ":composition_base_pack",
+    platform_resources = ["app_notice.txt"],
+    tags = ["manual"],
+)

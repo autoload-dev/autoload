@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Bazelisk runs this script in place of Bazel in this repository's modules and passes the
+# Bazel binary as BAZEL_REAL. RULES_GODOT_BAZEL_FLAGS, whitespace-separated Bazel flags, are
+# added after the command name of every command that reads build options, so mise tasks, hk
+# and the build tools that run Bazel use them per invocation, as with
+# `RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>`. Flags on the command line come
+# after them and win. Without the variable, this script only runs Bazel.
+#
+# Bazelisk also puts this directory first on PATH, so Bazel commands that build tools run in
+# other workspaces, such as a generated consumer, reach this script as well. Those workspaces
+# do not define this repository's configs, so the flags are added only in a workspace whose
+# own tools/bazel is this script.
+set -eo pipefail
+
+arguments=("$@")
+read -r -a flags <<<"${RULES_GODOT_BAZEL_FLAGS:-}"
+
+# The workspace is the nearest directory with a boundary file, as for Bazel itself.
+workspace="$PWD"
+while [[ -n "$workspace" ]]; do
+    for boundary in MODULE.bazel REPO.bazel WORKSPACE.bazel WORKSPACE; do
+        [[ -f "$workspace/$boundary" ]] && break 2
+    done
+    workspace="${workspace%/*}"
+done
+
+if [[ ${#flags[@]} -gt 0 && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]]; then
+    # The command is the first argument that is not a startup option.
+    for index in "${!arguments[@]}"; do
+        if [[ "${arguments[$index]}" != -* ]]; then
+            case "${arguments[$index]}" in
+                build | test | run | coverage | cquery | aquery | info)
+                    arguments=(
+                        "${arguments[@]:0:index+1}"
+                        "${flags[@]}"
+                        "${arguments[@]:index+1}"
+                    )
+                    ;;
+            esac
+            break
+        fi
+    done
+fi
+exec "$BAZEL_REAL" "${arguments[@]}"

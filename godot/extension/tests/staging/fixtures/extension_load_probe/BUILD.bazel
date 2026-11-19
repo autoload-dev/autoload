@@ -1,0 +1,42 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A project whose pack's export loads a C ABI extension.
+package(default_visibility = ["//godot/extension/tests/staging:__pkg__"])
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+# The check script; the icon gives the project an import unit with a file to import.
+godot_resources(
+    name = "loaded",
+    srcs = [
+        "main/icon.svg",
+        "main/loaded.gd",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "enabled",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+# The export's editor loads the extension editor library; the pack carries the runtime
+# descriptor.
+godot_pack(
+    name = "enabled_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":enabled",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":loaded",
+    ],
+)

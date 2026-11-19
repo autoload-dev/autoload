@@ -1,0 +1,84 @@
+load("//godot/engine/private/tests:engines.bzl", "prebuilt_runtime")
+load("//godot/platforms/private/tests:backends.bzl", "godot_linux_application")
+load("//godot/private/tests:packaging.bzl", "fixture_pack")
+
+# Prebuilt desktop runtimes over a shell stub and packs without Godot facts.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+exports_files(["runtime.sh"])
+
+fixture_pack(
+    name = "pack",
+    tags = ["manual"],
+)
+
+# Exported by a newer editor than the runtimes below.
+fixture_pack(
+    name = "beta_editor_pack",
+    tags = ["manual"],
+    version = "4.8.0-beta1",
+)
+
+prebuilt_runtime(
+    name = "linux_runtime",
+    binary = "runtime.sh",
+    cpu = "x86_64",
+    data = ["runtime_support.txt"],
+    platform = "linux",
+    tags = ["manual"],
+    version = "4.7.2",
+)
+
+prebuilt_runtime(
+    name = "macos_runtime",
+    binary = "runtime.sh",
+    bundle_files = {"runtime_support.txt": "Contents/Resources/runtime_support.txt"},
+    cpu = "arm64",
+    platform = "macos",
+    tags = ["manual"],
+    version = "4.7.2",
+)
+
+# A runtime with support files only.
+prebuilt_runtime(
+    name = "library_runtime",
+    cpu = "x86_64",
+    data = ["runtime_support.txt"],
+    platform = "linux",
+    tags = ["manual"],
+    version = "4.7.2",
+)
+
+prebuilt_runtime(
+    name = "debug_runtime",
+    binary = "runtime.sh",
+    cpu = "x86_64",
+    platform = "linux",
+    tags = ["manual"],
+    variant = "debug",
+    version = "4.7.2",
+)
+
+prebuilt_runtime(
+    name = "beta_runtime",
+    binary = "runtime.sh",
+    cpu = "x86_64",
+    platform = "linux",
+    tags = ["manual"],
+    version = "4.8.0-beta1",
+)
+
+# The runtime file without the runtime provider.
+filegroup(
+    name = "raw_runtime",
+    srcs = ["runtime.sh"],
+    tags = ["manual"],
+)
+
+godot_linux_application(
+    name = "linux_app",
+    app_name = "Game",
+    pack = ":pack",
+    runtime = ":linux_runtime",
+    tags = ["manual"],
+)

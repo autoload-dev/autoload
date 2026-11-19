@@ -1,0 +1,218 @@
+"""
+What a godot_cc_extension builds from its attributes.
+
+A select() over //godot:tool in deps builds the tool configuration's library from other
+dependencies; the shared library finds its shared dependencies beside it; headers reach the
+archive, which the shared library links; the shared library exports only the entry symbol, on
+macOS through the linker's export list and on Android through a version script;
+descriptor attributes and data reach the extension and its tool view; minimum
+operating-system versions reach GodotExtensionInfo.
+"""
+
+load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
+load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("@rules_testing//lib:truth.bzl", "matching")
+load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
+load("//godot:providers.bzl", "GodotExtensionInfo")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/private/tests:toolchains.bzl", "own_toolchains")
+load(":descriptor_tests.bzl", "descriptor_contents")
+
+_SMALL = {"size": "small"}
+
+# Android analysis needs the SDK and NDK toolchains; without an SDK the test is skipped.
+_ANDROID = {
+    "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
+} | own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
+_ANDROID_SDK = {"target_compatible_with": [Label("//godot/platforms/private/tests:requires_android_sdk")]}
+
+def _extension(name, **kwargs):
+    godot_cc_extension(
+        name = name,
+        srcs = ["static_fixture.cc"],
+        entry_symbol = "archive_fixture_init",
+        tags = ["manual"],
+        **kwargs
+    )
+
+def _links(target):
+    """The input paths of a target's one CppLink action."""
+    links = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "CppLink"]
+    return struct(
+        count = len(links),
+        inputs = [file.path for file in links[0].inputs.to_list()] if links else [],
+        argv = links[0].argv if links else [],
+    )
+
+def _test_tool_branch_of_deps_builds_the_tool_library(name):
+    _extension(
+        name + "_extension",
+        deps = select({
+            "//godot:tool": [":editor_only_dependency"],
+            "//conditions:default": [":runtime_only_dependency"],
+        }),
+    )
+    for configuration, settings, linked, unlinked in [
+        ("tool", {str(Label("//godot/private/config:tool")): True, str(Label("//godot:variant")): "editor"}, "editor_only_dependency", "runtime_only_dependency"),
+        ("runtime", {}, "runtime_only_dependency", "editor_only_dependency"),
+    ]:
+        analysis_test(
+            name = name + "_" + configuration,
+            target = "lib%s_extension_native.so" % name,
+            impl = _tool_branch_of_deps_builds_the_tool_library,
+            attrs = {"linked": attr.string(), "unlinked": attr.string()},
+            attr_values = _SMALL | {"linked": linked, "unlinked": unlinked},
+            config_settings = settings,
+        )
+    native.test_suite(name = name, tests = [name + "_tool", name + "_runtime"])
+
+def _tool_branch_of_deps_builds_the_tool_library(env, target):
+    links = _links(target)
+    env.expect.that_int(links.count, expr = "number of CppLink actions").equals(1)
+
+    # Paths, not names: macOS links the dependencies' archives, Linux their objects under
+    # _objs/<library>/.
+    for dependency, expected in [(env.ctx.attr.linked, True), (env.ctx.attr.unlinked, False)]:
+        env.expect.where(dependency = dependency).that_bool(
+            bool([path for path in links.inputs if dependency in path]),
+            expr = dependency + " linked",
+        ).equals(expected)
+
+def _test_tool_view_is_the_tool_configuration(name):
+    _extension(name + "_extension")
+    analysis_test(
+        name = name,
+        target = name + "_extension.tool",
+        impl = _tool_view_is_the_tool_configuration,
+        attr_values = _SMALL,
+    )
+
+def _tool_view_is_the_tool_configuration(env, target):
+    tags = target[GodotExtensionInfo].library.tags
+    env.expect.that_bool(tags.endswith(".editor"), expr = "tool view tags " + tags).equals(True)
+
+def _test_shared_library_finds_its_dependencies_beside_it(name):
+    _extension(name + "_extension")
+    analysis_test(
+        name = name,
+        target = "lib%s_extension_native.so" % name,
+        impl = _shared_library_finds_its_dependencies_beside_it,
+        attr_values = _SMALL,
+    )
+
+def _shared_library_finds_its_dependencies_beside_it(env, target):
+    argv = _links(target).argv
+    env.expect.that_bool(
+        "-Wl,-rpath,$ORIGIN" in argv or "-Wl,-rpath,@loader_path" in argv,
+        expr = "the link has a loader-relative run path",
+    ).equals(True)
+
+def _test_shared_library_exports_only_the_entry_symbol(name):
+    _extension(name + "_extension")
+    analysis_test(
+        name = name + "_host",
+        target = "lib%s_extension_native.so" % name,
+        impl = _shared_library_exports_only_the_entry_symbol,
+        attr_values = _SMALL,
+    )
+    analysis_test(
+        name = name + "_android",
+        target = "lib%s_extension_native.so" % name,
+        impl = _shared_library_exports_only_the_entry_symbol,
+        attr_values = _SMALL | _ANDROID_SDK,
+        config_settings = _ANDROID,
+    )
+    native.test_suite(name = name, tests = [name + "_host", name + "_android"])
+
+def _shared_library_exports_only_the_entry_symbol(env, target):
+    links = _links(target)
+    scripts = [path for path in links.inputs if path.endswith(".exports.lds")]
+    if "-Wl,-exported_symbol,_archive_fixture_init" in links.argv:
+        env.expect.that_collection(scripts).has_size(0)
+        return
+    env.expect.that_collection(scripts).has_size(1)
+    env.expect.that_collection(links.argv).contains("-Wl,--version-script," + scripts[0])
+
+def _test_hdrs_reach_the_archive_the_shared_library_links(name):
+    native.genrule(
+        name = name + "_header",
+        outs = [name + "_fixture.h"],
+        cmd = "echo '#pragma once' > $@",
+        tags = ["manual"],
+    )
+    _extension(name + "_extension", hdrs = [":" + name + "_header"])
+    analysis_test(
+        name = name,
+        targets = {
+            "archive": name + "_extension.native",
+            "shared": "lib%s_extension_native.so" % name,
+        },
+        impl = _hdrs_reach_the_archive_the_shared_library_links,
+        attrs = {"header": attr.string()},
+        attr_values = _SMALL | {"header": name + "_fixture.h"},
+    )
+
+# Compile actions discover their headers at execution, so analysis sees the headers in the
+# archive's hdrs; the shared library compiles nothing and links the archive.
+def _hdrs_reach_the_archive_the_shared_library_links(env, targets):
+    files = [
+        file.basename
+        for dependency in targets.archive[TestingAspectInfo].attrs.hdrs
+        for file in dependency[DefaultInfo].files.to_list()
+    ]
+    env.expect.that_collection(files).contains(env.ctx.attr.header)
+    env.expect.that_collection(
+        [str(dependency.label) for dependency in targets.shared[TestingAspectInfo].attrs.deps],
+    ).contains_exactly([str(targets.archive.label)])
+
+def _test_descriptor_attributes_reach_both_extensions(name):
+    _extension(
+        name + "_extension",
+        compatibility_minimum = "4.8.0",
+        data = ["dependency_fixture.txt"],
+        reloadable = True,
+    )
+    analysis_test(
+        name = name,
+        targets = {
+            "editor": name + "_extension.tool",
+            "runtime": name + "_extension",
+        },
+        impl = _descriptor_attributes_reach_both_extensions,
+        attr_values = _SMALL,
+    )
+
+def _descriptor_attributes_reach_both_extensions(env, targets):
+    for extension in ["editor", "runtime"]:
+        contents = descriptor_contents(getattr(targets, extension))
+        env.expect.where(extension = extension).that_collection(contents).has_size(1)
+        for content in contents:
+            lines = env.expect.where(extension = extension).that_collection(content.split("\n"))
+            lines.contains_at_least(['compatibility_minimum = "4.8.0"', "reloadable = true"])
+            lines.contains_predicate(matching.contains('/dependency_fixture.txt": ""}'))
+
+def _test_minimum_os_versions_reach_extension_info(name):
+    _extension(name + "_extension", minimum_os_versions = {"macos": "13.0"})
+    analysis_test(
+        name = name,
+        target = name + "_extension",
+        impl = _minimum_os_versions_reach_extension_info,
+        attr_values = _SMALL,
+    )
+
+def _minimum_os_versions_reach_extension_info(env, target):
+    env.expect.that_dict(target[GodotExtensionInfo].minimum_os_versions).contains_exactly({"macos": "13.0"})
+
+def cc_extension_test_suite(name):
+    test_suite(
+        name = name,
+        tests = [
+            _test_tool_branch_of_deps_builds_the_tool_library,
+            _test_tool_view_is_the_tool_configuration,
+            _test_shared_library_finds_its_dependencies_beside_it,
+            _test_shared_library_exports_only_the_entry_symbol,
+            _test_hdrs_reach_the_archive_the_shared_library_links,
+            _test_descriptor_attributes_reach_both_extensions,
+            _test_minimum_os_versions_reach_extension_info,
+        ],
+    )

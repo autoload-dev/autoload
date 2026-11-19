@@ -1,0 +1,11 @@
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A minimal C ABI extension built for the host, outside the projects that use it.
+package(default_visibility = ["//godot/extension/tests:__subpackages__"])
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+)

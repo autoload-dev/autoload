@@ -1,0 +1,58 @@
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+
+# Two macOS applications that differ only in application_id, packaging one pack with an
+# add-on whose editor part registers an export plugin, and whose project autoloads a script.
+package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/configuration.gd",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "export_context",
+    editor_srcs = [
+        "addons/export_context/export_context.gd",
+        "addons/export_context/plugin.cfg",
+        "addons/export_context/plugin.gd",
+    ],
+    strip_prefix = "addons/export_context",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    autoloads = {"State": "*res://main/configuration.gd"},
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":export_context",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.first",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+godot_app(
+    name = "other_app",
+    application_id = "org.example.second",
+    pack = ":pack",
+    tags = ["manual"],
+)

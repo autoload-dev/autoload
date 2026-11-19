@@ -1,0 +1,152 @@
+load("//godot:defs.bzl", "godot_addon", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_extension")
+
+# Content that uses an add-on, which needs a second one and brings an extension, and a
+# project that names an editor-only add-on; beside them add-on declarations that fail.
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# Files the analysis tests place in the add-ons and projects they arrange.
+exports_files(
+    [
+        "inventory/inventory.gd",
+        "project.godot",
+        "tool/plugin.gd",
+    ],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)
+
+godot_addon(
+    name = "utility",
+    srcs = [
+        "utility/utility.gd",
+        "utility/utility_icon.svg",
+    ],
+    autoloads = {"Utility": "*res://addons/utility/utility.gd"},
+    strip_prefix = "utility",
+    tags = ["manual"],
+)
+
+# An extension without a library in any configuration: only its descriptor's place counts.
+godot_extension(
+    name = "inventory_native",
+    entry_symbol = "inventory_init",
+    resource_path = "addons/inventory/inventory.gdextension",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "inventory",
+    srcs = [
+        "inventory/icon.svg",
+        "inventory/inventory.gd",
+    ],
+    autoloads = {"Inventory": "*res://addons/inventory/inventory.gd"},
+    settings = {"inventory/slots": "12"},
+    strip_prefix = "inventory",
+    tags = ["manual"],
+    deps = [
+        ":inventory_native",
+        ":utility",
+    ],
+)
+
+# Editor-only: the project names it, since no content uses it.
+godot_addon(
+    name = "tool",
+    editor_srcs = [
+        "tool/plugin.cfg",
+        "tool/plugin.gd",
+        "tool/tool_icon.svg",
+    ],
+    settings = {"tool/enabled": "true"},
+    strip_prefix = "tool",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = ["main/main.gd"],
+    tags = ["manual"],
+    deps = [":inventory"],
+)
+
+godot_resources(
+    name = "other",
+    srcs = ["main/other.gd"],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":tool"],
+)
+
+# Declarations analysis rejects.
+godot_addon(
+    name = "outside_directory",
+    srcs = ["main/main.gd"],
+    strip_prefix = "inventory",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "in_both_parts",
+    srcs = ["tool/plugin.gd"],
+    editor_srcs = [
+        "tool/plugin.cfg",
+        "tool/plugin.gd",
+    ],
+    strip_prefix = "tool",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "split_sidecar",
+    srcs = ["tool/plugin.gd.uid"],
+    editor_srcs = [
+        "tool/plugin.cfg",
+        "tool/plugin.gd",
+    ],
+    strip_prefix = "tool",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "plugin_in_runtime_part",
+    srcs = ["tool/plugin.cfg"],
+    strip_prefix = "tool",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "editor_part_without_plugin",
+    editor_srcs = ["tool/plugin.gd"],
+    strip_prefix = "tool",
+    tags = ["manual"],
+)
+
+# An autoload naming a file of no runtime part this add-on has or needs, and one naming
+# a file of the runtime part of an add-on it needs.
+godot_addon(
+    name = "autoload_outside_runtime_part",
+    autoloads = {"Inventory": "*res://addons/inventory/inventory.gd"},
+    tags = ["manual"],
+    deps = [":utility"],
+)
+
+godot_addon(
+    name = "autoload_of_needed_addon",
+    autoloads = {"Shared": "res://addons/utility/utility.gd"},
+    tags = ["manual"],
+    deps = [":utility"],
+)
+
+# An extension outside the add-on's directory, which is the add-on's like any other.
+godot_addon(
+    name = "foreign_extension",
+    directory = "addons/other",
+    tags = ["manual"],
+    deps = [":inventory_native"],
+)

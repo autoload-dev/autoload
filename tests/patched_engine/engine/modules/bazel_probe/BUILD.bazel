@@ -1,0 +1,5 @@
+# The bazel_probe engine module; MODULE.bazel adds it to the source recipes through this
+# config.py, and the recipe copies the whole directory.
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["config.py"])

@@ -1,0 +1,358 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_test")
+load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+load("//godot/testing:artifact_tests.bzl", "android_bundle_test", "ios_app_test")
+load(":app_outputs_tests.bzl", "app_outputs_test_suite")
+
+_DESKTOP = "//godot/platforms/private/tests/app_platform_selection/fixtures/project_with_desktop_apps:"
+
+_SELECTING = "//godot/platforms/private/tests/app_platform_selection/fixtures/app_selecting_platform_libraries:"
+
+_BOTH_CPUS = "//godot/platforms/private/tests/app_platform_selection/fixtures/export_platforms_with_both_cpus:"
+
+_PLATFORMS = "//godot/platforms:"
+
+_ANDROID_SDK = ["//godot/platforms/private/tests:requires_android_sdk"]
+
+_MACOS = ["@platforms//os:macos"]
+
+_LINUX = ["@platforms//os:linux"]
+
+_HOST_DESKTOP = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+# The Linux export platform of the host's CPU, which the host's C/C++ toolchain targets.
+_LINUX_PLATFORM = select({
+    "@platforms//cpu:aarch64": _PLATFORMS + "linux_arm64",
+    "//conditions:default": _PLATFORMS + "linux_x86_64",
+})
+
+_LINUX_CPU = select({
+    "@platforms//cpu:aarch64": ["arm64"],
+    "//conditions:default": ["x86_64"],
+})
+
+# extra_toolchains takes labels, so the hub's one registered toolchain rather than :all.
+_SOURCE_IOS = ["@godot_source_build_ios//toolchains:runtime_ios_arm64_simulator_release.toolchain"]
+
+app_outputs_test_suite(name = "app_outputs_test_suite")
+
+# Run test: the start pack runs its main scene, which checks the project and the CPU.
+godot_test(
+    name = "start_pack_runs_main_scene_test",
+    size = "small",
+    pack = _DESKTOP + "start_pack",
+)
+
+# Run test: the host's exported application runs its start pack's main scene.
+py_test(
+    name = "host_app_runs_start_pack_test",
+    size = "small",
+    srcs = ["host_app_test.py"],
+    args = ["$(rootpath %sbundle)" % _DESKTOP],
+    data = [_DESKTOP + "bundle"],
+    main = "host_app_test.py",
+    target_compatible_with = _HOST_DESKTOP,
+)
+
+# Run test: in the editor variant the application runs its start pack's project from
+# sources with the editor binary, with the launcher's options and Godot's arguments, on
+# the test's own target platform.
+configured_outputs(
+    name = "editor_app",
+    runfiles = True,
+    tags = ["manual"],
+    target = _DESKTOP + "app",
+    variant = "editor",
+)
+
+py_test(
+    name = "editor_app_runs_project_from_sources_test",
+    size = "small",
+    srcs = ["editor_app_test.py"],
+    args = ["$(rootpaths :editor_app)"],
+    data = [":editor_app"],
+    main = "editor_app_test.py",
+    target_compatible_with = _HOST_DESKTOP,
+)
+
+# Build-output test: the start pack exported for an iOS device has no Simulator feature,
+# exported for the Simulator it has. Both exports are named start_pack.pck, so each is
+# copied to a name of its own.
+[
+    [
+        in_export_platform(
+            name = "ios_start_pack_%s_export" % export_platform,
+            export_platform = _PLATFORMS + export_platform,
+            tags = ["manual"],
+            deps = [_DESKTOP + "start_pack"],
+        ),
+        genrule(
+            name = "ios_start_pack_" + export_platform,
+            srcs = [":ios_start_pack_%s_export" % export_platform],
+            outs = ["ios_start_pack_%s.pck" % export_platform],
+            cmd = "cp $< $@",
+            tags = ["manual"],
+        ),
+    ]
+    for export_platform in [
+        "ios_arm64",
+        "ios_sim_arm64",
+    ]
+]
+
+py_test(
+    name = "ios_simulator_feature_follows_environment_test",
+    size = "small",
+    srcs = ["ios_environment_test.py"],
+    args = [
+        "$(rootpath :ios_start_pack_ios_arm64)",
+        "$(rootpath :ios_start_pack_ios_sim_arm64)",
+    ],
+    data = [
+        ":ios_start_pack_ios_arm64",
+        ":ios_start_pack_ios_sim_arm64",
+    ],
+    main = "ios_environment_test.py",
+    deps = ["//tools:pck_lib"],
+)
+
+# Build-output tests: one application declaration, built for each operating system and
+# configuration, contains only the selected platform's add-on libraries and resources, the
+# engine and extension libraries of its CPUs, and the feature tags of its environment.
+_DESKTOP_APPS = [
+    ("linux", _LINUX_PLATFORM, _LINUX_CPU, _LINUX),
+    (
+        "macos",
+        _PLATFORMS + "macos_arm64",
+        ["arm64"],
+        _MACOS,
+    ),
+]
+
+[
+    configured_outputs(
+        name = "%s_selected_app" % operating_system,
+        output_group = "archive",
+        platform = platform,
+        tags = ["manual"],
+        target = _SELECTING + "app",
+    )
+    for operating_system, platform, _, _ in _DESKTOP_APPS
+]
+
+[
+    py_test(
+        name = "%s_app_contains_selected_platform_libraries_test" % operating_system,
+        size = "small",
+        srcs = ["selected_app_test.py"],
+        args = [
+            "--operating-system=" + operating_system,
+            "--cpus",
+        ] + cpus + ["$(rootpaths :%s_selected_app)" % operating_system],
+        data = [":%s_selected_app" % operating_system],
+        main = "selected_app_test.py",
+        target_compatible_with = compatible,
+        deps = [
+            "//tools:pck_lib",
+            "//tools/platforms:apple_bundle_lib",
+            "//tools/platforms:native_symbols_lib",
+        ],
+    )
+    for operating_system, _, cpus, compatible in _DESKTOP_APPS
+]
+
+# Android: an APK for arm64, and an App Bundle for both CPUs on an export platform that
+# inherits a base platform.
+[
+    configured_outputs(
+        name = "%s_selected_app" % name,
+        android = True,
+        android_format = android_format,
+        platform = platform,
+        tags = ["manual"],
+        target = _SELECTING + "app",
+    )
+    for name, platform, android_format in [
+        (
+            "android_apk",
+            _PLATFORMS + "android_arm64",
+            "apk",
+        ),
+        (
+            "android_dual_abi_bundle",
+            _BOTH_CPUS + "common_android",
+            "aab",
+        ),
+    ]
+]
+
+[
+    py_test(
+        name = "%s_contains_selected_platform_libraries_test" % name,
+        size = "small",
+        srcs = ["selected_app_test.py"],
+        args = [
+            "--operating-system=android",
+            "--cpus=" + cpus,
+            "--aapt=$(rootpath @android_toolchains//:aapt)",
+            "$(rootpaths :%s_selected_app)" % name,
+        ],
+        data = [
+            ":%s_selected_app" % name,
+            "@android_toolchains//:aapt",
+        ],
+        main = "selected_app_test.py",
+        target_compatible_with = _ANDROID_SDK,
+        deps = [
+            "//tools:pck_lib",
+            "//tools/platforms:apple_bundle_lib",
+            "//tools/platforms:native_symbols_lib",
+        ],
+    )
+    for name, cpus in [
+        ("android_apk", "arm64"),
+        ("android_dual_abi_bundle", "arm64,x86_64"),
+    ]
+]
+
+# iOS Simulator: the prebuilt x86_64 engine in release and debug, the source-built arm64
+# engine, and both CPUs from the two engines.
+configured_outputs(
+    name = "ios_simulator_selected_app",
+    platform = _PLATFORMS + "ios_sim_x86_64",
+    tags = ["manual"],
+    target = _SELECTING + "app",
+)
+
+configured_outputs(
+    name = "ios_simulator_debug_selected_app",
+    platform = _PLATFORMS + "ios_sim_x86_64",
+    tags = ["manual"],
+    target = _SELECTING + "app",
+    variant = "debug",
+)
+
+configured_outputs(
+    name = "ios_source_simulator_selected_app",
+    extra_toolchains = _SOURCE_IOS,
+    platform = _PLATFORMS + "ios_sim_arm64",
+    tags = ["manual"],
+    target = _SELECTING + "app",
+)
+
+configured_outputs(
+    name = "ios_dual_simulator_selected_app",
+    extra_toolchains = _SOURCE_IOS,
+    platform = _BOTH_CPUS + "simulator_distribution",
+    tags = ["manual"],
+    target = _SELECTING + "app",
+)
+
+[
+    py_test(
+        name = "%s_app_contains_selected_platform_libraries_test" % name,
+        size = "small",
+        srcs = ["selected_app_test.py"],
+        args = [
+            "--operating-system=ios",
+            "--environment=simulator",
+            "--cpus=" + cpus,
+            "$(rootpaths :%s_selected_app)" % name,
+        ],
+        data = [":%s_selected_app" % name],
+        main = "selected_app_test.py",
+        tags = tags,
+        target_compatible_with = _MACOS,
+        deps = [
+            "//tools:pck_lib",
+            "//tools/platforms:apple_bundle_lib",
+            "//tools/platforms:native_symbols_lib",
+        ],
+    )
+    for name, cpus, tags in [
+        ("ios_simulator", "x86_64", []),
+        ("ios_simulator_debug", "x86_64", []),
+        (
+            "ios_source_simulator",
+            "arm64",
+            [
+                "manual",
+                "source_engine",
+            ],
+        ),
+        (
+            "ios_dual_simulator",
+            "arm64,x86_64",
+            [
+                "manual",
+                "source_engine",
+            ],
+        ),
+    ]
+]
+
+# Build-output test: the App Bundle for both Android CPUs declares the SDK versions, and its
+# debug symbols are those of the extension libraries it packages for each CPU.
+[
+    configured_outputs(
+        name = "android_dual_abi_bundle_sdk_%s" % fixture.replace(".", "_"),
+        android = True,
+        android_format = "aab",
+        platform = _BOTH_CPUS + "common_android",
+        tags = ["manual"],
+        target = _SELECTING + fixture,
+    )
+    for fixture in [
+        "app",
+        "app.debug_symbols",
+    ]
+]
+
+android_bundle_test(
+    name = "android_dual_abi_bundle_declares_sdk_versions_test",
+    size = "small",
+    application_id = "org.example.contract",
+    bundle = ":android_dual_abi_bundle_sdk_app",
+    bundletool = "@bundletool//file",
+    debug_symbols = ":android_dual_abi_bundle_sdk_app_debug_symbols",
+    manifest_entries = [
+        'android:minSdkVersion="24"',
+        'android:targetSdkVersion="36"',
+    ],
+    symbol_libraries = [
+        "arm64-v8a/libhello_native.so",
+        "x86_64/libhello_native.so",
+    ],
+    target_compatible_with = _ANDROID_SDK,
+)
+
+# Build-output test: the release iOS Simulator application's .debug_symbols companion has
+# a dSYM with the UUIDs of the stripped executable.
+[
+    configured_outputs(
+        name = "ios_release_symbols_%s" % fixture.replace(".", "_"),
+        apple_generate_dsym = True,
+        compilation_mode = "opt",
+        objc_enable_binary_stripping = True,
+        platform = _PLATFORMS + "ios_sim_x86_64",
+        tags = ["manual"],
+        target = _SELECTING + fixture,
+    )
+    for fixture in [
+        "app",
+        "app.debug_symbols",
+    ]
+]
+
+ios_app_test(
+    name = "ios_release_dsym_matches_executable_test",
+    size = "small",
+    app = ":ios_release_symbols_app",
+    debug_symbols = ":ios_release_symbols_app_debug_symbols",
+    target_compatible_with = _MACOS,
+)

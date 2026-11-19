@@ -1,0 +1,36 @@
+load("@rules_godot//godot:defs.bzl", "godot_resources")
+load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "PlatformPathsTest.gd",
+        "PlatformPathsTest.gd.uid",
+    ],
+    prefix = "integration",
+    visibility = ["//addons/platform_paths/tests:__pkg__"],
+    deps = [
+        ":fixtures",
+        "//addons/platform_paths",
+        "@gdunit4",
+    ],
+)
+
+godot_gdunit_test(
+    name = "integration",
+    size = "small",
+    project = "//addons/platform_paths/tests:tests",
+    suites = [":suites"],
+)
+
+godot_resources(
+    name = "fixtures",
+    srcs = [
+        "fixtures/documents-only-user-dirs.dirs.tpl",
+        "fixtures/malformed-user-dirs.dirs.tpl",
+        "fixtures/user-dirs.dirs.tpl",
+    ],
+    prefix = "integration",
+)

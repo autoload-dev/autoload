@@ -1,0 +1,8 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "engine_test",
+    size = "small",
+    srcs = ["engine_test.py"],
+    deps = ["//tools/engine:support"],
+)

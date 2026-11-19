@@ -1,0 +1,114 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+
+# A project naming an add-on whose importer converts .md files, with a unit with an own .md
+# file, a texture unit and a unit with an .md file only among its import inputs; beside it a
+# project that does not name the add-on.
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# The importer's add-on, with a setting its importer reads at import time.
+godot_addon(
+    name = "md_importer",
+    editor_srcs = [
+        "md_importer/icon.svg",
+        "md_importer/importer.gd",
+        "md_importer/plugin.cfg",
+        "md_importer/plugin.gd",
+    ],
+    import_settings = ["md_importer/heading"],
+    importer_suffixes = ["md"],
+    settings = {
+        "md_importer/heading": '"#"',
+        "md_importer/footer": '"--"',
+    },
+    strip_prefix = "md_importer",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "notes",
+    srcs = ["main/notes.md"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "textures",
+    srcs = ["main/icon.svg"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "md_input",
+    srcs = ["main/input.md"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "with_md_input",
+    srcs = ["main/picture.svg"],
+    import_inputs = [":md_input"],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":md_importer"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":notes",
+        ":textures",
+        ":with_md_input",
+    ],
+)
+
+# A pack without an .md file.
+godot_pack(
+    name = "texture_pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":textures"],
+)
+
+# Resources that use the importer's add-on, and a project that does not name it.
+godot_resources(
+    name = "uses_importer",
+    srcs = ["main/uses.gd"],
+    tags = ["manual"],
+    deps = [":md_importer"],
+)
+
+godot_project(
+    name = "unnamed_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+# The same importer in an add-on with an own .md file, which its own importer converts
+# (FR-020), and a project that names it.
+godot_addon(
+    name = "self_importing",
+    srcs = ["md_importer/own.md"],
+    directory = "addons/self_importing",
+    editor_srcs = [
+        "md_importer/icon.svg",
+        "md_importer/importer.gd",
+        "md_importer/plugin.cfg",
+        "md_importer/plugin.gd",
+    ],
+    importer_suffixes = ["md"],
+    strip_prefix = "md_importer",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "self_importing_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    deps = [":self_importing"],
+)

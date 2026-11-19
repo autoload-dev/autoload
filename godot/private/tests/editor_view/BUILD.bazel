@@ -1,0 +1,45 @@
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_metadata_sync")
+load(":editor_view_tests.bzl", "editor_view_test_suite")
+load(":metadata_sync_tests.bzl", "metadata_sync_test_suite")
+
+_EDITED = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view:"
+
+# Run test: the editor view opens headless in a copy of the fixture's checkout, where its
+# enabled plugin edits the project as a user would; the edits reach the checkout and
+# godot_metadata_sync reports the sidecars the view wrote.
+py_test(
+    name = "editor_view_writes_edits_back_test",
+    size = "small",
+    srcs = ["godot_editor_test.py"],
+    data = [
+        _EDITED + "checkout",
+        _EDITED + "edit",
+        _EDITED + "metadata",
+        _EDITED + "metadata.test",
+    ],
+    env = {
+        "CHECKOUT": "$(rootpaths %scheckout)" % _EDITED,
+        "EDIT": "$(rootpath %sedit)" % _EDITED,
+        "METADATA": "$(rootpath %smetadata)" % _EDITED,
+        "METADATA_TEST": "$(rootpath %smetadata.test)" % _EDITED,
+    },
+    main = "godot_editor_test.py",
+    # godot_editor and godot_metadata_sync are bazel run tools built for this host, so
+    # the test runs only where they can.
+    target_compatible_with = HOST_CONSTRAINTS,
+    deps = ["//tools:godot_staging_lib"],
+)
+
+# Every sidecar of the project is declared, so the generated metadata.test passes.
+godot_metadata_sync(
+    name = "declared_sidecars_metadata",
+    size = "small",
+    project = "//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:project",
+    deps = ["//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:declared"],
+)
+
+editor_view_test_suite(name = "editor_view_test_suite")
+
+metadata_sync_test_suite(name = "metadata_sync_test_suite")

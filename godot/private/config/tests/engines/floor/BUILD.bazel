@@ -1,0 +1,24 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+
+# Runtimes that declare Godot's deployment targets, for the minimum-version checks of
+# the app fixtures; registered per test with --extra_toolchains.
+godot_runtime_component(
+    name = "runtime_macos_arm64_release",
+    cpu = "arm64",
+    platform = "macos",
+    runtime = "//godot/private/config/tests:macos_floor_runtime",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_debug",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = "//godot/private/config/tests:ios_floor_runtime",
+    tags = ["manual"],
+    variant = "debug",
+    version = "4.7.2",
+)

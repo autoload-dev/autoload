@@ -1,0 +1,7 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://code/tool_settings.gd" id="1_tool"]
+
+[resource]
+script = ExtResource("1_tool")
+level = 3

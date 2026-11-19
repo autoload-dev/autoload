@@ -1,0 +1,2 @@
+# The engine patch of the ruleset's own source-built engines; the recipes apply it.
+exports_files(["engine-name.patch"])

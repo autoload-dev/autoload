@@ -1,0 +1,47 @@
+[gd_resource type="Theme" load_steps=5 format=3]
+
+[ext_resource type="FontFile" path="res://main/shared/ui/AtkinsonHyperlegible-Regular.ttf" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="Normal"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.2470588, 0.4745098, 0.4745098, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="Active"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.3176471, 0.5529412, 0.5294118, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="Card"]
+content_margin_left = 34.0
+content_margin_top = 26.0
+content_margin_right = 34.0
+content_margin_bottom = 26.0
+bg_color = Color(0.055, 0.12, 0.19, 0.94)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[resource]
+default_font = ExtResource("1")
+default_font_size = 26
+Label/colors/font_color = Color(1, 0.945098, 0.8235294, 1)
+Button/colors/font_color = Color(1, 0.945098, 0.8235294, 1)
+Button/styles/normal = SubResource("Normal")
+Button/styles/hover = SubResource("Active")
+Button/styles/pressed = SubResource("Active")
+Button/styles/focus = SubResource("Active")
+PanelContainer/styles/panel = SubResource("Card")

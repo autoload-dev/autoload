@@ -1,0 +1,223 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+py_library(
+    name = "context_lib",
+    srcs = ["context.py"],
+    visibility = ["//tools/docs:__pkg__"],
+    deps = ["//tools:tool_environment_lib"],
+)
+
+py_library(
+    name = "framework_lib",
+    srcs = ["framework.py"],
+    deps = [":context_lib"],
+)
+
+py_library(
+    name = "rules_lib",
+    srcs = [
+        "naming.py",
+        "registry.py",
+        "rules/rg001.py",
+        "rules/rg002.py",
+        "rules/rg003.py",
+        "rules/rg004.py",
+        "rules/rg006.py",
+        "rules/rg007.py",
+        "rules/rg008.py",
+        "rules/rg009.py",
+        "rules/rg010.py",
+        "rules/rg011.py",
+        "rules/rg012.py",
+        "rules/rg013.py",
+        "rules/rg014.py",
+    ],
+    deps = [
+        ":context_lib",
+        ":framework_lib",
+    ],
+)
+
+py_binary(
+    name = "conventions",
+    srcs = ["check.py"],
+    args = ["$(rootpath @buildifier_prebuilt//:buildozer)"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    main = "check.py",
+    tags = ["manual"],
+    deps = [
+        ":context_lib",
+        ":framework_lib",
+        ":rules_lib",
+    ],
+)
+
+py_library(
+    name = "test_support",
+    testonly = True,
+    srcs = ["test_support.py"],
+    deps = [":context_lib"],
+)
+
+py_test(
+    name = "context_test",
+    size = "small",
+    srcs = ["context_test.py"],
+    args = ["$(rootpath @buildifier_prebuilt//:buildozer)"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    deps = [
+        ":context_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "framework_test",
+    size = "small",
+    srcs = ["framework_test.py"],
+    deps = [
+        ":context_lib",
+        ":framework_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg001_test",
+    size = "small",
+    srcs = ["rules/rg001_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg002_test",
+    size = "small",
+    srcs = ["rules/rg002_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg003_test",
+    size = "small",
+    srcs = ["rules/rg003_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg004_test",
+    size = "small",
+    srcs = ["rules/rg004_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg006_test",
+    size = "small",
+    srcs = ["rules/rg006_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg007_test",
+    size = "small",
+    srcs = ["rules/rg007_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg008_test",
+    size = "small",
+    srcs = ["rules/rg008_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg009_test",
+    size = "small",
+    srcs = ["rules/rg009_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg010_test",
+    size = "small",
+    srcs = ["rules/rg010_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg011_test",
+    size = "small",
+    srcs = ["rules/rg011_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg012_test",
+    size = "small",
+    srcs = ["rules/rg012_test.py"],
+    deps = [
+        ":context_lib",
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg013_test",
+    size = "small",
+    srcs = ["rules/rg013_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg014_test",
+    size = "small",
+    srcs = ["rules/rg014_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)

@@ -1,0 +1,134 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot/private/engine:setting_kinds.bzl", "SETTING_KIND_TABLES", "engine_sections")
+load(":action_inputs_tests.bzl", "action_inputs_test_suite")
+load(":addon_tests.bzl", "addon_test_suite")
+load(":context_tests.bzl", "context_test_suite")
+load(":file_roles_tests.bzl", "file_roles_test_suite")
+load(":import_plugin_tests.bzl", "import_plugin_test_suite")
+load(":import_sharing_tests.bzl", "import_sharing_test_suite")
+load(":import_units_tests.bzl", "import_units_test_suite")
+load(":initialization_tests.bzl", "initialization_test_suite")
+load(":metadata_policy_tests.bzl", "metadata_policy_test_suite")
+load(":mocks_tests.bzl", "mocks_test_suite")
+load(":operation_tests.bzl", "operation_test_suite")
+load(":pack_conversion_tests.bzl", "pack_conversion_test_suite")
+load(":pack_inputs_tests.bzl", "pack_inputs_test_suite")
+load(":pack_selection_inputs_tests.bzl", "pack_selection_inputs_test_suite")
+load(":pack_selection_tests.bzl", "pack_selection_test_suite")
+load(":packaging.bzl", "profile_json")
+load(":patches_tests.bzl", "patches_test_suite")
+load(":project_configuration_tests.bzl", "project_configuration_test_suite")
+load(":project_tests.bzl", "project_test_suite")
+load(":reproducibility.bzl", "import_and_pack_reproducibility_test")
+load(":resource_composition_tests.bzl", "resource_composition_test_suite")
+load(":setting_values.bzl", "override_cases", "setting_value_cases")
+load(":sidecar_tests.bzl", "sidecar_test_suite")
+load(":source_run_tests.bzl", "source_run_test_suite")
+load(":validation_tests.bzl", "validation_test_suite")
+load(":versions_tests.bzl", "versions_test_suite")
+load(":view_tests.bzl", "view_test_suite")
+
+# The setting kinds and sections of Godot 4.7 the configuration tests construct with.
+write_file(
+    name = "setting_kinds",
+    out = "setting_kinds.json",
+    content = [json.encode({
+        "kinds": SETTING_KIND_TABLES["4.7"],
+        "sections": engine_sections("4.7.2"),
+    })],
+)
+
+# The setting value cases with setting_values.bzl's decision for each, which project_config_test
+# compares with project_config.py's.
+write_file(
+    name = "setting_value_cases",
+    out = "setting_value_cases.json",
+    content = [setting_value_cases()],
+)
+
+# The feature override cases with setting_values.bzl's decision for each, which project_config_test
+# compares with project_config.py's.
+write_file(
+    name = "override_cases",
+    out = "override_cases.json",
+    content = [override_cases()],
+)
+
+py_test(
+    name = "project_config_test",
+    size = "small",
+    srcs = ["project_config_test.py"],
+    data = [
+        ":override_cases",
+        ":setting_kinds",
+        ":setting_value_cases",
+    ],
+    deps = ["//godot/private:project_config_lib"],
+)
+
+mocks_test_suite(name = "mocks_test_suite")
+
+patches_test_suite(name = "patches_test_suite")
+
+file_roles_test_suite(name = "file_roles_test_suite")
+
+versions_test_suite(name = "versions_test_suite")
+
+validation_test_suite(name = "validation_test_suite")
+
+view_test_suite(name = "view_test_suite")
+
+action_inputs_test_suite(name = "action_inputs_test_suite")
+
+addon_test_suite(name = "addon_test_suite")
+
+pack_conversion_test_suite(name = "pack_conversion_test_suite")
+
+pack_inputs_test_suite(name = "pack_inputs_test_suite")
+
+pack_selection_inputs_test_suite(name = "pack_selection_inputs_test_suite")
+
+resource_composition_test_suite(name = "resource_composition_test_suite")
+
+sidecar_test_suite(name = "sidecar_test_suite")
+
+import_plugin_test_suite(name = "import_plugin_test_suite")
+
+import_units_test_suite(name = "import_units_test_suite")
+
+import_sharing_test_suite(name = "import_sharing_test_suite")
+
+context_test_suite(name = "context_test_suite")
+
+initialization_test_suite(name = "initialization_test_suite")
+
+operation_test_suite(name = "operation_test_suite")
+
+pack_selection_test_suite(name = "pack_selection_test_suite")
+
+metadata_policy_test_suite(name = "metadata_policy_test_suite")
+
+project_configuration_test_suite(name = "project_configuration_test_suite")
+
+project_test_suite(name = "project_test_suite")
+
+source_run_test_suite(name = "source_run_test_suite")
+
+# Build-output test: two runs of the import and the export over one project give the same
+# bytes.
+import_and_pack_reproducibility_test(
+    name = "import_and_pack_outputs_are_reproducible_test",
+    size = "small",
+    pack = "//godot/private/tests/fixtures/reproducible_project:pack",
+    units = [
+        "icon",
+        "other",
+    ],
+)
+
+# The 4.7.2 engine profile as the rules pass it to the shell tools, for their unit tests.
+profile_json(
+    name = "engine_profile",
+    visibility = ["//tools/platforms/tests:__pkg__"],
+)

@@ -1,0 +1,7 @@
+[configuration]
+entry_symbol = "sentry_init"
+compatibility_minimum = "4.4"
+
+[libraries]
+linux.x86_64 = "res://addons/sentry/bin/linux/libsentry.linux.so"
+macos = "res://addons/sentry/bin/macos/libsentry.macos.dylib"

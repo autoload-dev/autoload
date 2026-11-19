@@ -1,0 +1,250 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# Resources composed into projects: add-ons with settings and autoloads through deps and
+# import inputs, generated, external and other-package files at explicit resource paths, sidecars, add-on
+# prefixes, an extension and import units whose target and package names nest.
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# Files the analysis tests place in the resources they arrange.
+exports_files(
+    [
+        "foreign/icon.svg",
+        "foreign/main.gd",
+        "main/addon/inventory.gd",
+        "main/importer_data.txt",
+        "main/main.gd",
+        "main/main.tscn",
+        "main/marker.gd",
+        "main/other.gd",
+        "project.godot",
+    ],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)
+
+genrule(
+    name = "generated",
+    outs = ["data.gd"],
+    cmd = "echo 'extends Node' > $@",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "import_data",
+    srcs = ["main/importer_data.txt"],
+    tags = ["manual"],
+)
+
+# Own sources, a generated file, an external file, a package with its own prefix, runtime
+# references and an import input.
+godot_resources(
+    name = "content",
+    srcs = [
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    import_inputs = [":import_data"],
+    resource_paths = {
+        ":generated": "generated/data.gd",
+        "@bazel_skylib//:LICENSE": "external/LICENSE",
+    },
+    runtime_references = {
+        "main/main.gd": ["main/shared/helper.gd"],
+        "main/shared/helper.gd": ["main/main.gd"],
+    },
+    tags = ["manual"],
+    deps = [
+        ":content_configuration",
+        "//godot/private/tests/fixtures/import_context/main/shared",
+    ],
+)
+
+# An add-on whose autoload names its runtime part's script, and one without files that
+# contributes a setting only.
+godot_addon(
+    name = "content_configuration",
+    srcs = ["content_configuration/helper.gd"],
+    autoloads = {"Helper": "*res://addons/content_configuration/helper.gd"},
+    settings = {"application/config/name": '"Content"'},
+    strip_prefix = "content_configuration",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "branding",
+    settings = {"application/config/name": '"Branding"'},
+    tags = ["manual"],
+)
+
+# Two dependencies that set the same setting to different values.
+godot_resources(
+    name = "combined",
+    tags = ["manual"],
+    deps = [
+        ":branding",
+        ":content",
+    ],
+)
+
+godot_resources(
+    name = "configured_resources",
+    srcs = ["main/main.tscn"],
+    tags = ["manual"],
+    deps = [":configuration"],
+)
+
+godot_addon(
+    name = "configuration",
+    srcs = ["main/configuration.gd"],
+    autoloads = {"State": "*res://addons/configuration/configuration.gd"},
+    settings = {"application/config/name": '"Resources"'},
+    strip_prefix = "main",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "configured_check",
+    srcs = ["main/configured_test.gd"],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "configured_project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    setting_overrides = {"application/config/name": '"Configured"'},
+    tags = ["manual"],
+)
+
+# A pack that selects every member, so it scans no references.
+godot_pack(
+    name = "members_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":configured_project",
+    tags = ["manual"],
+    deps = [
+        ":configured_check",
+        ":configured_resources",
+    ],
+)
+
+# An import input that uses an add-on with settings and autoloads, under a resource
+# without files.
+godot_resources(
+    name = "private_import_input",
+    resource_paths = {"main/other.gd": "private_import_input.gd"},
+    tags = ["manual"],
+    deps = [":import_input_configuration"],
+)
+
+godot_addon(
+    name = "import_input_configuration",
+    srcs = ["import_input_configuration/state.gd"],
+    autoloads = {"ImportInputState": "*res://addons/import_input_configuration/state.gd"},
+    settings = {"application/config/name": '"Import input"'},
+    strip_prefix = "import_input_configuration",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "import_input_consumer",
+    import_inputs = [":private_import_input"],
+    tags = ["manual"],
+    deps = [":configured_resources"],
+)
+
+# A unit with an asset and a script of its own, whose import also runs a script it
+# declares as an import input, as a scene import's post-import script.
+godot_resources(
+    name = "scripted_import",
+    import_inputs = [":private_import_input"],
+    resource_paths = {
+        "foreign/icon.svg": "scripted/icon.svg",
+        "main/marker.gd": "scripted/marker.gd",
+    },
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "transitive_consumer",
+    srcs = ["main/other.gd"],
+    tags = ["manual"],
+    deps = [":import_input_consumer"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "extension_resources",
+    tags = ["manual"],
+    deps = [":hello"],
+)
+
+# A source and an imported file without their sidecars; uid_sidecar adds one late.
+godot_resources(
+    name = "resource_without_sidecars",
+    srcs = ["main/main.gd"],
+    resource_paths = {"foreign/icon.svg": "main/icon.svg"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "uid_sidecar",
+    resource_paths = {"//godot/private/tests/fixtures/import_context/main/shared:helper.gd.uid": "main/main.gd.uid"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "resource_with_sidecars",
+    srcs = [
+        "main/icon.svg.import",
+        "main/main.gd",
+    ],
+    resource_paths = {
+        "foreign/icon.svg": "main/icon.svg",
+        "//godot/private/tests/fixtures/import_context/main/shared:helper.gd.uid": "main/main.gd.uid",
+    },
+    tags = ["manual"],
+)
+
+# Import inputs that bring a source and its sidecar together.
+godot_resources(
+    name = "sidecar_import_inputs",
+    srcs = ["main/other.gd"],
+    import_inputs = [
+        ":resource_without_sidecars",
+        ":uid_sidecar",
+    ],
+    tags = ["manual"],
+)
+
+# Its name is the last component of the package textures/, whose import unit must not
+# nest in this one's.
+godot_resources(
+    name = "textures",
+    srcs = ["main/icon.svg.import"],
+    tags = ["manual"],
+)
+
+# An add-on whose package is not laid out as its project directory.
+godot_resources(
+    name = "prefixed_addon",
+    srcs = ["main/addon/inventory.gd"],
+    prefix = "addons/inventory",
+    resource_paths = {"main/other.gd": "addons/inventory/other.gd"},
+    strip_prefix = "main/addon",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "prefixed_package",
+    srcs = ["main/addon/inventory.gd"],
+    prefix = "res://lib/",
+    tags = ["manual"],
+)

@@ -1,0 +1,132 @@
+load("//godot/engine/private:components.bzl", "resolved_runtime")
+load("//godot/engine/private/tests:engines.bzl", "editor_probe", "resolution_probe")
+load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
+load(":android_shell_tests.bzl", "android_shell_test_suite")
+load(":components_tests.bzl", "components_test_suite")
+load(":composition_tests.bzl", "composition_test_suite")
+load(":editor_archive_tests.bzl", "editor_archive_test_suite")
+load(":engine_build_tests.bzl", "engine_build_test_suite")
+load(":engine_extension_tests.bzl", "engine_extension_test_suite")
+load(":engine_name_tests.bzl", "engine_name_test_suite")
+load(":engine_source_tests.bzl", "engine_source_test_suite")
+load(":execution_tests.bzl", "execution_test_suite")
+load(":export_templates_archive_tests.bzl", "export_templates_archive_test_suite")
+load(":ios_tests.bzl", "ios_test_suite")
+load(":prebuilt_tests.bzl", "prebuilt_test_suite")
+load(":provenance_tests.bzl", "provenance_test_suite")
+load(":runtime_producer_tests.bzl", "runtime_producer_test_suite")
+load(":select_tests.bzl", "select_test_suite")
+load(":selection_tests.bzl", "selection_test_suite")
+load(":slot_replacement_tests.bzl", "slot_replacement_test_suite")
+load(":source_build_inputs_tests.bzl", "source_build_inputs_test_suite")
+load(":source_build_tests.bzl", "source_build_test_suite")
+
+package(default_visibility = ["//godot/engine/private/tests:__subpackages__"])
+
+# Plain target platforms: these tests observe toolchain resolution only.
+[platform(
+    name = name,
+    constraint_values = constraints,
+) for name, constraints in {
+    "linux_x86_64": [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    "linux_arm64": [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+    # No component covers this slot, so resolution finds no candidate.
+    "linux_riscv64": [
+        "@platforms//os:linux",
+        "@platforms//cpu:riscv64",
+    ],
+    "ios_arm64": [
+        "@platforms//os:ios",
+        "@platforms//cpu:aarch64",
+        "@apple_support//constraints:device",
+    ],
+    # Stand-in remote execution platforms; execution_tests.bzl uses the one unlike the host.
+    "remote_linux": [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    "remote_macos": [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
+    "ios_sim_arm64": [
+        "@platforms//os:ios",
+        "@platforms//cpu:aarch64",
+        "@apple_support//constraints:simulator",
+    ],
+}.items()]
+
+resolution_probe(
+    name = "probe",
+    tags = ["manual"],
+)
+
+editor_probe(
+    name = "editor_probe",
+    tags = ["manual"],
+)
+
+resolved_runtime(
+    name = "resolved_runtime",
+    tags = ["manual"],
+)
+
+android_shell_test_suite(name = "android_shell_test_suite")
+
+components_test_suite(name = "components_test_suite")
+
+composition_test_suite(name = "composition_test_suite")
+
+editor_archive_test_suite(name = "editor_archive_test_suite")
+
+engine_build_test_suite(name = "engine_build_test_suite")
+
+engine_extension_test_suite(name = "engine_extension_test_suite")
+
+engine_name_test_suite(name = "engine_name_test_suite")
+
+engine_source_test_suite(name = "engine_source_test_suite")
+
+execution_test_suite(name = "execution_test_suite")
+
+export_templates_archive_test_suite(name = "export_templates_archive_test_suite")
+
+ios_test_suite(name = "ios_test_suite")
+
+prebuilt_test_suite(name = "prebuilt_test_suite")
+
+provenance_test_suite(name = "provenance_test_suite")
+
+runtime_producer_test_suite(name = "runtime_producer_test_suite")
+
+select_test_suite(name = "select_test_suite")
+
+selection_test_suite(name = "selection_test_suite")
+
+slot_replacement_test_suite(name = "slot_replacement_test_suite")
+
+source_build_inputs_test_suite(name = "source_build_inputs_test_suite")
+
+source_build_test_suite(name = "source_build_test_suite")
+
+# The godot entrypoint of a desktop godot_engine_build recipe: an executable runtime that
+# links through CcInfo. Fetching configures the macOS recipe, so it runs in the
+# source-engine lane.
+repository_test(
+    name = "test_engine_build_godot_is_an_executable_runtime",
+    cc = True,
+    executable = True,
+    runtime = True,
+    tags = [
+        "manual",
+        "source_engine",
+    ],
+    target = "@godot_source_build_fixture_macos_arm64_template_release//:godot",
+    target_compatible_with = ["@platforms//os:macos"],
+)

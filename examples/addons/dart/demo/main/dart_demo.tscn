@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://main/greeting.dart" id="1_greeting"]
+[ext_resource type="Script" path="res://main/counter.dart" id="2_counter"]
+[ext_resource type="Script" path="res://main/spinner.dart" id="3_spinner"]
+[ext_resource type="Script" path="res://main/dart_demo.dart" id="4_demo"]
+
+[node name="DartDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_demo")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="Greeting" type="Label" parent="Layout"]
+layout_mode = 2
+horizontal_alignment = 1
+script = ExtResource("1_greeting")
+
+[node name="Counter" type="Button" parent="Layout"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Press me"
+script = ExtResource("2_counter")
+
+[node name="Spinner" type="Node2D" parent="."]
+position = Vector2(270, 240)
+script = ExtResource("3_spinner")
+
+[node name="Square" type="Polygon2D" parent="Spinner"]
+color = Color(0.25, 0.6, 0.9, 1)
+polygon = PackedVector2Array(-40, -40, 40, -40, 40, 40, -40, 40)

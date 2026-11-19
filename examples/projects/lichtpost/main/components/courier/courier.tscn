@@ -1,0 +1,194 @@
+[gd_scene load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://main/components/courier/courier.gd" id="1"]
+[ext_resource type="Material" path="res://main/shared/palette/ivory.tres" id="ivory"]
+[ext_resource type="Material" path="res://main/shared/palette/night.tres" id="night"]
+[ext_resource type="Material" path="res://main/shared/palette/orange.tres" id="orange"]
+[ext_resource type="Material" path="res://main/shared/palette/earth.tres" id="earth"]
+[ext_resource type="Material" path="res://main/shared/palette/teal.tres" id="teal"]
+
+[sub_resource type="SphereMesh" id="Mesh_0"]
+radius = 0.3
+height = 0.6
+
+[sub_resource type="BoxMesh" id="Mesh_1"]
+size = Vector3(0.58, 0.48, 0.54)
+
+[sub_resource type="BoxMesh" id="Mesh_2"]
+size = Vector3(0.4, 0.27, 0.05)
+
+[sub_resource type="BoxMesh" id="Mesh_3"]
+size = Vector3(0.055, 0.15, 0.05)
+
+[sub_resource type="BoxMesh" id="Mesh_4"]
+size = Vector3(0.055, 0.15, 0.05)
+
+[sub_resource type="BoxMesh" id="Mesh_5"]
+size = Vector3(0.32, 0.42, 0.58)
+
+[sub_resource type="CylinderMesh" id="Mesh_6"]
+top_radius = 0.025
+bottom_radius = 0.025
+height = 0.2
+radial_segments = 12
+
+[sub_resource type="SphereMesh" id="Mesh_7"]
+radius = 0.07
+height = 0.14
+
+[sub_resource type="BoxMesh" id="Mesh_8"]
+size = Vector3(0.16, 0.29, 0.17)
+
+[sub_resource type="SphereMesh" id="Mesh_9"]
+radius = 0.1
+height = 0.2
+
+[sub_resource type="BoxMesh" id="Mesh_10"]
+size = Vector3(0.16, 0.29, 0.17)
+
+[sub_resource type="SphereMesh" id="Mesh_11"]
+radius = 0.1
+height = 0.2
+
+[sub_resource type="BoxMesh" id="Mesh_12"]
+size = Vector3(0.16, 0.29, 0.17)
+
+[sub_resource type="SphereMesh" id="Mesh_13"]
+radius = 0.1
+height = 0.2
+
+[sub_resource type="BoxMesh" id="Mesh_14"]
+size = Vector3(0.16, 0.29, 0.17)
+
+[sub_resource type="SphereMesh" id="Mesh_15"]
+radius = 0.1
+height = 0.2
+
+[node name="CourierRobot" type="Node3D" unique_id=780597609]
+script = ExtResource("1")
+
+[node name="Body" type="Node3D" parent="." unique_id=175135531]
+
+
+[node name="Torso" type="MeshInstance3D" parent="Body" unique_id=214455757]
+position = Vector3(0, 0.55, 0)
+mesh = SubResource("Mesh_0")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+scale = Vector3(1, 1.2, 1)
+
+[node name="Head" type="MeshInstance3D" parent="Body" unique_id=1418096546]
+position = Vector3(0.05, 1.03, 0)
+mesh = SubResource("Mesh_1")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Visor" type="MeshInstance3D" parent="Body" unique_id=85270755]
+position = Vector3(0.12, 0.98, 0.29)
+mesh = SubResource("Mesh_2")
+material_override = ExtResource("night")
+metadata/palette = "night"
+
+
+[node name="Eye0" type="MeshInstance3D" parent="Body" unique_id=1164305269]
+position = Vector3(-0.02, 0.99, 0.32)
+mesh = SubResource("Mesh_3")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="Eye1" type="MeshInstance3D" parent="Body" unique_id=771445705]
+position = Vector3(0.22, 0.99, 0.32)
+mesh = SubResource("Mesh_4")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="Satchel" type="MeshInstance3D" parent="Body" unique_id=43636312]
+position = Vector3(-0.4, 0.45, 0)
+mesh = SubResource("Mesh_5")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="Antenna" type="MeshInstance3D" parent="Body" unique_id=1502411634]
+position = Vector3(-0.06, 1.39, 0)
+mesh = SubResource("Mesh_6")
+material_override = ExtResource("earth")
+metadata/palette = "earth"
+
+
+[node name="AntennaLight" type="MeshInstance3D" parent="Body" unique_id=1590894469]
+position = Vector3(-0.06, 1.51, 0)
+mesh = SubResource("Mesh_7")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="BackLeg" type="Node3D" parent="Body" unique_id=1018856859]
+position = Vector3(0, 0.35, -0.19)
+
+[node name="Limb" type="MeshInstance3D" parent="Body/BackLeg" unique_id=957349575]
+position = Vector3(0, -0.15, 0)
+mesh = SubResource("Mesh_8")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Tip" type="MeshInstance3D" parent="Body/BackLeg" unique_id=764216319]
+position = Vector3(0.04, -0.3, 0)
+mesh = SubResource("Mesh_9")
+material_override = ExtResource("teal")
+metadata/palette = "teal"
+
+
+[node name="FrontLeg" type="Node3D" parent="Body" unique_id=1460001252]
+position = Vector3(0, 0.35, 0.3)
+
+[node name="Limb" type="MeshInstance3D" parent="Body/FrontLeg" unique_id=1172914765]
+position = Vector3(0, -0.15, 0)
+mesh = SubResource("Mesh_10")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Tip" type="MeshInstance3D" parent="Body/FrontLeg" unique_id=284569250]
+position = Vector3(0.04, -0.3, 0)
+mesh = SubResource("Mesh_11")
+material_override = ExtResource("teal")
+metadata/palette = "teal"
+
+
+[node name="BackArm" type="Node3D" parent="Body" unique_id=1949924619]
+position = Vector3(0, 0.7, -0.19)
+
+[node name="Limb" type="MeshInstance3D" parent="Body/BackArm" unique_id=913206342]
+position = Vector3(0, -0.15, 0)
+mesh = SubResource("Mesh_12")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Tip" type="MeshInstance3D" parent="Body/BackArm" unique_id=1580269231]
+position = Vector3(0.04, -0.3, 0)
+mesh = SubResource("Mesh_13")
+material_override = ExtResource("orange")
+metadata/palette = "orange"
+
+
+[node name="FrontArm" type="Node3D" parent="Body" unique_id=331631911]
+position = Vector3(0, 0.7, 0.3)
+
+[node name="Limb" type="MeshInstance3D" parent="Body/FrontArm" unique_id=1999725008]
+position = Vector3(0, -0.15, 0)
+mesh = SubResource("Mesh_14")
+material_override = ExtResource("ivory")
+metadata/palette = "ivory"
+
+
+[node name="Tip" type="MeshInstance3D" parent="Body/FrontArm" unique_id=1665955272]
+position = Vector3(0.04, -0.3, 0)
+mesh = SubResource("Mesh_15")
+material_override = ExtResource("orange")
+metadata/palette = "orange"

@@ -1,0 +1,126 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/engine/private/tests:engines.bzl", "godot_source_binary")
+load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/platforms/private/tests:backends.bzl", "godot_macos_application")
+load("//godot/private/tests:packaging.bzl", "generate_dsym_extension")
+
+# macOS applications whose runtime and extension rules_cc links, with and without
+# --apple_generate_dsym.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+_MACOS = ["@platforms//os:macos"]
+
+_RUNTIMES = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:"
+
+cc_binary(
+    name = "libdsym_extension.so",
+    srcs = ["dsym_extension.cc"],
+    linkshared = True,
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+godot_extension(
+    name = "extension",
+    entry_symbol = "dsym_fixture_init",
+    # Editor actions, which may run on another operating system, load no library of it
+    # (#166), so exports do not load it.
+    library = select({
+        "//godot:tool": None,
+        "//conditions:default": ":libdsym_extension.so",
+    }),
+    resource_path = "native/dsym.gdextension",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+cc_binary(
+    name = "engine",
+    srcs = ["dsym_engine.cc"],
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+# The godot_source_binary a godot_engine_build recipe generates around its executable.
+godot_source_binary(
+    name = "source_runtime",
+    build = "dsym_build.txt",
+    canonical_version = "4.7.2",
+    cpu = "arm64",
+    hash = "dsym_hash.txt",
+    platform = "macos",
+    role = "runtime",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+    variant = "release",
+    version = "4.7.2.stable",
+    deps = [":engine"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+    deps = [":extension"],
+)
+
+# Runtime and extension are rules_cc's links.
+godot_macos_application(
+    name = "linked_app",
+    app_name = "Game",
+    pack = ":pack",
+    runtime = ":source_runtime",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+# Only the extension builds with --apple_generate_dsym; the runtime is prebuilt.
+generate_dsym_extension(
+    name = "extension_with_dsym",
+    extension = ":extension",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+godot_project(
+    name = "project_with_dsym",
+    project_file = "project.godot",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+godot_pack(
+    name = "pack_with_dsym",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project_with_dsym",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+    deps = [":extension_with_dsym"],
+)
+
+godot_macos_application(
+    name = "prebuilt_runtime_app",
+    app_name = "Game",
+    pack = ":pack_with_dsym",
+    runtime = _RUNTIMES + "macos_runtime",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+filegroup(
+    name = "prebuilt_runtime_app_debug_symbols",
+    srcs = [":prebuilt_runtime_app"],
+    output_group = "debug_symbols",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)

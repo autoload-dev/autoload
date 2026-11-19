@@ -1,0 +1,111 @@
+"""Optional static resource diagnostics without adding build-time dependencies."""
+
+load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
+
+visibility("//godot")
+
+def _resource_graph_impl(ctx):
+    project = ctx.attr.view[GodotViewInfo]
+    graph = ctx.actions.declare_file(ctx.label.name + ".graph.json")
+    arguments = ["check", "--graph", project.graph.path, "--output", graph.path]
+    if ctx.attr.require_declared:
+        arguments.append("--require-declared")
+    if ctx.attr.validate:
+        arguments.append("--validate")
+    ctx.actions.run(
+        executable = ctx.executable._scanner,
+        arguments = arguments,
+        inputs = [project.graph],
+        outputs = [graph],
+        mnemonic = "GodotResourceGraphCheck",
+        progress_message = "Validating %{label}",
+    )
+    return [DefaultInfo(files = depset([graph]))]
+
+_resource_graph = rule(
+    doc = "Check a view's resource graph; the rule behind godot_resource_graph.",
+    implementation = _resource_graph_impl,
+    attrs = {
+        "view": attr.label(
+            doc = "The view whose graph is checked.",
+            mandatory = True,
+            providers = [GodotViewInfo],
+        ),
+        "validate": attr.bool(
+            doc = """
+            Fail on missing static references, invalid UID ownership or conflicting
+            identities. Dynamic references remain warnings.
+            """,
+            default = True,
+        ),
+        "require_declared": attr.bool(
+            doc = """
+            Require inferred runtime file references to have matching runtime_references
+            entries. Project configuration references are implicit; import inputs are
+            checked for availability.
+            """,
+        ),
+        "_scanner": attr.label(
+            default = Label("//tools:resource_graph"),
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+)
+
+def godot_resource_graph(name, project, deps = [], validate = True, require_declared = False, **kwargs):
+    """
+    Emit a deterministic file/UID graph for resources; optionally validate references.
+
+    Does not execute Godot or modify Bazel dependencies.
+
+    Produces a .graph.json file in DefaultInfo from the resource graph of deps under the
+    project's configuration, without running Godot or adding inferred Bazel
+    dependencies. validate controls failures for invalid static references;
+    require_declared additionally requires explicit runtime reference declarations.
+    Dynamic references remain warnings.
+
+    Example:
+    ```starlark
+    godot_resource_graph(
+        name = "graph",
+        project = ":project",
+        deps = [":game"],
+        require_declared = True,
+    )
+    ```
+
+    See [resource graph diagnostics](../../resources.md).
+
+    ### Default outputs
+    | kind | cardinality | availability | behavior |
+    | --- | --- | --- | --- |
+    | files | one | always | build resource graph JSON with selected declaration/validation policy; no run behavior |
+
+    ### Output groups
+    none
+
+    ### Generated targets
+    none
+
+    ### Providers
+    none
+
+    Args:
+        name: Name of the graph target.
+        project: The godot_project whose configuration the graph reads.
+        deps: The godot_resources whose files the graph scans.
+        validate: Fail on missing static references, invalid UID ownership or
+            conflicting identities. Dynamic references remain warnings.
+        require_declared: Require inferred runtime file references to have matching
+            runtime_references entries. Project configuration references are
+            implicit; import inputs are checked for availability.
+        **kwargs: Common attributes, such as tags and visibility.
+    """
+    _resource_graph(
+        name = name,
+        view = declare_view(name, project, deps, kwargs),
+        validate = validate,
+        require_declared = require_declared,
+        **kwargs
+    )

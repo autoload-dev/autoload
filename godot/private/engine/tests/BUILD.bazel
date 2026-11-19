@@ -1,0 +1,70 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//godot/private/tests:packaging.bzl", "profile_json")
+
+package(default_testonly = True)
+
+[
+    profile_json(
+        name = "profile_" + minor,
+        version = version,
+    )
+    for minor, version in [
+        ("4_7", "4.7.2"),
+        ("4_8", "4.8.0-beta1"),
+    ]
+]
+
+# The pinned Godot sources the review tests read.
+_PINNED_SOURCES = [
+    "@godot_sources//:source.json",
+    "@godot_sources_beta//:source.json",
+    "@godot_sources_snapshot//:source.json",
+]
+
+_PINNED_ARCHIVES = [
+    "@godot_sources//:source.tar.gz",
+    "@godot_sources_beta//:source.tar.xz",
+    "@godot_sources_snapshot//:source.tar.gz",
+]
+
+py_library(
+    name = "pinned_sources",
+    srcs = ["pinned_sources.py"],
+    data = [
+        ":profile_4_7",
+        ":profile_4_8",
+    ] + _PINNED_ARCHIVES,
+)
+
+# Fails when a pinned Godot source changes what the Android shell mirrors; see
+# docs/internal/android-shell.md#review-a-godot-version.
+py_test(
+    name = "pinned_godot_sources_match_the_reviewed_android_shell_test",
+    size = "medium",
+    srcs = ["android_shell_review_test.py"],
+    args = ["$(rlocationpath %s)" % source for source in _PINNED_SOURCES],
+    data = _PINNED_SOURCES + ["//godot/private/engine:android_sources"],
+    main = "android_shell_review_test.py",
+    deps = [":pinned_sources"],
+)
+
+# Fails when GODOT_ANDROID_ARTIFACTS in MODULE.bazel changes without a repin of Godot's Maven
+# graph: rules_jvm_external checks the lock when its repository is fetched, and no build
+# target of the ruleset depends on it otherwise.
+build_test(
+    name = "godot_android_maven_graph_is_pinned_test",
+    targets = ["@godot_android_maven_graph//:defs"],
+)
+
+# Fails when a pinned Godot source declares other export-plugin hooks than the profile
+# reviewed; see docs/internal/export-plugin-hook-inventory.md.
+py_test(
+    name = "pinned_godot_sources_declare_the_reviewed_export_hooks_test",
+    size = "small",
+    srcs = ["export_hooks_review_test.py"],
+    args = ["$(rlocationpath %s)" % source for source in _PINNED_SOURCES],
+    data = _PINNED_SOURCES,
+    main = "export_hooks_review_test.py",
+    deps = [":pinned_sources"],
+)

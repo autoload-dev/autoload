@@ -1,0 +1,21 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+# The launcher of bazel run on a godot_app. The host's python3 runs these sources
+# directly, so they use only the standard library.
+filegroup(
+    name = "launch",
+    srcs = glob(["launch*.py"]),
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "launch_lib",
+    srcs = glob(["launch*.py"]),
+    imports = ["."],
+    visibility = ["//tools/platforms/tests:__pkg__"],
+)
+
+exports_files(
+    ["launch.py"],
+    visibility = ["//visibility:public"],
+)

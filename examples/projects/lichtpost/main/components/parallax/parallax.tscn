@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://main/components/parallax/parallax.gd" id="1"]
+
+[node name="GardenParallax" type="CanvasLayer" unique_id=1511697709]
+layer = -1
+script = ExtResource("1")
+
+[node name="Sky" type="TextureRect" parent="." unique_id=32994826]
+modulate = Color(0.8, 0.88, 1, 1)
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6

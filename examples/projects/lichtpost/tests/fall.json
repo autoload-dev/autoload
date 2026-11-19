@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "seed": 27,
+  "actions": [],
+  "expected": {"best_chain":0,"collected":0,"reason":"fall","score":0,"seed":27,"status":"lost","tick":161,"x":14490,"y":-1632}
+}

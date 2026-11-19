@@ -1,0 +1,63 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_resources", "godot_test")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# Two godot-cpp extensions in one process, each passing a Ref of its own class back into its
+# native code. Each extension runs only its own godot-cpp copy. The run fails without
+# isolation on macOS, whose loader binds exported weak symbols across libraries; elsewhere
+# the export test below covers it.
+godot_cc_extension(
+    name = "alpha",
+    srcs = ["native/probe.cc"],
+    entry_symbol = "Alpha_probe_init",
+    local_defines = [
+        "PROBE_ENTRY=Alpha_probe_init",
+        "PROBE_VALUE=AlphaValue",
+    ],
+    resource_path = "native/alpha.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_cc_extension(
+    name = "beta",
+    srcs = ["native/probe.cc"],
+    entry_symbol = "Beta_probe_init",
+    local_defines = [
+        "PROBE_ENTRY=Beta_probe_init",
+        "PROBE_VALUE=BetaValue",
+    ],
+    resource_path = "native/beta.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "refs_stay_native",
+    srcs = ["main/refs_stay_native.gd"],
+    tags = ["manual"],
+)
+
+godot_test(
+    name = "refs_stay_in_their_extension_test",
+    size = "small",
+    main = "main/refs_stay_native.gd",
+    deps = [
+        ":alpha",
+        ":beta",
+        ":refs_stay_native",
+    ],
+)
+
+# The extensions' shared libraries export only their entry symbols.
+py_test(
+    name = "libraries_export_only_their_entry_symbol_test",
+    size = "small",
+    srcs = ["exports_test.py"],
+    data = [
+        ":alpha",
+        ":beta",
+    ],
+    main = "exports_test.py",
+    deps = ["//tools/platforms:native_symbols_lib"],
+)

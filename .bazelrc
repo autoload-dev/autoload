@@ -1,0 +1,32 @@
+common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
+
+build --incompatible_strict_action_env
+# Application settings must not create separate compiler/code-generator builds.
+build --incompatible_exclude_starlark_flags_from_exec_config
+# rules_android's tools and the Android packaging tests of the ruleset's tests packages need
+# Java 21, as the consumer modules set it.
+build --java_runtime_version=remotejdk_21
+build --tool_java_runtime_version=remotejdk_21
+build --java_language_version=21
+build --tool_java_language_version=21
+
+# Opt in to the integration tests, which download the pinned editor.
+test:integration --test_tag_filters=integration
+
+# Cross compilation still requires the matching C++ SDK/toolchain.
+build:linux --platforms=//godot/platforms:linux_x86_64
+build:macos --platforms=//godot/platforms:macos_arm64
+build:android --platforms=//godot/platforms:android_arm64
+build:ios --platforms=//godot/platforms:ios_arm64
+
+import %workspace%/shared.bazelrc
+
+# Opt in to BuildBuddy with --config=buildbuddy, or --config=buildbuddy-linux to test remotely.
+import %workspace%/buildbuddy.bazelrc
+build:buildbuddy --workspace_status_command="bash buildbuddy_status.sh"
+# Tell this module's invocations apart in BuildBuddy's history and trends.
+build:buildbuddy --build_metadata=TAGS=rules_godot
+
+# Personal settings for every module of this repository, such as `common --config=buildbuddy`,
+# go in user.bazelrc at the repository root; git ignores it.
+try-import %workspace%/user.bazelrc

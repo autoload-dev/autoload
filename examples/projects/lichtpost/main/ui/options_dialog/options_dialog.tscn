@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://main/ui/options_dialog/options_dialog.gd" id="1"]
+
+[node name="OptionsDialog" type="PanelContainer" unique_id=192584566]
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Content" type="VBoxContainer" parent="." unique_id=1986866983]
+layout_mode = 2
+theme_override_constants/separation = 18
+mouse_filter = 2
+
+[node name="Headline" type="Label" parent="Content" unique_id=945407094]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 28
+text = "MAKE YOURSELF AT HOME"
+horizontal_alignment = 1
+
+
+[node name="MuteToggle" type="CheckButton" parent="Content" unique_id=240299859]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 80)
+text = "Mute sound"
+
+[node name="MotionToggle" type="CheckButton" parent="Content" unique_id=1547335966]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 80)
+text = "Reduce motion"
+
+[node name="Description" type="Label" parent="Content" unique_id=1128472938]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 20
+text = "No shake, bouncing UI or particle bursts. Your route and jump timing stay the same."
+custom_minimum_size = Vector2(400, 0)
+autowrap_mode = 3
+
+
+[node name="BackButton" type="Button" parent="Content" unique_id=794761822]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 80)
+focus_mode = 0
+text = "Back"

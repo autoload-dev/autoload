@@ -1,0 +1,75 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/platforms/private/tests:backends.bzl", "godot_macos_application")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
+
+# A macOS application whose pack names an Icon Composer .icon of the project as its
+# Liquid Glass icon, with the stub macOS runtime.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+godot_resources(
+    name = "icon",
+    srcs = [
+        "game.icon/Assets/dot.png",
+        "game.icon/icon.json",
+    ],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack_declared",
+    export_options = {"application/liquid_glass_icon": '"res://game.icon"'},
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [":icon"],
+)
+
+in_export_platform(
+    name = "pack",
+    export_platform = "//godot/platforms:macos_arm64",
+    tags = ["manual"],
+    deps = [":pack_declared"],
+)
+
+godot_macos_application(
+    name = "app",
+    app_name = "Game",
+    bundle_id = "org.example.icon",
+    pack = ":pack",
+    runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:macos_runtime",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+)
+
+# The same application whose option names a file of the .icon instead of the directory.
+godot_pack(
+    name = "pack_naming_a_file_declared",
+    export_options = {"application/liquid_glass_icon": '"res://game.icon/icon.json"'},
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [":icon"],
+)
+
+in_export_platform(
+    name = "pack_naming_a_file",
+    export_platform = "//godot/platforms:macos_arm64",
+    tags = ["manual"],
+    deps = [":pack_naming_a_file_declared"],
+)
+
+godot_macos_application(
+    name = "app_naming_a_file",
+    app_name = "Game",
+    bundle_id = "org.example.icon",
+    pack = ":pack_naming_a_file",
+    runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:macos_runtime",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+)

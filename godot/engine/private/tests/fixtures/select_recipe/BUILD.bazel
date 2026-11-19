@@ -1,0 +1,21 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+
+config_setting(
+    name = "optimized",
+    values = {"compilation_mode": "opt"},
+)
+
+# Chooses between two prepared same-slot components. The unselected branch is a recipe
+# whose configuration fails: selecting the fixture component must never fetch it.
+godot_runtime_component(
+    name = "runtime_linux_x86_64_release",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = select({
+        ":optimized": "//godot/engine/private/tests/fixtures:runtime_linux_x86_64_release",
+        "//conditions:default": "@godot_unconfigured_fixture//:godot",
+    }),
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

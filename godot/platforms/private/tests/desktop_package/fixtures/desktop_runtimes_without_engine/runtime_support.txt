@@ -1,0 +1,1 @@
+Declared runtime support input for the desktop dependency contract.

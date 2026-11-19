@@ -1,0 +1,83 @@
+load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
+load("//godot/engine/private/tests:engines.bzl", "cc_info_stand_in")
+
+# An iOS runtime payload needs CcInfo, as an XCFramework import supplies; it is never linked.
+cc_info_stand_in(
+    name = "ios_release",
+    tags = ["manual"],
+)
+
+# One registration set: a package of components registered through :all.
+
+exports_files(
+    ["linux_x86_64_release.bin"],
+    visibility = ["//godot/engine/private/tests:__subpackages__"],
+)
+
+genrule(
+    name = "editor_stand_in",
+    outs = ["editor.sh"],
+    cmd = "printf '#!/bin/sh\\n' > $@",
+    executable = True,
+    visibility = ["//godot/engine/private/tests:__subpackages__"],
+)
+
+godot_editor_component(
+    name = "editor_linux_arm64",
+    cpu = "arm64",
+    editor = ":editor_stand_in",
+    platform = "linux",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_linux_x86_64_release",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = "linux_x86_64_release.bin",
+    variant = "release",
+    version = "4.7.2",
+    visibility = ["//godot/engine/private/tests:__subpackages__"],
+)
+
+godot_runtime_component(
+    name = "runtime_linux_x86_64_debug",
+    cpu = "x86_64",
+    platform = "linux",
+    runtime = "linux_x86_64_debug.bin",
+    variant = "debug",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_linux_arm64_release",
+    cpu = "arm64",
+    platform = "linux",
+    runtime = "linux_arm64_release.bin",
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_device_release",
+    cpu = "arm64",
+    environment = "device",
+    platform = "ios",
+    runtime = ":ios_release",
+    # Its Apple aspects need an Apple toolchain; tests register it explicitly.
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_release",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = ":ios_release",
+    # Its Apple aspects need an Apple toolchain; tests register it explicitly.
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

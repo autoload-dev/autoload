@@ -1,0 +1,49 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources", "godot_test")
+load("//godot/platforms/private/tests:backends.bzl", "godot_macos_application")
+
+# A host test and a macOS application with the stub macOS runtime over the same units of
+# one project, as one build of a game's tests and its macOS application reaches them.
+package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+
+godot_resources(
+    name = "base",
+    srcs = ["main/base.gd"],
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = ["main/main.gd"],
+    tags = ["manual"],
+    deps = [":base"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_test(
+    name = "test",
+    size = "small",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_macos_application(
+    name = "app",
+    app_name = "Game",
+    bundle_id = "org.example.shared",
+    pack = ":pack",
+    runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:macos_runtime",
+    tags = ["manual"],
+)

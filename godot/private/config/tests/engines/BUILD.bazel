@@ -1,0 +1,13 @@
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+
+# The iOS simulator runtime of the runtime-bridge app fixture.
+godot_runtime_component(
+    name = "runtime_ios_arm64_simulator_debug",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = "//godot/private/config/tests:runtime_payload",
+    tags = ["manual"],
+    variant = "debug",
+    version = "4.7.2",
+)

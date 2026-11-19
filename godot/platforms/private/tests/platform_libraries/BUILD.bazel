@@ -1,0 +1,3 @@
+load(":platform_library_propagation_tests.bzl", "platform_library_propagation_test_suite")
+
+platform_library_propagation_test_suite(name = "platform_library_propagation_test_suite")

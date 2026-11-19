@@ -1,0 +1,22 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_dart//dart:defs.bzl", "dart_binary")
+
+dart_binary(
+    name = "hello",
+    compile_mode = "aot-snapshot",
+    main = "hello.dart",
+)
+
+# The snapshot itself; the binary's executable is rules_dart's launcher.
+filegroup(
+    name = "hello_snapshot",
+    srcs = [":hello"],
+)
+
+cc_test(
+    name = "engine_test",
+    srcs = ["engine_test.cc"],
+    args = ["$(rootpath :hello_snapshot)"],
+    data = [":hello_snapshot"],
+    deps = ["@dart_sdk_source//:dart_engine_aot"],
+)

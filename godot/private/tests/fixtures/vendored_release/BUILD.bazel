@@ -1,0 +1,53 @@
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_extension")
+
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# The release directory as upstream ships it: scripts, its own descriptor and prebuilt
+# libraries. rules_godot writes the descriptor from the extension, so the shipped one stays
+# out of both parts.
+godot_extension(
+    name = "sentry_native",
+    entry_symbol = "sentry_init",
+    library = select({
+        "@platforms//os:linux": "sentry/bin/linux/libsentry.linux.so",
+        "@platforms//os:macos": "sentry/bin/macos/libsentry.macos.dylib",
+        "//conditions:default": None,
+    }),
+    resource_path = "addons/sentry/sentry.gdextension",
+    tags = ["manual"],
+)
+
+godot_addon(
+    name = "sentry",
+    srcs = glob(
+        ["sentry/**"],
+        exclude = [
+            "sentry/bin/**",
+            "sentry/sentry.gdextension",
+        ],
+    ),
+    strip_prefix = "sentry",
+    tags = ["manual"],
+    deps = [":sentry_native"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = ["main/main.gd"],
+    tags = ["manual"],
+    deps = [":sentry"],
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)

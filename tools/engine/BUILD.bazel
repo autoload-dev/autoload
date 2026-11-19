@@ -1,0 +1,40 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "generator",
+    srcs = ["generator.py"],
+)
+
+# Configures a source recipe into its pin and merges pins into a lock file.
+py_binary(
+    name = "pin",
+    srcs = [
+        "configure.py",
+        "module_graph.py",
+        "pin.py",
+    ],
+    main = "pin.py",
+)
+
+py_binary(
+    name = "revision",
+    srcs = ["revision.py"],
+)
+
+py_library(
+    name = "support",
+    srcs = [
+        "configure.py",
+        "generator.py",
+        "module_graph.py",
+        "pin.py",
+        "revision.py",
+    ],
+)
+
+exports_files([
+    "configure.py",
+    "module_graph.py",
+])

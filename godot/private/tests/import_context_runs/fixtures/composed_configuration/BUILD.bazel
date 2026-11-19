@@ -1,0 +1,90 @@
+load("//godot:defs.bzl", "godot_addon", "godot_project", "godot_resources")
+
+# Resources whose add-on carries settings and an autoload into the operations over them,
+# directly, through a resource with an import input and under their project's overrides.
+package(default_visibility = ["//godot/private/tests/import_context_runs:__pkg__"])
+
+godot_resources(
+    name = "configured_resources",
+    srcs = ["main/main.tscn"],
+    tags = ["manual"],
+    deps = [":configuration"],
+)
+
+godot_addon(
+    name = "configuration",
+    srcs = ["main/configuration.gd"],
+    autoloads = {"State": "*res://addons/configuration/configuration.gd"},
+    settings = {"application/config/name": '"Resources"'},
+    strip_prefix = "main",
+    tags = ["manual"],
+)
+
+# The script that checks the autoload, the name it receives after -- (default Configured) and
+# that the import input's autoload is absent.
+godot_resources(
+    name = "configured_check",
+    srcs = ["main/configured_test.gd"],
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "configured_project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    setting_overrides = {"application/config/name": '"Configured"'},
+    tags = ["manual"],
+)
+
+# An import input whose add-on has settings and an autoload, consumed by a resource that
+# also depends on the configured resources.
+godot_resources(
+    name = "private_import_input",
+    resource_paths = {"main/other.gd": "private_import_input.gd"},
+    tags = ["manual"],
+    deps = [":import_input_configuration"],
+)
+
+godot_addon(
+    name = "import_input_configuration",
+    srcs = ["import_input_configuration/state.gd"],
+    autoloads = {"ImportInputState": "*res://addons/import_input_configuration/state.gd"},
+    settings = {"application/config/name": '"Import input"'},
+    strip_prefix = "import_input_configuration",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "import_input_consumer",
+    import_inputs = [":private_import_input"],
+    tags = ["manual"],
+    deps = [":configured_resources"],
+)
+
+godot_resources(
+    name = "transitive_consumer",
+    srcs = ["main/other.gd"],
+    tags = ["manual"],
+    deps = [":import_input_consumer"],
+)
+
+godot_project(
+    name = "transitive_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+# The project overrides the setting and the autoload a dependency declares.
+godot_resources(
+    name = "overridden_consumer",
+    tags = ["manual"],
+    deps = [":configured_resources"],
+)
+
+godot_project(
+    name = "overriding_project",
+    autoload_overrides = {"State": "res://addons/configuration/configuration.gd"},
+    project_file = "project.godot",
+    setting_overrides = {"application/config/name": '"Configured"'},
+    tags = ["manual"],
+)

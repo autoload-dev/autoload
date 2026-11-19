@@ -1,0 +1,3 @@
+# The reaction_diffusion engine module; MODULE.bazel adds it to Petri's source build through
+# this config.py, and the recipe copies the whole directory.
+exports_files(["config.py"])

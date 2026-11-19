@@ -1,0 +1,41 @@
+load("@rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sync", "godot_project")
+load("//addons/dart:defs.bzl", "godot_dart_extension")
+
+package(default_testonly = True)
+
+exports_files(
+    ["project.godot"],
+    visibility = [
+        "//addons/dart/tests/unit:__pkg__",
+    ],
+)
+
+# The Dart language with the suites' fixture scripts.
+godot_dart_extension(
+    name = "dart",
+    srcs = ["//addons/dart/tests/unit:fixtures"],
+    visibility = ["//addons/dart/tests:__subpackages__"],
+)
+
+godot_project(
+    name = "tests",
+    project_file = "project.godot",
+    visibility = ["//addons/dart/tests:__subpackages__"],
+)
+
+godot_editor(
+    name = "edit",
+    project = ":tests",
+    deps = [
+        "//addons/dart/tests/unit:suites",
+    ],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":tests",
+    deps = [
+        "//addons/dart/tests/unit:suites",
+    ],
+)

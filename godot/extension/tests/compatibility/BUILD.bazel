@@ -1,0 +1,38 @@
+load("//godot:defs.bzl", "godot_test")
+load(":engine_upgrade_tests.bzl", "engine_upgrade_test_suite")
+load(":engines.bzl", "engine_test")
+
+# A godot-cpp extension built against the 4.7 extension API loads in the stable engine and in
+# the next minor's beta; the beta engine is selected by a test transition.
+
+godot_test(
+    name = "godot_cpp_extension_loads_in_stable_engine_test_run",
+    size = "small",
+    env = {"EXPECTED_ENGINE_VERSION": "4.7.2"},
+    pack = "//godot/extension/tests/compatibility/fixtures/godot_cpp_extension_project:pack",
+    tags = ["manual"],
+)
+
+engine_test(
+    name = "godot_cpp_extension_loads_in_stable_engine_test",
+    size = "small",
+    engine = "stable",
+    test = ":godot_cpp_extension_loads_in_stable_engine_test_run",
+)
+
+godot_test(
+    name = "godot_cpp_extension_loads_in_beta_engine_test_run",
+    size = "small",
+    env = {"EXPECTED_ENGINE_VERSION": "4.8.0-beta1"},
+    pack = "//godot/extension/tests/compatibility/fixtures/godot_cpp_extension_project:pack",
+    tags = ["manual"],
+)
+
+engine_test(
+    name = "godot_cpp_extension_loads_in_beta_engine_test",
+    size = "small",
+    engine = "beta",
+    test = ":godot_cpp_extension_loads_in_beta_engine_test_run",
+)
+
+engine_upgrade_test_suite(name = "engine_upgrade_test_suite")

@@ -1,0 +1,149 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "app_metadata_test",
+    size = "small",
+    srcs = ["app_metadata_test.py"],
+    deps = ["//tools/platforms:godot_shell_lib"],
+)
+
+py_test(
+    name = "artifact_validation_test",
+    size = "small",
+    srcs = ["artifact_validation_test.py"],
+    deps = [
+        "//tools/platforms:check_engine_version_lib",
+        "//tools/platforms:native_fixtures",
+        "//tools/platforms:native_symbols_lib",
+    ],
+)
+
+py_test(
+    name = "apple_bundle_test",
+    size = "small",
+    srcs = ["apple_bundle_test.py"],
+    deps = ["//tools/platforms:apple_bundle_lib"],
+)
+
+py_test(
+    name = "compile_icon_test",
+    size = "small",
+    srcs = ["compile_icon_test.py"],
+    deps = ["//tools/platforms:compile_icon_lib"],
+)
+
+py_test(
+    name = "sign_macos_test",
+    size = "small",
+    srcs = ["sign_macos_test.py"],
+    deps = ["//tools/platforms:sign_macos_lib"],
+)
+
+py_test(
+    name = "package_desktop_test",
+    size = "small",
+    srcs = ["package_desktop_test.py"],
+    deps = [
+        "//tools/platforms:native_fixtures",
+        "//tools/platforms:package_desktop_lib",
+    ],
+)
+
+py_test(
+    name = "package_android_test",
+    size = "small",
+    srcs = ["package_android_test.py"],
+    deps = ["//tools/platforms:package_android_lib"],
+)
+
+py_test(
+    name = "package_symbols_test",
+    size = "small",
+    srcs = ["package_symbols_test.py"],
+    deps = [
+        "//tools/platforms:native_fixtures",
+        "//tools/platforms:package_symbols_lib",
+    ],
+)
+
+py_test(
+    name = "native_symbols_test",
+    size = "small",
+    srcs = ["native_symbols_test.py"],
+    deps = [
+        "//tools/platforms:native_fixtures",
+        "//tools/platforms:native_symbols_lib",
+    ],
+)
+
+py_test(
+    name = "check_engine_version_test",
+    size = "small",
+    srcs = ["check_engine_version_test.py"],
+    deps = ["//tools/platforms:check_engine_version_lib"],
+)
+
+py_test(
+    name = "godot_shell_test",
+    size = "small",
+    srcs = ["godot_shell_test.py"],
+    args = ["$(rootpath //godot/private/tests:engine_profile)"],
+    data = glob(["testdata/godot_shell/*.json"]) + ["//godot/private/tests:engine_profile"],
+    deps = ["//tools/platforms:godot_shell_lib"],
+)
+
+py_test(
+    name = "check_maven_minimums_test",
+    size = "small",
+    srcs = ["check_maven_minimums_test.py"],
+    deps = ["//tools/platforms:check_maven_minimums_lib"],
+)
+
+py_test(
+    name = "shell_overrides_test",
+    size = "small",
+    srcs = ["shell_overrides_test.py"],
+    deps = ["//tools/platforms:godot_shell_lib"],
+)
+
+py_test(
+    name = "launch_common_test",
+    size = "small",
+    srcs = ["launch_common_test.py"],
+    deps = ["//tools/platforms/launch:launch_lib"],
+)
+
+py_test(
+    name = "launch_desktop_test",
+    size = "small",
+    srcs = ["launch_desktop_test.py"],
+    deps = ["//tools/platforms/launch:launch_lib"],
+)
+
+py_test(
+    name = "launch_android_test",
+    size = "small",
+    srcs = ["launch_android_test.py"],
+    deps = ["//tools/platforms/launch:launch_lib"],
+)
+
+py_test(
+    name = "launch_ios_test",
+    size = "small",
+    srcs = ["launch_ios_test.py"],
+    deps = ["//tools/platforms/launch:launch_lib"],
+)
+
+py_test(
+    name = "launch_editor_test",
+    size = "small",
+    srcs = ["launch_editor_test.py"],
+    deps = ["//tools/platforms/launch:launch_lib"],
+)
+
+py_test(
+    name = "launch_entry_test",
+    size = "small",
+    srcs = ["launch_entry_test.py"],
+    data = ["//tools/platforms/launch"],
+)

@@ -1,0 +1,56 @@
+load("@rules_godot//godot:app.bzl", "godot_app")
+load(
+    "@rules_godot//godot:defs.bzl",
+    "godot_binary",
+    "godot_editor",
+    "godot_metadata_sync",
+    "godot_pack",
+    "godot_project",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+# The application ID is also the redirect scheme AppAuth's Android redirect activity claims.
+_APPLICATION_ID = "org.example.appauth"
+
+exports_files(["project.godot"])
+
+godot_project(
+    name = "demo",
+    main_scene = "main/login_demo.tscn",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":demo",
+    deps = ["//addons/app_auth/demo/main"],
+)
+
+godot_binary(
+    name = "run",
+    headless = False,
+    pack = ":pack",
+)
+
+godot_editor(
+    name = "edit",
+    project = ":demo",
+    deps = ["//addons/app_auth/demo/main"],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":demo",
+    deps = ["//addons/app_auth/demo/main"],
+)
+
+godot_app(
+    name = "app",
+    android_manifest_values = {"appAuthRedirectScheme": _APPLICATION_ID},
+    application_id = _APPLICATION_ID,
+    # AppAuth's Swift package needs macOS 12.
+    macos_minimum_os_version = "12.0",
+    pack = ":pack",
+)

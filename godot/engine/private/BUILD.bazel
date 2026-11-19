@@ -1,0 +1,16 @@
+exports_files(
+    [
+        "archives.bzl",
+        "catalogue.bzl",
+        "source_build_rows.bzl",
+        "components.bzl",
+        "extension_plan.bzl",
+        "generator.bzl",
+        "hub.bzl",
+        "pin.bzl",
+        "prebuilt.bzl",
+        "resolution.bzl",
+        "source_repositories.bzl",
+    ],
+    visibility = ["//docs/public/api:__pkg__"],
+)

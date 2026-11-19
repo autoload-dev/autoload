@@ -1,0 +1,8 @@
+; Project settings of the packaging fixtures' pack.
+
+config_version=5
+
+[application]
+
+config/name="Fixture Game"
+config/version="2.3.4"

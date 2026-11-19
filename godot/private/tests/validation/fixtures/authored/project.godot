@@ -1,0 +1,11 @@
+config_version=5
+
+[application]
+
+config/name="Validation"
+
+[autoload]
+
+Hud="*uid://bh7ud0aut0l0d"
+ToolTracker="*res://autoloads/tool_tracker.gd"
+Tracker="*res://autoloads/tracker.gd"

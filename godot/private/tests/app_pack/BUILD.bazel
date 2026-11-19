@@ -1,0 +1,74 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project")
+load("//godot/private/config:application.bzl", "application_pack")
+load(":application_options_tests.bzl", "application_options_test_suite")
+load(":owned_options_tests.bzl", "owned_options_test_suite")
+load(":pack_tests.bzl", "context_probe", "pack_test_suite")
+
+application_options_test_suite(name = "application_options_test_suite")
+
+owned_options_test_suite(name = "owned_options_test_suite")
+
+pack_test_suite(name = "pack_test_suite")
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [":platform_addon"],
+)
+
+godot_addon(
+    name = "platform_addon",
+    platform_deps = [":platform_library"],
+    tags = ["manual"],
+)
+
+cc_library(
+    name = "platform_library",
+    srcs = ["platform_library.cc"],
+    defines = select({
+        ":no_application_context": [],
+        "//conditions:default": ["APPLICATION_CONTEXT_PRESENT"],
+    }),
+)
+
+config_setting(
+    name = "no_application_context",
+    flag_values = {"//godot/private/config:application_context": "{}"},
+)
+
+context_probe(
+    name = "context_probe",
+    empty = select({
+        ":no_application_context": True,
+        "//conditions:default": False,
+    }),
+)
+
+application_pack(
+    name = "application_context",
+    application_id = "org.example.packcontract",
+    tags = ["manual"],
+    deps = [":empty_pack"],
+)
+
+godot_project(
+    name = "empty_project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "empty_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":empty_project",
+    tags = ["manual"],
+)

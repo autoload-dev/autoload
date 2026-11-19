@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://interface/base/badge.png" id="1"]
+
+[node name="Badge" type="Sprite2D"]
+texture = ExtResource("1")

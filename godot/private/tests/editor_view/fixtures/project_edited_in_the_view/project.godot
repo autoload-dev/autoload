@@ -1,0 +1,16 @@
+; Opened by the editor view test in a copy of this package. The authored plugin
+; activation never takes effect; the project activates plugins explicitly.
+
+config_version=5
+
+[application]
+
+config/name="Editor view"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://main/addons/authored_only/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

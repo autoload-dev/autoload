@@ -1,0 +1,64 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+
+# A project with a start pack and a desktop application of it.
+package(default_visibility = ["//godot/platforms/private/tests/app_platform_selection:__subpackages__"])
+
+exports_files(["project.godot"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/common.txt",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+# A custom feature, which source runs of the editor variant start with as exports do.
+string_flag(
+    name = "channel",
+    build_setting_default = "development",
+    values = [
+        "development",
+        "production",
+    ],
+)
+
+godot_project(
+    name = "project",
+    custom_features = [":channel"],
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "start_pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+_DESKTOP = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+godot_app(
+    name = "app",
+    application_id = "org.example.appplatformselection",
+    pack = ":start_pack",
+    tags = ["manual"],
+    target_compatible_with = _DESKTOP,
+)
+
+filegroup(
+    name = "bundle",
+    srcs = [":app"],
+    output_group = "bundle",
+    tags = ["manual"],
+)

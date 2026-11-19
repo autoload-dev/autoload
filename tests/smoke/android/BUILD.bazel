@@ -1,0 +1,80 @@
+load("@rules_godot//godot:app.bzl", "godot_app")
+load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@rules_godot//godot/testing:artifact_tests.bzl", "android_bundle_test")
+
+# The Android smoke path: an App Bundle whose APK packages the engine, a godot-cpp
+# extension and the pack, inspected with the public artifact test. Every target is
+# manual: //:android_aab runs it with --config=android --config=aab.
+
+godot_cc_extension(
+    name = "counter",
+    srcs = ["native/counter.cc"],
+    entry_symbol = "native_counter_init",
+    resource_path = "main/native_counter/counter.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.gd.uid",
+        "main/main.tscn",
+        "main/native_counter/counter.gd",
+        "main/native_counter/counter.gd.uid",
+    ],
+    tags = ["manual"],
+    deps = [":counter"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    # The 2D counter must render on emulators without Vulkan presentation.
+    settings = {"rendering/renderer/rendering_method.mobile": '"gl_compatibility"'},
+    tags = ["manual"],
+    deps = [
+        ":counter",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.smoke.android",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+android_bundle_test(
+    name = "bundle_packages_extension_and_pack_test",
+    size = "small",
+    apk_libraries = [
+        "lib/arm64-v8a/libgodot_android.so",
+        "lib/arm64-v8a/libcounter_native.so",
+    ],
+    application_id = "org.example.smoke.android",
+    bundle = ":app",
+    bundletool = "@bundletool//file",
+    # Classes of the engine's Maven dependencies, which the bundle's dex files define.
+    classes = [
+        "androidx.concurrent.futures.AbstractResolvableFuture",
+        "com.google.common.util.concurrent.ListenableFuture",
+    ],
+    pck_files = [
+        "main/native_counter/counter.gd",
+        "main/native_counter/counter.gdextension",
+        "main/main.gd",
+    ],
+    tags = ["manual"],
+)

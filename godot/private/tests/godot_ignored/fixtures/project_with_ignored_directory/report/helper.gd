@@ -1,0 +1,2 @@
+class_name IgnoredHelper
+extends RefCounted

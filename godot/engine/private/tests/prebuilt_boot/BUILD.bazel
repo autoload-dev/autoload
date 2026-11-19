@@ -1,0 +1,34 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:app.bzl", "godot_app")
+
+# Run test: with no engine attribute, the registered prebuilt runtime components supply the
+# application's runtime, which boots and reports the registered version.
+godot_app(
+    name = "registered_prebuilt_runtime_boots_test_app",
+    pack = "//godot/engine/private/tests/prebuilt_boot/fixtures/version_reporting_project:pack",
+    tags = ["manual"],
+    target_compatible_with = select({
+        "@platforms//os:linux": [],
+        "@platforms//os:macos": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+filegroup(
+    name = "registered_prebuilt_runtime_boots_test_bundle",
+    srcs = [":registered_prebuilt_runtime_boots_test_app"],
+    output_group = "bundle",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "registered_prebuilt_runtime_boots_test",
+    size = "small",
+    srcs = ["prebuilt_runtime_test.py"],
+    args = [
+        "$(rlocationpath :registered_prebuilt_runtime_boots_test_bundle)",
+        "4.7.2",
+    ],
+    data = [":registered_prebuilt_runtime_boots_test_bundle"],
+    main = "prebuilt_runtime_test.py",
+)

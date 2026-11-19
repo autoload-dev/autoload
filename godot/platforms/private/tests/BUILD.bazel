@@ -1,0 +1,51 @@
+load(":android_runtime_tests.bzl", "android_runtime_test_suite")
+load(":android_toolchains_tests.bzl", "android_toolchains_test_suite")
+load(":configuration_invariance_tests.bzl", "configuration_invariance_test_suite")
+load(":maven_minimums_tests.bzl", "maven_minimums_test_suite")
+load(":resolution_tests.bzl", "resolution_probe", "resolution_test_suite")
+load(":shell_inputs_tests.bzl", "shell_inputs_test_suite")
+load(":shell_overrides_tests.bzl", "shell_overrides_test_suite")
+load(":signing_inputs_tests.bzl", "signing_inputs_test_suite")
+
+resolution_probe(
+    name = "probe",
+    tags = ["manual"],
+)
+
+android_toolchains_test_suite(name = "android_toolchains_test_suite")
+
+resolution_test_suite(name = "resolution_test_suite")
+
+shell_inputs_test_suite(name = "shell_inputs_test_suite")
+
+shell_overrides_test_suite(name = "shell_overrides_test_suite")
+
+signing_inputs_test_suite(name = "signing_inputs_test_suite")
+
+android_runtime_test_suite(name = "android_runtime_test_suite")
+
+configuration_invariance_test_suite(name = "configuration_invariance_test_suite")
+
+maven_minimums_test_suite(name = "maven_minimums_test_suite")
+
+# Android application tests are compatible only where rules_android found an installed SDK.
+constraint_setting(
+    name = "android_sdk",
+    default_constraint_value = ":android_sdk_installed",
+)
+
+constraint_value(
+    name = "android_sdk_installed",
+    constraint_setting = ":android_sdk",
+)
+
+# Android tests in every tests package put this in target_compatible_with: they are skipped,
+# not failed, where rules_android found no SDK.
+alias(
+    name = "requires_android_sdk",
+    actual = select({
+        "@androidsdk//:has_androidsdk": ":android_sdk_installed",
+        "//conditions:default": "@platforms//:incompatible",
+    }),
+    visibility = ["//godot:__subpackages__"],
+)

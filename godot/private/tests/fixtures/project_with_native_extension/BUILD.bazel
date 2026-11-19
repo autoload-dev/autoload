@@ -1,0 +1,58 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A pack of a project with a script, a raw text resource and a C ABI extension whose
+# libraries the editor does not load, plus a test that reads the pack and a
+# runtime-only data file.
+package(default_visibility = ["//godot:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/common.txt",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_project(
+    name = "project",
+    main_scene = "main/main.tscn",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":hello",
+        ":main",
+    ],
+)
+
+py_test(
+    name = "runtime_input_test",
+    size = "small",
+    srcs = ["tests/runtime_input_test.py"],
+    args = [
+        "$(rlocationpath :pack)",
+        "$(rlocationpath tests/runtime_input.txt)",
+    ],
+    data = [
+        "tests/runtime_input.txt",
+        ":pack",
+    ],
+    tags = ["manual"],
+)

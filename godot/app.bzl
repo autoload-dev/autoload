@@ -1,0 +1,448 @@
+"""
+Build one application from a start pack and the runtime of the selected export platform.
+
+Select the export platform with --platforms; use target_compatible_with for consumer
+limits.
+Export content and Godot configuration belong to the declared pack/project.
+"""
+
+load("//godot/engine/private:components.bzl", _resolved_runtime = "resolved_runtime")
+load(
+    "//godot/platforms/private:android.bzl",
+    _godot_android_application = "godot_android_application",
+)
+load(
+    "//godot/platforms/private:desktop.bzl",
+    _godot_linux_application = "godot_linux_application",
+    _godot_macos_application = "godot_macos_application",
+)
+load("//godot/platforms/private:ios.bzl", _godot_ios_application = "godot_ios_application")
+load("//godot/platforms/private:macos_signing.bzl", _godot_macos_sign = "godot_macos_sign")
+load("//godot/private:run.bzl", _godot_source_application = "godot_source_application")
+load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
+load("//godot/private/config:application.bzl", _application_pack = "application_pack", _loadable_pack = "loadable_pack")
+load(
+    "//godot/private/config:settings.bzl",
+    _DISPATCH_CONDITIONS = "DISPATCH_CONDITIONS",
+    _configured_context = "configured_context",
+    _context_attrs = "context_attrs",
+)
+
+_LINUX = Label("//godot/platforms:is_linux")
+_MACOS = Label("//godot/platforms:is_macos")
+_ANDROID = Label("//godot/platforms:is_android")
+_IOS_DEVICE = Label("//godot/platforms:is_ios_device")
+_IOS_SIMULATOR = Label("//godot/platforms:is_ios_simulator")
+
+_DISPATCH = {
+    Label("//godot/private/config:" + name): condition.operating_system
+    for name, condition in _DISPATCH_CONDITIONS.items()
+}
+
+def _backend(name, backend):
+    """
+    Return the label of an application backend of godot_app.
+
+    Android and iOS application backends nest the application name, which names their
+    outputs. Basename exception: keep exactly <name>.<backend>/<name> until
+    rules_android and rules_apple can name outputs explicitly while preserving the
+    artifact basename and the backend providers.
+    """
+    if backend in ["ios", "android_apk", "android_aab"]:
+        return ":%s.%s/%s" % (name, backend, name)
+    return ":%s.%s" % (name, backend)
+
+def _symbols(name, backend):
+    """Return the label of an application backend's debug symbols."""
+    return _backend(name, backend) + ".debug_symbols"
+
+def _by_variant(name, suffix, template, hidden):
+    """
+    Return what godot_app's public label forwards to, by variant and then by platform.
+
+    The variant decides first, so the editor variant needs no condition per export
+    platform; the alias keeps each select() unambiguous.
+
+    Args:
+        name: Name of the godot_app.
+        suffix: "" for the application, ".debug_symbols" for its debug symbols.
+        template: The select() over the export platform's backends.
+        hidden: Attributes of the private alias.
+
+    Returns:
+        The select() for the public alias.
+    """
+    native.alias(name = name + ".template" + suffix, actual = template, **hidden)
+    return select({
+        Label("//godot:editor"): ":" + name + ".editor" + suffix,
+        "//conditions:default": ":" + name + ".template" + suffix,
+    })
+
+def _invalid_impl(ctx):
+    _configured_context(ctx)
+    fail("Invalid or unsupported export platform at %s" % ctx.label)
+
+_invalid_context = rule(implementation = _invalid_impl, attrs = _context_attrs())
+
+def _app_impl(
+        name,
+        visibility,
+        pack,
+        loadable_packs,
+        application_id,
+        macos_signing_identity,
+        macos_entitlements,
+        macos_minimum_os_version,
+        ios_minimum_os_version,
+        ios_families,
+        android_min_sdk_version,
+        android_target_sdk_version,
+        android_manifest_values,
+        android_manifest,
+        android_debug_key,
+        ios_provisioning_profile,
+        ios_entitlements,
+        ios_infoplists,
+        ios_app_icons,
+        ios_launch_storyboard,
+        platform_deps,
+        platform_resources,
+        target_compatible_with,
+        tags,
+        exec_compatible_with,
+        deprecation,
+        exec_properties,
+        features,
+        **kwargs):
+    # The inherited testonly is None unless set, which applies the package default.
+    testonly = kwargs.pop("testonly")
+
+    # Typed aliases retain caller-private labels even when they are selectors.
+    # Helper target names are implementation identities; physical output names use name.
+    hidden = dict(tags = tags + ["manual"], testonly = testonly)
+    native.alias(name = name + ".pack_input", actual = pack, **hidden)
+    loadable = []
+    for index, loadable_pack in enumerate(loadable_packs or []):
+        _loadable_pack(name = "%s.loadable_pack_input_%d" % (name, index), deps = [loadable_pack], **hidden)
+        loadable.append(":%s.loadable_pack_input_%d" % (name, index))
+
+    # Desktop application backends package the runtime component the runtime toolchain
+    # resolves in their platform slice; Android and iOS application backends resolve it
+    # inside their Android or Apple split.
+    _resolved_runtime(name = name + ".runtime", **hidden)
+    _application_pack(
+        name = name + ".pack",
+        deps = [":" + name + ".pack_input"] + loadable,
+        application_id = application_id,
+        macos_minimum_os_version = macos_minimum_os_version,
+        ios_minimum_os_version = ios_minimum_os_version,
+        ios_families = ios_families,
+        android_min_sdk_version = android_min_sdk_version,
+        android_target_sdk_version = android_target_sdk_version,
+        **hidden
+    )
+    common = hidden | dict(
+        exec_compatible_with = exec_compatible_with,
+        exec_properties = exec_properties,
+        features = features,
+    )
+    _godot_linux_application(
+        name = name + ".linux",
+        app_name = name,
+        pack = ":" + name + ".pack",
+        runtime = ":" + name + ".runtime",
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
+        **common
+    )
+    _godot_macos_application(
+        name = name + ".macos",
+        app_name = name,
+        bundle_id = application_id,
+        minimum_os_version = macos_minimum_os_version,
+        pack = ":" + name + ".pack",
+        runtime = ":" + name + ".runtime",
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
+        **common
+    )
+    _godot_macos_sign(
+        name = name + ".macos_signed",
+        app = ":" + name + ".macos",
+        identity = macos_signing_identity,
+        entitlements = macos_entitlements,
+        **common
+    )
+    native.alias(
+        name = name + ".macos_result",
+        actual = select({
+            Label("//godot:macos_signing_unsigned"): ":" + name + ".macos",
+            # The flag rejects values other than adhoc and certificate.
+            "//conditions:default": ":" + name + ".macos_signed",
+        }),
+        **hidden
+    )
+    for format, bundle in [("apk", False), ("aab", True)]:
+        _godot_android_application(
+            name = name + ".android_" + format + "/" + name,
+            pack = ":" + name + ".pack",
+            application_id = "$(GODOT_APPLICATION_ID)",
+            toolchains = [":" + name + ".pack"],
+            manifest_values = android_manifest_values,
+            manifest = android_manifest,
+            debug_key = android_debug_key,
+            deps = platform_deps,
+            resource_files = platform_resources,
+            bundle = bundle,
+            **common
+        )
+    native.alias(
+        name = name + ".android",
+        actual = select({
+            Label("//godot:android_aab"): _backend(name, "android_aab"),
+            "//conditions:default": _backend(name, "android_apk"),
+        }),
+        **hidden
+    )
+    _godot_ios_application(
+        name = name + ".ios/" + name,
+        pack = ":" + name + ".pack",
+        bundle_id = application_id,
+        bundle_name = name,
+        executable_name = name,
+        minimum_os_version = ios_minimum_os_version,
+        families = ios_families,
+        deps = platform_deps,
+        resources = platform_resources,
+        provisioning_profile = ios_provisioning_profile,
+        entitlements = ios_entitlements,
+        infoplists = ios_infoplists,
+        app_icons = ios_app_icons,
+        launch_storyboard = ios_launch_storyboard,
+        **common
+    )
+
+    # The editor variant runs the start pack's project from sources: no export, runtime
+    # or shell; its extensions build for the target platform. Elsewhere than on Linux and
+    # macOS the backend is incompatible, and so is the application forwarding to it.
+    editor_compatible = select({
+        _LINUX: [],
+        _MACOS: [],
+        "//conditions:default": [Label("//godot:editor_variant_needs_linux_or_macos")],
+    })
+    _godot_source_application(
+        name = name + ".editor",
+        view = ":" + name + ".pack_input",
+        headless = False,
+        # A game's errors show in its log; its exit status stays Godot's.
+        engine_errors = "report",
+        target_compatible_with = editor_compatible,
+        **common
+    )
+    native.filegroup(name = name + ".editor.debug_symbols", target_compatible_with = editor_compatible, **hidden)
+    _invalid_context(name = name + ".invalid_context", **hidden)
+    invalid = ":" + name + ".invalid_context"
+    for backend in ["linux", "macos"]:
+        native.filegroup(
+            name = name + "." + backend + ".debug_symbols",
+            srcs = [_backend(name, backend)],
+            output_group = "debug_symbols",
+            **hidden
+        )
+    native.alias(
+        name = name + ".android.debug_symbols",
+        actual = select({
+            Label("//godot:android_aab"): _backend(name, "android_aab") + ".debug_symbols",
+            "//conditions:default": _backend(name, "android_apk") + ".debug_symbols",
+        }),
+        **hidden
+    )
+    compatible = target_compatible_with + select({
+        _LINUX: [],
+        _MACOS: [],
+        _ANDROID: [],
+        _IOS_DEVICE: [],
+        _IOS_SIMULATOR: [],
+        "//conditions:default": [Label("@platforms//:incompatible")],
+    })
+    native.alias(
+        name = name + ".debug_symbols",
+        actual = _by_variant(name, ".debug_symbols", select({
+            condition: _symbols(name, backend)
+            for condition, backend in _DISPATCH.items()
+        } | {"//conditions:default": invalid}), hidden),
+        target_compatible_with = compatible,
+        visibility = visibility,
+        tags = tags + ["manual"],
+        testonly = testonly,
+    )
+    native.alias(
+        name = name,
+        actual = _by_variant(name, "", select({
+            condition: ":" + name + ".macos_result" if backend == "macos" else _backend(name, backend)
+            for condition, backend in _DISPATCH.items()
+        } | {"//conditions:default": invalid}), hidden),
+        target_compatible_with = compatible,
+        visibility = visibility,
+        tags = tags,
+        testonly = testonly,
+        deprecation = deprecation or None,
+    )
+
+godot_app = macro(
+    doc = """
+    Package a start pack and the matching runtime into one application.
+
+    Select the export platform with --platforms. The public label forwards the
+    providers, default artifacts, run behavior and output groups of the application
+    backend that export platform selects: a Linux or macOS bundle, an Android APK or
+    AAB, or an iOS application. Unsupported wildcard targets are skipped; explicit
+    unsupported requests fail. Selected application backends need their documented SDKs
+    and runtime components. `bazel run` starts the application on this host, a device,
+    an emulator or a Simulator, or from sources in the editor variant, and streams its log
+    until it exits; see
+    [Run an application](../../platforms.md#run-an-application). Configure Godot settings and content on the pack/project;
+    this macro never creates or replaces the pack.
+
+    macOS defaults to unsigned. Select --@rules_godot//godot:macos_signing=adhoc
+    or certificate to sign a copy. Certificate mode requires macos_signing_identity;
+    macos_entitlements affects only the selected signer. Unsigned actions never read
+    signing inputs. The selected launcher and GodotDesktopAppInfo bundle/archive refer
+    to the same result; executable_path stays bundle-relative. Signing requires local
+    Darwin execution; certificates additionally require an accessible keychain and
+    disable action caching and sandboxing. Failures never return unsigned output.
+    The public <name>.debug_symbols companion bypasses signer analysis, including in
+    certificate mode without identity; debug_symbols on the selected app does not.
+
+    The application delivers the extension libraries, platform libraries and Info.plist
+    fragments of the add-ons of its start pack and of its loadable_packs.
+
+    Example: godot_app(name = "app", pack = ":pack"). Each application backend packages
+    the runtime component that the runtime toolchain resolves for its platform slice and
+    variant; register the components with register_toolchains or --extra_toolchains.
+    See [platform setup](../../platforms.md) and the
+    [Godot configuration catalogue](../../configuration.md) for config-only capabilities.
+
+    ### Default outputs
+    | kind | cardinality | availability | behavior |
+    | --- | --- | --- | --- |
+    | executable | many | desktop | build bundle/archive; bazel run launches the selected signed or unsigned bundle on this host; bundle is in runfiles |
+    | executable | many | apk | build rules_android's default APK outputs, including signed/unsigned APKs and deployment metadata; use ApkInfo.signed_apk for the selected distributable; bazel run installs the signed APK on a device or emulator and launches it |
+    | executable | one | aab | build selected checked AAB; no intermediate APK is exposed; bazel run installs its universal APK on a device or emulator and launches it |
+    | executable | one | ios | build the `.app` directory for Simulator and non-`opt` builds, else the `.ipa` archive; bazel run installs it on a Simulator or device and launches it |
+    | executable | one | editor | build nothing but the start pack's project inputs; bazel run runs the project from sources with Godot's editor binary on this host |
+
+    ### Output groups
+    | name | contents | availability | prerequisites |
+    | --- | --- | --- | --- |
+    | bundle | Selected unpacked application bundle | desktop | matching desktop runtime component; selected macOS signer if enabled |
+    | archive | Selected desktop distribution archive | desktop | matching desktop runtime component; selected macOS signer if enabled |
+    | debug_symbols | Desktop debug symbols | desktop | matching C++ toolchain |
+
+    ### Generated targets
+    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | {name}.debug_symbols | alias | analysis_boundary | Analyze the unsigned symbol producer without signer identities or entitlements; requesting an app output group still analyzes its signer | caller | inherit | the selected operating system's SDK and debug symbol inputs; iOS requires --apple_generate_dsym | always |
+
+    ### Providers
+    | name | role | availability |
+    | --- | --- | --- |
+    | GodotDesktopAppInfo | Selected bundle/archive and relative executable path | desktop |
+    | ApkInfo | Selected APK signing and installation metadata | apk |
+    | AndroidBundleInfo | Selected AAB only; never an intermediate ApkInfo | aab |
+    | AppleBundleInfo | Selected iOS application (`.app` directory or `.ipa` archive) and metadata | ios |
+    """,
+    implementation = _app_impl,
+    # Common inheritance gives testonly Bazel's package default; other common
+    # attributes are declared below or disabled.
+    inherit_attrs = "common",
+    # buildifier: disable=attr-applicable_licenses
+    attrs = {
+        "expect_failure": None,
+        "transitive_configs": None,
+        "compatible_with": None,
+        "restricted_to": None,
+        "package_metadata": None,
+        "aspect_hints": None,
+        "toolchains": None,
+        "exec_group_compatible_with": None,
+        "pack": attr.label(doc = "The start pack: a godot_pack target, which also brings the extension libraries and platform libraries of its add-ons; a raw PCK file is not enough.", mandatory = True),
+        "loadable_packs": attr.label_list(
+            doc = """
+            Packs the application may load later, such as DLC: godot_pack targets whose
+            add-ons' extension libraries, platform libraries and Info.plist fragments the
+            application delivers besides the start pack's. The application does not
+            contain their PCKs.
+            """,
+            configurable = False,
+        ),
+        "macos_signing_identity": attr.string(doc = "App-specific local certificate identity; required and not '-' in certificate mode. Ad hoc ignores it; unsigned never analyzes it."),
+        "macos_entitlements": attr.label(doc = "Optional declared entitlement plist, including generated files; only the selected signer consumes it."),
+        "application_id": attr.string(doc = "Android application ID or Apple bundle identifier; required for mobile. On macOS an empty value keeps the pack's application/bundle_identifier; Linux ignores it."),
+        "macos_minimum_os_version": attr.string(doc = "Minimum macOS version of the application: the bundle's LSMinimumSystemVersion and the deployment target of the native code its pack compiles, such as extension libraries. The default is Godot's floor; a source-built engine compiles for that floor regardless.", default = MACOS_MINIMUM_OS),
+        "ios_minimum_os_version": attr.string(doc = "Minimum iOS version of the application. It is part of the application context, so the pack exports with it; the runtime must support it.", default = "15.0"),
+        "ios_families": attr.string_list(doc = "Unique nonempty subset of iphone/ipad: the device families of the application's Info.plist and of the pack's export options.", default = ["iphone", "ipad"]),
+        "android_min_sdk_version": attr.int(doc = "Minimum SDK; zero uses the selected engine profile fallback. Distinct from NDK/compile SDK."),
+        "android_target_sdk_version": attr.int(doc = "Target SDK; zero uses the engine profile fallback and resolved target must be >= minimum."),
+        "android_manifest_values": attr.string_dict(
+            doc = """
+            Values for the manifest placeholders of the Android manifest merge, like Gradle's
+            `manifestPlaceholders`: `${key}` in the application's manifest and in the
+            manifests of its platform libraries, such as an SDK's `${appAuthRedirectScheme}`,
+            becomes the value. A placeholder without a value fails the merge with a message
+            naming it. Keys the merger treats as overrides (the application ID, SDK versions,
+            version code and name, `maxSdkVersion`) are rejected with a diagnostic naming
+            the attribute or pack setting that owns the value. The values are not part of the
+            application context, so a changed value reruns the manifest merge and packaging,
+            not the pack's export. Other operating systems ignore them.
+            """,
+            default = {},
+        ),
+        "android_manifest": attr.label(
+            doc = """
+            The application's own Android manifest, the main manifest of the manifest merge;
+            the manifest Godot's Android export writes merges below it. See
+            [Android shell files](../../platforms.md#android-shell-files). Not configurable;
+            other operating systems ignore it.
+            """,
+            allow_single_file = [".xml"],
+            configurable = False,
+        ),
+        "android_debug_key": attr.label(doc = "Debug keystore that signs APKs, used in the exec configuration; AABs are signed outside Bazel.", default = Label("@rules_android//tools/android:debug_keystore")),
+        "ios_provisioning_profile": attr.label(doc = "Optional provisioning profile file; installed profiles are never looked up."),
+        "ios_entitlements": attr.label(doc = "Optional declared entitlement file, including generated files."),
+        "ios_infoplists": attr.label_list(
+            doc = """
+            The application's own Info.plist fragments; each top-level key they set replaces
+            that key of the generated Info.plist and of the add-ons' fragments. See
+            [iOS shell files](../../platforms.md#ios-shell-files). Other operating systems ignore
+            them.
+            """,
+            allow_files = [".plist"],
+        ),
+        "ios_app_icons": attr.label_list(
+            doc = """
+            The application's own app icons, as rules_apple's `app_icons` takes them, which
+            replace those Godot renders. See
+            [iOS shell files](../../platforms.md#ios-shell-files). Other operating systems ignore
+            them.
+            """,
+            allow_files = True,
+        ),
+        "ios_launch_storyboard": attr.label(
+            doc = """
+            The application's own launch screen, a `.storyboard` or `.xib` file, which
+            replaces the one Godot's export writes. Other operating systems ignore it.
+            """,
+            allow_single_file = [".storyboard", ".xib"],
+        ),
+        "platform_deps": attr.label_list(doc = "Platform libraries of this application only: Android Java or native libraries, or iOS libraries and frameworks. Use select() with empty desktop branches; platform libraries other applications reuse belong to the platform_deps of add-ons or extensions."),
+        "platform_resources": attr.label_list(doc = "Platform resources of this application only: Android primary resource files or iOS bundle resources. Use select() with empty desktop branches; the resources of a platform library stay on that library. An Android resource with the type, name and configuration qualifiers of a shell resource, such as a launcher icon or the `GodotAppSplashTheme` style, and an iOS `PrivacyInfo.xcprivacy` replace the shell's."),
+        "target_compatible_with": attr.label_list(doc = "Consumer compatibility constraints/select; sole restriction of the supported export platforms."),
+        "tags": attr.string_list(doc = "Conventional Bazel tags; helpers additionally exclude wildcard selection.", configurable = False),
+        "exec_compatible_with": attr.label_list(doc = "Execution-platform constraints of the application backends.", configurable = False),
+        "deprecation": attr.string(doc = "Optional conventional Bazel deprecation message.", configurable = False),
+        "exec_properties": attr.string_dict(doc = "Execution properties of the application backends."),
+        "features": attr.string_list(doc = "rules_cc toolchain features, independent of Godot feature tags."),
+    },
+)

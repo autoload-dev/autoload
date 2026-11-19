@@ -1,0 +1,9 @@
+# The registry tests this module against each new release; a lockfile would only drift.
+common --lockfile_mode=off
+
+# The settings the README asks consumers of rules_godot to add.
+build --incompatible_exclude_starlark_flags_from_exec_config
+common --experimental_output_paths=strip
+common --modify_execution_info=(?!Godot).*=-supports-path-mapping
+
+test --test_output=errors

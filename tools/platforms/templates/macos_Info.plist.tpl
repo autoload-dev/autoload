@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>English</string>
+    <key>CFBundleExecutable</key>
+    <string>{EXECUTABLE}</string>
+    <key>CFBundleName</key>
+    <string>{DISPLAY_NAME}</string>
+    <key>CFBundleDisplayName</key>
+    <string>{DISPLAY_NAME}</string>
+{ICON_NAME}
+    <key>CFBundleIdentifier</key>
+    <string>{BUNDLE_ID}</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>{SHORT_VERSION}</string>
+    <key>CFBundleSignature</key>
+    <string>{SIGNATURE}</string>
+    <key>CFBundleVersion</key>
+    <string>{BUNDLE_VERSION}</string>
+{USAGE_DESCRIPTIONS}
+    <key>NSHumanReadableCopyright</key>
+    <string>{COPYRIGHT}</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.{APP_CATEGORY}</string>
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
+    <key>LSMinimumSystemVersionByArchitecture</key>
+    <dict>
+        <key>arm64</key>
+        <string>{MIN_VERSION_ARM64}</string>
+        <key>x86_64</key>
+        <string>{MIN_VERSION_X86_64}</string>
+    </dict>
+    <key>NSHighResolutionCapable</key>
+    {HIGH_RES}
+</dict>
+</plist>
