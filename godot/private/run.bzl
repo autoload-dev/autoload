@@ -1,4 +1,4 @@
-"""Run Godot projects or packs as Bazel binaries and tests, like py_binary/py_test."""
+"""Run Godot projects or packs with `bazel run` and `bazel test`, like py_binary/py_test."""
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("//godot:providers.bzl", "GodotPackInfo")
@@ -266,7 +266,7 @@ def _runner(group = None):
         cfg = config.exec(group),
     )}
 
-def _binary_impl(ctx):
+def _run_impl(ctx):
     executable, _, runfiles = _executable_impl(ctx, test = False)
     return [DefaultInfo(executable = executable, runfiles = runfiles)]
 
@@ -275,7 +275,7 @@ def _test_impl(ctx):
     return [DefaultInfo(executable = executable, runfiles = runfiles)]
 
 def _source_application_impl(ctx):
-    # godot_run's runner stages and runs the project with its manifest; the application
+    # The runner stages and runs the project with its manifest; the application
     # launcher starts it with the options every application backend shares.
     # The application runs on its target platform, which its execution platform matches.
     _, manifest, runfiles = _executable_impl(ctx, test = False, tc = ctx.toolchains[EDITOR_TOOLCHAIN].godot, foreign = False)
@@ -305,7 +305,7 @@ _godot_run = rule(
     doc = """
     Run a project or PCK in a writable, isolated workspace; the rule behind godot_run.
     """,
-    implementation = _binary_impl,
+    implementation = _run_impl,
     attrs = _ATTRS | _runner("run"),
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,

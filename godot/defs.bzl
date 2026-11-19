@@ -1,4 +1,4 @@
-"""Public core rules for resources, add-ons, projects, PCK exports, binaries, tests and editor views."""
+"""Public core rules for resources, add-ons, projects, PCK exports, runs, tests and editor views."""
 
 load("//godot/private:addon.bzl", _godot_addon = "godot_addon")
 load("//godot/private:analysis.bzl", _godot_resource_graph = "godot_resource_graph")

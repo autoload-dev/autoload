@@ -2,7 +2,7 @@
 
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-Public core rules for resources, add-ons, projects, PCK exports, binaries, tests and editor views.
+Public core rules for resources, add-ons, projects, PCK exports, runs, tests and editor views.
 
 <a id="godot_resources"></a>
 

@@ -442,7 +442,7 @@ they depend on; otherwise the operation leaves it out. A setting may name a dire
 counts when a file below it is among them; the project never depends on what it holds. A program entry, a `godot_run`
 or a pack without `required_packs`, fails instead, since it starts the game itself: during
 analysis for what `godot_project` and add-ons declare, and in a build for what the
-authored `project.godot` names, whose values only a build reads: a `godot_run` while
+authored `project.godot` names, whose values only a build reads: a `godot_run` target while
 building its configuration, a pack in a check of its `_validation` output group. A program
 entry skips a feature override whose tags it never has, neither one of Godot's own nor among
 its project's [custom features](configuration.md#custom-features), such as

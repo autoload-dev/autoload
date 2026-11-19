@@ -77,13 +77,13 @@ def _test_unset_headless_follows_flag(name):
     godot_test(name = name + "_test", project = _PROJECT, tags = ["manual"])
     analysis_test(
         name = name,
-        targets = {"binary": name + "_run", "test": name + "_test"},
+        targets = {"run": name + "_run", "test": name + "_test"},
         impl = _unset_headless_follows_flag,
         config_settings = {str(Label("//godot:headless")): False},
     )
 
 def _unset_headless_follows_flag(env, targets):
-    for subject, target in [("binary", targets.binary), ("test", targets.test)]:
+    for subject, target in [("run", targets.run), ("test", targets.test)]:
         env.expect.where(subject = subject, field = "headless").that_bool(
             _run(target)["headless"],
         ).equals(False)

@@ -51,7 +51,7 @@ autoload, or after the game's scene tree is gone, such as leaks at exit, are not
 recorded. `engine_errors = "report"` keeps Godot's exit
 status instead, for a test framework that provokes errors on purpose. Either way
 the runner names the number of recorded errors, and the test's undeclared outputs
-hold them in `godot/errors.jsonl`. Binaries follow the same rule without stopping.
+hold them in `godot/errors.jsonl`. `godot_run` targets follow the same rule without stopping.
 
 Imports, initialization and exports do not read Godot's output. Each is decided by
 the result Godot itself records for it, such as the files whose import failed or
@@ -70,7 +70,7 @@ Targets in `data` remain outside `res://`. Tests locate them under
 `RUNFILES_MANIFEST_FILE` also reach Godot when set. This lets a GdUnit suite
 inspect and launch declared application artifacts without reading the checkout.
 
-Binaries and tests run headless. `headless = False` declares a target that must
+`godot_run` and `godot_test` targets run headless. `headless = False` declares a target that must
 render, `headless = True` one that never may. Targets that leave `headless`
 unset follow the `--@rules_godot//godot:headless` flag, for example to watch a
 test that works both ways:
