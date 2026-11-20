@@ -184,6 +184,7 @@ EXTERNAL_LOADS = [
     "@rules_android//rules:bzl",
     "@rules_android_ndk//:rules.bzl",
     "@platforms//host:constraints_lib",
+    "@rules_apple//apple:apple",
     "@rules_apple//apple:aspects",
     "@rules_apple//apple:ios",
     "@rules_cc//cc/common:common",
