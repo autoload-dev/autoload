@@ -635,7 +635,7 @@ _source_extension = rule(
     attrs = _EXTENSION_ATTRS | {
         "implementation_deps": attr.label_list(
             doc = """
-            The iOS static extension library, so that iOS applications bundle the Apple
+            The extension's cc_library on iOS, so that iOS applications bundle the Apple
             resources of its native dependencies, such as a Swift package's resource
             bundle. The godot_cc_extension macro sets it; it adds nothing to linking.
             """,
@@ -770,6 +770,13 @@ def _native_archive(name, srcs, hdrs, deps, entry_symbol, tags, kwargs):
         **archive_kwargs
     )
 
+def _generated_attrs(attrs):
+    """The attributes of a private target godot_cc_extension generates from its own attrs."""
+    return {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs} | {
+        "visibility": ["//visibility:private"],
+        "tags": attrs["tags"] + ["manual"],
+    }
+
 def _shared_library(name, archive, entry_symbol, attrs):
     """
     Declare the shared library of extension name linked from archive and return its name.
@@ -783,10 +790,9 @@ def _shared_library(name, archive, entry_symbol, attrs):
     # shared-library filename without changing descriptor/resource identities.
     shared = "lib" + name + "_native.so"
 
-    # What every generated target takes; the shared library also takes the attributes
-    # common to all rules and the link's own.
-    common = {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs}
-    binary_kwargs = common | {
+    # The shared library also takes the attributes common to all rules and the link's own.
+    generated = _generated_attrs(attrs)
+    binary_kwargs = generated | {
         key: attrs[key]
         for key in _LINK_ATTRS + _RULE_ATTRS
         if key in attrs
@@ -800,9 +806,7 @@ def _shared_library(name, archive, entry_symbol, attrs):
         name = exports,
         out = exports + ".lds",
         content = ["{ global: %s; local: *; };" % entry_symbol],
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
-        **common
+        **generated
     )
 
     # The shared library links the archive and everything it links. Not cc_shared_library:
@@ -810,6 +814,7 @@ def _shared_library(name, archive, entry_symbol, attrs):
     # such as the Objective-C targets of rules_swift_package_manager behind their
     # minimum-OS transition. Shared dependencies load from beside the extension library,
     # where the extension places them, as vendors' libraries expect (@loader_path, $ORIGIN).
+    apple_exports = ["-Wl,-exported_symbol,_" + entry_symbol]
     cc_binary(
         name = shared,
         deps = [":" + archive],
@@ -820,24 +825,20 @@ def _shared_library(name, archive, entry_symbol, attrs):
             "//conditions:default": [":" + exports],
         }),
         linkopts = select({
-            Label("@platforms//os:macos"): [
-                "-Wl,-rpath,@loader_path",
-                "-Wl,-exported_symbol,_" + entry_symbol,
-            ],
-            # The binary of a framework the application embeds in its Frameworks
-            # directory, beside the frameworks it loads.
-            Label("@platforms//os:ios"): [
+            Label("@platforms//os:macos"): apple_exports + ["-Wl,-rpath,@loader_path"],
+            # The binary of a framework in the application's Frameworks directory, beside
+            # the frameworks it loads. The framework rewrites its install name, which
+            # needs header room for a longer one.
+            Label("@platforms//os:ios"): apple_exports + [
                 "-Wl,-rpath,@executable_path/Frameworks",
-                "-Wl,-rpath,@loader_path/Frameworks",
-                "-Wl,-exported_symbol,_" + entry_symbol,
+                "-Wl,-rpath,@loader_path/..",
+                "-Wl,-headerpad_max_install_names",
             ],
             "//conditions:default": [
                 "-Wl,-rpath,$$ORIGIN",
                 "-Wl,--version-script,$(location :%s)" % exports,
             ],
         }),
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
         **binary_kwargs
     )
     return shared
@@ -848,16 +849,14 @@ def _ios_framework(name, shared, bundle_id, attrs):
 
     attrs are the attributes godot_cc_extension received: its kwargs and its tags.
     """
-    common = {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs}
+    generated = _generated_attrs(attrs)
     files = name + ".ios_framework_files"
     ios_framework_files(
         name = files,
         binary = ":" + shared,
         framework_name = framework_name(name),
         bundle_id = bundle_id or default_bundle_id(native.package_name(), name),
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
-        **common
+        **generated
     )
     framework = name + ".ios_framework"
 
@@ -866,9 +865,7 @@ def _ios_framework(name, shared, bundle_id, attrs):
         name = framework,
         bundle_only = True,
         framework_imports = [":" + files],
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
-        **common
+        **generated
     )
     return framework
 
@@ -979,11 +976,9 @@ def godot_cc_extension(
         fail("ios_linkage must be framework or static; got %r" % ios_linkage)
     archive = name + ".native"
     _native_archive(archive, srcs, hdrs, deps, entry_symbol, tags, kwargs)
-    shared = _shared_library(name, archive, entry_symbol, kwargs | {"tags": tags})
-    if ios_linkage == "framework":
-        ios_library = _ios_framework(name, shared, ios_bundle_id, kwargs | {"tags": tags})
-    else:
-        ios_library = archive
+    attrs = kwargs | {"tags": tags}
+    shared = _shared_library(name, archive, entry_symbol, attrs)
+    ios_library = _ios_framework(name, shared, ios_bundle_id, attrs) if ios_linkage == "framework" else archive
     library = select({
         Label("@platforms//os:ios"): ":" + ios_library,
         "//conditions:default": ":" + shared,

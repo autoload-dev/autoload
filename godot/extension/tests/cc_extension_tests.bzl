@@ -208,15 +208,19 @@ def _test_minimum_os_versions_reach_extension_info(name):
 def _minimum_os_versions_reach_extension_info(env, target):
     env.expect.that_dict(target[GodotExtensionInfo].minimum_os_versions).contains_exactly({"macos": "13.0"})
 
-def _test_ios_extension_is_a_framework(name):
-    _extension(name + "_extension")
+def _ios_analysis_test(name, impl, target_suffix = "", **extension_kwargs):
+    """Declare an extension and analyze it, or its target_suffix target, in the iOS Simulator."""
+    _extension(name + "_extension", **extension_kwargs)
     analysis_test(
         name = name,
-        target = name + "_extension",
-        impl = _ios_extension_is_a_framework,
+        target = name + "_extension" + target_suffix,
+        impl = impl,
         attr_values = _MACOS_ONLY,
         config_settings = _IOS_SIMULATOR,
     )
+
+def _test_ios_extension_is_a_framework(name):
+    _ios_analysis_test(name, _ios_extension_is_a_framework)
 
 def _ios_extension_is_a_framework(env, target):
     library = target[GodotExtensionInfo].library
@@ -232,14 +236,7 @@ def _ios_extension_is_a_framework(env, target):
     ).contains_exactly([target.label.name, "Info.plist"])
 
 def _test_ios_framework_binary_has_its_install_name(name):
-    _extension(name + "_extension")
-    analysis_test(
-        name = name,
-        target = name + "_extension.ios_framework_files",
-        impl = _ios_framework_binary_has_its_install_name,
-        attr_values = _MACOS_ONLY,
-        config_settings = _IOS_SIMULATOR,
-    )
+    _ios_analysis_test(name, _ios_framework_binary_has_its_install_name, ".ios_framework_files")
 
 def _ios_framework_binary_has_its_install_name(env, target):
     # The toolchain names the linked library after its file, so the framework's copy
@@ -250,14 +247,7 @@ def _ios_framework_binary_has_its_install_name(env, target):
     env.expect.that_collection(actions[0].argv).contains("@rpath/%s.framework/%s" % (framework, framework))
 
 def _test_ios_static_linkage_links_the_archive(name):
-    _extension(name + "_extension", ios_linkage = "static")
-    analysis_test(
-        name = name,
-        target = name + "_extension",
-        impl = _ios_static_linkage_links_the_archive,
-        attr_values = _MACOS_ONLY,
-        config_settings = _IOS_SIMULATOR,
-    )
+    _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
 
 def _ios_static_linkage_links_the_archive(env, target):
     library = target[GodotExtensionInfo].library

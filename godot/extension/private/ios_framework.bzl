@@ -4,6 +4,11 @@ The files of the iOS framework that godot_cc_extension wraps its dynamic library
 An iOS application embeds and signs the framework; Godot loads it when it loads the
 extension. Each framework links its own godot-cpp and exports only the entry symbol, so
 extensions from different modules never share or collide on godot-cpp's symbols.
+
+rules_apple's ios_dynamic_framework would relink the binary from deps under its own
+transition, without the extension's export list and configuration; this rule lays out
+the binary godot_cc_extension already linked. Its Info.plist has fixed string keys, so it
+is written here rather than by a plist tool action.
 """
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
@@ -11,8 +16,9 @@ load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
 
 visibility(["//godot/extension/..."])
 
-# Characters CFBundleIdentifier allows besides letters and digits.
-_IDENTIFIER_PUNCTUATION = ".-"
+def _sanitize(text, allowed, replacement):
+    """Text with every character but letters, digits and those in allowed replaced."""
+    return "".join([char if char.isalnum() or char in allowed else replacement for char in text.elems()])
 
 def framework_name(name):
     """
@@ -24,19 +30,7 @@ def framework_name(name):
     Returns:
         The name, with every other character replaced by _.
     """
-    return "".join([char if char.isalnum() or char == "_" else "_" for char in name.elems()])
-
-def install_name(framework):
-    """
-    Return the install name of the binary of framework, as the application's Frameworks directory holds it.
-
-    Args:
-        framework: The framework and binary name.
-
-    Returns:
-        @rpath/<framework>.framework/<framework>.
-    """
-    return "@rpath/%s.framework/%s" % (framework, framework)
+    return _sanitize(name, "_", "_")
 
 def default_bundle_id(package, name):
     """
@@ -51,11 +45,7 @@ def default_bundle_id(package, name):
         rules-godot.extension.addons.sentry.sentry.
     """
     segments = [segment for segment in package.split("/") if segment] + [name]
-    cleaned = [
-        "".join([char if char.isalnum() or char in _IDENTIFIER_PUNCTUATION else "-" for char in segment.elems()])
-        for segment in segments
-    ]
-    return ".".join(["rules-godot", "extension"] + cleaned)
+    return ".".join(["rules-godot", "extension"] + [_sanitize(segment, ".-", "-") for segment in segments])
 
 def _plist_string(value):
     return "<string>%s</string>" % value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -65,7 +55,7 @@ def _plist_value(value):
         return "<array>%s</array>" % "".join([_plist_string(item) for item in value])
     return _plist_string(value)
 
-def info_plist(entries):
+def _info_plist(entries):
     """
     Return an XML property list of entries, sorted by key.
 
@@ -103,14 +93,14 @@ def _ios_framework_files_impl(ctx):
         xcode_config = xcode_config,
         apple_fragment = ctx.fragments.apple,
         command = 'cp "$1" "$2" && chmod u+w "$2" && xcrun install_name_tool -id "$3" "$2"',
-        arguments = [ctx.file.binary.path, binary.path, install_name(name)],
+        arguments = [ctx.file.binary.path, binary.path, "@rpath/%s.framework/%s" % (name, name)],
         inputs = [ctx.file.binary],
         outputs = [binary],
         mnemonic = "GodotFrameworkInstallName",
         progress_message = "Setting the install name of %{output}",
     )
     plist = ctx.actions.declare_file(directory + "Info.plist")
-    ctx.actions.write(plist, info_plist({
+    ctx.actions.write(plist, _info_plist({
         "CFBundleDevelopmentRegion": "en",
         "CFBundleExecutable": name,
         "CFBundleIdentifier": ctx.attr.bundle_id,
