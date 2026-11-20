@@ -45,10 +45,13 @@ def default_bundle_id(package, name):
     ]
     return ".".join(["rules-godot", "extension"] + cleaned)
 
+def _plist_string(value):
+    return "<string>%s</string>" % value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
 def _plist_value(value):
     if type(value) == "list":
-        return "<array>%s</array>" % "".join([_plist_value(item) for item in value])
-    return "<string>%s</string>" % value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return "<array>%s</array>" % "".join([_plist_string(item) for item in value])
+    return _plist_string(value)
 
 def info_plist(entries):
     """
