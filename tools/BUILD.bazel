@@ -346,6 +346,12 @@ py_binary(
 )
 
 py_library(
+    name = "ruleset_lib",
+    srcs = ["ruleset.py"],
+    visibility = ["//tools:__subpackages__"],
+)
+
+py_library(
     name = "tool_environment_lib",
     srcs = ["tool_environment.py"],
     visibility = ["//tools:__subpackages__"],

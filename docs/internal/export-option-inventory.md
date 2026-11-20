@@ -186,7 +186,7 @@ root-module mediation. Do not force the version against root overrides. The chec
 is the default resolved graph; the consumer's root lock and version decisions take standard
 precedence. This is dependency setup, not another app option.
 
-With an existing root `maven.install`, regenerate its lock and include `rules_godot` in
+With an existing root `maven.install`, regenerate its lock and include `autoload_rules_godot` in
 `known_contributing_modules` when that allowlist is used. Both checked-in consumer modules
 allowed only `protobuf` and received that update. Root locks override dependency
 locks. If several dependency modules supply locks without a root owner, the extension

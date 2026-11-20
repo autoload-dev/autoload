@@ -3,7 +3,7 @@ module(name = "rules_godot_tests")
 # The ruleset's regressions, built as a consumer builds: every ruleset label is public, and
 # every repository the regressions name is declared here. Shared pins equal those of the
 # root and examples/ modules (tools/setup/pins.py).
-bazel_dep(name = "autoload_rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
 local_path_override(
     module_name = "autoload_rules_godot",
     path = "..",

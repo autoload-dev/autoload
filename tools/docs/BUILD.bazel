@@ -64,7 +64,10 @@ py_binary(
 py_library(
     name = "surface_lib",
     srcs = ["surface.py"],
-    deps = [":coverage_lib"],
+    deps = [
+        ":coverage_lib",
+        "//tools:ruleset_lib",
+    ],
 )
 
 py_library(
@@ -74,6 +77,7 @@ py_library(
         ":coverage_lib",
         ":inventory_lib",
         ":surface_lib",
+        "//tools:ruleset_lib",
     ],
 )
 
@@ -124,7 +128,10 @@ py_test(
 py_library(
     name = "output_contracts_lib",
     srcs = ["output_contracts.py"],
-    deps = ["//tools/ci:verification_lib"],
+    deps = [
+        "//tools:ruleset_lib",
+        "//tools/ci:verification_lib",
+    ],
 )
 
 py_test(

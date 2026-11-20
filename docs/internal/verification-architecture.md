@@ -188,7 +188,7 @@ those tests in its own module.
 
 | Module | Purpose | Contents |
 |---|---|---|
-| `rules_godot`, the repository root | The ruleset and its white-box and repository-tooling tests | `godot/**/tests/`, `tools/**/tests/`, tooling tests beside their tools |
+| `autoload_rules_godot`, the repository root | The ruleset and its white-box and repository-tooling tests | `godot/**/tests/`, `tools/**/tests/`, tooling tests beside their tools |
 | `rules_godot_examples` at `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
 | `rules_godot_tests` at `tests/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
 

@@ -6,15 +6,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from tools.docs.coverage import CATEGORIES, ModuleInfo
+from tools.ruleset import strip_repo
 
 EXPORT_CATEGORIES = {**CATEGORIES, "starlark_other_symbol_info": "name"}
 
 
 def normalize_label(label: str) -> str:
-    for prefix in ("@@autoload_rules_godot", "@autoload_rules_godot"):
-        if label.startswith(prefix + "//"):
-            return label[len(prefix) :]
-    return label
+    return strip_repo(label)
 
 
 @dataclass(frozen=True)

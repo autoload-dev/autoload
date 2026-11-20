@@ -280,10 +280,16 @@ godot_app(
 The app bundles or links the extension libraries of the pack; the PCK holds only
 their descriptors, see [export membership](resources.md#export-membership).
 
-Use `bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:linux_x86_64`
-or `--platforms=@autoload_rules_godot//godot/platforms:macos_arm64`. Desktop export platforms build one CPU; a universal imported
-macOS runtime is thinned to the requested CPU. `target_compatible_with` expresses the
-consumer's limits; it does not select a different operating system or hide missing SDK setup.
+Build a desktop application for one platform:
+
+```sh
+bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:linux_x86_64
+bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:macos_arm64
+```
+
+Desktop export platforms build one CPU; a universal imported macOS runtime is thinned to
+the requested CPU. `target_compatible_with` expresses the consumer's limits; it does not
+select a different operating system or hide missing SDK setup.
 
 `macos_minimum_os_version` is the macOS application's minimum system version, by default
 11.0, Godot's floor: the bundle's `LSMinimumSystemVersion` names it, and the native code

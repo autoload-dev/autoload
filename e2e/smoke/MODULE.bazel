@@ -2,7 +2,7 @@
 
 module(name = "rules_godot_e2e_smoke")
 
-bazel_dep(name = "autoload_rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
 local_path_override(
     module_name = "autoload_rules_godot",
     path = "../..",

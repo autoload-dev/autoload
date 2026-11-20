@@ -193,6 +193,6 @@ applies `tools/docs/rules_android_doc_visibility.patch` to expose that single
 library for Stardoc. `rules_android_ndk` 0.1.5 exports no files; the root module
 applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export `rules.bzl`,
 which `godot_android_toolchains` loads. Both change BUILD visibility only.
-Root-module overrides do not apply when another project depends on `rules_godot`.
+Root-module overrides do not apply when another project depends on `autoload_rules_godot`.
 Remove each patch once its upstream file is publicly accessible; do not disable
 Bazel's visibility checking.

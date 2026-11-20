@@ -102,8 +102,8 @@ repository extracts the source, applies the patches and exposes `:debug` and
 `:release`, the Android shell library of each template variant built with rules_android and
 rules_kotlin; their `.aar` outputs, such as `:release.aar`, are godot_android_runtime
 shells. Java and Kotlin target Godot's language level per target, so no Kotlin
-toolchain is registered. The shell library's Maven dependencies come from rules_godot's
-contribution to the shared `maven` repository; repin after adding rules_godot.
+toolchain is registered. The shell library's Maven dependencies come from autoload_rules_godot's
+contribution to the shared `maven` repository; repin after adding autoload_rules_godot.
 
 Example (MODULE.bazel):
 ```starlark
