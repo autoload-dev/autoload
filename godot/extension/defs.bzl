@@ -501,7 +501,7 @@ _OWN_ATTRS = {
     "library": attr.label(
         doc = """
         The extension library of each configuration, varied with select() over platform
-        constraints and @rules_godot//godot:debug, :release, :editor and :tool: a linked
+        constraints and @autoload_rules_godot//godot:debug, :release, :editor and :tool: a linked
         library from any rule, which the extension takes as it is and never links.
         Accepted: a shared library (cc_shared_library, cc_import(shared_library),
         cc_binary(linkshared) or a target with one .so, .dylib or .dll file), a static library on iOS (cc_library,
@@ -676,14 +676,14 @@ godot_extension = macro(
     Declare a GDExtension by its library in each configuration.
 
     The library varies with select() over platform constraints and
-    @rules_godot//godot:debug, :release, :editor and :tool; the extension derives its Godot
+    @autoload_rules_godot//godot:debug, :release, :editor and :tool; the extension derives its Godot
     feature tags from the configuration, the link kind from the library's providers and
     its runtime dependencies from the library and data. Each configuration writes a
     descriptor fragment with its one library entry; packs merge the fragments of their
     platform slices. The extension takes the library as another rule linked it, in any
     language, and links nothing itself; godot_cc_extension is the C++ shorthand. Editor
     actions and the host editor load the library of the tool configuration, where
-    @rules_godot//godot:tool and :editor match; a select() with a branch for each
+    @autoload_rules_godot//godot:tool and :editor match; a select() with a branch for each
     execution platform's operating system needs no tool branch. Platform libraries that
     the native code uses without linking them, and their resources, follow platform_deps
     to every application shipping a pack that contains the extension. By itself the
@@ -865,7 +865,7 @@ def godot_cc_extension(
     Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
     the target platform's operating system and CPU, the iOS environment and the
     variant; features in kwargs keeps its meaning as rules_cc toolchain features. An
-    editor-specific backend is a select() over @rules_godot//godot:tool in deps.
+    editor-specific backend is a select() over @autoload_rules_godot//godot:tool in deps.
 
     Example:
         godot_cc_extension(

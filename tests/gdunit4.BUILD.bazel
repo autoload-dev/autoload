@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
 
 # GdUnit4 as an add-on from its unchanged upstream directory. The editor part is the editor
 # plugin and the scenes it docks: Godot instantiates scenes while packing, these create

@@ -1,6 +1,7 @@
 # rules_godot
 
 [![CI](https://github.com/autoload-dev/rules_godot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/autoload-dev/rules_godot/actions/workflows/ci.yml)
+[![BCR](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbcr.bazel.build%2Fmodules%2Fautoload_rules_godot%2Fmetadata.json&query=%24.versions%5B-1%3A%5D&label=BCR&color=43a047)](https://registry.bazel.build/modules/autoload_rules_godot)
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
 Bazel rules for building, testing and packaging [Godot](https://godotengine.org) games.
@@ -32,12 +33,14 @@ tests and every application package.
 
 ## Quick start
 
-1. Add rules_godot and an engine to your `MODULE.bazel`:
+1. Add rules_godot and an engine to your `MODULE.bazel`, with the latest version from the
+   [Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) or the
+   [releases](https://github.com/autoload-dev/rules_godot/releases) in place of `<version>`:
 
    ```starlark
-   bazel_dep(name = "rules_godot", version = "0.1.0")
+   bazel_dep(name = "autoload_rules_godot", version = "<version>")
 
-   godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+   godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
    godot_engines.prebuilt(name = "godot", version = "4.7.2")
    use_repo(godot_engines, "godot")
    register_toolchains("@godot//toolchains:all")
@@ -56,7 +59,7 @@ tests and every application package.
 
    ```starlark
    load(
-       "@rules_godot//godot:defs.bzl",
+       "@autoload_rules_godot//godot:defs.bzl",
        "godot_run",
        "godot_editor",
        "godot_pack",

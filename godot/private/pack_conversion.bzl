@@ -14,7 +14,7 @@ PACK_CONVERSION_ATTRS = {
 
 def pack_conversion(ctx):
     """
-    Return how --@rules_godot//godot:pack_conversion and the compilation mode make a PCK.
+    Return how --@autoload_rules_godot//godot:pack_conversion and the compilation mode make a PCK.
 
     Args:
         ctx: Rule context with PACK_CONVERSION_ATTRS.
@@ -28,7 +28,7 @@ def pack_conversion(ctx):
         return "godot" if optimized else "none"
     if flag == "none" and optimized:
         fail(
-            "--@rules_godot//godot:pack_conversion=none packs scenes, resources and " +
+            "--@autoload_rules_godot//godot:pack_conversion=none packs scenes, resources and " +
             "scripts as text, which is for development builds only; drop the flag or " +
             "build without --compilation_mode=opt.",
         )

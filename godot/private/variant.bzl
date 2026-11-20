@@ -14,7 +14,7 @@ VARIANT_ATTRS = {
 
 def variant(ctx):
     """
-    Return the variant --@rules_godot//godot:variant selects.
+    Return the variant --@autoload_rules_godot//godot:variant selects.
 
     Args:
         ctx: Rule context with VARIANT_ATTRS.

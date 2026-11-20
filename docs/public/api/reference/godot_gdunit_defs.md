@@ -9,7 +9,7 @@ Run GdUnit4 test suites as Bazel tests.
 ## godot_gdunit_test
 
 <pre>
-load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+load("@autoload_rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
 
 godot_gdunit_test(<a href="#godot_gdunit_test-name">name</a>, <a href="#godot_gdunit_test-suites">suites</a>, <a href="#godot_gdunit_test-kwargs">**kwargs</a>)
 </pre>
@@ -35,7 +35,7 @@ options, as pytest receives a py_pytest_test's arguments.
 
 Example:
 ```starlark
-load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+load("@autoload_rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
 
 godot_resources(
     name = "unit_suites",

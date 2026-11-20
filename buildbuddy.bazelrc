@@ -37,4 +37,4 @@ build:buildbuddy --jobs=100
 # --config=buildbuddy-linux targets Linux to run tests remotely too. It applies to every
 # command, so build, run and test share one configuration and its analysis cache.
 common:buildbuddy-linux --config=buildbuddy
-common:buildbuddy-linux --platforms=@rules_godot//godot/platforms:linux_x86_64
+common:buildbuddy-linux --platforms=@autoload_rules_godot//godot/platforms:linux_x86_64

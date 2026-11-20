@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_resources")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 package(default_visibility = ["//addons/dart/demo:__subpackages__"])
 

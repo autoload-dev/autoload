@@ -92,7 +92,7 @@ class ArtifactValidationTest(unittest.TestCase):
             with self.assertRaisesRegex(
                 SystemExit,
                 r"libgodot\.a has no arm64 Simulator slice; it has x86_64 Simulator\. "
-                r".*@rules_godot//godot/platforms:ios_sim_x86_64.*source-built engine",
+                r".*@autoload_rules_godot//godot/platforms:ios_sim_x86_64.*source-built engine",
             ):
                 check_engine_version.require_ios_platform_slice(
                     library, "arm64", "ios_simulator"

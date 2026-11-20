@@ -79,7 +79,7 @@ def render(paths: list[str]) -> str:
         MARKER.rstrip(),
         '"""Explicit sources from one package; import and runtime policy stay in BUILD."""',
         "",
-        'load("@rules_godot//godot:defs.bzl", "godot_resources")',
+        'load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")',
         "",
         "def godot_package_resources(name, **kwargs):",
         '    """Declare these sources; forward explicit policy and generated resource paths."""',

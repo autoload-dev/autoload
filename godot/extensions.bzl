@@ -21,7 +21,7 @@ load(
 
 _ENGINE_ATTR = attr.string(doc = """
     Name of the engine the hub's components belong to, such as `petri`; builds select it
-    with `--@rules_godot//godot:engine=petri`, and only then do these components fill
+    with `--@autoload_rules_godot//godot:engine=petri`, and only then do these components fill
     slots. Empty, the default, joins the default engine.
     """)
 
@@ -156,7 +156,7 @@ godot_engines = module_extension(
 
     Example (MODULE.bazel):
     ```starlark
-    godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+    godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
     godot_engines.prebuilt(name = "godot_prebuilt", version = "4.7.2")
     godot_engines.source(
         name = "godot_sources",
@@ -261,7 +261,7 @@ godot_android_toolchains = module_extension(
     Example (MODULE.bazel):
     ```starlark
     godot_android_toolchains = use_extension(
-        "@rules_godot//godot:extensions.bzl",
+        "@autoload_rules_godot//godot:extensions.bzl",
         "godot_android_toolchains",
     )
     godot_android_toolchains.configure(ndk_api_level = 24)

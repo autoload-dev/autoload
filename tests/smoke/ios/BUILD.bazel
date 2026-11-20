@@ -1,7 +1,7 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-load("@rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
 
 # The iOS smoke path: an iOS application that links a godot-cpp extension statically and
 # exports its entry symbol, inspected with the public artifact test. Every target is

@@ -37,6 +37,7 @@ py_library(
     deps = [
         ":context_lib",
         ":framework_lib",
+        "//tools:ruleset_lib",
     ],
 )
 

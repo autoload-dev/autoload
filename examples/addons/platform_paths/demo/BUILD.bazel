@@ -1,6 +1,6 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 load(
-    "@rules_godot//godot:defs.bzl",
+    "@autoload_rules_godot//godot:defs.bzl",
     "godot_editor",
     "godot_metadata_sync",
     "godot_pack",

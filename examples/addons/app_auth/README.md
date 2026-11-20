@@ -80,7 +80,7 @@ archive without fetching any AppAuth artifact.
    - macOS:
 
      ```sh
-     bazel build //addons/app_auth/demo:app --platforms=@rules_godot//godot/platforms:macos_arm64 --@rules_godot//godot:macos_signing=adhoc
+     bazel build //addons/app_auth/demo:app --platforms=@autoload_rules_godot//godot/platforms:macos_arm64 --@autoload_rules_godot//godot:macos_signing=adhoc
      open bazel-bin/addons/app_auth/demo/app.macos_signed/app.app
      ```
 

@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The application boots with the patched runtime that --extra_toolchains registers and

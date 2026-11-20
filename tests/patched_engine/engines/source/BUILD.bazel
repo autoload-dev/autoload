@@ -1,4 +1,4 @@
-load("@rules_godot//godot/engine:defs.bzl", "godot_editor_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_editor_component")
 load(":components.bzl", "desktop_runtimes")
 
 _ORIGIN = "godotengine/godot@2ea68c7, a 4.7 maintenance-branch snapshot"

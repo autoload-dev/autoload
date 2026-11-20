@@ -43,7 +43,7 @@ def release_value(facts: Facts, values: Mapping[str, Any], option: str, flag: An
     """
     Return an option the pack sets, else a release build setting, else Godot's value.
 
-    The build settings --@rules_godot//godot:app_version and build_number set
+    The build settings --@autoload_rules_godot//godot:app_version and build_number set
     what a pack's own export options leave unset. Godot's value of a version
     option falls back to the project's application/config/version.
     """

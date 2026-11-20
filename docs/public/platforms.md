@@ -28,7 +28,7 @@ Export Options, their precedence and the values that belong to Bazel instead.
 environment. For example, in a consumer BUILD file:
 
 ```starlark
-load("@rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
+load("@autoload_rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
 
 godot_export_platform(
     name = "android_local",
@@ -83,7 +83,7 @@ A child platform of an export platform keeps its operating system, CPUs and plat
 ```starlark
 platform(
     name = "android_ci",
-    parents = ["@rules_godot//godot/platforms:android_arm64"],
+    parents = ["@autoload_rules_godot//godot/platforms:android_arm64"],
     constraint_values = [":ci"],
 )
 ```
@@ -122,7 +122,7 @@ owns instead.
 
 ## Variant
 
-`--@rules_godot//godot:variant=debug` builds the debug variant: packs export as
+`--@autoload_rules_godot//godot:variant=debug` builds the debug variant: packs export as
 Godot's debug export does, with its `debug` and `template_debug` feature tags,
 extensions deliver their debug-tagged libraries, and each platform slice packages the
 registered debug runtime. The prebuilt Android shell libraries are release builds, so an
@@ -166,15 +166,15 @@ so select ad hoc signing as [Linux and macOS](#linux-and-macos) shows.
 
 ### The editor variant
 
-With the editor variant, `--@rules_godot//godot:variant=editor`, `bazel run` runs an
+With the editor variant, `--@autoload_rules_godot//godot:variant=editor`, `bazel run` runs an
 application's project from its sources with Godot's editor binary, without exporting it:
 no pack, runtime or shell is built, so a change to a script or scene runs without an export.
 
 ```sh
-bazel run --@rules_godot//godot:variant=editor //path/to:app -- --headless -- --verbose
+bazel run --@autoload_rules_godot//godot:variant=editor //path/to:app -- --headless -- --verbose
 ```
 
-A `.bazelrc` line such as `build:editor --@rules_godot//godot:variant=editor` shortens it to
+A `.bazelrc` line such as `build:editor --@autoload_rules_godot//godot:variant=editor` shortens it to
 `--config=editor`.
 
 The variant chooses the binary and the target platform where it runs: this host by
@@ -191,7 +191,7 @@ would replace the project, such as `--path` or `--main-pack`, fail.
 The start pack must be a `godot_pack`, whose project the run uses; the application's
 `loadable_packs` are not part of the run. The game has the feature tags `editor`,
 `editor_runtime` and `debug` with those of the target platform and of the build, not
-`template` or `template_debug`. `@rules_godot//godot:editor` lets a `select()` tell the
+`template` or `template_debug`. `@autoload_rules_godot//godot:editor` lets a `select()` tell the
 editor variant apart.
 
 ### Devices, emulators and Simulators
@@ -204,7 +204,7 @@ running devices need a choice; `--list-devices` lists them.
 
 ```sh
 bazel run --config=android //path/to:app -- --device=medium_phone -- --verbose
-bazel run --platforms=@rules_godot//godot/platforms:ios_sim_arm64 //path/to:app -- --device="iPhone 17 Pro"
+bazel run --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64 //path/to:app -- --device="iPhone 17 Pro"
 bazel run --config=android //path/to:app -- --list-devices
 ```
 
@@ -260,8 +260,8 @@ operating system; the large export-templates archive is fetched only when an app
 Declare one pack and app:
 
 ```starlark
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack")
 
 godot_pack(name = "pack", project = ":game", deps = [":main"])
 
@@ -280,10 +280,16 @@ godot_app(
 The app bundles or links the extension libraries of the pack; the PCK holds only
 their descriptors, see [export membership](resources.md#export-membership).
 
-Use `bazel build //path/to:app --platforms=@rules_godot//godot/platforms:linux_x86_64`
-or `--platforms=@rules_godot//godot/platforms:macos_arm64`. Desktop export platforms build one CPU; a universal imported
-macOS runtime is thinned to the requested CPU. `target_compatible_with` expresses the
-consumer's limits; it does not select a different operating system or hide missing SDK setup.
+Build a desktop application for one platform:
+
+```sh
+bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:linux_x86_64
+bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:macos_arm64
+```
+
+Desktop export platforms build one CPU; a universal imported macOS runtime is thinned to
+the requested CPU. `target_compatible_with` expresses the consumer's limits; it does not
+select a different operating system or hide missing SDK setup.
 
 `macos_minimum_os_version` is the macOS application's minimum system version, by default
 11.0, Godot's floor: the bundle's `LSMinimumSystemVersion` names it, and the native code
@@ -306,15 +312,15 @@ macOS `application/liquid_glass_icon` for Icon Composer assets with Xcode 26.
 The app is unsigned by default. Select ad hoc signing for local execution:
 
 ```sh
-bazel build //path/to:app --@rules_godot//godot:macos_signing=adhoc
-bazel run //path/to:app --@rules_godot//godot:macos_signing=adhoc
-bazel build //path/to:app --@rules_godot//godot:macos_signing=unsigned
+bazel build //path/to:app --@autoload_rules_godot//godot:macos_signing=adhoc
+bazel run //path/to:app --@autoload_rules_godot//godot:macos_signing=adhoc
+bazel build //path/to:app --@autoload_rules_godot//godot:macos_signing=unsigned
 ```
 
 For certificate signing, set the app's `macos_signing_identity` to a suitable local
 keychain identity and optionally set `macos_entitlements` to a declared plist file
 (including a generated file). Invoke the same app with
-`--@rules_godot//godot:macos_signing=certificate`. An empty identity or `-` fails in
+`--@autoload_rules_godot//godot:macos_signing=certificate`. An empty identity or `-` fails in
 certificate mode. Ad hoc signing uses `-` and ignores a configured certificate identity.
 Entitlements apply to the app signature; nested libraries are signed without them.
 
@@ -378,7 +384,7 @@ Choose its native API level for the engine and deployment targets you support.
 Declare the application beside an explicit `godot_pack(project = ":game", deps = [":main"])`:
 
 ```starlark
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 
 godot_app(
     name = "app",
@@ -389,7 +395,7 @@ godot_app(
 ```
 
 Its pack follows the [start-pack rule for extension libraries](resources.md#export-membership).
-Select `--platforms=@rules_godot//godot/platforms:android_arm64` with the SDK and NDK
+Select `--platforms=@autoload_rules_godot//godot/platforms:android_arm64` with the SDK and NDK
 toolchains configured as in the examples, whose NDK toolchains come from
 [`godot_android_toolchains`](#remote-execution-of-android-builds).
 
@@ -431,7 +437,7 @@ host's SDK and NDK tools. It is experimental: its tag and generated repository m
 ```starlark
 # MODULE.bazel
 godot_android_toolchains = use_extension(
-    "@rules_godot//godot:extensions.bzl",
+    "@autoload_rules_godot//godot:extensions.bzl",
     "godot_android_toolchains",
 )
 godot_android_toolchains.configure(ndk_api_level = 24)
@@ -469,7 +475,7 @@ executors need.
 
 ### App Bundles for store upload
 
-Select the same app with `--@rules_godot//godot:android_format=aab`; the default is `apk`.
+Select the same app with `--@autoload_rules_godot//godot:android_format=aab`; the default is `apk`.
 The delivered AAB is unsigned and contains no alternate delivery APK. Sign the AAB outside Bazel before upload.
 Changing only format reuses content export and native compilation.
 
@@ -532,7 +538,7 @@ templates' XCFrameworks for device and simulator slots, with the MoltenVK, Acces
 camera frameworks the archive carries:
 
 ```starlark
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 
 godot_app(
     name = "app",
@@ -572,7 +578,7 @@ its extension libraries and may not fall below that target.
 Then select the export platform:
 
 ```sh
-bazel build //path/to:app --platforms=@rules_godot//godot/platforms:ios_sim_arm64
+bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
 ```
 
 ### Use a prerelease engine
@@ -583,7 +589,7 @@ an ARM64 device build with the prebuilt engine, declare the app with your provis
 which must match the bundle ID and a signing identity available to `rules_apple`:
 
 ```starlark
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 
 godot_app(
     name = "ios_device_app",
@@ -597,7 +603,7 @@ godot_app(
 Replace `//path/to` with the package where you put it:
 
 ```sh
-bazel build //path/to:ios_device_app --platforms=@rules_godot//godot/platforms:ios_arm64 --extra_toolchains=@godot_beta//toolchains:all
+bazel build //path/to:ios_device_app --platforms=@autoload_rules_godot//godot/platforms:ios_arm64 --extra_toolchains=@godot_beta//toolchains:all
 ```
 
 Statically linked iOS extension libraries follow the
@@ -619,7 +625,7 @@ A release pipeline sets the version and build number on the command line,
 without editing BUILD files. For the Android example, from `examples`:
 
 ```sh
-bazel build //addons/sqlite/demo:app --config=android --@rules_godot//godot:app_version=2.3.4 --@rules_godot//godot:build_number=57
+bazel build //addons/sqlite/demo:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
 ```
 
 | Consumer | `app_version` | `build_number` |
@@ -692,7 +698,7 @@ since App Bundles do not embed it.
 
 | Purpose | Flags | Packages |
 | --- | --- | --- |
-| Develop and debug | `--@rules_godot//godot:variant=debug -c dbg` | Keep DWARF |
+| Develop and debug | `--@autoload_rules_godot//godot:variant=debug -c dbg` | Keep DWARF |
 | Iterate quickly | none (`fastbuild`) | Stripped |
 | Store release with crash reports | `-c opt --copt=-g --strip=always`; macOS `-c opt --apple_generate_dsym --strip=always`; iOS `-c opt --apple_generate_dsym --objc_enable_binary_stripping` | Stripped, DWARF in the debug symbols |
 
@@ -808,7 +814,7 @@ and an optional local Java library beside the add-on's script:
 
 ```starlark
 load("@rules_android//rules:rules.bzl", "aar_import", "android_library")
-load("@rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
 
 aar_import(
     name = "vendor_plugin",
@@ -842,7 +848,7 @@ SDK frameworks, resources and an Info.plist fragment together:
 
 ```starlark
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
-load("@rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
 load("@rules_swift//swift:swift_library.bzl", "swift_library")
 
 swift_library(
@@ -1046,7 +1052,7 @@ for an iOS application. They fail when a listed native library, PCK resource or 
 symbol is missing:
 
 ```starlark
-load("@rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
+load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
 
 ios_app_test(
     name = "app_links_extension_test",

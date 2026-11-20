@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from tools.ci.verification import PROFILE_LANES
+from tools.ruleset import MODULE
 
 SECTIONS = {
     "Default outputs": ("kind", "cardinality", "availability", "behavior"),
@@ -155,7 +156,7 @@ def active(rows: Iterable[dict[str, str]], conditions: Iterable[str]) -> list[di
 def provider_identity(key: str) -> str:
     """Drop the ruleset's repository prefix from an evaluated provider key."""
     repository, separator, rest = key.partition("//")
-    if separator and repository.lstrip("@").removesuffix("+") in {"", "rules_godot"}:
+    if separator and repository.lstrip("@").removesuffix("+") in {"", MODULE}:
         return "//" + rest
     return key
 

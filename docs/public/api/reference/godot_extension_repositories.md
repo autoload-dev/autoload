@@ -9,7 +9,7 @@ Optional, checksum-pinned godot-cpp repository built with rules_cc.
 ## godot_cpp_bindings
 
 <pre>
-load("@rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings")
+load("@autoload_rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings")
 
 godot_cpp_bindings(<a href="#godot_cpp_bindings-name">name</a>, <a href="#godot_cpp_bindings-api_path">api_path</a>, <a href="#godot_cpp_bindings-bits">bits</a>, <a href="#godot_cpp_bindings-debug_features">debug_features</a>, <a href="#godot_cpp_bindings-enabled_classes">enabled_classes</a>, <a href="#godot_cpp_bindings-patch_strip">patch_strip</a>, <a href="#godot_cpp_bindings-patches">patches</a>,
                    <a href="#godot_cpp_bindings-precision">precision</a>, <a href="#godot_cpp_bindings-sha256">sha256</a>, <a href="#godot_cpp_bindings-strip_prefix">strip_prefix</a>, <a href="#godot_cpp_bindings-urls">urls</a>)
@@ -26,7 +26,7 @@ patch tool. Floating-point precision must match the engine build.
 Example (MODULE.bazel):
 ```starlark
 godot_cpp_bindings = use_repo_rule(
-    "@rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings",
+    "@autoload_rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings",
 )
 godot_cpp_bindings(name = "godot_cpp", enabled_classes = ["Node"])
 ```

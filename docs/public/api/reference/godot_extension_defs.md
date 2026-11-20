@@ -9,7 +9,7 @@ Extensions, and the extension libraries rules_cc builds for them.
 ## godot_cc_extension
 
 <pre>
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 godot_cc_extension(<a href="#godot_cc_extension-name">name</a>, <a href="#godot_cc_extension-srcs">srcs</a>, <a href="#godot_cc_extension-entry_symbol">entry_symbol</a>, <a href="#godot_cc_extension-deps">deps</a>, <a href="#godot_cc_extension-hdrs">hdrs</a>, <a href="#godot_cc_extension-data">data</a>, <a href="#godot_cc_extension-resource_path">resource_path</a>, <a href="#godot_cc_extension-compatibility_minimum">compatibility_minimum</a>,
                    <a href="#godot_cc_extension-reloadable">reloadable</a>, <a href="#godot_cc_extension-minimum_os_versions">minimum_os_versions</a>, <a href="#godot_cc_extension-visibility">visibility</a>, <a href="#godot_cc_extension-tags">tags</a>, <a href="#godot_cc_extension-platform_deps">platform_deps</a>, <a href="#godot_cc_extension-infoplists">infoplists</a>,
@@ -33,7 +33,7 @@ GodotExtensionInfo, DefaultInfo and, on iOS, CcInfo. It returns no Starlark valu
 Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
 the target platform's operating system and CPU, the iOS environment and the
 variant; features in kwargs keeps its meaning as rules_cc toolchain features. An
-editor-specific backend is a select() over @rules_godot//godot:tool in deps.
+editor-specific backend is a select() over @autoload_rules_godot//godot:tool in deps.
 
 Example:
     godot_cc_extension(
@@ -91,7 +91,7 @@ none
 ## godot_extension
 
 <pre>
-load("@rules_godot//godot/extension:defs.bzl", "godot_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
 
 godot_extension(*, <a href="#godot_extension-name">name</a>, <a href="#godot_extension-data">data</a>, <a href="#godot_extension-aspect_hints">aspect_hints</a>, <a href="#godot_extension-compatibility_minimum">compatibility_minimum</a>, <a href="#godot_extension-compatible_with">compatible_with</a>, <a href="#godot_extension-deprecation">deprecation</a>,
                 <a href="#godot_extension-entry_symbol">entry_symbol</a>, <a href="#godot_extension-exec_compatible_with">exec_compatible_with</a>, <a href="#godot_extension-exec_group_compatible_with">exec_group_compatible_with</a>, <a href="#godot_extension-exec_properties">exec_properties</a>,
@@ -103,14 +103,14 @@ godot_extension(*, <a href="#godot_extension-name">name</a>, <a href="#godot_ext
 Declare a GDExtension by its library in each configuration.
 
 The library varies with select() over platform constraints and
-@rules_godot//godot:debug, :release, :editor and :tool; the extension derives its Godot
+@autoload_rules_godot//godot:debug, :release, :editor and :tool; the extension derives its Godot
 feature tags from the configuration, the link kind from the library's providers and
 its runtime dependencies from the library and data. Each configuration writes a
 descriptor fragment with its one library entry; packs merge the fragments of their
 platform slices. The extension takes the library as another rule linked it, in any
 language, and links nothing itself; godot_cc_extension is the C++ shorthand. Editor
 actions and the host editor load the library of the tool configuration, where
-@rules_godot//godot:tool and :editor match; a select() with a branch for each
+@autoload_rules_godot//godot:tool and :editor match; a select() with a branch for each
 execution platform's operating system needs no tool branch. Platform libraries that
 the native code uses without linking them, and their resources, follow platform_deps
 to every application shipping a pack that contains the extension. By itself the
@@ -170,7 +170,7 @@ none
 | <a id="godot_extension-exec_properties"></a>exec_properties |  <a href="https://bazel.build/reference/be/common-definitions#common.exec_properties">Inherited rule attribute</a>   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
 | <a id="godot_extension-features"></a>features |  <a href="https://bazel.build/reference/be/common-definitions#common.features">Inherited rule attribute</a>   | List of strings | optional |  `None`  |
 | <a id="godot_extension-infoplists"></a>infoplists |  Info.plist fragments iOS applications merge into their Info.plist for the extension's native code, such as the usage descriptions or SDK keys a native backend reads. They reach applications as an add-on's infoplists do, whether the extension is used by itself or in an add-on's deps; two fragments with different values for a key fail, and the application's own ios_infoplists win.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `None`  |
-| <a id="godot_extension-library"></a>library |  The extension library of each configuration, varied with select() over platform constraints and @rules_godot//godot:debug, :release, :editor and :tool: a linked library from any rule, which the extension takes as it is and never links. Accepted: a shared library (cc_shared_library, cc_import(shared_library), cc_binary(linkshared) or a target with one .so, .dylib or .dll file), a static library on iOS (cc_library, cc_import(static_library), apple_static_xcframework_import) and a dynamic framework on iOS and macOS (apple_dynamic_xcframework_import, apple_dynamic_framework_import, with bundle_only = True as the GDExtension guide describes). Shared libraries that its CcInfo links, the shared libraries in a linked library's runfiles and the other frameworks of an Apple import that links its own are its runtime dependencies. None leaves the extension without a library in that configuration. Targets link without Bazel's --strip: applications strip the copy they package and provide this one as debug symbols.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
+| <a id="godot_extension-library"></a>library |  The extension library of each configuration, varied with select() over platform constraints and @autoload_rules_godot//godot:debug, :release, :editor and :tool: a linked library from any rule, which the extension takes as it is and never links. Accepted: a shared library (cc_shared_library, cc_import(shared_library), cc_binary(linkshared) or a target with one .so, .dylib or .dll file), a static library on iOS (cc_library, cc_import(static_library), apple_static_xcframework_import) and a dynamic framework on iOS and macOS (apple_dynamic_xcframework_import, apple_dynamic_framework_import, with bundle_only = True as the GDExtension guide describes). Shared libraries that its CcInfo links, the shared libraries in a linked library's runfiles and the other frameworks of an Apple import that links its own are its runtime dependencies. None leaves the extension without a library in that configuration. Targets link without Bazel's --strip: applications strip the copy they package and provide this one as debug symbols.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="godot_extension-minimum_os_versions"></a>minimum_os_versions |  Minimum operating-system versions the extension libraries need, by Godot platform: macos and ios, as dotted numeric versions. A godot_app that packages the extension for that operating system fails when its own minimum is lower. Empty where the libraries run on every version the engine supports.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
 | <a id="godot_extension-package_metadata"></a>package_metadata |  <a href="https://bazel.build/reference/be/common-definitions#common.package_metadata">Inherited rule attribute</a>   | <a href="https://bazel.build/concepts/labels">List of labels</a>; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
 | <a id="godot_extension-platform_deps"></a>platform_deps |  Android or Apple platform libraries and their resources that the extension's native code uses without linking them, such as an Android plugin it fetches through Engine::get_singleton(), accepted through JavaInfo or CcInfo. Empty by default; select only libraries for the operating systems the extension supports. A dynamic framework the library loads, as a bundle_only Apple import, belongs here too; libraries the code links belong to the library's C++ deps.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |

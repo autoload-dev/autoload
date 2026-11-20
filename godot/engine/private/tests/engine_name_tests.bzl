@@ -1,4 +1,4 @@
-"""--@rules_godot//godot:engine selects an engine by name; registration order decides within it.
+"""--@autoload_rules_godot//godot:engine selects an engine by name; registration order decides within it.
 
 Components that name an engine fill slots only in builds that name it, and the default
 engine's components only in builds that name none. A named engine without an editor for an
@@ -111,7 +111,7 @@ def _test_a_missing_slot_of_the_named_engine_fails_naming_the_flag_impl(env, tar
         "no registered Godot runtime component of the selected engine matches this target platform",
     ))
     env.expect.that_target(target).failures().contains_predicate(matching.contains(
-        "--@rules_godot//godot:engine",
+        "--@autoload_rules_godot//godot:engine",
     ))
 
 def _test_a_forwarded_component_reports_the_forwarding_engine(name):

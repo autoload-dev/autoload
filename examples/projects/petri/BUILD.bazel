@@ -1,6 +1,6 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 load(
-    "@rules_godot//godot:defs.bzl",
+    "@autoload_rules_godot//godot:defs.bzl",
     "godot_editor",
     "godot_metadata_sync",
     "godot_pack",
@@ -17,7 +17,7 @@ exports_files(["project.godot"])
 # the targets' gate.
 config_setting(
     name = "with_source_engine",
-    flag_values = {"@rules_godot//godot:engine": "petri"},
+    flag_values = {"@autoload_rules_godot//godot:engine": "petri"},
 )
 
 godot_project(

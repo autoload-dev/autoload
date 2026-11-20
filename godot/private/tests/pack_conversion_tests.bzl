@@ -1,5 +1,5 @@
 """
-Which form of a pack --@rules_godot//godot:pack_conversion and the compilation mode build.
+Which form of a pack --@autoload_rules_godot//godot:pack_conversion and the compilation mode build.
 
 The written form runs Godot only on the pack's configuration, so an edit of the pack's
 content reruns the writer and no Godot action that exports.

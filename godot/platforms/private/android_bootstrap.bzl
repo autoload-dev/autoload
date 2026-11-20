@@ -20,8 +20,8 @@ _RESERVED_MANIFEST_VALUES = {
     "packageName": "the application_id attribute",
     "minSdkVersion": "the android_min_sdk_version attribute",
     "targetSdkVersion": "the android_target_sdk_version attribute",
-    "versionCode": "the pack's version/code export option or --@rules_godot//godot:build_number",
-    "versionName": "the pack's version/name export option or --@rules_godot//godot:app_version",
+    "versionCode": "the pack's version/code export option or --@autoload_rules_godot//godot:build_number",
+    "versionName": "the pack's version/name export option or --@autoload_rules_godot//godot:app_version",
     "maxSdkVersion": "the manifest merger, as an override godot_app does not expose",
 }
 

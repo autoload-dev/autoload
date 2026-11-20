@@ -24,7 +24,7 @@ textures, declare those resources as `deps`, which are imported first, or put
 the connected group in one target:
 
 ```starlark
-load("@rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
 
 godot_resources(
     name = "texture",
@@ -144,7 +144,7 @@ cache or editor state.
 ## Export and inspect
 
 ```starlark
-load("@rules_godot//godot:defs.bzl", "godot_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 
 godot_test(name = "smoke_test", pack = ":content")
 ```
@@ -195,11 +195,11 @@ binary and scripts to tokens.
 | `bazel build //:app` | written |
 | `bazel build -c dbg //:app` | written |
 | `bazel build -c opt //:app`, or a release config that sets it, such as `--config=ios-release` or `--config=android-release` in the [examples' `.bazelrc`](../../examples/.bazelrc) | Godot's export |
-| `bazel build --@rules_godot//godot:pack_conversion=godot //:app` | Godot's export |
-| `bazel build -c opt --@rules_godot//godot:pack_conversion=none //:app` | fails: text packs are for development builds |
+| `bazel build --@autoload_rules_godot//godot:pack_conversion=godot //:app` | Godot's export |
+| `bazel build -c opt --@autoload_rules_godot//godot:pack_conversion=none //:app` | fails: text packs are for development builds |
 
 A store release therefore builds with `-c opt`, through its release config, and gets
-Godot's export; a build without it ships a text pack. `--@rules_godot//godot:pack_conversion`
+Godot's export; a build without it ships a text pack. `--@autoload_rules_godot//godot:pack_conversion`
 takes `auto` (the default, which follows `-c`), `godot` or `none`.
 
 The pack form sits on the optimization axis. The variant, which picks Godot's debug or
@@ -208,7 +208,7 @@ release export template, stays independent of it:
 | Setting | Chooses | Values |
 |---|---|---|
 | `-c` / `--compilation_mode` | C++ optimization and the pack form | `fastbuild`, `dbg`: written pack; `opt`: Godot's export |
-| `--@rules_godot//godot:variant` | Godot's export template and the `debug`/`release` feature tags, or the editor for [runs from sources](platforms.md#the-editor-variant) | `release` (default), `debug`, `editor` |
+| `--@autoload_rules_godot//godot:variant` | Godot's export template and the `debug`/`release` feature tags, or the editor for [runs from sources](platforms.md#the-editor-variant) | `release` (default), `debug`, `editor` |
 
 A written pack holds what Godot's own export holds with `script_export_mode` 0 and
 `editor/export/convert_text_resources_to_binary` off, and the runtime loads it the same
@@ -241,8 +241,8 @@ copy they export, while the files themselves stay as authored:
   `godot_test(deps = ...)`, see the same corrected references.
 
 `bazel run` on a [`godot_metadata_sync`](development.md#checkout-metadata)
-target commits the same values. `--@rules_godot//godot/metadata:node_ids` and
-`--@rules_godot//godot/metadata:resource_uids` each set how far that goes:
+target commits the same values. `--@autoload_rules_godot//godot/metadata:node_ids` and
+`--@autoload_rules_godot//godot/metadata:resource_uids` each set how far that goes:
 
 | Value | Pack | `godot_metadata_sync` | `.test` |
 |---|---|---|---|
@@ -269,7 +269,7 @@ diagnostics.
 Add a graph target beside your existing `project` target:
 
 ```starlark
-load("@rules_godot//godot:defs.bzl", "godot_resource_graph")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resource_graph")
 
 godot_resource_graph(
     name = "graph",
@@ -313,7 +313,7 @@ Group membership and processing edges retain their separate meaning.
 The graph knows the UIDs the [metadata index](#export-and-inspect) knows,
 including those only generated sidecars declare. A reference whose `uid` names another
 declared file than its `path` is a `uid_path_conflict` error; while
-`--@rules_godot//godot/metadata:resource_uids` is not `require`, the build points such a
+`--@autoload_rules_godot//godot/metadata:resource_uids` is not `require`, the build points such a
 reference at its path's UID, so the graph follows the path and reports a warning.
 
 UID and import sidecars remain metadata/import dependencies, so changes propagate to
@@ -458,7 +458,7 @@ extensions; Android and Apple platform libraries and Info.plist fragments; autol
 settings; and the add-ons it needs.
 
 ```starlark
-load("@rules_godot//godot:defs.bzl", "godot_addon", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon", "godot_project", "godot_resources")
 
 godot_addon(
     name = "inventory",
@@ -548,7 +548,7 @@ declared instead, so Bazel sees each contribution as an input of the step that u
 | `add_apple_embedded_platform_framework`, Swift packages, linker flags, bundle files | `platform_deps` (`swift_library`, `objc_library` with `linkopts`, `sdk_frameworks`, `data`) |
 | Info.plist content | `godot_addon.infoplists`, `godot_app.ios_infoplists` |
 | `_get_export_features` | build settings the project names in `godot_project.custom_features`; see [Custom features](configuration.md#custom-features) |
-| settings stamped into `project.binary`, such as a version | `godot_pack.settings`, `--@rules_godot//godot:app_version`, `--@rules_godot//godot:build_number` |
+| settings stamped into `project.binary`, such as a version | `godot_pack.settings`, `--@autoload_rules_godot//godot:app_version`, `--@autoload_rules_godot//godot:build_number` |
 | `add_file` | resources; a file only some builds have sits behind a `select()` or `label_flag` |
 | `_customize_resource`, `_customize_scene`, `skip` | a `genrule` that transforms the files before they become resources |
 

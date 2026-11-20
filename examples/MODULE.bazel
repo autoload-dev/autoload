@@ -1,8 +1,8 @@
 module(name = "rules_godot_examples")
 
-bazel_dep(name = "rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
 local_path_override(
-    module_name = "rules_godot",
+    module_name = "autoload_rules_godot",
     path = "..",
 )
 
@@ -25,7 +25,7 @@ maven.install(
     ],
     known_contributing_modules = [
         "protobuf",
-        "rules_godot",
+        "autoload_rules_godot",
     ],
     lock_file = "//:maven_install.json",
     repositories = [
@@ -94,13 +94,13 @@ use_repo(android_sdk, "androidsdk")
 # libraries with NDK 29.0.14206865: set ANDROID_NDK_HOME to that installation; CI reuses or
 # installs the same pinned revision.
 godot_android_toolchains = use_extension(
-    "@rules_godot//godot:extensions.bzl",
+    "@autoload_rules_godot//godot:extensions.bzl",
     "godot_android_toolchains",
 )
 godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(
     name = "godot",
     version = "4.7.2",
@@ -136,7 +136,7 @@ godot_engines.source_build(
         "zip",
         "reaction_diffusion",
     ],
-    # Only builds with --@rules_godot//godot:engine=petri take these components, and they
+    # Only builds with --@autoload_rules_godot//godot:engine=petri take these components, and they
     # take no other engine's.
     engine = "petri",
     # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
@@ -181,7 +181,7 @@ go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.27.0")
 
 godot_cpp_bindings = use_repo_rule(
-    "@rules_godot//godot/extension:repositories.bzl",
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
     "godot_cpp_bindings",
 )
 

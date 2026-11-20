@@ -2,7 +2,7 @@
 
 This independent Bazel module, `rules_godot_tests`, holds the ruleset's regression
 projects and builds them as a consumer builds: through its own `MODULE.bazel`, with public
-`@rules_godot` labels only. This page describes the module as it exists. Where a new test
+`@autoload_rules_godot` labels only. This page describes the module as it exists. Where a new test
 goes, and what this module will contain, is owned by the
 [verification architecture](../docs/internal/verification-architecture.md).
 
@@ -43,7 +43,7 @@ evidence.
 ## Public test helper
 
 To inspect a built Android App Bundle or iOS application, load
-`@rules_godot//godot/testing:artifact_tests.bzl`; the
+`@autoload_rules_godot//godot/testing:artifact_tests.bzl`; the
 [API reference](../docs/public/api/index.md) documents it. The ruleset offers no other
 test labels: a scenario owns its project files, native fixtures and inspectors.
 

@@ -63,9 +63,14 @@ else:
    bazel build //addons/platform_paths/demo:app
    ```
 
-   On macOS, use `bazel build //addons/platform_paths/demo:app --@rules_godot//godot:macos_signing=adhoc`. Launch the output
-   reported by Bazel to see the same five rows. macOS signing is local ad hoc signing.
-   Add `--@rules_godot//godot:variant=debug` to build the debug variant: the pack exports
+   On macOS, sign the application ad hoc:
+
+   ```sh
+   bazel build //addons/platform_paths/demo:app --@autoload_rules_godot//godot:macos_signing=adhoc
+   ```
+
+   Launch the output reported by Bazel to see the same five rows. macOS signing is local ad hoc signing.
+   Add `--@autoload_rules_godot//godot:variant=debug` to build the debug variant: the pack exports
    as debug and the desktop and iOS templates follow. The app's Android shell library, the
    pinned Maven AAR, is release-only, so its Android build requires the release variant.
 

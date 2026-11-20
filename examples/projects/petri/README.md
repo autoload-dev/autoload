@@ -38,7 +38,7 @@ recipe, so no host configures one.
 1. `bazel run //projects/petri:run --config=petri` opens the dish. Tap it.
 2. `bazel test //projects/petri/... --config=petri` validates the scripts and runs the
    field, dish, layout and scene suites. All pass.
-3. `bazel build //projects/petri:app --config=petri --@rules_godot//godot:macos_signing=adhoc`
+3. `bazel build //projects/petri:app --config=petri --@autoload_rules_godot//godot:macos_signing=adhoc`
    on macOS, or without the signing flag on Linux, builds the desktop app with the
    source-built runtime. Find its bundle and archive under `bazel-bin/projects/petri/`.
 4. `bazel run //projects/petri:edit --config=petri` opens the project in the
@@ -58,7 +58,7 @@ skip them, keeping the other examples on the prebuilt engine.
 | Module | `engine/modules/reaction_diffusion/` | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
 | Engine | `godot_engines.source_build` in [`MODULE.bazel`](../../MODULE.bazel) | One recipe per Linux and macOS slot from the pinned 4.7.2 sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
 | Lock file | [`engines/godot_petri.lock.json`](../../engines/godot_petri.lock.json) | Each recipe's build graph; `bazel run @godot_petri//:pin --config=buildbuddy` rewrites it |
-| Selection | `build:petri` in [`.bazelrc`](../../.bazelrc) | `--extra_toolchains` registers the hub and `--@rules_godot//godot:engine=petri` selects its engine, which also marks Petri's targets compatible, through `source_engine.bzl` |
+| Selection | `build:petri` in [`.bazelrc`](../../.bazelrc) | `--extra_toolchains` registers the hub and `--@autoload_rules_godot//godot:engine=petri` selects its engine, which also marks Petri's targets compatible, through `source_engine.bzl` |
 | Dish | `main/dish/` | The only scripts that name the module's class: steps the field, maps taps into it, paints the texture |
 | HUD | `main/hud/` | Chips, buttons and stats inside the display's safe area |
 | Tests | `tests/` | GdUnit suites for the field, the dish, the layout and the composed scene |

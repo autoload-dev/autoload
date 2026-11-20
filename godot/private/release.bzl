@@ -25,7 +25,7 @@ def app_version(ctx, explicit = ""):
         explicit: The version the target sets itself; empty when unset.
 
     Returns:
-        The explicit version, else --@rules_godot//godot:app_version, which may be
+        The explicit version, else --@autoload_rules_godot//godot:app_version, which may be
         empty.
     """
     value = explicit or ctx.attr._app_version[FlagInfo].value
@@ -45,7 +45,7 @@ def build_number(ctx, explicit = 0, default = 0):
             is set.
 
     Returns:
-        The explicit build number, else --@rules_godot//godot:build_number, else
+        The explicit build number, else --@autoload_rules_godot//godot:build_number, else
         default.
     """
     value = explicit or ctx.attr._build_number[FlagInfo].value or default

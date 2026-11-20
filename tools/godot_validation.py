@@ -488,7 +488,7 @@ def toolless_extensions_hint(descriptors: list[str]) -> str:
         "validation's execution platform, so its editor did not load them: "
         + ", ".join(f"res://{path}" for path in descriptors)
         + ". Guard the use with ClassDB, or give the extension's "
-        "@rules_godot//godot:tool branch a library for that platform, such as "
+        "@autoload_rules_godot//godot:tool branch a library for that platform, such as "
         "linux/x86_64 for BuildBuddy's executors."
     )
 

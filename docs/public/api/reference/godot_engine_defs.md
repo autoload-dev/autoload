@@ -14,7 +14,7 @@ library with the engine library into an Android runtime payload. See
 ## godot_android_runtime
 
 <pre>
-load("@rules_godot//godot/engine:defs.bzl", "godot_android_runtime")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_android_runtime")
 
 godot_android_runtime(<a href="#godot_android_runtime-name">name</a>, <a href="#godot_android_runtime-shell">shell</a>, <a href="#godot_android_runtime-engine_library">engine_library</a>, <a href="#godot_android_runtime-kwargs">**kwargs</a>)
 </pre>
@@ -73,7 +73,7 @@ none
 ## godot_editor_component
 
 <pre>
-load("@rules_godot//godot/engine:defs.bzl", "godot_editor_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_editor_component")
 
 godot_editor_component(*, <a href="#godot_editor_component-name">name</a>, <a href="#godot_editor_component-cpu">cpu</a>, <a href="#godot_editor_component-editor">editor</a>, <a href="#godot_editor_component-engine">engine</a>, <a href="#godot_editor_component-origin">origin</a>, <a href="#godot_editor_component-platform">platform</a>, <a href="#godot_editor_component-tags">tags</a>, <a href="#godot_editor_component-version">version</a>, <a href="#godot_editor_component-visibility">visibility</a>)
 </pre>
@@ -82,7 +82,7 @@ Declare one execution-platform editor slot and its toolchain registration.
 
 Creates the provenance-carrying toolchain implementation `<name>` and Bazel's
 built-in `toolchain()` `<name>.toolchain`, constrained to the operating system and CPU
-of the execution platform and to the engine selected by `--@rules_godot//godot:engine`.
+of the execution platform and to the engine selected by `--@autoload_rules_godot//godot:engine`.
 A registration set is a package of components: register it with its `:all` pattern;
 the first registered candidate of the selected engine for a slot wins. The
 editor may be an executable target, such as a prebuilt editor archive's `:editor` or
@@ -112,7 +112,7 @@ none
 | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | {name}.toolchain | metadata | analysis_boundary | register the slot with editor_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
+| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
 
 ### Providers
 | name | role | availability |
@@ -128,7 +128,7 @@ none
 | <a id="godot_editor_component-name"></a>name |  A unique name for this macro instance. Normally, this is also the name for the macro's main or only target. The names of any other targets that this macro might create will be this name with a string suffix.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="godot_editor_component-cpu"></a>cpu |  CPU of the slot as Godot's CPU tag: arm32, arm64, x86_32, x86_64 or rv64.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | required |  |
 | <a id="godot_editor_component-editor"></a>editor |  Executable editor for the execution platform, or another editor component.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-| <a id="godot_editor_component-engine"></a>engine |  Name of the engine the slot belongs to; the component fills it only in builds whose --@rules_godot//godot:engine names that engine. Empty, the default, joins the default engine, which builds use when the flag is empty.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
+| <a id="godot_editor_component-engine"></a>engine |  Name of the engine the slot belongs to; the component fills it only in builds whose --@autoload_rules_godot//godot:engine names that engine. Empty, the default, joins the default engine, which builds use when the flag is empty.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
 | <a id="godot_editor_component-origin"></a>origin |  Optional human-readable origin recorded in provenance; never part of selection.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
 | <a id="godot_editor_component-platform"></a>platform |  Operating system of the slot's editor platform: linux or macos.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | required |  |
 | <a id="godot_editor_component-tags"></a>tags |  Conventional Bazel tags for both generated targets, such as manual for a payload only some builds need.   | List of strings; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `[]`  |
@@ -141,7 +141,7 @@ none
 ## godot_runtime_component
 
 <pre>
-load("@rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
 
 godot_runtime_component(*, <a href="#godot_runtime_component-name">name</a>, <a href="#godot_runtime_component-cpu">cpu</a>, <a href="#godot_runtime_component-digest">digest</a>, <a href="#godot_runtime_component-engine">engine</a>, <a href="#godot_runtime_component-environment">environment</a>, <a href="#godot_runtime_component-origin">origin</a>, <a href="#godot_runtime_component-platform">platform</a>, <a href="#godot_runtime_component-runtime">runtime</a>, <a href="#godot_runtime_component-tags">tags</a>,
                         <a href="#godot_runtime_component-variant">variant</a>, <a href="#godot_runtime_component-version">version</a>, <a href="#godot_runtime_component-visibility">visibility</a>)
@@ -152,8 +152,8 @@ Declare one target-platform runtime slot and its toolchain registration.
 Creates the provenance-carrying toolchain implementation `<name>` and Bazel's
 built-in `toolchain()` `<name>.toolchain`, constrained to the target platform's operating
 system, CPU and iOS environment, with `target_settings` on
-`--@rules_godot//godot:variant` for the template variant and on
-`--@rules_godot//godot:engine` for the engine. The runtime may be a
+`--@autoload_rules_godot//godot:variant` for the template variant and on
+`--@autoload_rules_godot//godot:engine` for the engine. The runtime may be a
 desktop template file, a target with GodotRuntimeInfo, an iOS XCFramework import or
 `:engine_library`, an Android runtime, a `select()` between prepared same-slot
 payloads, or another runtime component, whose payload and provenance are forwarded.
@@ -184,7 +184,7 @@ none
 | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | {name}.toolchain | metadata | analysis_boundary | register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
+| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
 
 ### Providers
 | name | role | availability |
@@ -200,7 +200,7 @@ none
 | <a id="godot_runtime_component-name"></a>name |  A unique name for this macro instance. Normally, this is also the name for the macro's main or only target. The names of any other targets that this macro might create will be this name with a string suffix.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="godot_runtime_component-cpu"></a>cpu |  CPU of the slot as Godot's CPU tag: arm32, arm64, x86_32, x86_64 or rv64.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | required |  |
 | <a id="godot_runtime_component-digest"></a>digest |  Optional digest of the artifact behind an opaque payload, such as the archive of an XCFramework import or an Android shell AAR, recorded in provenance. Source recipes and prebuilt template files supply their own, which take precedence.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
-| <a id="godot_runtime_component-engine"></a>engine |  Name of the engine the slot belongs to; the component fills it only in builds whose --@rules_godot//godot:engine names that engine. Empty, the default, joins the default engine, which builds use when the flag is empty.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
+| <a id="godot_runtime_component-engine"></a>engine |  Name of the engine the slot belongs to; the component fills it only in builds whose --@autoload_rules_godot//godot:engine names that engine. Empty, the default, joins the default engine, which builds use when the flag is empty.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
 | <a id="godot_runtime_component-environment"></a>environment |  iOS environment, device or simulator; required for iOS and empty otherwise.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
 | <a id="godot_runtime_component-origin"></a>origin |  Optional human-readable origin recorded in provenance; never part of selection.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `""`  |
 | <a id="godot_runtime_component-platform"></a>platform |  Operating system of the slot's target platform: linux, macos, android or ios.   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | required |  |

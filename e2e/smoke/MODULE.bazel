@@ -2,15 +2,15 @@
 
 module(name = "rules_godot_e2e_smoke")
 
-bazel_dep(name = "rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
 local_path_override(
-    module_name = "rules_godot",
+    module_name = "autoload_rules_godot",
     path = "../..",
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(
     name = "godot",
     version = "4.7.2",

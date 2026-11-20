@@ -12,7 +12,7 @@ ruleset providers it returns.
 """
 
 _FIXTURES = "//godot/tests/api_contracts:"
-_EXPORT_PLATFORM = "--platforms=@rules_godot//godot/platforms:"
+_EXPORT_PLATFORM = "--platforms=@autoload_rules_godot//godot/platforms:"
 
 # The application of the platform tests, one declaration for every operating system.
 _SELECTED_APP = "//godot/platforms/private/tests/app_platform_selection/fixtures/app_selecting_platform_libraries:app"
@@ -126,7 +126,7 @@ API_CASES = {
         "lane": "host",
         "target": _SELECTED_APP,
         "conditions": ["editor"],
-        "options": ["--@rules_godot//godot:variant=editor"],
+        "options": ["--@autoload_rules_godot//godot:variant=editor"],
     },
     "//godot:app.bzl%godot_app#apk": {
         "lane": "android",
@@ -139,7 +139,7 @@ API_CASES = {
         "lane": "android",
         "target": _SELECTED_APP,
         "conditions": ["aab"],
-        "options": [_EXPORT_PLATFORM + "android_arm64", "--@rules_godot//godot:android_format=aab"] + _ANDROID_SDK_TOOLCHAINS,
+        "options": [_EXPORT_PLATFORM + "android_arm64", "--@autoload_rules_godot//godot:android_format=aab"] + _ANDROID_SDK_TOOLCHAINS,
     },
     "//godot:app.bzl%godot_app#ios": {
         "lane": "ios",
@@ -152,7 +152,7 @@ API_CASES = {
         "lane": "android",
         "module": "tests",
         "target": "//smoke/android:bundle_packages_extension_and_pack_test",
-        "options": [_EXPORT_PLATFORM + "android_arm64", "--config=android", "--@rules_godot//godot:android_format=aab"],
+        "options": [_EXPORT_PLATFORM + "android_arm64", "--config=android", "--@autoload_rules_godot//godot:android_format=aab"],
     },
     "//godot/testing:artifact_tests.bzl%ios_app_test": {
         "lane": "ios",

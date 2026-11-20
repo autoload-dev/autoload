@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 
 package(default_testonly = True)
 

@@ -202,7 +202,7 @@ def require_ios_platform_slice(path: Path, cpu: str, sdk: str) -> None:
         f"{other} {_IOS_ENVIRONMENTS[other_sdk]}" for other, other_sdk in available
     )
     export_platforms = [
-        "@rules_godot//godot/platforms:" + _IOS_EXPORT_PLATFORMS[pair]
+        "@autoload_rules_godot//godot/platforms:" + _IOS_EXPORT_PLATFORMS[pair]
         for pair in available
         if pair in _IOS_EXPORT_PLATFORMS
     ]

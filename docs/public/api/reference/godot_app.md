@@ -13,7 +13,7 @@ Export content and Godot configuration belong to the declared pack/project.
 ## godot_app
 
 <pre>
-load("@rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 
 godot_app(*, <a href="#godot_app-name">name</a>, <a href="#godot_app-android_debug_key">android_debug_key</a>, <a href="#godot_app-android_manifest">android_manifest</a>, <a href="#godot_app-android_manifest_values">android_manifest_values</a>,
           <a href="#godot_app-android_min_sdk_version">android_min_sdk_version</a>, <a href="#godot_app-android_target_sdk_version">android_target_sdk_version</a>, <a href="#godot_app-application_id">application_id</a>, <a href="#godot_app-deprecation">deprecation</a>,
@@ -37,7 +37,7 @@ until it exits; see
 [Run an application](../../platforms.md#run-an-application). Configure Godot settings and content on the pack/project;
 this macro never creates or replaces the pack.
 
-macOS defaults to unsigned. Select --@rules_godot//godot:macos_signing=adhoc
+macOS defaults to unsigned. Select --@autoload_rules_godot//godot:macos_signing=adhoc
 or certificate to sign a copy. Certificate mode requires macos_signing_identity;
 macos_entitlements affects only the selected signer. Unsigned actions never read
 signing inputs. The selected launcher and GodotDesktopAppInfo bundle/archive refer

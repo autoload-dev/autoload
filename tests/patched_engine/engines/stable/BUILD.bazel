@@ -1,4 +1,4 @@
-load("@rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
 
 # The patched snapshot runtime; prioritize it with
 # --extra_toolchains=//patched_engine/engines/stable:all.

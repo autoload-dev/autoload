@@ -20,14 +20,14 @@ test:integration --test_tag_filters=integration
 build:android-toolchains --extra_toolchains=@androidsdk//:all
 build:android-toolchains --extra_toolchains=@android_toolchains//:all
 build:android --config=android-toolchains
-build:android --platforms=@rules_godot//godot/platforms:android_arm64
+build:android --platforms=@autoload_rules_godot//godot/platforms:android_arm64
 
-build:official --platforms=@rules_godot//godot/platforms:ios_sim_x86_64
+build:official --platforms=@autoload_rules_godot//godot/platforms:ios_sim_x86_64
 # The arm64 Simulator slot of the source-built engine, which the iOS API contract cases of
 # the source build inspect.
-build:source --platforms=@rules_godot//godot/platforms:ios_sim_arm64
+build:source --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
 
-build:aab --@rules_godot//godot:android_format=aab
+build:aab --@autoload_rules_godot//godot:android_format=aab
 
 import %workspace%/../shared.bazelrc
 

@@ -29,7 +29,7 @@ godot_engine_source = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_source = use_repo_rule(
-        "@rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
+        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
     )
     godot_engine_source(
         name = "godot_sources",
@@ -90,7 +90,7 @@ godot_engine_build = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_build = use_repo_rule(
-        "@rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
+        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
     )
     godot_engine_build(
         name = "godot_macos_arm64_release",
@@ -243,7 +243,7 @@ godot_editor_archive = repository_rule(
     Example (MODULE.bazel; replace URL and digest with a real pinned archive):
     ```starlark
     godot_editor_archive = use_repo_rule(
-        "@rules_godot//godot/engine:repositories.bzl",
+        "@autoload_rules_godot//godot/engine:repositories.bzl",
         "godot_editor_archive",
     )
     godot_editor_archive(
@@ -295,7 +295,7 @@ godot_export_templates_archive = repository_rule(
     Example (MODULE.bazel; replace URL and digest with a real pinned archive):
     ```starlark
     godot_export_templates_archive = use_repo_rule(
-        "@rules_godot//godot/engine:repositories.bzl",
+        "@autoload_rules_godot//godot/engine:repositories.bzl",
         "godot_export_templates_archive",
     )
     godot_export_templates_archive(
@@ -341,13 +341,13 @@ godot_android_shell = repository_rule(
     `:release`, the Android shell library of each template variant built with rules_android and
     rules_kotlin; their `.aar` outputs, such as `:release.aar`, are godot_android_runtime
     shells. Java and Kotlin target Godot's language level per target, so no Kotlin
-    toolchain is registered. The shell library's Maven dependencies come from rules_godot's
-    contribution to the shared `maven` repository; repin after adding rules_godot.
+    toolchain is registered. The shell library's Maven dependencies come from autoload_rules_godot's
+    contribution to the shared `maven` repository; repin after adding autoload_rules_godot.
 
     Example (MODULE.bazel):
     ```starlark
     godot_android_shell = use_repo_rule(
-        "@rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
+        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
     )
     godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
     ```

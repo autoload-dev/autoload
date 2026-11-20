@@ -17,7 +17,7 @@ range never causes Bazel to resolve “latest” or change downloads without a
 repository change.
 
 ```starlark
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot", version = "4.7.2")
 use_repo(godot_engines, "godot")
 register_toolchains("@godot//toolchains:all")

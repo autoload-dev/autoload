@@ -71,7 +71,7 @@ android_bundle_test = rule(
 
     The inspection runs on the execution platform with the host JDK, so a bundle built
     for an Android platform is inspected on the machine running the test. Build the
-    bundle with `--@rules_godot//godot:android_format=aab`; see
+    bundle with `--@autoload_rules_godot//godot:android_format=aab`; see
     [App Bundles](../../platforms.md#app-bundles-for-store-upload).
 
     Example:

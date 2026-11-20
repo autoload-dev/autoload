@@ -624,7 +624,7 @@ _pack_export = rule(
             only this export. Feature overrides such as `key.mobile` apply when the
             configured operating system or the project's custom features have the tag. Without an
             application/config/version entry here, a nonempty
-            `--@rules_godot//godot:app_version` sets that setting.
+            `--@autoload_rules_godot//godot:app_version` sets that setting.
             """,
         ),
         "export_options": attr.string_dict(

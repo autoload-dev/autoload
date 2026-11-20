@@ -266,7 +266,7 @@ host only:
 ```sh
 cd tests
 bazel test //smoke/linux/... //smoke/macos/...
-bazel test //smoke/macos/... --@rules_godot//godot:macos_signing=adhoc
+bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 ```
 
 `app_boots_with_extensions_test` inspects the desktop archive and boots the exported

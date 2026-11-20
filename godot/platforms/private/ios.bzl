@@ -44,8 +44,8 @@ _OWNED_PLIST_KEYS = {
     "CFBundleSupportedPlatforms": "the export platform selected with --platforms",
     "MinimumOSVersion": "godot_app.ios_minimum_os_version",
     "UIDeviceFamily": "godot_app.ios_families",
-    "CFBundleShortVersionString": "the pack's application/short_version export option or --@rules_godot//godot:app_version",
-    "CFBundleVersion": "the pack's application/version export option or --@rules_godot//godot:build_number",
+    "CFBundleShortVersionString": "the pack's application/short_version export option or --@autoload_rules_godot//godot:app_version",
+    "CFBundleVersion": "the pack's application/version export option or --@autoload_rules_godot//godot:build_number",
     "UILaunchStoryboardName": "godot_app.ios_launch_storyboard",
     "CFBundleIcons": "godot_app.ios_app_icons",
     "CFBundleIcons~ipad": "godot_app.ios_app_icons",
@@ -434,7 +434,7 @@ def godot_ios_application(
     settings, such as `application/config/name` and
     `display/window/handheld/orientation`, with the feature overrides of the
     pack's operating system. Without the version options, the build settings
-    `--@rules_godot//godot:app_version` and `--@rules_godot//godot:build_number`
+    `--@autoload_rules_godot//godot:app_version` and `--@autoload_rules_godot//godot:build_number`
     set them, so a release pipeline needs no BUILD changes; the project's
     `application/config/version` comes next.
 
