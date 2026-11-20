@@ -8,6 +8,10 @@ REPO = "@" + MODULE
 def strip_repo(label: str) -> str:
     """Drop the ruleset's apparent or canonical repository from a label."""
     repository, separator, rest = label.partition("//")
-    if separator and repository.lstrip("@").removesuffix("+") == MODULE:
+    if (
+        separator
+        and repository.startswith("@")
+        and repository.lstrip("@").removesuffix("+") == MODULE
+    ):
         return "//" + rest
     return label
