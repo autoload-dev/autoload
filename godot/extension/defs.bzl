@@ -774,10 +774,9 @@ def _shared_library(name, archive, entry_symbol, attrs):
     """
     Declare the shared library of extension name linked from archive and return its name.
 
-    On iOS it is the binary of the extension's framework, named as _ios_framework names it.
+    On iOS the extension's framework carries a copy of it.
     attrs are the attributes godot_cc_extension received: its kwargs and its tags.
     """
-    framework = framework_name(name)
 
     # Native filename exception: Godot descriptors and existing packaged libraries
     # use lib<name>_native.so. Remove when rules_cc separates the label from the
@@ -828,7 +827,6 @@ def _shared_library(name, archive, entry_symbol, attrs):
             # The binary of a framework the application embeds in its Frameworks
             # directory, beside the frameworks it loads.
             Label("@platforms//os:ios"): [
-                "-Wl,-install_name,@rpath/%s.framework/%s" % (framework, framework),
                 "-Wl,-rpath,@executable_path/Frameworks",
                 "-Wl,-rpath,@loader_path/Frameworks",
                 "-Wl,-exported_symbol,_" + entry_symbol,

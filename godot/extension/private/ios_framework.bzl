@@ -26,6 +26,18 @@ def framework_name(name):
     """
     return "".join([char if char.isalnum() or char == "_" else "_" for char in name.elems()])
 
+def install_name(framework):
+    """
+    Return the install name of the binary of framework, as the application's Frameworks directory holds it.
+
+    Args:
+        framework: The framework and binary name.
+
+    Returns:
+        @rpath/<framework>.framework/<framework>.
+    """
+    return "@rpath/%s.framework/%s" % (framework, framework)
+
 def default_bundle_id(package, name):
     """
     Return the CFBundleIdentifier of extension name in package.
@@ -81,8 +93,22 @@ def _ios_framework_files_impl(ctx):
     name = ctx.attr.framework_name
     directory = ctx.label.name + "/" + name + ".framework/"
     binary = ctx.actions.declare_file(directory + name)
-    ctx.actions.symlink(output = binary, target_file = ctx.file.binary)
     xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
+
+    # rules_cc's toolchain sets the install name after the target's linkopts, from the
+    # shared library's own file name; a framework's binary carries its framework path.
+    # The application signs the framework when it embeds it.
+    apple_support.run_shell(
+        actions = ctx.actions,
+        xcode_config = xcode_config,
+        apple_fragment = ctx.fragments.apple,
+        command = 'cp "$1" "$2" && chmod u+w "$2" && xcrun install_name_tool -id "$3" "$2"',
+        arguments = [ctx.file.binary.path, binary.path, install_name(name)],
+        inputs = [ctx.file.binary],
+        outputs = [binary],
+        mnemonic = "GodotFrameworkInstallName",
+        progress_message = "Setting the install name of %{output}",
+    )
     plist = ctx.actions.declare_file(directory + "Info.plist")
     ctx.actions.write(plist, info_plist({
         "CFBundleDevelopmentRegion": "en",
@@ -108,7 +134,7 @@ ios_framework_files = rule(
     implementation = _ios_framework_files_impl,
     attrs = {
         "binary": attr.label(
-            doc = "The dynamic library, linked with the framework's install name.",
+            doc = "The dynamic library; its copy in the framework gets the framework's install name.",
             allow_single_file = True,
             mandatory = True,
         ),

@@ -7,7 +7,7 @@ archive, which the shared library links; the shared library exports only the ent
 macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
 operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
-named after the target, whose binary has the framework's install name, or with
+named after the target, whose binary gets the framework's install name, or with
 ios_linkage = "static" the archive the application links.
 """
 
@@ -235,18 +235,19 @@ def _test_ios_framework_binary_has_its_install_name(name):
     _extension(name + "_extension")
     analysis_test(
         name = name,
-        target = "lib%s_extension_native.so" % name,
+        target = name + "_extension.ios_framework_files",
         impl = _ios_framework_binary_has_its_install_name,
         attr_values = _MACOS_ONLY,
         config_settings = _IOS_SIMULATOR,
     )
 
 def _ios_framework_binary_has_its_install_name(env, target):
-    framework = target.label.name.removeprefix("lib").removesuffix("_native.so")
-    env.expect.that_collection(_links(target).argv).contains_at_least([
-        "-Wl,-install_name,@rpath/%s.framework/%s" % (framework, framework),
-        "-Wl,-exported_symbol,_archive_fixture_init",
-    ])
+    # The toolchain names the linked library after its file, so the framework's copy
+    # gets the framework's install name afterwards.
+    framework = target.label.name.removesuffix(".ios_framework_files")
+    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkInstallName"]
+    env.expect.that_int(len(actions), expr = "number of install name actions").equals(1)
+    env.expect.that_collection(actions[0].argv).contains("@rpath/%s.framework/%s" % (framework, framework))
 
 def _test_ios_static_linkage_links_the_archive(name):
     _extension(name + "_extension", ios_linkage = "static")
