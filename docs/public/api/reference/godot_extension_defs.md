@@ -30,8 +30,7 @@ it. Like godot_extension, the target is an add-on of only that extension.
 
 Creates the named godot_extension target and the private targets `<name>.native`,
 the cc_library, `lib<name>_native.so`, the shared library linked from it,
-`<name>.ios_framework`, the framework import of iOS, and `<name>.tool`, the
-extension in the tool configuration that editor actions and the
+`<name>.ios_framework`, the framework import of iOS, and `<name>.tool`, the extension in the tool configuration that editor actions and the
 host editor load. The public target exposes
 GodotExtensionInfo, DefaultInfo and, on iOS, CcInfo. It returns no Starlark value.
 Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
