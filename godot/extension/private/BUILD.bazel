@@ -2,6 +2,7 @@ exports_files(
     [
         "bindings.bzl",
         "godot_cpp.bzl",
+        "ios_framework.bzl",
     ],
     visibility = ["//docs/public/api:__pkg__"],
 )

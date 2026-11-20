@@ -1,6 +1,7 @@
 """Extensions, and the extension libraries rules_cc builds for them."""
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFrameworkImportInfo", "apple_provider")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
@@ -8,6 +9,7 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot:providers.bzl", "GodotExtensionInfo")
+load("//godot/extension/private:ios_framework.bzl", "default_bundle_id", "framework_name", "ios_framework_files")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:addon.bzl", "extension_addon")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
@@ -772,8 +774,10 @@ def _shared_library(name, archive, entry_symbol, attrs):
     """
     Declare the shared library of extension name linked from archive and return its name.
 
+    On iOS it is the binary of the extension's framework, named as _ios_framework names it.
     attrs are the attributes godot_cc_extension received: its kwargs and its tags.
     """
+    framework = framework_name(name)
 
     # Native filename exception: Godot descriptors and existing packaged libraries
     # use lib<name>_native.so. Remove when rules_cc separates the label from the
@@ -813,11 +817,20 @@ def _shared_library(name, archive, entry_symbol, attrs):
         linkshared = True,
         additional_linker_inputs = select({
             Label("@platforms//os:macos"): [],
+            Label("@platforms//os:ios"): [],
             "//conditions:default": [":" + exports],
         }),
         linkopts = select({
             Label("@platforms//os:macos"): [
                 "-Wl,-rpath,@loader_path",
+                "-Wl,-exported_symbol,_" + entry_symbol,
+            ],
+            # The binary of a framework the application embeds in its Frameworks
+            # directory, beside the frameworks it loads.
+            Label("@platforms//os:ios"): [
+                "-Wl,-install_name,@rpath/%s.framework/%s" % (framework, framework),
+                "-Wl,-rpath,@executable_path/Frameworks",
+                "-Wl,-rpath,@loader_path/Frameworks",
                 "-Wl,-exported_symbol,_" + entry_symbol,
             ],
             "//conditions:default": [
@@ -830,6 +843,36 @@ def _shared_library(name, archive, entry_symbol, attrs):
         **binary_kwargs
     )
     return shared
+
+def _ios_framework(name, shared, bundle_id, attrs):
+    """
+    Declare the iOS framework of extension name around the shared library and return its import.
+
+    attrs are the attributes godot_cc_extension received: its kwargs and its tags.
+    """
+    common = {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs}
+    files = name + ".ios_framework_files"
+    ios_framework_files(
+        name = files,
+        binary = ":" + shared,
+        framework_name = framework_name(name),
+        bundle_id = bundle_id or default_bundle_id(native.package_name(), name),
+        visibility = ["//visibility:private"],
+        tags = attrs["tags"] + ["manual"],
+        **common
+    )
+    framework = name + ".ios_framework"
+
+    # Godot loads the framework, so nothing links it: the application embeds and signs it.
+    apple_dynamic_framework_import(
+        name = framework,
+        bundle_only = True,
+        framework_imports = [":" + files],
+        visibility = ["//visibility:private"],
+        tags = attrs["tags"] + ["manual"],
+        **common
+    )
+    return framework
 
 def godot_cc_extension(
         name,
@@ -846,20 +889,25 @@ def godot_cc_extension(
         tags = [],
         platform_deps = [],
         infoplists = [],
+        ios_linkage = "framework",
+        ios_bundle_id = "",
         **kwargs):
     """
     Build C/C++ once as a cc_library, link it, and package it as a godot_extension.
 
-    iOS takes the archive; other supported operating systems take a shared library
-    linked from it that finds its shared dependencies beside it and exports only the
-    entry symbol, so extensions in one process never run each other's godot-cpp. Code
+    Every supported operating system takes a shared library linked from it that finds its
+    shared dependencies beside it and exports only the entry symbol, so extensions in one
+    process never run each other's godot-cpp. On iOS the shared library is the binary of a
+    dynamic framework the application embeds and signs; with ios_linkage = "static", iOS
+    takes the archive instead, which the application links, and the application's
+    static extensions share one godot-cpp. Code
     linked by another rule, in any language, goes to godot_extension directly. godot_app
     links the extension and its C++ dependencies when one of the packs it ships contains
     it. Like godot_extension, the target is an add-on of only that extension.
 
     Creates the named godot_extension target and the private targets `<name>.native`,
-    the cc_library, `lib<name>_native.so`, the shared library linked from it, and
-    `<name>.tool`, the extension in the tool configuration that editor actions and the
+    the cc_library, `lib<name>_native.so`, the shared library linked from it,
+    `<name>.ios_framework`, the framework import of iOS, and `<name>.tool`, the extension in the tool configuration that editor actions and the
     host editor load. The public target exposes
     GodotExtensionInfo, DefaultInfo and, on iOS, CcInfo. It returns no Starlark value.
     Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
@@ -893,7 +941,7 @@ def godot_cc_extension(
     | --- | --- | --- |
     | GodotExtensionInfo | Configured extension library, descriptor fragment and resource paths | always |
     | GodotAddonInfo | The add-on of only this extension, which resources and projects use like any add-on | always |
-    | CcInfo | Forwarded from the iOS static library; supports iOS static linking | when_cc |
+    | CcInfo | Forwarded from the iOS static library or framework import; supports iOS linking and embedding | when_cc |
 
     Args:
         name: Public extension target.
@@ -917,17 +965,29 @@ def godot_cc_extension(
             links belong to deps.
         infoplists: Info.plist fragments for the extension's native code;
             godot_extension's infoplists.
+        ios_linkage: How iOS applications take the extension: "framework", the
+            default, embeds a dynamic framework named after the extension, with its own
+            godot-cpp; "static" links the archive into the executable, where all static
+            extensions share one godot-cpp and its main loop callbacks.
+        ios_bundle_id: CFBundleIdentifier of the iOS framework; empty derives one from
+            the extension's label.
         **kwargs: Additional cc_library attributes, such as copts, defines or
             linkopts; the attributes every rule has, such as features or
             exec_compatible_with, also reach the shared library, and the cc_binary
             attributes dynamic_deps, env, link_extra_lib, linkstatic, malloc,
             reexport_deps and stamp reach only it.
     """
+    if ios_linkage not in ["framework", "static"]:
+        fail("ios_linkage must be framework or static; got %r" % ios_linkage)
     archive = name + ".native"
     _native_archive(archive, srcs, hdrs, deps, entry_symbol, tags, kwargs)
     shared = _shared_library(name, archive, entry_symbol, kwargs | {"tags": tags})
+    if ios_linkage == "framework":
+        ios_library = _ios_framework(name, shared, ios_bundle_id, kwargs | {"tags": tags})
+    else:
+        ios_library = archive
     library = select({
-        Label("@platforms//os:ios"): ":" + archive,
+        Label("@platforms//os:ios"): ":" + ios_library,
         "//conditions:default": ":" + shared,
     })
     _source_extension(

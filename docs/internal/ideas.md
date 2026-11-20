@@ -250,8 +250,9 @@ manifest placeholders; the rest is open.
   Maven works: `maven.install` tags merge across modules; the consumer lists the module in
   `known_contributing_modules` and owns the pin. The engine hub (`@godot//android:plugin_api`)
   couples the add-on to the consumer's engine request. Each module generates its own
-  `godot_cpp_bindings`: harmless for shared libraries, likely duplicate symbols in an iOS
-  executable, which links all extensions statically (unverified). `rules_swift_package_manager`
+  `godot_cpp_bindings`: harmless for shared libraries and for the default iOS frameworks;
+  extensions with `ios_linkage = "static"` from two modules share the executable, where
+  different `enabled_classes` fail with duplicate symbols. `rules_swift_package_manager`
   supports only the root module, so an Apple backend cannot see the consumer's Swift packages.
   Open: bindings shared across modules; how an add-on reaches the consumer's Swift packages
   (for example a `label_flag`); how an add-on names the consumer's engine hub.

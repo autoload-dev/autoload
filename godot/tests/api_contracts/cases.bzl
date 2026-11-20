@@ -157,7 +157,7 @@ API_CASES = {
     "//godot/testing:artifact_tests.bzl%ios_app_test": {
         "lane": "ios",
         "module": "tests",
-        "target": "//smoke/ios:app_links_extension_test",
+        "target": "//smoke/ios:app_embeds_extension_framework_test",
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
     },
     "//godot/engine:defs.bzl%godot_android_runtime": {
