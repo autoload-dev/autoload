@@ -119,6 +119,7 @@ SUPPORT_MODULES = [
     "//godot/engine/private:extension_plan.bzl",
     "//godot/engine/private:hub.bzl",
     "//godot/engine/private:source_repositories.bzl",
+    "//godot/extension/private:cc_extension.bzl",
     "//godot/extension/private:godot_cpp.bzl",
     "//godot/extension/private:ios_framework.bzl",
     "//godot/platforms/private:macos_signing.bzl",

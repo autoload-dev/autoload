@@ -12,6 +12,7 @@ is written here rather than by a plist tool action.
 """
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
+load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
 
 visibility(["//godot/extension/..."])
@@ -133,3 +134,36 @@ ios_framework_files = rule(
     } | PLATFORM_ATTRS | apple_support.action_required_attrs(),
     fragments = ["apple"],
 )
+
+def ios_framework(name, shared, bundle_id, generated):
+    """
+    Declare the iOS framework of extension name around its shared library.
+
+    Args:
+        name: The extension's target name.
+        shared: Name of the extension's shared library target in this package.
+        bundle_id: CFBundleIdentifier of the framework; empty derives one from the
+            extension's label.
+        generated: The attributes of the private targets godot_cc_extension generates.
+
+    Returns:
+        The name of the framework import that iOS applications embed.
+    """
+    files = name + ".ios_framework_files"
+    ios_framework_files(
+        name = files,
+        binary = ":" + shared,
+        framework_name = framework_name(name),
+        bundle_id = bundle_id or default_bundle_id(native.package_name(), name),
+        **generated
+    )
+    framework = name + ".ios_framework"
+
+    # Godot loads the framework, so nothing links it: the application embeds and signs it.
+    apple_dynamic_framework_import(
+        name = framework,
+        bundle_only = True,
+        framework_imports = [":" + files],
+        **generated
+    )
+    return framework

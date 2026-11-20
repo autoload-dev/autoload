@@ -1,6 +1,7 @@
 exports_files(
     [
         "bindings.bzl",
+        "cc_extension.bzl",
         "godot_cpp.bzl",
         "ios_framework.bzl",
     ],
