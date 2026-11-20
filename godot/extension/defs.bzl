@@ -1,13 +1,12 @@
 """Extensions, and the extension libraries rules_cc builds for them."""
 
-load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFrameworkImportInfo", "apple_provider")
-load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot:providers.bzl", "GodotExtensionInfo")
+load("//godot/extension/private:cc_extension.bzl", "generated_attrs", "native_archive", "shared_library")
+load("//godot/extension/private:ios_framework.bzl", "ios_framework")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:addon.bzl", "extension_addon")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
@@ -18,9 +17,6 @@ load("//godot/private:variant.bzl", "VARIANT_ATTRS", "variant")
 load("//godot/private:versions.bzl", "dotted_version", "require_supported_godot_minimum")
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "OPERATING_SYSTEM_CONSTRAINTS", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/config:transitions.bzl", "tool_transition")
-
-# Attributes every rule has, which godot_cc_extension passes to its shared library too.
-_RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
 
 _SHARED = "a shared library (cc_shared_library, cc_import(shared_library), cc_binary(linkshared), one .%s)"
 _FRAMEWORK = "a dynamic framework (apple_dynamic_xcframework_import, apple_dynamic_framework_import)"
@@ -633,7 +629,7 @@ _source_extension = rule(
     attrs = _EXTENSION_ATTRS | {
         "implementation_deps": attr.label_list(
             doc = """
-            The iOS static extension library, so that iOS applications bundle the Apple
+            The extension's cc_library on iOS, so that iOS applications bundle the Apple
             resources of its native dependencies, such as a Swift package's resource
             bundle. The godot_cc_extension macro sets it; it adds nothing to linking.
             """,
@@ -740,97 +736,6 @@ godot_extension = macro(
     implementation = _godot_extension_impl,
 )
 
-# Attributes of the link alone; the cc_library has its own linkstatic.
-_LINK_ATTRS = ["dynamic_deps", "env", "link_extra_lib", "linkstatic", "malloc", "reexport_deps", "stamp"]
-
-def _native_archive(name, srcs, hdrs, deps, entry_symbol, tags, kwargs):
-    """Declare the cc_library of the extension's C++ code, which iOS links into the application."""
-    archive_kwargs = {key: value for key, value in kwargs.items() if key not in _LINK_ATTRS}
-
-    # iOS links the archive into the application, which keeps and exports the entry symbol.
-    archive_kwargs["linkopts"] = archive_kwargs.get("linkopts", []) + select({
-        Label("@platforms//os:ios"): [
-            "-Wl,-u,_" + entry_symbol,
-            "-Wl,-exported_symbol,_" + entry_symbol,
-        ],
-        "//conditions:default": [],
-    })
-    cc_library(
-        name = name,
-        srcs = srcs,
-        hdrs = hdrs,
-        deps = deps,
-        alwayslink = True,
-        linkstatic = True,
-        visibility = ["//visibility:private"],
-        # The extension builds it in its own configuration, without --strip.
-        tags = tags + ["manual"],
-        **archive_kwargs
-    )
-
-def _shared_library(name, archive, entry_symbol, attrs):
-    """
-    Declare the shared library of extension name linked from archive and return its name.
-
-    attrs are the attributes godot_cc_extension received: its kwargs and its tags.
-    """
-
-    # Native filename exception: Godot descriptors and existing packaged libraries
-    # use lib<name>_native.so. Remove when rules_cc separates the label from the
-    # shared-library filename without changing descriptor/resource identities.
-    shared = "lib" + name + "_native.so"
-
-    # What every generated target takes; the shared library also takes the attributes
-    # common to all rules and the link's own.
-    common = {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs}
-    binary_kwargs = common | {
-        key: attrs[key]
-        for key in _LINK_ATTRS + _RULE_ATTRS
-        if key in attrs
-    }
-
-    # The library exports only its entry symbol, as godot-cpp's own build does. Each
-    # extension links its own godot-cpp, and an exported copy would be shared with the
-    # other extensions in the process: dyld binds weak definitions across images.
-    exports = name + ".exports"
-    write_file(
-        name = exports,
-        out = exports + ".lds",
-        content = ["{ global: %s; local: *; };" % entry_symbol],
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
-        **common
-    )
-
-    # The shared library links the archive and everything it links. Not cc_shared_library:
-    # it links only the static libraries its aspect reaches through deps and drops others,
-    # such as the Objective-C targets of rules_swift_package_manager behind their
-    # minimum-OS transition. Shared dependencies load from beside the extension library,
-    # where the extension places them, as vendors' libraries expect (@loader_path, $ORIGIN).
-    cc_binary(
-        name = shared,
-        deps = [":" + archive],
-        linkshared = True,
-        additional_linker_inputs = select({
-            Label("@platforms//os:macos"): [],
-            "//conditions:default": [":" + exports],
-        }),
-        linkopts = select({
-            Label("@platforms//os:macos"): [
-                "-Wl,-rpath,@loader_path",
-                "-Wl,-exported_symbol,_" + entry_symbol,
-            ],
-            "//conditions:default": [
-                "-Wl,-rpath,$$ORIGIN",
-                "-Wl,--version-script,$(location :%s)" % exports,
-            ],
-        }),
-        visibility = ["//visibility:private"],
-        tags = attrs["tags"] + ["manual"],
-        **binary_kwargs
-    )
-    return shared
-
 def godot_cc_extension(
         name,
         srcs,
@@ -846,20 +751,25 @@ def godot_cc_extension(
         tags = [],
         platform_deps = [],
         infoplists = [],
+        ios_linkage = "framework",
+        ios_bundle_id = "",
         **kwargs):
     """
     Build C/C++ once as a cc_library, link it, and package it as a godot_extension.
 
-    iOS takes the archive; other supported operating systems take a shared library
-    linked from it that finds its shared dependencies beside it and exports only the
-    entry symbol, so extensions in one process never run each other's godot-cpp. Code
+    Every supported operating system takes a shared library linked from it that finds its
+    shared dependencies beside it and exports only the entry symbol, so extensions in one
+    process never run each other's godot-cpp. On iOS the shared library is the binary of a
+    dynamic framework the application embeds and signs; with ios_linkage = "static", iOS
+    takes the archive instead, which the application links, and the application's
+    static extensions share one godot-cpp. Code
     linked by another rule, in any language, goes to godot_extension directly. godot_app
     links the extension and its C++ dependencies when one of the packs it ships contains
     it. Like godot_extension, the target is an add-on of only that extension.
 
     Creates the named godot_extension target and the private targets `<name>.native`,
-    the cc_library, `lib<name>_native.so`, the shared library linked from it, and
-    `<name>.tool`, the extension in the tool configuration that editor actions and the
+    the cc_library, `lib<name>_native.so`, the shared library linked from it,
+    `<name>.ios_framework`, the framework import of iOS, and `<name>.tool`, the extension in the tool configuration that editor actions and the
     host editor load. The public target exposes
     GodotExtensionInfo, DefaultInfo and, on iOS, CcInfo. It returns no Starlark value.
     Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
@@ -893,7 +803,7 @@ def godot_cc_extension(
     | --- | --- | --- |
     | GodotExtensionInfo | Configured extension library, descriptor fragment and resource paths | always |
     | GodotAddonInfo | The add-on of only this extension, which resources and projects use like any add-on | always |
-    | CcInfo | Forwarded from the iOS static library; supports iOS static linking | when_cc |
+    | CcInfo | Forwarded from the iOS static library or framework import; supports iOS linking and embedding | when_cc |
 
     Args:
         name: Public extension target.
@@ -917,17 +827,27 @@ def godot_cc_extension(
             links belong to deps.
         infoplists: Info.plist fragments for the extension's native code;
             godot_extension's infoplists.
+        ios_linkage: How iOS applications take the extension: "framework", the
+            default, embeds a dynamic framework named after the extension, with its own
+            godot-cpp; "static" links the archive into the executable, where all static
+            extensions share one godot-cpp and its main loop callbacks.
+        ios_bundle_id: CFBundleIdentifier of the iOS framework; empty derives one from
+            the extension's label.
         **kwargs: Additional cc_library attributes, such as copts, defines or
             linkopts; the attributes every rule has, such as features or
             exec_compatible_with, also reach the shared library, and the cc_binary
             attributes dynamic_deps, env, link_extra_lib, linkstatic, malloc,
             reexport_deps and stamp reach only it.
     """
+    if ios_linkage not in ["framework", "static"]:
+        fail("ios_linkage must be framework or static; got %r" % ios_linkage)
     archive = name + ".native"
-    _native_archive(archive, srcs, hdrs, deps, entry_symbol, tags, kwargs)
-    shared = _shared_library(name, archive, entry_symbol, kwargs | {"tags": tags})
+    native_archive(archive, srcs, hdrs, deps, entry_symbol, tags, kwargs)
+    attrs = kwargs | {"tags": tags}
+    shared = shared_library(name, archive, entry_symbol, attrs)
+    ios_library = ios_framework(name, shared, ios_bundle_id, generated_attrs(attrs)) if ios_linkage == "framework" else archive
     library = select({
-        Label("@platforms//os:ios"): ":" + archive,
+        Label("@platforms//os:ios"): ":" + ios_library,
         "//conditions:default": ":" + shared,
     })
     _source_extension(

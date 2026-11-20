@@ -47,9 +47,11 @@ in: operating system, CPU, `simulator` on the iOS Simulator, and the variant, fo
 `android.arm64.release`. A matching C++ toolchain is still required. Generated
 descriptors require Godot 4.7.2 or newer.
 
-Outside iOS, the extension library exports only `entry_symbol`, as godot-cpp's own build
+The extension library exports only `entry_symbol`, as godot-cpp's own build
 does, so extensions loaded into one process each run their own copy of godot-cpp and of
-their other static dependencies. Other functions of the library are not visible to code
+their other static dependencies. On iOS this holds for the default
+[framework](#ios-frameworks); a [statically linked](#ios-static-linking) extension shares
+the executable's. Other functions of the library are not visible to code
 that looks them up by name.
 
 ## C++ bindings
@@ -278,10 +280,25 @@ while source runs and applications load the library with the SDK, and editor bui
 fetch or compile the SDK. The [AppAuth add-on](../../examples/addons/app_auth/BUILD.bazel)
 shows this.
 
+## iOS frameworks
+
+With an iOS target toolchain, `godot_cc_extension` links the same shared library as on
+other platforms and wraps it in a dynamic framework named after the target,
+`<name>.framework`, with an `Info.plist` whose `MinimumOSVersion` is the deployment target
+of the link. The iOS application embeds and signs it in its `Frameworks` directory, as it
+does a vendor's [dynamic framework](#dynamic-frameworks), and Godot loads it when it loads
+the extension. Each framework links its own godot-cpp, so extensions from different
+Bazel modules, each with their own `godot_cpp_bindings`, never share godot-cpp symbols, and
+every extension keeps its own main loop callbacks.
+
+`ios_bundle_id` sets the framework's `CFBundleIdentifier`; by default it derives from the
+target's label, such as `rules-godot.extension.addons.sentry.sentry`. Two extensions of one
+application need different target names, since the frameworks share one directory.
+
 ## iOS static linking
 
-With an iOS target toolchain, `godot_cc_extension` selects a static archive;
-other supported target platforms select a shared library. Include the extension
+With `ios_linkage = "static"`, `godot_cc_extension` selects a static archive on iOS
+instead. Include the extension
 in the project's `deps`, or those of resources it contains. The iOS application
 links its archive and transitive C++ dependencies from the pack's project.
 The [SQLite extension](../../examples/addons/sqlite/BUILD.bazel) and its
@@ -295,13 +312,16 @@ resource path: Godot recognizes that suffix and resolves the entry in the main
 executable. A `.a` alias bridges rules_cc's `.lo` always-link naming without
 changing its rules_cc linking metadata.
 
-The `godot_cc_extension` archives of an iOS application share one godot-cpp copy, which
-godot-cpp supports for classes and object bindings. Main loop callbacks
+The statically linked `godot_cc_extension` archives of an iOS application share one
+godot-cpp copy, which godot-cpp supports for classes and object bindings. They must
+therefore link the same godot-cpp: two `godot_cpp_bindings` repositories, such as one of
+the application's module and one of an add-on module, with different `enabled_classes`
+fail with duplicate symbols, and different `precision` or `debug_features` mix
+incompatible objects. Main loop callbacks
 (`register_startup_callback`, `register_frame_callback`, `register_shutdown_callback`)
 are the exception: only the last extension that registers them keeps its callbacks.
 When several extensions need them, register them in one extension that calls the
-others, or ship an extension as a [dynamic framework](#dynamic-frameworks), which
-carries its own godot-cpp.
+others, or keep the default [framework](#ios-frameworks), which carries its own godot-cpp.
 
 A prebuilt extension shipped as a static XCFramework comes in through
 `apple_static_xcframework_import` as the iOS branch of `library`; rules_apple selects the

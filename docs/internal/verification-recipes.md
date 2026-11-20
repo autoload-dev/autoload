@@ -221,7 +221,7 @@ bazel test //godot/private/tests/gdunit/...
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
 `bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
-or `bazel test //smoke/ios:app_links_extension_test --config=official`.
+or `bazel test //:ios_official --config=official`.
 
 ### Source-built engine applications
 
@@ -303,7 +303,7 @@ bazel test //:ios_official --config=official
 | Suite | Configuration | Checks |
 | --- | --- | --- |
 | `android_aab` | `android aab` | the Android smoke bundle: engine, extension library and pack |
-| `ios_official` | `official` | the iOS smoke app's linked extension entry |
+| `ios_official` | `official` | the iOS smoke apps' embedded extension framework and statically linked extension entry |
 
 The `android:apps` and `ios:apps` tasks run these suites. To record artifact-level evidence
 of the smoke applications, build them, then return to the root to inspect them:

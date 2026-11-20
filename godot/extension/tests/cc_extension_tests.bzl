@@ -6,9 +6,12 @@ dependencies; the shared library finds its shared dependencies beside it; header
 archive, which the shared library links; the shared library exports only the entry symbol, on
 macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
-operating-system versions reach GodotExtensionInfo.
+operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
+named after the target, whose binary gets the framework's install name, or with
+ios_linkage = "static" the archive the application links.
 """
 
+load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
@@ -19,6 +22,8 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
 
 _SMALL = {"size": "small"}
+_MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
+_IOS_SIMULATOR = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))}
 
 # Android analysis needs the SDK and NDK toolchains; without an SDK the test is skipped.
 _ANDROID = {
@@ -203,6 +208,52 @@ def _test_minimum_os_versions_reach_extension_info(name):
 def _minimum_os_versions_reach_extension_info(env, target):
     env.expect.that_dict(target[GodotExtensionInfo].minimum_os_versions).contains_exactly({"macos": "13.0"})
 
+def _ios_analysis_test(name, impl, target_suffix = "", **extension_kwargs):
+    """Declare an extension and analyze it, or its target_suffix target, in the iOS Simulator."""
+    _extension(name + "_extension", **extension_kwargs)
+    analysis_test(
+        name = name,
+        target = name + "_extension" + target_suffix,
+        impl = impl,
+        attr_values = _MACOS_ONLY,
+        config_settings = _IOS_SIMULATOR,
+    )
+
+def _test_ios_extension_is_a_framework(name):
+    _ios_analysis_test(name, _ios_extension_is_a_framework)
+
+def _ios_extension_is_a_framework(env, target):
+    library = target[GodotExtensionInfo].library
+    framework = target.label.name + ".framework"
+    env.expect.that_str(library.link_kind).equals("framework")
+    env.expect.that_str(library.file.basename).equals(target.label.name)
+    env.expect.that_str(library.resource_path).equals(
+        "addons/%s/bin/ios.arm64.simulator.release/%s" % (target.label.name, framework),
+    )
+    env.expect.that_collection(
+        [file.path.split(framework + "/")[-1] for file in target[AppleFrameworkImportInfo].framework_imports.to_list()],
+        expr = "the files an Apple application embeds",
+    ).contains_exactly([target.label.name, "Info.plist"])
+
+def _test_ios_framework_binary_has_its_install_name(name):
+    _ios_analysis_test(name, _ios_framework_binary_has_its_install_name, ".ios_framework_files")
+
+def _ios_framework_binary_has_its_install_name(env, target):
+    # The toolchain names the linked library after its file, so the framework's copy
+    # gets the framework's install name afterwards.
+    framework = target.label.name.removesuffix(".ios_framework_files")
+    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkInstallName"]
+    env.expect.that_int(len(actions), expr = "number of install name actions").equals(1)
+    env.expect.that_collection(actions[0].argv).contains("@rpath/%s.framework/%s" % (framework, framework))
+
+def _test_ios_static_linkage_links_the_archive(name):
+    _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
+
+def _ios_static_linkage_links_the_archive(env, target):
+    library = target[GodotExtensionInfo].library
+    env.expect.that_str(library.link_kind).equals("static")
+    env.expect.that_str(library.file.extension).equals("a")
+
 def cc_extension_test_suite(name):
     test_suite(
         name = name,
@@ -214,5 +265,8 @@ def cc_extension_test_suite(name):
             _test_hdrs_reach_the_archive_the_shared_library_links,
             _test_descriptor_attributes_reach_both_extensions,
             _test_minimum_os_versions_reach_extension_info,
+            _test_ios_extension_is_a_framework,
+            _test_ios_framework_binary_has_its_install_name,
+            _test_ios_static_linkage_links_the_archive,
         ],
     )

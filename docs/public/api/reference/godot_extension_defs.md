@@ -13,21 +13,24 @@ load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 godot_cc_extension(<a href="#godot_cc_extension-name">name</a>, <a href="#godot_cc_extension-srcs">srcs</a>, <a href="#godot_cc_extension-entry_symbol">entry_symbol</a>, <a href="#godot_cc_extension-deps">deps</a>, <a href="#godot_cc_extension-hdrs">hdrs</a>, <a href="#godot_cc_extension-data">data</a>, <a href="#godot_cc_extension-resource_path">resource_path</a>, <a href="#godot_cc_extension-compatibility_minimum">compatibility_minimum</a>,
                    <a href="#godot_cc_extension-reloadable">reloadable</a>, <a href="#godot_cc_extension-minimum_os_versions">minimum_os_versions</a>, <a href="#godot_cc_extension-visibility">visibility</a>, <a href="#godot_cc_extension-tags">tags</a>, <a href="#godot_cc_extension-platform_deps">platform_deps</a>, <a href="#godot_cc_extension-infoplists">infoplists</a>,
-                   <a href="#godot_cc_extension-kwargs">**kwargs</a>)
+                   <a href="#godot_cc_extension-ios_linkage">ios_linkage</a>, <a href="#godot_cc_extension-ios_bundle_id">ios_bundle_id</a>, <a href="#godot_cc_extension-kwargs">**kwargs</a>)
 </pre>
 
 Build C/C++ once as a cc_library, link it, and package it as a godot_extension.
 
-iOS takes the archive; other supported operating systems take a shared library
-linked from it that finds its shared dependencies beside it and exports only the
-entry symbol, so extensions in one process never run each other's godot-cpp. Code
+Every supported operating system takes a shared library linked from it that finds its
+shared dependencies beside it and exports only the entry symbol, so extensions in one
+process never run each other's godot-cpp. On iOS the shared library is the binary of a
+dynamic framework the application embeds and signs; with ios_linkage = "static", iOS
+takes the archive instead, which the application links, and the application's
+static extensions share one godot-cpp. Code
 linked by another rule, in any language, goes to godot_extension directly. godot_app
 links the extension and its C++ dependencies when one of the packs it ships contains
 it. Like godot_extension, the target is an add-on of only that extension.
 
 Creates the named godot_extension target and the private targets `<name>.native`,
-the cc_library, `lib<name>_native.so`, the shared library linked from it, and
-`<name>.tool`, the extension in the tool configuration that editor actions and the
+the cc_library, `lib<name>_native.so`, the shared library linked from it,
+`<name>.ios_framework`, the framework import of iOS, and `<name>.tool`, the extension in the tool configuration that editor actions and the
 host editor load. The public target exposes
 GodotExtensionInfo, DefaultInfo and, on iOS, CcInfo. It returns no Starlark value.
 Compilation uses rules_cc toolchains. The feature tags of the libraries derive from
@@ -61,7 +64,7 @@ none
 | --- | --- | --- |
 | GodotExtensionInfo | Configured extension library, descriptor fragment and resource paths | always |
 | GodotAddonInfo | The add-on of only this extension, which resources and projects use like any add-on | always |
-| CcInfo | Forwarded from the iOS static library; supports iOS static linking | when_cc |
+| CcInfo | Forwarded from the iOS static library or framework import; supports iOS linking and embedding | when_cc |
 
 
 **PARAMETERS**
@@ -83,6 +86,8 @@ none
 | <a id="godot_cc_extension-tags"></a>tags |  Bazel target tags.   |  `[]` |
 | <a id="godot_cc_extension-platform_deps"></a>platform_deps |  Android or Apple platform libraries the extension's native code uses without linking them; godot_extension's platform_deps. Libraries it links belong to deps.   |  `[]` |
 | <a id="godot_cc_extension-infoplists"></a>infoplists |  Info.plist fragments for the extension's native code; godot_extension's infoplists.   |  `[]` |
+| <a id="godot_cc_extension-ios_linkage"></a>ios_linkage |  How iOS applications take the extension: "framework", the default, embeds a dynamic framework named after the extension, with its own godot-cpp; "static" links the archive into the executable, where all static extensions share one godot-cpp and its main loop callbacks.   |  `"framework"` |
+| <a id="godot_cc_extension-ios_bundle_id"></a>ios_bundle_id |  CFBundleIdentifier of the iOS framework; empty derives one from the extension's label.   |  `""` |
 | <a id="godot_cc_extension-kwargs"></a>kwargs |  Additional cc_library attributes, such as copts, defines or linkopts; the attributes every rule has, such as features or exec_compatible_with, also reach the shared library, and the cc_binary attributes dynamic_deps, env, link_extra_lib, linkstatic, malloc, reexport_deps and stamp reach only it.   |  none |
 
 

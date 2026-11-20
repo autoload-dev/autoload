@@ -21,5 +21,8 @@ test_suite(
 test_suite(
     name = "ios_official",
     tags = ["manual"],
-    tests = ["//smoke/ios:app_links_extension_test"],
+    tests = [
+        "//smoke/ios:app_embeds_extension_framework_test",
+        "//smoke/ios:static_app_links_extension_test",
+    ],
 )

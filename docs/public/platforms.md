@@ -559,8 +559,10 @@ families, provisioning, entitlements and platform libraries are
 [Bazel-owned inputs](configuration.md#values-that-belong-to-bazel); icons, privacy metadata,
 localized strings, launch-screen settings and additional plist content use
 [Godot options](configuration.md#export-options-support).
-Extensions use [static linking and exported symbols](gdextension.md#ios-static-linking) or
-[embedded dynamic frameworks](gdextension.md#dynamic-frameworks).
+Extensions use [embedded dynamic frameworks](gdextension.md#ios-frameworks), which
+`godot_cc_extension` builds by default and vendors ship
+([prebuilt frameworks](gdextension.md#dynamic-frameworks)), or
+[static linking and exported symbols](gdextension.md#ios-static-linking).
 
 ### Source-built engines
 
