@@ -15,10 +15,14 @@ explains each part.
 
 ## Add the module
 
-Add the dependency and register an engine in your root `MODULE.bazel`:
+Add the dependency and register an engine in your root `MODULE.bazel`. Replace `<version>`
+with the latest version from the
+[Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot); the
+[release notes](https://github.com/autoload-dev/rules_godot/releases) show the same snippet
+with the version filled in.
 
 ```starlark
-bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+bazel_dep(name = "autoload_rules_godot", version = "<version>")
 
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot", version = "4.7.2")
