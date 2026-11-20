@@ -774,13 +774,13 @@ class PinTest(unittest.TestCase):
             ]:
                 args = argparse.Namespace(
                     platform=platform,
-                    pin_bzl="@@rules_godot+//godot/engine/private:pin.bzl",
+                    pin_bzl="@@autoload_rules_godot+//godot/engine/private:pin.bzl",
                     unpinned_message="recipe: the lock file {reason} it; run @godot//:pin",
                 )
                 render_unpinned(args, "stale", root)
                 build = (root / "BUILD.bazel").read_text()
                 self.assertIn(
-                    'load("@@rules_godot+//godot/engine/private:pin.bzl"', build
+                    'load("@@autoload_rules_godot+//godot/engine/private:pin.bzl"', build
                 )
                 for target in targets:
                     self.assertIn(f"godot_unpinned_recipe(name = {target!r}", build)

@@ -1,8 +1,8 @@
 """Dart scripts for a Godot project, compiled ahead of time into the project's extension."""
 
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_dart//dart:defs.bzl", "dart_binary")
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 def _script_registry_impl(ctx):
     root = ctx.label.package + "/" if ctx.label.package else ""

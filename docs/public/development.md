@@ -72,18 +72,18 @@ inspect and launch declared application artifacts without reading the checkout.
 
 `godot_run` and `godot_test` targets run headless. `headless = False` declares a target that must
 render, `headless = True` one that never may. Targets that leave `headless`
-unset follow the `--@rules_godot//godot:headless` flag, for example to watch a
+unset follow the `--@autoload_rules_godot//godot:headless` flag, for example to watch a
 test that works both ways:
 
 ```sh
-bazel test //path/to:target --@rules_godot//godot:headless=false
+bazel test //path/to:target --@autoload_rules_godot//godot:headless=false
 ```
 
 Replace `//path/to:target` with your test label.
 
 ### GdUnit
 
-`godot_gdunit_test` from `@rules_godot//godot/gdunit:defs.bzl` is a `godot_test`
+`godot_gdunit_test` from `@autoload_rules_godot//godot/gdunit:defs.bzl` is a `godot_test`
 whose main script is rules_godot's GdUnit test adapter, as `py_pytest_test` is a
 `py_test` that runs pytest. A suite is a script of a `suites` target, generated ones
 included, that extends GdUnit's `GdUnitTestSuite`, as GdUnit itself defines one; helper
@@ -105,7 +105,7 @@ GdUnit's assertions provoke engine errors deliberately, so only its results
 decide.
 
 ```starlark
-load("@rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
+load("@autoload_rules_godot//godot/gdunit:defs.bzl", "godot_gdunit_test")
 
 godot_resources(
     name = "unit_suites",
@@ -210,7 +210,7 @@ target's check; an edit of a declaration or a scene reruns the checks of every t
 depends on it. Every error Godot reports
 while a file loads fails the unit, and warnings do not, except a reference whose `uid` is
 stale while its path is right, which fails where
-[`--@rules_godot//godot/metadata:resource_uids=require`](#checkout-metadata) requires UIDs.
+[`--@autoload_rules_godot//godot/metadata:resource_uids=require`](#checkout-metadata) requires UIDs.
 A GDScript warning the project raises to an error through `debug/gdscript/warnings/*` is
 an error. Godot's `debug/gdscript/warnings/directory_rules` exempt `res://addons` from
 warnings unless the project's rules include an add-on's directory, so an add-on's test

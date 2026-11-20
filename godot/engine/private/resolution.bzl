@@ -33,6 +33,6 @@ def engine_toolchain(ctx, role, slot = None):
             "%s: no registered Godot %s component of the selected engine matches %s. Register " +
             "a registration set that covers the slot, such as a hub's toolchains:all or a " +
             "package of godot_%s_component targets, whose engine is the one " +
-            "--@rules_godot//godot:engine names, empty for the default engine."
+            "--@autoload_rules_godot//godot:engine names, empty for the default engine."
         ) % (ctx.label, role, slot or _SLOTS[role], role))
     return toolchain.godot

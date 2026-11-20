@@ -63,7 +63,7 @@ _CONFLICTS = {
 }
 
 _HINTS = {
-    "INSTALL_FAILED_NO_MATCHING_ABIS": "the APK has no native libraries for the device's CPU {abi}; build for it with --platforms=@rules_godot//godot/platforms:android_<cpu>",
+    "INSTALL_FAILED_NO_MATCHING_ABIS": "the APK has no native libraries for the device's CPU {abi}; build for it with --platforms=@autoload_rules_godot//godot/platforms:android_<cpu>",
     "INSTALL_FAILED_OLDER_SDK": "the device's API level {sdk} is below the application's android_min_sdk_version",
     "INSTALL_FAILED_INSUFFICIENT_STORAGE": "free storage on the device",
     "INSTALL_FAILED_USER_RESTRICTED": "allow installs over USB in the device's developer options",
@@ -216,7 +216,7 @@ def target_abi(apk: str) -> str:
         raise LaunchError(
             f"an emulator on this host runs {abi}, and the APK has libraries for "
             f"{', '.join(sorted(abis))} only; build for it with "
-            f"--platforms=@rules_godot//godot/platforms:android_{'arm64' if abi.startswith('arm64') else 'x86_64'}"
+            f"--platforms=@autoload_rules_godot//godot/platforms:android_{'arm64' if abi.startswith('arm64') else 'x86_64'}"
         )
     return abi
 

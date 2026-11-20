@@ -15,7 +15,7 @@ variant settings stay independent of it. See the platform guide for engine and S
 ## godot_export_platform
 
 <pre>
-load("@rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
+load("@autoload_rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
 
 godot_export_platform(<a href="#godot_export_platform-name">name</a>, <a href="#godot_export_platform-operating_system">operating_system</a>, <a href="#godot_export_platform-cpus">cpus</a>, <a href="#godot_export_platform-environment">environment</a>, <a href="#godot_export_platform-parents">parents</a>, <a href="#godot_export_platform-constraint_values">constraint_values</a>,
                       <a href="#godot_export_platform-exec_properties">exec_properties</a>, <a href="#godot_export_platform-visibility">visibility</a>)

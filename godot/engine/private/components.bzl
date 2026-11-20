@@ -261,7 +261,7 @@ def _engine_setting(name, engine, visibility, tags):
     Return the setting a component's toolchain requires: its engine is the selected one.
 
     A component that names no engine belongs to the default engine; a named one gets its
-    own `<name>.engine` setting on --@rules_godot//godot:engine.
+    own `<name>.engine` setting on --@autoload_rules_godot//godot:engine.
     """
     if not engine:
         return _DEFAULT_ENGINE
@@ -379,7 +379,7 @@ _COMMON = {
     "engine": attr.string(
         doc = """
         Name of the engine the slot belongs to; the component fills it only in builds whose
-        --@rules_godot//godot:engine names that engine. Empty, the default, joins the
+        --@autoload_rules_godot//godot:engine names that engine. Empty, the default, joins the
         default engine, which builds use when the flag is empty.
         """,
         configurable = False,
@@ -396,7 +396,7 @@ godot_editor_component = macro(
 
     Creates the provenance-carrying toolchain implementation `<name>` and Bazel's
     built-in `toolchain()` `<name>.toolchain`, constrained to the operating system and CPU
-    of the execution platform and to the engine selected by `--@rules_godot//godot:engine`.
+    of the execution platform and to the engine selected by `--@autoload_rules_godot//godot:engine`.
     A registration set is a package of components: register it with its `:all` pattern;
     the first registered candidate of the selected engine for a slot wins. The
     editor may be an executable target, such as a prebuilt editor archive's `:editor` or
@@ -426,7 +426,7 @@ godot_editor_component = macro(
     | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
     | --- | --- | --- | --- | --- | --- | --- | --- |
     | {name}.toolchain | metadata | analysis_boundary | register the slot with editor_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-    | {name}.engine | metadata | analysis_boundary | the config_setting on --@rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
+    | {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
 
     ### Providers
     | name | role | availability |
@@ -456,8 +456,8 @@ godot_runtime_component = macro(
     Creates the provenance-carrying toolchain implementation `<name>` and Bazel's
     built-in `toolchain()` `<name>.toolchain`, constrained to the target platform's operating
     system, CPU and iOS environment, with `target_settings` on
-    `--@rules_godot//godot:variant` for the template variant and on
-    `--@rules_godot//godot:engine` for the engine. The runtime may be a
+    `--@autoload_rules_godot//godot:variant` for the template variant and on
+    `--@autoload_rules_godot//godot:engine` for the engine. The runtime may be a
     desktop template file, a target with GodotRuntimeInfo, an iOS XCFramework import or
     `:engine_library`, an Android runtime, a `select()` between prepared same-slot
     payloads, or another runtime component, whose payload and provenance are forwarded.
@@ -488,7 +488,7 @@ godot_runtime_component = macro(
     | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
     | --- | --- | --- | --- | --- | --- | --- | --- |
     | {name}.toolchain | metadata | analysis_boundary | register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-    | {name}.engine | metadata | analysis_boundary | the config_setting on --@rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
+    | {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
 
     ### Providers
     | name | role | availability |

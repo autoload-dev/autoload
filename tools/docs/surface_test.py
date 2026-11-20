@@ -28,7 +28,9 @@ def manifest() -> dict[str, Any]:
 
 
 def metadata(
-    name: str, origin: str = "thing", file: str = "@rules_godot//godot/private:impl.bzl"
+    name: str,
+    origin: str = "thing",
+    file: str = "@autoload_rules_godot//godot/private:impl.bzl",
 ) -> ModuleInfo:
     return parse_module(f'''module_docstring: "A module."
       rule_info {{ rule_name: "{name}" doc_string: "Build a thing."
@@ -55,7 +57,7 @@ class SurfaceTest(unittest.TestCase):
     def test_renamed_duplicate_primary_is_rejected(self) -> None:
         modules = inputs()
         modules[OTHER] = metadata(
-            "other_thing", file="@@rules_godot//godot/private:impl.bzl"
+            "other_thing", file="@@autoload_rules_godot//godot/private:impl.bzl"
         )
         with self.assertRaisesRegex(ValueError, "duplicate primary reference"):
             assign_surface(manifest(), modules)
@@ -97,7 +99,7 @@ class SurfaceTest(unittest.TestCase):
                     )
                     modules = inputs()
                     helper = parse_module(f"""{category} {{ {name_field}: "helper" doc_string: "Generate files."
-                        origin_key {{ name: "implementation_helper" file: "@rules_godot{INTERNAL}" }}
+                        origin_key {{ name: "implementation_helper" file: "@autoload_rules_godot{INTERNAL}" }}
                     }}""")
                     getattr(modules[PUBLIC], category).add().CopyFrom(
                         getattr(helper, category)[0]

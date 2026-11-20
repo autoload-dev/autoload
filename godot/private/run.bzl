@@ -425,7 +425,7 @@ def godot_run(
         env: Environment variables set for Godot.
         headless: Whether Godot runs without a display: True always, False never,
             for a target that must render. Unset follows the
-            --@rules_godot//godot:headless flag, which is true by default.
+            --@autoload_rules_godot//godot:headless flag, which is true by default.
         engine_errors: "fail" or "report": what an error Godot reports while the
             game's tree exists, such as a script error, does to the run. Godot can
             report one and still exit with 0. "fail" ends the run with 1 instead;
@@ -486,7 +486,7 @@ def godot_test(
     )
     ```
 
-    Watch it with `bazel test :smoke_test --@rules_godot//godot:headless=false`.
+    Watch it with `bazel test :smoke_test --@autoload_rules_godot//godot:headless=false`.
     See [execution and tests](../../development.md#execution-and-tests).
 
     ### Default outputs
@@ -521,7 +521,7 @@ def godot_test(
         env: Environment variables set for Godot.
         headless: Whether Godot runs without a display: True always, False never,
             for a test that must render. Unset follows the
-            --@rules_godot//godot:headless flag, which is true by default.
+            --@autoload_rules_godot//godot:headless flag, which is true by default.
         engine_errors: "fail" or "report": what an error Godot reports while the
             game's tree exists, such as a script error, does to the test. "fail"
             fails the test and stops it after the first error, since a script error

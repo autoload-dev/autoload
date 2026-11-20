@@ -10,7 +10,7 @@ experimental Android toolchains for each execution platform.
 ## godot_android_toolchains
 
 <pre>
-godot_android_toolchains = use_extension("@rules_godot//godot:extensions.bzl", "godot_android_toolchains")
+godot_android_toolchains = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_android_toolchains")
 godot_android_toolchains.configure(<a href="#godot_android_toolchains.configure-ndk_api_level">ndk_api_level</a>)
 </pre>
 
@@ -35,7 +35,7 @@ rules_android registers in its own module.
 Example (MODULE.bazel):
 ```starlark
 godot_android_toolchains = use_extension(
-    "@rules_godot//godot:extensions.bzl",
+    "@autoload_rules_godot//godot:extensions.bzl",
     "godot_android_toolchains",
 )
 godot_android_toolchains.configure(ndk_api_level = 24)
@@ -92,7 +92,7 @@ Configure the NDK of the Android toolchains.
 ## godot_engines
 
 <pre>
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(<a href="#godot_engines.prebuilt-name">name</a>, <a href="#godot_engines.prebuilt-android_debug_shell_integrity">android_debug_shell_integrity</a>, <a href="#godot_engines.prebuilt-android_debug_shell_urls">android_debug_shell_urls</a>,
                        <a href="#godot_engines.prebuilt-android_shell_integrity">android_shell_integrity</a>, <a href="#godot_engines.prebuilt-android_shell_urls">android_shell_urls</a>, <a href="#godot_engines.prebuilt-editor_binaries">editor_binaries</a>, <a href="#godot_engines.prebuilt-editor_integrity">editor_integrity</a>,
                        <a href="#godot_engines.prebuilt-editor_urls">editor_urls</a>, <a href="#godot_engines.prebuilt-engine">engine</a>, <a href="#godot_engines.prebuilt-ios_simulator_cpus">ios_simulator_cpus</a>, <a href="#godot_engines.prebuilt-templates_integrity">templates_integrity</a>,
@@ -116,7 +116,7 @@ configuration happen only for payloads a build requests.
 
 Example (MODULE.bazel):
 ```starlark
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot_prebuilt", version = "4.7.2")
 godot_engines.source(
     name = "godot_sources",
@@ -191,7 +191,7 @@ Catalogued versions need only version; explicit pins replace catalogue entries.
 | <a id="godot_engines.prebuilt-editor_binaries"></a>editor_binaries |  Editor executable path inside each archive; defaults to the official layout of a catalogued version.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `{}`  |
 | <a id="godot_engines.prebuilt-editor_integrity"></a>editor_integrity |  Subresource Integrity digest per editor platform in editor_urls.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `{}`  |
 | <a id="godot_engines.prebuilt-editor_urls"></a>editor_urls |  Editor archive URLs by editor platform, such as linux_x86_64, linux_arm64, macos (universal), macos_arm64 or macos_x86_64; replaces the catalogue's editors.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> List of strings</a> | optional |  `{}`  |
-| <a id="godot_engines.prebuilt-engine"></a>engine |  Name of the engine the hub's components belong to, such as `petri`; builds select it with `--@rules_godot//godot:engine=petri`, and only then do these components fill slots. Empty, the default, joins the default engine.   | String | optional |  `""`  |
+| <a id="godot_engines.prebuilt-engine"></a>engine |  Name of the engine the hub's components belong to, such as `petri`; builds select it with `--@autoload_rules_godot//godot:engine=petri`, and only then do these components fill slots. Empty, the default, joins the default engine.   | String | optional |  `""`  |
 | <a id="godot_engines.prebuilt-ios_simulator_cpus"></a>ios_simulator_cpus |  CPUs with usable code in the templates' iOS simulator XCFramework slice; replaces the catalogue's value. Empty for an uncatalogued version means no simulator runtimes.   | List of strings | optional |  `[]`  |
 | <a id="godot_engines.prebuilt-templates_integrity"></a>templates_integrity |  Subresource Integrity digest of the templates in templates_urls.   | String | optional |  `""`  |
 | <a id="godot_engines.prebuilt-templates_linux_cpus"></a>templates_linux_cpus |  Linux template CPUs of the templates in templates_urls, as Godot's CPU tags; empty means those of Godot's official templates: arm32, arm64, x86_32 and x86_64.   | List of strings | optional |  `[]`  |
@@ -234,7 +234,7 @@ one source recipe and one component per valid slot the filters select.
 | <a id="godot_engines.source_build-cpus"></a>cpus |  Optional arm64/x86_64 filter; empty selects all.   | List of strings | optional |  `[]`  |
 | <a id="godot_engines.source_build-custom_modules"></a>custom_modules |  Each custom module's config.py label mapped to its module name.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: Label -> String</a> | optional |  `{}`  |
 | <a id="godot_engines.source_build-enabled_modules"></a>enabled_modules |  Enabled Godot modules; dependencies come from the source's module graph.   | List of strings | optional |  `["gdscript", "text_server_fb"]`  |
-| <a id="godot_engines.source_build-engine"></a>engine |  Name of the engine the hub's components belong to, such as `petri`; builds select it with `--@rules_godot//godot:engine=petri`, and only then do these components fill slots. Empty, the default, joins the default engine.   | String | optional |  `""`  |
+| <a id="godot_engines.source_build-engine"></a>engine |  Name of the engine the hub's components belong to, such as `petri`; builds select it with `--@autoload_rules_godot//godot:engine=petri`, and only then do these components fill slots. Empty, the default, joins the default engine.   | String | optional |  `""`  |
 | <a id="godot_engines.source_build-ios_environments"></a>ios_environments |  Optional device/simulator filter for iOS rows; empty selects both.   | List of strings | optional |  `[]`  |
 | <a id="godot_engines.source_build-lock_file"></a>lock_file |  Optional lock file that pins every recipe's build graph, such as `//engines:godot_custom.lock.json`. With it, no recipe is configured on this host; `bazel run @<name>//:pin` writes it, configuring each recipe on an execution platform Godot accepts, such as a remote Linux executor for Linux recipes.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="godot_engines.source_build-patch_strip"></a>patch_strip |  Leading path components removed from patch filenames.   | Integer | optional |  `1`  |

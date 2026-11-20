@@ -155,7 +155,10 @@ def active(rows: Iterable[dict[str, str]], conditions: Iterable[str]) -> list[di
 def provider_identity(key: str) -> str:
     """Drop the ruleset's repository prefix from an evaluated provider key."""
     repository, separator, rest = key.partition("//")
-    if separator and repository.lstrip("@").removesuffix("+") in {"", "rules_godot"}:
+    if separator and repository.lstrip("@").removesuffix("+") in {
+        "",
+        "autoload_rules_godot",
+    }:
         return "//" + rest
     return key
 

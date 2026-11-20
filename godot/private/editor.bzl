@@ -255,8 +255,8 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, *
     its own. Existing files are never replaced; the run names the ones that
     exist but are not declared.
 
-    With `--@rules_godot//godot/metadata:node_ids` or
-    `--@rules_godot//godot/metadata:resource_uids` at `sync` (default) or
+    With `--@autoload_rules_godot//godot/metadata:node_ids` or
+    `--@autoload_rules_godot//godot/metadata:resource_uids` at `sync` (default) or
     `require`, the run also adds the `unique_id` each node of a checkout `.tscn`
     scene lacks and the named file's UID to each `ext_resource` of a `.tscn` or
     `.tres` file whose `uid` is missing or stale: the values a pack otherwise

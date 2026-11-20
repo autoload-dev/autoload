@@ -8,42 +8,42 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot:app.bzl` | Compose a start pack and the registered runtime into one application target.<br>[`godot_app`](reference/godot_app.md#godot_app) |
-| `@rules_godot//godot/platforms:defs.bzl` | Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.<br>[`godot_export_platform`](reference/godot_platforms_defs.md#godot_export_platform) |
-| `@rules_godot//godot/testing:artifact_tests.bzl` | Test what a built Android App Bundle or iOS application contains, without a device.<br>[`android_bundle_test`](reference/godot_testing_artifact_tests.md#android_bundle_test), [`ios_app_test`](reference/godot_testing_artifact_tests.md#ios_app_test) |
+| `@autoload_rules_godot//godot:app.bzl` | Compose a start pack and the registered runtime into one application target.<br>[`godot_app`](reference/godot_app.md#godot_app) |
+| `@autoload_rules_godot//godot/platforms:defs.bzl` | Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.<br>[`godot_export_platform`](reference/godot_platforms_defs.md#godot_export_platform) |
+| `@autoload_rules_godot//godot/testing:artifact_tests.bzl` | Test what a built Android App Bundle or iOS application contains, without a device.<br>[`android_bundle_test`](reference/godot_testing_artifact_tests.md#android_bundle_test), [`ios_app_test`](reference/godot_testing_artifact_tests.md#ios_app_test) |
 
 ## Projects and resources
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync), [`godot_resource_graph`](reference/godot_defs.md#godot_resource_graph) |
-| `@rules_godot//godot/gdunit:defs.bzl` | Run GdUnit4 suites as a Bazel test with sharding, test filters and JUnit reports.<br>[`godot_gdunit_test`](reference/godot_gdunit_defs.md#godot_gdunit_test) |
+| `@autoload_rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync), [`godot_resource_graph`](reference/godot_defs.md#godot_resource_graph) |
+| `@autoload_rules_godot//godot/gdunit:defs.bzl` | Run GdUnit4 suites as a Bazel test with sharding, test filters and JUnit reports.<br>[`godot_gdunit_test`](reference/godot_gdunit_defs.md#godot_gdunit_test) |
 
 ## Extensions
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot/extension:defs.bzl` | Build and package extensions and their extension libraries.<br>[`godot_extension`](reference/godot_extension_defs.md#godot_extension), [`godot_cc_extension`](reference/godot_extension_defs.md#godot_cc_extension) |
-| `@rules_godot//godot/extension:repositories.bzl` | Acquire pinned godot-cpp sources and expose the generated C++ library.<br>[`godot_cpp_bindings`](reference/godot_extension_repositories.md#godot_cpp_bindings) |
+| `@autoload_rules_godot//godot/extension:defs.bzl` | Build and package extensions and their extension libraries.<br>[`godot_extension`](reference/godot_extension_defs.md#godot_extension), [`godot_cc_extension`](reference/godot_extension_defs.md#godot_cc_extension) |
+| `@autoload_rules_godot//godot/extension:repositories.bzl` | Acquire pinned godot-cpp sources and expose the generated C++ library.<br>[`godot_cpp_bindings`](reference/godot_extension_repositories.md#godot_cpp_bindings) |
 
 ## Engines and toolchains
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component), [`godot_android_runtime`](reference/godot_engine_defs.md#godot_android_runtime) |
-| `@rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build), [`godot_editor_archive`](reference/godot_engine_repositories.md#godot_editor_archive), [`godot_export_templates_archive`](reference/godot_engine_repositories.md#godot_export_templates_archive) |
+| `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component), [`godot_android_runtime`](reference/godot_engine_defs.md#godot_android_runtime) |
+| `@autoload_rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build), [`godot_editor_archive`](reference/godot_engine_repositories.md#godot_editor_archive), [`godot_export_templates_archive`](reference/godot_engine_repositories.md#godot_export_templates_archive) |
 
 ## Module setup
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot:extensions.bzl` | Declare prebuilt Godot engines and generate their registration hubs with Bzlmod; register experimental Android SDK and NDK toolchains for each execution platform.<br>[`godot_engines`](reference/godot_extensions.md#godot_engines), [`godot_android_toolchains`](reference/godot_extensions.md#godot_android_toolchains) |
+| `@autoload_rules_godot//godot:extensions.bzl` | Declare prebuilt Godot engines and generate their registration hubs with Bzlmod; register experimental Android SDK and NDK toolchains for each execution platform.<br>[`godot_engines`](reference/godot_extensions.md#godot_engines), [`godot_android_toolchains`](reference/godot_extensions.md#godot_android_toolchains) |
 
 ## Provider contracts
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@rules_godot//godot:providers.bzl` | Exchange resource, add-on, project, engine, extension and desktop application metadata.<br>[`GodotResourcesInfo`](reference/godot_providers.md#GodotResourcesInfo), [`GodotAddonInfo`](reference/godot_providers.md#GodotAddonInfo), [`GodotProjectInfo`](reference/godot_providers.md#GodotProjectInfo), [`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotRuntimeInfo`](reference/godot_providers.md#GodotRuntimeInfo), [`GodotComponentInfo`](reference/godot_providers.md#GodotComponentInfo), [`GodotExtensionInfo`](reference/godot_providers.md#GodotExtensionInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
+| `@autoload_rules_godot//godot:providers.bzl` | Exchange resource, add-on, project, engine, extension and desktop application metadata.<br>[`GodotResourcesInfo`](reference/godot_providers.md#GodotResourcesInfo), [`GodotAddonInfo`](reference/godot_providers.md#GodotAddonInfo), [`GodotProjectInfo`](reference/godot_providers.md#GodotProjectInfo), [`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotRuntimeInfo`](reference/godot_providers.md#GodotRuntimeInfo), [`GodotComponentInfo`](reference/godot_providers.md#GodotComponentInfo), [`GodotExtensionInfo`](reference/godot_providers.md#GodotExtensionInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
 
 ## Public target labels
 
@@ -51,39 +51,39 @@ See [platform prerequisites](../platforms.md) for SDK and toolchain setup.
 
 | Label | Contract |
 | --- | --- |
-| `@rules_godot//godot/metadata:node_ids` | How packs and godot_metadata_sync treat scene nodes without unique_id, which Godot would give random IDs: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing). |
-| `@rules_godot//godot/metadata:resource_uids` | How packs and godot_metadata_sync treat ext_resource references without their file's UID: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing or stale). |
-| `@rules_godot//godot/platforms:android_arm32` | Android arm32 (armeabi-v7a) export platform; use with a matching engine library and Android SDK/NDK toolchains. |
-| `@rules_godot//godot/platforms:android_arm64` | Android arm64 export platform; use with the Android consumer module and its SDK/NDK toolchains. |
-| `@rules_godot//godot/platforms:android_x86_32` | Android x86_32 (x86) export platform; use with a matching engine library and Android SDK/NDK toolchains. |
-| `@rules_godot//godot/platforms:android_x86_64` | Android x86_64 export platform; use with a matching engine library and Android SDK/NDK toolchains. |
-| `@rules_godot//godot/platforms:ios_arm64` | iOS arm64 device export platform; requires Xcode and the selected device signing configuration. |
-| `@rules_godot//godot/platforms:ios_sim_arm64` | iOS arm64 Simulator export platform; register a matching Simulator runtime. |
-| `@rules_godot//godot/platforms:ios_sim_x86_64` | iOS x86_64 Simulator export platform; register a matching Simulator runtime. |
-| `@rules_godot//godot/platforms:is_android` | config_setting matching the effective android operating system for engine, library and compatibility selection. |
-| `@rules_godot//godot/platforms:is_ios_device` | config_setting matching the effective iOS device environment for engine, library and compatibility selection. |
-| `@rules_godot//godot/platforms:is_ios_simulator` | config_setting matching the effective iOS Simulator environment for engine, library and compatibility selection. |
-| `@rules_godot//godot/platforms:is_linux` | config_setting matching the effective linux operating system for engine, library and compatibility selection. |
-| `@rules_godot//godot/platforms:is_macos` | config_setting matching the effective macos operating system for engine, library and compatibility selection. |
-| `@rules_godot//godot/platforms:linux_arm32` | Linux arm32 (armv7) export platform; requires an arm32 runtime and a matching C++ toolchain. |
-| `@rules_godot//godot/platforms:linux_arm64` | Linux arm64 export platform; requires an arm64 runtime and a matching C++ toolchain. |
-| `@rules_godot//godot/platforms:linux_x86_32` | Linux x86_32 export platform; requires an x86_32 runtime and a matching C++ toolchain. |
-| `@rules_godot//godot/platforms:linux_x86_64` | Linux x86_64 export platform; requires a matching runtime and a C++ cross toolchain when building native code. |
-| `@rules_godot//godot/platforms:macos_arm64` | macOS arm64 export platform with one CPU; select it with --platforms. |
-| `@rules_godot//godot/platforms:macos_x86_64` | macOS x86_64 export platform with one CPU; select it with --platforms. |
-| `@rules_godot//godot:android_aab` | config_setting matching an explicitly requested Android App Bundle delivery. |
-| `@rules_godot//godot:android_format` | Android delivery format build setting: apk by default, or aab; independent of Godot variant, C++ optimization and CPU sets. |
-| `@rules_godot//godot:app_version` | String build setting, default empty: the application version of packs and applications that set none themselves, such as --@rules_godot//godot:app_version=2.3.4 from a release pipeline. Packs export it as application/config/version; Android uses it as versionName, iOS and macOS as CFBundleShortVersionString. |
-| `@rules_godot//godot:build_number` | Integer build setting, default 0 (unset): the build number of applications that set none themselves, such as --@rules_godot//godot:build_number=57. Android uses it as versionCode, iOS and macOS as CFBundleVersion. |
-| `@rules_godot//godot:debug` | config_setting matching --@rules_godot//godot:variant=debug, the debug export template. |
-| `@rules_godot//godot:default_engine` | config_setting matching an empty --@rules_godot//godot:engine: the default engine, which components without an engine name require. |
-| `@rules_godot//godot:editor` | config_setting matching --@rules_godot//godot:variant=editor: a godot_app running from sources with Godot's editor binary, and the tool configuration. |
-| `@rules_godot//godot:editor_toolchain_type` | Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance (GodotComponentInfo). |
-| `@rules_godot//godot:engine` | String build setting, default empty: the engine a build uses, by name, such as --@rules_godot//godot:engine=petri. Only components whose engine attribute has this name fill its slots; empty selects the default engine, the components that name none. |
-| `@rules_godot//godot:headless` | Boolean build setting, default true: whether godot_run and godot_test targets that leave headless unset run headless. Set --@rules_godot//godot:headless=false to watch tests render. |
-| `@rules_godot//godot:macos_signing` | macOS app signing selection: unsigned (default), adhoc or local certificate; app identity and entitlements remain app-specific. |
-| `@rules_godot//godot:pack_conversion` | String build setting, auto (default), godot or none: how packs make their PCK. godot exports it with Godot's conversions; none writes scenes, resources and scripts as text without a Godot export, for development builds; auto is godot under --compilation_mode=opt and none otherwise. |
-| `@rules_godot//godot:release` | config_setting matching the release variant, the default. |
-| `@rules_godot//godot:runtime_toolchain_type` | Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (GodotRuntimeInfo or None), files, version and provenance (GodotComponentInfo). |
-| `@rules_godot//godot:tool` | config_setting matching the tool configuration, in which Godot runs as a build tool for imports, initialization, exports and the editor; it refines //godot:editor. Select an extension library or backend for editor processes with it. |
-| `@rules_godot//godot:variant` | String build setting, release (default), debug or editor: the variant, which of Godot's binaries a build is for. release and debug are the export templates: packs export with the variant's feature tags; engine aliases and extension libraries follow it. editor runs a godot_app's project from its sources with Godot's editor binary on a Linux or macOS target platform, without an export. |
+| `@autoload_rules_godot//godot/metadata:node_ids` | How packs and godot_metadata_sync treat scene nodes without unique_id, which Godot would give random IDs: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing). |
+| `@autoload_rules_godot//godot/metadata:resource_uids` | How packs and godot_metadata_sync treat ext_resource references without their file's UID: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing or stale). |
+| `@autoload_rules_godot//godot/platforms:android_arm32` | Android arm32 (armeabi-v7a) export platform; use with a matching engine library and Android SDK/NDK toolchains. |
+| `@autoload_rules_godot//godot/platforms:android_arm64` | Android arm64 export platform; use with the Android consumer module and its SDK/NDK toolchains. |
+| `@autoload_rules_godot//godot/platforms:android_x86_32` | Android x86_32 (x86) export platform; use with a matching engine library and Android SDK/NDK toolchains. |
+| `@autoload_rules_godot//godot/platforms:android_x86_64` | Android x86_64 export platform; use with a matching engine library and Android SDK/NDK toolchains. |
+| `@autoload_rules_godot//godot/platforms:ios_arm64` | iOS arm64 device export platform; requires Xcode and the selected device signing configuration. |
+| `@autoload_rules_godot//godot/platforms:ios_sim_arm64` | iOS arm64 Simulator export platform; register a matching Simulator runtime. |
+| `@autoload_rules_godot//godot/platforms:ios_sim_x86_64` | iOS x86_64 Simulator export platform; register a matching Simulator runtime. |
+| `@autoload_rules_godot//godot/platforms:is_android` | config_setting matching the effective android operating system for engine, library and compatibility selection. |
+| `@autoload_rules_godot//godot/platforms:is_ios_device` | config_setting matching the effective iOS device environment for engine, library and compatibility selection. |
+| `@autoload_rules_godot//godot/platforms:is_ios_simulator` | config_setting matching the effective iOS Simulator environment for engine, library and compatibility selection. |
+| `@autoload_rules_godot//godot/platforms:is_linux` | config_setting matching the effective linux operating system for engine, library and compatibility selection. |
+| `@autoload_rules_godot//godot/platforms:is_macos` | config_setting matching the effective macos operating system for engine, library and compatibility selection. |
+| `@autoload_rules_godot//godot/platforms:linux_arm32` | Linux arm32 (armv7) export platform; requires an arm32 runtime and a matching C++ toolchain. |
+| `@autoload_rules_godot//godot/platforms:linux_arm64` | Linux arm64 export platform; requires an arm64 runtime and a matching C++ toolchain. |
+| `@autoload_rules_godot//godot/platforms:linux_x86_32` | Linux x86_32 export platform; requires an x86_32 runtime and a matching C++ toolchain. |
+| `@autoload_rules_godot//godot/platforms:linux_x86_64` | Linux x86_64 export platform; requires a matching runtime and a C++ cross toolchain when building native code. |
+| `@autoload_rules_godot//godot/platforms:macos_arm64` | macOS arm64 export platform with one CPU; select it with --platforms. |
+| `@autoload_rules_godot//godot/platforms:macos_x86_64` | macOS x86_64 export platform with one CPU; select it with --platforms. |
+| `@autoload_rules_godot//godot:android_aab` | config_setting matching an explicitly requested Android App Bundle delivery. |
+| `@autoload_rules_godot//godot:android_format` | Android delivery format build setting: apk by default, or aab; independent of Godot variant, C++ optimization and CPU sets. |
+| `@autoload_rules_godot//godot:app_version` | String build setting, default empty: the application version of packs and applications that set none themselves, such as --@autoload_rules_godot//godot:app_version=2.3.4 from a release pipeline. Packs export it as application/config/version; Android uses it as versionName, iOS and macOS as CFBundleShortVersionString. |
+| `@autoload_rules_godot//godot:build_number` | Integer build setting, default 0 (unset): the build number of applications that set none themselves, such as --@autoload_rules_godot//godot:build_number=57. Android uses it as versionCode, iOS and macOS as CFBundleVersion. |
+| `@autoload_rules_godot//godot:debug` | config_setting matching --@autoload_rules_godot//godot:variant=debug, the debug export template. |
+| `@autoload_rules_godot//godot:default_engine` | config_setting matching an empty --@autoload_rules_godot//godot:engine: the default engine, which components without an engine name require. |
+| `@autoload_rules_godot//godot:editor` | config_setting matching --@autoload_rules_godot//godot:variant=editor: a godot_app running from sources with Godot's editor binary, and the tool configuration. |
+| `@autoload_rules_godot//godot:editor_toolchain_type` | Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance (GodotComponentInfo). |
+| `@autoload_rules_godot//godot:engine` | String build setting, default empty: the engine a build uses, by name, such as --@autoload_rules_godot//godot:engine=petri. Only components whose engine attribute has this name fill its slots; empty selects the default engine, the components that name none. |
+| `@autoload_rules_godot//godot:headless` | Boolean build setting, default true: whether godot_run and godot_test targets that leave headless unset run headless. Set --@autoload_rules_godot//godot:headless=false to watch tests render. |
+| `@autoload_rules_godot//godot:macos_signing` | macOS app signing selection: unsigned (default), adhoc or local certificate; app identity and entitlements remain app-specific. |
+| `@autoload_rules_godot//godot:pack_conversion` | String build setting, auto (default), godot or none: how packs make their PCK. godot exports it with Godot's conversions; none writes scenes, resources and scripts as text without a Godot export, for development builds; auto is godot under --compilation_mode=opt and none otherwise. |
+| `@autoload_rules_godot//godot:release` | config_setting matching the release variant, the default. |
+| `@autoload_rules_godot//godot:runtime_toolchain_type` | Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (GodotRuntimeInfo or None), files, version and provenance (GodotComponentInfo). |
+| `@autoload_rules_godot//godot:tool` | config_setting matching the tool configuration, in which Godot runs as a build tool for imports, initialization, exports and the editor; it refines //godot:editor. Select an extension library or backend for editor processes with it. |
+| `@autoload_rules_godot//godot:variant` | String build setting, release (default), debug or editor: the variant, which of Godot's binaries a build is for. release and debug are the export templates: packs export with the variant's feature tags; engine aliases and extension libraries follow it. editor runs a godot_app's project from its sources with Godot's editor binary on a Linux or macOS target platform, without an export. |

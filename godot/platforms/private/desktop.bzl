@@ -303,7 +303,7 @@ and OutputGroupInfo.bundle / .archive / .debug_symbols. bazel run launches the
 assembled bundle.
 Extension libraries of the pack's project keep their resource paths inside the
 bundle. godot_app supplies the runtime the runtime toolchain resolves for the
-platform slice and `--@rules_godot//godot:variant`; its version and variant are not
+platform slice and `--@autoload_rules_godot//godot:variant`; its version and variant are not
 compared with the editor that exported the pack.
 
 The debug_symbols output group is `<name>_debug_symbols.zip`: {symbols}, at
@@ -328,7 +328,7 @@ export options under Godot's names, such as `application/app_category`,
 `application/copyright`, `display/high_res` or
 `privacy/camera_usage_description`, and from the project's
 `application/config/name` and `application/config/version`. The build settings
-`--@rules_godot//godot:app_version` and `--@rules_godot//godot:build_number`
+`--@autoload_rules_godot//godot:app_version` and `--@autoload_rules_godot//godot:build_number`
 set the versions that `application/short_version` and `application/version`
 leave empty. Its icon is the one Godot renders from `application/icon`, the
 project's `application/config/icon` or Godot's default icon; with Xcode 26, the

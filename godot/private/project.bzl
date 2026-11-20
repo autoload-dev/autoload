@@ -463,7 +463,7 @@ _godot_project = rule(
             doc = """
             Build settings whose values become project settings, as flag ->
             section/property key, such as
-            `{"@rules_godot//godot:build_number": "application/config/build_number"}`.
+            `{"@autoload_rules_godot//godot:build_number": "application/config/build_number"}`.
             A string becomes a Godot string, an int an int and a bool a bool; the value
             is written also when it is empty or 0. Packs export with the values and
             source runs start with them; imports, the editor and every other action

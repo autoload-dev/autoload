@@ -11,7 +11,7 @@ EXPORT_CATEGORIES = {**CATEGORIES, "starlark_other_symbol_info": "name"}
 
 
 def normalize_label(label: str) -> str:
-    for prefix in ("@@rules_godot", "@rules_godot"):
+    for prefix in ("@@autoload_rules_godot", "@autoload_rules_godot"):
         if label.startswith(prefix + "//"):
             return label[len(prefix) :]
     return label

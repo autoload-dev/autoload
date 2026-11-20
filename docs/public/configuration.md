@@ -24,8 +24,8 @@ are accepted. Keep complex serialized objects and typed arrays in the authored p
 file; their existing serialization is preserved.
 
 ```starlark
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 godot_resources(name = "main", srcs = ["main.gd", "main.tscn", "icon.svg"])
 
@@ -151,14 +151,14 @@ godot_project(
     name = "game",
     project_file = "project.godot",
     settings_from_flags = {
-        "@rules_godot//godot:build_number": "application/config/build_number",
+        "@autoload_rules_godot//godot:build_number": "application/config/build_number",
         ":commit": "application/config/commit",
     },
 )
 ```
 
 ```bash
-bazel build //path/to:app --@rules_godot//godot:build_number=57 --//path/to:commit=$(git rev-parse HEAD)
+bazel build //path/to:app --@autoload_rules_godot//godot:build_number=57 --//path/to:commit=$(git rev-parse HEAD)
 ```
 
 A script reads them with `ProjectSettings.get_setting("application/config/build_number")`.
@@ -272,10 +272,10 @@ the same slot replaces a shell file or shell asset; see
 | Value or Godot option family | Set here |
 |---|---|
 | Operating system, CPU set and iOS environment; `binary_format/architecture` | An export platform (`godot_export_platform`) selected with `--platforms` |
-| Variant (debug or release export template, or the editor) | `--@rules_godot//godot:variant`; register a matching runtime for a template |
+| Variant (debug or release export template, or the editor) | `--@autoload_rules_godot//godot:variant`; register a matching runtime for a template |
 | C++ optimization, debug info, stripping | Bazel `-c`, compiler/toolchain features, `--copt`, `--strip`, Apple symbol/stripping flags |
-| APK versus AAB; Godot export-format controls | `--@rules_godot//godot:android_format=apk` or `aab` |
-| Text or converted pack content | `--@rules_godot//godot:pack_conversion`; see [pack forms](resources.md#pack-forms) |
+| APK versus AAB; Godot export-format controls | `--@autoload_rules_godot//godot:android_format=apk` or `aab` |
+| Text or converted pack content | `--@autoload_rules_godot//godot:pack_conversion`; see [pack forms](resources.md#pack-forms) |
 | Embedded PCK and physical bundle/executable names | App layout derived from the public target name |
 | Engine, extension and platform library inputs | Typed labels and the Android and Apple library rules; components record their provenance |
 | Android/Apple identity | `godot_app.application_id` |
@@ -285,7 +285,7 @@ the same slot replaces a shell file or shell asset; see
 | Android APK signing | `godot_app.android_debug_key`; the delivered AAB is unsigned |
 | Android manifest placeholder values | `godot_app.android_manifest_values`, filling `${key}` in the application's and its platform libraries' manifests; keys other attributes or pack settings own are rejected |
 | iOS provisioning and entitlements | Declared `ios_provisioning_profile`, `ios_entitlements` labels |
-| macOS signing | `--@rules_godot//godot:macos_signing=unsigned` (default), `adhoc` or `certificate`; app-specific `macos_signing_identity` and `macos_entitlements` |
+| macOS signing | `--@autoload_rules_godot//godot:macos_signing=unsigned` (default), `adhoc` or `certificate`; app-specific `macos_signing_identity` and `macos_entitlements` |
 | App-only platform libraries and platform resources | `platform_deps` and `platform_resources`, selected with `select()` for Android/iOS and empty desktop branches; prefer libraries the add-ons of the pack bring |
 
 Identity, iOS deployment and device-family Godot options can mirror these Bazel inputs,

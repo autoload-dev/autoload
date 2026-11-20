@@ -107,7 +107,7 @@ def main() -> None:
             ),
             "macos": (
                 f"cd {shlex.quote(str(consumer))} && bazel build {MACOS_APP} "
-                "--@rules_godot//godot:macos_signing=adhoc"
+                "--@autoload_rules_godot//godot:macos_signing=adhoc"
             ),
         },
     }

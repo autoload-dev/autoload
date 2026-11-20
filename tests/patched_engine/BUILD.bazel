@@ -1,5 +1,5 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 package(default_visibility = ["//visibility:public"])
 

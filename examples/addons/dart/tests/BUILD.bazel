@@ -1,4 +1,4 @@
-load("@rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sync", "godot_project")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sync", "godot_project")
 load("//addons/dart:defs.bzl", "godot_dart_extension")
 
 package(default_testonly = True)

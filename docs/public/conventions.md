@@ -147,7 +147,7 @@ Markdown under `docs/` and in every README, except `AGENTS.md` files. Arguments 
 
 Each label resolves in exactly one module that contains its package:
 
-- `@rules_godot//` labels resolve in the root module.
+- `@autoload_rules_godot//` labels resolve in the root module.
 - A document inside a standalone module, such as `examples/`, resolves labels in its own
   module first.
 - `//:target` labels in root-module documents are consumer templates and are not checked.

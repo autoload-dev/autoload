@@ -110,8 +110,8 @@ def godot_android_application(
     `application/config/name` and `display/window/handheld/orientation`; the
     engine profile of the pack's Godot version holds the rest of the exporter's
     rules. Without `version/code` and `version/name` in the pack's
-    export_options, the build settings `--@rules_godot//godot:build_number` and
-    `--@rules_godot//godot:app_version` set them, so a release pipeline needs no
+    export_options, the build settings `--@autoload_rules_godot//godot:build_number` and
+    `--@autoload_rules_godot//godot:app_version` set them, so a release pipeline needs no
     BUILD changes; Godot's defaults and the project's `application/config/version`
     come next. Godot renders the launcher icons from the `launcher_icons/*`
     options or the project's `application/config/icon`; they replace the Android
@@ -129,7 +129,7 @@ def godot_android_application(
     Gradle build.
 
     Extension libraries follow the pack's variant: with
-    `--@rules_godot//godot:variant=debug`, those tagged debug; the runtime toolchain
+    `--@autoload_rules_godot//godot:variant=debug`, those tagged debug; the runtime toolchain
     selects the debug runtime component.
 
     Creates the named android_binary APK target and private bootstrap and extension

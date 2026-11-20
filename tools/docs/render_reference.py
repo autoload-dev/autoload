@@ -51,7 +51,9 @@ def render_site(
             links = ", ".join(
                 f"[`{symbol}`]({path}#{symbol})" for symbol in entry["symbols"]
             )
-            lines.append(f"| `@rules_godot{label}` | {entry['purpose']}<br>{links} |")
+            lines.append(
+                f"| `@autoload_rules_godot{label}` | {entry['purpose']}<br>{links} |"
+            )
         lines.append("")
     lines.extend(
         [
@@ -64,7 +66,7 @@ def render_site(
         ]
     )
     for label, description in sorted(inventory["PUBLIC_TARGETS"].items()):
-        lines.append(f"| `@rules_godot{label}` | {description} |")
+        lines.append(f"| `@autoload_rules_godot{label}` | {description} |")
     pages["index.md"] = "\n".join(lines) + "\n"
     return pages
 

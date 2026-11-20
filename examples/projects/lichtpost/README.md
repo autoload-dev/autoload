@@ -22,7 +22,7 @@ Run these commands from `examples/` on macOS or Linux:
 4. `bazel test //projects/lichtpost/tests` validates the production and test GDScript the
    suites use and runs the gameplay and input suites. All should pass.
 5. `bazel build //projects/lichtpost:pack` exports the production PCK.
-6. `bazel build //projects/lichtpost:app --@rules_godot//godot:macos_signing=adhoc` on macOS or
+6. `bazel build //projects/lichtpost:app --@autoload_rules_godot//godot:macos_signing=adhoc` on macOS or
    `bazel build //projects/lichtpost:app` on Linux builds a desktop app for the host using the
    prebuilt Godot runtime. Find its bundle and archive under `bazel-bin/`.
 

@@ -18,10 +18,10 @@ build --tool_java_language_version=21
 build:android-toolchains --extra_toolchains=@androidsdk//:all
 build:android-toolchains --extra_toolchains=@android_toolchains//:all
 # Runs an application from its sources with the editor: bazel run --config=editor //path/to:app
-build:editor --@rules_godot//godot:variant=editor
+build:editor --@autoload_rules_godot//godot:variant=editor
 
 build:android --config=android-toolchains
-build:android --platforms=@rules_godot//godot/platforms:android_arm64
+build:android --platforms=@autoload_rules_godot//godot/platforms:android_arm64
 build:multi_abi --config=android-toolchains
 build:multi_abi --platforms=//:android_distribution
 build:android-release --config=android
@@ -31,10 +31,10 @@ build:android-release --strip=always
 # Do not encode a changing sandbox directory in DWARF.
 build:android-release --copt=-fdebug-compilation-dir=.
 
-build:official --platforms=@rules_godot//godot/platforms:ios_sim_x86_64
+build:official --platforms=@autoload_rules_godot//godot/platforms:ios_sim_x86_64
 # arm64 Simulator, as current Simulators on Apple silicon require; //engines/ios_simulator
 # supplies its runtime.
-build:simulator --platforms=@rules_godot//godot/platforms:ios_sim_arm64
+build:simulator --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
 build:ios-release --config=official
 build:ios-release -c opt
 # Match the stripped application to its retained DWARF by executable/dSYM UUID.
@@ -43,11 +43,11 @@ build:ios-release --objc_enable_binary_stripping
 
 # Delivery format is independent of operating system, CPUs and C++ optimization
 # (--compilation_mode).
-build:aab --@rules_godot//godot:android_format=aab
+build:aab --@autoload_rules_godot//godot:android_format=aab
 # Petri's source-built engine, with its reaction_diffusion module, in place of the default
 # one; every Petri command takes --config=petri.
 build:petri --extra_toolchains=@godot_petri//toolchains:all
-build:petri --@rules_godot//godot:engine=petri
+build:petri --@autoload_rules_godot//godot:engine=petri
 
 import %workspace%/../shared.bazelrc
 

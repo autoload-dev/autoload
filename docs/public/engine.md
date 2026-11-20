@@ -6,7 +6,7 @@ as Bazel toolchains, so projects, packs and apps name no engine. Register Godot'
 builds, build an engine from a pinned source with your own modules and patches, or mix
 both: each role, platform and CPU, plus, for runtimes, the iOS environment and the
 variant, is one slot, and the first registered candidate for a slot wins. A build uses
-one engine, the default one or the one `--@rules_godot//godot:engine` names, and takes no
+one engine, the default one or the one `--@autoload_rules_godot//godot:engine` names, and takes no
 other engine's components.
 
 | You want | Use |
@@ -25,7 +25,7 @@ release pins.
 1. Declare a prebuilt engine and register its components in `MODULE.bazel`:
 
    ```starlark
-   godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+   godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
    godot_engines.prebuilt(name = "godot", version = "4.7.2")
    use_repo(godot_engines, "godot")
    register_toolchains("@godot//toolchains:all")
@@ -112,7 +112,7 @@ editor loads is described in
 ## Name an engine
 
 An engine name keeps an engine apart: its components fill slots only in builds whose
-`--@rules_godot//godot:engine` names it, and such a build takes no component of another
+`--@autoload_rules_godot//godot:engine` names it, and such a build takes no component of another
 engine, whatever the registration order. Components that name no engine form the default
 engine, which builds use while the flag is empty. Name the engine on its tag, or on each
 component of your own registration set with `engine`:
@@ -126,7 +126,7 @@ godot_engines.source_build(
 ```
 
 ```bash
-bazel build //path/to:app --extra_toolchains=@godot_studio//toolchains:all --@rules_godot//godot:engine=studio
+bazel build //path/to:app --extra_toolchains=@godot_studio//toolchains:all --@autoload_rules_godot//godot:engine=studio
 ```
 
 A slot the named engine does not cover has no candidate: a target platform it lacks fails
@@ -139,7 +139,7 @@ gates the targets that need the engine:
 ```starlark
 config_setting(
     name = "studio_engine",
-    flag_values = {"@rules_godot//godot:engine": "studio"},
+    flag_values = {"@autoload_rules_godot//godot:engine": "studio"},
 )
 ```
 
@@ -153,12 +153,12 @@ own cached action.
 
 ```starlark
 godot_engine_source = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine:repositories.bzl",
     "godot_engine_source",
 )
 
 godot_engine_build = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine:repositories.bzl",
     "godot_engine_build",
 )
 
@@ -186,7 +186,7 @@ godot_engine_build(
 Then declare the slot in a BUILD package and register it:
 
 ```starlark
-load("@rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
 
 godot_runtime_component(
     name = "runtime_macos_arm64_release",
@@ -297,7 +297,7 @@ recipes](#pin-the-recipes) so that any host builds every slot. Hub components ar
 recipes are `<name>_<platform>_<cpu>[_<environment>]_<build_target>`.
 
 A consumer module extension can call the same helper, `godot_engine_source_build`, from
-`@rules_godot//godot/engine:repositories.bzl`, with the tag's attributes as arguments.
+`@autoload_rules_godot//godot/engine:repositories.bzl`, with the tag's attributes as arguments.
 
 ### Pin the recipes
 
@@ -351,7 +351,7 @@ declarations. One label per variant serves every ABI; each platform slice packag
 engine library:
 
 ```starlark
-load("@rules_godot//godot/engine:defs.bzl", "godot_android_runtime", "godot_runtime_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_android_runtime", "godot_runtime_component")
 
 godot_android_runtime(
     name = "release",
@@ -409,14 +409,14 @@ runtime it packages:
 
 ```sh
 bazel cquery //path/to:pack --output=starlark \
-  --starlark:expr='providers(target)["@@rules_godot+//godot:providers.bzl%GodotPackInfo"].editor_component'
+  --starlark:expr='providers(target)["@@autoload_rules_godot+//godot:providers.bzl%GodotPackInfo"].editor_component'
 bazel cquery //path/to:app --output=starlark \
-  --starlark:expr='providers(target)["@@rules_godot+//godot:providers.bzl%GodotDesktopAppInfo"].runtime_component'
+  --starlark:expr='providers(target)["@@autoload_rules_godot+//godot:providers.bzl%GodotDesktopAppInfo"].runtime_component'
 ```
 
 Provider keys use the canonical repository name; `providers(target).keys()` lists them.
 
-`--toolchain_resolution_debug='@rules_godot//godot:.*'` shows how Bazel chose each slot.
+`--toolchain_resolution_debug='@autoload_rules_godot//godot:.*'` shows how Bazel chose each slot.
 
 ## Version stamp
 

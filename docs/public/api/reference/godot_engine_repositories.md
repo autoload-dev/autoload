@@ -9,7 +9,7 @@ Engine acquisition: prebuilt archives, immutable sources and configure-only sour
 ## godot_engine_source_build
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_engine_source_build")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source_build")
 
 godot_engine_source_build(<a href="#godot_engine_source_build-name">name</a>, <a href="#godot_engine_source_build-source">source</a>, <a href="#godot_engine_source_build-platforms">platforms</a>, <a href="#godot_engine_source_build-cpus">cpus</a>, <a href="#godot_engine_source_build-build_targets">build_targets</a>, <a href="#godot_engine_source_build-ios_environments">ios_environments</a>,
                           <a href="#godot_engine_source_build-enabled_modules">enabled_modules</a>, <a href="#godot_engine_source_build-custom_modules">custom_modules</a>, <a href="#godot_engine_source_build-patches">patches</a>, <a href="#godot_engine_source_build-patch_strip">patch_strip</a>, <a href="#godot_engine_source_build-build_options">build_options</a>,
@@ -90,7 +90,7 @@ none
 ## godot_android_shell
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_android_shell")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_android_shell")
 
 godot_android_shell(<a href="#godot_android_shell-name">name</a>, <a href="#godot_android_shell-patch_strip">patch_strip</a>, <a href="#godot_android_shell-patches">patches</a>, <a href="#godot_android_shell-source">source</a>)
 </pre>
@@ -108,7 +108,7 @@ contribution to the shared `maven` repository; repin after adding rules_godot.
 Example (MODULE.bazel):
 ```starlark
 godot_android_shell = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
+    "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
 )
 godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
 ```
@@ -145,7 +145,7 @@ none
 ## godot_editor_archive
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_editor_archive")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_editor_archive")
 
 godot_editor_archive(<a href="#godot_editor_archive-name">name</a>, <a href="#godot_editor_archive-binary">binary</a>, <a href="#godot_editor_archive-integrity">integrity</a>, <a href="#godot_editor_archive-urls">urls</a>, <a href="#godot_editor_archive-version">version</a>)
 </pre>
@@ -162,7 +162,7 @@ godot_engines.prebuilt uses this rule for catalogued releases.
 Example (MODULE.bazel; replace URL and digest with a real pinned archive):
 ```starlark
 godot_editor_archive = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine:repositories.bzl",
     "godot_editor_archive",
 )
 godot_editor_archive(
@@ -209,7 +209,7 @@ none
 ## godot_engine_build
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_engine_build")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build")
 
 godot_engine_build(<a href="#godot_engine_build-name">name</a>, <a href="#godot_engine_build-build_name">build_name</a>, <a href="#godot_engine_build-build_options">build_options</a>, <a href="#godot_engine_build-build_target">build_target</a>, <a href="#godot_engine_build-configure_timeout">configure_timeout</a>, <a href="#godot_engine_build-cpu">cpu</a>,
                    <a href="#godot_engine_build-custom_modules">custom_modules</a>, <a href="#godot_engine_build-enabled_modules">enabled_modules</a>, <a href="#godot_engine_build-environment">environment</a>, <a href="#godot_engine_build-lock_file">lock_file</a>, <a href="#godot_engine_build-lock_key">lock_key</a>, <a href="#godot_engine_build-patch_strip">patch_strip</a>,
@@ -232,7 +232,7 @@ by the packages installed there.
 Example (MODULE.bazel):
 ```starlark
 godot_engine_build = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
+    "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
 )
 godot_engine_build(
     name = "godot_macos_arm64_release",
@@ -307,7 +307,7 @@ This repository rule depends on the following environment variables:
 ## godot_engine_source
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_engine_source")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source")
 
 godot_engine_source(<a href="#godot_engine_source-name">name</a>, <a href="#godot_engine_source-sha256">sha256</a>, <a href="#godot_engine_source-strip_prefix">strip_prefix</a>, <a href="#godot_engine_source-urls">urls</a>, <a href="#godot_engine_source-version">version</a>)
 </pre>
@@ -323,7 +323,7 @@ every recipe checks against the extracted version.py.
 Example (MODULE.bazel):
 ```starlark
 godot_engine_source = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
+    "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
 )
 godot_engine_source(
     name = "godot_sources",
@@ -368,7 +368,7 @@ none
 ## godot_export_templates_archive
 
 <pre>
-load("@rules_godot//godot/engine:repositories.bzl", "godot_export_templates_archive")
+load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_export_templates_archive")
 
 godot_export_templates_archive(<a href="#godot_export_templates_archive-name">name</a>, <a href="#godot_export_templates_archive-integrity">integrity</a>, <a href="#godot_export_templates_archive-linux_cpus">linux_cpus</a>, <a href="#godot_export_templates_archive-macos_cpus">macos_cpus</a>, <a href="#godot_export_templates_archive-urls">urls</a>, <a href="#godot_export_templates_archive-version">version</a>)
 </pre>
@@ -389,7 +389,7 @@ catalogued releases.
 Example (MODULE.bazel; replace URL and digest with a real pinned archive):
 ```starlark
 godot_export_templates_archive = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine:repositories.bzl",
     "godot_export_templates_archive",
 )
 godot_export_templates_archive(

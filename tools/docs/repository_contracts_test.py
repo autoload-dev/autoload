@@ -96,7 +96,10 @@ class RepositoryContractsTest(unittest.TestCase):
         runtime = replace(
             LIBRARY,
             providers=frozenset(
-                {"CcInfo", "@@rules_godot+//godot:providers.bzl%GodotRuntimeInfo"}
+                {
+                    "CcInfo",
+                    "@@autoload_rules_godot+//godot:providers.bzl%GodotRuntimeInfo",
+                }
             ),
         )
         errors = self.errors(contract(), {LABEL: rule()}, {LABEL: runtime})

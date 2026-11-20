@@ -18,9 +18,9 @@ explains each part.
 Add the dependency and register an engine in your root `MODULE.bazel`:
 
 ```starlark
-bazel_dep(name = "rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
 
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot", version = "4.7.2")
 use_repo(godot_engines, "godot")
 register_toolchains("@godot//toolchains:all")
@@ -37,7 +37,7 @@ and add an override. For a shared build, pin a reviewed full commit SHA:
 
 ```starlark
 git_override(
-    module_name = "rules_godot",
+    module_name = "autoload_rules_godot",
     remote = "https://github.com/autoload-dev/rules_godot.git",
     commit = "<full commit SHA>",
 )
@@ -47,7 +47,7 @@ An `archive_override` with an integrity digest works as well. To work on rules_g
 your project, use a local checkout:
 
 ```starlark
-local_path_override(module_name = "rules_godot", path = "../rules_godot")
+local_path_override(module_name = "autoload_rules_godot", path = "../rules_godot")
 ```
 
 ## Bazel options
@@ -60,7 +60,7 @@ common --experimental_output_paths=strip
 common --modify_execution_info=(?!Godot).*=-supports-path-mapping
 ```
 
-The first line keeps application settings such as `--@rules_godot//godot:app_version` from
+The first line keeps application settings such as `--@autoload_rules_godot//godot:app_version` from
 rebuilding compilers and code generators for the execution platform. It is needed while
 your Bazel version leaves the flag off, as Bazel 9 does;
 [bazelbuild/bazel#26909](https://github.com/bazelbuild/bazel/issues/26909) makes it the

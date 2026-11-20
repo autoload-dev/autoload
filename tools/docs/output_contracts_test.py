@@ -133,7 +133,7 @@ class OutputContractsTest(unittest.TestCase):
             FILES,
             groups=frozenset({"debug_symbols", "_validation"}),
             providers=frozenset(
-                {"DefaultInfo", "@@rules_godot+//godot:providers.bzl%AppInfo"}
+                {"DefaultInfo", "@@autoload_rules_godot+//godot:providers.bzl%AppInfo"}
             ),
         )
 
@@ -170,10 +170,10 @@ class OutputContractsTest(unittest.TestCase):
 
     def test_only_public_ruleset_providers_are_compared(self) -> None:
         self.assertEqual(
-            "//godot:a.bzl%A", provider_identity("@@rules_godot+//godot:a.bzl%A")
+            "//godot:a.bzl%A", provider_identity("@@autoload_rules_godot+//godot:a.bzl%A")
         )
         self.assertEqual(
-            "//godot:a.bzl%A", provider_identity("@rules_godot//godot:a.bzl%A")
+            "//godot:a.bzl%A", provider_identity("@autoload_rules_godot//godot:a.bzl%A")
         )
         self.assertEqual(
             "@@rules_cc+//cc:x.bzl%CcInfo",

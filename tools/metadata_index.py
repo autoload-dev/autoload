@@ -125,7 +125,7 @@ def _check(arguments: list[str]) -> None:
                 found,
                 "Commit the values with bazel run on a godot_metadata_sync target of "
                 f"{manifest['project']}, or let the build add them to its copy with "
-                f"--@rules_godot//godot/metadata:{kind}=assign.",
+                f"--@autoload_rules_godot//godot/metadata:{kind}=assign.",
             )
         )
     args.output.write_text("", encoding="utf-8")

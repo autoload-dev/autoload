@@ -467,7 +467,7 @@ def select_device(options: launch_common.Options, found: Sequence[Device]) -> De
         if not device:
             raise LaunchError(
                 "no iOS device is connected; connect and unlock one, or build for the Simulator "
-                "with --platforms=@rules_godot//godot/platforms:ios_sim_arm64"
+                "with --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64"
             )
     if not device.paired:
         raise LaunchError(

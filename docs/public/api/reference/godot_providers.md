@@ -10,7 +10,7 @@ and stable resource identities.
 
 Example:
 ```starlark
-load("@rules_godot//godot:providers.bzl", "GodotPackInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotPackInfo")
 
 def _consume_impl(ctx):
     pack = ctx.attr.pack[GodotPackInfo]
@@ -31,7 +31,7 @@ The same indexing pattern applies to every provider below. See
 ## GodotAddonInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotAddonInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotAddonInfo")
 
 GodotAddonInfo(<a href="#GodotAddonInfo-label">label</a>, <a href="#GodotAddonInfo-directory">directory</a>, <a href="#GodotAddonInfo-runtime_files">runtime_files</a>, <a href="#GodotAddonInfo-editor_files">editor_files</a>, <a href="#GodotAddonInfo-plugin_config">plugin_config</a>, <a href="#GodotAddonInfo-importer_suffixes">importer_suffixes</a>,
                <a href="#GodotAddonInfo-importer_resource_paths">importer_resource_paths</a>, <a href="#GodotAddonInfo-importer_resource_path_manifest">importer_resource_path_manifest</a>, <a href="#GodotAddonInfo-import_settings">import_settings</a>, <a href="#GodotAddonInfo-extensions">extensions</a>,
@@ -66,7 +66,7 @@ An add-on: its runtime part, its editor part with its roles, its extensions, pla
 ## GodotComponentInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotComponentInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotComponentInfo")
 
 GodotComponentInfo(<a href="#GodotComponentInfo-component">component</a>, <a href="#GodotComponentInfo-engine">engine</a>, <a href="#GodotComponentInfo-role">role</a>, <a href="#GodotComponentInfo-platform">platform</a>, <a href="#GodotComponentInfo-cpu">cpu</a>, <a href="#GodotComponentInfo-environment">environment</a>, <a href="#GodotComponentInfo-variant">variant</a>, <a href="#GodotComponentInfo-version">version</a>, <a href="#GodotComponentInfo-kind">kind</a>,
                    <a href="#GodotComponentInfo-origin">origin</a>, <a href="#GodotComponentInfo-digest">digest</a>, <a href="#GodotComponentInfo-customizations">customizations</a>)
@@ -97,7 +97,7 @@ The provenance of one engine component slot. Produced by godot_editor_component/
 ## GodotDesktopAppInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotDesktopAppInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotDesktopAppInfo")
 
 GodotDesktopAppInfo(<a href="#GodotDesktopAppInfo-bundle">bundle</a>, <a href="#GodotDesktopAppInfo-archive">archive</a>, <a href="#GodotDesktopAppInfo-operating_system">operating_system</a>, <a href="#GodotDesktopAppInfo-executable_path">executable_path</a>, <a href="#GodotDesktopAppInfo-runtime_component">runtime_component</a>)
 </pre>
@@ -127,7 +127,7 @@ tree artifact; executable_path locates the runtime executable inside it.
 ## GodotExtensionInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotExtensionInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotExtensionInfo")
 
 GodotExtensionInfo(<a href="#GodotExtensionInfo-files">files</a>, <a href="#GodotExtensionInfo-library">library</a>, <a href="#GodotExtensionInfo-runtime_resource_paths">runtime_resource_paths</a>, <a href="#GodotExtensionInfo-editor_resource_paths">editor_resource_paths</a>,
                    <a href="#GodotExtensionInfo-host_editor_resource_paths">host_editor_resource_paths</a>, <a href="#GodotExtensionInfo-runtime_descriptor">runtime_descriptor</a>, <a href="#GodotExtensionInfo-descriptor_path">descriptor_path</a>, <a href="#GodotExtensionInfo-entry_symbol">entry_symbol</a>,
@@ -158,7 +158,7 @@ A GDExtension in one configuration: its configured extension library, its descri
 ## GodotPackInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotPackInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotPackInfo")
 
 GodotPackInfo(<a href="#GodotPackInfo-pack_file">pack_file</a>, <a href="#GodotPackInfo-pack_files">pack_files</a>, <a href="#GodotPackInfo-project">project</a>, <a href="#GodotPackInfo-operating_system">operating_system</a>, <a href="#GodotPackInfo-cpus">cpus</a>, <a href="#GodotPackInfo-environment">environment</a>, <a href="#GodotPackInfo-available">available</a>,
               <a href="#GodotPackInfo-export_options">export_options</a>, <a href="#GodotPackInfo-facts">facts</a>, <a href="#GodotPackInfo-version">version</a>, <a href="#GodotPackInfo-editor_component">editor_component</a>, <a href="#GodotPackInfo-variant">variant</a>, <a href="#GodotPackInfo-icons">icons</a>, <a href="#GodotPackInfo-splash">splash</a>)
@@ -191,7 +191,7 @@ A Godot-exported PCK and its declared project. Produced by godot_pack; consumed 
 ## GodotProjectInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotProjectInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotProjectInfo")
 
 GodotProjectInfo(<a href="#GodotProjectInfo-label">label</a>, <a href="#GodotProjectInfo-import_configuration">import_configuration</a>, <a href="#GodotProjectInfo-importable">importable</a>, <a href="#GodotProjectInfo-importers">importers</a>, <a href="#GodotProjectInfo-authored_project_file">authored_project_file</a>,
                  <a href="#GodotProjectInfo-authored_autoloads">authored_autoloads</a>, <a href="#GodotProjectInfo-settings">settings</a>, <a href="#GodotProjectInfo-setting_overrides">setting_overrides</a>, <a href="#GodotProjectInfo-autoloads">autoloads</a>, <a href="#GodotProjectInfo-autoload_overrides">autoload_overrides</a>,
@@ -226,7 +226,7 @@ The configuration context of one product: its authored project.godot, settings, 
 ## GodotResourcesInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotResourcesInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotResourcesInfo")
 
 GodotResourcesInfo(<a href="#GodotResourcesInfo-imports">imports</a>, <a href="#GodotResourcesInfo-units">units</a>, <a href="#GodotResourcesInfo-unit_heads">unit_heads</a>, <a href="#GodotResourcesInfo-resource_path_manifests">resource_path_manifests</a>, <a href="#GodotResourcesInfo-member_resource_paths">member_resource_paths</a>,
                    <a href="#GodotResourcesInfo-import_resource_paths">import_resource_paths</a>, <a href="#GodotResourcesInfo-member_owners">member_owners</a>, <a href="#GodotResourcesInfo-import_owners">import_owners</a>, <a href="#GodotResourcesInfo-ignored_resource_paths">ignored_resource_paths</a>,
@@ -262,7 +262,7 @@ Godot resources, their import units and explicit dependency metadata. Produced b
 ## GodotRuntimeInfo
 
 <pre>
-load("@rules_godot//godot:providers.bzl", "GodotRuntimeInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotRuntimeInfo")
 
 GodotRuntimeInfo(<a href="#GodotRuntimeInfo-executable">executable</a>, <a href="#GodotRuntimeInfo-files">files</a>, <a href="#GodotRuntimeInfo-platform">platform</a>, <a href="#GodotRuntimeInfo-cpu">cpu</a>, <a href="#GodotRuntimeInfo-environment">environment</a>, <a href="#GodotRuntimeInfo-facts_source">facts_source</a>, <a href="#GodotRuntimeInfo-origin">origin</a>, <a href="#GodotRuntimeInfo-version">version</a>,
                  <a href="#GodotRuntimeInfo-bundle_files">bundle_files</a>, <a href="#GodotRuntimeInfo-variant">variant</a>, <a href="#GodotRuntimeInfo-debug_symbols">debug_symbols</a>, <a href="#GodotRuntimeInfo-minimum_os">minimum_os</a>)

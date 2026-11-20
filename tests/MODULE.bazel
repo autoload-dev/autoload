@@ -3,9 +3,9 @@ module(name = "rules_godot_tests")
 # The ruleset's regressions, built as a consumer builds: every ruleset label is public, and
 # every repository the regressions name is declared here. Shared pins equal those of the
 # root and examples/ modules (tools/setup/pins.py).
-bazel_dep(name = "rules_godot", version = "0.1.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.1.0")
 local_path_override(
-    module_name = "rules_godot",
+    module_name = "autoload_rules_godot",
     path = "..",
 )
 
@@ -34,7 +34,7 @@ maven.install(
     ],
     known_contributing_modules = [
         "protobuf",
-        "rules_godot",
+        "autoload_rules_godot",
     ],
     lock_file = "//:maven_install.json",
     repositories = [
@@ -103,13 +103,13 @@ use_repo(android_sdk, "androidsdk")
 # builds require NDK 29.0.14206865: set ANDROID_NDK_HOME to that installation; CI reuses or
 # installs the same pinned revision.
 godot_android_toolchains = use_extension(
-    "@rules_godot//godot:extensions.bzl",
+    "@autoload_rules_godot//godot:extensions.bzl",
     "godot_android_toolchains",
 )
 godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
-godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(
     name = "godot",
     version = "4.7.2",
@@ -209,7 +209,7 @@ register_toolchains(
 # The patched desktop engines of patched_engine and its source-built tests; built
 # only by the source-engine lane.
 godot_engine_build = use_repo_rule(
-    "@rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine:repositories.bzl",
     "godot_engine_build",
 )
 
@@ -303,7 +303,7 @@ http_archive(
 )
 
 godot_cpp_bindings = use_repo_rule(
-    "@rules_godot//godot/extension:repositories.bzl",
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
     "godot_cpp_bindings",
 )
 

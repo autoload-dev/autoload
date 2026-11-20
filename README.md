@@ -35,9 +35,9 @@ tests and every application package.
 1. Add rules_godot and an engine to your `MODULE.bazel`:
 
    ```starlark
-   bazel_dep(name = "rules_godot", version = "0.1.0")
+   bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
 
-   godot_engines = use_extension("@rules_godot//godot:extensions.bzl", "godot_engines")
+   godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
    godot_engines.prebuilt(name = "godot", version = "4.7.2")
    use_repo(godot_engines, "godot")
    register_toolchains("@godot//toolchains:all")
@@ -56,7 +56,7 @@ tests and every application package.
 
    ```starlark
    load(
-       "@rules_godot//godot:defs.bzl",
+       "@autoload_rules_godot//godot:defs.bzl",
        "godot_run",
        "godot_editor",
        "godot_pack",

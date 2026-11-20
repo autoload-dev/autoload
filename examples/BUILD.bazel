@@ -1,4 +1,4 @@
-load("@rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
+load("@autoload_rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
 
 exports_files([
     "Package.resolved",

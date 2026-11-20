@@ -33,7 +33,7 @@ class CommandLabelsTest(RepositoryTest):
         self.assertEqual(
             [(3, "//projects/demo:run"), (4, "//:consumer_snippet"), (5, "//tools/docs")],
             command_labels("""
-load("@rules_godot//godot:defs.bzl", "godot_run")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_run")
 `bazel run //projects/demo:run -- //application:argument`
 bazel build //path/to:target //docs/... //:consumer_snippet
 `bazel run //tools/docs`
@@ -66,7 +66,7 @@ bazel build //path/to:target //docs/... //:consumer_snippet
     def test_resolves_all_command_styles_in_their_owning_module(self) -> None:
         documents = {
             "README.md": "`bazel build //:consumer_template`\n"
-            "`bazel run @rules_godot//tools:driver`\n"
+            "`bazel run @autoload_rules_godot//tools:driver`\n"
             "`bazel run //addons/sqlite/demo:run`",
             "docs/public/project-layout.md": "cd examples\n"
             "bazel run //addons/sqlite/demo:all",

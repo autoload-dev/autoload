@@ -20,7 +20,7 @@ godot_cpp_bindings = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_cpp_bindings = use_repo_rule(
-        "@rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings",
+        "@autoload_rules_godot//godot/extension:repositories.bzl", "godot_cpp_bindings",
     )
     godot_cpp_bindings(name = "godot_cpp", enabled_classes = ["Node"])
     ```

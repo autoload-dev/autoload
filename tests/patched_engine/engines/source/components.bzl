@@ -1,6 +1,6 @@
 """Consumer-owned assembly of registration sets of runtime components from shared payloads."""
 
-load("@rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
 
 def desktop_runtimes(name, payloads, version, origin = ""):
     """

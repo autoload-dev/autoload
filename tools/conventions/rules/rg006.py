@@ -10,7 +10,7 @@ from tools.conventions.framework import Finding, RuleInfo
 # Only Bazel build/run/test command arguments are labels here, not source snippets,
 # URLs, query expressions or Godot resource paths.
 COMMAND = re.compile(r"\bbazel(?:isk)?\s+(?:build|run|test)\s+([^`\n]+)")
-LABEL = re.compile(r"(?<![\w/@:])(?:@rules_godot)?//[\w./-]*(?::[\w.*+/-]+)?")
+LABEL = re.compile(r"(?<![\w/@:])(?:@autoload_rules_godot)?//[\w./-]*(?::[\w.*+/-]+)?")
 # Wildcards that name every target of a package which exists.
 WILDCARDS = {"all", "*", "all-targets"}
 
@@ -40,7 +40,9 @@ def _labels(line: str) -> Iterable[str]:
                 continue
             # A sentence may end right after the label.
             label = match[0].removesuffix(".")
-            if re.match(r"//path/to(?:[/:]|$)", label.removeprefix("@rules_godot")):
+            if re.match(
+                r"//path/to(?:[/:]|$)", label.removeprefix("@autoload_rules_godot")
+            ):
                 continue
             yield label
 
@@ -61,7 +63,7 @@ class CommandLabels:
                     yield Finding(Location(name, line), f"{label}: {problem}")
 
     def _problem(self, context: Context, owner: Path, label: str) -> str | None:
-        local = label.removeprefix("@rules_godot")
+        local = label.removeprefix("@autoload_rules_godot")
         ruleset = local != label
         # Root-local labels in consumer templates have no package context.
         if local.startswith("//:") and owner == Path(".") and not ruleset:

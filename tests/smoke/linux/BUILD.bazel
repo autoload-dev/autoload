@@ -1,6 +1,6 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The Linux smoke path: build, inspect and boot a Linux application whose C ABI and

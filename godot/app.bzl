@@ -304,7 +304,7 @@ godot_app = macro(
     [Run an application](../../platforms.md#run-an-application). Configure Godot settings and content on the pack/project;
     this macro never creates or replaces the pack.
 
-    macOS defaults to unsigned. Select --@rules_godot//godot:macos_signing=adhoc
+    macOS defaults to unsigned. Select --@autoload_rules_godot//godot:macos_signing=adhoc
     or certificate to sign a copy. Certificate mode requires macos_signing_identity;
     macos_entitlements affects only the selected signer. Unsigned actions never read
     signing inputs. The selected launcher and GodotDesktopAppInfo bundle/archive refer

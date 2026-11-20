@@ -16,7 +16,7 @@ Xcode setup the applications need.
 ## android_bundle_test
 
 <pre>
-load("@rules_godot//godot/testing:artifact_tests.bzl", "android_bundle_test")
+load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "android_bundle_test")
 
 android_bundle_test(<a href="#android_bundle_test-name">name</a>, <a href="#android_bundle_test-apk_libraries">apk_libraries</a>, <a href="#android_bundle_test-application_id">application_id</a>, <a href="#android_bundle_test-bundle">bundle</a>, <a href="#android_bundle_test-bundletool">bundletool</a>, <a href="#android_bundle_test-classes">classes</a>, <a href="#android_bundle_test-debug_info">debug_info</a>,
                     <a href="#android_bundle_test-debug_symbols">debug_symbols</a>, <a href="#android_bundle_test-manifest_entries">manifest_entries</a>, <a href="#android_bundle_test-pck_files">pck_files</a>, <a href="#android_bundle_test-symbol_libraries">symbol_libraries</a>)
@@ -36,7 +36,7 @@ outputs.
 
 The inspection runs on the execution platform with the host JDK, so a bundle built
 for an Android platform is inspected on the machine running the test. Build the
-bundle with `--@rules_godot//godot:android_format=aab`; see
+bundle with `--@autoload_rules_godot//godot:android_format=aab`; see
 [App Bundles](../../platforms.md#app-bundles-for-store-upload).
 
 Example:
@@ -91,7 +91,7 @@ none
 ## ios_app_test
 
 <pre>
-load("@rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
+load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
 
 ios_app_test(<a href="#ios_app_test-name">name</a>, <a href="#ios_app_test-app">app</a>, <a href="#ios_app_test-debug_symbols">debug_symbols</a>, <a href="#ios_app_test-files">files</a>, <a href="#ios_app_test-infoplist_keys">infoplist_keys</a>, <a href="#ios_app_test-symbols">symbols</a>)
 </pre>

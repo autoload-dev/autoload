@@ -1734,7 +1734,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--patch", type=Path, action="append", default=[])
     parser.add_argument("--patch-strip", type=int, default=1)
     parser.add_argument(
-        "--generator-bzl", default="@rules_godot//godot/engine/private:generator.bzl"
+        "--generator-bzl",
+        default="@autoload_rules_godot//godot/engine/private:generator.bzl",
     )
     parser.add_argument("--cc-repository", default="@rules_cc")
     parser.add_argument("--platforms-repository", default="@platforms")
@@ -1745,7 +1746,9 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lock", type=Path)
     parser.add_argument("--recipe", default="")
     parser.add_argument("--unpinned-message", default="")
-    parser.add_argument("--pin-bzl", default="@rules_godot//godot/engine/private:pin.bzl")
+    parser.add_argument(
+        "--pin-bzl", default="@autoload_rules_godot//godot/engine/private:pin.bzl"
+    )
     # Configure and write the recipe's pin here instead of its BUILD file.
     parser.add_argument("--pin-output", type=Path)
     return parser

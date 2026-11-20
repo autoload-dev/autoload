@@ -7,8 +7,8 @@ Bazel compiles each translation unit independently; game-content edits do not
 recompile the extension.
 
 ```starlark
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 godot_cc_extension(
     name = "game_extension",
@@ -58,7 +58,7 @@ Add the optional upstream bindings to `MODULE.bazel`:
 
 ```starlark
 godot_cpp_bindings = use_repo_rule(
-    "@rules_godot//godot/extension:repositories.bzl",
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
     "godot_cpp_bindings",
 )
 
@@ -131,11 +131,11 @@ of an editor pin such as `4.8.0-beta1`. See [version selection](versions.md).
 ## Libraries per configuration
 
 An extension has one `library` per configuration. A prebuilt extension varies it with
-`select()` over platform constraints and the variant settings `@rules_godot//godot:debug`,
+`select()` over platform constraints and the variant settings `@autoload_rules_godot//godot:debug`,
 `:release` and `:editor`:
 
 ```starlark
-load("@rules_godot//godot/extension:defs.bzl", "godot_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
 
 config_setting(
     name = "android_arm64",
@@ -209,7 +209,7 @@ godot_extension(
 Editor actions, such as imports, initialization and exports, run the editor on the
 execution platform, and `godot_editor` runs it on the host. They load the extension's
 library in the tool configuration: the same declaration built for their platform, where
-`@rules_godot//godot:tool` and `:editor` match and the feature tags end in `editor`.
+`@autoload_rules_godot//godot:tool` and `:editor` match and the feature tags end in `editor`.
 Projects, packs and applications receive the target configuration's fragment. Source runs
 run in the [editor variant](platforms.md#the-editor-variant), whatever variant the build
 selects: `godot_run` and `godot_test` with `deps`, `godot_gdunit_test` and a
@@ -221,7 +221,7 @@ of an editor running a project, so the editor loads it. `bazel run` for a target
 the host cannot run loads the host's tool configuration instead.
 
 A `select()` over platform keys that has a branch for every execution platform's
-operating system needs no `@rules_godot//godot:tool` branch: the tool configuration takes
+operating system needs no `@autoload_rules_godot//godot:tool` branch: the tool configuration takes
 the branch of the platform it builds for. A `select()` without a branch for the editor's
 platform needs one: `None` for an extension the editor does not load, or a library built for
 the editor's platform. `//godot:tool` refines `//godot:editor`, so both may appear in one
@@ -267,7 +267,7 @@ godot_cc_extension(
     srcs = ["store.cc"],
     entry_symbol = "store_init",
     deps = ["@godot_cpp//:godot_cpp"] + select({
-        "@rules_godot//godot:tool": [":store_unsupported"],
+        "@autoload_rules_godot//godot:tool": [":store_unsupported"],
         "//conditions:default": [":store_platform"],
     }),
 )
@@ -309,7 +309,7 @@ XCFramework slice of each platform slice, which the application links:
 
 ```starlark
 load("@rules_apple//apple:apple.bzl", "apple_static_xcframework_import")
-load("@rules_godot//godot/extension:defs.bzl", "godot_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
 
 apple_static_xcframework_import(
     name = "vendor_ios",
@@ -321,7 +321,7 @@ godot_extension(
     entry_symbol = "vendor_gdextension_init",
     library = select({
         # The editor, on a macOS host.
-        "@rules_godot//godot:tool": "addons/vendor/bin/macos/libvendor.dylib",
+        "@autoload_rules_godot//godot:tool": "addons/vendor/bin/macos/libvendor.dylib",
         "@platforms//os:ios": ":vendor_ios",
     }),
 )
@@ -345,7 +345,7 @@ beside the extension's:
 
 ```starlark
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_xcframework_import")
-load("@rules_godot//godot/extension:defs.bzl", "godot_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
 
 # Godot loads the framework, so nothing links it. Linking would also fail: rules_cc rejects
 # a library to link whose name has dots, such as libsentry.ios.release.
@@ -365,7 +365,7 @@ godot_extension(
     name = "sentry",
     entry_symbol = "sentry_gdextension_init",
     library = select({
-        "@rules_godot//godot:tool": ":sentry_macos",  # a cc_import(shared_library = ...)
+        "@autoload_rules_godot//godot:tool": ":sentry_macos",  # a cc_import(shared_library = ...)
         "@platforms//os:ios": ":sentry_ios",
     }),
     platform_deps = select({

@@ -1,7 +1,7 @@
-load("@rules_godot//godot:app.bzl", "godot_app")
-load("@rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-load("@rules_godot//godot/testing:artifact_tests.bzl", "android_bundle_test")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "android_bundle_test")
 
 # The Android smoke path: an App Bundle whose APK packages the engine, a godot-cpp
 # extension and the pack, inspected with the public artifact test. Every target is

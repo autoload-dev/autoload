@@ -352,7 +352,7 @@ labels with an [export platform](platforms.md#export-platforms).
    bazel build //addons/sqlite/demo:app
    ```
 
-   On macOS, use `bazel build //addons/sqlite/demo:app --@rules_godot//godot:macos_signing=adhoc` instead for
+   On macOS, use `bazel build //addons/sqlite/demo:app --@autoload_rules_godot//godot:macos_signing=adhoc` instead for
    an ad hoc signed local application. Distribution signing is separate.
 
 The [platform guide](platforms.md) gives Android/iOS setup and packaging, source-built
@@ -390,4 +390,4 @@ module's exported resources does not transfer that module's repository mapping.
 The local override points to the parent rules_godot checkout. For an independent
 consumer, replace it with your chosen pinned source and keep the example's
 needed dependency declarations and lockfiles. Public BUILD loads use
-`@rules_godot`; example code does not load private implementation modules.
+`@autoload_rules_godot`; example code does not load private implementation modules.

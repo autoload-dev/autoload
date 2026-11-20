@@ -8,7 +8,7 @@ toolchain_type(name = "editor_toolchain_type")
 # Target-platform Godot runtimes; godot_runtime_component registers candidates.
 toolchain_type(name = "runtime_toolchain_type")
 
-# The engine a build uses, by name, such as --@rules_godot//godot:engine=petri: only the
+# The engine a build uses, by name, such as --@autoload_rules_godot//godot:engine=petri: only the
 # components whose engine has this name fill its slots. Empty selects the default engine,
 # the components that name none, as the hubs of godot_engines do unless their tag names one.
 string_flag(
@@ -28,8 +28,8 @@ bool_flag(
     build_setting_default = True,
 )
 
-# Release metadata a pipeline supplies, such as --@rules_godot//godot:app_version=2.3.4
-# and --@rules_godot//godot:build_number=57. Packs and applications that leave
+# Release metadata a pipeline supplies, such as --@autoload_rules_godot//godot:app_version=2.3.4
+# and --@autoload_rules_godot//godot:build_number=57. Packs and applications that leave
 # their own version or build number unset use these; empty and 0 mean unset.
 string_flag(
     name = "app_version",
@@ -42,7 +42,7 @@ int_flag(
 )
 
 # Which of Godot's binaries a build is for: the release or debug export template, or the
-# editor. --@rules_godot//godot:variant=debug exports packs as debug builds and selects
+# editor. --@autoload_rules_godot//godot:variant=debug exports packs as debug builds and selects
 # debug runtimes and source-built extension libraries; editor runs an application's
 # project from its sources with Godot's editor binary, without an export.
 string_flag(

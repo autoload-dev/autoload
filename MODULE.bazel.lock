@@ -803,7 +803,7 @@
     "@@toolchains_buildbuddy+//:extensions.bzl%buildbuddy": {
       "general": {
         "bzlTransitiveDigest": "YThiSErJv+jiCHJzZIEyk0yegQRS/x+T/ce309eGTvA=",
-        "usagesDigest": "V+luCO3pej5gHTIdWwnlZCdTi/RP68vXbYEYAGSCZm0=",
+        "usagesDigest": "YKjYfMzTfIcNPOKbqtzz7qajjlNU1Xiy+ovvM5N0i+A=",
         "recordedInputs": [],
         "generatedRepoSpecs": {
           "buildbuddy_toolchain": {

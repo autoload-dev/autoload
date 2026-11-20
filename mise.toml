@@ -167,7 +167,7 @@ dir = "{{config_root}}/tests"
 run = [
   # Each desktop smoke scenario is compatible with its own host only; the other is skipped.
   "bazel test //smoke/linux/... //smoke/macos/...",
-  "if [ \"$(uname -s)\" = Darwin ]; then bazel test //smoke/macos/... --@rules_godot//godot:macos_signing=adhoc; fi",
+  "if [ \"$(uname -s)\" = Darwin ]; then bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc; fi",
 ]
 
 [tasks."test:selection"]

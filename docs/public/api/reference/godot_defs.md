@@ -9,7 +9,7 @@ Public core rules for resources, add-ons, projects, PCK exports, runs, tests and
 ## godot_resources
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_resources")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 godot_resources(<a href="#godot_resources-name">name</a>, <a href="#godot_resources-deps">deps</a>, <a href="#godot_resources-srcs">srcs</a>, <a href="#godot_resources-import_inputs">import_inputs</a>, <a href="#godot_resources-prefix">prefix</a>, <a href="#godot_resources-resource_paths">resource_paths</a>, <a href="#godot_resources-runtime_deps">runtime_deps</a>,
                 <a href="#godot_resources-runtime_references">runtime_references</a>, <a href="#godot_resources-strip_prefix">strip_prefix</a>)
@@ -73,7 +73,7 @@ none
 ## godot_editor
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_editor")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_editor")
 
 godot_editor(<a href="#godot_editor-name">name</a>, <a href="#godot_editor-project">project</a>, <a href="#godot_editor-deps">deps</a>, <a href="#godot_editor-env">env</a>, <a href="#godot_editor-write_sidecars">write_sidecars</a>, <a href="#godot_editor-kwargs">**kwargs</a>)
 </pre>
@@ -147,7 +147,7 @@ none
 ## godot_metadata_sync
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_metadata_sync")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_metadata_sync")
 
 godot_metadata_sync(<a href="#godot_metadata_sync-name">name</a>, <a href="#godot_metadata_sync-project">project</a>, <a href="#godot_metadata_sync-deps">deps</a>, <a href="#godot_metadata_sync-size">size</a>, <a href="#godot_metadata_sync-timeout">timeout</a>, <a href="#godot_metadata_sync-kwargs">**kwargs</a>)
 </pre>
@@ -163,8 +163,8 @@ declare each in: commit them and declare them there, which a `glob` does on
 its own. Existing files are never replaced; the run names the ones that
 exist but are not declared.
 
-With `--@rules_godot//godot/metadata:node_ids` or
-`--@rules_godot//godot/metadata:resource_uids` at `sync` (default) or
+With `--@autoload_rules_godot//godot/metadata:node_ids` or
+`--@autoload_rules_godot//godot/metadata:resource_uids` at `sync` (default) or
 `require`, the run also adds the `unique_id` each node of a checkout `.tscn`
 scene lacks and the named file's UID to each `ext_resource` of a `.tscn` or
 `.tres` file whose `uid` is missing or stale: the values a pack otherwise
@@ -219,7 +219,7 @@ none
 ## godot_resource_graph
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_resource_graph")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resource_graph")
 
 godot_resource_graph(<a href="#godot_resource_graph-name">name</a>, <a href="#godot_resource_graph-project">project</a>, <a href="#godot_resource_graph-deps">deps</a>, <a href="#godot_resource_graph-validate">validate</a>, <a href="#godot_resource_graph-require_declared">require_declared</a>, <a href="#godot_resource_graph-kwargs">**kwargs</a>)
 </pre>
@@ -279,7 +279,7 @@ none
 ## godot_run
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_run")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_run")
 
 godot_run(<a href="#godot_run-name">name</a>, <a href="#godot_run-deps">deps</a>, <a href="#godot_run-main">main</a>, <a href="#godot_run-project">project</a>, <a href="#godot_run-pack">pack</a>, <a href="#godot_run-data">data</a>, <a href="#godot_run-env">env</a>, <a href="#godot_run-headless">headless</a>, <a href="#godot_run-engine_errors">engine_errors</a>, <a href="#godot_run-additional_packs">additional_packs</a>,
           <a href="#godot_run-kwargs">**kwargs</a>)
@@ -333,7 +333,7 @@ none
 | <a id="godot_run-pack"></a>pack |  An exported godot_pack to run instead of a project.   |  `None` |
 | <a id="godot_run-data"></a>data |  Files available at run time through runfiles, outside the Godot project. Godot receives Bazel's runfiles directory/manifest variables when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.   |  `[]` |
 | <a id="godot_run-env"></a>env |  Environment variables set for Godot.   |  `{}` |
-| <a id="godot_run-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a target that must render. Unset follows the --@rules_godot//godot:headless flag, which is true by default.   |  `None` |
+| <a id="godot_run-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a target that must render. Unset follows the --@autoload_rules_godot//godot:headless flag, which is true by default.   |  `None` |
 | <a id="godot_run-engine_errors"></a>engine_errors |  "fail" or "report": what an error Godot reports while the game's tree exists, such as a script error, does to the run. Godot can report one and still exit with 0. "fail" ends the run with 1 instead; "report" keeps Godot's exit status. Either names the number of recorded errors.   |  `"fail"` |
 | <a id="godot_run-additional_packs"></a>additional_packs |  Pack -> file name in the working directory, for the running project to load with ProjectSettings.load_resource_pack().   |  `{}` |
 | <a id="godot_run-kwargs"></a>kwargs |  Common attributes such as args and visibility.   |  none |
@@ -344,7 +344,7 @@ none
 ## godot_test
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 
 godot_test(<a href="#godot_test-name">name</a>, <a href="#godot_test-deps">deps</a>, <a href="#godot_test-main">main</a>, <a href="#godot_test-project">project</a>, <a href="#godot_test-pack">pack</a>, <a href="#godot_test-data">data</a>, <a href="#godot_test-env">env</a>, <a href="#godot_test-headless">headless</a>, <a href="#godot_test-engine_errors">engine_errors</a>, <a href="#godot_test-additional_packs">additional_packs</a>,
            <a href="#godot_test-kwargs">**kwargs</a>)
@@ -370,7 +370,7 @@ godot_test(
 )
 ```
 
-Watch it with `bazel test :smoke_test --@rules_godot//godot:headless=false`.
+Watch it with `bazel test :smoke_test --@autoload_rules_godot//godot:headless=false`.
 See [execution and tests](../../development.md#execution-and-tests).
 
 ### Default outputs
@@ -400,7 +400,7 @@ none
 | <a id="godot_test-pack"></a>pack |  An exported godot_pack to test instead of a project.   |  `None` |
 | <a id="godot_test-data"></a>data |  Files available at run time through runfiles, outside the Godot project. Godot receives Bazel's runfiles directory/manifest variables when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.   |  `[]` |
 | <a id="godot_test-env"></a>env |  Environment variables set for Godot.   |  `{}` |
-| <a id="godot_test-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a test that must render. Unset follows the --@rules_godot//godot:headless flag, which is true by default.   |  `None` |
+| <a id="godot_test-headless"></a>headless |  Whether Godot runs without a display: True always, False never, for a test that must render. Unset follows the --@autoload_rules_godot//godot:headless flag, which is true by default.   |  `None` |
 | <a id="godot_test-engine_errors"></a>engine_errors |  "fail" or "report": what an error Godot reports while the game's tree exists, such as a script error, does to the test. "fail" fails the test and stops it after the first error, since a script error does not end Godot; "report" keeps Godot's exit status, for a test framework that provokes errors on purpose. Either names the number of recorded errors; the errors are in the test's undeclared outputs under godot/errors.jsonl.   |  `"fail"` |
 | <a id="godot_test-additional_packs"></a>additional_packs |  Pack -> file name in the working directory, for the running project to load with ProjectSettings.load_resource_pack().   |  `{}` |
 | <a id="godot_test-kwargs"></a>kwargs |  Common test attributes such as args, size and shard_count.   |  none |
@@ -411,7 +411,7 @@ none
 ## godot_addon
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
 
 godot_addon(*, <a href="#godot_addon-name">name</a>, <a href="#godot_addon-deps">deps</a>, <a href="#godot_addon-srcs">srcs</a>, <a href="#godot_addon-autoloads">autoloads</a>, <a href="#godot_addon-deprecation">deprecation</a>, <a href="#godot_addon-directory">directory</a>, <a href="#godot_addon-editor_srcs">editor_srcs</a>,
             <a href="#godot_addon-exec_compatible_with">exec_compatible_with</a>, <a href="#godot_addon-exec_properties">exec_properties</a>, <a href="#godot_addon-features">features</a>, <a href="#godot_addon-import_settings">import_settings</a>, <a href="#godot_addon-importer_suffixes">importer_suffixes</a>,
@@ -512,7 +512,7 @@ none
 ## godot_pack
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_pack")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack")
 
 godot_pack(*, <a href="#godot_pack-name">name</a>, <a href="#godot_pack-deps">deps</a>, <a href="#godot_pack-deprecation">deprecation</a>, <a href="#godot_pack-entry_points">entry_points</a>, <a href="#godot_pack-exec_compatible_with">exec_compatible_with</a>, <a href="#godot_pack-exec_properties">exec_properties</a>,
            <a href="#godot_pack-export_options">export_options</a>, <a href="#godot_pack-features">features</a>, <a href="#godot_pack-packing">packing</a>, <a href="#godot_pack-preset_settings">preset_settings</a>, <a href="#godot_pack-project">project</a>, <a href="#godot_pack-required_packs">required_packs</a>, <a href="#godot_pack-settings">settings</a>,
@@ -572,7 +572,7 @@ none
 | <a id="godot_pack-preset_settings"></a>preset_settings |  Supported preset fields as Godot literals: script_export_mode is 0, 1 or 2. Omitted fields retain Godot defaults. Custom features come from godot_project.custom_features. See [Godot configuration](../../configuration.md).   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
 | <a id="godot_pack-project"></a>project |  The godot_project whose configuration this pack exports.   | <a href="https://bazel.build/concepts/labels">Label</a>; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | required |  |
 | <a id="godot_pack-required_packs"></a>required_packs |  Packs whose resources this pack's references may use instead of packing them again; a path both declare must have the same source file. This is membership only, not runtime mounting or load order.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `None`  |
-| <a id="godot_pack-settings"></a>settings |  Project settings for this export only, as section/property -> Godot literal string, for example `{"application/config/version": '"2.3.4"'}`. They replace the project's values in the exported configuration; imports, initialization and other packs keep the project's, so a change reruns only this export. Feature overrides such as `key.mobile` apply when the configured operating system or the project's custom features have the tag. Without an application/config/version entry here, a nonempty `--@rules_godot//godot:app_version` sets that setting.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
+| <a id="godot_pack-settings"></a>settings |  Project settings for this export only, as section/property -> Godot literal string, for example `{"application/config/version": '"2.3.4"'}`. They replace the project's values in the exported configuration; imports, initialization and other packs keep the project's, so a change reruns only this export. Feature overrides such as `key.mobile` apply when the configured operating system or the project's custom features have the tag. Without an application/config/version entry here, a nonempty `--@autoload_rules_godot//godot:app_version` sets that setting.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
 | <a id="godot_pack-tags"></a>tags |  Conventional Bazel tags on this pack; internal helpers are additionally manual.   | List of strings; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `[]`  |
 | <a id="godot_pack-target_compatible_with"></a>target_compatible_with |  Bazel target compatibility constraints for this pack and its configured export.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="godot_pack-testonly"></a>testonly |  <a href="https://bazel.build/reference/be/common-definitions#common.testonly">Inherited rule attribute</a>   | Boolean; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
@@ -584,7 +584,7 @@ none
 ## godot_project
 
 <pre>
-load("@rules_godot//godot:defs.bzl", "godot_project")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project")
 
 godot_project(*, <a href="#godot_project-name">name</a>, <a href="#godot_project-deps">deps</a>, <a href="#godot_project-autoload_overrides">autoload_overrides</a>, <a href="#godot_project-autoloads">autoloads</a>, <a href="#godot_project-context_files">context_files</a>, <a href="#godot_project-custom_features">custom_features</a>,
               <a href="#godot_project-deprecation">deprecation</a>, <a href="#godot_project-exec_compatible_with">exec_compatible_with</a>, <a href="#godot_project-exec_properties">exec_properties</a>, <a href="#godot_project-features">features</a>, <a href="#godot_project-main_scene">main_scene</a>, <a href="#godot_project-project_file">project_file</a>,
@@ -664,7 +664,7 @@ none
 | <a id="godot_project-project_file"></a>project_file |  Declared project.godot file used as the base configuration.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="godot_project-setting_overrides"></a>setting_overrides |  Explicitly replace conflicting setting contributions of add-ons.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
 | <a id="godot_project-settings"></a>settings |  section/property -> Godot literal string. Every setting the import purpose keeps affects every import of the project.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `None`  |
-| <a id="godot_project-settings_from_flags"></a>settings_from_flags |  Build settings whose values become project settings, as flag -> section/property key, such as `{"@rules_godot//godot:build_number": "application/config/build_number"}`. A string becomes a Godot string, an int an int and a bool a bool; the value is written also when it is empty or 0. Packs export with the values and source runs start with them; imports, the editor and every other action never read them, so a new value reruns only exports. They replace the authored value; a pack's own settings replace them. A setting of the project or an add-on with the same key, or a feature override of it in project.godot or contributed settings, fails: it would conflict with the value or hide it. No check resolves a res:// path a value names. See [Settings from build settings](../../configuration.md#settings-from-build-settings).   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: Label -> String</a> | optional |  `None`  |
+| <a id="godot_project-settings_from_flags"></a>settings_from_flags |  Build settings whose values become project settings, as flag -> section/property key, such as `{"@autoload_rules_godot//godot:build_number": "application/config/build_number"}`. A string becomes a Godot string, an int an int and a bool a bool; the value is written also when it is empty or 0. Packs export with the values and source runs start with them; imports, the editor and every other action never read them, so a new value reruns only exports. They replace the authored value; a pack's own settings replace them. A setting of the project or an add-on with the same key, or a feature override of it in project.godot or contributed settings, fails: it would conflict with the value or hide it. No check resolves a res:// path a value names. See [Settings from build settings](../../configuration.md#settings-from-build-settings).   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: Label -> String</a> | optional |  `None`  |
 | <a id="godot_project-tags"></a>tags |  <a href="https://bazel.build/reference/be/common-definitions#common.tags">Inherited rule attribute</a>   | List of strings; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
 | <a id="godot_project-target_compatible_with"></a>target_compatible_with |  <a href="https://bazel.build/reference/be/common-definitions#common.target_compatible_with">Inherited rule attribute</a>   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `None`  |
 | <a id="godot_project-testonly"></a>testonly |  <a href="https://bazel.build/reference/be/common-definitions#common.testonly">Inherited rule attribute</a>   | Boolean; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |

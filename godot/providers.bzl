@@ -7,7 +7,7 @@ and stable resource identities.
 
 Example:
 ```starlark
-load("@rules_godot//godot:providers.bzl", "GodotPackInfo")
+load("@autoload_rules_godot//godot:providers.bzl", "GodotPackInfo")
 
 def _consume_impl(ctx):
     pack = ctx.attr.pack[GodotPackInfo]

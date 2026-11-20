@@ -1,4 +1,4 @@
-load("@rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -22,7 +22,7 @@ godot_cc_extension(
     # games, so the tool configuration builds neither AppAuth nor its Swift package. Source
     # runs and applications load the library with the platform's backend.
     deps = ["//addons/app_auth/native"] + select({
-        "@rules_godot//godot:tool": ["//addons/app_auth/backends/unsupported"],
+        "@autoload_rules_godot//godot:tool": ["//addons/app_auth/backends/unsupported"],
         "//conditions:default": [":platform_backend"],
     }),
 )

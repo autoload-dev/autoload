@@ -540,7 +540,7 @@ _GODOT_4_7["option_owners"] = {
     "ios-deployment": "godot_app.ios_minimum_os_version / ios_families",
     "engine": "the runtime toolchain; register a godot_runtime_component for the slot",
     "android-sdk": "godot_app.android_min_sdk_version / android_target_sdk_version",
-    "android-format": "--@rules_godot//godot:android_format",
+    "android-format": "--@autoload_rules_godot//godot:android_format",
     "android-signing": "godot_app.android_debug_key; AAB signing stays external",
     "ios-signing": "godot_app.ios_provisioning_profile / ios_entitlements",
     "macos-signing": "the optional godot_app signing operation",
