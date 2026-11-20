@@ -101,8 +101,8 @@ ios_app_test(
     size = "small",
     app = ":app",
     files = [
-        "Frameworks/counter.framework/counter",
         "Frameworks/counter.framework/Info.plist",
+        "Frameworks/counter.framework/counter",
     ],
     tags = ["manual"],
 )
