@@ -118,7 +118,8 @@ local exampleInputs = new Mapping<String, List<String>> {
   ["lichtpost"] = List()
   // A macOS host builds the Apple backend from the Swift package.
   ["app_auth"] = List("examples/Package.swift", "examples/Package.resolved")
-  ["petri"] = List()
+  // The lock file that pins the recipes of its source-built engine.
+  ["petri"] = List("examples/engines/BUILD.bazel", "examples/engines/godot_petri.lock.json")
   ["dart"] = List("examples/deps/dart_sdk.BUILD.bazel", "examples/deps/dart_sdk.patch")
 }
 

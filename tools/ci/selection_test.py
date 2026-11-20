@@ -80,6 +80,7 @@ class SelectionTest(unittest.TestCase):
         for path in (
             "examples/projects/petri/engine/modules/reaction_diffusion/gray_scott_field.cpp",
             "examples/projects/petri/main/dish/dish.gd",
+            "examples/engines/godot_petri.lock.json",
         ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
