@@ -15,53 +15,90 @@ godot_project(
     tags = ["manual"],
 )
 
-# The same project once per iOS linkage: counter, main, pack and app embed the framework;
-# their static_ counterparts link the archive.
-[
-    [
-        godot_cc_extension(
-            name = prefix + "counter",
-            srcs = ["native/counter.cc"],
-            entry_symbol = "native_counter_init",
-            ios_linkage = linkage,
-            resource_path = "main/native_counter/counter.gdextension",
-            tags = ["manual"],
-            deps = ["@godot_cpp"],
-        ),
-        godot_resources(
-            name = prefix + "main",
-            srcs = [
-                "main/main.gd",
-                "main/main.gd.uid",
-                "main/main.tscn",
-                "main/native_counter/counter.gd",
-                "main/native_counter/counter.gd.uid",
-            ],
-            tags = ["manual"],
-            deps = [":" + prefix + "counter"],
-        ),
-        godot_pack(
-            name = prefix + "pack",
-            preset_settings = {"script_export_mode": "0"},
-            project = ":project",
-            tags = ["manual"],
-            deps = [
-                ":" + prefix + "counter",
-                ":" + prefix + "main",
-            ],
-        ),
-        godot_app(
-            name = prefix + "app",
-            application_id = "org.example.smoke.ios" + suffix,
-            pack = ":" + prefix + "pack",
-            tags = ["manual"],
-        ),
-    ]
-    for prefix, linkage, suffix in [
-        ("", "framework", ""),
-        ("static_", "static", ".static"),
-    ]
-]
+# counter, main, pack and app embed the extension as a framework.
+
+godot_cc_extension(
+    name = "counter",
+    srcs = ["native/counter.cc"],
+    entry_symbol = "native_counter_init",
+    resource_path = "main/native_counter/counter.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/main.gd",
+        "main/main.gd.uid",
+        "main/main.tscn",
+        "main/native_counter/counter.gd",
+        "main/native_counter/counter.gd.uid",
+    ],
+    tags = ["manual"],
+    deps = [":counter"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":counter",
+        ":main",
+    ],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.smoke.ios",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+# Their static_ counterparts link the extension's archive instead.
+
+godot_cc_extension(
+    name = "static_counter",
+    srcs = ["native/counter.cc"],
+    entry_symbol = "native_counter_init",
+    ios_linkage = "static",
+    resource_path = "main/native_counter/counter.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "static_main",
+    srcs = [
+        "main/main.gd",
+        "main/main.gd.uid",
+        "main/main.tscn",
+        "main/native_counter/counter.gd",
+        "main/native_counter/counter.gd.uid",
+    ],
+    tags = ["manual"],
+    deps = [":static_counter"],
+)
+
+godot_pack(
+    name = "static_pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":static_counter",
+        ":static_main",
+    ],
+)
+
+godot_app(
+    name = "static_app",
+    application_id = "org.example.smoke.ios.static",
+    pack = ":static_pack",
+    tags = ["manual"],
+)
 
 ios_app_test(
     name = "app_embeds_extension_framework_test",
