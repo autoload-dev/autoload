@@ -38,20 +38,15 @@ def inventory_target(module: str) -> str:
 
 def extracted_apis(
     modules: Mapping[str, ModuleInfo],
-) -> tuple[dict[str, Api], dict[str, str], list[str]]:
-    """Index each module's exports by ``module%name``, with public provider identities."""
+) -> tuple[dict[str, Api], list[str]]:
+    """Index each module's exports by ``module%name``."""
     apis = {}
     errors = []
     for label, module in modules.items():
         entries, problems = module_apis(module)
         apis.update({label + "%" + name: api for name, api in entries.items()})
         errors.extend(f"{label}%{problem}" for problem in problems)
-    providers = {
-        identity.rpartition("%")[2]: api.origin
-        for identity, api in apis.items()
-        if api.kind == "provider_info"
-    }
-    return apis, providers, errors
+    return apis, errors
 
 
 def host_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -111,11 +106,10 @@ def check_case(
     identity: str,
     case: dict[str, Any],
     api: Api,
-    providers: Mapping[str, str],
 ) -> list[str]:
     """Compare one source contract with a configured fixture and its expansion."""
     if "entrypoints" in case:
-        errors = check_repository(bazel, case, api.contract, providers)
+        errors = check_repository(bazel, case, api.contract)
         return [f"{identity}: {error}" for error in errors]
     module = Module(Path(case["module"]), ())
     label = case["target"]
@@ -205,7 +199,7 @@ def main() -> int:
     outputs = bazel.outputs([*targets, MANIFEST])
     manifest = json.loads(outputs.pop(MANIFEST).read_text())
     modules = bazel.extracted(targets)
-    apis, providers, errors = extracted_apis(
+    apis, errors = extracted_apis(
         {targets[target]: module for target, module in modules.items()}
     )
     if args.lane == DEFAULT_CONTRACT_LANE:
@@ -224,7 +218,7 @@ def main() -> int:
     for _, _, key in selected:
         api = apis.get(key.partition("#")[0])
         if api is not None:
-            errors.extend(check_case(bazel, key, cases[key], api, providers))
+            errors.extend(check_case(bazel, key, cases[key], api))
     if not selected:
         errors.append(f"{args.lane}: required lane contains no configured cases")
     if errors:

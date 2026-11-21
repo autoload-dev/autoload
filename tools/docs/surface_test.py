@@ -107,7 +107,7 @@ class SurfaceTest(unittest.TestCase):
                     if selected:
                         config["PUBLIC_APIS"][PUBLIC]["symbols"].append("helper")
                     with self.assertRaisesRegex(
-                        ValueError, "generated-repository implementation leaked"
+                        ValueError, "cross-repository module leaked"
                     ):
                         assign_surface(config, modules)
 

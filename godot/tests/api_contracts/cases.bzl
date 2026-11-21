@@ -7,8 +7,7 @@ target, the fixture root; lane, the CI lane whose contract check runs the case
 options; conditions, the contract availabilities the configuration activates;
 forwarded_groups, when the root forwards an upstream target's output groups;
 host_replacements, string substitutions per host operating system. Repository APIs
-list documented entrypoints instead of a target, each fixture label with the public
-ruleset providers it returns.
+list documented entrypoints instead of a target, each with its fixture labels.
 """
 
 _FIXTURES = "//godot/tests/api_contracts:"
@@ -29,44 +28,28 @@ _HUB_EDITORS = ["linux_arm64", "linux_x86_64", "macos_arm64", "macos_x86_64"]
 # The Linux template and Android shell CPUs of Godot's official builds.
 _TEMPLATE_CPUS = ["arm32", "arm64", "x86_32", "x86_64"]
 
-def _source_build_entrypoints(hub, slots, extra = {}):
-    """Entrypoint cases of a source build's hub: each slot and its .toolchain."""
-    rows = {}
-    for pattern, names in slots.items():
-        rows["@{repository}//toolchains:" + pattern] = {
-            "@%s//toolchains:%s" % (hub, name): []
-            for name in names
-        }
-        rows["@{repository}//toolchains:%s.toolchain" % pattern] = {
-            "@%s//toolchains:%s.toolchain" % (hub, name): []
-            for name in names
-        }
-    return rows | extra
-
 def _hub_entrypoints(runtimes, extra = {}):
     """Entrypoint cases of a godot_engines hub: its editors plus the given runtime rows."""
     rows = {
-        "@{repository}//toolchains:editor_{platform}_{cpu}": {
-            "@godot//toolchains:editor_" + slot: []
+        "@{repository}//toolchains:editor_{platform}_{cpu}": [
+            "@godot//toolchains:editor_" + slot
             for slot in _HUB_EDITORS
-        },
-        "@{repository}//toolchains:editor_{platform}_{cpu}.toolchain": {
-            "@godot//toolchains:editor_%s.toolchain" % slot: []
+        ],
+        "@{repository}//toolchains:editor_{platform}_{cpu}.toolchain": [
+            "@godot//toolchains:editor_%s.toolchain" % slot
             for slot in _HUB_EDITORS
-        },
+        ],
     }
     for pattern, slots in runtimes.items():
-        rows["@{repository}//toolchains:runtime_" + pattern] = {
-            "@godot//toolchains:runtime_" + slot: []
+        rows["@{repository}//toolchains:runtime_" + pattern] = [
+            "@godot//toolchains:runtime_" + slot
             for slot in slots
-        }
-        rows["@{repository}//toolchains:runtime_%s.toolchain" % pattern] = {
-            "@godot//toolchains:runtime_%s.toolchain" % slot: []
+        ]
+        rows["@{repository}//toolchains:runtime_%s.toolchain" % pattern] = [
+            "@godot//toolchains:runtime_%s.toolchain" % slot
             for slot in slots
-        }
+        ]
     return rows | extra
-
-_SOURCE = "@godot_source"
 
 _ANDROID_TOOLCHAINS = "@android_toolchains//:"
 _NDK_TARGET_SYSTEMS = [
@@ -149,9 +132,9 @@ API_CASES = {
     },
     "//godot/extension:repositories.bzl%godot_cpp_bindings": {
         "entrypoints": {
-            "@{repository}//:godot_cpp": {"@godot_cpp//:godot_cpp": []},
-            "@{repository}//:{api_path}": {"@godot_cpp//:gdextension/extension_api-4-7.json": []},
-            "@{repository}//:LICENSE.md": {"@godot_cpp//:LICENSE.md": []},
+            "@{repository}//:godot_cpp": ["@godot_cpp//:godot_cpp"],
+            "@{repository}//:{api_path}": ["@godot_cpp//:gdextension/extension_api-4-7.json"],
+            "@{repository}//:LICENSE.md": ["@godot_cpp//:LICENSE.md"],
         },
     },
     "//godot:extensions.bzl%godot_engines": {
@@ -169,8 +152,8 @@ API_CASES = {
         "entrypoints": _hub_entrypoints(
             {"android_{cpu}_{variant}": ["android_%s_release" % cpu for cpu in _TEMPLATE_CPUS]},
             {
-                "@{repository}//android:{variant}": {"@godot//android:release": []},
-                "@{repository}//android:plugin_api": {"@godot//android:plugin_api": []},
+                "@{repository}//android:{variant}": ["@godot//android:release"],
+                "@{repository}//android:plugin_api": ["@godot//android:plugin_api"],
             },
         ),
         "options": ["--config=android", _EXPORT_PLATFORM + "android_arm64"],
@@ -180,8 +163,8 @@ API_CASES = {
         "lane": "source-engine",
         "conditions": ["source"],
         "entrypoints": _hub_entrypoints({}, {
-            "@{repository}//:source.json": {"@godot_sources//:source.json": []},
-            "@{repository}//:{archive}": {"@godot_sources//:source.tar.gz": []},
+            "@{repository}//:source.json": ["@godot_sources//:source.json"],
+            "@{repository}//:{archive}": ["@godot_sources//:source.tar.gz"],
         }),
     },
     "//godot:extensions.bzl%godot_engines#ios": {
@@ -197,34 +180,31 @@ API_CASES = {
         }),
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
     },
-    # The engine sources are fetched only by the source-engine lane.
-    # The macOS source-built engine is fetched and configured only by its own lane.
-    # A consumer's module extension's source build; its recipes are configured only by this lane.
     "//godot:extensions.bzl%godot_android_toolchains": {
         "lane": "android",
         "module": "tests",
         "conditions": [],
         "entrypoints": {
-            _ANDROID_TOOLCHAINS + "ndk_{target_system}": {
-                _ANDROID_TOOLCHAINS + "ndk_" + system: []
+            _ANDROID_TOOLCHAINS + "ndk_{target_system}": [
+                _ANDROID_TOOLCHAINS + "ndk_" + system
                 for system in _NDK_TARGET_SYSTEMS
-            },
-            _ANDROID_TOOLCHAINS + "ndk_linux_x86_64_{target_system}": {
-                _ANDROID_TOOLCHAINS + "ndk_linux_x86_64_" + system: []
+            ],
+            _ANDROID_TOOLCHAINS + "ndk_linux_x86_64_{target_system}": [
+                _ANDROID_TOOLCHAINS + "ndk_linux_x86_64_" + system
                 for system in _NDK_TARGET_SYSTEMS
-            },
-            _ANDROID_TOOLCHAINS + "sdk_linux_x86_64": {
-                _ANDROID_TOOLCHAINS + "sdk_linux_x86_64": [],
-            },
-            _ANDROID_TOOLCHAINS + "android_linux_x86_64": {
-                _ANDROID_TOOLCHAINS + "android_linux_x86_64": [],
-            },
-            _ANDROID_TOOLCHAINS + "aapt": {
-                _ANDROID_TOOLCHAINS + "aapt": [],
-            },
-            _ANDROID_TOOLCHAINS + "aapt2": {
-                _ANDROID_TOOLCHAINS + "aapt2": [],
-            },
+            ],
+            _ANDROID_TOOLCHAINS + "sdk_linux_x86_64": [
+                _ANDROID_TOOLCHAINS + "sdk_linux_x86_64",
+            ],
+            _ANDROID_TOOLCHAINS + "android_linux_x86_64": [
+                _ANDROID_TOOLCHAINS + "android_linux_x86_64",
+            ],
+            _ANDROID_TOOLCHAINS + "aapt": [
+                _ANDROID_TOOLCHAINS + "aapt",
+            ],
+            _ANDROID_TOOLCHAINS + "aapt2": [
+                _ANDROID_TOOLCHAINS + "aapt2",
+            ],
         },
         "options": ["--config=android"],
     },

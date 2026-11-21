@@ -14,7 +14,6 @@ from tools.docs.output_contracts import (
     is_shared_library,
     kind_errors,
     provider_identity,
-    public_providers,
 )
 
 
@@ -37,12 +36,10 @@ def repository_errors(
     rules: Mapping[str, Target],
     sources: set[str],
     observed: Mapping[str, ConfiguredTarget],
-    providers: Mapping[str, str],
 ) -> list[str]:
     """Compare discovered public repository targets with source and case contracts.
 
-    ``case["entrypoints"]`` maps each documented pattern to its fixture labels and
-    the public ruleset providers each one returns.
+    ``case["entrypoints"]`` maps each documented pattern to its fixture labels.
     """
     errors = []
     if [(row["kind"], row["cardinality"]) for row in contract.defaults] != [
@@ -83,7 +80,7 @@ def repository_errors(
         if not labels:
             errors.append("missing acquired dataset: " + name)
         row = rows.get(name)
-        for label, names in labels.items():
+        for label in labels:
             target = observed.get(label)
             if target is None:
                 errors.append("missing configured repository entrypoint: " + label)
@@ -106,10 +103,6 @@ def repository_errors(
             testonly = rule is not None and rule.booleans.get("testonly", False)
             if row["testonly"] != str(testonly).lower():
                 errors.append(label + ": source testonly differs from evaluated loading")
-            expected_providers = {providers[name] for name in names}
-            actual = public_providers(target, providers)
-            if actual != expected_providers:
-                errors.append(f"{label}: public providers differ: {sorted(actual)}")
     return errors
 
 
@@ -117,7 +110,6 @@ def check_repository(
     bazel: EvaluatedBazel,
     case: dict,
     contract: Contract,
-    providers: Mapping[str, str],
 ) -> list[str]:
     """Discover generated public targets, then inspect each documented entrypoint."""
     module = Module(Path(case["module"]), ())
@@ -136,9 +128,9 @@ def check_repository(
     )
     case = dict(case, entrypoints=dict(case["entrypoints"]))
     for name, prefix in datasets.items():
-        case["entrypoints"][name] = {
-            label: [] for label in sorted(sources) if label.startswith(prefix)
-        }
+        case["entrypoints"][name] = [
+            label for label in sorted(sources) if label.startswith(prefix)
+        ]
     known = [
         label
         for entries in case["entrypoints"].values()
@@ -156,7 +148,7 @@ def check_repository(
         observed |= bazel.configured(
             module, bound, [*case["options"], "--config=host-execution"]
         )
-    return repository_errors(contract, case, rules, sources, observed, providers)
+    return repository_errors(contract, case, rules, sources, observed)
 
 
 def toolchain_bound(labels: list[str], rules: Mapping[str, Target]) -> list[str]:

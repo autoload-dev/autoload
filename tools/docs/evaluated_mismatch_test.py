@@ -45,12 +45,12 @@ def main() -> None:
     bazel = EvaluatedBazel(Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]))
     inventory = "//tools/docs:evaluated_mismatch_inventory.textproto"
     module = bazel.extracted([inventory])[inventory]
-    apis, providers, errors = extracted_apis({_FIXTURES + "mismatch.bzl": module})
+    apis, errors = extracted_apis({_FIXTURES + "mismatch.bzl": module})
     assert not errors, errors
     for symbol, (target, expected) in SCENARIOS.items():
         identity = _FIXTURES + "mismatch.bzl%" + symbol
         case = host_case({"target": _FIXTURES + target})
-        errors = check_case(bazel, identity, case, apis[identity], providers)
+        errors = check_case(bazel, identity, case, apis[identity])
         if not expected:
             assert not errors, errors
         for diagnostic in expected:

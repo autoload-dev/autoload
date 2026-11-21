@@ -2,7 +2,7 @@
 
 This repository provides Bazel rules for Godot projects, extensions and application
 packaging. `godot/` owns the rules and `tools/` the build tools, each with white-box tests in
-`tests/` subpackages; `godot/testing/` offers the public test helper to consumer modules. `examples/`
+`tests/` subpackages. `examples/`
 and `tests/` are independent consumer modules: the examples and the ruleset regressions, run
 from their own directory. Where a test goes and which form it takes is owned by the
 [verification architecture](docs/internal/verification-architecture.md). Public guides are in `docs/public/`, and maintainer references and the

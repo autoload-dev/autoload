@@ -100,20 +100,22 @@ def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
     """Read a section's list: entries, their indented fields and continuation lines."""
     fields = SECTIONS[section]
     entries: list[dict[str, str]] = []
-    last = None
+    entry_indent = 0
+    last = ""
     for line in lines:
         if not line.strip():
             continue
         indent = len(line) - len(line.lstrip())
         text = line.strip()
-        if not entries or indent <= entries[-1]["_indent"]:
+        if not entries or indent <= entry_indent:
             if not text.startswith("- "):
                 raise ValueError(f"{section}: expected a list entry: {text}")
             match = FIRST_LINES[section].fullmatch(text[2:])
             if not match:
                 raise ValueError(f"{section}: malformed entry: {text}")
-            entries.append({"_indent": indent, **match.groupdict()})
-            last = next(iter(reversed(match.groupdict())))
+            entries.append(match.groupdict())
+            entry_indent = indent
+            last = list(match.groupdict())[-1]
         elif text.startswith("- "):
             field, separator, value = text[2:].partition(": ")
             entry = entries[-1]
@@ -128,11 +130,7 @@ def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
     result = []
     identities = set()
     for entry in entries:
-        values = {
-            field: entry.get(field, FIELD_DEFAULTS.get(field, "")) for field in fields
-        }
-        if not all(values.values()):
-            raise ValueError(f"{section}: missing fields")
+        values = {field: entry.get(field, FIELD_DEFAULTS.get(field)) for field in fields}
         # A name may repeat across availabilities; defaults are keyed by kind.
         identity = (values[fields[0]], values["availability"])
         if identity in identities:
@@ -239,12 +237,6 @@ def _difference(kind: str, expected: set[str], actual: set[str]) -> list[str]:
     return [
         f"missing documented {kind}: {name}" for name in sorted(expected - actual)
     ] + [f"undocumented {kind}: {name}" for name in sorted(actual - expected)]
-
-
-def public_providers(target: ConfiguredTarget, providers: Mapping[str, str]) -> set[str]:
-    """Observed providers that are public ruleset providers; others are not promised."""
-    public = set(providers.values())
-    return {provider_identity(key) for key in target.providers} & public
 
 
 def compare(
