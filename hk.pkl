@@ -241,11 +241,7 @@ local checks = new Mapping<String, Step> {
       // The consumer scenarios that host cases or behavior tests of a lane.
       // tools/ci/selection_test.py checks the packages that
       // godot/tests/api_contracts/cases.bzl names against this list.
-      glob = core + apiContracts + regressionModule + List(
-        "tests/patched_engine/**",
-        "tests/smoke/android/**",
-        "tests/smoke/ios/**",
-      )
+      glob = core + apiContracts + regressionModule
     }
   }
   // The consumer's patched engines and the ruleset's tests tagged source_engine.
