@@ -8,8 +8,9 @@ py_library(
         "modules.py",
         "new.py",
     ],
-    data = glob(["template/**"]),
+    data = ["Addon.pkl"] + glob(["template/**"]),
     visibility = [
+        "//tools/android:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
     ],

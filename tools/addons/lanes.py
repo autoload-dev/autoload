@@ -13,7 +13,7 @@ import platform
 import subprocess
 import sys
 
-from tools.addons.modules import LANES, ROOT, AddonModule, module_path
+from tools.addons.modules import APP_LANES, LANES, ROOT, AddonModule, module_path
 
 # The Bazel configuration of each mobile lane, from addons/examples.bazelrc.
 APP_CONFIGS = {"android": "--config=android", "ios": "--config=ios_sim"}
@@ -31,7 +31,10 @@ def command(lane: str, module: AddonModule) -> list[str]:
     if not module.projects:
         raise ValueError(f"{module.path}: no example project in examples/projects/")
     if lane == "host":
-        apps = [f"-//projects/{project}:app" for project in module.projects]
+        builds_apps = set(module.lanes) & set(APP_LANES)
+        apps = [
+            f"-//projects/{project}:app" for project in module.projects if builds_apps
+        ]
         return ["bazel", "test", "--", f"@{module.name}//...", "//...", *apps]
     apps = [f"//projects/{project}:app" for project in module.projects]
     return ["bazel", "build", APP_CONFIGS[lane], *apps]

@@ -1,4 +1,3 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_pack", "godot_project")
 
 package(default_visibility = ["//projects/scores:__subpackages__"])
@@ -20,10 +19,4 @@ godot_editor(
     testonly = True,
     project = ":project",
     deps = ["//projects/scores/tests:suites"],
-)
-
-godot_app(
-    name = "app",
-    application_id = "dev.autoload.examples.gdunit",
-    pack = ":pack",
 )

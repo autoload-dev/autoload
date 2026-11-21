@@ -40,12 +40,21 @@ class AddonModuleLayoutTest(RepositoryTest):
             ],
         )
 
-    def test_addon_pkl_names_known_lanes_and_some_host(self) -> None:
+    def test_addon_pkl_amends_the_schema_with_known_values(self) -> None:
         self.module("widget")
+        amends = 'amends "../../tools/addons/Addon.pkl"\n'
         for text, message in (
-            ('lanes = List("desktop")\nhosts = List("macos")\n', "lanes names some"),
-            ('lanes = List("host")\nhosts = List()\n', "hosts names some"),
-            ('lanes = List("host")\n', "exactly lanes and hosts"),
+            (
+                amends + 'lanes = List("desktop")\nhosts = List("macos")\n',
+                "lanes names some",
+            ),
+            (amends + 'lanes = List("host")\nhosts = List()\n', "hosts names some"),
+            (amends + 'hosts = List("macos")\n', "sets lanes"),
+            (
+                amends + 'lanes = List("host")\nplatforms = List("ios")\n',
+                "sets no platforms",
+            ),
+            ('lanes = List("host")\n', "starts with amends"),
         ):
             with self.subTest(text=text):
                 self.write("addons/widget/addon.pkl", text)
@@ -60,6 +69,20 @@ class AddonModuleLayoutTest(RepositoryTest):
             build, (self.root / build).read_text().replace('name = "edit"', 'name = "e"')
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
+
+    def test_a_module_without_application_lanes_needs_no_app_or_maven_graph(self) -> None:
+        self.module("widget")
+        self.write(
+            "addons/widget/addon.pkl",
+            'amends "../../tools/addons/Addon.pkl"\nlanes = List("host")\n',
+        )
+        build = "addons/widget/examples/projects/demo/BUILD.bazel"
+        self.write(
+            build, (self.root / build).read_text().replace('name = "app"', 'name = "a"')
+        )
+        for relative in ("examples/BUILD.bazel", "examples/maven_install.json"):
+            self.files.discard(f"addons/widget/{relative}")
+        self.assertEqual([], self.evaluate())
 
     def test_extension_names_are_unique_across_modules(self) -> None:
         self.module("widget")
