@@ -4,14 +4,14 @@ experimental Android toolchains for each execution platform.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load("//godot/engine/private:archives.bzl", "godot_editor_archive", "godot_export_templates_archive")
+load("//godot/engine/private:extension_plan.bzl", "plan_engines")
+load("//godot/engine/private:hub.bzl", "engine_hub")
 load(
     "//godot/engine/private:repositories.bzl",
     "godot_engine_source",
     "godot_engine_source_build",
 )
-load("//godot/engine/private:archives.bzl", "godot_editor_archive", "godot_export_templates_archive")
-load("//godot/engine/private:extension_plan.bzl", "plan_engines")
-load("//godot/engine/private:hub.bzl", "engine_hub")
 load(
     "//godot/platforms/private:android_toolchains.bzl",
     "android_toolchain_repositories",

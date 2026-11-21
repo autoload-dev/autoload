@@ -1,6 +1,6 @@
 """A consumer-owned module extension: one macOS source build through godot_engine_source_build."""
 
-load("@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_engine_source_build")
+load("//godot/engine/private:repositories.bzl", "godot_engine_source_build")
 
 def _impl(module_ctx):
     godot_engine_source_build(

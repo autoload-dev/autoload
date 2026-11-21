@@ -130,7 +130,7 @@ def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
     result = []
     identities = set()
     for entry in entries:
-        values = {field: entry.get(field, FIELD_DEFAULTS.get(field)) for field in fields}
+        values = {field: entry.get(field) or FIELD_DEFAULTS[field] for field in fields}
         # A name may repeat across availabilities; defaults are keyed by kind.
         identity = (values[fields[0]], values["availability"])
         if identity in identities:

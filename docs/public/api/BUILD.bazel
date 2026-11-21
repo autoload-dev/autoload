@@ -2,8 +2,8 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:defs.bzl", "py_test")
 load(
     ":modules.bzl",
-    "EXTERNAL_LOADS",
     "CROSS_REPOSITORY_MODULES",
+    "EXTERNAL_LOADS",
     "PUBLIC_APIS",
     "SUPPORT_MODULES",
 )
