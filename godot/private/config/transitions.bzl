@@ -90,9 +90,8 @@ def _project_impl(_settings, _attr):
 
 content_transition = transition(implementation = _content_impl, inputs = _INPUTS, outputs = _OUTPUTS)
 
-# The incoming-edge transition of a rule that platform_slice_transition splits again for
-# its own platform slices, and that therefore needs no configuration of its own per slice:
-# every slice of an application, and its content, reach one configured target.
+# The incoming-edge transition of a rule that splits its own inputs by platform slice, so
+# that every slice of an application reaches one configured target.
 shared_slices_transition = transition(
     implementation = _shared_slices_impl,
     inputs = _INPUTS,

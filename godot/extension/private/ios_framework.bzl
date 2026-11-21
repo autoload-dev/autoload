@@ -8,9 +8,8 @@ extensions from different modules never share or collide on godot-cpp's symbols.
 rules_apple's ios_dynamic_framework would relink the binary from deps under its own
 transition, without the extension's export list and configuration; this rule combines
 the libraries godot_cc_extension already linked for each CPU of the application into the
-framework's binary, in the one configuration every platform slice of the application
-reaches it in, so that the combining action runs once. Its Info.plist has fixed string
-keys, so it is written here rather than by a plist tool action.
+framework's binary. Its Info.plist has fixed string keys, so it is written here rather
+than by a plist tool action.
 """
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")

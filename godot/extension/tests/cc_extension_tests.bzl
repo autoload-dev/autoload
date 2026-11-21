@@ -7,8 +7,8 @@ archive, which the shared library links; the shared library exports only the ent
 macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
 operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
-named after the target, whose binary combines the library of every CPU, once for all the
-platform slices of an application, and gets the framework's install name, or with
+named after the target, whose binary combines the library of every CPU and gets the
+framework's install name, or with
 ios_linkage = "static" the archive the application links.
 """
 
@@ -263,13 +263,13 @@ def _ios_framework_binary_combines_every_cpu(env, target):
             expr = "a library of the %s configuration among %s" % (cpu, libraries),
         ).equals(True)
 
-FrameworkBinariesInfo = provider(
+_FrameworkBinariesInfo = provider(
     doc = "The paths of the iOS framework binary each platform slice of an extension reaches.",
     fields = ["paths"],
 )
 
 def _framework_slices_impl(ctx):
-    return [FrameworkBinariesInfo(paths = {
+    return [_FrameworkBinariesInfo(paths = {
         cpu: extension[GodotExtensionInfo].library.file.path
         for cpu, extension in ctx.split_attr.extension.items()
     })]
@@ -297,9 +297,10 @@ def _test_ios_framework_is_one_configuration_for_every_cpu(name):
 def _ios_framework_is_one_configuration_for_every_cpu(env, target):
     # Every platform slice reaches the same framework, so its one action combines the
     # libraries for all of them; rules_apple embeds the one binary whichever it takes.
-    paths = target[FrameworkBinariesInfo].paths
+    paths = target[_FrameworkBinariesInfo].paths
     env.expect.that_collection(paths.keys(), expr = "platform slices").contains_exactly(["arm64", "x86_64"])
-    env.expect.that_collection({path: True for path in paths.values()}.keys(), expr = "framework binaries of the slices").has_size(1)
+    binaries = paths.values()
+    env.expect.that_collection(binaries, expr = "framework binaries of the slices").contains_exactly([binaries[0]] * len(binaries))
 
 def _test_ios_static_linkage_links_the_archive(name):
     _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
