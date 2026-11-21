@@ -50,6 +50,14 @@ def _content_impl(settings, _attr):
         values[_ANDROID_SETTING] = settings[PLATFORM_SLICES].split(",")
     return values
 
+def _shared_slices_impl(settings, attr):
+    # What a library shared by every platform slice is analyzed in: the content
+    # configuration, whichever slice reached it, and without the application's context,
+    # which belongs to the pack export.
+    values = _content_impl(settings, attr)
+    values[APPLICATION_CONTEXT] = "{}"
+    return values
+
 def _platform_slice_impl(settings, _attr):
     current = {key: settings[key] for key in _OUTPUTS}
 
@@ -81,6 +89,15 @@ def _project_impl(_settings, _attr):
     return {APPLICATION_CONTEXT: "{}"}
 
 content_transition = transition(implementation = _content_impl, inputs = _INPUTS, outputs = _OUTPUTS)
+
+# The incoming-edge transition of a rule that platform_slice_transition splits again for
+# its own platform slices, and that therefore needs no configuration of its own per slice:
+# every slice of an application, and its content, reach one configured target.
+shared_slices_transition = transition(
+    implementation = _shared_slices_impl,
+    inputs = _INPUTS,
+    outputs = _OUTPUTS + [APPLICATION_CONTEXT],
+)
 platform_slice_transition = transition(
     implementation = _platform_slice_impl,
     inputs = _INPUTS,
