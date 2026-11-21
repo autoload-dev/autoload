@@ -120,6 +120,16 @@ def read_files(path: Path, operating_system: str) -> dict[str, bytes]:
         }
 
 
+def require_symbols(image: Path, cpus: set[str], flags: str, wanted: list[str]) -> None:
+    """Require every CPU slice of a Mach-O image to list the wanted symbols under nm flags."""
+    for cpu in sorted(cpus):
+        symbols = subprocess.check_output(
+            ["/usr/bin/nm", "-arch", cpu, flags, str(image)], text=True
+        )
+        missing = [symbol for symbol in wanted if symbol not in symbols]
+        assert not missing, (cpu, image.name, missing)
+
+
 def inspect(args: argparse.Namespace) -> None:
     operating_system = args.operating_system
     cpus = set(args.cpus.split(","))
@@ -212,17 +222,11 @@ def inspect(args: argparse.Namespace) -> None:
         }
         with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
             for name, (flags, wanted) in expected.items():
-                data = files.get(name)
-                assert data, (name, names)
+                data = read_file(name)
                 require_slices(data, cpus, "ios_" + environment, name)
                 image = Path(directory) / Path(name).name
                 image.write_bytes(data)
-                for cpu in sorted(cpus):
-                    symbols = subprocess.check_output(
-                        ["/usr/bin/nm", "-arch", cpu, flags, str(image)], text=True
-                    )
-                    for symbol in wanted:
-                        assert symbol in symbols, (cpu, name, symbol)
+                require_symbols(image, cpus, flags, wanted)
     else:
         binary = next(name for name in names if name.endswith("/app"))
         require_slices(
