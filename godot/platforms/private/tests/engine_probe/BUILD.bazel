@@ -77,7 +77,6 @@ cc_toolchain_files(
 
 configured_outputs(
     name = "android_ndk_host_tools",
-    android = True,
     platform = _ANDROID,
     tags = ["manual"],
     target = ":ndk_host_tools",
@@ -88,7 +87,6 @@ configured_outputs(
 [
     configured_outputs(
         name = "source_built_android_bundle_packages_engine_and_symbols_test_" + output,
-        android = True,
         android_format = "aab",
         extra_toolchains = ["@godot_source_build_android//toolchains:all"],
         platform = _ANDROID,
@@ -131,7 +129,6 @@ py_test(
 # custom module; both carry the 4.8 pack and the godot-cpp extension.
 configured_outputs(
     name = "official_beta_android_app_packages_selected_engine_test_app",
-    android = True,
     android_api_level = "36",
     extra_toolchains = [_BETA],
     platform = _ANDROID,
@@ -155,7 +152,6 @@ beta_engine_test(
 
 configured_outputs(
     name = "source_built_beta_android_app_packages_patched_engine_test_app",
-    android = True,
     android_api_level = "36",
     extra_toolchains = [
         _BETA,

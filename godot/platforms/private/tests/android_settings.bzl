@@ -6,8 +6,9 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 # library.
 MOBILE_FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"
 
-# The Android SDK and NDK toolchains, registered as the analyzed module's own.
-ANDROID_TOOLCHAINS = own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
+# The Android SDK and NDK toolchains that MODULE.bazel registers, without the caller's extra
+# toolchains.
+ANDROID_TOOLCHAINS = own_toolchains([])
 
 # An arm64 Android application with those toolchains.
 ANDROID = {

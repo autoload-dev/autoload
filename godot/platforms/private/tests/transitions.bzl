@@ -25,10 +25,6 @@ _OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
 _VARIANT = str(Label("//godot:variant"))
-_ANDROID_TOOLCHAINS = [
-    str(Label("@androidsdk//:all")),
-    str(Label("@android_toolchains//:all")),
-]
 
 _SETTINGS = [
     _PLATFORMS,
@@ -47,10 +43,7 @@ def _configured_impl(settings, attr):
     result = {setting: settings[setting] for setting in _SETTINGS}
     if attr.platform:
         result[_PLATFORMS] = [str(attr.platform)]
-    toolchains = list(settings[_EXTRA_TOOLCHAINS])
-    if attr.android:
-        toolchains += _ANDROID_TOOLCHAINS
-    result[_EXTRA_TOOLCHAINS] = toolchains + attr.extra_toolchains
+    result[_EXTRA_TOOLCHAINS] = settings[_EXTRA_TOOLCHAINS] + attr.extra_toolchains
     if attr.compilation_mode:
         result[_COMPILATION_MODE] = attr.compilation_mode
     if attr.strip:
@@ -100,7 +93,6 @@ configured_outputs = rule(
     attrs = {
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),
         "platform": attr.label(doc = "The export platform or platform slice; the build's own target platform by default."),
-        "android": attr.bool(doc = "Register the Android SDK and NDK toolchains, as `--config=android-toolchains` does."),
         "extra_toolchains": attr.string_list(doc = "Further toolchain patterns as absolute labels, such as a source-built engine's `@<hub>//toolchains:all`."),
         "compilation_mode": attr.string(values = ["", "fastbuild", "dbg", "opt"]),
         "strip": attr.string(values = ["", "always", "sometimes", "never"]),

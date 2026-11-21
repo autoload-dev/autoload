@@ -48,7 +48,6 @@ py_library(
 # The multi-ABI App Bundle as --config=multi_abi --config=aab builds it.
 configured_outputs(
     name = "android_multi_abi_bundles_carry_platform_libraries_test_app",
-    android = True,
     android_format = "aab",
     platform = _ANDROID_APPS + "android_distribution",
     tags = ["manual"],
@@ -76,7 +75,6 @@ py_test(
 # The App Bundle and its debug symbols as --config=android-release --config=aab builds them.
 configured_outputs(
     name = "android_release_bundle_symbols_match_stripped_extension_test_app",
-    android = True,
     android_format = "aab",
     compilation_mode = "opt",
     copts = [
@@ -91,7 +89,6 @@ configured_outputs(
 
 configured_outputs(
     name = "android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
-    android = True,
     android_format = "aab",
     compilation_mode = "opt",
     copts = [
@@ -145,7 +142,6 @@ _ANDROID_COMPOSITION = {
 [
     configured_outputs(
         name = "android_apks_compose_platform_libraries_test_" + role,
-        android = True,
         platform = "//godot/platforms:android_arm64",
         tags = ["manual"],
         target = _ANDROID_APPS + app,

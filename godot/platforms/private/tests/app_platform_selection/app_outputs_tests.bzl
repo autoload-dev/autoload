@@ -45,7 +45,9 @@ def _editor_variant_runs_from_sources_on_an_export_platform(env, target):
         [file.basename for file in target[DefaultInfo].files.to_list()],
     ).contains_exactly(["app.editor.run"])
 
-_ANDROID_TOOLCHAINS = own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
+# The Android SDK and NDK toolchains that MODULE.bazel registers, without the caller's extra
+# toolchains.
+_ANDROID_TOOLCHAINS = own_toolchains([])
 
 # Android applications need an installed Android SDK; without one the tests are skipped.
 _ANDROID_SDK = {

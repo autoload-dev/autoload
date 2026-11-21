@@ -88,6 +88,16 @@ godot_android_toolchains = use_extension(
 godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
+# Registered here rather than per test with --extra_toolchains, which survives the exec
+# transition and would split the tests' tools into exec configurations of their own. The
+# root module's registrations precede rules_android's, and the hub's precede the host SDK's,
+# as the last entry of --config=android-toolchains in the consumer modules does.
+register_toolchains(
+    "@android_toolchains//:all",
+    "@androidsdk//:all",
+    dev_dependency = True,
+)
+
 # The ruleset's own development engines; consumers register their own sets.
 godot_engines = use_extension("//godot:extensions.bzl", "godot_engines", dev_dependency = True)
 godot_engines.prebuilt(

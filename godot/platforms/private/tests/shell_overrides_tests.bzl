@@ -18,7 +18,7 @@ _IOS_OVERRIDES = _PATH + "ios/overrides/"
 
 _ANDROID = {
     "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-} | own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
+} | own_toolchains([])
 
 # Android applications need an installed Android SDK; without one the tests are skipped.
 _ANDROID_SDK = {"size": "small", "target_compatible_with": [Label(":requires_android_sdk")]}
