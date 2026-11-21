@@ -21,8 +21,8 @@ permissions:
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
-# on Linux, .github/actions/setup keeps only Bazel's downloads and
-# extracted repositories between runs.
+# .github/actions/setup keeps only Bazel's downloads between runs, on Linux
+# with the extracted repositories.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -135,6 +135,9 @@ jobs:
           fi
       - name: Run tests
         run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$VERIFICATION_TASKS")"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup/save-downloads
 
   tests-macos:
     name: Tests (macOS)
@@ -175,6 +178,9 @@ jobs:
             tests
       - name: Run apps with source-built engines
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup/save-downloads
 
   android:
     name: Android
@@ -226,6 +232,9 @@ jobs:
             examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup/save-downloads
 
   verification:
     name: Verification result
