@@ -11,6 +11,11 @@ visibility([
 _TOOLCHAINS = "//command_line_option:extra_toolchains"
 _EXECUTION_PLATFORMS = "//command_line_option:extra_execution_platforms"
 
+# The host as shared.bazelrc spells it. Options keep their spelling, and both survive the
+# exec transition, so another spelling of the same platform would split the tools that the
+# command line's own configuration builds into a second exec configuration.
+_HOST = "@platforms//host"
+
 def own_toolchains(toolchains, execution_platforms = None):
     """
     Return config_settings that replace the caller's extra toolchains and execution platforms.
@@ -23,7 +28,8 @@ def own_toolchains(toolchains, execution_platforms = None):
     Args:
         toolchains: Labels of the toolchains or registration sets the test registers.
             Strings resolve in rules_godot; another repository passes Label objects.
-        execution_platforms: Labels of the execution platforms; the host by default.
+        execution_platforms: Labels of the execution platforms; by default the host, spelled
+            as the command line names it, so the tools share its exec configuration.
 
     Returns:
         A dict to merge into an analysistest's config_settings.
@@ -32,6 +38,6 @@ def own_toolchains(toolchains, execution_platforms = None):
         _TOOLCHAINS: [str(Label(toolchain)) for toolchain in toolchains],
         _EXECUTION_PLATFORMS: [
             str(Label(platform))
-            for platform in (execution_platforms or ["@platforms//host"])
-        ],
+            for platform in execution_platforms
+        ] if execution_platforms else [_HOST],
     }
