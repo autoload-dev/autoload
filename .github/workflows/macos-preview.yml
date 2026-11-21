@@ -4,8 +4,9 @@ name: macOS preview
 # merge queue runs them. Its checks are its own, beside those of the CI run.
 # Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
 on:
+  # A label set when the pull request is opened arrives as a labeled event too.
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [synchronize, reopened, labeled]
 
 permissions:
   contents: read
