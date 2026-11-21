@@ -20,7 +20,12 @@ load("//godot/platforms/private:ios.bzl", _godot_ios_application = "godot_ios_ap
 load("//godot/platforms/private:macos_signing.bzl", _godot_macos_sign = "godot_macos_sign")
 load("//godot/private:run.bzl", _godot_source_application = "godot_source_application")
 load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
-load("//godot/private/config:application.bzl", _application_pack = "application_pack", _loadable_pack = "loadable_pack")
+load(
+    "//godot/private/config:application.bzl",
+    _application_id = "application_id",
+    _application_pack = "application_pack",
+    _loadable_pack = "loadable_pack",
+)
 load(
     "//godot/private/config:settings.bzl",
     _DISPATCH_CONDITIONS = "DISPATCH_CONDITIONS",
@@ -130,6 +135,7 @@ def _app_impl(
     # resolves in their platform slice; Android and iOS application backends resolve it
     # inside their Android or Apple split.
     _resolved_runtime(name = name + ".runtime", **hidden)
+    _application_id(name = name + ".application_id", application_id = application_id, **hidden)
     _application_pack(
         name = name + ".pack",
         deps = [":" + name + ".pack_input"] + loadable,
@@ -187,7 +193,7 @@ def _app_impl(
             name = name + ".android_" + format + "/" + name,
             pack = ":" + name + ".pack",
             application_id = "$(GODOT_APPLICATION_ID)",
-            toolchains = [":" + name + ".pack"],
+            toolchains = [":" + name + ".application_id"],
             manifest_values = android_manifest_values,
             manifest = android_manifest,
             debug_key = android_debug_key,
