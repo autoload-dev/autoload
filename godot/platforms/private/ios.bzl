@@ -344,6 +344,7 @@ def _application_settings_impl(settings, _attr):
     # bundle stays a directory instead of an archive written on every change.
     # Transitions read the compilation mode as an enum value, not a string.
     development = settings[ENVIRONMENT] == "simulator" or str(settings[_COMPILATION_MODE]) != "opt"
+
     # The application's native options hold for its whole graph, so the rules_apple
     # split configures its native code as the pack's platform slices do.
     return {_TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development} | _NATIVE_OPTIONS
