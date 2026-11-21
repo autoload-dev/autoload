@@ -51,7 +51,7 @@ class VerificationTest(unittest.TestCase):
     def test_pull_request_run_leaves_out_the_apple_workflow(self) -> None:
         lanes = {lane: [lane] for lane in LANES}
         self.assertFalse(runs_apple(lanes, "pull_request"))
-        for event in ("merge_group", "push", "workflow_dispatch"):
+        for event in ("merge_group", "workflow_dispatch"):
             with self.subTest(event=event):
                 self.assertTrue(runs_apple(lanes, event))
 
@@ -171,15 +171,11 @@ class VerificationTest(unittest.TestCase):
             ["--from-ref", "parent", "--to-ref", "HEAD"],
         )
 
-    def test_push_and_dispatch_boundaries(self) -> None:
-        self.assertEqual(
-            selection_args("push", {"before": "old"}),
-            ["--from-ref", "old", "--to-ref", "HEAD"],
-        )
-        self.assertEqual(selection_args("push", {"before": "0" * 40}), ["--all"])
+    def test_dispatch_checks_all_and_a_push_is_not_a_verification_event(self) -> None:
         self.assertEqual(selection_args("workflow_dispatch", {}), ["--all"])
-        with self.assertRaises(ValueError):
-            selection_args("unrecognized", {})
+        for event in ("push", "unrecognized"):
+            with self.subTest(event=event), self.assertRaises(ValueError):
+                selection_args(event, {"before": "old"})
 
 
 if __name__ == "__main__":

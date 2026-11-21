@@ -21,7 +21,7 @@ silently claim success or build a new test framework.
 | Before committing | Format changed Python/Starlark/Bazel sources if needed; retain relevant evidence | A second suite just because a commit is about to happen |
 | Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality and setup contracts | App builds, non-host lane suites and cache experiments in the hook |
 | PR/review readiness | Require the selected CI results; when a change could affect macOS or iOS behavior, ask the user whether to add `ci:macos`, which [runs the Apple lanes on the pull request](verification-platforms.md#apple-lanes-on-pull-requests) | Duplicating CI suites locally once CI is the selected execution environment |
-| Merging | The merge queue runs the selected lanes, including the Apple lanes, on the result of the merge; the run on main selects against the previous main commit | An unconditional full matrix for documentation-only changes |
+| Merging | The merge queue runs the selected lanes, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | An unconditional full matrix for documentation-only changes; a second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
 
 A local completion report can say CI/lane verification is pending. It is not a merge-ready

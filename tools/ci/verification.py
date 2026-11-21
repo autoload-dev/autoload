@@ -138,7 +138,7 @@ def lane_plan(plan: dict) -> dict[str, list[str]]:
 
 
 def selection_args(event_name: str, event: dict) -> list[str]:
-    """Compare PR merge contents, a merge group or pushed changes; dispatch checks all."""
+    """Compare PR merge contents or a merge group; dispatch checks all."""
     if event_name == "workflow_dispatch":
         return ["--all"]
     if event_name == "pull_request":
@@ -146,11 +146,6 @@ def selection_args(event_name: str, event: dict) -> list[str]:
     if event_name == "merge_group":
         # The group's parent: the base branch, or the group queued before this one.
         return ["--from-ref", event["merge_group"]["base_sha"], "--to-ref", "HEAD"]
-    if event_name == "push":
-        before = event["before"]
-        if before and set(before) != {"0"}:
-            return ["--from-ref", before, "--to-ref", "HEAD"]
-        return ["--all"]
     raise ValueError(f"Unsupported verification event: {event_name}")
 
 
