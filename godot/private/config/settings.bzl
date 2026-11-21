@@ -226,6 +226,7 @@ def ios_cpu(environment, cpu):
     return CPU_TABLE[cpu].apple_cpus[environment]
 
 _APPLE = Label("@apple_support//constraints:apple")
+
 # rules_android's Starlark setting behind --android_platforms.
 ANDROID_PLATFORMS_SETTING = str(Label("@rules_android//flags:android_platforms"))
 
