@@ -1,0 +1,52 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot/private:adapter.bzl", "adapter_test")
+
+# The contract between adapter_test and a test framework's adapter, such as autoload_gdunit's
+# gdunit_test, checked with a fake adapter: its main script at main, its case list at cases,
+# rules_godot's case selection for shards and --test_filter, and its exit code deciding.
+
+package(default_testonly = True)
+
+_CASES = "//godot/private/tests/adapter/fixtures/cases"
+
+[
+    adapter_test(
+        name = name,
+        adapter = "//godot/private/tests/adapter/fixtures/fake_adapter:run.gd",
+        cases = "addons/fake_adapter/cases.txt",
+        kwargs = {
+            "project": _CASES + ":project",
+            "size": "small",
+            "tags": ["manual"],
+        },
+        main = "addons/fake_adapter/run.gd",
+        deps = [_CASES + ":" + cases],
+    )
+    for name, cases in [
+        ("passing_cases", "passing"),
+        ("failing_case", "failing"),
+        ("error_case", "error"),
+        ("no_case", "none"),
+    ]
+]
+
+# Run test: an adapter test runs its cases, shards and filters them, and passes or fails by
+# the adapter's exit code alone, as Bazel's test encyclopedia requires.
+py_test(
+    name = "adapter_test_follows_test_encyclopedia_test",
+    size = "small",
+    srcs = ["adapter_contract_test.py"],
+    args = ["$(rootpath :%s)" % name for name in [
+        "passing_cases",
+        "failing_case",
+        "error_case",
+        "no_case",
+    ]],
+    data = [
+        ":error_case",
+        ":failing_case",
+        ":no_case",
+        ":passing_cases",
+    ],
+    main = "adapter_contract_test.py",
+)

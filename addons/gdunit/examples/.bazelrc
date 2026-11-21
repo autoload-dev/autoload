@@ -1,0 +1,14 @@
+build --incompatible_strict_action_env
+build --incompatible_exclude_starlark_flags_from_exec_config
+
+import %workspace%/../../../shared.bazelrc
+
+# Opt in to BuildBuddy with --config=buildbuddy.
+import %workspace%/../../../buildbuddy.bazelrc
+# Bazel normalizes the command as a path; run the executable script by its relative path.
+build:buildbuddy --workspace_status_command=../../../buildbuddy_status.sh
+build:buildbuddy --build_metadata=TAGS=autoload_gdunit_examples
+
+# Personal settings for every module of this repository go in user.bazelrc at the repository
+# root.
+try-import %workspace%/../../../user.bazelrc

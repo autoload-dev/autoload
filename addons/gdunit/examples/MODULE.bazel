@@ -1,0 +1,31 @@
+"""Example application of autoload_gdunit: a Godot project that consumes the module as an
+external Bazel module and tests its scripts with GdUnit, as applications outside this
+repository do."""
+
+module(name = "autoload_gdunit_examples")
+
+bazel_dep(name = "autoload_gdunit", version = "0.1.0")
+local_path_override(
+    module_name = "autoload_gdunit",
+    path = "..",
+)
+
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+
+# The rules of this repository, so that the add-on is built against the rules it is changed
+# with.
+local_path_override(
+    module_name = "autoload_rules_godot",
+    path = "../../..",
+)
+
+bazel_dep(name = "platforms", version = "1.0.0")
+
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+use_repo(godot_engines, "godot")
+
+register_toolchains("@godot//toolchains:all")

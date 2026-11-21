@@ -1,0 +1,7 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project")
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    visibility = ["//projects/scores:__subpackages__"],
+)

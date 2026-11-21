@@ -1,0 +1,12 @@
+# Not yet used: autoload_gdunit is not published (release_modules.json). Before the first
+# publication, give it a test module that runs a suite with gdunit_test.
+matrix:
+  platform: ["debian13", "ubuntu2204", "macos", "macos_arm64"]
+  bazel: ["9.*"]
+tasks:
+  verify_targets:
+    name: Load the add-on and the test rule
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    build_targets:
+      - "@autoload_gdunit//:gdunit"
