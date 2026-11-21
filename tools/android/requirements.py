@@ -52,11 +52,12 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 
 
 def application_modules(root: Path) -> list[str]:
-    """The modules that build applications; an add-on module uses its examples' SDK."""
+    """
+    The modules that build applications: every module but the add-on modules in addons/,
+    which use their examples' SDK. Each of them must configure its SDK.
+    """
     return [
-        module
-        for module in module_paths(root)
-        if SDK.partition(".")[0] in (root / module / "MODULE.bazel").read_text()
+        module for module in module_paths(root) if Path(module).parent != Path("addons")
     ]
 
 

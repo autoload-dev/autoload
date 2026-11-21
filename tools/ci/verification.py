@@ -122,8 +122,9 @@ def _family_lane(task: str) -> str | None:
     if task.startswith("test:example:"):
         return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
     # The add-on modules' tasks are named <lane>:addon:<module>.
-    if ":addon:" in task:
-        return task.partition(":addon:")[0]
+    lane, separator, _ = task.partition(":addon:")
+    if separator and lane in PROFILE_LANES:
+        return lane
     return None
 
 
