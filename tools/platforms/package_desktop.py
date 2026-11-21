@@ -31,6 +31,11 @@ def copy_file(source: str | Path, destination: Path, executable: bool = False) -
     destination.chmod(0o755 if executable else 0o644)
 
 
+def _executable(entry: dict) -> bool:
+    """Whether a manifest entry is installed executable, as is an executable source such as a crash handler."""
+    return entry.get("executable", False) or os.access(entry["source"], os.X_OK)
+
+
 def archive_tree(root: Path, archive: str | Path, operating_system: str) -> None:
     """Normalize timestamps, ownership, order and modes for reproducible archives."""
     members = sorted(root.rglob("*"), key=lambda path: path.relative_to(root).as_posix())
@@ -138,10 +143,7 @@ def package(args: argparse.Namespace) -> None:
             install(
                 entry["source"],
                 root / destination,
-                entry.get("executable", False)
-                or (
-                    entry.get("keep_mode", False) and os.access(entry["source"], os.X_OK)
-                ),
+                _executable(entry),
                 entry.get("context"),
             )
     archive_tree(root, args.archive, args.operating_system)

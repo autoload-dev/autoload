@@ -164,12 +164,10 @@ class PackageDesktopTest(unittest.TestCase):
                     {
                         "source": str(handler),
                         "destination": "crash_handler",
-                        "keep_mode": True,
                     },
                     {
                         "source": str(notice),
                         "destination": "notice.txt",
-                        "keep_mode": True,
                     },
                 ]
             )

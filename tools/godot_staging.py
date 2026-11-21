@@ -317,6 +317,8 @@ def stage(manifest: dict, root: Path, execroot: Path) -> dict[str, Original]:
         destination.parent.mkdir(parents=True, exist_ok=True)
         with open_original(original) as data, destination.open("wb") as copy:
             shutil.copyfileobj(data, copy)
+        if executable(original):
+            destination.chmod(destination.stat().st_mode | 0o111)
     _configure(root, manifest.get("editor_plugins", []), manifest.get("settings", {}))
     return originals
 

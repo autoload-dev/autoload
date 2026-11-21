@@ -182,7 +182,9 @@ class ContextTest(RepositoryTest):
                 "path": "consumer/addon/BUILD.bazel",
                 "line": 10,
                 # What Bazel reports for a symbolic macro another module defines.
-                "strings": {"generator_location": "checkout/consumer/addon/BUILD.bazel:10:12"},
+                "strings": {
+                    "generator_location": "checkout/consumer/addon/BUILD.bazel:10:12"
+                },
             }
         ]
         target = query_targets(self.root, consumer, query_xml(self.root, records))[0]

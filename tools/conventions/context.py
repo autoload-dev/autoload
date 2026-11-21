@@ -499,13 +499,7 @@ def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
 def generator_location(
     root: Path, module: Module, rule: ET.Element, origin: str | None
 ) -> Location | None:
-    """
-    Return the authored macro call of a rule, or None to take the rule's own location.
-
-    For targets of a symbolic macro that another module defines, Bazel reports a
-    generator_location that names no file below the declaring repository; the rule's own
-    location is that call then.
-    """
+    """The authored macro call, or None where Bazel names no file (another module's macro)."""
     if not origin:
         return None
     resolved = location(root, repository_root(root, module, rule), origin)

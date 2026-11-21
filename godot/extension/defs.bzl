@@ -349,23 +349,27 @@ def _place_data(ctx, context, placement, prefix):
             "as in an objc_library's data, or a framework the library loads as a " +
             "bundle_only import there"
         ) % (ctx.label, sorted([file.short_path for file in ctx.files.data])))
-    loadable = _LOADABLE[context.operating_system]
     paths = []
     beside_executable = []
     for target in ctx.attr.data:
         for file in target[DefaultInfo].files.to_list():
-            if context.operating_system == "android" and not _is_android_library(file):
-                fail("%s: Android applications deliver only shared libraries named lib*.so beside an extension library; %s is not one" % (
-                    ctx.label,
-                    file.short_path,
-                ))
-            if _is_shared_library(file, loadable.suffixes, loadable.versioned):
+            if _is_data_library(ctx, context, file):
                 paths.append(_place(placement, file.basename, file))
                 continue
             path = _place_at(placement, resource_path(file, target.label, "", prefix), file)
             paths.append(path)
             beside_executable.append(path)
     return struct(paths = paths, beside_executable = beside_executable)
+
+def _is_data_library(ctx, context, file):
+    """Whether a file of data is a shared library the configuration loads; Android takes only those."""
+    if context.operating_system == "android" and not _is_android_library(file):
+        fail("%s: Android applications deliver only shared libraries named lib*.so beside an extension library; %s is not one" % (
+            ctx.label,
+            file.short_path,
+        ))
+    loadable = _LOADABLE[context.operating_system]
+    return _is_shared_library(file, loadable.suffixes, loadable.versioned)
 
 def _configured_library(ctx, target, prefix, context):
     """

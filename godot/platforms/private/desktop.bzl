@@ -191,10 +191,7 @@ def _desktop_application_impl(ctx):
                 binary_contexts[prefix + destination] = context
                 continue
             copied_files.append(source)
-            if destination in library.beside_executable:
-                copies.append({"source": source.path, "destination": beside_executable + source.basename, "keep_mode": True})
-                continue
-            copies.append({"source": source.path, "destination": prefix + destination})
+            copies.append({"source": source.path, "destination": beside_executable + source.basename if destination in library.beside_executable else prefix + destination})
     packaged_binaries = _package_binaries(ctx, binaries, linked_dsyms)
     for destination, source in packaged_binaries.packaged.items():
         if destination == binary_relative:
