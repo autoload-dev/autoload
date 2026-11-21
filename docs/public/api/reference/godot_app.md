@@ -57,33 +57,34 @@ See [platform setup](../../platforms.md) and the
 [Godot configuration catalogue](../../configuration.md) for config-only capabilities.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| executable | many | desktop | build bundle/archive; bazel run launches the selected signed or unsigned bundle on this host; bundle is in runfiles |
-| executable | many | apk | build rules_android's default APK outputs, including signed/unsigned APKs and deployment metadata; use ApkInfo.signed_apk for the selected distributable; bazel run installs the signed APK on a device or emulator and launches it |
-| executable | one | aab | build selected checked AAB; no intermediate APK is exposed; bazel run installs its universal APK on a device or emulator and launches it |
-| executable | one | ios | build the `.app` directory for Simulator and non-`opt` builds, else the `.ipa` archive; bazel run installs it on a Simulator or device and launches it |
-| executable | one | editor | build nothing but the start pack's project inputs; bazel run runs the project from sources with Godot's editor binary on this host |
+- executable (many): build bundle/archive; bazel run launches the selected signed or unsigned bundle on this host; bundle is in runfiles
+  - availability: desktop
+- executable (many): build rules_android's default APK outputs, including signed/unsigned APKs and deployment metadata; use ApkInfo.signed_apk for the selected distributable; bazel run installs the signed APK on a device or emulator and launches it
+  - availability: apk
+- executable (one): build selected checked AAB; no intermediate APK is exposed; bazel run installs its universal APK on a device or emulator and launches it
+  - availability: aab
+- executable (one): build the `.app` directory for Simulator and non-`opt` builds, else the `.ipa` archive; bazel run installs it on a Simulator or device and launches it
+  - availability: ios
+- executable (one): build nothing but the start pack's project inputs; bazel run runs the project from sources with Godot's editor binary on this host
+  - availability: editor
 
 ### Output groups
-| name | contents | availability | prerequisites |
-| --- | --- | --- | --- |
-| bundle | Selected unpacked application bundle | desktop | matching desktop runtime component; selected macOS signer if enabled |
-| archive | Selected desktop distribution archive | desktop | matching desktop runtime component; selected macOS signer if enabled |
-| debug_symbols | Desktop debug symbols | desktop | matching C++ toolchain |
+- `bundle`: Selected unpacked application bundle
+  - availability: desktop
+  - prerequisites: matching desktop runtime component; selected macOS signer if enabled
+- `archive`: Selected desktop distribution archive
+  - availability: desktop
+  - prerequisites: matching desktop runtime component; selected macOS signer if enabled
+- `debug_symbols`: Desktop debug symbols
+  - availability: desktop
+  - prerequisites: matching C++ toolchain
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.debug_symbols | alias | analysis_boundary | Analyze the unsigned symbol producer without signer identities or entitlements; requesting an app output group still analyzes its signer | caller | inherit | the selected operating system's SDK and debug symbol inputs; iOS requires --apple_generate_dsym | always |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotDesktopAppInfo | Selected bundle/archive and relative executable path | desktop |
-| ApkInfo | Selected APK signing and installation metadata | apk |
-| AndroidBundleInfo | Selected AAB only; never an intermediate ApkInfo | aab |
-| AppleBundleInfo | Selected iOS application (`.app` directory or `.ipa` archive) and metadata | ios |
+- `{name}.debug_symbols` (alias): Analyze the unsigned symbol producer without signer identities or entitlements; requesting an app output group still analyzes its signer
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+  - prerequisites: the selected operating system's SDK and debug symbol inputs; iOS requires --apple_generate_dsym
 
 **ATTRIBUTES**
 

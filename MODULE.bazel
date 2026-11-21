@@ -256,7 +256,7 @@ register_toolchains(
     dev_dependency = True,
 )
 
-# A consumer extension calling the public source build helper; built only when requested explicitly.
+# A consumer extension calling the source build helper; built only when requested explicitly.
 # Its macOS release recipe is the godot_engine_build repository whose entrypoints
 # //godot/engine/private/tests checks.
 source_build_fixture = use_extension(
@@ -286,23 +286,10 @@ godot_cpp_bindings(
     enabled_classes = ["Node"],
 )
 
-# Source recipes of the API contract fixtures; acquisition is lazy until explicitly built.
+# A source recipe of the engine tests; acquisition is lazy until explicitly built.
 godot_engine_build = use_repo_rule(
-    "//godot/engine:repositories.bzl",
+    "//godot/engine/private:repositories.bzl",
     "godot_engine_build",
-)
-
-godot_android_shell = use_repo_rule(
-    "//godot/engine:repositories.bzl",
-    "godot_android_shell",
-)
-
-# The Android shell library of the API contract fixture; analyzable only with an Android
-# SDK.
-godot_android_shell(
-    name = "godot_android_shell_fixture",
-    dev_dependency = True,
-    source = "@godot_sources//:source.json",
 )
 
 # Fails if ever configured: select_recipe_test proves an unselected recipe stays lazy.

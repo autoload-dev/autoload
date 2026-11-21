@@ -1,12 +1,10 @@
-"""Engine acquisition: prebuilt archives, immutable sources and configure-only source recipes."""
+"""
+Engine acquisition: immutable sources and configure-only source recipes.
 
-load(
-    "//godot/engine/private:archives.bzl",
-    "EDITOR_ARCHIVE_RULE_ATTRS",
-    "TEMPLATES_ARCHIVE_RULE_ATTRS",
-    "editor_archive_impl",
-    "templates_archive_impl",
-)
+godot_engines declares these repositories through its source and source_build tags; the
+ruleset's own test fixtures also declare them directly.
+"""
+
 load("//godot/engine/private:hub.bzl", "engine_hub")
 load("//godot/engine/private:source_build_rows.bzl", "source_build_declarations")
 load(
@@ -15,6 +13,8 @@ load(
     "engine_build_impl",
     "engine_source_impl",
 )
+
+visibility(["//..."])
 
 godot_engine_source = repository_rule(
     doc = """
@@ -29,7 +29,7 @@ godot_engine_source = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_source = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_engine_source",
     )
     godot_engine_source(
         name = "godot_sources",
@@ -41,21 +41,13 @@ godot_engine_source = repository_rule(
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
+    - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:source.json | files | operation | the source descriptor godot_engine_build recipes take as source | public | false | archive acquired | always |
-    | @{repository}//:{archive} | files | operation | the acquired archive, which recipes extract independently | public | false | archive acquired | always |
-
-    ### Providers
-    none
+    - `@{repository}//:source.json` (files): the source descriptor godot_engine_build recipes take as source
+      - prerequisites: archive acquired
+    - `@{repository}//:{archive}` (files): the acquired archive, which recipes extract independently
+      - prerequisites: archive acquired
     """,
     implementation = engine_source_impl,
     attrs = {
@@ -90,7 +82,7 @@ godot_engine_build = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_build = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_engine_build",
     )
     godot_engine_build(
         name = "godot_macos_arm64_release",
@@ -106,24 +98,22 @@ godot_engine_build = repository_rule(
     [source-built engines](../../engine.md) for custom modules, options and patches.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
+    - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:godot | executable | operation | the desktop editor or template executable, a component payload | public | false | desktop recipe | desktop |
-    | @{repository}//:godot | files | operation | the Android engine library with provenance | public | false | Android recipe | android |
-    | @{repository}//:engine_library | library | operation | link the engine library through CcInfo; the iOS component payload | public | false | recipe configured with the owning operating system's SDK | always |
-    | @{repository}//:libgodot_android.so | library | operation | the Android engine library, godot_android_runtime's engine_library | public | false | Android recipe | android |
-    | @{repository}//:engine_manifest.json | files | operation | inspect captured SCons configuration facts | public | false | recipe configured | always |
-
-    ### Providers
-    none
+    - `@{repository}//:godot` (executable): the desktop editor or template executable, a component payload
+      - prerequisites: desktop recipe
+      - availability: desktop
+    - `@{repository}//:godot` (files): the Android engine library with provenance
+      - prerequisites: Android recipe
+      - availability: android
+    - `@{repository}//:engine_library` (library): link the engine library through CcInfo; the iOS component payload
+      - prerequisites: recipe configured with the owning operating system's SDK
+    - `@{repository}//:libgodot_android.so` (library): the Android engine library, godot_android_runtime's engine_library
+      - prerequisites: Android recipe
+      - availability: android
+    - `@{repository}//:engine_manifest.json` (files): inspect captured SCons configuration facts
+      - prerequisites: recipe configured
     """,
     implementation = engine_build_impl,
     attrs = {
@@ -235,109 +225,6 @@ godot_engine_build = repository_rule(
     ],
 )
 
-godot_editor_archive = repository_rule(
-    doc = """
-    Acquire one checksum-pinned prebuilt editor archive.
-
-    Call from a module extension or through use_repo_rule. The repository exposes
-    `:editor`, the executable with the complete distribution as runfiles, for a
-    godot_editor_component; it registers nothing. The editor must match the operating
-    system and CPU of the execution platform of the slot it fills. The declared
-    version is checked for ruleset support; it is not read from the archive.
-    godot_engines.prebuilt uses this rule for catalogued releases.
-
-    Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-    ```starlark
-    godot_editor_archive = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl",
-        "godot_editor_archive",
-    )
-    godot_editor_archive(
-        name = "godot_editor_custom",
-        urls = ["https://example.com/godot-editor.zip"],
-        integrity = "sha256-<base64-digest>",
-        binary = "Godot.app/Contents/MacOS/Godot",
-        version = "4.7.2",
-    )
-    ```
-
-    ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:editor | executable | operation | run the acquired editor; the payload of an editor component | public | false | repository acquired | always |
-    | @{repository}//:binary | files | operation | consume the raw editor executable | public | false | repository acquired | always |
-    | @{repository}//:distribution | files | operation | consume the complete editor distribution | public | false | repository acquired | always |
-
-    ### Providers
-    none
-    """,
-    implementation = editor_archive_impl,
-    attrs = EDITOR_ARCHIVE_RULE_ATTRS,
-)
-
-godot_export_templates_archive = repository_rule(
-    doc = """
-    Acquire one checksum-pinned export-template archive.
-
-    Call from a module extension or through use_repo_rule. The repository exposes one
-    runtime target per desktop operating system, CPU and template variant,
-    such as `:linux_x86_64_release` or `:macos_debug`, each carrying GodotRuntimeInfo,
-    for godot_runtime_component payloads. Coverage follows the archive contents: an
-    archive without a debug template omits the debug target, and macos_cpus
-    describes its macOS layout. An archive with iOS templates also exposes `:ios_debug`
-    and `:ios_release`, XCFramework imports with the dependent frameworks the
-    archive carries; they serve device and simulator slots alike. Downloading happens
-    only when a payload is requested. godot_engines.prebuilt uses this rule for
-    catalogued releases.
-
-    Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-    ```starlark
-    godot_export_templates_archive = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl",
-        "godot_export_templates_archive",
-    )
-    godot_export_templates_archive(
-        name = "godot_templates_custom",
-        urls = ["https://example.com/export_templates.tpz"],
-        integrity = "sha512-<base64-digest>",
-        version = "4.7.2",
-    )
-    ```
-
-    ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:files | files | operation | inspect acquired export templates | public | false | repository acquired | always |
-    | @{repository}//:macos_files | files | operation | preserve macOS template bundle resources | public | false | repository acquired | macos_present |
-    | @{repository}//:linux_{cpu}_{variant} | files | operation | a Linux runtime payload for one CPU and template variant | public | false | variant present in the archive | always |
-    | @{repository}//:macos_{variant} | files | operation | a universal macOS runtime payload | public | false | universal archive; variant present | macos_universal |
-    | @{repository}//:macos_{cpu}_{variant} | files | operation | a CPU-specific macOS runtime payload | public | false | CPU-specific archive; variant present | macos_split |
-    | @{repository}//:ios_{variant} | library | operation | the iOS engine XCFramework import with its dependent frameworks, for device and simulator runtime components | public | false | iOS templates present in the archive | ios |
-    | @{repository}//:templates/{file} | files | operation | consume the archive's raw template files for custom packaging | public | false | repository acquired | always |
-
-    ### Providers
-    none
-    """,
-    implementation = templates_archive_impl,
-    attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,
-)
-
 godot_android_shell = repository_rule(
     doc = """
     Build Godot's Java/Kotlin Android shell library from a source descriptor.
@@ -353,26 +240,17 @@ godot_android_shell = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_android_shell = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_android_shell",
     )
     godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
+    - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:{variant} | files | operation | the Android shell library of one template variant; its .aar output is a godot_android_runtime shell | public | false | Android SDK | always |
-
-    ### Providers
-    none
+    - `@{repository}//:{variant}` (files): the Android shell library of one template variant; its .aar output is a godot_android_runtime shell
+      - prerequisites: Android SDK
     """,
     implementation = android_shell_impl,
     attrs = {
@@ -410,6 +288,7 @@ def godot_engine_source_build(
         build_targets = [],
         ios_environments = [],
         enabled_modules = ["gdscript", "text_server_fb"],
+        default_modules = False,
         custom_modules = {},
         patches = [],
         patch_strip = 1,
@@ -441,29 +320,39 @@ def godot_engine_source_build(
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
+    - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//toolchains:editor_{platform}_{cpu} | files | operation | the editor component of one selected editor row | public | false | editor row selected | editor |
-    | @{repository}//toolchains:runtime_{platform}_{cpu}_{variant} | files | operation | the runtime component of one selected Linux or macOS template row | public | false | desktop row selected | desktop |
-    | @{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant} | files | operation | the runtime component of one selected iOS template row | public | false | iOS row selected | ios |
-    | @{repository}//toolchains:runtime_android_{cpu}_{variant} | files | operation | the runtime component of one selected Android template row | public | false | Android row selected | android |
-    | @{repository}//android:{variant} | files | operation | the Android runtime of one template variant: the source build's Android shell library with each CPU's engine library | public | false | Android row selected | android |
-    | @{repository}//android:plugin_api | files | operation | the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant | public | false | Android row selected | android |
-    | @{repository}//toolchains:editor_{platform}_{cpu}.toolchain | metadata | analysis_boundary | register one editor slot alone | public | false | none | editor |
-    | @{repository}//toolchains:runtime_{platform}_{cpu}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | desktop |
-    | @{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | ios |
-    | @{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | android |
-
-    ### Providers
-    none
+    - `@{repository}//toolchains:editor_{platform}_{cpu}` (files): the editor component of one selected editor row
+      - prerequisites: editor row selected
+      - availability: editor
+    - `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}` (files): the runtime component of one selected Linux or macOS template row
+      - prerequisites: desktop row selected
+      - availability: desktop
+    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the runtime component of one selected iOS template row
+      - prerequisites: iOS row selected
+      - availability: ios
+    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the runtime component of one selected Android template row
+      - prerequisites: Android row selected
+      - availability: android
+    - `@{repository}//android:{variant}` (files): the Android runtime of one template variant: the source build's Android shell library with each CPU's engine library
+      - prerequisites: Android row selected
+      - availability: android
+    - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
+      - prerequisites: Android row selected
+      - availability: android
+    - `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone
+      - purpose: analysis_boundary
+      - availability: editor
+    - `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
+      - purpose: analysis_boundary
+      - availability: desktop
+    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain` (metadata): register one runtime slot alone
+      - purpose: analysis_boundary
+      - availability: ios
+    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
+      - purpose: analysis_boundary
+      - availability: android
 
     Args:
         name: Hub repository name and the prefix of the generated repositories.
@@ -473,6 +362,7 @@ def godot_engine_source_build(
         build_targets: Optional editor/template_debug/template_release filter; empty selects all.
         ios_environments: Optional device/simulator filter for iOS rows; empty selects both.
         enabled_modules: As for godot_engine_build.
+        default_modules: As for godot_engine_build.
         custom_modules: As for godot_engine_build.
         patches: As for godot_engine_build; Android shell libraries apply them too.
         patch_strip: As for godot_engine_build.
@@ -487,6 +377,7 @@ def godot_engine_source_build(
     """
     common = {
         "enabled_modules": enabled_modules,
+        "default_modules": default_modules,
         "custom_modules": custom_modules,
         "patches": patches,
         "patch_strip": patch_strip,

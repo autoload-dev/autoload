@@ -493,9 +493,8 @@ export platform matching the device.
 
 ### Use a source-built engine
 
-A source-built engine comes from a [source build](engine.md#declare-a-source-build) or a
-recipe with [`godot_android_runtime`](engine.md#android-shell-libraries), registered ahead of the
-prebuilt engine; the app declaration stays the same. The runtime's AAR manifest names
+A source-built engine comes from a [source build](engine.md#declare-a-source-build), registered
+ahead of the prebuilt engine; the app declaration stays the same. The runtime's AAR manifest names
 the engine's [version stamp](engine.md#version-stamp) as
 `org.godotengine.library.version`. Engine source, Android shell library and extension ABI must
 agree; a source build builds the shell library and engine from the same source. Replace `//path/to` with your
@@ -1050,22 +1049,6 @@ SQLite dylib is not expected. The example's own
 exported-pack test loads SQLite from the production PCK through the public
 `godot_test` rule. Package inspection alone does not run a mobile app or
 establish store acceptance.
-
-To keep such a check as a Bazel test, use
-[`android_bundle_test`](api/reference/godot_testing_artifact_tests.md#android_bundle_test)
-for an App Bundle and [`ios_app_test`](api/reference/godot_testing_artifact_tests.md#ios_app_test)
-for an iOS application. They fail when a listed native library, PCK resource or linked
-symbol is missing:
-
-```starlark
-load("@autoload_rules_godot//godot/testing:artifact_tests.bzl", "ios_app_test")
-
-ios_app_test(
-    name = "app_links_extension_test",
-    app = ":app",
-    symbols = ["sqlite_addon_init"],
-)
-```
 
 Inspect each output before switching build configurations: Bazel updates the
 `bazel-bin` symlink to the most recent configuration's output directory.

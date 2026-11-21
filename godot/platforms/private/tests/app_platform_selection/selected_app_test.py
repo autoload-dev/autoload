@@ -39,7 +39,7 @@ ADDON_RESOURCES = {
 }
 
 
-# A copy of the DEX reader of //godot/testing/private:inspect_android_bundle.py, whose
+# A copy of the DEX reader of //godot/private/testing:inspect_android_bundle.py, whose
 # library serves the public inspection helper only.
 def defined_classes(dex: bytes) -> set[str]:
     """Read defined class names from standard little-endian DEX class_defs tables."""
@@ -120,6 +120,16 @@ def read_files(path: Path, operating_system: str) -> dict[str, bytes]:
         }
 
 
+def require_symbols(image: Path, cpus: set[str], flags: str, wanted: list[str]) -> None:
+    """Require every CPU slice of a Mach-O image to list the wanted symbols under nm flags."""
+    for cpu in sorted(cpus):
+        symbols = subprocess.check_output(
+            ["/usr/bin/nm", "-arch", cpu, flags, str(image)], text=True
+        )
+        missing = [symbol for symbol in wanted if symbol not in symbols]
+        assert not missing, (cpu, image.name, missing)
+
+
 def inspect(args: argparse.Namespace) -> None:
     operating_system = args.operating_system
     cpus = set(args.cpus.split(","))
@@ -196,21 +206,27 @@ def inspect(args: argparse.Namespace) -> None:
         assert info["CFBundleSupportedPlatforms"] == [
             "iPhoneOS" if environment == "device" else "iPhoneSimulator"
         ], info
-        binary = plist_name.removesuffix("Info.plist") + info["CFBundleExecutable"]
-        require_slices(read_file(binary), cpus, "ios_" + environment, binary)
+        bundle = plist_name.removesuffix("Info.plist")
+        binary = bundle + info["CFBundleExecutable"]
+        # The add-on's libraries link into the executable; the extension's library is
+        # its own framework, which exports the entry symbol.
+        framework = bundle + "Frameworks/hello.framework/hello"
+        # Symbols each image defines, and the external ones only for the framework:
+        # Godot looks up the exported entry.
+        expected = {
+            binary: (
+                "-U",
+                ["rules_godot_example_controllers", "rules_godot_example_swift"],
+            ),
+            framework: ("-gU", ["rules_godot_library_init"]),
+        }
         with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
-            executable = Path(directory) / "app"
-            executable.write_bytes(read_file(binary))
-            for cpu in sorted(cpus):
-                symbols = subprocess.check_output(
-                    ["/usr/bin/nm", "-arch", cpu, "-U", str(executable)], text=True
-                )
-                for symbol in [
-                    "rules_godot_example_controllers",
-                    "rules_godot_example_swift",
-                    "rules_godot_library_init",
-                ]:
-                    assert symbol in symbols, (cpu, symbol)
+            for name, (flags, wanted) in expected.items():
+                data = read_file(name)
+                require_slices(data, cpus, "ios_" + environment, name)
+                image = Path(directory) / Path(name).name
+                image.write_bytes(data)
+                require_symbols(image, cpus, flags, wanted)
     else:
         binary = next(name for name in names if name.endswith("/app"))
         require_slices(

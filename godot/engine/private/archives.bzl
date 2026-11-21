@@ -215,3 +215,36 @@ TEMPLATES_ARCHIVE_RULE_ATTRS = TEMPLATES_ARCHIVE_ATTRS | {
     "_ios_accesskit_template": attr.label(default = Label("//godot/engine/private:ios_accesskit.BUILD.tpl")),
     "_ios_camera_template": attr.label(default = Label("//godot/engine/private:ios_camera.BUILD.tpl")),
 }
+
+# The repository rules godot_engines.prebuilt declares for catalogued and declared releases.
+
+godot_editor_archive = repository_rule(
+    doc = """
+    Acquire one checksum-pinned prebuilt editor archive.
+
+    The repository exposes `:editor`, the executable with the complete distribution as
+    runfiles, for a godot_editor_component; it registers nothing. The editor must match
+    the operating system and CPU of the execution platform of the slot it fills. The
+    declared version is checked for ruleset support; it is not read from the archive.
+    """,
+    implementation = editor_archive_impl,
+    attrs = EDITOR_ARCHIVE_RULE_ATTRS,
+)
+
+godot_export_templates_archive = repository_rule(
+    doc = """
+    Acquire one checksum-pinned export-template archive.
+
+    The repository exposes one runtime target per desktop operating system, CPU and
+    template variant,
+    such as `:linux_x86_64_release` or `:macos_debug`, each carrying GodotRuntimeInfo,
+    for godot_runtime_component payloads. Coverage follows the archive contents: an
+    archive without a debug template omits the debug target, and macos_cpus
+    describes its macOS layout. An archive with iOS templates also exposes `:ios_debug`
+    and `:ios_release`, XCFramework imports with the dependent frameworks the
+    archive carries; they serve device and simulator slots alike. Downloading happens
+    only when a payload is requested.
+    """,
+    implementation = templates_archive_impl,
+    attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,
+)

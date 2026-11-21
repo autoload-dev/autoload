@@ -2,16 +2,11 @@
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
-load(
-    "//godot:providers.bzl",
-    "GodotComponentInfo",
-    "GodotDesktopAppInfo",
-    "GodotPackInfo",
-    "GodotRuntimeInfo",
-)
+load("//godot:providers.bzl", "GodotDesktopAppInfo", "GodotPackInfo")
 load("//godot/private:export_options.bzl", "string_option")
 load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:paths.bzl", "resolve_project_path")
+load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load(
     "//godot/private:symbols.bzl",

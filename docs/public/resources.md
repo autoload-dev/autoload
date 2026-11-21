@@ -259,68 +259,6 @@ IDs it assigns; packs and source runs complete their copies from it, and
 External applications such as Blender need an explicitly declared upstream conversion
 action. They are not automatically discovered or downloaded.
 
-## Resource graph diagnostics
-
-Use `godot_resource_graph` to inspect the static resource relationships of its `deps`
-under a project's configuration without running Godot. It produces deterministic JSON
-containing each file's owner, declared and inferred edges, authored UIDs and coverage
-diagnostics.
-
-Add a graph target beside your existing `project` target:
-
-```starlark
-load("@autoload_rules_godot//godot:defs.bzl", "godot_resource_graph")
-
-godot_resource_graph(
-    name = "graph",
-    project = ":project",
-    deps = [":game"],
-    require_declared = True,
-)
-```
-
-Build it with `bazel build //path/to:graph`, replacing `path/to` with your package.
-Read `bazel-bin/path/to/graph.graph.json` for its files, relationships and diagnostics.
-With the default `validate = True`, every error diagnostic fails the build and is printed
-in the build output, including missing static targets, invalid UID ownership and conflicting
-identities. The failed action's JSON is not available as a normal build output.
-`require_declared = True` additionally requires
-inferred runtime references to be covered by explicit `runtime_references` entries;
-omit it to retain the default diagnostic policy. Set `validate = False` to emit the
-graph without failing on its diagnostics, so you can inspect the JSON even when errors exist.
-
-The bounded scanners cover text scenes/resources, literal GDScript loads/preloads,
-`FileAccess` reads of `res://` paths, known global script class uses, shader includes,
-local glTF inputs and resource paths in project settings other than editor plugins.
-They report conflicting global class names and runtime references to import inputs. A
-file that refers to a file or global class of an add-on its resources do not use, directly
-or through their `deps`, is an `undeclared_addon_use` warning that names the add-on and the
-target to list it in; `require_declared = True` makes it an error. The
-[content validation](development.md#content-validation) fails such a script or scene anyway;
-the graph names the add-on, and covers text resources too.
-Each resolved reference names its kind of target: a `file`, a `uid` or a `directory`. A
-project setting or a declared runtime reference may name a directory, such as
-`modules="res://modules"`, and resolves when the graph's files include files below it; any other
-reference that names a directory is invalid. A reference that names neither a declared file
-nor a directory is missing.
-Files Godot ignores are nodes with the analysis `ignored`: the graph scans them for
-nothing and reports no coverage gap for them.
-Non-literal accesses and `DirAccess` listings remain warnings. Binary resources and
-arbitrary code evaluation are outside the scanner's coverage. Inferred edges never add
-undeclared Bazel dependencies, and a clean report does not prove dynamic accesses absent.
-Group membership and processing edges retain their separate meaning.
-
-The graph knows the UIDs the [metadata index](#export-and-inspect) knows,
-including those only generated sidecars declare. A reference whose `uid` names another
-declared file than its `path` is a `uid_path_conflict` error; while
-`--@autoload_rules_godot//godot/metadata:resource_uids` is not `require`, the build points such a
-reference at its path's UID, so the graph follows the path and reports a warning.
-
-UID and import sidecars remain metadata/import dependencies, so changes propagate to
-resource consumers. Relative runtime `load` paths resolve from `res://`, while `preload`
-and script inheritance paths resolve from the script directory, matching Godot's separate
-loading semantics.
-
 ## Composition, processing and consumers
 
 | Layer | Contract | Why it is separate |
@@ -329,7 +267,6 @@ loading semantics.
 | `godot_addon` | One add-on: its runtime part, its editor part with its roles, extensions, platform libraries, Info.plist fragments, autoloads and settings | Declared once, it reaches every operation and application containing the resources that use it, and its files never become inputs of their imports. |
 | `godot_project` | The configuration context: `project.godot`, settings, autoloads, main scene and the add-ons it names; every unit imports under it | Holding no resources, one context serves the game's packs, runs, tests and editor views alike, which share each unit's import. |
 | `godot_pack`, `godot_run`, `godot_test`, `godot_gdunit_test`, `godot_editor`, `godot_metadata_sync` | A concrete export, execution, test or editor view of one project over its own `deps` | A test does not need an export; a data pack does not need an app bundle. |
-| `godot_resource_graph` | Optional static resource diagnostics | Analysis never adds undeclared Bazel dependencies during an action. |
 
 Resource references can cycle. Bazel target dependencies cannot: declare mutually
 referencing files together or record their paths in `runtime_references` rather
@@ -673,6 +610,31 @@ and other inputs Godot cannot export are not silently renamed to bypass Godot.
 Linking, runtime layout and signing belong to `godot_app`.
 The inspector streams the PCK directory and hashes the file incrementally, so
 inspection does not load the complete asset contents into memory.
+
+## Detected references
+
+Reachable packs follow the references a bounded scan finds in their files, without running
+Godot. The scanners cover text scenes/resources, literal GDScript loads/preloads,
+`FileAccess` reads of `res://` paths, known global script class uses, shader includes,
+local glTF inputs and resource paths in project settings other than editor plugins.
+Each resolved reference names its kind of target: a `file`, a `uid` or a `directory`. A
+project setting or a declared runtime reference may name a directory, such as
+`modules="res://modules"`, and resolves when the scanned files include files below it; any
+other reference that names a directory is invalid. Files Godot ignores are not scanned.
+Non-literal accesses and `DirAccess` listings are not followed. Binary resources and
+arbitrary code evaluation are outside the scanners' coverage. Inferred references never add
+undeclared Bazel dependencies. Group membership and processing edges retain their separate
+meaning.
+
+The scan knows the UIDs the [metadata index](#export-and-inspect) knows,
+including those only generated sidecars declare. While
+`--@autoload_rules_godot//godot/metadata:resource_uids` is not `require`, a reference whose
+`uid` names another declared file than its `path` points at its path's UID.
+
+UID and import sidecars remain metadata/import dependencies, so changes propagate to
+resource consumers. Relative runtime `load` paths resolve from `res://`, while `preload`
+and script inheritance paths resolve from the script directory, matching Godot's separate
+loading semantics.
 
 ## Reachable packs and pack prerequisites
 

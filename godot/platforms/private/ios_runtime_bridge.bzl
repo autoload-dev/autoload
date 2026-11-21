@@ -25,8 +25,8 @@ load("@rules_apple//apple/internal/aspects:resource_aspect.bzl", "apple_resource
 load("@rules_apple//apple/internal/aspects:swift_usage_aspect.bzl", "SwiftUsageInfo", "swift_usage_aspect")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_swift//swift:swift.bzl", "SwiftInfo")
-load("//godot:providers.bzl", "GodotRuntimeInfo")
 load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
 visibility(["//godot/..."])
 

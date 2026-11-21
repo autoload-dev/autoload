@@ -1,5 +1,5 @@
 """
-The implementations of the source repository rules in godot/engine:repositories.bzl.
+The implementations of the source repository rules in godot/engine/private:repositories.bzl.
 
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.

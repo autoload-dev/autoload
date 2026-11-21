@@ -2,12 +2,12 @@
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
-load("//godot:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
 load("//godot/engine/private:prebuilt.bzl", "PrebuiltArtifactInfo")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "ANDROID_PAYLOAD_ASPECTS")
 load("//godot/platforms/private:ios_runtime_bridge.bzl", "IOS_PAYLOAD_ASPECTS")
+load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private:versions.bzl", "require_supported_godot_version", "require_supported_source_version")
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "CPU_TABLE", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 
@@ -415,24 +415,18 @@ godot_editor_component = macro(
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build the editor payload and its runfiles; no run behavior |
-
-    ### Output groups
-    none
+    - files (many): build the editor payload and its runfiles; no run behavior
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.toolchain | metadata | analysis_boundary | register the slot with editor_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-    | {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | ToolchainInfo | godot editor files, executable, version and provenance | always |
-    | GodotComponentInfo | Provenance of the declared slot | always |
+    - `{name}.toolchain` (metadata): register the slot with editor_toolchain_type; toolchain resolution is a separate boundary
+      - purpose: analysis_boundary
+      - visibility: caller
+      - testonly: inherit
+    - `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+      - purpose: analysis_boundary
+      - visibility: caller
+      - testonly: inherit
+      - availability: engine named
     """,
     implementation = _editor_macro_impl,
     attrs = _COMMON | {
@@ -477,24 +471,18 @@ godot_runtime_component = macro(
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build the runtime payload; no run behavior |
-
-    ### Output groups
-    none
+    - files (many): build the runtime payload; no run behavior
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.toolchain | metadata | analysis_boundary | register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-    | {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | ToolchainInfo | godot runtime payload, GodotRuntimeInfo where known, version and provenance | always |
-    | GodotComponentInfo | Provenance of the declared slot | always |
+    - `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary
+      - purpose: analysis_boundary
+      - visibility: caller
+      - testonly: inherit
+    - `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+      - purpose: analysis_boundary
+      - visibility: caller
+      - testonly: inherit
+      - availability: engine named
     """,
     implementation = _runtime_macro_impl,
     attrs = _COMMON | {

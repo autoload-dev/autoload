@@ -34,22 +34,15 @@ godot_cpp_bindings = repository_rule(
     See [godot-cpp integration](../../gdextension.md).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
+    - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:godot_cpp | library | operation | link the generated C++ bindings through CcInfo | public | false | repository acquired | always |
-    | @{repository}//:{api_path} | files | operation | inspect the selected upstream extension API dataset | public | false | repository acquired | always |
-    | @{repository}//:LICENSE.md | files | operation | distribute the upstream binding license | public | false | repository acquired | always |
-
-    ### Providers
-    none
+    - `@{repository}//:godot_cpp` (library): link the generated C++ bindings through CcInfo
+      - prerequisites: repository acquired
+    - `@{repository}//:{api_path}` (files): inspect the selected upstream extension API dataset
+      - prerequisites: repository acquired
+    - `@{repository}//:LICENSE.md` (files): distribute the upstream binding license
+      - prerequisites: repository acquired
     """,
     implementation = godot_cpp_bindings_impl,
     attrs = {

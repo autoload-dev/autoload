@@ -1,6 +1,6 @@
 """Shell files and engine checks that the application rules of all operating systems share."""
 
-load("//godot:providers.bzl", "GodotComponentInfo")
+load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private:release.bzl", "app_version", "build_number")
 
 visibility("//godot/platforms/...")

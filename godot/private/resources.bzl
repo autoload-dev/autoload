@@ -1,6 +1,5 @@
 """Godot resources as import units: their composition, staging and import under an operation's project."""
 
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/private:actions.bzl", "write_manifest")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
@@ -14,6 +13,7 @@ load(
     "validate_unit",
 )
 load("//godot/private:paths.bzl", "collect_resource_paths", "godot_ignore_markers", "godot_ignored", "mapped_paths", "merge_resource_paths", "sidecar_source", "validate_namespace", "validate_resource_path")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 
 visibility(["//godot", "//godot/private/config"])
 
@@ -446,20 +446,7 @@ godot_resources = rule(
     files, import ordering and runtime reference cycles.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build declared resource files; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotResourcesInfo | Members, import inputs, imports and the add-ons used, transitively | always |
+    - files (many): build declared resource files; no run behavior
     """,
     implementation = _resources_impl,
     attrs = {

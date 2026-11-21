@@ -6,7 +6,7 @@ py_test(
     name = "inspect_android_bundle_test",
     size = "small",
     srcs = ["inspect_android_bundle_test.py"],
-    deps = ["//godot/testing/private:inspect_android_bundle_lib"],
+    deps = ["//godot/private/testing:inspect_android_bundle_lib"],
 )
 
 py_test(
@@ -14,7 +14,7 @@ py_test(
     size = "small",
     srcs = ["inspect_ios_app_test.py"],
     deps = [
-        "//godot/testing/private:inspect_ios_app_lib",
+        "//godot/private/testing:inspect_ios_app_lib",
         "//tools/platforms:native_fixtures",
     ],
 )
@@ -23,7 +23,7 @@ py_test(
     name = "apple_bundle_test",
     size = "small",
     srcs = ["apple_bundle_test.py"],
-    deps = ["//godot/testing/private:inspect_ios_app_lib"],
+    deps = ["//godot/private/testing:inspect_ios_app_lib"],
 )
 
 py_test(
@@ -31,7 +31,7 @@ py_test(
     size = "small",
     srcs = ["native_symbols_test.py"],
     deps = [
-        "//godot/testing/private:native_symbols",
+        "//godot/private/testing:native_symbols",
         "//tools/platforms:native_fixtures",
     ],
 )

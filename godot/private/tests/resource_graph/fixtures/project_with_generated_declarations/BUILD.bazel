@@ -1,4 +1,5 @@
-load("//godot:defs.bzl", "godot_project", "godot_resource_graph")
+load("//godot:defs.bzl", "godot_project")
+load("//godot/private:analysis.bzl", "godot_resource_graph")
 load(":godot_files.bzl", "godot_package_resources")
 
 # A project whose sources come from the macro that godot_build_files generates, with the

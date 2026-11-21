@@ -1,7 +1,7 @@
 """A godot_test whose main script is a rules_godot test adapter over listed cases."""
 
-load("//godot:providers.bzl", "GodotResourcesInfo")
 load("//godot/private:macros.bzl", "common_kwargs")
+load("//godot/private:providers.bzl", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "godot_resources", "own_paths")
 load("//godot/private:run.bzl", "godot_test")
 

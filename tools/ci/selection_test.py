@@ -142,21 +142,21 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(set(lanes["android"]), {"android", "contracts:android"})
         self.assertEqual(set(lanes["ios"]), {"ios", "contracts:ios"})
 
-    def test_mobile_smoke_scenario_selects_its_lane_and_contracts(self) -> None:
+    def test_mobile_smoke_scenario_selects_its_lane(self) -> None:
         lanes = lane_plan(
             self.plan("tests/smoke/android/main/main.gd", profiles=PROFILE_LANES)
         )
         self.assertIn("test:regressions", lanes["host"])
-        # The scenario hosts the Android artifact test's contract case.
-        self.assertEqual(lanes["android"], ["contracts:android", "android"])
-        self.assertEqual(lanes["ios"], ["contracts:ios"])
+        # The scenario hosts no contract case.
+        self.assertEqual(lanes["android"], ["android"])
+        self.assertEqual(lanes["ios"], [])
 
-    def test_public_test_helpers_select_the_consumers_and_contracts(self) -> None:
+    def test_private_test_rules_select_the_consumers_and_contracts(self) -> None:
         lanes = lane_plan(
-            self.plan("godot/testing/artifact_tests.bzl", profiles=PROFILE_LANES)
+            self.plan("godot/private/testing/ios_app_test.bzl", profiles=PROFILE_LANES)
         )
-        # Public test helpers are ruleset code: they select the consumers and every
-        # lane's contracts.
+        # The ruleset's own artifact test rules are ruleset code: they select the
+        # consumers and every lane's contracts.
         self.assertIn("test:regressions", lanes["host"])
         self.assertEqual(lanes["android"], ["contracts:android", "android"])
         self.assertEqual(lanes["ios"], ["contracts:ios", "ios"])
@@ -223,9 +223,9 @@ class SelectionTest(unittest.TestCase):
                 self.assertEqual(lanes["ios"], ["contracts:ios"])
 
     def test_regression_packages_of_contract_cases_select_their_lane(self) -> None:
-        packages = sorted(set(regression_contract_packages()))
-        self.assertGreaterEqual(len(packages), 2)
-        for path, task in packages:
+        # Today the consumer module hosts only repository entrypoint cases, which name no
+        # package; a case or behavior test that targets one must select its lane.
+        for path, task in sorted(set(regression_contract_packages())):
             with self.subTest(path=path):
                 self.assertTrue((ROOT / path).is_file())
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))

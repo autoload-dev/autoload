@@ -2,7 +2,6 @@
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:actions.bzl", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_autoloads", "validate_settings")
@@ -10,6 +9,7 @@ load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_tra
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:import_units.bzl", "VALIDATION_ATTRS", "class_fragment", "import_unit", "unit_interface", "validate_unit")
 load("//godot/private:paths.bzl", "directory_prefix", "godot_ignore_markers", "godot_ignored", "mapped_paths", "merge_resource_paths", "resource_path", "sidecar_source", "validate_namespace", "with_extensions_for")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "addon_closure", "configuration_contributions", "import_staged", "unique_extensions", "unique_platform_libraries")
 
 visibility(["//godot/..."])
@@ -640,22 +640,12 @@ godot_addon = macro(
     See [add-ons](../../resources.md#add-ons) and [importers](../../resources.md#importers).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build the files of both parts; no run behavior |
-
-    ### Output groups
-    none
+    - files (many): build the files of both parts; no run behavior
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.editor | metadata | operation | the editor part as resources of test-only operations, such as suites of its editor tooling, which products cannot reach | caller | true | none | always |
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotAddonInfo | Parts, roles, extensions, platform libraries and contributions of the add-on | always |
+    - `{name}.editor` (metadata): the editor part as resources of test-only operations, such as suites of its editor tooling, which products cannot reach
+      - visibility: caller
+      - testonly: true
     """,
     implementation = _addon_macro_impl,
     inherit_attrs = _godot_addon,

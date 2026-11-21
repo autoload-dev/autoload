@@ -46,6 +46,7 @@ _SOURCE_BUILD = {
     "build_targets": ["template_release"],
     "ios_environments": [],
     "enabled_modules": ["gdscript", "text_server_fb"],
+    "default_modules": False,
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,

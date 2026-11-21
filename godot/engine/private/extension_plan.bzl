@@ -361,6 +361,7 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
                 build_targets = tag.build_targets,
                 ios_environments = tag.ios_environments,
                 enabled_modules = tag.enabled_modules,
+                default_modules = tag.default_modules,
                 custom_modules = tag.custom_modules,
                 patches = tag.patches,
                 patch_strip = tag.patch_strip,

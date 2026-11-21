@@ -395,18 +395,7 @@ def godot_run(
     [execution and tests](../../development.md#execution-and-tests).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | executable | one | always | run Godot with project or PCK; project and editor data are runfiles |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - executable (one): run Godot with project or PCK; project and editor data are runfiles
 
     Args:
         name: Name of the executable target.
@@ -490,18 +479,7 @@ def godot_test(
     See [execution and tests](../../development.md#execution-and-tests).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | test | one | always | execute Godot under bazel test; failure follows the exit status and engine_errors; project/editor are runfiles |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - test (one): execute Godot under bazel test; failure follows the exit status and engine_errors; project/editor are runfiles
 
     Args:
         name: Name of the test target.

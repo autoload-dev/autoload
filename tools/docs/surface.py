@@ -45,7 +45,7 @@ def assign_surface(
     Assign primary owners from the complete extraction.
 
     Each module's coverage test checks its documentation; this checks ownership. Evaluated origin identity catches duplicate public
-    exports and generated-repository helpers even under different names.
+    exports and cross-repository modules even under different names.
     """
     errors = []
     all_exports: dict[str, dict[str, Export]] = {}
@@ -72,9 +72,9 @@ def assign_surface(
 
     for label, entry in inventory["PUBLIC_APIS"].items():
         for export in all_exports[label].values():
-            if export.identity[1] in inventory["GENERATED_REPOSITORY_MODULES"]:
+            if export.identity[1] in inventory["CROSS_REPOSITORY_MODULES"]:
                 errors.append(
-                    f"{label}%{export.name}: generated-repository implementation leaked through a public entrypoint; remove the export"
+                    f"{label}%{export.name}: cross-repository module leaked through a public entrypoint; remove the export"
                 )
             elif export.name not in entry["symbols"]:
                 owner = owners.get(export.identity)

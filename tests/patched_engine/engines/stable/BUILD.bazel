@@ -6,7 +6,7 @@ godot_runtime_component(
     name = "runtime_macos_arm64_release",
     cpu = "arm64",
     platform = "macos",
-    runtime = "@godot_source//:godot",
+    runtime = "@godot_source_macos_arm64_template_release//:godot",
     tags = ["manual"],
     variant = "release",
     version = "4.7.3-rc",

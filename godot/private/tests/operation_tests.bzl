@@ -3,7 +3,7 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:defs.bzl", "godot_test")
-load("//godot:providers.bzl", "GodotResourcesInfo")
+load("//godot/private:providers.bzl", "GodotResourcesInfo")
 load(":action_inputs.bzl", "GodotActionsInfo", "godot_actions", "source_inputs")
 
 _CONTEXT = "//godot/private/tests/fixtures/import_context"

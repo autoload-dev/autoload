@@ -2,7 +2,7 @@
 
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 
-visibility("//godot")
+visibility(["//godot/..."])
 
 def _resource_graph_impl(ctx):
     project = ctx.attr.view[GodotViewInfo]
@@ -75,21 +75,10 @@ def godot_resource_graph(name, project, deps = [], validate = True, require_decl
     )
     ```
 
-    See [resource graph diagnostics](../../resources.md).
+    See [detected references](../../resources.md#detected-references).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | one | always | build resource graph JSON with selected declaration/validation policy; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - files (one): build resource graph JSON with selected declaration/validation policy; no run behavior
 
     Args:
         name: Name of the graph target.

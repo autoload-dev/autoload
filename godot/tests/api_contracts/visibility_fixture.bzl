@@ -16,18 +16,7 @@ same_package_leak = macro(
     Produce a controlled file.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | one | always | build |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - files (one): build
     """,
     inherit_attrs = "common",
     implementation = _leak_impl,

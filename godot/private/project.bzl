@@ -1,7 +1,6 @@
 """Projects as configuration contexts: their configuration files and the add-ons they name."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotProjectInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_autoloads", "validate_custom_feature", "validate_settings")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
@@ -9,6 +8,7 @@ load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:import_units.bzl", "importer_staging")
 load("//godot/private:paths.bzl", "exec_paths", "mapped_path", "mapped_paths", "validate_resource_path")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo")
 load("//godot/private:resources.bzl", "addon_closure")
 load("//godot/private/config:settings.bzl", "ENGINE_FEATURE_TAGS", "entry_features")
 load("//godot/private/engine:setting_kinds.bzl", "engine_sections", "setting_kinds")
@@ -558,22 +558,12 @@ godot_project = macro(
     See [resource and configuration semantics](../../resources.md).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | metadata | none | always | name the configuration context operations use; no build or run behavior |
-
-    ### Output groups
-    none
+    - metadata (none): name the configuration context operations use; no build or run behavior
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.named_addons | metadata | analysis_boundary | The add-ons the project names, which the operations of the project reach without the project; not for direct use | caller | false | none | always |
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotProjectInfo | The configuration context operations name and resources import under | always |
+    - `{name}.named_addons` (metadata): The add-ons the project names, which the operations of the project reach without the project; not for direct use
+      - purpose: analysis_boundary
+      - visibility: caller
     """,
     implementation = _project_macro_impl,
     inherit_attrs = _godot_project,

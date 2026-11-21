@@ -8,8 +8,9 @@ For application execution, content validation, GdUnit, editor views and sidecars
 
 ## Analysis and BUILD maintenance
 
-For the public rule, scanner scope and diagnostic policy, see
-[resource graph diagnostics](../public/resources.md#resource-graph-diagnostics).
+`godot_resource_graph` in `godot/private/analysis.bzl` writes a project's resource graph
+for the ruleset's own tests; the scanner scope is described in
+[detected references](../public/resources.md#detected-references).
 Maintainers can query a test fixture's graph with the repository tool:
 
 ```sh

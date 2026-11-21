@@ -23,7 +23,7 @@ if __name__ == "__main__":
         symbols = exports(label, metadata)
         assert set(symbols) == set(inventory["PUBLIC_APIS"][label]["symbols"]), label
         for export in symbols.values():
-            assert export.identity[1] not in inventory["GENERATED_REPOSITORY_MODULES"], (
+            assert export.identity[1] not in inventory["CROSS_REPOSITORY_MODULES"], (
                 f"Implementation helper in BCR metadata: {export}"
             )
             assert export.identity not in seen, (

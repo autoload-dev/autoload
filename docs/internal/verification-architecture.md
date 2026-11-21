@@ -46,7 +46,7 @@ make. A behavior that no question reaches has no test kind; see
 | Build-tool unit test | Ruleset, `tools/<area>/tests/` | `py_test` | The tool's library and test data |
 | Build-output test | Ruleset, `<impl>/tests/` | Inspection `py_test` or a test rule over built fixture outputs | Private files, fixtures, transitions, tool libraries, an engine |
 | Run test | Ruleset, `<impl>/tests/` | `godot_test`, GdUnit or a launcher over an exported application | As for build-output tests |
-| Consumer scenario | Consumer module `tests/`, one package per scenario | Public test rules, `build_test`, public test helpers | Public API only |
+| Consumer scenario | Consumer module `tests/`, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
 | Example test | `examples/`, owned by the example | The example's own tests | Public API only |
 | Repository-tooling test | Ruleset, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
 
@@ -139,9 +139,8 @@ code.
 
 - **Location**: The consumer module `rules_godot_tests` at `tests/`, one package per
   scenario.
-- **Form**: Public test rules, `build_test` and public test helpers.
-- **Allowed dependencies**: The public API only, including the public test helpers of
-  [public test helpers](#public-test-helpers).
+- **Form**: Public test rules, `build_test` and the [artifact test rules](#artifact-test-rules).
+- **Allowed dependencies**: The public API and the artifact test rules.
 - **May prove**: That a user can build, inspect and run what the scenario declares through
   the public API.
 - **May not claim**: Coverage of variants or error paths. Analysis and build-output tests in
@@ -201,7 +200,7 @@ stay out of them with a small scope.
 |---|---|---|---|
 | B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](api-reference.md) documents and its inventory lists. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
-| B3 | A public test helper loads only public files and has an API reference entry, a contract case and a consumer scenario that uses it. | The API contract check | None |
+| B3 | Consumer scenarios load no private module but the artifact test rules, which are classified as cross-repository modules. | The API inventory check | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
 | L1 | Each test has exactly one owning lane, derived from its module, its kind and the Bazel configuration it needs. Ruleset tests and repository-tooling tests belong to the lane that runs the ruleset's host set. A consumer scenario belongs to the lane of its platform configuration. A lane does not rerun another lane's tests. | Review. [Selection and lanes](verification-platforms.md) names the concrete task of each lane class. | None |
 
@@ -210,15 +209,15 @@ visibility, as rules_cc, rules_apple and rules_java use it. Lanes select tests; 
 them. A configuration suite is a lane's entry point and lists consumer scenarios only. Where
 suites are declared is a lane decision.
 
-## Public test helpers
+## Artifact test rules
 
-`godot/testing` contains only public test helpers. A helper meets B3 and serves a consumer
-scenario; a helper that would load private files serves white-box tests and lives in the
-`tests` package that uses it.
-
-| Helper | Serves | Reason |
-|---|---|---|
-| `artifact_tests.bzl`: `android_bundle_test`, `ios_app_test` | `tests/smoke/android`, `tests/smoke/ios` and users' platform tests | Smoke scenarios inspect APKs and iOS applications, as rules_pkg's `verify_archive_test` serves its users. Its implementation in `godot/testing/private` carries its own inspectors instead of loading `tools/platforms`. |
+`godot/private/testing` holds `android_bundle_test` and `ios_app_test`, which inspect a
+built App Bundle or iOS application. They are not supported API: as in rules_apple and
+rules_android, inspection rules serve the ruleset's own tests. White-box tests and the
+smoke scenarios `tests/smoke/android` and `tests/smoke/ios` load them; the tests module
+loads them across repositories, so they keep public load visibility and are classified as
+cross-repository modules. They carry their own inspectors instead of loading
+`tools/platforms`.
 
 White-box tests depend on tool libraries such as `//tools:pck_lib` directly; those stay
 private to the ruleset under B2.
