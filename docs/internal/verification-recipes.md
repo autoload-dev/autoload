@@ -9,6 +9,7 @@ The [verification policy](verification.md) determines when evidence is needed, a
 - Platform Paths operating-system integration:
   [runtime acceptance](#platform-paths-runtime-acceptance).
 - Offloading work and tests to BuildBuddy: [remote execution](#remote-execution-with-buildbuddy).
+- Selecting an engine in a ruleset test: [engines in ruleset tests](#engines-in-ruleset-tests).
 - Finding an existing ruleset regression: [fixture catalogue](#regression-fixtures).
 
 ## Toolchains
@@ -153,6 +154,17 @@ the five container locations. Use existing signing attributes if a provisioned d
 chosen environment. Both operating systems should show useful category-specific reasons for unavailable/failed lookups
 while preserving unaffected rows. Build/package inspection complements these runtime checks;
 no mobile automation framework or Store deployment is required.
+
+## Engines in ruleset tests
+
+A ruleset test selects its engine and toolchains as a consumer would. The contract
+docstring of [toolchains.bzl](../../godot/private/tests/toolchains.bzl) owns the details.
+
+| The test needs | It uses |
+| --- | --- |
+| The default engine `@godot` or the Android SDK and NDK | Nothing: MODULE.bazel registers them. |
+| Another complete development engine, such as the beta engine | The engine's name: the `engine` attribute of `configured_outputs` or `engine_test`. |
+| A few slots of its own, a source-built hub, or registration order as its subject | `--extra_toolchains`: `own_toolchains` in an analysis test, the `extra_toolchains` attribute of `configured_outputs` in a build-output test. |
 
 ## Regression fixtures
 

@@ -48,7 +48,6 @@ py_library(
 # The multi-ABI App Bundle as --config=multi_abi --config=aab builds it.
 configured_outputs(
     name = "android_multi_abi_bundles_carry_platform_libraries_test_app",
-    android = True,
     android_format = "aab",
     platform = _ANDROID_APPS + "android_distribution",
     tags = ["manual"],
@@ -76,7 +75,6 @@ py_test(
 # The App Bundle and its debug symbols as --config=android-release --config=aab builds them.
 configured_outputs(
     name = "android_release_bundle_symbols_match_stripped_extension_test_app",
-    android = True,
     android_format = "aab",
     compilation_mode = "opt",
     copts = [
@@ -91,7 +89,6 @@ configured_outputs(
 
 configured_outputs(
     name = "android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
-    android = True,
     android_format = "aab",
     compilation_mode = "opt",
     copts = [
@@ -145,7 +142,6 @@ _ANDROID_COMPOSITION = {
 [
     configured_outputs(
         name = "android_apks_compose_platform_libraries_test_" + role,
-        android = True,
         platform = "//godot/platforms:android_arm64",
         tags = ["manual"],
         target = _ANDROID_APPS + app,
@@ -234,45 +230,6 @@ py_test(
         for role in _IOS_COMPOSITION
     ],
     main = "ios_composition_test.py",
-    target_compatible_with = _REQUIRES_MACOS,
-    deps = [":ios_apps"],
-)
-
-# The application and its dSYM as --config=ios-release builds them.
-configured_outputs(
-    name = "ios_release_dsym_matches_executable_test_app",
-    apple_generate_dsym = True,
-    compilation_mode = "opt",
-    objc_enable_binary_stripping = True,
-    platform = _IOS_OFFICIAL,
-    tags = ["manual"],
-    target = _IOS_APPS + "app",
-)
-
-configured_outputs(
-    name = "ios_release_dsym_matches_executable_test_debug_symbols",
-    apple_generate_dsym = True,
-    compilation_mode = "opt",
-    objc_enable_binary_stripping = True,
-    platform = _IOS_OFFICIAL,
-    tags = ["manual"],
-    target = _IOS_APPS + "app.debug_symbols",
-)
-
-# Build-output test: the dSYM rules_apple generates has the executable's UUIDs.
-py_test(
-    name = "ios_release_dsym_matches_executable_test",
-    size = "small",
-    srcs = ["ios_debug_symbols_test.py"],
-    args = [
-        "--app $(rootpaths :ios_release_dsym_matches_executable_test_app)",
-        "--dsym $(rootpaths :ios_release_dsym_matches_executable_test_debug_symbols)",
-    ],
-    data = [
-        ":ios_release_dsym_matches_executable_test_app",
-        ":ios_release_dsym_matches_executable_test_debug_symbols",
-    ],
-    main = "ios_debug_symbols_test.py",
     target_compatible_with = _REQUIRES_MACOS,
     deps = [":ios_apps"],
 )

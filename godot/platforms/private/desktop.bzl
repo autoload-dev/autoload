@@ -17,7 +17,7 @@ load(
     "symbols_zip",
 )
 load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
-load("//godot/private/config:settings.bzl", "MACOS_MINIMUM_OS_OUTSIDE_APPLICATION")
+load("//godot/private/config:native.bzl", "APPLICATION_SCOPED_OPTIONS", "macos_application_options")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "privacy_manifest", "release_values", "shell_file")
@@ -361,26 +361,15 @@ _ATTRS = {
     ),
 } | STRIP_ATTRS | SYMBOLS_ZIP_ATTRS | ENGINE_CHECK_ATTRS | LAUNCH_ATTRS
 
-_MACOS_MINIMUM_OS_OPTION = "//command_line_option:macos_minimum_os"
-
 def _macos_minimum_impl(settings, attr):
-    # The application's minimum is the deployment target of the native code its pack
-    # builds for macOS, such as extension libraries; only the macOS backend's edge sets
-    # it, so Linux and host builds of other targets share the pack's configuration. The
-    # build's own minimum is kept for the project context to restore.
-    build_minimum = settings[_MACOS_MINIMUM_OS_OPTION]
-    outside = settings[MACOS_MINIMUM_OS_OUTSIDE_APPLICATION] or json.encode(
-        str(build_minimum) if build_minimum != None else None,
-    )
-    return {
-        _MACOS_MINIMUM_OS_OPTION: attr.minimum_os_version,
-        MACOS_MINIMUM_OS_OUTSIDE_APPLICATION: outside,
-    }
+    # Only the macOS backend's edge sets the application's minimum, so Linux and host
+    # builds of other targets share the pack's configuration.
+    return macos_application_options(settings, attr.minimum_os_version)
 
 _macos_minimum = transition(
     implementation = _macos_minimum_impl,
-    inputs = [_MACOS_MINIMUM_OS_OPTION, MACOS_MINIMUM_OS_OUTSIDE_APPLICATION],
-    outputs = [_MACOS_MINIMUM_OS_OPTION, MACOS_MINIMUM_OS_OUTSIDE_APPLICATION],
+    inputs = APPLICATION_SCOPED_OPTIONS,
+    outputs = APPLICATION_SCOPED_OPTIONS,
 )
 
 _MACOS_ATTRS = {

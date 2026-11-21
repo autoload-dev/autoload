@@ -8,20 +8,13 @@ same slot; an application without overrides keeps the shell it had.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/tests:action_inputs.bzl", "expect_not_read", "godot_actions")
-load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":action_graph.bzl", "bundle_closure", "reached", "reached_actions", "reads")
+load(":android_settings.bzl", "ANDROID", "ANDROID_SDK")
 
 _FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"
 _PATH = "fixtures/mobile_app_with_platform_libraries/"
 _ANDROID_OVERRIDES = _PATH + "android/overrides/"
 _IOS_OVERRIDES = _PATH + "ios/overrides/"
-
-_ANDROID = {
-    "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-} | own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
-
-# Android applications need an installed Android SDK; without one the tests are skipped.
-_ANDROID_SDK = {"size": "small", "target_compatible_with": [Label(":requires_android_sdk")]}
 
 # Apple applications need Xcode, which only a macOS host has.
 _IOS = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_x86_64"))}
@@ -43,19 +36,23 @@ def _shell_actions(target):
         struct(writers, yields): the GodotShellFile actions by command, as a dict of
         lists, and the GodotShellYield actions.
     """
-    actions = {}
-    for entry in reached(target):
-        if entry.action.mnemonic in ["GodotShellFile", "GodotShellYield"]:
-            actions[entry.action.outputs.to_list()[0].short_path] = entry.action
+    actions = _unique_shell_actions(target)
     writers = {}
-    yields = []
-    for action in actions.values():
-        if action.mnemonic == "GodotShellYield":
-            yields.append(action)
-        else:
+    for action in actions:
+        if action.mnemonic == "GodotShellFile":
             # The command is the first argument after the tool.
             writers.setdefault(action.argv[1], []).append(action)
+    yields = [action for action in actions if action.mnemonic == "GodotShellYield"]
     return struct(writers = writers, yields = yields)
+
+def _unique_shell_actions(target):
+    """Return the GodotShellFile and GodotShellYield actions a target reaches, once per output."""
+    actions = {
+        entry.action.outputs.to_list()[0].short_path: entry.action
+        for entry in reached(target)
+        if entry.action.mnemonic in ["GodotShellFile", "GodotShellYield"]
+    }
+    return actions.values()
 
 def _expect_closure(env, target, present, absent):
     """Assert which files the target's bundle is built from."""
@@ -71,9 +68,9 @@ def _analysis_test(name, target, impl, android, config_settings = {}):
         name = name,
         target = _FIXTURE + target,
         impl = impl,
-        config_settings = (_ANDROID if android else _IOS) | config_settings,
+        config_settings = (ANDROID if android else _IOS) | config_settings,
         extra_target_under_test_aspects = [reached_actions, godot_actions],
-        attr_values = _ANDROID_SDK if android else _MACOS_HOST,
+        attr_values = ANDROID_SDK if android else _MACOS_HOST,
     )
 
 def _test_android_application_without_overrides_keeps_its_shell(name):

@@ -8,6 +8,9 @@ with every other variant.
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private/config:native.bzl", "PLATFORMS", "STRIP")
+load("//godot/private/config:settings.bzl", "VARIANT")
+load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
 visibility([
     "//godot/engine/private/tests/...",
@@ -15,58 +18,52 @@ visibility([
     "//godot/platforms/private/tests/...",
 ])
 
-_PLATFORMS = "//command_line_option:platforms"
 _EXTRA_TOOLCHAINS = "//command_line_option:extra_toolchains"
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
-_STRIP = "//command_line_option:strip"
 _COPT = "//command_line_option:copt"
 _DSYM = "//command_line_option:apple_generate_dsym"
-_OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
+_OBJCSTRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
-_VARIANT = str(Label("//godot:variant"))
-_ANDROID_TOOLCHAINS = [
-    str(Label("@androidsdk//:all")),
-    str(Label("@android_toolchains//:all")),
-]
 
 _SETTINGS = [
-    _PLATFORMS,
+    PLATFORMS,
     _EXTRA_TOOLCHAINS,
     _COMPILATION_MODE,
-    _STRIP,
+    STRIP,
     _COPT,
     _DSYM,
-    _OBJC_STRIP,
+    _OBJCSTRIP,
     _ANDROID_FORMAT,
     _ANDROID_API_LEVEL,
-    _VARIANT,
+    VARIANT,
+    ENGINE,
 ]
+
+# The attributes that replace a setting when they are set, by attribute name.
+_REPLACED = {
+    "compilation_mode": _COMPILATION_MODE,
+    "strip": STRIP,
+    "apple_generate_dsym": _DSYM,
+    "objc_enable_binary_stripping": _OBJCSTRIP,
+    "android_format": _ANDROID_FORMAT,
+    "android_api_level": _ANDROID_API_LEVEL,
+    "variant": VARIANT,
+}
 
 def _configured_impl(settings, attr):
     result = {setting: settings[setting] for setting in _SETTINGS}
     if attr.platform:
-        result[_PLATFORMS] = [str(attr.platform)]
-    toolchains = list(settings[_EXTRA_TOOLCHAINS])
-    if attr.android:
-        toolchains += _ANDROID_TOOLCHAINS
-    result[_EXTRA_TOOLCHAINS] = toolchains + attr.extra_toolchains
-    if attr.compilation_mode:
-        result[_COMPILATION_MODE] = attr.compilation_mode
-    if attr.strip:
-        result[_STRIP] = attr.strip
+        result[PLATFORMS] = [str(attr.platform)]
+    result[_EXTRA_TOOLCHAINS] = settings[_EXTRA_TOOLCHAINS] + attr.extra_toolchains
     if attr.copts:
         result[_COPT] = list(settings[_COPT]) + attr.copts
-    if attr.apple_generate_dsym:
-        result[_DSYM] = True
-    if attr.objc_enable_binary_stripping:
-        result[_OBJC_STRIP] = True
-    if attr.android_format:
-        result[_ANDROID_FORMAT] = attr.android_format
-    if attr.android_api_level:
-        result[_ANDROID_API_LEVEL] = attr.android_api_level
-    if attr.variant:
-        result[_VARIANT] = attr.variant
+    for name, setting in _REPLACED.items():
+        value = getattr(attr, name)
+        if value:
+            result[setting] = value
+    if attr.engine:
+        result.update(development_engine(attr.engine))
     return result
 
 _configured = transition(
@@ -100,8 +97,11 @@ configured_outputs = rule(
     attrs = {
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),
         "platform": attr.label(doc = "The export platform or platform slice; the build's own target platform by default."),
-        "android": attr.bool(doc = "Register the Android SDK and NDK toolchains, as `--config=android-toolchains` does."),
-        "extra_toolchains": attr.string_list(doc = "Further toolchain patterns as absolute labels, such as a source-built engine's `@<hub>//toolchains:all`."),
+        "extra_toolchains": attr.string_list(doc = "Registration sets as absolute labels, appended to `--extra_toolchains` ahead of the registered engines, such as a source-built hub's `@<hub>//toolchains:all`; see the contract in `//godot/private/tests:toolchains.bzl`."),
+        "engine": attr.string(
+            doc = "The development engine, a key of DEVELOPMENT_ENGINES such as `beta`, selected by its engine name; the build's own by default. See the contract in `//godot/private/tests:toolchains.bzl`.",
+            values = [""] + DEVELOPMENT_ENGINES.keys(),
+        ),
         "compilation_mode": attr.string(values = ["", "fastbuild", "dbg", "opt"]),
         "strip": attr.string(values = ["", "always", "sometimes", "never"]),
         "copts": attr.string_list(doc = "Appended to `--copt`."),

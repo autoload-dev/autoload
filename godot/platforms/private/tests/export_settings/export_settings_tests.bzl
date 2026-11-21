@@ -53,6 +53,9 @@ def _ios_shell(name, pack):
     )
     return ":" + name + "_app.godot_shell"
 
+# The shell and bootstrap write their settings in any configuration, so the tests keep the
+# host's and run on every host, rather than a platform slice of an Android or iOS export
+# platform (//godot/private/tests:configurations.bzl), which needs that SDK.
 def _release_test(name, target, impl):
     analysis_test(
         name = name,

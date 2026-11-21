@@ -16,7 +16,9 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/platforms/private/tests:action_graph.bzl", "reached", "reached_actions")
 load("//godot/platforms/private/tests:backends.bzl", "godot_android_application", "godot_ios_application")
+load("//godot/private/tests:configurations.bzl", "in_platform_slice")
 
 _ADDONS = "//godot/platforms/private/tests/platform_libraries/fixtures/addons_with_platform_libraries:"
 _UNMATCHED = "//godot/platforms/private/tests/platform_libraries/fixtures/extensions_without_matching_libraries:"
@@ -51,8 +53,13 @@ def _android_libraries(name, fixture, pack):
     )
     return ":%s_app.godot_jni_libraries" % name
 
-def _ios_app(name, fixture, pack):
-    """Arrange an iOS application of pack and return its shell target."""
+def _ios_app(name, fixture, pack, part = ""):
+    """
+    Arrange an iOS application of pack and return its shell target or a part of the shell.
+
+    The part is analyzed in the application's platform slice, where rules_apple's split
+    analyzes it, not in the test's own configuration with a macOS CPU name.
+    """
     godot_ios_application(
         name = name + "_app",
         bundle_id = "org.example.game",
@@ -60,11 +67,16 @@ def _ios_app(name, fixture, pack):
         runtime = fixture + "runtime",
         tags = ["manual"],
     )
-    return ":%s_app.godot_shell" % name
+    in_platform_slice(
+        name = name + "_in_platform_slice",
+        tags = ["manual"],
+        target = ":%s_app.godot_shell%s" % (name, part),
+    )
+    return ":%s_in_platform_slice" % name
 
 def _ios_libraries(name, fixture, pack):
     """Arrange an iOS application of pack and return its extension libraries target."""
-    return _ios_app(name, fixture, pack) + ".extension_libraries"
+    return _ios_app(name, fixture, pack, ".extension_libraries")
 
 def _linked(target):
     """Names of the owners of the libraries a CcInfo links."""
@@ -173,15 +185,16 @@ def _test_ios_shell_merges_addon_infoplists(name):
         target = _ios_app(name, _ADDONS, "pack"),
         impl = _ios_shell_merges_addon_infoplists,
         config_settings = _IOS.config_settings,
+        extra_target_under_test_aspects = [reached_actions],
         attr_values = _IOS.attr_values,
     )
 
 def _ios_shell_merges_addon_infoplists(env, target):
     inputs = [
         file.basename
-        for action in target.actions
-        if action.mnemonic == "GodotShellFile"
-        for file in action.inputs.to_list()
+        for entry in reached(target)
+        if entry.action.mnemonic == "GodotShellFile"
+        for file in entry.action.inputs.to_list()
     ]
 
     # The strict shell metadata merger consumes the contributed fragment.

@@ -116,13 +116,39 @@ runs:
     # once no build used them for 14 days; a zero idle delay lets Bazel prune
     # them between the job's commands.
     - name: Locate cache
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: inputs.bazel == 'true'
       id: cache
       shell: bash
       run: |
         cache=$HOME/.cache/bazel-repository
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
+        echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
+    # macOS runners have no sticky disk: the cache service keeps a job's
+    # downloads, such as the export templates, without the extracted
+    # repositories. A key ends in the digest of the entry's file list; the
+    # newest entry is restored, and save-downloads saves at the job's end.
+    - name: Restore downloads
+      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      id: downloads
+      uses: actions/cache/restore@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
+      with:
+        path: ${{ steps.cache.outputs.path }}/content_addressable
+        key: ${{ steps.cache.outputs.downloads-key }}
+        restore-keys: ${{ steps.cache.outputs.downloads-key }}
+    - name: Record restored downloads
+      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      shell: bash
+      env:
+        DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
+        KEY_PREFIX: ${{ steps.cache.outputs.downloads-key }}
+        RESTORED_KEY: ${{ steps.downloads.outputs.cache-matched-key }}
+      run: |
+        {
+          echo "BAZEL_DOWNLOADS=$DOWNLOADS"
+          echo "BAZEL_DOWNLOADS_KEY_PREFIX=$KEY_PREFIX"
+          echo "BAZEL_DOWNLOADS_RESTORED_KEY=$RESTORED_KEY"
+        } >> "$GITHUB_ENV"
     # One disk per job: jobs fetch different repositories, and each job
     # commits its own clone of the disk.
     - name: Mount cache from sticky disk
@@ -143,7 +169,7 @@ runs:
           find "$DOWNLOADS" -mindepth 1 -type d -empty -delete
         fi
     - name: Configure repository cache
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: inputs.bazel == 'true'
       shell: bash
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}

@@ -172,7 +172,6 @@ _DESKTOP_APPS = [
 [
     configured_outputs(
         name = "%s_selected_app" % name,
-        android = True,
         android_format = android_format,
         platform = platform,
         tags = ["manual"],
@@ -302,7 +301,6 @@ configured_outputs(
 [
     configured_outputs(
         name = "android_dual_abi_bundle_sdk_%s" % fixture.replace(".", "_"),
-        android = True,
         android_format = "aab",
         platform = _BOTH_CPUS + "common_android",
         tags = ["manual"],

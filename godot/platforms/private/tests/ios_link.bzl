@@ -11,11 +11,13 @@ def ios_unsigned_link(name, pack, runtime):
         name = name + ".inputs",
         pack = pack,
         runtime = runtime,
-        bundle_id = "org.example.rulesgodot.beta",
         minimum_os_version = "15.0",
-        families = ["iphone", "ipad"],
-        app_name = "beta_app",
-        executable_name = "beta_app",
+        shell = dict(
+            bundle_id = "org.example.rulesgodot.beta",
+            families = ["iphone", "ipad"],
+            app_name = "beta_app",
+            executable_name = "beta_app",
+        ),
         common = {"tags": ["manual"]},
     )
     apple_binary(

@@ -6,6 +6,7 @@ load("//godot/platforms/private:maven.bzl", "MavenCoordinatesInfo", "maven_coord
 load("//godot/platforms/private:shell.bzl", "SHELL_ATTRS", "release_values", "shell_file")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:versions.bzl", "godot_series", "godot_version_name")
+load("//godot/private/config:transitions.bzl", "content_transition")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 
 visibility("private")
@@ -84,7 +85,9 @@ def _yield_resources(ctx, trees, candidates, name):
 
 def _android_bootstrap_impl(ctx):
     _check_manifest_values(ctx)
-    pack = ctx.attr.pack[GodotPackInfo]
+
+    # A transitioned attribute holds a list, here of the one pack.
+    pack = ctx.attr.pack[0][GodotPackInfo]
     engine = engine_profile(pack.version)
     profile = engine["android"]
 
@@ -193,9 +196,15 @@ godot_android_bootstrap = rule(
     implementation = _android_bootstrap_impl,
     attrs = {
         "pack": attr.label(
-            doc = "PCK target providing GodotPackInfo.",
+            doc = """
+            PCK target providing GodotPackInfo. The bootstrap reads the export's files
+            and facts, which the pack's content configuration holds, so it reaches the
+            pack there: android_binary's own configuration and rules_android's split then
+            analyze no native code of the pack for it.
+            """,
             mandatory = True,
             providers = [GodotPackInfo],
+            cfg = content_transition,
         ),
         "app_name": attr.string(
             doc = "Label when neither package/name nor config/name sets one.",

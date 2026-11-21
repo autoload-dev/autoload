@@ -28,6 +28,8 @@ _PROBE = "//godot/engine/private/tests:probe"
 # iOS components apply Apple's aspects to their payload, which need macOS tools.
 _MACOS_ONLY = {"target_compatible_with": ["@platforms//os:macos"]}
 
+# How components register and resolve is the subject, so the tests register their sets with
+# --extra_toolchains rather than selecting a development engine by name.
 def _settings(target_platform, variant = "release", sets = [_FIXTURES + ":all"], execution_platform = None, extra = {}):
     settings = {
         "//command_line_option:platforms": str(Label(_PLATFORMS + target_platform)),

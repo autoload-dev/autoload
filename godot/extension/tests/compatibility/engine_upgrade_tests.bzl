@@ -11,8 +11,9 @@ editor or a file derived from it reruns.
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
-load(":engines.bzl", "ENGINES", "with_engine")
+load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES")
 
 visibility("private")
 
@@ -80,14 +81,14 @@ _reached_actions = aspect(
 )
 
 def _arrange(name):
-    for engine in ENGINES:
-        with_engine(
+    for engine in DEVELOPMENT_ENGINES:
+        configured_outputs(
             name = "%s_%s" % (name, engine),
             engine = engine,
             target = _FIXTURE,
             tags = ["manual"],
         )
-    return {engine: ":%s_%s" % (name, engine) for engine in ENGINES}
+    return {engine: ":%s_%s" % (name, engine) for engine in DEVELOPMENT_ENGINES}
 
 def _entries(target, mnemonics):
     return [
@@ -126,7 +127,7 @@ def _signature(entry):
 
 def _editor_repository(engine):
     # The hub's editor repositories are its siblings, such as <hub>_editor_macos.
-    return "../" + Label(ENGINES[engine]).repo_name + "_editor_"
+    return "../" + DEVELOPMENT_ENGINES[engine].hub.repo_name + "_editor_"
 
 def _is_editor(file, engine):
     return file.short_path.startswith(_editor_repository(engine))
@@ -148,7 +149,7 @@ def _engine_derived(target):
     for action in godot:
         for file in action.inputs.to_list():
             hidden_result = file.is_directory and not file.is_source and file.path not in produced
-            if hidden_result or any([_is_editor(file, engine) for engine in ENGINES]):
+            if hidden_result or any([_is_editor(file, engine) for engine in DEVELOPMENT_ENGINES]):
                 derived[file.path] = None
     for _ in range(len(godot)):
         changed = False
@@ -163,7 +164,7 @@ def _engine_derived(target):
 
 def _expect_unchanged(env, targets, mnemonics):
     """Assert that the actions have the same command and inputs under both engines, none derived."""
-    for engine in ENGINES:
+    for engine in DEVELOPMENT_ENGINES:
         target = getattr(targets, engine)
         derived = _engine_derived(target)
         for entry in _entries(target, mnemonics):
@@ -210,7 +211,7 @@ def _test_engine_upgrade_reruns_editor_actions(name):
     )
 
 def _engine_upgrade_reruns_editor_actions(env, targets):
-    for engine in ENGINES:
+    for engine in DEVELOPMENT_ENGINES:
         target = getattr(targets, engine)
         derived = _engine_derived(target)
         for mnemonic in _RUNS_EDITOR + _READS_EDITOR_RESULTS:
@@ -224,7 +225,7 @@ def _engine_upgrade_reruns_editor_actions(env, targets):
                     continue
 
                 # The selected engine's editor, and not the other one's.
-                for editor in ENGINES:
+                for editor in DEVELOPMENT_ENGINES:
                     env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner, editor = editor).that_bool(
                         _reads_editor(entry.action, editor),
                     ).equals(editor == engine)

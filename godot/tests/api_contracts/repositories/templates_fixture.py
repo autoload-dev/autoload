@@ -23,13 +23,6 @@ def main() -> None:
                 )
     output = Path(__file__).with_name("split_templates.zip")
     with zipfile.ZipFile(output, "w") as archive:
-        for cpu in ["arm64", "x86_64"]:
-            for variant in ["debug", "release"]:
-                write(
-                    archive,
-                    f"templates/linux_{variant}.{cpu}",
-                    b"analysis fixture only\n",
-                )
         write(archive, "templates/macos.zip", macos.getvalue())
 
 

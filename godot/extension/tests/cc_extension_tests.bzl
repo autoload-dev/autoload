@@ -28,10 +28,11 @@ _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
 _IOS_SIMULATOR = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))}
 _IOS_SIMULATOR_BOTH_CPUS = {"//command_line_option:platforms": str(Label(":ios_simulator_both_cpus"))}
 
-# Android analysis needs the SDK and NDK toolchains; without an SDK the test is skipped.
+# Android analysis needs the SDK and NDK toolchains, which MODULE.bazel registers; without an
+# SDK the test is skipped.
 _ANDROID = {
     "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-} | own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"])
+} | own_toolchains()
 _ANDROID_SDK = {"target_compatible_with": [Label("//godot/platforms/private/tests:requires_android_sdk")]}
 
 def _extension(name, **kwargs):

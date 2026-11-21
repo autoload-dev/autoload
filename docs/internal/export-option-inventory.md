@@ -232,6 +232,6 @@ names still need an explicit declaration/authored-name candidate as described ab
 Reproduce from the repository root by building
 `//godot/platforms/private/tests/app_platform_selection:linux_export_options_match_facts_observations_facts`
 and its `macos_`, `android_` and `ios_` counterparts with
-`--extra_toolchains=@godot_beta//toolchains:all`. Inspect each facts JSON by `editor_version`
+`--//godot:engine=beta`. Inspect each facts JSON by `editor_version`
 and destination features; compare only option names/types, never persist defaults or
 credential-bearing values.

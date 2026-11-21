@@ -113,6 +113,7 @@ SUPPORT_MODULES = [
     "//godot/platforms/private:maven.bzl",
     "//godot/platforms/private:ios_runtime_bridge.bzl",
     "//godot/private/config:application.bzl",
+    "//godot/private/config:native.bzl",
     "//godot/private/config:settings.bzl",
     "//godot/private/config:transitions.bzl",
     "//godot/private:actions.bzl",

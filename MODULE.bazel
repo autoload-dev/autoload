@@ -88,6 +88,16 @@ godot_android_toolchains = use_extension(
 godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
+# Registered here rather than per test with --extra_toolchains, which survives the exec
+# transition and would split the tests' tools into exec configurations of their own. The
+# root module's registrations precede rules_android's, and the hub's precede the host SDK's,
+# as the last entry of --config=android-toolchains in the consumer modules does.
+register_toolchains(
+    "@android_toolchains//:all",
+    "@androidsdk//:all",
+    dev_dependency = True,
+)
+
 # The ruleset's own development engines; consumers register their own sets.
 godot_engines = use_extension("//godot:extensions.bzl", "godot_engines", dev_dependency = True)
 godot_engines.prebuilt(
@@ -96,13 +106,17 @@ godot_engines.prebuilt(
 )
 
 # The next-minor engine of //godot/extension/tests/compatibility and
-# //godot/platforms/private/tests/engine_probe, which select it with a test transition; not
-# registered, so only those tests fetch it. The prerelease shell AAR is a GitHub release
-# asset, not a catalogued Maven artifact.
+# //godot/platforms/private/tests/engine_probe, which select it with a test transition on
+# --//godot:engine=beta. Registered under that engine name rather than per test with
+# --extra_toolchains, which survives the exec transition and would split the tests' tools
+# into exec configurations of their own; only builds that name the engine fetch its editor
+# and templates. The prerelease shell AAR is a GitHub release asset, not a catalogued Maven
+# artifact.
 godot_engines.prebuilt(
     name = "godot_beta",
     android_shell_integrity = "sha256-G1KpV92jFIn4OirzO17zy2euXFLyE40BSATgYs9MI5Y=",
     android_shell_urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-lib.4.8.beta1.template_release.aar"],
+    engine = "beta",
     version = "4.8.0-beta1",
 )
 
@@ -137,7 +151,8 @@ godot_engines.source(
 # The source-built engines of //godot/platforms/private/tests/engine_probe, which selects
 # each with a test transition; not registered, so only those tests fetch and build them.
 # Android and iOS differ in renderer options and modules; the beta builds add the ruleset's
-# own bazel_probe module and engine patch.
+# own bazel_probe module and engine patch, and join the beta engine, whose other slots they
+# take from @godot_beta.
 godot_engines.source_build(
     name = "godot_source_build_android",
     build_options = {
@@ -196,6 +211,7 @@ godot_engines.source_build(
         "freetype",
         "bazel_probe",
     ],
+    engine = "beta",
     patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platforms = ["android"],
     source = "@godot_sources_beta//:source.json",
@@ -222,6 +238,7 @@ godot_engines.source_build(
         "freetype",
         "bazel_probe",
     ],
+    engine = "beta",
     ios_environments = ["simulator"],
     patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platforms = ["ios"],
@@ -237,7 +254,7 @@ use_repo(
     "godot_beta_source_build_android_android_arm64_template_release",
     "godot_beta_source_build_ios",
     "godot_beta_source_build_ios_ios_arm64_simulator_template_release",
-    "godot_beta_templates",
+    "godot_beta_templates_ios",
     "godot_editor_linux_arm64",
     "godot_editor_linux_x86_64",
     "godot_editor_macos",
@@ -246,11 +263,11 @@ use_repo(
     "godot_sources",
     "godot_sources_beta",
     "godot_sources_snapshot",
-    "godot_templates",
 )
 
 register_toolchains(
     "@godot//toolchains:all",
+    "@godot_beta//toolchains:all",
     dev_dependency = True,
 )
 

@@ -256,7 +256,8 @@ environment variables do not reach the application, `--env` does.
 ## Linux and macOS
 
 The [registered engines](engine.md#use-a-prebuilt-engine) supply the runtime of each
-operating system; the large export-templates archive is fetched only when an app needs it.
+operating system; the large export-templates archive is fetched only when an app needs it,
+and only the templates of the app's operating system are extracted from it.
 Declare one pack and app:
 
 ```starlark
@@ -685,7 +686,8 @@ and keeps the build ID or UUID that crash reporters match symbols by.
 Extension libraries and source-built engines link without `--strip`, so the debug
 symbols keep what they were compiled with; Bazel's warning that `--strip` removes
 the debug information of `--copt=-g` applies only to the packaged copy. On iOS, rules_apple strips the executable
-instead, with `-c opt --objc_enable_binary_stripping`.
+instead, with `-c opt --objc_enable_binary_stripping`, and the application's native code
+builds without `--strip`.
 
 Debug symbols carry what the build compiled in: `-c`, the toolchain's features
 and `--copt`, `--per_file_copt` or `copts` decide, for a source-built engine,

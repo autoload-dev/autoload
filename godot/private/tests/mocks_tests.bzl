@@ -32,12 +32,17 @@ def _test_extract_records_the_archive(env):
     ctx = mocks.repository_ctx()
     ctx.extract("source.tar.gz", stripPrefix = "godot-4.7.2-stable")
     ctx.extract("templates/ios.zip", output = "ios")
+    ctx.extract("export_templates.tpz", rename_files = {"a": "kept/a"}, strip_prefix = "kept")
     extracts = mocks.calls(ctx, "extract")
     env.expect.that_collection([call.archive for call in extracts]).contains_exactly(
-        ["source.tar.gz", "templates/ios.zip"],
+        ["source.tar.gz", "templates/ios.zip", "export_templates.tpz"],
     ).in_order()
     env.expect.that_str(extracts[0].stripPrefix).equals("godot-4.7.2-stable")
     env.expect.that_str(extracts[1].output).equals("ios")
+
+    # Other arguments are recorded as given.
+    env.expect.that_dict(extracts[2].rename_files).contains_exactly({"a": "kept/a"})
+    env.expect.that_str(extracts[2].strip_prefix).equals("kept")
 
 def _test_path_struct_names_its_parts(env):
     path = mocks.path("ndk/lib/clang", children = ["18"])

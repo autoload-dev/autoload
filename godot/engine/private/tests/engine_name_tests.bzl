@@ -18,6 +18,8 @@ _NAMED_MACOS = _FIXTURES + "/named_engine_macos:all"
 _NAMED_FORWARD = _FIXTURES + "/named_forward:all"
 _ENGINE = str(Label("//godot:engine"))
 
+# The engine names of registration sets and their order within one engine are the subject,
+# so the tests register their sets with --extra_toolchains.
 def _settings(engine, sets, target_platform = "linux_x86_64", execution_platforms = ["remote_linux"]):
     return {
         "//command_line_option:platforms": str(Label(_PLATFORMS + target_platform)),

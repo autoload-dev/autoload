@@ -1,40 +1,17 @@
-"""Test rules that build and run a target with one engine's toolchains."""
+"""A test rule that runs a test target with one development engine."""
 
 load("//godot/private:execution.bzl", "TEST_EXEC_GROUPS")
+load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
 visibility("private")
 
-_TOOLCHAINS = "//command_line_option:extra_toolchains"
-
-# The toolchain hubs of the root module's development engines.
-ENGINES = {
-    "beta": "@godot_beta//toolchains:all",
-    "stable": "@godot//toolchains:all",
-}
-
-def _engine_transition_impl(settings, attr):
-    # Appended, so the command line's toolchains, such as a remote execution platform's
-    # C++ toolchain, stay in place.
-    return {_TOOLCHAINS: settings[_TOOLCHAINS] + [str(Label(ENGINES[attr.engine]))]}
+def _engine_transition_impl(_settings, attr):
+    return development_engine(attr.engine)
 
 _engine_transition = transition(
     implementation = _engine_transition_impl,
-    inputs = [_TOOLCHAINS],
-    outputs = [_TOOLCHAINS],
-)
-
-_ENGINE_ATTR = attr.string(mandatory = True, values = ENGINES.keys())
-
-def _with_engine_impl(ctx):
-    return [DefaultInfo(files = ctx.attr.target[0][DefaultInfo].files)]
-
-with_engine = rule(
-    doc = "The target built with the engine's toolchains, for analysis tests of its actions.",
-    implementation = _with_engine_impl,
-    attrs = {
-        "engine": _ENGINE_ATTR,
-        "target": attr.label(mandatory = True, cfg = _engine_transition),
-    },
+    inputs = [],
+    outputs = [ENGINE],
 )
 
 def _engine_test_impl(ctx):
@@ -49,10 +26,14 @@ def _engine_test_impl(ctx):
     return [DefaultInfo(executable = executable, runfiles = runfiles)]
 
 engine_test = rule(
-    doc = "Run a test target built with the engine's toolchains.",
+    doc = "Run a test target built with one development engine.",
     implementation = _engine_test_impl,
     attrs = {
-        "engine": _ENGINE_ATTR,
+        "engine": attr.string(
+            doc = "The development engine, a key of DEVELOPMENT_ENGINES.",
+            mandatory = True,
+            values = DEVELOPMENT_ENGINES.keys(),
+        ),
         "test": attr.label(mandatory = True, executable = True, cfg = _engine_transition),
     },
     test = True,

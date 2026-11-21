@@ -10,5 +10,5 @@ apple_static_xcframework_import(
         "UIKit",
         "CoreGraphics",
     ],
-    xcframework_imports = glob(["ios/AccessKit.xcframework/**"]),
+    xcframework_imports = glob(["{XCFRAMEWORK}/**"]),
 )

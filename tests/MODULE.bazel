@@ -142,7 +142,6 @@ use_repo(
     "godot",
     "godot_sources_beta",
     "godot_sources_snapshot",
-    "godot_templates",
 )
 
 register_toolchains("@godot//toolchains:all")

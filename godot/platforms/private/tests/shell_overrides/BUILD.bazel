@@ -14,7 +14,6 @@ _ANDROID_APPS = {
 [
     configured_outputs(
         name = "android_overrides_replace_shell_defaults_test_" + role,
-        android = True,
         platform = "//godot/platforms:android_arm64",
         tags = ["manual"],
         target = _FIXTURE + app,
