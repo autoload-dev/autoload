@@ -68,7 +68,7 @@ documentation-only changes do not load the code rules.
 | Python/Starlark/BUILD/configuration | Applicable source quality; host tests when selected | Lanes whose packaging, build or runtime contract is affected |
 | One example | That example's host suite; selected mobile package builds at the delivery boundary | Other examples only for shared dependencies; runtime acceptance for changed operating-system behavior |
 | Shared rules, engine/build inputs | Selected host, package, compatibility and cache checks | Extra CPUs or clean builds only for the changed contract |
-| One add-on module in `addons/<module>/` | Its own tasks in every lane: `test:addon:<module>` (host), `android:addon:<module>` and `ios:addon:<module>` | None: rule changes alone do not select add-on lanes; a break shows in the module's next change |
+| One add-on module in `addons/<module>/` | Its own tasks in every lane: `host:addon:<module>` (host), `android:addon:<module>` and `ios:addon:<module>` | None: rule changes alone do not select add-on lanes; a break shows in the module's next change |
 | CI/toolchain configuration | Setup/selector tests, workflow/action validation, cleanup tests and affected non-host lanes | CI runner evidence when local tools cannot reproduce its setup |
 
 Path selection is conservative for shared rules and build inputs: the `core` list can select
@@ -100,7 +100,7 @@ automatically without building unrelated app targets. The full examples task dis
 example subtrees. Bazel still respects manual tags and platform compatibility.
 
 Add-on modules are selected only by their own directory: `addonModules` in `hk.pkl` lists
-them, and each has `test:addon:`, `android:addon:` and `ios:addon:` tasks in `mise.toml`
+them, and each has `host:addon:`, `android:addon:` and `ios:addon:` tasks in `mise.toml`
 that run from the module's `examples/`. Their iOS task follows the Apple-lane policy below.
 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides

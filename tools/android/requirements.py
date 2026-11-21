@@ -14,13 +14,10 @@ SDK = "android_sdk_repository_extension.configure"
 LINUX_TOOLCHAINS = "godot/platforms/private/android_toolchains.bzl"
 
 
-def sdk_requirements(source: str) -> dict[str, str | int] | None:
-    """The SDK a module configures, or None for a module that builds no application."""
+def sdk_requirements(source: str) -> dict[str, str | int]:
     calls = [call for call in declarations(source) if call.kind == SDK]
-    if not calls:
-        return None
     if len(calls) != 1:
-        raise ValueError(f"Expected at most one {SDK} declaration")
+        raise ValueError(f"Expected one {SDK} declaration")
     return {
         keyword: ast.literal_eval(value)
         for keyword, value in calls[0].keywords.items()
@@ -54,6 +51,15 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
     return version("_LINUX_BUILD_TOOLS"), version("_LINUX_NDK"), levels
 
 
+def application_modules(root: Path) -> list[str]:
+    """The modules that build applications; an add-on module uses its examples' SDK."""
+    return [
+        module
+        for module in module_paths(root)
+        if SDK.partition(".")[0] in (root / module / "MODULE.bazel").read_text()
+    ]
+
+
 def configuration_errors(root: Path) -> list[str]:
     provisioned = tomllib.loads((root / "mise.toml").read_text())["vars"]
     apis = provisioned["android_api_levels"].split(",")
@@ -70,14 +76,12 @@ def configuration_errors(root: Path) -> list[str]:
 
     # A file several modules import, such as shared.bazelrc, is reported once.
     overrides = set()
-    for module in module_paths(root):
+    for module in application_modules(root):
         manifest = (Path(module) / "MODULE.bazel").as_posix()
         try:
             required = sdk_requirements((root / manifest).read_text())
         except (SyntaxError, ValueError) as error:
             errors.append(f"{manifest}: {error}")
-            continue
-        if required is None:
             continue
         for key in ("api_level", "build_tools_version"):
             check(manifest, key, required.get(key))
