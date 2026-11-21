@@ -17,12 +17,12 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 _ANDROID_APPS = "//godot/platforms/private/tests/library_composition/fixtures/android_apps_with_transitive_platform_libraries:"
 _IOS_APPS = "//godot/platforms/private/tests/library_composition/fixtures/ios_apps_with_transitive_platform_libraries:"
 
-# Android applications analyze with the Android SDK and NDK toolchains, which rules_android
-# registers only where it found an SDK.
+# Android applications analyze with the Android SDK and NDK toolchains that MODULE.bazel
+# registers; rules_android's SDK has them only where it found one.
 _ANDROID = struct(
     config_settings = {
         "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-    } | own_toolchains(["@androidsdk//:all", "@android_toolchains//:all"]),
+    } | own_toolchains(),
     attr_values = {
         "size": "small",
         "target_compatible_with": ["//godot/platforms/private/tests:requires_android_sdk"],

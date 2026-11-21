@@ -115,7 +115,6 @@ py_test(
 [
     configured_outputs(
         name = "android_launch_arguments_plugin_%s_%s" % (mode, group),
-        android = True,
         compilation_mode = mode,
         output_group = group,
         platform = "//godot/platforms:android_arm64",

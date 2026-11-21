@@ -36,7 +36,9 @@ def _test_test_and_run_take_their_execution_editors(name):
         target = name + "_probe",
         impl = _test_test_and_run_take_their_execution_editors_impl,
         # The probe targets the remote operating system: a test runs on an execution platform
-        # compatible with its target platform, while bazel run still runs on the host.
+        # compatible with its target platform, while bazel run still runs on the host. The
+        # editor per execution platform is the subject, so the test registers the editors and
+        # the platforms on the command line.
         config_settings = {
             "//command_line_option:platforms": str(Label(_REMOTE_PLATFORM)),
             "//command_line_option:extra_execution_platforms": [str(Label(_REMOTE_PLATFORM))],
