@@ -10,6 +10,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
+load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
 
 visibility("public")
 
@@ -262,8 +263,8 @@ _SOURCE_ATTRS = {
 
 # The deployment-target option each Apple platform's engine compiles against.
 _FLOOR_OPTIONS = {
-    "macos": "//command_line_option:macos_minimum_os",
-    "ios": "//command_line_option:ios_minimum_os",
+    "macos": MACOS_MINIMUM_OS_OPTION,
+    "ios": IOS_MINIMUM_OS_OPTION,
 }
 
 def _floor(settings, attr):
@@ -283,12 +284,12 @@ def _floor(settings, attr):
 def _desktop_native_impl(settings, attr):
     # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
     # explains; a transition cannot compose two, so this one repeats that setting.
-    return _floor(settings, attr) | {"//command_line_option:strip": "never"}
+    return _floor(settings, attr) | UNSTRIPPED
 
 _desktop_native = transition(
     implementation = _desktop_native_impl,
     inputs = _FLOOR_OPTIONS.values(),
-    outputs = _FLOOR_OPTIONS.values() + ["//command_line_option:strip"],
+    outputs = _FLOOR_OPTIONS.values() + UNSTRIPPED.keys(),
 )
 
 _engine_library = transition(

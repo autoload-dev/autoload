@@ -29,7 +29,7 @@ load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:shell_assets.bzl", "asset_catalog")
-load("//godot/private/config:native.bzl", "application_options")
+load("//godot/private/config:native.bzl", "APPLICATION_OPTIONS")
 load("//godot/private/config:settings.bzl", "ENVIRONMENT", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":ios_runtime_bridge.bzl", "runtime_bridge_ios")
@@ -337,7 +337,7 @@ def ios_application_inputs(name, pack, runtime, shell, common):
 
 _TREE_OUTPUTS = str(Label("@rules_apple//apple/build_settings:use_tree_artifacts_outputs"))
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
-_NATIVE_OPTIONS = application_options("ios")
+_NATIVE_OPTIONS = APPLICATION_OPTIONS["ios"]
 
 def _application_settings_impl(settings, _attr):
     # Simulator apps and unoptimized builds are never distributed, so their

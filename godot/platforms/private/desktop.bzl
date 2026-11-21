@@ -17,7 +17,7 @@ load(
     "symbols_zip",
 )
 load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
-load("//godot/private/config:native.bzl", "MACOS_APPLICATION_OPTIONS", "macos_application_options")
+load("//godot/private/config:native.bzl", "APPLICATION_SCOPED_OPTIONS", "macos_application_options")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "privacy_manifest", "release_values", "shell_file")
@@ -368,8 +368,8 @@ def _macos_minimum_impl(settings, attr):
 
 _macos_minimum = transition(
     implementation = _macos_minimum_impl,
-    inputs = MACOS_APPLICATION_OPTIONS,
-    outputs = MACOS_APPLICATION_OPTIONS,
+    inputs = APPLICATION_SCOPED_OPTIONS,
+    outputs = APPLICATION_SCOPED_OPTIONS,
 )
 
 _MACOS_ATTRS = {

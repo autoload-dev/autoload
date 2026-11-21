@@ -13,9 +13,7 @@ def _keep_debug_info_impl(_settings, _attr):
     # configurations alone whose links would not strip.
     return LIBRARY_OPTIONS
 
-# Native code that applications package links without Bazel's --strip, whose
-# link-time stripping would remove the DWARF their debug symbols need; the
-# applications apply --strip to the copy they package. LIBRARY_OPTIONS holds the options.
+# Native code that applications package; LIBRARY_OPTIONS in native.bzl says why it unstrips.
 keep_debug_info = transition(
     implementation = _keep_debug_info_impl,
     inputs = [],

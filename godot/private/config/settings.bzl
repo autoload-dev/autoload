@@ -226,7 +226,8 @@ def ios_cpu(environment, cpu):
     return CPU_TABLE[cpu].apple_cpus[environment]
 
 _APPLE = Label("@apple_support//constraints:apple")
-_ANDROID_LIST = str(Label("@rules_android//flags:android_platforms"))
+# rules_android's Starlark setting behind --android_platforms.
+ANDROID_PLATFORMS_SETTING = str(Label("@rules_android//flags:android_platforms"))
 
 # The apple_support platform setting of each Apple split CPU.
 _APPLE_FLAGS = {
@@ -253,6 +254,19 @@ def _names_owned_constraint(constraint_values, package_relative_label):
     """Whether constraint_values name an operating system, CPU or iOS environment constraint."""
     owned = [str(x) for x in OPERATING_SYSTEM_CONSTRAINTS.values() + CPU_CONSTRAINTS.values() + ENVIRONMENT_CONSTRAINTS.values()]
     return any([str(package_relative_label(c)) in owned for c in constraint_values])
+
+def platform_slice_name(export_platform, cpu):
+    """
+    Return the target name of an export platform's platform slice for a CPU.
+
+    Args:
+        export_platform: The export platform's target name, such as ios_sim_x86_64.
+        cpu: The CPU table key, such as x86_64.
+
+    Returns:
+        The platform slice's target name in the export platform's package.
+    """
+    return export_platform + ".platform_slice_" + cpu
 
 def _platform_slices(declared, package_relative_label):
     """
@@ -283,7 +297,7 @@ def _platform_slices(declared, package_relative_label):
         desktop = desktop,
         export_platform = export_platform,
         platform_slices = [export_platform] if desktop else [
-            str(package_relative_label(":" + declared.name + ".platform_slice_" + cpu))
+            str(package_relative_label(":" + platform_slice_name(declared.name, cpu)))
             for cpu in declared.cpus
         ],
     )
@@ -313,10 +327,11 @@ def _split_flags(platform):
 
     rules_android's MODULE flag_alias redirects Bazel's built-in --android_platforms to its
     Starlark setting. It is set explicitly; clearing it would erase the request, and its
-    nonempty value takes precedence over any stale built-in list.
+    nonempty value takes precedence over any stale built-in list. platform_slice_options in
+    native.bzl sets the same options per platform slice in transitions.
     """
     if platform.operating_system == "android":
-        return ["--%s=%s" % (_ANDROID_LIST, ",".join(platform.platform_slices))]
+        return ["--%s=%s" % (ANDROID_PLATFORMS_SETTING, ",".join(platform.platform_slices))]
     if platform.operating_system != "ios":
         return []
     environment = platform.environment

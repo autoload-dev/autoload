@@ -13,7 +13,7 @@ code takes them on the pack's native path, outside the context.
 """
 
 load("//godot/private:providers.bzl", "GodotProjectInfo")
-load("//godot/private/config:native.bzl", "MACOS_APPLICATION_OPTIONS", "outside_application_options")
+load("//godot/private/config:native.bzl", "APPLICATION_SCOPED_OPTIONS", "outside_application_options")
 load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT")
 
 visibility(["//godot/..."])
@@ -38,8 +38,8 @@ def _context_impl(settings, attr):
 
 context_transition = transition(
     implementation = _context_impl,
-    inputs = MACOS_APPLICATION_OPTIONS,
-    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT] + MACOS_APPLICATION_OPTIONS,
+    inputs = APPLICATION_SCOPED_OPTIONS,
+    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT] + APPLICATION_SCOPED_OPTIONS,
 )
 
 def _reset_impl(_settings, _attr):
