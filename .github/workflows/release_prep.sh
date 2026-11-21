@@ -40,6 +40,18 @@ godot_engines.prebuilt(name = "godot", version = "4.7.2")
 use_repo(godot_engines, "godot")
 register_toolchains("@godot//toolchains:all")'
 fi
+# A module that is not on the Bazel Central Registry resolves from this release's archive.
+if [ "$(field bcr)" != true ]; then
+    REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/rules_godot}"
+    INTEGRITY="sha256-$(openssl dgst -sha256 -binary "$ARCHIVE" | openssl base64 -A)"
+    SETUP="${SETUP}
+archive_override(
+    module_name = \"${NAME}\",
+    integrity = \"${INTEGRITY}\",
+    strip_prefix = \"${PREFIX}\",
+    urls = [\"https://github.com/${REPOSITORY}/releases/download/${TAG}/${ARCHIVE}\"],
+)"
+fi
 
 cat << NOTES
 ## Bzlmod

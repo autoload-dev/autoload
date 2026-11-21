@@ -154,6 +154,7 @@ class VerificationTest(unittest.TestCase):
         for step in (
             {"name": "new-check", "status": "included"},
             {"name": "contracts:desktop", "status": "included"},
+            {"name": "desktop:addon:firebase", "status": "included"},
             {"name": "ios", "status": "error"},
         ):
             with self.subTest(step=step), self.assertRaises(ValueError):
