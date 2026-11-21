@@ -9,6 +9,14 @@ package(default_testonly = True)
 
 _CASES = "//godot/private/tests/adapter/fixtures/cases"
 
+# The fake adapter's tests, in the order adapter_contract_test.py takes them.
+_TESTS = [
+    "passing_cases",
+    "failing_case",
+    "error_case",
+    "no_case",
+]
+
 fake_adapter_test(
     name = "passing_cases",
     size = "small",
@@ -47,17 +55,7 @@ py_test(
     name = "adapter_test_follows_test_encyclopedia_test",
     size = "small",
     srcs = ["adapter_contract_test.py"],
-    args = ["$(rootpath :%s)" % name for name in [
-        "passing_cases",
-        "failing_case",
-        "error_case",
-        "no_case",
-    ]],
-    data = [
-        ":error_case",
-        ":failing_case",
-        ":no_case",
-        ":passing_cases",
-    ],
+    args = ["$(rootpath :%s)" % name for name in _TESTS],
+    data = [":" + name for name in _TESTS],
     main = "adapter_contract_test.py",
 )

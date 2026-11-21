@@ -133,19 +133,23 @@ local exampleInputs = new Mapping<String, List<String>> {
   ["dart"] = List("examples/deps/dart_sdk.BUILD.bazel", "examples/deps/dart_sdk.patch")
 }
 
-// The add-on modules in addons/, each with its example applications in examples/, and the
-// lanes of their tasks. Their lanes run only for changes to the module itself: rule changes
-// alone do not select them. GdUnit runs on the host only.
-local addonModules = new Mapping<String, List<String>> {
-  ["firebase"] = List("host", "android", "ios")
-  ["gdunit"] = List("host")
+// The add-on modules in addons/, each with its example applications in examples/: the
+// lanes of their tasks, and what they read of the rules beyond their public API. Their
+// lanes run only for changes to the module itself and those inputs: rule changes alone do
+// not select them.
+local class AddonModule {
+  lanes: List<String> = List("host", "android", "ios")
+  inputs: List<String> = List()
 }
 
-// What each add-on module reads of the rules beyond their public API: autoload_gdunit loads
-// rules_godot's test adapter, which is no supported API.
-local addonInputs = new Mapping<String, List<String>> {
-  ["firebase"] = List()
-  ["gdunit"] = List("godot/private/adapter.bzl", "godot/private/test_cases.gd")
+local addonModules = new Mapping<String, AddonModule> {
+  ["firebase"] = new AddonModule {}
+  // GdUnit runs on the host only. The module loads rules_godot's test adapter, which is no
+  // supported API.
+  ["gdunit"] = new AddonModule {
+    lanes = List("host")
+    inputs = List("godot/private/adapter.bzl", "godot/private/test_cases.gd")
+  }
 }
 
 // Examples whose suites need a lane other than host: Petri's run in an editor built from
@@ -256,11 +260,11 @@ local checks = new Mapping<String, Step> {
       ) + gdunitModule + inputs
     }
   }
-  for (module, lanes in addonModules) {
-    for (lane in lanes) {
+  for (module, addon in addonModules) {
+    for (lane in addon.lanes) {
       [lane + ":addon:" + module] = (task(lane + ":addon:" + module)) {
         profiles = List(lane)
-        glob = List("addons/" + module + "/**") + addonInputs[module]
+        glob = List("addons/" + module + "/**") + addon.inputs
       }
     }
   }

@@ -252,8 +252,8 @@ and given an empty Godot project just to fit the taxonomy.
 
 The check inventories project and add-on directories and authored `project.godot` files in
 every consumer module; the white-box fixture projects of the ruleset module and of an add-on
-module's `tests/` are outside it. Configurations must belong to a named project or add-on. Temporary projects
-constructed inside source strings and generated configuration templates are outside the
+module's `tests/` are outside it. Configurations must belong to a named project or add-on.
+Temporary projects constructed inside source strings and generated configuration templates are outside the
 inventory. This does not require a project or BUILD package for each assertion. See the
 [test ownership](project-layout.md#test-ownership) for test ownership and
 [the layout guide](project-layout.md) for navigation.

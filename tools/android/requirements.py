@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 from tools.setup.modules import bazelrc_options, declarations, module_paths
+from tools.setup.pins import module_pins
 
 # Provisioning must cover the SDK and .bazelrc overrides of every module: the root
 # module's development SDK and each consumer module's SDK.
@@ -54,12 +55,7 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 def _builds_android(root: Path, module: str) -> bool:
     """Whether a module depends on rules_android, as every module that builds for Android."""
     source = (root / module / "MODULE.bazel").read_text()
-    return any(
-        call.kind == "bazel_dep"
-        and ast.literal_eval(call.keywords.get("name", ast.Constant("")))
-        == "rules_android"
-        for call in declarations(source)
-    )
+    return "bazel_dep:rules_android" in module_pins(source)
 
 
 def application_modules(root: Path) -> list[str]:
