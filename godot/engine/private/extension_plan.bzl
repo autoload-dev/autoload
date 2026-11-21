@@ -36,6 +36,28 @@ def prebuilt_plan(tag, *, _fail = fail):
     if error:
         return _fail(error)
     release = RELEASES.get(tag.version)
+    editors = _editors(tag, release, _fail)
+    if editors == None:
+        return None
+    templates = _templates(tag, release, _fail)
+    if templates == None:
+        return None
+    error = _shell_error(tag)
+    if error:
+        return _fail(error)
+    return struct(
+        editors = editors,
+        templates = templates,
+        android_shell = _pinned_shell(tag, "android_shell") or (
+            struct(**release["android_shell"]) if release and "android_shell" in release else None
+        ),
+        android_debug_shell = _pinned_shell(tag, "android_debug_shell"),
+        ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
+        android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
+    )
+
+def _editors(tag, release, _fail):
+    """Return the editor archives of a prebuilt tag by editor platform, or None after an error."""
     editor_platforms = sorted(tag.editor_urls) if tag.editor_urls else (release["editor_platforms"] if release else [])
     if not editor_platforms:
         return _fail((
@@ -44,71 +66,73 @@ def prebuilt_plan(tag, *, _fail = fail):
         ) % (tag.version, tag.name))
     editors = {}
     for editor_platform in editor_platforms:
-        if editor_platform not in EDITOR_PLATFORMS:
-            return _fail("godot_engines.prebuilt %r: unknown editor platform %r; expected one of %s" % (tag.name, editor_platform, sorted(EDITOR_PLATFORMS)))
-        layout = EDITOR_PLATFORMS[editor_platform]
-        if tag.editor_urls:
-            if editor_platform not in tag.editor_integrity:
-                return _fail("godot_engines.prebuilt %r: editor_integrity lacks %r" % (tag.name, editor_platform))
-            urls = tag.editor_urls[editor_platform]
-            integrity = tag.editor_integrity[editor_platform]
-            binary = tag.editor_binaries.get(editor_platform, layout.binary.format(tag = release["tag"]) if release else "")
-            if not binary:
-                return _fail("godot_engines.prebuilt %r: editor_binaries lacks %r" % (tag.name, editor_platform))
-        else:
-            urls = _release_urls(release["tag"], layout.suffix + ".zip")
-            integrity = release[editor_platform]
-            binary = layout.binary.format(tag = release["tag"])
-        editors[editor_platform] = struct(urls = urls, integrity = integrity, binary = binary, layout = layout)
+        editor = _editor(tag, release, editor_platform, _fail)
+        if editor == None:
+            return None
+        editors[editor_platform] = editor
+    return editors
+
+def _editor(tag, release, editor_platform, _fail):
+    """Return the archive of one editor platform: pinned on the tag or catalogued; None after an error."""
+    if editor_platform not in EDITOR_PLATFORMS:
+        return _fail("godot_engines.prebuilt %r: unknown editor platform %r; expected one of %s" % (tag.name, editor_platform, sorted(EDITOR_PLATFORMS)))
+    layout = EDITOR_PLATFORMS[editor_platform]
+    if not tag.editor_urls:
+        return struct(
+            urls = _release_urls(release["tag"], layout.suffix + ".zip"),
+            integrity = release[editor_platform],
+            binary = layout.binary.format(tag = release["tag"]),
+            layout = layout,
+        )
+    if editor_platform not in tag.editor_integrity:
+        return _fail("godot_engines.prebuilt %r: editor_integrity lacks %r" % (tag.name, editor_platform))
+    binary = tag.editor_binaries.get(editor_platform, layout.binary.format(tag = release["tag"]) if release else "")
+    if not binary:
+        return _fail("godot_engines.prebuilt %r: editor_binaries lacks %r" % (tag.name, editor_platform))
+    return struct(
+        urls = tag.editor_urls[editor_platform],
+        integrity = tag.editor_integrity[editor_platform],
+        binary = binary,
+        layout = layout,
+    )
+
+def _templates(tag, release, _fail):
+    """Return the export-template archive of a prebuilt tag and its layout, or None after an error."""
     for attribute in ["templates_macos_cpus", "templates_linux_cpus"]:
         if getattr(tag, attribute) and not tag.templates_urls:
             return _fail("godot_engines.prebuilt %r: %s describes templates_urls; set both" % (tag.name, attribute))
     if tag.templates_urls:
         if not tag.templates_integrity:
             return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
-        templates = struct(
+        return struct(
             urls = tag.templates_urls,
             integrity = tag.templates_integrity,
             macos_cpus = tag.templates_macos_cpus or ["universal"],
             linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
         )
-    elif release:
-        templates = struct(
+    if release:
+        return struct(
             urls = _release_urls(release["tag"], "export_templates.tpz"),
             integrity = release["templates"],
             macos_cpus = release["macos_cpus"],
             linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
         )
-    else:
-        return _fail("godot_engines.prebuilt %r: Godot %s needs templates_urls and templates_integrity" % (tag.name, tag.version))
-    if tag.android_shell_urls:
-        if not tag.android_shell_integrity:
-            return _fail("godot_engines.prebuilt %r: android_shell_integrity is required with android_shell_urls" % tag.name)
-        android_shell = struct(urls = tag.android_shell_urls, integrity = tag.android_shell_integrity)
-    elif release and "android_shell" in release:
-        android_shell = struct(**release["android_shell"])
-    else:
-        android_shell = None
-    if tag.android_debug_shell_urls:
-        if not tag.android_debug_shell_integrity:
-            return _fail("godot_engines.prebuilt %r: android_debug_shell_integrity is required with android_debug_shell_urls" % tag.name)
-        android_debug_shell = struct(urls = tag.android_debug_shell_urls, integrity = tag.android_debug_shell_integrity)
-    else:
-        android_debug_shell = None
-    if tag.ios_simulator_cpus:
-        simulator_cpus = tag.ios_simulator_cpus
-    elif release:
-        simulator_cpus = release["ios_simulator_cpus"]
-    else:
-        simulator_cpus = []
-    return struct(
-        editors = editors,
-        templates = templates,
-        android_shell = android_shell,
-        android_debug_shell = android_debug_shell,
-        ios_simulator_cpus = simulator_cpus,
-        android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
-    )
+    return _fail("godot_engines.prebuilt %r: Godot %s needs templates_urls and templates_integrity" % (tag.name, tag.version))
+
+# The Android shell AARs a prebuilt tag can pin, by attribute prefix.
+_SHELL_PINS = ["android_shell", "android_debug_shell"]
+
+def _shell_error(tag):
+    """The error of a shell AAR pinned without its integrity, or None."""
+    for pin in _SHELL_PINS:
+        if getattr(tag, pin + "_urls") and not getattr(tag, pin + "_integrity"):
+            return "godot_engines.prebuilt %r: %s_integrity is required with %s_urls" % (tag.name, pin, pin)
+    return None
+
+def _pinned_shell(tag, pin):
+    """The shell AAR a tag pins with `<pin>_urls` and `<pin>_integrity`, or None."""
+    urls = getattr(tag, pin + "_urls")
+    return struct(urls = urls, integrity = getattr(tag, pin + "_integrity")) if urls else None
 
 def prebuilt_slots(tag, plan):
     """
