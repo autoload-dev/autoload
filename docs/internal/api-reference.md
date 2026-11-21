@@ -83,8 +83,11 @@ the target separator. Document only the supported public companion targets as co
 
 Each owning source docstring contains the Markdown section `### Default outputs` and, where
 the API has them, `### Output groups` and `### Generated targets`; a section without entries is
-omitted. Each section is a list, which stays readable on narrow pages such as the BCR's, in
-the form the [output-contract parser](../../tools/docs/output_contracts.py) defines:
+omitted. Private rules, macros and repository rules keep these sections too: they document
+the ruleset's internal use and are ready when a symbol becomes public, although only public
+ones are checked against Bazel. Each section is a list, which stays readable on narrow pages
+such as the BCR's, in the form the [output-contract parser](../../tools/docs/output_contracts.py)
+defines:
 
 ```markdown
 ### Default outputs
