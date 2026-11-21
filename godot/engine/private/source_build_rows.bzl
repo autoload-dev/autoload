@@ -83,6 +83,9 @@ def select_rows(name, platforms, cpus = [], build_targets = [], ios_environments
         return None
     return rows
 
+def _variant(row):
+    return row.build_target.removeprefix("template_")
+
 def slot_name(row):
     """
     Return the hub component name of a row's slot.
@@ -95,30 +98,25 @@ def slot_name(row):
     """
     if row.build_target == "editor":
         return "editor_%s_%s" % (row.platform, row.cpu)
-    variant = row.build_target.removeprefix("template_")
-    return "_".join([part for part in ["runtime", row.platform, row.cpu, row.environment, variant] if part])
+    return "_".join([part for part in ["runtime", row.platform, row.cpu, row.environment, _variant(row)] if part])
 
-def _slot(name, row, repository, version, android):
-    """The hub slot of a row's recipe; Android rows also add their engine library to android."""
+def _slot(recipe, version):
+    """The hub slot of a recipe."""
+    row = recipe.row
     if row.build_target == "editor":
         return component(
             role = "editor",
             name = slot_name(row),
-            payload = "@%s//:godot" % repository,
+            payload = "@%s//:godot" % recipe.repository,
             platform = row.platform,
             cpu = row.cpu,
             version = version,
         )
-    variant = row.build_target.removeprefix("template_")
-    payload = "@%s//:godot" % repository
+    payload = "@%s//:godot" % recipe.repository
     if row.platform == "android":
-        android.setdefault(variant, {
-            "shell": "@%s_android_shell//:%s.aar" % (name, variant),
-            "engine_libraries": {},
-        })["engine_libraries"][row.cpu] = payload
-        payload = "//android:" + variant
+        payload = "//android:" + _variant(row)
     elif row.platform == "ios":
-        payload = "@%s//:engine_library" % repository
+        payload = "@%s//:engine_library" % recipe.repository
     return component(
         role = "runtime",
         name = slot_name(row),
@@ -126,9 +124,17 @@ def _slot(name, row, repository, version, android):
         platform = row.platform,
         cpu = row.cpu,
         version = version,
-        variant = variant,
+        variant = _variant(row),
         environment = row.environment,
     )
+
+def _add_android_library(android, name, recipe):
+    """Add an Android recipe's engine library to the hub's Android runtime of its variant."""
+    variant = _variant(recipe.row)
+    android.setdefault(variant, {
+        "shell": "@%s_android_shell//:%s.aar" % (name, variant),
+        "engine_libraries": {},
+    })["engine_libraries"][recipe.row.cpu] = "@%s//:godot" % recipe.repository
 
 def plan_rows(name, rows, version = ""):
     """
@@ -149,30 +155,12 @@ def plan_rows(name, rows, version = ""):
     slots = []
     android = {}
     for row in rows:
-        repository = "%s_%s" % (name, row.name)
-        recipes.append(struct(repository = repository, row = row))
-        slots.append(_slot(name, row, repository, version, android))
+        recipe = struct(repository = "%s_%s" % (name, row.name), row = row)
+        recipes.append(recipe)
+        slots.append(_slot(recipe, version))
+        if row.platform == "android" and row.build_target != "editor":
+            _add_android_library(android, name, recipe)
     return struct(recipes = recipes, slots = slots, android = android)
-
-def plan_source_build(name, platforms, cpus = [], build_targets = [], ios_environments = [], *, _fail = fail):
-    """
-    Return the recipes, hub slots and Android runtimes of a source build.
-
-    Args:
-        name: Hub repository name and the prefix of the recipe repositories.
-        platforms: As for select_rows.
-        cpus: As for select_rows.
-        build_targets: As for select_rows.
-        ios_environments: As for select_rows.
-        _fail: Replaces fail in Starlark unit tests.
-
-    Returns:
-        The plan_rows result of the selected rows; None after an error.
-    """
-    rows = select_rows(name, platforms, cpus, build_targets, ios_environments, _fail = _fail)
-    if rows == None:
-        return None
-    return plan_rows(name, rows)
 
 def recipe_declarations(name, source, plan, common, lock_file = None):
     """
@@ -240,9 +228,10 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
         A list of structs with `rule`, the name of a repository rule, and `attrs`, its
         keyword arguments; None after an error.
     """
-    plan = plan_source_build(name, platforms, cpus, build_targets, ios_environments, _fail = _fail)
-    if plan == None:
+    rows = select_rows(name, platforms, cpus, build_targets, ios_environments, _fail = _fail)
+    if rows == None:
         return None
+    plan = plan_rows(name, rows)
     declarations = recipe_declarations(name, source, plan, common, lock_file)
     hub = dict(
         name = name,

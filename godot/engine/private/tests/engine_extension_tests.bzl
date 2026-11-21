@@ -6,7 +6,7 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
 
 # buildifier: disable=bzl-visibility
-load("//godot/engine/private:source_build_rows.bzl", "plan_source_build")
+load("//godot/engine/private:source_build_rows.bzl", "plan_rows", "select_rows")
 
 # buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
@@ -162,7 +162,7 @@ def _test_catalogue_downloads_prefer_godot_cdn(env):
     ]).in_order()
 
 def _test_source_build_hub_names_each_recipe(env):
-    plan = plan_source_build("godot_source_build", ["android", "macos"], cpus = ["arm64"], build_targets = ["template_release"])
+    plan = plan_rows("godot_source_build", select_rows("godot_source_build", ["android", "macos"], cpus = ["arm64"], build_targets = ["template_release"]))
     env.expect.that_collection([slot["name"] for slot in plan.slots]).contains_exactly([
         "runtime_android_arm64_release",
         "runtime_macos_arm64_release",
