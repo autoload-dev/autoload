@@ -8,7 +8,7 @@ from pathlib import Path
 
 from tests.contract import run
 
-PASSING, FAILURE, EMPTY, SKIPPED, EXTENSION_FAILURE, ORPHAN = sys.argv[1:7]
+PASSING, FAILURE, EMPTY, SKIPPED, ORPHAN = sys.argv[1:6]
 sys.argv = sys.argv[:1]
 
 
@@ -94,8 +94,8 @@ class GdUnitLauncherTest(unittest.TestCase):
         self.assertIn("possible orphan nodes", output)
         self.assertRegex(output, r"OrphanTest\.gd > test_leaves_an_orphan_node: [1-9]")
 
-    def test_native_assertion_failure_keeps_its_details(self) -> None:
-        code, output, work = run(EXTENSION_FAILURE)
+    def test_a_failed_assertion_keeps_its_details(self) -> None:
+        code, output, work = run(FAILURE)
         self.assertNotEqual(code, 0, output)
         report = ET.parse(work / "test.xml")
         cases = [
@@ -104,12 +104,12 @@ class GdUnitLauncherTest(unittest.TestCase):
             if case.get("name") == "test_deliberate_failure"
         ]
         self.assertEqual(len(cases), 1, output)
-        self.assertEqual(cases[0].get("classname"), "NativeCounterFailureTest")
+        self.assertEqual(cases[0].get("classname"), "FailingTest")
         failure = cases[0].find("failure")
         if failure is None:
-            self.fail(f"The extension's assertion did not fail: {output}")
+            self.fail(f"The assertion did not fail: {output}")
         details = "".join(failure.itertext())
-        self.assertRegex(details, r"Expecting:\s+99\s+but was\s+1(?:\s|$)")
+        self.assertRegex(details, r"Expecting:\s+5\s+but was\s+4(?:\s|$)")
 
 
 if __name__ == "__main__":

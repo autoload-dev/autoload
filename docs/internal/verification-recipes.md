@@ -180,7 +180,7 @@ Use these project cases to find a concrete behavior:
 |---|---|
 | `editor_view` | Editor writeback, sidecars and disabled extensions, from the repository root: `//godot/private/tests/editor_view` |
 | `script_run` | Direct script execution, imports and command-line arguments: `//script_run` |
-| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from the repository root: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including an extension assertion failure, are autoload_gdunit's: `cd addons/gdunit/examples && bazel test //tests/...` |
+| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from the repository root: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's: `cd addons/gdunit/examples && bazel test //tests/...` |
 | `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from the repository root: `//godot/private/tests/validation` |
 | `import_context_runs` | Composed settings and autoloads applied at runtime, an import input's own kept private: `//godot/private/tests/import_context_runs`; sidecars, import units, path and collision failures and metadata policies are analysis tests in `//godot/private/tests` |
 | `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from the repository root: `//godot/private/tests/gltf_import` |
@@ -223,8 +223,8 @@ cd tests
 bazel test //shared_addon/...
 ```
 
-autoload_gdunit's run tests also launch an intentionally failing native-counter suite and
-require the JUnit assertion to report expected 99 versus actual 1:
+autoload_gdunit's run tests also launch an intentionally failing suite and require the JUnit
+report to keep the assertion's details, expected 5 versus actual 4:
 
 ```sh
 cd addons/gdunit/examples

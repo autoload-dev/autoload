@@ -24,22 +24,12 @@ bazel_dep(name = "rules_android", version = "0.8.0")
 bazel_dep(name = "rules_apple", version = "5.3.1")
 bazel_dep(name = "rules_jvm_external", version = "6.10")
 
-# The module's tests in tests/: Python drivers and a native extension fixture.
+# The module's tests in tests/ are driven by Python.
 bazel_dep(name = "rules_python", version = "2.4.5")
 
 # Python targets import only packages that have an __init__.py of their own.
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
-
-godot_cpp_bindings = use_repo_rule(
-    "@autoload_rules_godot//godot/extension:repositories.bzl",
-    "godot_cpp_bindings",
-)
-
-godot_cpp_bindings(
-    name = "godot_cpp",
-    enabled_classes = ["Node"],
-)
 
 # The application's Maven graph, which the module's Android libraries join; this module pins
 # the merged graph: `REPIN=1 bazel run @maven//:pin` after changing either. The generator

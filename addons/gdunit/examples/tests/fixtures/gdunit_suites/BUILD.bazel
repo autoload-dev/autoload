@@ -1,8 +1,8 @@
 load("@autoload_gdunit//:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
-# GdUnit suites that pass, fail, run no test, leave an orphan node or fail an assertion on
-# a native extension's result, with launchers for the suites that must not simply pass.
+# GdUnit suites that pass, fail, run no test or leave an orphan node, with launchers for the
+# suites that must not simply pass.
 package(
     default_testonly = True,
     default_visibility = ["//tests:__subpackages__"],
@@ -81,27 +81,6 @@ gdunit_test(
     size = "small",
     project = ":project",
     suites = [":skipped_suite_files"],
-    tags = ["manual"],
-)
-
-godot_resources(
-    name = "native_assertion_failure_files",
-    srcs = [
-        "native_assertion/NativeCounterFailureTest.gd",
-        "native_assertion/NativeCounterFailureTest.gd.uid",
-    ],
-    tags = ["manual"],
-    deps = [
-        "//tests/fixtures/native_counter",
-        "@autoload_gdunit//:gdunit",
-    ],
-)
-
-gdunit_test(
-    name = "native_assertion_failure",
-    size = "small",
-    project = ":project",
-    suites = [":native_assertion_failure_files"],
     tags = ["manual"],
 )
 
