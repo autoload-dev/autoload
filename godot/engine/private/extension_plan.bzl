@@ -8,6 +8,7 @@ modules collects them; the planner returns None after an error.
 
 load("//godot/engine/private:catalogue.bzl", "EDITOR_PLATFORMS", "RELEASES", "TEMPLATE_CPUS")
 load("//godot/engine/private:hub.bzl", "component")
+load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recipe_declarations", "slot_name")
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
@@ -29,8 +30,8 @@ def prebuilt_plan(tag, *, _fail = fail):
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
-        A struct of editors, templates, Android shells and iOS simulator CPUs, or None after
-        an error.
+        A struct of editors, the source archive that builds missing runtimes, templates,
+        Android shells and iOS simulator CPUs, or None after an error.
     """
     error = godot_version_error(tag.version)
     if error:
@@ -103,6 +104,7 @@ def prebuilt_plan(tag, *, _fail = fail):
         simulator_cpus = []
     return struct(
         editors = editors,
+        source = (release or {}).get("source") if tag.build_missing_runtimes else None,
         templates = templates,
         android_shell = android_shell,
         android_debug_shell = android_debug_shell,
@@ -202,6 +204,57 @@ def prebuilt_slots(tag, plan):
                 digest = shell.integrity,
             ))
     return slots
+
+# The build policy of the runtimes a prebuilt engine builds from its release's sources: the
+# modules of Godot's official builds.
+_MISSING_RUNTIME_POLICY = {
+    "enabled_modules": [],
+    "default_modules": True,
+    "custom_modules": {},
+    "patches": [],
+    "patch_strip": 1,
+    "build_options": {},
+    "build_name": "custom",
+    "python": None,
+    "configure_timeout": 600,
+}
+
+def missing_runtimes(tag, plan, slots):
+    """
+    Return the source declarations, slots and Android runtimes of the runtimes a prebuilt lacks.
+
+    Args:
+        tag: The godot_engines.prebuilt tag of the plan.
+        plan: The result of prebuilt_plan.
+        slots: The prebuilt slots of the plan.
+
+    Returns:
+        A struct of `declarations`, the source archive and recipe repositories, `slots`,
+        the source-built hub slots, and `android`, their Android runtimes by variant; None
+        without a missing runtime or a source archive.
+    """
+    if not plan.source:
+        return None
+    covered = {slot["name"]: True for slot in slots}
+    rows = [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
+    if not rows:
+        return None
+    name = tag.name + "_source"
+    source = "@%s_archive//:source.json" % name
+    rows_plan = plan_rows(name, rows)
+    declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
+    for declaration in recipe_declarations(name, source, rows_plan, _MISSING_RUNTIME_POLICY):
+        if declaration.attrs.get("platform") == "ios":
+            # Vulkan would need the MoltenVK SDK on the configuring Mac; Metal and OpenGL stay.
+            declaration.attrs["build_options"] = {"vulkan": "no"}
+        declarations.append(declaration)
+    # The catalogue knows the sources' version, so the hub need not read the archive.
+    version = plan.source["version"]
+    return struct(
+        declarations = declarations,
+        slots = [slot | {"version": version} for slot in rows_plan.slots],
+        android = rows_plan.android,
+    )
 
 def _scalar(value):
     return str(value) if type(value) == "Label" else value
@@ -355,11 +408,17 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
                 downloaded_file_path = "shell.aar",
             ))
             android_runtimes["debug"] = {"shell": "@%s_android_debug_shell//file" % tag.name}
+        slots = prebuilt_slots(tag, plan)
+        missing = missing_runtimes(tag, plan, slots)
+        if missing:
+            declarations.extend(missing.declarations)
+            slots = slots + missing.slots
+            android_runtimes = missing.android | android_runtimes
         declarations.append(_declaration(
             "engine_hub",
             name = tag.name,
             display_name = tag.name,
-            components = json.encode(prebuilt_slots(tag, plan)),
+            components = json.encode(slots),
             android_runtimes = json.encode(android_runtimes),
             engine = tag.engine,
         ))

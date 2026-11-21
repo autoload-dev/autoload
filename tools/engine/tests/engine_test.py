@@ -255,6 +255,7 @@ class GraphTranslationTest(unittest.TestCase):
                 "platform": "android",
                 "build_target": "template_release",
                 "modules": ["gdscript"],
+                "default_modules": False,
                 "options": ["a=1", "b=2"],
             }
 
@@ -282,6 +283,7 @@ class GraphTranslationTest(unittest.TestCase):
                 {"custom_modules_root": None},
                 {"options": ["a=1"]},
                 {"modules": ["gdscript", "freetype"]},
+                {"default_modules": True},
                 {"build_target": "editor"},
                 {"platform": "ios"},
             ]:
@@ -517,6 +519,7 @@ class GraphTranslationTest(unittest.TestCase):
             modules=["gdscript", "bazel_probe"],
             custom_module_names=["bazel_probe"],
             options=["vulkan=no", "disable_3d=yes"],
+            default_modules=False,
         )
         self.assertEqual(
             customizations(args),
@@ -527,6 +530,8 @@ class GraphTranslationTest(unittest.TestCase):
                 "options": ["disable_3d=yes", "vulkan=no"],
             },
         )
+        args.default_modules = True
+        self.assertEqual(customizations(args)["default_modules"], ["yes"])
 
     def test_android_debug_info_names_no_sandbox_directory(self) -> None:
         # Bazel's flags decide whether there is debug information.
@@ -852,6 +857,7 @@ class PinTest(unittest.TestCase):
                     "cpu": "x86_64",
                     "build_target": "editor",
                     "modules": ["gdscript", "probe"],
+                    "default_modules": False,
                     "options": ["vulkan=no"],
                     "build_name": "custom",
                 } | changes
@@ -866,6 +872,7 @@ class PinTest(unittest.TestCase):
                 {"cpu": "arm64"},
                 {"build_target": "template_release"},
                 {"modules": ["gdscript"]},
+                {"default_modules": True},
                 {"options": ["vulkan=yes"]},
                 {"build_name": "fork"},
             ]:

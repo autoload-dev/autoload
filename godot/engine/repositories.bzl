@@ -154,6 +154,12 @@ godot_engine_build = repository_rule(
             doc = "Enabled Godot modules; their dependencies come from the source's module graph.",
             default = ["gdscript", "text_server_fb"],
         ),
+        "default_modules": attr.bool(
+            doc = """
+            Also enable every module Godot enables by default for the platform, as its
+            official builds do; `enabled_modules` must then name only modules Godot can build.
+            """,
+        ),
         "custom_modules": attr.label_keyed_string_dict(
             doc = """
             Each custom module's config.py label mapped to its module name; the containing

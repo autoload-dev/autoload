@@ -125,6 +125,14 @@ def file_digests(
     }
 
 
+def _module_selection(args: argparse.Namespace) -> dict[str, Any]:
+    """The requested modules; the upstream defaults only when requested, so earlier digests hold."""
+    selection: dict[str, Any] = {"modules": args.modules}
+    if args.default_modules:
+        selection["default_modules"] = True
+    return selection
+
+
 def inputs_hash(args: argparse.Namespace) -> str:
     """
     Return the hash an unstamped source-built engine names in place of a Git commit.
@@ -143,7 +151,7 @@ def inputs_hash(args: argparse.Namespace) -> str:
         "configuration": {
             "platform": args.platform,
             "build_target": args.build_target,
-            "modules": args.modules,
+            **_module_selection(args),
             "options": sorted(args.options),
         },
     }
@@ -1556,12 +1564,15 @@ def require_host_platform(root: Path, platform: str) -> None:
 
 def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
     """The requested build customization a recipe's components record as provenance."""
-    return {
+    requested = {
         "patches": [path.name for path in args.patch],
         "modules": list(args.modules),
         "custom_modules": sorted(args.custom_module_names),
         "options": sorted(args.options),
     }
+    if args.default_modules:
+        requested["default_modules"] = ["yes"]
+    return requested
 
 
 def _is_module_name(name: str) -> bool:
@@ -1636,7 +1647,7 @@ def pin_digest(args: argparse.Namespace, scons: Path) -> str:
                 "platform": args.platform,
                 "cpu": args.cpu,
                 "build_target": args.build_target,
-                "modules": args.modules,
+                **_module_selection(args),
                 "options": sorted(args.options),
             },
             "build_name": args.build_name,
@@ -1724,6 +1735,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--environment", choices=("", "device", "simulator"), default="")
     parser.add_argument("--expected-version", default="")
     parser.add_argument("--modules", default="gdscript,text_server_fb")
+    # Start from the modules upstream enables by default, as Godot's official builds do.
+    parser.add_argument("--default-modules", action="store_true")
     parser.add_argument("--custom-modules", action="append", default=[])
     parser.add_argument("--custom-module-source", action="append", default=[])
     # A custom module already below _custom_modules, as in a pin action's source tree.
@@ -1846,7 +1859,7 @@ def _scons_arguments(args: argparse.Namespace) -> list[str]:
         f"platform={args.platform}",
         f"arch={args.cpu}",
         f"target={args.build_target}",
-        "modules_enabled_by_default=no",
+        "modules_enabled_by_default=" + ("yes" if args.default_modules else "no"),
         "scu_build=no",
         "generate_bundle=no",
         "debug_symbols=no",

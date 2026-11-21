@@ -6,7 +6,9 @@ experimental Android toolchains for each execution platform.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 load(
     "//godot/engine:repositories.bzl",
+    "godot_android_shell",
     "godot_editor_archive",
+    "godot_engine_build",
     "godot_engine_source",
     "godot_engine_source_build",
     "godot_export_templates_archive",
@@ -70,6 +72,15 @@ _PREBUILT_ATTRS = {
     "android_debug_shell_integrity": attr.string(
         doc = "Subresource Integrity digest of the AAR in android_debug_shell_urls.",
     ),
+    "build_missing_runtimes": attr.bool(
+        doc = """
+            Build the runtime slots the prebuilt artifacts lack from the release's sources,
+            such as the arm64 iOS simulator runtimes of 4.7.2 or the Android debug runtimes.
+            Each recipe is configured and compiled only when a build selects its slot.
+            Catalogued versions only; an uncatalogued version builds nothing.
+            """,
+        default = True,
+    ),
     "engine": _ENGINE_ATTR,
 }
 
@@ -129,7 +140,9 @@ _ENGINE_TAG_ATTRIBUTES = {
 # The repository rules and macros that plan_engines declarations name.
 _ENGINE_RULES = {
     "engine_hub": engine_hub,
+    "godot_android_shell": godot_android_shell,
     "godot_editor_archive": godot_editor_archive,
+    "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,
     "godot_engine_source_build": godot_engine_source_build,
     "godot_export_templates_archive": godot_export_templates_archive,
