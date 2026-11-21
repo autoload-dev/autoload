@@ -33,12 +33,39 @@ EDITOR_ARCHIVE_ATTRS = ARCHIVE_ATTRS | {
 # CPU.
 MACOS_CPUS = ["universal", "arm64", "x86_64"]
 
-def _download(ctx, _fail):
+# The directory that the archive members a repository keeps are renamed into, so that
+# strip_prefix extracts them alone: Bazel skips the entries outside the prefix.
+_KEPT = "kept"
+
+def _download(ctx, _fail, members = None):
+    """
+    Download and extract the archive, or only `members`, its entries by exact name.
+
+    Args:
+        ctx: Repository rule context.
+        _fail: Replaces fail in Starlark unit tests.
+        members: Archive entry names to extract; None extracts every entry. A member the
+            archive lacks is not extracted; at least one must be present.
+
+    Returns:
+        True, or False after an error.
+    """
     if not ctx.attr.integrity:
         _fail("integrity is required: every Godot download must be checksum-pinned")
         return False
-    ctx.download_and_extract(url = ctx.attr.urls, integrity = ctx.attr.integrity, type = "zip")
+    selection = {}
+    if members != None:
+        selection = {
+            "rename_files": {member: _KEPT + "/" + member for member in members},
+            "strip_prefix": _KEPT,
+        }
+    ctx.download_and_extract(url = ctx.attr.urls, integrity = ctx.attr.integrity, type = "zip", **selection)
     return True
+
+def _extract_nested(ctx, archive, output):
+    """Extract a ZIP archive inside the repository to `output`, then delete the archive."""
+    ctx.extract(archive, output = output)
+    ctx.delete(archive)
 
 def editor_archive_impl(ctx, *, _fail = fail):
     """
@@ -96,7 +123,7 @@ def _ios(ctx, _fail):
     """Return the iOS XCFramework import declarations of an archive's ios.zip, "" or None after an error."""
     if not ctx.path("templates/ios.zip").exists:
         return ""
-    ctx.extract("templates/ios.zip", output = "ios")
+    _extract_nested(ctx, "templates/ios.zip", "ios")
     for variant in ["debug", "release"]:
         path = "ios/libgodot.ios.%s.xcframework/Info.plist" % variant
         if not ctx.path(path).exists:
@@ -152,10 +179,15 @@ def templates_archive_impl(ctx, *, _fail = fail):
     if any([cpu not in CPU_TABLE for cpu in ctx.attr.linux_cpus]):
         _fail("linux_cpus must be Godot CPU tags: %s" % ", ".join(CPU_TABLE))
         return None
-    if not _download(ctx, _fail):
+    members = [
+        "templates/linux_%s.%s" % (variant, cpu)
+        for cpu in ctx.attr.linux_cpus
+        for variant in ["release", "debug"]
+    ] + (["templates/macos.zip"] if cpus else []) + ["templates/ios.zip"]
+    if not _download(ctx, _fail, members):
         return None
     if ctx.path("templates/macos.zip").exists:
-        ctx.extract("templates/macos.zip", output = "macos")
+        _extract_nested(ctx, "templates/macos.zip", "macos")
     else:
         cpus = []
     runtimes = []

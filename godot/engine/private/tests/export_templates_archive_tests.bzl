@@ -72,9 +72,20 @@ def _runtime(name, cpu, binary, platform, variant, data = ""):
 def _test_universal_macos_exposes_macos_variants(env):
     ctx, errors = _templates(tree = _LINUX + _UNIVERSAL)
     env.expect.that_collection(errors).contains_exactly([])
+
+    # Only the members the runtimes use leave the archive; the others, such as the
+    # Windows and web templates, stay in it.
+    download = mocks.calls(ctx, "download_and_extract")[0]
+    env.expect.that_dict(download.rename_files).contains_exactly(
+        {member: "kept/" + member for member in _LINUX + ["templates/macos.zip", "templates/ios.zip"]},
+    )
+    env.expect.that_str(download.strip_prefix).equals("kept")
     extracts = mocks.calls(ctx, "extract")
     env.expect.that_collection([(call.archive, call.output) for call in extracts]).contains_exactly(
         [("templates/macos.zip", "macos")],
+    )
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "delete")]).contains_exactly(
+        ["templates/macos.zip"],
     )
     runtimes = _runtimes(ctx)
     env.expect.that_collection(runtimes.keys()).contains_exactly([
