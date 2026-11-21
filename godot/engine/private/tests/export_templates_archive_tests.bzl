@@ -69,11 +69,14 @@ def _substitutions(ctx):
     templates = mocks.calls(ctx, "template")
     return templates[0].substitutions if templates else None
 
+def _declarations(ctx):
+    """The target declarations of the BUILD file, each set off by blank lines."""
+    text = _substitutions(ctx)["{TARGETS}"].strip("\n")
+    return text.split("\n\n") if text else []
+
 def _runtimes(ctx):
     """The filled runtime templates by target name."""
-    text = _substitutions(ctx)["{TARGETS}"].strip("\n")
-    rules = text.split("\n\n") if text else []
-    return {rule.partition("|")[0].strip('"'): rule for rule in rules}
+    return {rule.partition("|")[0].strip('"'): rule for rule in _declarations(ctx) if "|" in rule}
 
 def _runtime(name, cpu, binary, platform, variant, data = ""):
     return "|".join([repr(name), repr(cpu), repr(binary), repr(platform), repr(variant), repr("4.7.2"), repr(_INTEGRITY)]) + data
@@ -125,8 +128,12 @@ def _test_linux_exposes_cpu_variants(env):
     ))
     substitutions = _substitutions(ctx)
     env.expect.that_str(mocks.calls(ctx, "template")[0].template).equals("export_templates.BUILD.tpl")
-    env.expect.that_str(substitutions["{PREBUILT_BZL}"]).equals(repr("@@//godot/engine/private:prebuilt.bzl"))
-    env.expect.that_str(substitutions["{APPLE_LOAD}"]).equals("")
+    env.expect.that_str(substitutions["{LOADS}"]).equals(
+        'load("@@//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")',
+    )
+
+    # Only the runtimes; the macOS bundle's files belong to the macOS repository.
+    env.expect.that_collection(_declarations(ctx)).has_size(8)
 
 def _test_universal_macos_exposes_macos_variants(env):
     ctx, errors = _templates(platform = "macos", tree = ["templates/macos.zip"] + _UNIVERSAL)
@@ -136,6 +143,9 @@ def _test_universal_macos_exposes_macos_variants(env):
     # The expanded ZIP replaces the archive's copy.
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "delete")]).contains_exactly(
         ["templates/macos.zip"],
+    )
+    env.expect.that_str(_declarations(ctx)[0]).equals(
+        'filegroup(\n    name = "macos_files",\n    srcs = glob(["macos/**"]),\n)',
     )
     runtimes = _runtimes(ctx)
     env.expect.that_collection(runtimes.keys()).contains_exactly(["macos_release", "macos_debug"]).in_order()
@@ -215,7 +225,7 @@ def _test_ios_zip_exposes_ios_variants(env):
         ["templates/ios.zip"],
     )
     substitutions = _substitutions(ctx)
-    env.expect.that_str(substitutions["{APPLE_LOAD}"]).equals(
+    env.expect.that_str(substitutions["{LOADS}"]).equals(
         'load("@@rules_apple+//apple:apple.bzl", "apple_static_xcframework_import")',
     )
     env.expect.that_str(substitutions["{TARGETS}"]).equals(

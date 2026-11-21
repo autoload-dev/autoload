@@ -135,8 +135,7 @@ def _runtimes(ctx, platform, cpu, binary):
             "{NAME}": repr(template_target(platform, cpu, variant)),
             "{CPU}": repr(cpu),
             "{BINARY}": repr(binary(variant, cpu)),
-            # The macOS runtime needs the template's application bundle.
-            "{DATA}": '\n    data = [":macos_files"],' if platform == "macos" else "",
+            "{DATA}": _PLATFORMS[platform].runtime_data,
             "{PLATFORM}": repr(platform),
             "{VARIANT}": repr(variant),
             "{VERSION}": repr(ctx.attr.version),
@@ -212,11 +211,25 @@ def _binary_runtimes(ctx, _fail):
         runtimes.extend(_runtimes(ctx, ctx.attr.platform, cpu, platform.binary))
     return runtimes
 
+# The files of the expanded macos.zip, which every macOS runtime needs: the template's
+# application bundle around its binary.
+_MACOS_FILES = """filegroup(
+    name = "macos_files",
+    srcs = glob(["%s/**"]),
+)""" % _MACOS_ZIP.output
+
 def _macos_runtimes(ctx, _fail):
-    """Return the runtime declarations of an archive's macos.zip, or None after an error."""
+    """Return the declarations of an archive's macos.zip: its files and runtimes; None after an error."""
     if not _extract_nested(ctx, _MACOS_ZIP, _fail):
         return None
-    return _binary_runtimes(ctx, _fail)
+    runtimes = _binary_runtimes(ctx, _fail)
+    return None if runtimes == None else [_MACOS_FILES] + runtimes
+
+def _runtime_loads(ctx):
+    return "load(%r, \"prebuilt_runtime\")" % str(ctx.attr._prebuilt_bzl)
+
+def _apple_loads(ctx):
+    return "load(%r, \"apple_static_xcframework_import\")" % str(ctx.attr._apple_bzl)
 
 def _linux_cpus_error(cpus):
     if cpus and all([cpu in CPU_TABLE for cpu in cpus]):
@@ -232,27 +245,33 @@ def _ios_cpus_error(cpus):
     return "cpus must be empty for iOS templates" if cpus else None
 
 # Per Godot platform: the error of cpus that do not describe its templates, or None; the
-# archive entries its targets are made of; its target declarations, or None after an
-# error; and for desktop platforms, the path of a template binary by variant and CPU and
-# the advice when an archive lacks one.
+# archive entries its targets are made of; the load statements of its BUILD file; its
+# target declarations, or None after an error; and for desktop platforms, the path of a
+# template binary by variant and CPU, the advice when an archive lacks one and the
+# `data` its runtimes carry.
 _PLATFORMS = {
     "linux": struct(
         cpus_error = _linux_cpus_error,
         members = lambda cpus: [_linux_binary(variant, cpu) for cpu in cpus for variant in ["release", "debug"]],
+        loads = _runtime_loads,
         targets = _binary_runtimes,
         binary = _linux_binary,
         missing_binary = "its Linux CPUs differ from the catalogue's",
+        runtime_data = "",
     ),
     "macos": struct(
         cpus_error = _macos_cpus_error,
         members = lambda _cpus: [_MACOS_ZIP.member],
+        loads = _runtime_loads,
         targets = _macos_runtimes,
         binary = _macos_binary,
         missing_binary = "set cpus to match the archive layout",
+        runtime_data = '\n    data = [":macos_files"],',
     ),
     "ios": struct(
         cpus_error = _ios_cpus_error,
         members = lambda _cpus: [_IOS_ZIP.member],
+        loads = _apple_loads,
         targets = _ios,
     ),
 }
@@ -286,10 +305,8 @@ def templates_archive_impl(ctx, *, _fail = fail):
     targets = platform.targets(ctx, _fail)
     if targets == None:
         return None
-    apple_load = "load(%r, \"apple_static_xcframework_import\")" % str(ctx.attr._apple_bzl)
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
-        "{PREBUILT_BZL}": repr(str(ctx.attr._prebuilt_bzl)),
-        "{APPLE_LOAD}": apple_load if ctx.attr.platform == "ios" else "",
+        "{LOADS}": platform.loads(ctx),
         # Each declaration is set off by blank lines.
         "{TARGETS}": "".join(["\n" + target + "\n" for target in targets]),
     })
