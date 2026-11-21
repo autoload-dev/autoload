@@ -1,0 +1,48 @@
+name: Run host tests
+description: >-
+  Set up the repository and run the host lane's selected tasks on this
+  runner's host. Run it after the checkout.
+
+inputs:
+  tasks:
+    description: JSON array of the host lane's selected mise tasks.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up repository
+      uses: ./.github/actions/setup
+      with:
+        # The ruleset's host set includes its Android packaging tests.
+        android-cache: "true"
+        bazel-modules: |
+          .
+          examples
+          tests
+    # The regression module's host set runs first, so that the output base check sees
+    # only its repositories: later host tasks may configure Android targets.
+    - name: Run the regression module's host set
+      if: contains(inputs.tasks, '"test:regressions"')
+      shell: bash
+      run: python3 tools/ci/verification.py run '["test:regressions"]'
+    - name: Require a regression host set without Android tools
+      if: contains(inputs.tasks, '"test:regressions"')
+      shell: bash
+      working-directory: tests
+      run: |
+        external="$(bazel info output_base)/external"
+        # rules_jvm_external++maven+ prefixes the hub and artifact repositories of both
+        # Maven installs, maven and rules_android_maven.
+        if ls "$external" | grep -E 'rules_jvm_external\+\+maven\+|android_toolchains'; then
+          echo "The regression module's host set fetched Android tools or Maven artifacts" >&2
+          exit 1
+        fi
+    - name: Run tests
+      shell: bash
+      env:
+        TASKS: ${{ inputs.tasks }}
+      run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
+    - name: Save Bazel downloads
+      if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+      uses: ./.github/actions/setup/save-downloads
