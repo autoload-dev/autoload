@@ -37,6 +37,20 @@ _IOS = struct(
     attr_values = {"size": "small", "target_compatible_with": ["@platforms//os:macos"]},
 )
 
+# An application pack analyzed by itself, in the settings its pack's content configuration
+# has: the iOS CPU and platform type the content transition sets, and the --strip=never
+# that iOS applications set. In _IOS instead, the pack's native code would take a
+# configuration with a macOS CPU name that no application build has and a second one per
+# --strip value, each with its own C/C++ and Swift toolchains.
+_IOS_CONTENT = struct(
+    config_settings = _IOS.config_settings | {
+        "//command_line_option:cpu": "ios_x86_64",
+        "//command_line_option:apple_platform_type": "ios",
+        "//command_line_option:strip": "never",
+    },
+    attr_values = _IOS.attr_values,
+)
+
 def _fails_with_message(env, target):
     env.expect.that_target(target).failures().contains_predicate(
         matching.contains(env.ctx.attr.message),
@@ -159,7 +173,7 @@ def _test_ios_app_delivers_libraries_of_loadable_packs(name):
     _delivered_test(
         name,
         [_IOS_APPS + "composition_base_pack", _IOS_APPS + "composition_transitive_pack", _IOS_APPS + "pack"],
-        _IOS,
+        _IOS_CONTENT,
         ["composition_resources", "controller", "swift"],
         ["addon.plist"],
     )
