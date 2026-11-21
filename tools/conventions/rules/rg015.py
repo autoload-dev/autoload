@@ -44,6 +44,8 @@ PROJECT_TARGETS = ("edit", "pack")
 APP_TARGET = "app"
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
+# A property an addon.pkl sets, whatever its value: the tools read only one-line Lists.
+ASSIGNMENT = re.compile(r"^(\w+)\s*(?::[^=]*)?=")
 
 
 def at(path: Path | str) -> Location:
@@ -116,7 +118,7 @@ class AddonModuleLayout:
         if path.as_posix() not in workspace.file_set:
             return True
         return builds_apps(
-            addon_manifest(workspace.text(path.as_posix())).get("lanes", ())
+            addon_manifest(workspace.text(path.as_posix())).get("lanes", LANES)
         )
 
     @staticmethod
@@ -153,9 +155,12 @@ class AddonModuleLayout:
         if next((line for line in lines if line), "") != AMENDS:
             yield Finding(at(path), f"addon.pkl starts with {AMENDS}")
         values = addon_values(text)
-        if unknown := sorted(set(values) - set(PROPERTIES)):
+        assigned = {match[1] for line in lines if (match := ASSIGNMENT.match(line))}
+        if unknown := sorted(assigned - set(PROPERTIES)):
             yield Finding(at(path), f"addon.pkl sets no {', '.join(unknown)}")
-        if "lanes" not in values:
+        for key in sorted((assigned & set(PROPERTIES)) - set(values)):
+            yield Finding(at(path), f"addon.pkl's {key} is a List(...) on one line")
+        if "lanes" not in assigned:
             yield Finding(at(path), "addon.pkl sets lanes")
         for key, allowed in ADDON_VALUES.items():
             listed = values.get(key)

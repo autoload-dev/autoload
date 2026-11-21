@@ -91,9 +91,19 @@ local function consumedAddons(consumer: String): List<String> =
   addonConsumers.toMap().filter((name, users) -> users.contains(consumer)).keys.toList()
 local function consumedAddonFiles(consumer: String): List<String> =
   consumedAddons(consumer).map((name) -> "addons/" + name + "/**")
-// A consumer reads an add-on module's sources, not its examples or what describes the module.
+// A consumer reads an add-on module's sources, not its examples, what describes the module or
+// the settings of the module's own builds.
+local consumedAddonOwnFiles = List(
+  "examples/**",
+  "addon.pkl",
+  "presubmit.yml",
+  ".bazelrc",
+  ".bazelversion",
+  ".gitignore",
+  ".gitattributes",
+)
 local function consumedAddonExcludes(consumer: String): List<String> =
-  consumedAddons(consumer).flatMap((name) -> List("examples/**", "addon.pkl", "presubmit.yml")
+  consumedAddons(consumer).flatMap((name) -> consumedAddonOwnFiles
     .map((path) -> "addons/" + name + "/" + path))
 
 local conventionSources = List(
@@ -200,6 +210,8 @@ local checks = new Mapping<String, Step> {
       "addons/consumers.pkl",
       "addons/*/README.md",
       "addons/*/presubmit.yml",
+      // What the Android requirements and the lanes read of each module.
+      "addons/*/addon.pkl",
       ".bcr/**",
       "tools/addons/**",
       "tools/setup/**",

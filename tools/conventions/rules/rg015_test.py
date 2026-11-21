@@ -55,6 +55,15 @@ class AddonModuleLayoutTest(RepositoryTest):
                 "sets no platforms",
             ),
             ('lanes = List("host")\n', "starts with amends"),
+            (
+                amends + 'lanes = List("host")\nhosts = "macos"\n',
+                "hosts is a List(...) on one line",
+            ),
+            (
+                amends
+                + 'lanes = List("host")\ntestOperations = List(\n  "gdunit_test"\n)\n',
+                "testOperations is a List(...) on one line",
+            ),
         ):
             with self.subTest(text=text):
                 self.write("addons/widget/addon.pkl", text)

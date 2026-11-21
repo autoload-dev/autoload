@@ -42,6 +42,8 @@ def command(lane: str, module: AddonModule) -> list[str]:
 
 
 def run(lane: str, module: AddonModule) -> None:
+    if lane not in module.lanes:
+        sys.exit(f"{module.path}: its addon.pkl names no {lane} lane")
     if lane == "host" and host() not in module.hosts:
         print(
             f"{module.path}: its host lane runs on {', '.join(module.hosts)}, not {host()}"
