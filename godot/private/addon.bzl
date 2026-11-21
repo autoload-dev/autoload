@@ -8,7 +8,7 @@ load("//godot/private:configuration.bzl", "validate_autoloads", "validate_settin
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:import_units.bzl", "VALIDATION_ATTRS", "class_fragment", "import_unit", "unit_interface", "validate_unit")
-load("//godot/private:paths.bzl", "directory_prefix", "godot_ignore_markers", "godot_ignored", "mapped_paths", "merge_resource_paths", "resource_path", "sidecar_source", "validate_namespace", "with_extensions_for")
+load("//godot/private:paths.bzl", "directory_prefix", "godot_ignore_markers", "godot_ignored", "mapped_paths", "placed_resource_paths", "sidecar_source", "validate_namespace", "with_extensions_for")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "addon_closure", "configuration_contributions", "import_staged", "unique_extensions", "unique_platform_libraries")
 
@@ -85,18 +85,12 @@ def extension_addon(label, extension):
         addons = depset(),
     )
 
-def _placed(ctx, files, prefix):
-    """Place a part's files below the add-on's directory, as strip_prefix and prefix do for resources."""
-    paths = {}
-    for file in files:
-        path = resource_path(
-            ctx,
-            file,
-            ctx.attr.strip_prefix,
-            prefix,
-            outside = "every file of the add-on %s lives below its directory res://%s" % (ctx.label, prefix),
-        )
-        merge_resource_paths(paths, {path: file}, owner = str(ctx.label))
+def _placed(ctx, srcs, resource_paths, prefix):
+    """Place a part's files below the add-on's directory, as srcs and resource_paths place resources."""
+    paths = placed_resource_paths(ctx, srcs, resource_paths, prefix)
+    for path in paths:
+        if not path.startswith(prefix):
+            fail("%s: res://%s is outside res://%s; every file of the add-on lives below its directory" % (ctx.label, path, prefix))
     return paths
 
 def _passed_on(part, field):
@@ -273,8 +267,8 @@ def _addon_parts(ctx, prefix):
         A struct of the runtime and editor parts' resource paths to Files and the editor
         part's plugin.cfg res:// path, or empty without an editor part.
     """
-    runtime_files = _placed(ctx, ctx.files.srcs, prefix)
-    editor_files = _placed(ctx, ctx.files.editor_srcs, prefix)
+    runtime_files = _placed(ctx, ctx.attr.srcs, ctx.attr.resource_paths, prefix)
+    editor_files = _placed(ctx, ctx.attr.editor_srcs, ctx.attr.editor_resource_paths, prefix)
     for path in runtime_files:
         if path in editor_files:
             fail("%s: res://%s is in both srcs and editor_srcs; a file belongs to one part" % (ctx.label, path))
@@ -444,7 +438,9 @@ _godot_addon = rule(
         "srcs": attr.label_list(
             doc = """
             The runtime part: scripts, scenes and assets that every operation containing
-            the add-on holds as members, placed below directory after strip_prefix.
+            the add-on holds as members, from any package or repository: each file's path
+            relative to the package of the target that lists it is placed below directory
+            after strip_prefix.
             """,
             allow_files = True,
             # Files are the same in every context, so generated ones build once.
@@ -460,10 +456,29 @@ _godot_addon = rule(
             allow_files = True,
             cfg = reset_transition,
         ),
+        "resource_paths": attr.label_keyed_string_dict(
+            doc = """
+            Files of the runtime part at explicit resource paths, keyed by single-file
+            target, such as `{"@vendor//:settings.cfg": "addons/vendor/settings.cfg"}`.
+            Use it for a file whose path relative to its package is not its place in the
+            add-on, such as a renamed or generated file. Each path lies below directory.
+            """,
+            allow_files = True,
+            cfg = reset_transition,
+        ),
+        "editor_resource_paths": attr.label_keyed_string_dict(
+            doc = """
+            Files of the editor part at explicit resource paths below directory, keyed by
+            single-file target, as resource_paths places runtime files.
+            """,
+            allow_files = True,
+            cfg = reset_transition,
+        ),
         "strip_prefix": attr.string(
             doc = """
-            Package-relative directory whose contents are placed below directory; empty
-            uses the package root. A file outside it fails.
+            Directory, relative to the package of each target in srcs and editor_srcs, whose
+            contents are placed below directory; empty uses the package root. A file
+            outside it fails.
             """,
         ),
         "deps": attr.label_list(
@@ -618,7 +633,9 @@ godot_addon = macro(
     scripts and scenes as godot_resources validates its own.
 
     Every file lives below directory, by default addons/<name>; srcs and editor_srcs
-    are placed there after strip_prefix. Two add-ons of one operation with overlapping
+    from any package or repository are placed there by their path relative to the
+    package of the listed target, after strip_prefix, and resource_paths and
+    editor_resource_paths at explicit paths. Two add-ons of one operation with overlapping
     directories fail, as does a file in both parts.
 
     Example:

@@ -269,11 +269,15 @@ class Workspace:
             )
         return self._typed_directories[kind]
 
+    def _roots(self, marker: str) -> tuple[Path, ...]:
+        """Directories holding a file named marker, such as MODULE.bazel."""
+        return tuple(
+            Path(name).parent for name in self.files if Path(name).name == marker
+        )
+
     @cached_property
     def module_paths(self) -> tuple[Path, ...]:
-        return tuple(
-            Path(name).parent for name in self.files if Path(name).name == "MODULE.bazel"
-        )
+        return self._roots("MODULE.bazel")
 
     def owner(self, name: str) -> Path:
         """Return the nearest module directory, including nested standalone modules."""
@@ -283,12 +287,23 @@ class Workspace:
         return owner
 
     @cached_property
+    def repository_paths(self) -> tuple[Path, ...]:
+        """Roots of repositories that are no module, such as local_repository fixtures."""
+        return self._roots("REPO.bazel")
+
+    @cached_property
     def modules(self) -> tuple[Module, ...]:
-        """Resolve owned BUILD files against their nearest module without loading Bazel."""
+        """
+        Resolve owned BUILD files against their nearest module without loading Bazel; a
+        repository below a module that is no module itself belongs to none.
+        """
         builds: dict[Path, list[Path]] = defaultdict(list)
         for name in self.files:
             if Path(name).name in BUILD_FILES:
-                builds[self.owner(name)].append(Path(name))
+                owner = self.owner(name)
+                repository = nearest(Path(name), self.repository_paths)
+                if repository is None or owner.is_relative_to(repository):
+                    builds[owner].append(Path(name))
         return tuple(Module(path, tuple(files)) for path, files in sorted(builds.items()))
 
     def text(self, name: str) -> str:

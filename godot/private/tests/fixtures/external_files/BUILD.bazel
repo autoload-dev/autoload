@@ -1,0 +1,48 @@
+load("//godot:defs.bzl", "godot_addon", "godot_resources")
+
+package(default_visibility = ["//godot/private/tests:__subpackages__"])
+
+# A vendor's add-on from @external_release, placed from this repository: each file relative
+# to the package of the target that lists it, after strip_prefix.
+godot_addon(
+    name = "vendor",
+    srcs = ["@external_release//:runtime"],
+    editor_srcs = ["@external_release//:editor"],
+    resource_paths = {"@external_release//:addons/vendor/plugin_settings.cfg": "addons/vendor/settings/vendor.cfg"},
+    strip_prefix = "addons/vendor",
+    tags = ["manual"],
+)
+
+# The editor part from single files at explicit paths.
+godot_addon(
+    name = "renamed",
+    editor_resource_paths = {
+        "@external_release//:addons/vendor/editor/plugin.cfg": "addons/renamed/plugin.cfg",
+        "@external_release//:addons/vendor/editor/plugin.gd": "addons/renamed/plugin.gd",
+    },
+    tags = ["manual"],
+)
+
+# Resources mixing a file of this package with a subpackage's files of @external_release.
+godot_resources(
+    name = "values",
+    srcs = [
+        "local.gd",
+        "@external_release//data:values",
+    ],
+    prefix = "content",
+    tags = ["manual"],
+)
+
+# Declarations analysis rejects.
+godot_addon(
+    name = "resource_path_outside_directory",
+    resource_paths = {"@external_release//:addons/vendor/plugin_settings.cfg": "settings/vendor.cfg"},
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "file_outside_its_target_package",
+    srcs = ["@external_release//data:foreign"],
+    tags = ["manual"],
+)

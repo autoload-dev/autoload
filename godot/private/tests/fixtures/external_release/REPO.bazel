@@ -1,0 +1,2 @@
+# A vendor's release as an archive delivers it: its own repository, which the main module
+# fetches as @external_release for the external files tests.

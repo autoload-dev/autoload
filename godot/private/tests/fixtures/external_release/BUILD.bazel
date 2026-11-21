@@ -1,0 +1,19 @@
+# The release's files, grouped as a consumer's build_file groups an archive's; the add-ons and
+# resources that place them live in //godot/private/tests/fixtures/external_files.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "runtime",
+    srcs = glob(["addons/vendor/runtime/**"]),
+)
+
+filegroup(
+    name = "editor",
+    srcs = glob(["addons/vendor/editor/**"]),
+)
+
+exports_files([
+    "addons/vendor/editor/plugin.cfg",
+    "addons/vendor/editor/plugin.gd",
+    "addons/vendor/plugin_settings.cfg",
+])

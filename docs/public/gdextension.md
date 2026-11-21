@@ -402,6 +402,11 @@ link, and rules_cc rejects a binary whose name contains a dot, such as
 `bundle_only` may bundle only the extension's own framework, so each framework it loads
 is an import of its own.
 
+When the release is downloaded with `http_archive`, its `build_file` holds these imports
+and filegroups of the add-on's scripts; the `godot_addon` with the extension in its `deps`
+lives in the consumer's package and places the scripts from the release, as a
+[release in a repository of its own](resources.md#add-ons) does.
+
 ## Platform libraries
 
 An extension whose native code needs Android or Apple libraries at runtime,
