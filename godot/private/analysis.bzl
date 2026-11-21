@@ -2,7 +2,7 @@
 
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 
-visibility("//godot")
+visibility(["//godot/..."])
 
 def _resource_graph_impl(ctx):
     project = ctx.attr.view[GodotViewInfo]

@@ -87,7 +87,6 @@ API_CASES = {
     "//godot:defs.bzl%godot_test": {"target": _FIXTURES + "game_test"},
     "//godot:defs.bzl%godot_editor": {"target": _FIXTURES + "editor"},
     "//godot:defs.bzl%godot_metadata_sync": {"target": _FIXTURES + "metadata"},
-    "//godot:defs.bzl%godot_resource_graph": {"target": _FIXTURES + "graph"},
     "//godot/gdunit:defs.bzl%godot_gdunit_test": {"target": _FIXTURES + "gdunit_test"},
     "//godot/extension:defs.bzl%godot_extension": {"target": _FIXTURES + "extension"},
     # Extensions forward CcInfo for the static libraries iOS links.
@@ -148,12 +147,6 @@ API_CASES = {
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
         "forwarded_groups": True,
     },
-    "//godot/engine:defs.bzl%godot_android_runtime": {
-        "lane": "android",
-        "module": "tests",
-        "target": "@godot//android:release",
-        "options": ["--config=android", _EXPORT_PLATFORM + "android_arm64"],
-    },
     "//godot/extension:repositories.bzl%godot_cpp_bindings": {
         "entrypoints": {
             "@{repository}//:godot_cpp": {"@godot_cpp//:godot_cpp": []},
@@ -205,79 +198,8 @@ API_CASES = {
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
     },
     # The engine sources are fetched only by the source-engine lane.
-    "//godot/engine:repositories.bzl%godot_engine_source": {
-        "lane": "source-engine",
-        "entrypoints": {
-            "@{repository}//:source.json": {"@godot_sources//:source.json": []},
-            "@{repository}//:{archive}": {"@godot_sources//:source.tar.gz": []},
-        },
-    },
     # The macOS source-built engine is fetched and configured only by its own lane.
-    "//godot/engine:repositories.bzl%godot_engine_build": {
-        "lane": "source-engine",
-        "module": "tests",
-        "conditions": ["desktop"],
-        "entrypoints": {
-            "@{repository}//:godot": {_SOURCE + "//:godot": []},
-            "@{repository}//:engine_library": {_SOURCE + "//:engine_library": []},
-            "@{repository}//:engine_manifest.json": {_SOURCE + "//:engine_manifest.json": []},
-        },
-    },
-    "//godot/engine:repositories.bzl%godot_engine_build#android": {
-        "lane": "android",
-        "module": "tests",
-        "options": ["--config=android"],
-        "conditions": ["android"],
-        "entrypoints": {
-            "@{repository}//:godot": {"@godot_source_build_android_android_arm64_template_release//:godot": []},
-            "@{repository}//:engine_library": {"@godot_source_build_android_android_arm64_template_release//:engine_library": []},
-            "@{repository}//:libgodot_android.so": {"@godot_source_build_android_android_arm64_template_release//:libgodot_android.so": []},
-            "@{repository}//:engine_manifest.json": {"@godot_source_build_android_android_arm64_template_release//:engine_manifest.json": []},
-        },
-    },
     # A consumer's module extension's source build; its recipes are configured only by this lane.
-    "//godot/engine:repositories.bzl%godot_engine_source_build": {
-        "lane": "source-engine",
-        "conditions": ["editor", "desktop"],
-        "entrypoints": _source_build_entrypoints("godot_source_build_fixture", {
-            "editor_{platform}_{cpu}": ["editor_macos_arm64"],
-            "runtime_{platform}_{cpu}_{variant}": ["runtime_macos_arm64_release"],
-        }),
-    },
-    "//godot/engine:repositories.bzl%godot_engine_source_build#ios": {
-        "lane": "ios",
-        "module": "tests",
-        "conditions": ["ios"],
-        "entrypoints": _source_build_entrypoints("godot_source_build_ios", {
-            "runtime_ios_{cpu}_{environment}_{variant}": ["runtime_ios_arm64_simulator_release"],
-        }),
-        "options": ["--config=source"],
-    },
-    "//godot/engine:repositories.bzl%godot_engine_source_build#android": {
-        "lane": "android",
-        "module": "tests",
-        "conditions": ["android"],
-        "entrypoints": _source_build_entrypoints(
-            "godot_source_build_android",
-            {"runtime_android_{cpu}_{variant}": ["runtime_android_arm64_release"]},
-            {
-                "@{repository}//android:{variant}": {"@godot_source_build_android//android:release": []},
-                "@{repository}//android:plugin_api": {"@godot_source_build_android//android:plugin_api": []},
-            },
-        ),
-        "options": ["--config=android"],
-    },
-    "//godot/engine:repositories.bzl%godot_android_shell": {
-        "lane": "android",
-        "module": "tests",
-        "options": ["--config=android"],
-        "entrypoints": {
-            "@{repository}//:{variant}": {
-                "@godot_source_build_android_android_shell//:" + v: []
-                for v in _VARIANTS
-            },
-        },
-    },
     "//godot:extensions.bzl%godot_android_toolchains": {
         "lane": "android",
         "module": "tests",
@@ -306,16 +228,6 @@ API_CASES = {
         },
         "options": ["--config=android"],
     },
-    "//godot/engine:repositories.bzl%godot_engine_build#ios": {
-        "lane": "ios",
-        "module": "tests",
-        "options": ["--config=source"],
-        "conditions": ["ios"],
-        "entrypoints": {
-            "@{repository}//:engine_library": {"@godot_source_build_ios_ios_arm64_simulator_template_release//:engine_library": []},
-            "@{repository}//:engine_manifest.json": {"@godot_source_build_ios_ios_arm64_simulator_template_release//:engine_manifest.json": []},
-        },
-    },
 }
 
 # Behavior tests demonstrating why each API's public companions or repository
@@ -336,12 +248,6 @@ BEHAVIOR_TESTS = {
     "//godot:extensions.bzl%godot_android_toolchains": [
         "//godot/platforms/private/tests:test_linux_executor_uses_linux_android_tools",
     ],
-    "//godot/engine:repositories.bzl%godot_engine_build": [
-        "//godot/engine/private/tests:test_engine_build_godot_is_an_executable_runtime",
-    ],
-    "//godot/engine:repositories.bzl%godot_engine_source": [_FIXTURES + "repository_source"],
-    "//godot/engine:repositories.bzl%godot_engine_source_build": [_FIXTURES + "repository_source_build"],
-    "//godot/engine:repositories.bzl%godot_android_shell": [_FIXTURES + "repository_android_shell"],
     "//godot/engine:defs.bzl%godot_editor_component": ["//godot/engine/private/tests:test_editor_resolves_on_execution_platform"],
     "//godot/engine:defs.bzl%godot_runtime_component": ["//godot/engine/private/tests:test_desktop_release_resolves_template_payload"],
 }

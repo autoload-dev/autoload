@@ -101,7 +101,7 @@ def _hub_impl(ctx):
     android = json.decode(ctx.attr.android_runtimes) if ctx.attr.android_runtimes else {}
     if android:
         ctx.template("android/BUILD.bazel", ctx.attr._android_template, substitutions = {
-            "{DEFS_BZL}": repr(str(ctx.attr._defs_bzl)),
+            "{ANDROID_BZL}": repr(str(ctx.attr._android_bzl)),
             "{RULES_ANDROID_BZL}": repr(str(ctx.attr._rules_android_bzl)),
             "{RUNTIMES}": "".join([
                 _android_runtime(variant, android[variant])
@@ -134,6 +134,7 @@ engine_hub = repository_rule(
         "_android_template": attr.label(default = Label("//godot/engine/private:hub_android.BUILD.tpl")),
         "_rules_android_bzl": attr.label(default = Label("@rules_android//rules:rules.bzl")),
         "_defs_bzl": attr.label(default = Label("//godot/engine:defs.bzl")),
+        "_android_bzl": attr.label(default = Label("//godot/platforms/private:android.bzl")),
         "_build_template": attr.label(default = Label("//godot/engine/private:hub.BUILD.tpl")),
         "_toolchains_template": attr.label(default = Label("//godot/engine/private:hub_toolchains.BUILD.tpl")),
     },

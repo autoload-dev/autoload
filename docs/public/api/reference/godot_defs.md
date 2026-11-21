@@ -184,55 +184,6 @@ godot_metadata_sync(
 | <a id="godot_metadata_sync-kwargs"></a>kwargs |  Common attributes of both targets, such as tags and visibility.   |  none |
 
 
-<a id="godot_resource_graph"></a>
-
-## godot_resource_graph
-
-<pre>
-load("@autoload_rules_godot//godot:defs.bzl", "godot_resource_graph")
-
-godot_resource_graph(<a href="#godot_resource_graph-name">name</a>, <a href="#godot_resource_graph-project">project</a>, <a href="#godot_resource_graph-deps">deps</a>, <a href="#godot_resource_graph-validate">validate</a>, <a href="#godot_resource_graph-require_declared">require_declared</a>, <a href="#godot_resource_graph-kwargs">**kwargs</a>)
-</pre>
-
-Emit a deterministic file/UID graph for resources; optionally validate references.
-
-Does not execute Godot or modify Bazel dependencies.
-
-Produces a .graph.json file in DefaultInfo from the resource graph of deps under the
-project's configuration, without running Godot or adding inferred Bazel
-dependencies. validate controls failures for invalid static references;
-require_declared additionally requires explicit runtime reference declarations.
-Dynamic references remain warnings.
-
-Example:
-```starlark
-godot_resource_graph(
-    name = "graph",
-    project = ":project",
-    deps = [":game"],
-    require_declared = True,
-)
-```
-
-See [resource graph diagnostics](../../resources.md).
-
-### Default outputs
-- files (one): build resource graph JSON with selected declaration/validation policy; no run behavior
-
-
-**PARAMETERS**
-
-
-| Name  | Description | Default Value |
-| :------------- | :------------- | :------------- |
-| <a id="godot_resource_graph-name"></a>name |  Name of the graph target.   |  none |
-| <a id="godot_resource_graph-project"></a>project |  The godot_project whose configuration the graph reads.   |  none |
-| <a id="godot_resource_graph-deps"></a>deps |  The godot_resources whose files the graph scans.   |  `[]` |
-| <a id="godot_resource_graph-validate"></a>validate |  Fail on missing static references, invalid UID ownership or conflicting identities. Dynamic references remain warnings.   |  `True` |
-| <a id="godot_resource_graph-require_declared"></a>require_declared |  Require inferred runtime file references to have matching runtime_references entries. Project configuration references are implicit; import inputs are checked for availability.   |  `False` |
-| <a id="godot_resource_graph-kwargs"></a>kwargs |  Common attributes, such as tags and visibility.   |  none |
-
-
 <a id="godot_run"></a>
 
 ## godot_run

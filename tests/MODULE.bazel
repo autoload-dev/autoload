@@ -209,7 +209,7 @@ register_toolchains(
 # The patched desktop engines of patched_engine and its source-built tests; built
 # only by the source-engine lane.
 godot_engine_build = use_repo_rule(
-    "@autoload_rules_godot//godot/engine:repositories.bzl",
+    "@autoload_rules_godot//godot/engine/private:repositories.bzl",
     "godot_engine_build",
 )
 

@@ -15,7 +15,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync), [`godot_resource_graph`](reference/godot_defs.md#godot_resource_graph) |
+| `@autoload_rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync) |
 | `@autoload_rules_godot//godot/gdunit:defs.bzl` | Run GdUnit4 suites as a Bazel test with sharding, test filters and JUnit reports.<br>[`godot_gdunit_test`](reference/godot_gdunit_defs.md#godot_gdunit_test) |
 
 ## Extensions
@@ -29,8 +29,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component), [`godot_android_runtime`](reference/godot_engine_defs.md#godot_android_runtime) |
-| `@autoload_rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build) |
+| `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component) |
 
 ## Module setup
 

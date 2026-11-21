@@ -1,4 +1,9 @@
-"""Engine acquisition: immutable sources and configure-only source recipes."""
+"""
+Engine acquisition: immutable sources and configure-only source recipes.
+
+godot_engines declares these repositories through its source and source_build tags. They
+are not supported API; the tests module and the API contract fixtures declare them directly.
+"""
 
 load("//godot/engine/private:hub.bzl", "engine_hub")
 load("//godot/engine/private:source_build_rows.bzl", "source_build_declarations")
@@ -8,6 +13,9 @@ load(
     "engine_build_impl",
     "engine_source_impl",
 )
+
+# The tests module loads these rules; they are not supported API.
+visibility("public")
 
 godot_engine_source = repository_rule(
     doc = """
@@ -22,7 +30,7 @@ godot_engine_source = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_source = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_source",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_engine_source",
     )
     godot_engine_source(
         name = "godot_sources",
@@ -75,7 +83,7 @@ godot_engine_build = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_engine_build = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_engine_build",
     )
     godot_engine_build(
         name = "godot_macos_arm64_release",
@@ -227,7 +235,7 @@ godot_android_shell = repository_rule(
     Example (MODULE.bazel):
     ```starlark
     godot_android_shell = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl", "godot_android_shell",
+        "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_android_shell",
     )
     godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
     ```

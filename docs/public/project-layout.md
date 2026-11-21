@@ -185,7 +185,6 @@ a project-wide operation.
 | `godot_pack` | Project or independently delivered content | Keep the main PCK with the project. A DLC or other separately delivered content pack may belong to its own package and still use explicit project context. Do not add a pack for every resource package. |
 | `godot_run` | Project or runnable feature/tool | Keep the normal game entry with the project. Put an independently useful scene or tool entry with its owner, supplying its required context. |
 | Application and signing targets | Product delivery | Keep a game's APK/AAB, desktop app, iOS app and signing targets with the project, or in a separate delivery package when its dependencies or ownership justify one. |
-| `godot_resource_graph` | Owner of the inspected project | Keep diagnostics with the resources they inspect; a focused graph names fewer `deps` under the same project. |
 
 Module repositories, engine components and their registration sets belong to workspace
 or shared engine infrastructure, such as an `engines/` package per set. They provide

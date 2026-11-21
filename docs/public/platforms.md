@@ -493,9 +493,8 @@ export platform matching the device.
 
 ### Use a source-built engine
 
-A source-built engine comes from a [source build](engine.md#declare-a-source-build) or a
-recipe with [`godot_android_runtime`](engine.md#android-shell-libraries), registered ahead of the
-prebuilt engine; the app declaration stays the same. The runtime's AAR manifest names
+A source-built engine comes from a [source build](engine.md#declare-a-source-build), registered
+ahead of the prebuilt engine; the app declaration stays the same. The runtime's AAR manifest names
 the engine's [version stamp](engine.md#version-stamp) as
 `org.godotengine.library.version`. Engine source, Android shell library and extension ABI must
 agree; a source build builds the shell library and engine from the same source. Replace `//path/to` with your

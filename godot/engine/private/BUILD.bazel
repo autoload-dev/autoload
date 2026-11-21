@@ -9,6 +9,7 @@ exports_files(
         "hub.bzl",
         "pin.bzl",
         "prebuilt.bzl",
+        "repositories.bzl",
         "resolution.bzl",
         "source_repositories.bzl",
     ],

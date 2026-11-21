@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resource_graph", "godot_resources", "godot_run", "godot_test")
+load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resources", "godot_run", "godot_test")
 load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
 load("//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
@@ -60,11 +60,6 @@ godot_metadata_sync(
     size = "small",
     project = ":project",
     tags = ["manual"],
-)
-
-godot_resource_graph(
-    name = "graph",
-    project = ":project",
 )
 
 write_file(
@@ -191,49 +186,9 @@ repository_test(
 )
 
 repository_test(
-    name = "repository_editor",
-    executable = True,
-    tags = ["manual"],
-    target = select({
-        "@platforms//os:linux": "@godot_editor_linux_x86_64//:editor",
-        "//conditions:default": "@godot_editor_macos//:editor",
-    }),
-)
-
-repository_test(
-    name = "repository_templates",
-    runtime = True,
-    tags = ["manual"],
-    target = "@godot_templates//:linux_x86_64_release",
-)
-
-repository_test(
     name = "repository_hub",
     tags = ["manual"],
     target = "@godot//toolchains:runtime_linux_x86_64_release",
-)
-
-# The source descriptor is a file, which Bazel reports as its own executable.
-repository_test(
-    name = "repository_source",
-    executable = True,
-    tags = ["manual"],
-    target = "@godot_sources//:source.json",
-)
-
-# The consumer extension fixture's source build: configures one macOS recipe when run.
-repository_test(
-    name = "repository_source_build",
-    tags = ["manual"],
-    target = "@godot_source_build_fixture//toolchains:runtime_macos_arm64_release",
-)
-
-# Needs the Android SDK, which only the mobile consumer configures; its contract case
-# runs there.
-repository_test(
-    name = "repository_android_shell",
-    tags = ["manual"],
-    target = "@godot_android_shell_fixture//:release",
 )
 
 repository_test(

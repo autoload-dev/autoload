@@ -140,72 +140,40 @@ config_setting(
 
 ## Build an engine from source
 
-A source-built engine takes two repository rules and one component per slot.
-`godot_engine_source` pins an immutable archive, an upstream release or a fork, by digest
-and its version. `godot_engine_build` configures one recipe from it: SCons evaluates the
-feature graph once, and Bazel compiles each object and runs each code generator as its
-own cached action.
+A source build compiles Godot from an immutable archive, an upstream release or a fork,
+with your modules, patches and options. The `source` tag of `godot_engines` pins the
+archive by digest and its version; the `source_build` tag configures one recipe per slot
+from it: SCons evaluates the feature graph once, and Bazel compiles each object and runs
+each code generator as its own cached action.
 
 ```starlark
-godot_engine_source = use_repo_rule(
-    "@autoload_rules_godot//godot/engine:repositories.bzl",
-    "godot_engine_source",
-)
-
-godot_engine_build = use_repo_rule(
-    "@autoload_rules_godot//godot/engine:repositories.bzl",
-    "godot_engine_build",
-)
-
-godot_engine_source(
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.source(
     name = "godot_sources",
     sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
     strip_prefix = "godot-4.7.2-stable",
     urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
     version = "4.7.2",
 )
-
-godot_engine_build(
+godot_engines.source_build(
     name = "my_engine",
-    platform = "macos",
-    cpu = "arm64",
-    build_target = "template_release",
     source = "@godot_sources//:source.json",
+    platforms = ["macos"],
+    cpus = ["arm64"],
+    build_targets = ["template_release"],
     enabled_modules = ["gdscript", "text_server_fb", "my_module"],
     custom_modules = {"//native/my_module:config.py": "my_module"},
     patches = ["//engine:fix.patch"],
     build_options = {"metal": "no", "vulkan": "no", "opengl3": "yes"},
 )
-```
-
-Then declare the slot in a BUILD package and register it:
-
-```starlark
-load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
-
-godot_runtime_component(
-    name = "runtime_macos_arm64_release",
-    platform = "macos",
-    cpu = "arm64",
-    variant = "release",
-    version = "4.7.2",
-    runtime = "@my_engine//:godot",
-)
+use_repo(godot_engines, "godot_sources", "my_engine")
+register_toolchains("@my_engine//toolchains:all")
 ```
 
 `version` is the archive's canonical version as its `version.py` names it, such as `4.7.2`
 or `4.8.0-beta` for an unnumbered beta; a recipe whose sources say otherwise fails.
-`build_target` is `editor`, `template_debug` or `template_release`; iOS recipes add
-`environment = "device"` or `"simulator"`. A recipe's outputs are its payloads:
-
-| Output | Payload of |
-| --- | --- |
-| `@my_engine//:godot` | Desktop editor and runtime components; the Android engine library |
-| `@my_engine//:engine_library` | iOS runtime components, linked through `CcInfo` |
-| `@my_engine//:engine_manifest.json` | Selected features, modules and action counts |
-
-An editor recipe becomes a `godot_editor_component(editor = "@my_editor//:godot", ...)`.
-Editors compile for the execution platform. macOS and iOS recipes compile for the
+`build_targets` are `editor`, `template_debug` and `template_release`; iOS recipes add
+`ios_environments`, `device` or `simulator`. Editors compile for the execution platform. macOS and iOS recipes compile for the
 deployment target Godot's own build sets, 11.0 on macOS arm64 and 14.0 on iOS, whatever
 the build's `--macos_minimum_os` or the application's minimum says, so one engine build
 serves every application; an application's minimum is its bundle's and its extension
@@ -291,9 +259,6 @@ recipes](#pin-the-recipes) so that any host builds every slot. Hub components ar
 `editor_<platform>_<cpu>` and `runtime_<platform>_<cpu>[_<environment>]_<variant>`; the
 recipes are `<name>_<platform>_<cpu>[_<environment>]_<build_target>`.
 
-A consumer module extension can call the same helper, `godot_engine_source_build`, from
-`@autoload_rules_godot//godot/engine:repositories.bzl`, with the tag's attributes as arguments.
-
 ### Pin the recipes
 
 A lock file pins the build graph of every recipe of a source build, as `maven_install.json`
@@ -332,7 +297,7 @@ C++ code keeps its pin. Commit the lock file with the change that requires it.
 
 An Android runtime is Godot's Java/Kotlin library, the Android shell library, with the
 engine library inside. Android source builds build the shell library from the same patched
-source with `godot_android_shell`, so a fork's Java changes come with its sources.
+source, so a fork's Java changes come with its sources.
 rules_godot adds the shell library's Maven dependencies, including `kotlin-stdlib` at
 Godot's Kotlin version, to your shared `maven` repository; repin it after adding
 rules_godot (`RULES_JVM_EXTERNAL_REPIN=1 bazel run @maven//:pin`). The contribution pins
@@ -340,32 +305,6 @@ rules_godot (`RULES_JVM_EXTERNAL_REPIN=1 bazel run @maven//:pin`). The contribut
 application that packages Guava declares Guava's empty `listenablefuture` placeholder
 artifact instead. Java and Kotlin target Godot's level per target, so no Kotlin toolchain
 is registered.
-
-`godot_android_runtime` joins a shell library with an engine library for your own
-declarations. One label per variant serves every ABI; each platform slice packages its own
-engine library:
-
-```starlark
-load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_android_runtime", "godot_runtime_component")
-
-godot_android_runtime(
-    name = "release",
-    shell = "@godot_android_shell//:release.aar",  # or an official Android shell AAR file
-    engine_library = select({
-        "@platforms//cpu:aarch64": "@my_android_arm64//:godot",
-        "@platforms//cpu:x86_64": "@my_android_x86_64//:godot",
-    }),
-)
-
-godot_runtime_component(
-    name = "runtime_android_arm64_release",
-    platform = "android",
-    cpu = "arm64",
-    variant = "release",
-    version = "4.7.2",
-    runtime = ":release",
-)
-```
 
 An Android plugin that compiles against Godot's classes, such as `GodotPlugin`, depends
 on the hub's `@godot//android:plugin_api`. It supplies the shell library's classes for
@@ -477,10 +416,10 @@ crash reports name engine frames compiles with `-c opt --copt=-g`, the
 [store release](platforms.md#debug-symbols) of the platform guide; to give only
 the engine debug information, match its sources. In this command template,
 replace `//path/to:target` with your application's label and `my_engine` with
-your recipe's repository name:
+your source build's name:
 
 ```sh
-bazel build //path/to:target -c opt --per_file_copt='external/[+]godot_engine_build[+]my_engine/.*@-g'
+bazel build //path/to:target -c opt --per_file_copt='external/autoload_rules_godot[+][+]godot_engines[+]my_engine_.*@-g'
 ```
 
 The engine links without Bazel's `--strip`, so its debug information reaches
@@ -497,7 +436,7 @@ Applications provide the engine as part of their
 | macOS | The runtime's `.dSYM` has the engine's DWARF; build with `--apple_generate_dsym`, without which it names engine functions only |
 
 Debug information names sources relative to the execution root, such as
-`external/+godot_engine_build+my_engine/core/object/object.cpp`, so engine
+`external/autoload_rules_godot++godot_engines+my_engine_macos_arm64_template_release/core/object/object.cpp`, so engine
 bytes do not depend on the build machine and stay cacheable.
 `separate_debug_symbols` is rejected: Bazel does not run Godot's symbol extraction
 after linking.

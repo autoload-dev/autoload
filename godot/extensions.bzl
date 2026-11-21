@@ -5,7 +5,7 @@ experimental Android toolchains for each execution platform.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 load(
-    "//godot/engine:repositories.bzl",
+    "//godot/engine/private:repositories.bzl",
     "godot_engine_source",
     "godot_engine_source_build",
 )

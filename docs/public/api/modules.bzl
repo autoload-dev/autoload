@@ -28,7 +28,6 @@ PUBLIC_APIS = {
             "godot_test",
             "godot_editor",
             "godot_metadata_sync",
-            "godot_resource_graph",
         ],
     },
     "//godot/gdunit:defs.bzl": {
@@ -55,21 +54,10 @@ PUBLIC_APIS = {
     },
     "//godot/engine:defs.bzl": {
         "group": "Engines and toolchains",
-        "purpose": "Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.",
+        "purpose": "Declare editor/runtime component slots with their toolchain registrations.",
         "symbols": [
             "godot_editor_component",
             "godot_runtime_component",
-            "godot_android_runtime",
-        ],
-    },
-    "//godot/engine:repositories.bzl": {
-        "group": "Engines and toolchains",
-        "purpose": "Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source.",
-        "symbols": [
-            "godot_engine_source",
-            "godot_engine_build",
-            "godot_android_shell",
-            "godot_engine_source_build",
         ],
     },
     "//godot:extensions.bzl": {
@@ -97,6 +85,8 @@ CROSS_REPOSITORY_MODULES = {
     "//godot/extension/private:bindings.bzl": "Implementation loaded by generated godot-cpp BUILD files; requires cross-repository load access.",
     "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
     "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
+    "//godot/platforms/private:android.bzl": "godot_android_runtime, loaded by generated engine hub BUILD files; requires cross-repository load access.",
+    "//godot/engine/private:repositories.bzl": "Engine source repository rules godot_engines declares; the tests module declares them directly across repositories; not supported API.",
 }
 
 SUPPORT_MODULES = [
@@ -113,7 +103,6 @@ SUPPORT_MODULES = [
     "//godot/extension/private:godot_cpp.bzl",
     "//godot/extension/private:ios_framework.bzl",
     "//godot/platforms/private:macos_signing.bzl",
-    "//godot/platforms/private:android.bzl",
     "//godot/platforms/private:android_bootstrap.bzl",
     "//godot/platforms/private:android_jni_libraries.bzl",
     "//godot/platforms/private:android_outputs.bzl",
