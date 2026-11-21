@@ -8,6 +8,7 @@ with every other variant.
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private/config:settings.bzl", "VARIANT")
 load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
 visibility([
@@ -25,7 +26,6 @@ _DSYM = "//command_line_option:apple_generate_dsym"
 _OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
-_VARIANT = str(Label("//godot:variant"))
 
 _SETTINGS = [
     _PLATFORMS,
@@ -37,7 +37,7 @@ _SETTINGS = [
     _OBJC_STRIP,
     _ANDROID_FORMAT,
     _ANDROID_API_LEVEL,
-    _VARIANT,
+    VARIANT,
     ENGINE,
 ]
 
@@ -49,7 +49,7 @@ _REPLACED = {
     "objc_enable_binary_stripping": _OBJC_STRIP,
     "android_format": _ANDROID_FORMAT,
     "android_api_level": _ANDROID_API_LEVEL,
-    "variant": _VARIANT,
+    "variant": VARIANT,
 }
 
 def _configured_impl(settings, attr):
@@ -98,9 +98,9 @@ configured_outputs = rule(
     attrs = {
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),
         "platform": attr.label(doc = "The export platform or platform slice; the build's own target platform by default."),
-        "extra_toolchains": attr.string_list(doc = "Registration sets as absolute labels, appended to `--extra_toolchains` ahead of the registered engines, such as a source-built hub's `@<hub>//toolchains:all` that replaces slots of an engine, as a consumer registers one."),
+        "extra_toolchains": attr.string_list(doc = "Registration sets as absolute labels, appended to `--extra_toolchains` ahead of the registered engines, such as a source-built hub's `@<hub>//toolchains:all`; see the contract in `//godot/private/tests:toolchains.bzl`."),
         "engine": attr.string(
-            doc = "The development engine, a key of DEVELOPMENT_ENGINES such as `beta`, selected by its engine name; the build's own by default.",
+            doc = "The development engine, a key of DEVELOPMENT_ENGINES such as `beta`, selected by its engine name; the build's own by default. See the contract in `//godot/private/tests:toolchains.bzl`.",
             values = [""] + DEVELOPMENT_ENGINES.keys(),
         ),
         "compilation_mode": attr.string(values = ["", "fastbuild", "dbg", "opt"]),
