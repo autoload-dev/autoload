@@ -7,18 +7,6 @@ load("@autoload_rules_godot//godot/private:adapter.bzl", "adapter_test")
 
 visibility("//...")
 
-def validate_suites(name, suites, _fail = fail):
-    """
-    Reject a gdunit_test without suites.
-
-    Args:
-        name: Name of the gdunit_test, for the failure message.
-        suites: The suites argument.
-        _fail: Reports the error; tests collect it instead of stopping.
-    """
-    if not suites:
-        _fail("%s: gdunit_test requires at least one suites target" % name)
-
 def gdunit_test(name, suites, **kwargs):
     """
     Run GdUnit4 test suites as a Bazel test.
@@ -68,7 +56,8 @@ def gdunit_test(name, suites, **kwargs):
             files are not suites.
         **kwargs: godot_test arguments, such as args, project, size and shard_count.
     """
-    validate_suites(name, suites)
+    if not suites:
+        fail("%s: gdunit_test requires at least one suites target" % name)
     args = kwargs.pop("args", [])
     adapter_test(
         name = name,

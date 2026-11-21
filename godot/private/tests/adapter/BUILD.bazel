@@ -9,45 +9,25 @@ package(default_testonly = True)
 
 _CASES = "//godot/private/tests/adapter/fixtures/cases"
 
-# The fake adapter's tests, in the order adapter_contract_test.py takes them.
-_TESTS = [
-    "passing_cases",
-    "failing_case",
-    "error_case",
-    "no_case",
+# The fake adapter's tests, in the order adapter_contract_test.py takes them, with their
+# cases target.
+_TESTS = {
+    "passing_cases": "passing",
+    "failing_case": "failing",
+    "error_case": "error",
+    "no_case": "none",
+}
+
+[
+    fake_adapter_test(
+        name = name,
+        size = "small",
+        cases = [_CASES + ":" + cases],
+        project = _CASES + ":project",
+        tags = ["manual"],
+    )
+    for name, cases in _TESTS.items()
 ]
-
-fake_adapter_test(
-    name = "passing_cases",
-    size = "small",
-    cases = [_CASES + ":passing"],
-    project = _CASES + ":project",
-    tags = ["manual"],
-)
-
-fake_adapter_test(
-    name = "failing_case",
-    size = "small",
-    cases = [_CASES + ":failing"],
-    project = _CASES + ":project",
-    tags = ["manual"],
-)
-
-fake_adapter_test(
-    name = "error_case",
-    size = "small",
-    cases = [_CASES + ":error"],
-    project = _CASES + ":project",
-    tags = ["manual"],
-)
-
-fake_adapter_test(
-    name = "no_case",
-    size = "small",
-    cases = [_CASES + ":none"],
-    project = _CASES + ":project",
-    tags = ["manual"],
-)
 
 # Run test: an adapter test runs its cases, shards and filters them, and passes or fails by
 # the adapter's exit code alone, as Bazel's test encyclopedia requires.
