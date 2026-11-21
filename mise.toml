@@ -222,6 +222,31 @@ description = "Build autoload_firebase's example iOS Simulator app; needs macOS 
 dir = "{{config_root}}/addons/firebase/examples"
 run = "bazel build --config=ios_sim //projects/analytics:app"
 
+# Sentry's add-on is wired for macOS, Android and iOS: a Linux host has no desktop build of
+# it, so its host task runs on macOS only and says so elsewhere.
+[tasks."host:addon:sentry"]
+description = "Build autoload_sentry's example for the editor and macOS and run it headless"
+dir = "{{config_root}}/addons/sentry/examples"
+run = """
+if [ "$(uname -s)" != Darwin ]; then
+  echo "autoload_sentry has no build for $(uname -s); its host task runs on macOS"
+  exit 0
+fi
+bazel build //projects/demo:edit //projects/demo:pack
+bazel run //projects/demo:run -- --headless --quit-after 300
+"""
+
+[tasks."android:addon:sentry"]
+extends = "android"
+description = "Build autoload_sentry's example Android app"
+dir = "{{config_root}}/addons/sentry/examples"
+run = "bazel build --config=android //projects/demo:app"
+
+[tasks."ios:addon:sentry"]
+description = "Build autoload_sentry's example iOS Simulator app; needs macOS with Xcode"
+dir = "{{config_root}}/addons/sentry/examples"
+run = "bazel build --config=ios_sim //projects/demo:app"
+
 [tasks."test:examples"]
 description = "Check and run all examples through their own public test targets"
 dir = "{{config_root}}/examples"

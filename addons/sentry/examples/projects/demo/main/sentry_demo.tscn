@@ -1,0 +1,34 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://main/sentry_demo.gd" id="1"]
+
+[node name="SentryDemo" type="Control" unique_id=1406187255]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=902114732]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 48.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Capture" type="Button" parent="Column" unique_id=511287904]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Capture message"
+
+[node name="Status" type="Label" parent="Column" unique_id=1288841606]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3

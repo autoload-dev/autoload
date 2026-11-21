@@ -8,5 +8,10 @@
     "root": "addons/firebase",
     "bcr": false,
     "test": "cd addons/firebase && bazel test //config/..."
+  },
+  "autoload_sentry": {
+    "root": "addons/sentry",
+    "bcr": false,
+    "test": "cd addons/sentry && bazel query //..."
   }
 }

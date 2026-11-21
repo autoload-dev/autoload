@@ -5,3 +5,5 @@ e2e
 godot/private/tests/fixtures/external_release
 addons/firebase
 addons/firebase/examples
+addons/sentry
+addons/sentry/examples

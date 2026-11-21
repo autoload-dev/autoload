@@ -1,0 +1,12 @@
+# Not yet used: autoload_sentry is not published (release_modules.json). Before the first
+# publication, give it a test module that builds an application on macOS.
+matrix:
+  platform: ["macos", "macos_arm64"]
+  bazel: ["9.*"]
+tasks:
+  verify_targets:
+    name: Load the add-on
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    build_targets:
+      - "@autoload_sentry//:sentry"

@@ -4,3 +4,4 @@
 moduleRoots:
   - "."
   - "addons/firebase"
+  - "addons/sentry"

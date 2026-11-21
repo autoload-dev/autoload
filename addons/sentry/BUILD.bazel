@@ -1,0 +1,55 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
+
+package(default_visibility = ["//visibility:private"])
+
+# Sentry for Godot (github.com/getsentry/sentry-godot), its prebuilt release: crash and error
+# reporting configured through the project settings sentry/*. Class SentrySDK. The add-on
+# holds the release's GDScript user-feedback UI; the descriptor the release ships stays out,
+# because rules_godot writes it from the extension.
+godot_addon(
+    name = "sentry",
+    srcs = ["@sentry_godot//:user_feedback"],
+    directory = "addons/sentry",
+    visibility = ["//visibility:public"],
+    deps = [":sentry_extension"],
+)
+
+# Release builds take Sentry's release libraries; debug builds, source runs and the editor
+# its debug libraries, as Sentry's own descriptor maps them.
+godot_extension(
+    name = "sentry_extension",
+    entry_symbol = "sentry_gdextension_init",
+    library = select(
+        {
+            # The editor on a macOS host.
+            "@autoload_rules_godot//godot:tool": "@sentry_godot//:macos_debug",
+            "@platforms//os:macos": ":macos",
+            "@platforms//os:android": ":android",
+            "@platforms//os:ios": ":ios",
+        },
+        no_match_error = "Sentry for Godot is wired for macOS, Android and iOS only",
+    ),
+    platform_deps = select({
+        "@platforms//os:android": [":android_plugin"],
+        "@platforms//os:ios": ["@sentry_godot//:sentry_cocoa_ios"],
+        "//conditions:default": [],
+    }),
+    resource_path = "addons/sentry/sentry.gdextension",
+)
+
+[
+    alias(
+        name = name,
+        actual = select({
+            "@autoload_rules_godot//godot:release": "@sentry_godot//:%s_release" % name,
+            "//conditions:default": "@sentry_godot//:%s_debug" % name,
+        }),
+    )
+    for name in [
+        "android",
+        "android_plugin",
+        "ios",
+        "macos",
+    ]
+]

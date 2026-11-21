@@ -125,7 +125,7 @@ local exampleInputs = new Mapping<String, List<String>> {
 
 // The add-on modules in addons/, each with its example applications in examples/. Their
 // lanes run only for changes to the module itself: rule changes alone do not select them.
-local addonModules = List("firebase")
+local addonModules = List("firebase", "sentry")
 
 // Examples whose suites need a lane other than host: Petri's run in an editor built from
 // the engine sources with its module.

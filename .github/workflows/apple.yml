@@ -110,6 +110,7 @@ jobs:
             tests
             examples
             addons/firebase/examples
+            addons/sentry/examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
