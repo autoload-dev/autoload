@@ -619,9 +619,10 @@ The official Simulator Godot libraries contain x86_64 objects, although the
 **4.7.2** XCFramework metadata advertises an ARM64 slice. In 4.8-beta1, the required
 AccessKit library contains ARM64 objects, so those Simulator libraries cannot link
 together at all. A Simulator build with a missing slice fails validation, naming each
-library and the slices it has. A prebuilt 4.7.2 engine therefore builds its ARM64
-Simulator runtimes from source ([source-built engines](#source-built-engines)); 4.8-beta1
-has no Simulator runtimes.
+library and the slices it has. A prebuilt engine therefore builds its ARM64 Simulator
+runtimes from source ([source-built engines](#source-built-engines)). The 4.8-beta1
+sources do not bundle the AccessKit SDK, so its source-built Simulator runtimes have no
+screen reader support; device builds keep the official template's.
 
 ## Version and build number
 

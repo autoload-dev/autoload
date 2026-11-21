@@ -76,8 +76,9 @@ _PREBUILT_ATTRS = {
             Build the runtime slots the prebuilt artifacts lack from the release's sources,
             such as the arm64 iOS simulator runtimes of 4.7.2 or the Android debug runtimes.
             Each recipe is configured and compiled only when a build selects its slot.
-            Catalogued versions with pinned sources only, and none when templates_urls,
-            editor_urls or android_shell_urls pin a fork's artifacts.
+            Catalogued versions with pinned sources only; none when templates_urls or
+            editor_urls pin a fork's artifacts, and no Android runtimes when
+            android_shell_urls does.
             """,
         default = True,
     ),

@@ -53,9 +53,9 @@ compiles only when a build selects its slot, on a host Godot accepts for its pla
 as a Mac for iOS. The prebuilt slots keep the official artifacts. To fail the missing slots
 instead, or to fill them with your own engine, set `build_missing_runtimes = False`, or
 register your components [ahead of the hub](#replace-slots). Only catalogued releases
-with pinned sources build missing runtimes, and a hub that pins its own templates, editors
-or Android shell builds none, since the upstream sources would not match a fork's
-artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
+with pinned sources build missing runtimes. A hub that pins its own templates or editors
+builds none, and one that pins its own Android shell builds no Android runtimes, since the
+upstream sources would not match a fork's artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
 ones, which only a Mac can; fetch the targets you build instead, or set
 `build_missing_runtimes = False` where you need a whole-module fetch.
 

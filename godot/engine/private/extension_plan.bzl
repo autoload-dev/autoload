@@ -114,7 +114,7 @@ def prebuilt_plan(tag, *, _fail = fail):
 
 def _missing_runtime_source(tag, release):
     """The catalogued sources of the missing runtimes; none for a fork's pinned artifacts."""
-    pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls, tag.android_shell_urls])
+    pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls])
     if not tag.build_missing_runtimes or pins_fork_artifacts:
         return None
     return (release or {}).get("source")
@@ -230,6 +230,13 @@ _MISSING_RUNTIME_POLICY = {
 # Mac; Metal and OpenGL stay.
 _MISSING_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}}
 
+def _missing_rows(tag, slots):
+    """The runtime rows no prebuilt slot covers; a pinned shell AAR may be a fork's, so its Android rows stay unbuilt."""
+    covered = {slot["name"]: True for slot in slots}
+    if tag.android_shell_urls:
+        covered.update({slot_name(row): True for row in ROWS if row.platform == "android"})
+    return [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
+
 def missing_runtimes(tag, plan, slots):
     """
     Return the source declarations, slots and Android runtimes of the runtimes a prebuilt lacks.
@@ -246,8 +253,7 @@ def missing_runtimes(tag, plan, slots):
     """
     if not plan.source:
         return None
-    covered = {slot["name"]: True for slot in slots}
-    rows = [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
+    rows = _missing_rows(tag, slots)
     if not rows:
         return None
 

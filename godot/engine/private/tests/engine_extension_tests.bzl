@@ -414,6 +414,27 @@ def _test_pinned_artifacts_build_no_upstream_runtimes(env):
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_rules(declarations, "godot_engine_build")).contains_exactly([])
 
+def _test_pinned_shells_build_no_upstream_android_runtimes(env):
+    declarations, errors = _plan(_root(
+        android_shell_urls = ["file:///fork_shell.aar"],
+        android_shell_integrity = "sha256-" + "A" * 43 + "=",
+    ))
+    env.expect.that_collection(errors).contains_exactly([])
+    recipes = [declaration.attrs["name"] for declaration in _rules(declarations, "godot_engine_build")]
+    env.expect.that_collection(recipes).contains_exactly([
+        "godot__missing_ios_arm64_simulator_template_debug",
+        "godot__missing_ios_arm64_simulator_template_release",
+    ])
+
+def _test_prerelease_simulator_runtimes_build_from_its_sources(env):
+    declarations, errors = _plan(_root(name = "godot_beta", version = "4.8.0-beta1"))
+    env.expect.that_collection(errors).contains_exactly([])
+    slots = _slots(declarations, "godot_beta")
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["version"]).equals("4.8.0-beta")
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["payload"]).equals(
+        "@godot_beta__missing_ios_arm64_simulator_template_release//:engine_library",
+    )
+
 def engine_extension_test_suite(name):
     test_suite(
         name = name,
@@ -440,5 +461,7 @@ def engine_extension_test_suite(name):
             _test_missing_runtimes_can_be_left_unbuilt,
             _test_pinned_runtimes_need_no_source_build,
             _test_pinned_artifacts_build_no_upstream_runtimes,
+            _test_pinned_shells_build_no_upstream_android_runtimes,
+            _test_prerelease_simulator_runtimes_build_from_its_sources,
         ],
     )
