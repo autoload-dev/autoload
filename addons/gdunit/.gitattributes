@@ -1,3 +1,5 @@
 # Configuration for `git archive`, which builds the module's release archive
-# (.github/workflows/release_prep.sh). The example applications stay out of it.
+# (.github/workflows/release_prep.sh). The example application and the module's own tests,
+# which need its development dependencies, stay out of it.
 examples export-ignore
+tests export-ignore
