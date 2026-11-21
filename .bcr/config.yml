@@ -4,4 +4,5 @@
 # .bcr/<root>/.
 moduleRoots:
   - "."
+  - "addons/firebase"
   - "addons/gdunit"
