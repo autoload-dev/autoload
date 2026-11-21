@@ -201,12 +201,17 @@ def inspect(args: argparse.Namespace) -> None:
         # The add-on's libraries link into the executable; the extension's library is
         # its own framework, which exports the entry symbol.
         framework = bundle + "Frameworks/hello.framework/hello"
+        # Symbols each image defines, and the external ones only for the framework:
+        # Godot looks up the exported entry.
         expected = {
-            binary: ["rules_godot_example_controllers", "rules_godot_example_swift"],
-            framework: ["rules_godot_library_init"],
+            binary: (
+                "-U",
+                ["rules_godot_example_controllers", "rules_godot_example_swift"],
+            ),
+            framework: ("-gU", ["rules_godot_library_init"]),
         }
         with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
-            for name, wanted in expected.items():
+            for name, (flags, wanted) in expected.items():
                 data = files.get(name)
                 assert data, (name, names)
                 require_slices(data, cpus, "ios_" + environment, name)
@@ -214,7 +219,7 @@ def inspect(args: argparse.Namespace) -> None:
                 image.write_bytes(data)
                 for cpu in sorted(cpus):
                     symbols = subprocess.check_output(
-                        ["/usr/bin/nm", "-arch", cpu, "-U", str(image)], text=True
+                        ["/usr/bin/nm", "-arch", cpu, flags, str(image)], text=True
                     )
                     for symbol in wanted:
                         assert symbol in symbols, (cpu, name, symbol)

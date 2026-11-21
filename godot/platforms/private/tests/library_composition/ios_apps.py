@@ -29,15 +29,15 @@ def framework_binary(app: Path, name: str) -> Path:
     return app / "Frameworks" / (name + ".framework") / name
 
 
-def defined_symbols(executable: Path) -> set[str]:
+def defined_symbols(executable: Path, exported: bool = False) -> set[str]:
     """
-    Return the C names of the symbols an executable or library defines, local ones included.
+    Return the C names of the symbols an executable or library defines.
 
-    An exported symbols list, such as extension libraries have, keeps everything else out
-    of the exports.
+    Local ones are included unless exported is set: an exported symbols list, such as
+    extension libraries have, keeps everything else out of the exports.
     """
     output = subprocess.run(
-        ["/usr/bin/nm", "-U", str(executable)],
+        ["/usr/bin/nm", "-gU" if exported else "-U", str(executable)],
         stdout=subprocess.PIPE,
         text=True,
         check=True,

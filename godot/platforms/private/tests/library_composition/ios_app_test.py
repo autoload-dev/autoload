@@ -19,7 +19,9 @@ class IosAppTest(unittest.TestCase):
         cls.addClassCleanup(directory.cleanup)
         cls.app, cls.info, executable = unpacked(sys.argv[1:], Path(directory.name))
         cls.symbols = defined_symbols(executable)
-        cls.extension_symbols = defined_symbols(framework_binary(cls.app, "hello"))
+        framework = framework_binary(cls.app, "hello")
+        cls.extension_symbols = defined_symbols(framework)
+        cls.extension_exports = defined_symbols(framework, exported=True)
 
     def test_executable_links_the_libraries_of_the_addon(self) -> None:
         for symbol in ("rules_godot_example_controllers", "rules_godot_example_swift"):
@@ -28,6 +30,9 @@ class IosAppTest(unittest.TestCase):
     def test_extension_framework_links_the_extension_and_its_deps(self) -> None:
         for symbol in ("rules_godot_library_init", "rules_godot_hello_support"):
             self.assertIn(symbol, self.extension_symbols)
+
+    def test_extension_framework_exports_the_entry_symbol(self) -> None:
+        self.assertIn("rules_godot_library_init", self.extension_exports)
 
     def test_bundle_carries_the_libraries_resources(self) -> None:
         for path in (

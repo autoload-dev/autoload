@@ -57,9 +57,11 @@ class IosCompositionTest(unittest.TestCase):
             for path in ("addon_notice.txt", "composition_notice.txt"):
                 self.assertTrue((app / path).exists(), path)
             symbols = defined_symbols(executable)
-            extension_symbols = defined_symbols(framework_binary(app, "hello"))
+            extension_exports = defined_symbols(
+                framework_binary(app, "hello"), exported=True
+            )
         self.assertIn("rules_godot_example_controllers", symbols)
-        self.assertIn("rules_godot_library_init", extension_symbols)
+        self.assertIn("rules_godot_library_init", extension_exports)
 
     def test_project_and_extension_paths_bundle_the_library_resource(self) -> None:
         for role in ("direct", "loadable", "source", "transitive"):
