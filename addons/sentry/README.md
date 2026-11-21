@@ -2,7 +2,7 @@
 
 [Sentry for Godot](https://github.com/getsentry/sentry-godot) as the Bazel module
 `autoload_sentry`, built with [rules_godot](https://github.com/autoload-dev/rules_godot): crash
-and error reporting for Godot applications on macOS, Android and iOS.
+and error reporting for Godot applications on macOS, Linux, Android and iOS.
 
 | Add-on | Target | GDScript API |
 | --- | --- | --- |
@@ -53,7 +53,9 @@ SentrySDK.capture_message("Hello from Godot")
   `SentryObjC` framework, embedded beside the extension's framework without linking.
 - The release's repository holds only filegroups and imports; the `godot_addon` in this
   module places its user-feedback UI.
-- Linux, Windows and the web are not wired yet, though the release has their libraries.
+- On Linux, native crash reports need Sentry's `crashpad_handler` beside the library, which
+  the add-on does not place yet. Windows and the web are not wired yet, though the release
+  has their libraries.
 
 ## Development
 

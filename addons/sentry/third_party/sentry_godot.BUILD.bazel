@@ -33,6 +33,24 @@ _ANDROID_ABIS = {
     for variant in _VARIANTS
 ]
 
+# Linux x86_64 and arm64. Sentry's crashpad_handler, which native crash reports need beside
+# the library, is not placed yet.
+_LINUX_ARCHS = {
+    "@platforms//cpu:aarch64": "arm64",
+    "@platforms//cpu:x86_64": "x86_64",
+}
+
+[
+    filegroup(
+        name = "linux_" + variant,
+        srcs = select({
+            cpu: ["bin/linux/%s/libsentry.linux.%s.%s.so" % (arch, variant, arch)]
+            for cpu, arch in _LINUX_ARCHS.items()
+        }),
+    )
+    for variant in _VARIANTS
+]
+
 # macOS: the extension library loads the Sentry Cocoa SDK, libSentry.dylib, through
 # @loader_path; as a dependency of the import it lands beside the library.
 cc_import(

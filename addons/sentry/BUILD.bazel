@@ -22,13 +22,14 @@ godot_extension(
     entry_symbol = "sentry_gdextension_init",
     library = select(
         {
-            # The editor on a macOS host.
-            "@autoload_rules_godot//godot:tool": "@sentry_godot//:macos_debug",
+            # The editor and the imports of a build, on the host.
+            "@autoload_rules_godot//godot:tool": ":tool",
             "@platforms//os:macos": ":macos",
+            "@platforms//os:linux": ":linux",
             "@platforms//os:android": ":android",
             "@platforms//os:ios": ":ios",
         },
-        no_match_error = "Sentry for Godot is wired for macOS, Android and iOS only",
+        no_match_error = "Sentry for Godot is wired for macOS, Linux, Android and iOS only",
     ),
     platform_deps = select({
         "@platforms//os:android": [":android_plugin"],
@@ -50,6 +51,19 @@ godot_extension(
         "android",
         "android_plugin",
         "ios",
+        "linux",
         "macos",
     ]
 ]
+
+# The editor's library, a debug build of its host.
+alias(
+    name = "tool",
+    actual = select(
+        {
+            "@platforms//os:macos": "@sentry_godot//:macos_debug",
+            "@platforms//os:linux": "@sentry_godot//:linux_debug",
+        },
+        no_match_error = "Sentry for Godot's editor is wired for macOS and Linux hosts only",
+    ),
+)
