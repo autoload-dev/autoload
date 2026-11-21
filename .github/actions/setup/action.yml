@@ -8,7 +8,7 @@ inputs:
     description: Set up runner tools (Bazelisk, Python, compilers), Bazel caching and cleanup; disable for selection-only jobs.
     default: "true"
   bazel-modules:
-    description: Newline-separated Bazel module directories to shut down at job end.
+    description: Newline-separated Bazel module directories to shut down at job end; the add-on modules a build ran in are shut down as well.
     default: .
   android-cache:
     description: Cache Android SDK components missing from the runner.

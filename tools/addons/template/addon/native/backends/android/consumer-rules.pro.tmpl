@@ -1,0 +1,5 @@
+-keepattributes RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations
+-keep class dev.autoload.{{module}}.{{addon}}.{{class}}Plugin { public <init>(org.godotengine.godot.Godot); }
+-keepclassmembers class dev.autoload.{{module}}.{{addon}}.{{class}}Plugin {
+    @org.godotengine.godot.plugin.UsedByGodot <methods>;
+}

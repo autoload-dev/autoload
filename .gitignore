@@ -41,3 +41,6 @@ bazel-remote-grpc.log
 /execution_log.binpb.zst
 # Swift Package Manager's scratch directory beside examples/Package.swift.
 /examples/.build/
+
+# The add-on generator's self-test module (mise run addon:template).
+/addons/.selftest/

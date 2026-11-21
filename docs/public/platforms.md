@@ -806,7 +806,7 @@ libraries its native code needs the same way.
   default. An SDK activity that extends `AppCompatActivity` then fails to start with
   "You need to use a Theme.AppCompat theme". Give such an activity a theme in the
   add-on's manifest; the merge adds it to the SDK's entry. The
-  [AppAuth add-on](../../examples/addons/app_auth/backends/android/AndroidManifest.xml)
+  [AppAuth add-on](../../examples/addons/app_auth/native/backends/android/AndroidManifest.xml)
   does this for AppAuth's redirect activity with the SDK's own AppCompat theme.
 - **Info.plist entries:** rules_apple has no library-level Info.plist, so an
   add-on's fragments go in its `infoplists`, and those an extension's native code needs

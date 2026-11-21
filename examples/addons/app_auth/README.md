@@ -26,9 +26,9 @@ application shipping a pack that contains the add-on links and packages it witho
 |---|---|
 | `//addons/app_auth` | The extension, an add-on by itself, that the resources using it list in `deps`: `AppAuth`, `AppAuthLogin`, `AppAuthResult` |
 | `native/` | Configuration validation, ID-token claims, the backend interface the operating systems implement |
-| `backends/android/` | A Godot Android plugin with AppAuth for Android; the extension's Android platform library |
-| `backends/apple/` | Objective-C++ with AppAuth for iOS and macOS, linked into the extension library |
-| `backends/unsupported/` | Linux and the editor: the add-on loads and every login ends with `UNSUPPORTED` |
+| `native/backends/android/` | A Godot Android plugin with AppAuth for Android; the extension's Android platform library |
+| `native/backends/apple/` | Objective-C++ with AppAuth for iOS and macOS, linked into the extension library |
+| `native/backends/unsupported/` | Linux and the editor: the add-on loads and every login ends with `UNSUPPORTED` |
 | `demo/` | The application with the login button and the result screen |
 | `tests/` | The GdUnit contract suite |
 

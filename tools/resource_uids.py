@@ -142,6 +142,22 @@ def uid_to_id(text: str) -> int:
     return value & 0x7FFFFFFFFFFFFFFF
 
 
+# The digits ResourceUID::id_to_text writes, by value.
+_UID_DIGITS = "abcdefghijklmnopqrstuvwxy012345678"
+
+
+def id_to_uid(value: int) -> str:
+    """Return the uid:// text ResourceUID::id_to_text writes for a non-negative ID."""
+    if value < 0:
+        raise ValueError(f"Not a resource ID: {value}")
+    digits = ""
+    while True:
+        value, digit = divmod(value, _UID_BASE)
+        digits = _UID_DIGITS[digit] + digits
+        if not value:
+            return "uid://" + digits
+
+
 def uid_cache(uids: Mapping[str, str]) -> bytes:
     """
     Return the .godot/uid_cache.bin of UIDs by resource path, as Godot's export writes it.

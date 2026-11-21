@@ -4,7 +4,10 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 py_library(
     name = "modules_lib",
     srcs = ["modules.py"],
-    visibility = ["//tools/android:__pkg__"],
+    visibility = [
+        "//tools/addons:__pkg__",
+        "//tools/android:__pkg__",
+    ],
 )
 
 py_test(

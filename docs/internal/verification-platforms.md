@@ -68,6 +68,8 @@ documentation-only changes do not load the code rules.
 | Python/Starlark/BUILD/configuration | Applicable source quality; host tests when selected | Lanes whose packaging, build or runtime contract is affected |
 | One example | That example's host suite; selected mobile package builds at the delivery boundary | Other examples only for shared dependencies; runtime acceptance for changed operating-system behavior |
 | Shared rules, engine/build inputs | Selected host, package, compatibility and cache checks | Extra CPUs or clean builds only for the changed contract |
+| One add-on module in `addons/<module>/` | Its own tasks in the lanes its `addon.pkl` names: `host:addon:<module>` (host, limited to its hosts, such as `host:addon:<module>@macos`), `android:addon:<module>` and `ios:addon:<module>` | None: rule changes alone do not select add-on lanes; a break shows in the module's next change |
+| The add-on generator, `tools/addons/` | Its self-test in every lane: `<lane>:addon-template` generates a module and runs that lane | The add-on modules' own lanes |
 | CI/toolchain configuration | Setup/selector tests, workflow/action validation, cleanup tests and affected non-host lanes | CI runner evidence when local tools cannot reproduce its setup |
 
 Path selection is conservative for shared rules and build inputs: the `core` list can select
@@ -97,6 +99,12 @@ not extra mandatory steps after a selected check. `mise run test:examples` runs 
 Each uses `--build_tests_only` over its example subtree, so new test targets are discovered
 automatically without building unrelated app targets. The full examples task discovers all
 example subtrees. Bazel still respects manual tags and platform compatibility.
+
+Add-on modules are selected only by their own directory and the settings all modules share
+(`addons/*.bazelrc`): `hk.pkl` finds them by their `addon.pkl` and runs the same generic
+tasks for each, `addon:host`, `addon:android` and `addon:ios` (`tools/addons/lanes.py`), from
+the module's `examples/`. The plan drops a host task from a workflow whose host the module's
+`addon.pkl` leaves out. Their iOS task follows the Apple-lane policy below.
 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.

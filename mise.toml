@@ -154,11 +154,12 @@ description = "Report Code Health of the checkout with the CodeScene CLI, Starla
 run = "python3 -m tools.code_health.codescene"
 
 [tasks."test:setup"]
-description = "Check Android provisioning, the modules' shared pins and the mise environment"
+description = "Check Android provisioning, the modules' shared pins, the files generated from the add-on modules and the mise environment"
 run = [
   "python3 -m tools.android.requirements",
   "python3 -m tools.setup.pins",
-  "python3 -m unittest tools.android.mise_test tools.android.requirements_test tools.setup.modules_test tools.setup.pins_test",
+  "python3 -m tools.addons.generated --check",
+  "python3 -m unittest tools.android.mise_test tools.android.requirements_test tools.setup.modules_test tools.setup.pins_test tools.addons.new_test tools.addons.generated_test tools.addons.lanes_test",
 ]
 
 [tasks."test:gdextension"]
@@ -203,6 +204,47 @@ run = "bazel test --build_tests_only //addons/app_auth/..."
 description = "Check and run the Dart scripts example's own tests"
 dir = "{{config_root}}/examples"
 run = "bazel test --build_tests_only //addons/dart/..."
+
+# The add-on modules' lanes, the same for every module in addons/ (tools/addons/lanes.py):
+# each runs from the module's examples/, which consumes the module and the rules of this
+# checkout. hk.pkl selects them per module from its addon.pkl.
+[tasks."addon:host"]
+description = "Run an add-on module's tests and build its example projects for the editor and desktop"
+usage = 'arg "<module>" help="The module directory below addons/"'
+run = "python3 -m tools.addons.lanes host {{usage.module}}"
+
+[tasks."addon:android"]
+extends = "android"
+description = "Build an add-on module's example Android apps"
+usage = 'arg "<module>" help="The module directory below addons/"'
+run = "python3 -m tools.addons.lanes android {{usage.module}}"
+
+[tasks."addon:ios"]
+description = "Build an add-on module's example iOS Simulator apps; needs macOS with Xcode"
+usage = 'arg "<module>" help="The module directory below addons/"'
+run = "python3 -m tools.addons.lanes ios {{usage.module}}"
+
+[tasks."addon:new"]
+description = "Create an add-on module, or add an add-on to one, from the template"
+usage = """
+arg "<module>" help="The module directory below addons/, such as firebase"
+flag "--addon <addon>" help="The add-on directory in the module; the module name by default"
+"""
+run = "python3 -m tools.addons.new {{usage.module}} --addon '{{usage.addon}}'"
+
+# The generator's self-test: generates addons/.selftest (gitignored) and runs its lane.
+[tasks."addon:template"]
+description = "Generate a module from the add-on template and run one of its lanes"
+usage = 'arg "<lane>" help="host, android or ios"'
+# Only the Android lane reads the examples' Maven graph, so only it pins one.
+run = [
+  "python3 -m tools.addons.new .selftest {% if usage.lane != 'android' %}--no-pin{% endif %}",
+  "mise run addon:{{usage.lane}} .selftest",
+]
+
+[tasks."addons:generate"]
+description = "Regenerate the files derived from the add-on modules: README table and BCR templates"
+run = "python3 -m tools.addons.generated"
 
 [tasks."test:examples"]
 description = "Check and run all examples through their own public test targets"

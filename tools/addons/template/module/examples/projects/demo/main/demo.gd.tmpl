@@ -1,0 +1,13 @@
+extends Control
+## Shows what {{class}} reports on this platform.
+
+
+func _ready() -> void:
+	if {{class}}.is_supported():
+		%Status.text = "{{title}} runs on %s." % {{class}}.platform_name()
+	else:
+		%Status.text = "{{title}} does nothing on %s." % OS.get_name()
+	# The headless test (BUILD.bazel) passes when the scene runs without engine errors.
+	if DisplayServer.get_name() == "headless":
+		print(%Status.text)
+		get_tree().quit()

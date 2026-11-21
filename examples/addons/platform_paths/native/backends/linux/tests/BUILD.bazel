@@ -7,7 +7,7 @@ cc_test(
     size = "small",
     srcs = ["xdg_directories_test.cc"],
     deps = [
-        "//addons/platform_paths/backends/linux:policy",
         "//addons/platform_paths/native:backend_api",
+        "//addons/platform_paths/native/backends/linux:policy",
     ],
 )

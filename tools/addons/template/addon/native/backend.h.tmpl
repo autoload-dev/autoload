@@ -1,0 +1,10 @@
+#pragma once
+
+#include <string>
+
+// The platform's side of {{class}}; each backend defines these once.
+namespace {{extension}} {
+bool backend_is_supported();
+// The platform as the backend reports it; empty where the add-on is unsupported.
+std::string backend_platform_name();
+} // namespace {{extension}}

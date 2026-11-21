@@ -26,6 +26,8 @@ WORKFLOW_JOBS = {
         "ios": "ios",
     },
 }
+# The host each workflow's runners run on: its host lane runs the tasks of that host.
+WORKFLOW_HOSTS = {"ci": "linux", "apple": "macos"}
 # The job with which CI calls the Apple workflow, and CI's selection output that says
 # whether this run calls it.
 APPLE_JOB = "apple"
@@ -37,8 +39,9 @@ def runs_apple(lanes: dict[str, list[str]], event_name: str) -> bool:
     A pull request's run leaves it out: the merge queue runs it, and the ci:macos label
     starts it for a pull request. Every other event calls it when an Apple lane is selected.
     """
+    apple = for_host(lanes, WORKFLOW_HOSTS["apple"])
     return event_name != "pull_request" and any(
-        lanes[lane] for lane in WORKFLOW_JOBS["apple"]
+        apple[lane] for lane in WORKFLOW_JOBS["apple"]
     )
 
 
@@ -97,30 +100,84 @@ def verify_results(workflow: str, needs: dict) -> None:
 EXAMPLE_LANES = {"petri": "source-engine"}
 
 
-def lane_for(task: str) -> str:
-    """Assign a selected mise task to its lane."""
-    if task in {
-        "lint",
-        "lint:ci",
-        "conventions:code",
-        "conventions:docs",
-        "test:selection",
-        "test:setup",
-    }:
-        return "quality"
-    if task in {"docs", "source-engine", "android", "ios"}:
-        return task
+# Tasks named for themselves, by lane.
+TASK_LANES = {
+    **dict.fromkeys(
+        (
+            "lint",
+            "lint:ci",
+            "conventions:code",
+            "conventions:docs",
+            "test:selection",
+            "test:setup",
+        ),
+        "quality",
+    ),
+    **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
+    **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
+}
+
+
+def _family_lane(task: str) -> str | None:
+    """The lane of a task of a family: contracts, examples and add-on modules."""
     if task.startswith("contracts:") and task.removeprefix("contracts:") in PROFILE_LANES:
         return task.removeprefix("contracts:")
     if task.startswith("test:example:"):
         return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
-    if task in {
-        "test:bazel",
-        "test:regressions",
-        "test:gdextension",
-    }:
-        return "host"
-    raise ValueError(f"No lane for selected task: {task}")
+    # The add-on modules' tasks are named <lane>:addon:<module>, and the generator's self-test
+    # <lane>:addon-template.
+    if (addon := addon_task(task)) is not None:
+        return addon[0]
+    return None
+
+
+def addon_task(task: str) -> tuple[str, str | None, tuple[str, ...]] | None:
+    """
+    Split an add-on task into its lane, its module and the hosts it is limited to, which
+    hk.pkl appends to the name: `host:addon:<module>@macos`. The self-test,
+    `<lane>:addon-template`, has no module.
+    """
+    lane, separator, rest = task.partition(":addon")
+    if not separator or lane not in PROFILE_LANES:
+        return None
+    target, _, listed = rest.partition("@")
+    hosts = tuple(listed.split(",")) if listed else ()
+    if target == "-template":
+        return lane, None, hosts
+    if not target.startswith(":") or not target[1:]:
+        return None
+    return lane, target[1:], hosts
+
+
+def task_command(task: str) -> list[str]:
+    """The command of a selected task, as hk.pkl's step for it runs it."""
+    addon = addon_task(task)
+    if addon is None:
+        return ["mise", "run", task]
+    lane, module, _ = addon
+    if module is None:
+        return ["mise", "run", "addon:template", lane]
+    return ["mise", "run", f"addon:{lane}", module]
+
+
+def for_host(lanes: dict[str, list[str]], host: str) -> dict[str, list[str]]:
+    """The lanes without the add-on tasks whose host lane excludes this host."""
+
+    def runs_here(task: str) -> bool:
+        addon = addon_task(task)
+        return addon is None or not addon[2] or host in addon[2]
+
+    return {
+        lane: [task for task in tasks if runs_here(task)] for lane, tasks in lanes.items()
+    }
+
+
+def lane_for(task: str) -> str:
+    """Assign a selected mise task to its lane."""
+    lane = TASK_LANES.get(task) or _family_lane(task)
+    if lane is None:
+        raise ValueError(f"No lane for selected task: {task}")
+    return lane
 
 
 def lane_plan(plan: dict) -> dict[str, list[str]]:
@@ -156,7 +213,7 @@ def run_tasks(tasks: object) -> None:
     for task in tasks:
         lane_for(task)
     for task in tasks:
-        subprocess.run(["mise", "run", task], check=True)
+        subprocess.run(task_command(task), check=True)
 
 
 def write_plan(workflow: str) -> None:
@@ -170,7 +227,8 @@ def write_plan(workflow: str) -> None:
     command.extend(selection_args(event_name, event))
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
     lanes = lane_plan(json.loads(result.stdout))
-    outputs: dict[str, object] = {lane: lanes[lane] for lane in WORKFLOW_JOBS[workflow]}
+    here = for_host(lanes, WORKFLOW_HOSTS[workflow])
+    outputs: dict[str, object] = {lane: here[lane] for lane in WORKFLOW_JOBS[workflow]}
     if workflow == "ci":
         outputs[APPLE_JOB] = runs_apple(lanes, event_name)
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:

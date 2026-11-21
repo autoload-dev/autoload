@@ -1,0 +1,29 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//{{addon}}:__subpackages__"])
+
+# Headers are included as {{module}}/{{addon}}/native/...
+
+cc_library(
+    name = "backend_api",
+    hdrs = ["backend.h"],
+    include_prefix = "{{module}}",
+    strip_include_prefix = "/",
+)
+
+cc_library(
+    name = "native",
+    srcs = ["{{addon}}.cc"],
+    hdrs = ["{{addon}}.h"],
+    include_prefix = "{{module}}",
+    strip_include_prefix = "/",
+    deps = [
+        ":backend_api",
+        "@godot_cpp",
+    ],
+)
+
+filegroup(
+    name = "registration",
+    srcs = ["register_types.cc"],
+)

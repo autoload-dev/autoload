@@ -2,7 +2,7 @@
 The checkout's Bazel modules and what their declaration files say, for the setup checks.
 
 The root module ignores each consumer module nested in the checkout, so `.bazelignore`
-names them. Declarations are read with Python's ast, without evaluating Starlark.
+names them; it ignores `addons/` as a whole, whose modules are found by their files. Declarations are read with Python's ast, without evaluating Starlark.
 """
 
 import ast
@@ -11,16 +11,42 @@ import shlex
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+# The add-on modules, each a directory below it with its examples/ beside its own module.
+ADDONS = "addons"
+
+
+def addon_modules(root: Path) -> tuple[str, ...]:
+    """
+    The add-on modules of `addons/`, each `addons/<name>` with a `MODULE.bazel`, by name.
+    Hidden directories, such as the generator's self-test module, are none of them.
+    """
+    return tuple(
+        f"{ADDONS}/{path.parent.name}"
+        for path in sorted((root / ADDONS).glob("*/MODULE.bazel"))
+        if not path.parent.name.startswith(".")
+    )
 
 
 def module_paths(root: Path) -> tuple[str, ...]:
-    """The root module and every directory of its `.bazelignore` that holds a module."""
+    """
+    The root module, every directory of its `.bazelignore` that holds a module, and each
+    add-on module of `addons/` with its examples: the root ignores `addons` as a whole.
+    """
     ignored = (root / ".bazelignore").read_text().splitlines()
-    return (".",) + tuple(
+    listed = tuple(
         name
         for name in (line.strip() for line in ignored)
         if name and not name.startswith("#") and (root / name / "MODULE.bazel").is_file()
     )
+    addons = tuple(
+        module
+        for addon in addon_modules(root)
+        for module in (addon, f"{addon}/examples")
+        if (root / module / "MODULE.bazel").is_file()
+    )
+    return (".",) + listed + addons
 
 
 @dataclass(frozen=True)
@@ -77,6 +103,18 @@ def declarations(source: str) -> list[Declaration]:
         }
         found.append(Declaration(kind, keywords))
     return found
+
+
+def literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
+    """The keywords of a declaration whose values are literals; computed ones are left out."""
+    values = {}
+    for keyword, value in keywords.items():
+        try:
+            values[keyword] = ast.literal_eval(value)
+        except ValueError:
+            # A computed value, such as a comprehension's variable.
+            continue
+    return values
 
 
 def bazelrc_options(root: Path, module: str) -> Iterator[tuple[str, str]]:

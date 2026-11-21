@@ -1,0 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+# The add-on generator and its template; `mise run test:setup` runs this package's tests, and
+# the conventions check (RG015) tests its rule against generated modules.
+py_library(
+    name = "new_lib",
+    srcs = [
+        "modules.py",
+        "new.py",
+    ],
+    data = glob(["template/**"]),
+    visibility = [
+        "//tools/ci:__pkg__",
+        "//tools/conventions:__pkg__",
+    ],
+    deps = [
+        "//tools:resource_uids_lib",
+        "//tools/setup:modules_lib",
+    ],
+)

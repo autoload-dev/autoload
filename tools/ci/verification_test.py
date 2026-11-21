@@ -5,9 +5,11 @@ import unittest
 from tools.ci.verification import (
     LANES,
     WORKFLOW_JOBS,
+    for_host,
     lane_plan,
     runs_apple,
     selection_args,
+    task_command,
     verify_results,
 )
 
@@ -154,10 +156,60 @@ class VerificationTest(unittest.TestCase):
         for step in (
             {"name": "new-check", "status": "included"},
             {"name": "contracts:desktop", "status": "included"},
+            {"name": "desktop:addon:widget", "status": "included"},
+            {"name": "host:addon:", "status": "included"},
+            {"name": "host:addon-other", "status": "included"},
             {"name": "ios", "status": "error"},
         ):
             with self.subTest(step=step), self.assertRaises(ValueError):
                 lane_plan({"steps": [step]})
+
+    def test_add_on_tasks_run_the_generic_add_on_tasks(self) -> None:
+        lanes = lane_plan(
+            {
+                "steps": [
+                    {"name": name, "status": "included"}
+                    for name in (
+                        "host:addon:widget",
+                        "android:addon:widget",
+                        "host:addon:gadget@macos",
+                        "ios:addon-template",
+                    )
+                ]
+            }
+        )
+        self.assertEqual(lanes["host"], ["host:addon:widget", "host:addon:gadget@macos"])
+        self.assertEqual(lanes["android"], ["android:addon:widget"])
+        self.assertEqual(lanes["ios"], ["ios:addon-template"])
+        self.assertEqual(
+            task_command("android:addon:widget"),
+            ["mise", "run", "addon:android", "widget"],
+        )
+        self.assertEqual(
+            task_command("host:addon:gadget@macos"),
+            ["mise", "run", "addon:host", "gadget"],
+        )
+        self.assertEqual(
+            task_command("ios:addon-template"), ["mise", "run", "addon:template", "ios"]
+        )
+        self.assertEqual(
+            task_command("host:addon-template@linux"),
+            ["mise", "run", "addon:template", "host"],
+        )
+        self.assertEqual(task_command("test:setup"), ["mise", "run", "test:setup"])
+
+    def test_a_host_lane_limited_to_macos_runs_in_the_apple_workflow_only(self) -> None:
+        lanes = {lane: [] for lane in LANES} | {
+            "host": ["test:bazel", "host:addon:gadget@macos"]
+        }
+        self.assertEqual(for_host(lanes, "linux")["host"], ["test:bazel"])
+        self.assertEqual(
+            for_host(lanes, "macos")["host"], ["test:bazel", "host:addon:gadget@macos"]
+        )
+        only_macos = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@macos"]}
+        self.assertTrue(runs_apple(only_macos, "merge_group"))
+        only_linux = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@linux"]}
+        self.assertFalse(runs_apple(only_linux, "merge_group"))
 
     def test_pr_uses_base_and_checked_out_merge(self) -> None:
         self.assertEqual(

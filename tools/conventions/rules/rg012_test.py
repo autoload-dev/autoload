@@ -118,7 +118,7 @@ class ProductionIsolationTest(RepositoryTest):
             ("tests/projects/y/tests/android/BUILD.bazel", True),
             ("godot/private/tests/BUILD.bazel", True),
             ("godot/private/BUILD.bazel", False),
-            ("examples/addons/widget/backends/linux/tests/fixture.gd", True),
+            ("examples/addons/widget/native/backends/linux/tests/fixture.gd", True),
         ):
             with self.subTest(name=name):
                 self.assertEqual(expected, test_scope(workspace, Path(name)))
@@ -130,7 +130,9 @@ class ProductionIsolationTest(RepositoryTest):
             f"{root}/demo/BUILD.bazel",
             srcs=[f"//{root}/demo:fixture.gd"],
         )
-        source = {f"//{root}/demo:fixture.gd": f"{root}/backends/linux/tests/fixture.gd"}
+        source = {
+            f"//{root}/demo:fixture.gd": f"{root}/native/backends/linux/tests/fixture.gd"
+        }
         self.assertEqual(
             [("violation", f"{root}/demo/BUILD.bazel")], self.evaluate([demo], source)
         )

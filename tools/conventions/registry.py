@@ -14,6 +14,7 @@ from tools.conventions.rules.rg011 import AddonIndependence
 from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg013 import PublicDocumentationLinks
 from tools.conventions.rules.rg014 import EngineLayout
+from tools.conventions.rules.rg015 import AddonModuleLayout
 
 RULES: tuple[Rule, ...] = (
     PackageNames(),
@@ -29,6 +30,7 @@ RULES: tuple[Rule, ...] = (
     ProductionIsolation(),
     PublicDocumentationLinks(),
     EngineLayout(),
+    AddonModuleLayout(),
 )
 
 

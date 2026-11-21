@@ -35,11 +35,11 @@ else:
    ```sh
    bazel run //addons/platform_paths/demo:update
    bazel run //addons/platform_paths/tests:update
-   bazel test //addons/platform_paths/tests/unit //addons/platform_paths/backends/linux/tests //addons/platform_paths/tests:update.test
+   bazel test //addons/platform_paths/tests/unit //addons/platform_paths/native/backends/linux/tests //addons/platform_paths/tests:update.test
    bazel test //addons/platform_paths/tests/integration //addons/platform_paths/demo/tests:exported //addons/platform_paths/demo:update.test //addons/platform_paths/tests:update.test
    ```
 
-   The independent native policy test lives in `backends/linux/tests/`. The separate
+   The independent native policy test lives in `native/backends/linux/tests/`. The separate
    `tests/` project owns deterministic Godot API suites in `unit/` and operating-system
    suites and fixtures in `integration/`; `demo/tests/` owns the exported-demo check.
    Integration checks resolve actual

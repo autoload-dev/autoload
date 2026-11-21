@@ -6,13 +6,13 @@ cannot see that they drift apart. This check reads every MODULE.bazel with Pytho
 ast and compares each pin that two or more modules declare.
 """
 
-import ast
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from tools.setup.modules import declarations, module_paths
+from tools.setup.modules import declarations, literals, module_paths
 
 ARCHIVE = ("sha256", "urls")
 # The attributes compared for each kind of declaration: a function, a repository rule or
@@ -28,17 +28,12 @@ ATTRIBUTES = {
     "godot_engines.source": ("version", "sha256", "urls", "strip_prefix"),
 }
 MAVEN = "maven.install"
-
-
-def _literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
-    values = {}
-    for keyword, value in keywords.items():
-        try:
-            values[keyword] = ast.literal_eval(value)
-        except ValueError:
-            # A computed value, such as a comprehension's variable, is no pin.
-            continue
-    return values
+# Each consumer module overrides the ruleset with its checkout, so its version is no pin.
+# An add-on module declares the release it needs instead.
+UNPINNED = {"bazel_dep:autoload_rules_godot"}
+# Deliberate drifts: module -> keys, such as "addons/<name>": {"bazel_dep:<module>"}, with
+# the reason beside the entry. Remove an entry once its reason no longer holds.
+EXCEPTIONS: dict[str, set[str]] = {}
 
 
 def _key(kind: str, name: str | None, attribute: str) -> str:
@@ -54,7 +49,7 @@ def module_pins(source: str) -> dict[str, Any]:
     pins: dict[str, Any] = {}
     for declaration in declarations(source):
         kind = declaration.kind
-        values = _literals(declaration.keywords)
+        values = literals(declaration.keywords)
         name = values.get("name")
         if kind == MAVEN:
             # Maven coordinates group:artifact[:packaging[:classifier]]:version.
@@ -71,21 +66,27 @@ def _format(value: Any) -> str:
     return ", ".join(value) if isinstance(value, list) else str(value)
 
 
+def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
+    """The pins of one module that other modules must agree on, with their file."""
+    path = root / module
+    locations = {
+        "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
+        ".bazelversion": {"bazelversion": (path / ".bazelversion").read_text().strip()},
+    }
+    skipped = UNPINNED | EXCEPTIONS.get(module, set())
+    for file, pins in locations.items():
+        location = (Path(module) / file).as_posix()
+        for key, value in pins.items():
+            if key not in skipped:
+                yield key, location, value
+
+
 def drifts(root: Path) -> list[str]:
     """One line per module whose shared pin differs from the most common value."""
     declared: dict[str, dict[str, tuple[str, Any]]] = {}
     for module in module_paths(root):
-        path = root / module
-        locations = {
-            "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
-            ".bazelversion": {
-                "bazelversion": (path / ".bazelversion").read_text().strip()
-            },
-        }
-        for file, pins in locations.items():
-            location = (Path(module) / file).as_posix()
-            for key, value in pins.items():
-                declared.setdefault(key, {})[module] = (location, value)
+        for key, location, value in _shared_pins(root, module):
+            declared.setdefault(key, {})[module] = (location, value)
     lines = []
     for key, modules in declared.items():
         if len(modules) < 2:

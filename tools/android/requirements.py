@@ -5,7 +5,12 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.setup.modules import bazelrc_options, declarations, module_paths
+from tools.setup.modules import (
+    addon_modules,
+    bazelrc_options,
+    declarations,
+    module_paths,
+)
 
 # Provisioning must cover the SDK and .bazelrc overrides of every module: the root
 # module's development SDK and each consumer module's SDK.
@@ -51,6 +56,15 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
     return version("_LINUX_BUILD_TOOLS"), version("_LINUX_NDK"), levels
 
 
+def application_modules(root: Path) -> list[str]:
+    """
+    The modules that build applications: every module but the add-on modules in addons/,
+    which use their examples' SDK. Each of them must configure its SDK.
+    """
+    addons = set(addon_modules(root))
+    return [module for module in module_paths(root) if module not in addons]
+
+
 def configuration_errors(root: Path) -> list[str]:
     provisioned = tomllib.loads((root / "mise.toml").read_text())["vars"]
     apis = provisioned["android_api_levels"].split(",")
@@ -67,7 +81,7 @@ def configuration_errors(root: Path) -> list[str]:
 
     # A file several modules import, such as shared.bazelrc, is reported once.
     overrides = set()
-    for module in module_paths(root):
+    for module in application_modules(root):
         manifest = (Path(module) / "MODULE.bazel").as_posix()
         try:
             required = sdk_requirements((root / manifest).read_text())

@@ -1,0 +1,14 @@
+# The settings of every add-on module's own builds, such as `bazel test //...` in
+# addons/<module>: each module's .bazelrc imports this file and adds its BuildBuddy tag.
+
+# Builds of a module use the rules beside it in this repository rather than a release.
+common --override_module=autoload_rules_godot=../..
+
+import %workspace%/../../shared.bazelrc
+
+# Opt in to BuildBuddy with --config=buildbuddy.
+import %workspace%/../../buildbuddy.bazelrc
+# Bazel normalizes the command as a path; run the executable script by its relative path.
+build:buildbuddy --workspace_status_command=../../buildbuddy_status.sh
+
+try-import %workspace%/../../user.bazelrc

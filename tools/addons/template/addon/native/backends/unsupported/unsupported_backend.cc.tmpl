@@ -1,0 +1,7 @@
+// The editor and desktop platforms: the add-on does nothing.
+#include "{{module}}/{{addon}}/native/backend.h"
+
+namespace {{extension}} {
+bool backend_is_supported() { return false; }
+std::string backend_platform_name() { return {}; }
+} // namespace {{extension}}
