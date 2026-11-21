@@ -452,8 +452,9 @@ godot_resources = rule(
     attrs = {
         "srcs": attr.label_list(
             doc = """
-            Source files of these resources; paths are relative to
-            strip_prefix.
+            Source or generated files of these resources, from any package or
+            repository; each file's path is relative to the package of the target that
+            lists it, after strip_prefix.
             """,
             allow_files = True,
             # Files are the same in every context, so generated ones build once.
@@ -469,8 +470,8 @@ godot_resources = rule(
         ),
         "strip_prefix": attr.string(
             doc = """
-            Package-relative prefix removed from srcs paths; empty uses the package
-            root.
+            Prefix removed from srcs paths, relative to the package of each target in
+            srcs; empty uses the package root.
             """,
         ),
         "deps": attr.label_list(

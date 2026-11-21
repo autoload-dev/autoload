@@ -466,6 +466,16 @@ http_archive(
     urls = ["https://github.com/godot-gdunit-labs/gdUnit4/archive/0127a55f4543dfc24746f6e5c7ba6f94105d51f2.tar.gz"],
 )
 
+# A vendor release in a repository of its own, for the tests that place another
+# repository's files.
+local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
+
+local_repository(
+    name = "external_release",
+    dev_dependency = True,
+    path = "godot/private/tests/fixtures/external_release",
+)
+
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 # The prebuilt beta engine's shell AAR, whose engine library the engine probe's Android

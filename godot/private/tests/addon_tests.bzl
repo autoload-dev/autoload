@@ -199,7 +199,7 @@ def _versioned_inventory(name, index):
         srcs = [_FIXTURE + ":inventory/inventory.gd"],
         autoloads = {"Inventory": "*res://addons/inventory_v%s/inventory.gd" % index},
         directory = "addons/inventory_v" + index,
-        strip_prefix = "fixtures/project_with_addons/inventory",
+        strip_prefix = "inventory",
         tags = ["manual"],
     )
 

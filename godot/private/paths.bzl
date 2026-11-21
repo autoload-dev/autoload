@@ -44,42 +44,85 @@ def validate_resource_path(path):
         fail("Reserved Godot resource path: %r" % path)
     return path
 
+def _repository_relative(file):
+    """A file's path below the root of its repository: its short path without ../<repository>/."""
+    path = file.short_path
+    return path.split("/", 2)[2] if path.startswith("../") else path
+
 def resource_path(
-        ctx,
         file,
+        target,
         strip_prefix,
         prefix = "",
-        outside = "use resource_paths for external or generated files at another resource path"):
+        outside = "list the files through a target in their own package"):
     """
-    Return the resource path of a same-repository source or generated file from its package.
+    Return the resource path of a file from the package of the target that brings it.
 
     Args:
-        ctx: Rule analysis context.
-        file: Source or generated File of the rule's repository.
+        file: Source or generated File among the target's files.
+        target: Label of the target listed in srcs that brings the file; its package is the
+            directory the file's path is relative to, in any repository.
         strip_prefix: Additional package-relative directory prefix to remove.
         prefix: Resource path of a directory, ending in a slash, that the remaining
             path is placed under; empty for the project root.
-        outside: What the failure for a file outside strip_prefix tells the user to do.
+        outside: What the failure for a file outside the package and strip_prefix tells the
+            user to do.
 
     Returns:
         The file's stable resource path.
     """
-    path = file.short_path
-    if file.owner.workspace_name != ctx.label.workspace_name:
-        fail((
-            "Use resource_paths to give a file from another repository its " +
-            "resource path: %s"
-        ) % file.short_path)
-    if path.startswith("../"):
-        path = "/".join(path.split("/")[2:])
-    source = ctx.label.package + "/" if ctx.label.package else ""
+    path = _repository_relative(file)
+    source = target.package + "/" if target.package else ""
     if strip_prefix:
         strip_prefix = strip_prefix.rstrip("/")
         validate_resource_path(strip_prefix)
         source += strip_prefix + "/"
-    if not path.startswith(source):
-        fail("%s is outside %r; %s" % (file.short_path, source, outside))
+    if file.owner.workspace_name != target.workspace_name or not path.startswith(source):
+        fail("%s is outside %r of %s; %s" % (file.short_path, source, target.repo_name or "the main repository", outside))
     return validate_resource_path(prefix + path[len(source):])
+
+def placed_resource_paths(ctx, targets, strip_prefix, prefix, outside):
+    """
+    Place the files of srcs-like targets, each relative to its target's package.
+
+    Args:
+        ctx: Rule analysis context.
+        targets: The listed targets, such as ctx.attr.srcs.
+        strip_prefix: Package-relative directory prefix to remove.
+        prefix: Resource path of the directory the files are placed under.
+        outside: What the failure for a file outside the package tells the user to do.
+
+    Returns:
+        A dictionary of resource paths to Files.
+    """
+    resource_paths = {}
+    for target in targets:
+        for file in target[DefaultInfo].files.to_list():
+            merge_resource_paths(
+                resource_paths,
+                {resource_path(file, target.label, strip_prefix, prefix, outside): file},
+                owner = str(ctx.label),
+            )
+    return resource_paths
+
+def explicit_resource_paths(ctx, resource_paths_attr):
+    """
+    Collect single-file targets placed at explicit resource paths.
+
+    Args:
+        ctx: Rule analysis context.
+        resource_paths_attr: A label-keyed dictionary of targets to resource paths.
+
+    Returns:
+        A dictionary of resource paths to Files.
+    """
+    resource_paths = {}
+    for target, path in resource_paths_attr.items():
+        files = target[DefaultInfo].files.to_list()
+        if len(files) != 1:
+            fail("resource_paths requires a single file per label: %s" % target.label)
+        merge_resource_paths(resource_paths, {path: files[0]}, owner = str(ctx.label))
+    return resource_paths
 
 def directory_prefix(path):
     """
@@ -264,37 +307,25 @@ def validate_namespace(resource_paths, owners = None):
                 ) % (spelling, ancestor, child))
             portable_directories[folded] = ancestor
 
-def collect_resource_paths(ctx, owners = None):
+def collect_resource_paths(ctx):
     """
     Collect sources and generated or external files placed at explicit resource paths.
 
     Args:
         ctx: Rule analysis context with srcs, resource_paths, strip_prefix and
             optionally prefix.
-        owners: Optional mutable dictionary receiving declaring labels.
 
     Returns:
         A dictionary of resource paths to Files.
     """
-    resource_paths = {}
-    prefix = directory_prefix(getattr(ctx.attr, "prefix", ""))
-    for file in ctx.files.srcs:
-        merge_resource_paths(
-            resource_paths,
-            {resource_path(ctx, file, ctx.attr.strip_prefix, prefix): file},
-            owners = owners,
-            owner = str(ctx.label),
-        )
-    for target, path in ctx.attr.resource_paths.items():
-        files = target[DefaultInfo].files.to_list()
-        if len(files) != 1:
-            fail("resource_paths requires a single file per label: %s" % target.label)
-        merge_resource_paths(
-            resource_paths,
-            {path: files[0]},
-            owners = owners,
-            owner = str(ctx.label),
-        )
+    resource_paths = placed_resource_paths(
+        ctx,
+        ctx.attr.srcs,
+        ctx.attr.strip_prefix,
+        directory_prefix(getattr(ctx.attr, "prefix", "")),
+        outside = "list the files through a target in their own package, or give each its path in resource_paths",
+    )
+    merge_resource_paths(resource_paths, explicit_resource_paths(ctx, ctx.attr.resource_paths), owner = str(ctx.label))
     return resource_paths
 
 def declared_path(resource_paths, path, kind):
