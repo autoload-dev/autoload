@@ -88,6 +88,7 @@ local regressionCore = core + regressionModule
 // godot/private/tests/adapter, so rule changes alone do not select the module's lane.
 local gdunitModule = List(
   "addons/gdunit/MODULE.bazel",
+  "addons/gdunit/REPO.bazel",
   "addons/gdunit/BUILD.bazel",
   "addons/gdunit/defs.bzl",
   "addons/gdunit/private/**",

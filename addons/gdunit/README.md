@@ -119,5 +119,5 @@ GdUnit and reports to Bazel.
 The example application in `examples/` consumes the module as applications do: the project
 `projects/scores` tests its scripts with GdUnit. `examples/tests/` holds the module's own
 tests: GdUnit runs that pass, fail, shard, filter and report the way Bazel's test
-encyclopedia requires, and a pack with GdUnit and the adapter in a project with strict
+encyclopedia requires, a pack with GdUnit, and a GdUnit run in a project with strict
 warnings. `mise run addon:host gdunit` runs both.
