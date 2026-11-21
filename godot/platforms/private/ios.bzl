@@ -279,7 +279,7 @@ _ios_extension_libraries = rule(
     } | PLATFORM_ATTRS | ENGINE_CHECK_ATTRS,
 )
 
-def ios_application_inputs(name, pack, runtime, shell, common):
+def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, common):
     """
     Declare the inputs shared by a bundle and the unsigned device-link regression.
 
@@ -287,13 +287,8 @@ def ios_application_inputs(name, pack, runtime, shell, common):
         name: Prefix of the private input targets.
         pack: Configured start pack.
         runtime: The runtime to link, an engine library target.
-        shell: The application's _ios_shell attributes besides pack: bundle_id (Apple
-            bundle identifier), minimum_os_version (minimum iOS version), families
-            (supported Apple device families), app_name (fallback display name) and
-            executable_name (physical executable and PCK basename); optionally
-            platform_deps (platform libraries of the application, validated for iOS)
-            and the shell overrides infoplist_overrides, app_icon_overrides,
-            launch_storyboard and resource_overrides.
+        minimum_os_version: Minimum iOS version, for the shell and the extension check.
+        shell: The application's other _ios_shell attributes, by name.
         common: Conventional target attributes.
 
     Returns:
@@ -303,6 +298,7 @@ def ios_application_inputs(name, pack, runtime, shell, common):
     _ios_shell(
         name = data,
         pack = pack,
+        minimum_os_version = minimum_os_version,
         visibility = ["//visibility:private"],
         **(common | shell)
     )
@@ -324,7 +320,7 @@ def ios_application_inputs(name, pack, runtime, shell, common):
     _ios_extension_libraries(
         name = data + ".extension_libraries",
         deps = [pack],
-        minimum_os_version = shell["minimum_os_version"],
+        minimum_os_version = minimum_os_version,
         runtime = runtime,
         visibility = ["//visibility:private"],
         **common
@@ -406,7 +402,7 @@ _ios_bundle = rule(
     } | LAUNCH_ATTRS,
 )
 
-def _bundle_targets(name, inputs, visibility, common, application):
+def _bundle_targets(name, inputs, visibility, common, bundle_name, deps, resources, infoplists, application):
     """
     Declare an iOS application's ios_application, its public bundle and its debug symbols.
 
@@ -415,10 +411,12 @@ def _bundle_targets(name, inputs, visibility, common, application):
         inputs: What ios_application_inputs returned for the application.
         visibility: Visibility of the public targets.
         common: Conventional target attributes.
-        application: ios_application attributes: bundle_id, minimum_os_version,
-            families, the application's own deps, resources, infoplists and
-            launch_storyboard, and the remaining ios_application attributes, such as
-            bundle_name and signing options.
+        bundle_name: The application's bundle name, or None for the last segment of name.
+        deps: The application's own platform libraries.
+        resources: The application's own bundle resources.
+        infoplists: The application's own Info.plist fragments.
+        application: The other ios_application attributes, such as bundle_id,
+            minimum_os_version and signing options.
     """
     data = inputs.data
 
@@ -428,10 +426,10 @@ def _bundle_targets(name, inputs, visibility, common, application):
     target = name + ".bundle/" + base
     ios_application(
         name = target,
-        bundle_name = application.pop("bundle_name", None) or base,
-        deps = inputs.deps + application.pop("deps"),
-        resources = [":" + data] + application.pop("resources"),
-        infoplists = [":" + data + ".plist"] + application.pop("infoplists"),
+        bundle_name = bundle_name or base,
+        deps = inputs.deps + deps,
+        resources = [":" + data] + resources,
+        infoplists = [":" + data + ".plist"] + infoplists,
         app_icons = [":" + data + ".app_icons"],
         visibility = ["//visibility:private"],
         **application
@@ -559,9 +557,9 @@ def godot_ios_application(
         name = name,
         pack = pack,
         runtime = runtime,
+        minimum_os_version = minimum_os_version,
         shell = dict(
             bundle_id = bundle_id,
-            minimum_os_version = minimum_os_version,
             families = families,
             app_name = kwargs.get("bundle_name") or name,
             executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
@@ -578,13 +576,14 @@ def godot_ios_application(
         inputs = inputs,
         visibility = visibility,
         common = common,
+        bundle_name = kwargs.pop("bundle_name", None),
+        deps = deps,
+        resources = resources,
+        infoplists = infoplists,
         application = dict(
             bundle_id = bundle_id,
             minimum_os_version = minimum_os_version,
             families = families,
-            deps = deps,
-            resources = resources,
-            infoplists = infoplists,
             launch_storyboard = launch_storyboard,
         ) | kwargs,
     )

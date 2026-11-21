@@ -11,9 +11,9 @@ def ios_unsigned_link(name, pack, runtime):
         name = name + ".inputs",
         pack = pack,
         runtime = runtime,
+        minimum_os_version = "15.0",
         shell = dict(
             bundle_id = "org.example.rulesgodot.beta",
-            minimum_os_version = "15.0",
             families = ["iphone", "ipad"],
             app_name = "beta_app",
             executable_name = "beta_app",
