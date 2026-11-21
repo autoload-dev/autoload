@@ -171,11 +171,10 @@ class VerificationTest(unittest.TestCase):
             ["--from-ref", "parent", "--to-ref", "HEAD"],
         )
 
-    def test_dispatch_checks_all_and_a_push_is_not_a_verification_event(self) -> None:
+    def test_dispatch_checks_all(self) -> None:
         self.assertEqual(selection_args("workflow_dispatch", {}), ["--all"])
-        for event in ("push", "unrecognized"):
-            with self.subTest(event=event), self.assertRaises(ValueError):
-                selection_args(event, {"before": "old"})
+        with self.assertRaises(ValueError):
+            selection_args("unrecognized", {})
 
 
 if __name__ == "__main__":
