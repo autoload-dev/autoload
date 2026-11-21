@@ -207,10 +207,11 @@ def inspect(args: argparse.Namespace) -> None:
         }
         with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
             for name, wanted in expected.items():
-                assert name in files, (name, names)
-                require_slices(read_file(name), cpus, "ios_" + environment, name)
+                data = files.get(name)
+                assert data, (name, names)
+                require_slices(data, cpus, "ios_" + environment, name)
                 image = Path(directory) / Path(name).name
-                image.write_bytes(read_file(name))
+                image.write_bytes(data)
                 for cpu in sorted(cpus):
                     symbols = subprocess.check_output(
                         ["/usr/bin/nm", "-arch", cpu, "-U", str(image)], text=True
