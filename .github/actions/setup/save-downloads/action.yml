@@ -1,0 +1,32 @@
+name: Save Bazel downloads
+description: >-
+  Save the downloads of Bazel's repository cache that the setup action
+  restored from the cache service, when the job changed the set. Run it as a
+  macOS job's last step.
+
+runs:
+  using: composite
+  steps:
+    # Bazel refreshes a download's modification time on every cache hit, so
+    # a download no job used for 30 days leaves the saved set. The key names
+    # the set's file list: an unchanged set has the restored key and is not
+    # saved again.
+    - name: Prune and identify downloads
+      id: downloads
+      shell: bash
+      run: |
+        [[ -d "${BAZEL_DOWNLOADS:-}" ]] || exit 0
+        find "$BAZEL_DOWNLOADS" -type f -mtime +30 -delete
+        find "$BAZEL_DOWNLOADS" -mindepth 1 -type d -empty -delete
+        files="$(cd "$BAZEL_DOWNLOADS" && find . -type f | LC_ALL=C sort)"
+        [[ -n "$files" ]] || exit 0
+        key="$BAZEL_DOWNLOADS_KEY_PREFIX$(printf '%s' "$files" | shasum -a 256 | cut -d' ' -f1)"
+        if [[ "$key" != "$BAZEL_DOWNLOADS_RESTORED_KEY" ]]; then
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Save downloads
+      if: steps.downloads.outputs.key != ''
+      uses: actions/cache/save@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
+      with:
+        path: ${{ env.BAZEL_DOWNLOADS }}
+        key: ${{ steps.downloads.outputs.key }}
