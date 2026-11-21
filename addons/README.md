@@ -10,6 +10,7 @@ release tags:
 
 | Module | Add-ons | Version |
 | --- | --- | --- |
+| [`autoload_gdunit`](gdunit) | GdUnit4 runs an application's GdUnit test suites as Bazel tests, with sharding, test filters and JUnit reports. | 0.1.0 |
 | [`autoload_sentry`](sentry) | [Sentry for Godot](https://github.com/getsentry/sentry-godot) for Godot applications built with Bazel: crash and error reporting on Android, iOS, Linux and macOS. | 0.1.0 |
 
 <!-- End of the generated add-on modules. -->
