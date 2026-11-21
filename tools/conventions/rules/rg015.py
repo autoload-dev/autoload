@@ -80,6 +80,28 @@ def extension_owners(workspace: Workspace, modules: list[Path]) -> dict[str, lis
     return owners
 
 
+def unlisted_values(listed: list[str], allowed: set[str]) -> bool:
+    """Whether a List names nothing, something it may not name, or a value twice."""
+    return not listed or not set(listed) <= allowed or len(set(listed)) != len(listed)
+
+
+def property_problems(assigned: set[str], values: dict[str, list[str]]) -> Iterable[str]:
+    """Properties an addon.pkl may not set, sets in a form tools cannot read, or leaves out."""
+    if unknown := sorted(assigned - set(PROPERTIES)):
+        yield f"addon.pkl sets no {', '.join(unknown)}"
+    for key in sorted((assigned & set(PROPERTIES)) - set(values)):
+        yield f"addon.pkl's {key} is a List(...) on one line"
+    if "lanes" not in assigned:
+        yield "addon.pkl sets lanes"
+
+
+def value_problems(values: dict[str, list[str]]) -> Iterable[str]:
+    """Lists of an addon.pkl that name something the schema does not allow."""
+    for key, allowed in ADDON_VALUES.items():
+        if key in values and unlisted_values(values[key], allowed):
+            yield f"addon.pkl's {key} names some of {', '.join(sorted(allowed))}, once each"
+
+
 class AddonModuleLayout:
     info = RuleInfo(
         "RG015",
@@ -154,23 +176,10 @@ class AddonModuleLayout:
         lines = [line.split("//")[0].strip() for line in text.splitlines()]
         if next((line for line in lines if line), "") != AMENDS:
             yield Finding(at(path), f"addon.pkl starts with {AMENDS}")
-        values = addon_values(text)
         assigned = {match[1] for line in lines if (match := ASSIGNMENT.match(line))}
-        if unknown := sorted(assigned - set(PROPERTIES)):
-            yield Finding(at(path), f"addon.pkl sets no {', '.join(unknown)}")
-        for key in sorted((assigned & set(PROPERTIES)) - set(values)):
-            yield Finding(at(path), f"addon.pkl's {key} is a List(...) on one line")
-        if "lanes" not in assigned:
-            yield Finding(at(path), "addon.pkl sets lanes")
-        for key, allowed in ADDON_VALUES.items():
-            listed = values.get(key)
-            if listed is not None and not (
-                listed and set(listed) <= allowed and len(set(listed)) == len(listed)
-            ):
-                yield Finding(
-                    at(path),
-                    f"addon.pkl's {key} names some of {', '.join(sorted(allowed))}, once each",
-                )
+        values = addon_values(text)
+        for message in [*property_problems(assigned, values), *value_problems(values)]:
+            yield Finding(at(path), message)
 
     @staticmethod
     def projects(
