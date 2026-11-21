@@ -26,7 +26,12 @@ _APPLE_PLATFORM_TYPE = "//command_line_option:apple_platform_type"
 _ANDROID_PLATFORMS = "//command_line_option:android_platforms"
 _ANDROID_SETTING = str(Label("@rules_android//flags:android_platforms"))
 _DYNAMIC = "//command_line_option:dynamic_mode"
-_OUTPUTS = [_PLATFORMS, _CPU, _APPLE_CPU, _APPLE_PLATFORM_TYPE, _ANDROID_PLATFORMS, _ANDROID_SETTING, _DYNAMIC]
+
+# iOS applications build their native code without --strip (godot/platforms/private/ios.bzl);
+# a pack's iOS native code takes the same value when the pack is built by itself, so it
+# needs no second configuration for the build's --strip.
+_STRIP = "//command_line_option:strip"
+_OUTPUTS = [_PLATFORMS, _CPU, _APPLE_CPU, _APPLE_PLATFORM_TYPE, _ANDROID_PLATFORMS, _ANDROID_SETTING, _DYNAMIC, _STRIP]
 _INPUTS = _OUTPUTS + [CPUS, ENVIRONMENT, EXPORT_PLATFORM, OPERATING_SYSTEM, PLATFORM_SLICES]
 
 def _ios_cpu(environment, cpu):
@@ -44,6 +49,7 @@ def _content_impl(settings, _attr):
         values[_CPU] = _ios_cpu(settings[ENVIRONMENT], cpus[0])
         values[_APPLE_CPU] = ""
         values[_APPLE_PLATFORM_TYPE] = "ios"
+        values[_STRIP] = "never"
     elif operating_system == "android":
         values[_DYNAMIC] = "off"
         values[_ANDROID_PLATFORMS] = settings[PLATFORM_SLICES].split(",")
@@ -78,6 +84,7 @@ def _platform_slice_impl(settings, _attr):
             values[_CPU] = bazel_cpu
             values[_APPLE_CPU] = bazel_cpu.removeprefix("ios_")
             values[_APPLE_PLATFORM_TYPE] = "ios"
+            values[_STRIP] = "never"
         elif operating_system == "android":
             values[_DYNAMIC] = "off"
             values[_ANDROID_PLATFORMS] = []
