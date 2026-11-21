@@ -8,7 +8,7 @@ MOBILE_FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platf
 
 # The Android SDK and NDK toolchains that MODULE.bazel registers, without the caller's extra
 # toolchains.
-ANDROID_TOOLCHAINS = own_toolchains([])
+ANDROID_TOOLCHAINS = own_toolchains()
 
 # An arm64 Android application with those toolchains.
 ANDROID = {

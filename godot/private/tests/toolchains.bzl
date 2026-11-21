@@ -5,7 +5,7 @@ A test selects in one of three ways, each for one kind of subject:
 
 - Registered toolchains: the default development engine `@godot` and the Android SDK and NDK
   toolchains, among others, are registered in MODULE.bazel.
-  A test that needs only them selects nothing; an analysis test merges `own_toolchains([])`
+  A test that needs only them selects nothing; an analysis test merges `own_toolchains()`
   so that the caller's extra toolchains and execution platforms do not change what it
   analyzes.
 - A whole engine by name: another complete development engine, such as `@godot_beta`, is
@@ -17,7 +17,10 @@ A test selects in one of three ways, each for one kind of subject:
   order or `--extra_toolchains` itself uses `--extra_toolchains`, the consumer's per-invocation
   override, whose last entry wins. `own_toolchains` replaces the caller's list for an
   analysis test; the `extra_toolchains` attribute of `configured_outputs` appends to it for a
-  build-output test, so a remote execution config keeps its C++ toolchain.
+  build-output test, so a remote execution config keeps its C++ toolchain. The difference
+  comes from where each sets the option: an analysis test's `config_settings` can only
+  overwrite it, while a transition can read the caller's list. Appending leaves the caller's
+  execution platforms alone; `own_toolchains` sets them to the host.
 
 A build setting such as `--//godot:engine` stays out of the exec configuration of the tools a
 test analyzes; each distinct `--extra_toolchains` list gives them an exec configuration of
@@ -44,7 +47,8 @@ _HOST = "@platforms//host"
 ENGINE = str(Label("//godot:engine"))
 
 # The root module's development engines, by the key tests name them with: the hub MODULE.bazel
-# registers and the engine name that selects it, empty for the default engine.
+# registers and the engine name that selects it, empty for the default engine. Selection uses
+# the name only; `hub` serves the engine upgrade tests, which need its repository name.
 DEVELOPMENT_ENGINES = {
     "beta": struct(hub = Label("@godot_beta//toolchains:all"), name = "beta"),
     "stable": struct(hub = Label("@godot//toolchains:all"), name = ""),
@@ -63,7 +67,7 @@ def development_engine(engine):
     """
     return {ENGINE: DEVELOPMENT_ENGINES[engine].name}
 
-def own_toolchains(toolchains, execution_platforms = None):
+def own_toolchains(toolchains = [], execution_platforms = None):
     """
     Return config_settings that replace the caller's extra toolchains and execution platforms.
 

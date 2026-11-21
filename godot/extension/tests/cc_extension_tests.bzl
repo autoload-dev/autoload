@@ -32,7 +32,7 @@ _IOS_SIMULATOR_BOTH_CPUS = {"//command_line_option:platforms": str(Label(":ios_s
 # SDK the test is skipped.
 _ANDROID = {
     "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-} | own_toolchains([])
+} | own_toolchains()
 _ANDROID_SDK = {"target_compatible_with": [Label("//godot/platforms/private/tests:requires_android_sdk")]}
 
 def _extension(name, **kwargs):

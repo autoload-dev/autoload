@@ -45,10 +45,6 @@ def _editor_variant_runs_from_sources_on_an_export_platform(env, target):
         [file.basename for file in target[DefaultInfo].files.to_list()],
     ).contains_exactly(["app.editor.run"])
 
-# The Android SDK and NDK toolchains that MODULE.bazel registers, without the caller's extra
-# toolchains.
-_ANDROID_TOOLCHAINS = own_toolchains([])
-
 # Android applications need an installed Android SDK; without one the tests are skipped.
 _ANDROID_SDK = {
     "size": "small",
@@ -59,7 +55,7 @@ def _android(platform, android_format):
     return {
         "//command_line_option:platforms": str(Label(platform)),
         _FORMAT: android_format,
-    } | _ANDROID_TOOLCHAINS
+    } | own_toolchains()
 
 def _test_app_bundle_delivers_only_unsigned_bundle(name):
     analysis_test(

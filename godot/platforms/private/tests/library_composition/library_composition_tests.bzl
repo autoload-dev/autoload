@@ -22,7 +22,7 @@ _IOS_APPS = "//godot/platforms/private/tests/library_composition/fixtures/ios_ap
 _ANDROID = struct(
     config_settings = {
         "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-    } | own_toolchains([]),
+    } | own_toolchains(),
     attr_values = {
         "size": "small",
         "target_compatible_with": ["//godot/platforms/private/tests:requires_android_sdk"],
