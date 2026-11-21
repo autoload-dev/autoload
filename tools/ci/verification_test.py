@@ -2,12 +2,24 @@
 
 import unittest
 
-from tools.ci.verification import LANES, lane_plan, selection_args, verify_results
+from tools.ci.verification import (
+    LANES,
+    WORKFLOW_JOBS,
+    job_plan,
+    lane_plan,
+    selection_args,
+    verify_results,
+)
 
 
 def selection_outputs(**selected: str) -> dict[str, str]:
     """Use the workflow's output names, including its source_engine mapping."""
-    return {**{lane.replace("-", "_"): "[]" for lane in LANES}, **selected}
+    return {**{output.replace("-", "_"): "[]" for output in WORKFLOW_JOBS}, **selected}
+
+
+def selected_everywhere() -> dict[str, list[str]]:
+    """A selection with one task in every lane."""
+    return {lane: [lane] for lane in LANES}
 
 
 class VerificationTest(unittest.TestCase):
@@ -21,26 +33,55 @@ class VerificationTest(unittest.TestCase):
             "android": {"result": "skipped"},
         }
         with self.assertRaisesRegex(ValueError, "android.*skipped"):
-            verify_results(needs, apple_required=False)
+            verify_results(needs)
         needs["android"]["result"] = "success"
-        verify_results(needs, apple_required=False)
+        verify_results(needs)
 
-    def test_apple_jobs_are_required_only_when_requested(
-        self,
-    ) -> None:
+    def test_pull_request_run_leaves_out_the_apple_jobs(self) -> None:
+        jobs = job_plan(selected_everywhere(), "pull_request", apple_only=False)
+        self.assertEqual(
+            {output for output, tasks in jobs.items() if tasks},
+            {"quality", "docs", "host", "android"},
+        )
+
+    def test_macos_preview_runs_only_the_apple_jobs(self) -> None:
+        jobs = job_plan(selected_everywhere(), "pull_request", apple_only=True)
+        self.assertEqual(
+            {output: tasks for output, tasks in jobs.items() if tasks},
+            {"host-macos": ["host"], "source-engine": ["source-engine"], "ios": ["ios"]},
+        )
+
+    def test_merge_queue_main_and_dispatch_run_every_selected_job(self) -> None:
+        for event in ("merge_group", "push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                jobs = job_plan(selected_everywhere(), event, apple_only=False)
+                self.assertEqual(set(jobs), set(WORKFLOW_JOBS))
+                self.assertTrue(all(jobs.values()))
+                self.assertEqual(jobs["host-macos"], jobs["host"])
+
+    def test_unselected_lane_stays_empty_in_every_run(self) -> None:
+        lanes = selected_everywhere() | {"host": [], "ios": []}
+        jobs = job_plan(lanes, "merge_group", apple_only=False)
+        self.assertEqual((jobs["host"], jobs["host-macos"], jobs["ios"]), ([], [], []))
+
+    def test_host_tasks_require_the_job_of_each_host_that_runs_them(self) -> None:
         needs = {
             "selection": {
                 "result": "success",
-                "outputs": selection_outputs(ios='["ios"]'),
+                "outputs": selection_outputs(
+                    host='["test:bazel"]', host_macos='["test:bazel"]'
+                ),
             },
-            "ios": {"result": "skipped"},
+            "tests-linux": {"result": "success"},
+            "tests-macos": {"result": "skipped"},
         }
-        verify_results(needs, apple_required=False)
-        with self.assertRaisesRegex(ValueError, "ios.*skipped"):
-            verify_results(needs, apple_required=True)
-        needs["ios"]["result"] = "failure"
-        with self.assertRaisesRegex(ValueError, "ios.*failure"):
-            verify_results(needs, apple_required=False)
+        with self.assertRaisesRegex(ValueError, "tests-macos.*skipped"):
+            verify_results(needs)
+        needs["selection"]["outputs"]["host_macos"] = "[]"
+        verify_results(needs)
+        needs["tests-macos"]["result"] = "failure"
+        with self.assertRaisesRegex(ValueError, "tests-macos.*failure"):
+            verify_results(needs)
 
     def test_source_engine_workflow_output_requires_its_workflow_job(self) -> None:
         needs = {
@@ -51,24 +92,21 @@ class VerificationTest(unittest.TestCase):
             "source-engine": {"result": "skipped"},
         }
         with self.assertRaisesRegex(ValueError, "source-engine.*skipped"):
-            verify_results(needs, apple_required=True)
+            verify_results(needs)
 
     def test_missing_selection_output_is_not_an_empty_task_list(self) -> None:
         with self.assertRaisesRegex(ValueError, "missing.*quality"):
-            verify_results(
-                {"selection": {"result": "success", "outputs": {}}}, apple_required=False
-            )
+            verify_results({"selection": {"result": "success", "outputs": {}}})
 
     def test_missing_selection_and_cancelled_jobs_fail_verification(self) -> None:
         with self.assertRaisesRegex(ValueError, "selection"):
-            verify_results({}, apple_required=False)
+            verify_results({})
         with self.assertRaisesRegex(ValueError, "cancelled"):
             verify_results(
                 {
                     "selection": {"result": "success", "outputs": {}},
                     "tests-linux": {"result": "cancelled"},
                 },
-                apple_required=False,
             )
 
     def test_documentation_does_not_request_lane_work(self) -> None:

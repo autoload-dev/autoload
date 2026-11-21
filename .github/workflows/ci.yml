@@ -11,7 +11,6 @@ on:
   workflow_call:
     inputs:
       apple-only:
-        description: Run only the selected Apple lanes.
         type: boolean
         default: false
 
@@ -19,9 +18,10 @@ permissions:
   contents: read
 
 # hk.pkl selects tasks for both local verification and CI. The selection job
-# avoids provisioning runners for unrelated changes. A pull request's run
-# leaves out the selected Apple lanes; the merge queue, main and dispatch run
-# them, and so does the macOS preview of a pull request labelled ci:macos.
+# avoids provisioning runners for unrelated changes and gives each job its
+# tasks for this run: a pull request's run leaves out the selected Apple jobs;
+# the merge queue, main and dispatch run them, and the macOS preview of a pull
+# request labelled ci:macos runs only them.
 # Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
@@ -41,6 +41,7 @@ jobs:
       quality: ${{ steps.plan.outputs.quality }}
       docs: ${{ steps.plan.outputs.docs }}
       host: ${{ steps.plan.outputs.host }}
+      host_macos: ${{ steps.plan.outputs['host-macos'] }}
       source_engine: ${{ steps.plan.outputs['source-engine'] }}
       android: ${{ steps.plan.outputs.android }}
       ios: ${{ steps.plan.outputs.ios }}
@@ -56,12 +57,14 @@ jobs:
           bazel: "false"
       - name: Select verification tasks
         id: plan
+        env:
+          VERIFICATION_APPLE_ONLY: ${{ inputs.apple-only }}
         run: python3 tools/ci/verification.py plan
 
   formatting:
     name: Source quality
     needs: selection
-    if: ${{ !inputs.apple-only && needs.selection.outputs.quality != '[]' }}
+    if: needs.selection.outputs.quality != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.quality }}
     timeout-minutes: 10
@@ -84,7 +87,7 @@ jobs:
   api-docs:
     name: API documentation
     needs: selection
-    if: ${{ !inputs.apple-only && needs.selection.outputs.docs != '[]' }}
+    if: needs.selection.outputs.docs != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.docs }}
     timeout-minutes: 15
@@ -101,7 +104,7 @@ jobs:
 
   tests-linux:
     needs: selection
-    if: ${{ !inputs.apple-only && needs.selection.outputs.host != '[]' }}
+    if: needs.selection.outputs.host != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.host }}
     name: Tests (Linux)
@@ -147,11 +150,9 @@ jobs:
   tests-macos:
     name: Tests (macOS)
     needs: selection
-    if: >-
-      needs.selection.outputs.host != '[]' &&
-      (inputs.apple-only || github.event_name != 'pull_request')
+    if: needs.selection.outputs.host_macos != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.host }}
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.host_macos }}
     timeout-minutes: 30
     runs-on: blacksmith-6vcpu-macos-26
     steps: *tests-steps
@@ -159,9 +160,7 @@ jobs:
   source-engine:
     name: Source engine
     needs: selection
-    if: >-
-      needs.selection.outputs.source_engine != '[]' &&
-      (inputs.apple-only || github.event_name != 'pull_request')
+    if: needs.selection.outputs.source_engine != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.source_engine }}
     timeout-minutes: 60
@@ -188,7 +187,7 @@ jobs:
   android:
     name: Android
     needs: selection
-    if: ${{ !inputs.apple-only && needs.selection.outputs.android != '[]' }}
+    if: needs.selection.outputs.android != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.android }}
     timeout-minutes: 60
@@ -213,9 +212,7 @@ jobs:
   ios:
     name: iOS
     needs: selection
-    if: >-
-      needs.selection.outputs.ios != '[]' &&
-      (inputs.apple-only || github.event_name != 'pull_request')
+    if: needs.selection.outputs.ios != '[]'
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
     timeout-minutes: 60
@@ -240,9 +237,7 @@ jobs:
 
   verification:
     name: Verification result
-    # The preview's lanes report for themselves; this result is the pull
-    # request's and the merge queue's required check.
-    if: ${{ always() && !inputs.apple-only }}
+    if: always()
     needs: [selection, formatting, api-docs, tests-linux, tests-macos, source-engine, android, ios]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
@@ -251,8 +246,4 @@ jobs:
       - name: Require selected jobs to succeed
         env:
           VERIFICATION_NEEDS: ${{ toJSON(needs) }}
-          APPLE_REQUIRED: ${{ github.event_name != 'pull_request' }}
-        run: |
-          args=()
-          if [ "$APPLE_REQUIRED" = true ]; then args+=(--apple-required); fi
-          python3 tools/ci/verification.py verify "${args[@]}"
+        run: python3 tools/ci/verification.py verify

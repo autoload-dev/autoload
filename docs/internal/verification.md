@@ -20,7 +20,7 @@ silently claim success or build a new test framework.
 | Before claiming a local change complete | Review the diff; run selected source-quality checks and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
 | Before committing | Format changed Python/Starlark/Bazel sources if needed; retain relevant evidence | A second suite just because a commit is about to happen |
 | Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality and setup contracts | App builds, non-host lane suites and cache experiments in the hook |
-| PR/review readiness | Require the selected CI results; the merge queue runs the selected Apple lanes. When a change works on macOS or iOS behavior, ask the user whether to add `ci:macos` for a preview of them on the pull request | Duplicating CI suites locally once CI is the selected execution environment |
+| PR/review readiness | Require the selected CI results; when a change could affect macOS or iOS behavior, ask the user whether to add `ci:macos` for a [preview of the Apple lanes](verification-platforms.md#apple-lanes-on-pull-requests) | Duplicating CI suites locally once CI is the selected execution environment |
 | Merging | The merge queue runs the selected lanes, including the Apple lanes, on the result of the merge; the run on main selects against the previous main commit | An unconditional full matrix for documentation-only changes |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
 
