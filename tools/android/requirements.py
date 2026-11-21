@@ -51,13 +51,27 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
     return version("_LINUX_BUILD_TOOLS"), version("_LINUX_NDK"), levels
 
 
+def _builds_android(root: Path, module: str) -> bool:
+    """Whether a module depends on rules_android, as every module that builds for Android."""
+    source = (root / module / "MODULE.bazel").read_text()
+    return any(
+        call.kind == "bazel_dep"
+        and ast.literal_eval(call.keywords.get("name", ast.Constant("")))
+        == "rules_android"
+        for call in declarations(source)
+    )
+
+
 def application_modules(root: Path) -> list[str]:
     """
-    The modules that build applications: every module but the add-on modules in addons/,
-    which use their examples' SDK. Each of them must configure its SDK.
+    The modules that build Android applications: every module that depends on
+    rules_android but the add-on modules in addons/, which use their examples' SDK. Each
+    of them must configure its SDK.
     """
     return [
-        module for module in module_paths(root) if Path(module).parent != Path("addons")
+        module
+        for module in module_paths(root)
+        if Path(module).parent != Path("addons") and _builds_android(root, module)
     ]
 
 

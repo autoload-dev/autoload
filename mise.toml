@@ -222,6 +222,17 @@ description = "Build autoload_firebase's example iOS Simulator app; needs macOS 
 dir = "{{config_root}}/addons/firebase/examples"
 run = "bazel build --config=ios_sim //projects/analytics:app"
 
+# GdUnit runs on the host only, so autoload_gdunit has no Android or iOS task. Its tests run
+# in the module directory, which has their development dependencies, and its example in
+# examples/.
+[tasks."host:addon:gdunit"]
+description = "Run autoload_gdunit's tests and its example's GdUnit suites"
+dir = "{{config_root}}/addons/gdunit"
+run = [
+  "bazel test //...",
+  "cd examples && bazel test //...",
+]
+
 [tasks."test:examples"]
 description = "Check and run all examples through their own public test targets"
 dir = "{{config_root}}/examples"

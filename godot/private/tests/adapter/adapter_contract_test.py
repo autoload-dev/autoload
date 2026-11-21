@@ -14,7 +14,7 @@ sys.argv = sys.argv[:1]
 def run(launcher: str, **environment: str) -> tuple[int, str]:
     """Run a test launcher like Bazel; return its exit code and output."""
     work = Path(tempfile.mkdtemp())
-    env = {
+    env: dict[str, str] = {
         **os.environ,
         "XML_OUTPUT_FILE": str(work / "test.xml"),
         "TEST_UNDECLARED_OUTPUTS_DIR": str(work / "outputs"),

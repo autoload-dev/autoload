@@ -21,6 +21,8 @@ runs:
           examples
           tests
           addons/firebase/examples
+          addons/gdunit
+          addons/gdunit/examples
     # The regression module's host set runs first, so that the output base check sees
     # only its repositories: later host tasks may configure Android targets.
     - name: Run the regression module's host set

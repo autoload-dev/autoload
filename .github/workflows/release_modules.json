@@ -8,5 +8,10 @@
     "root": "addons/firebase",
     "bcr": false,
     "test": "cd addons/firebase && bazel test //config/..."
+  },
+  "autoload_gdunit": {
+    "root": "addons/gdunit",
+    "bcr": false,
+    "test": "cd addons/gdunit && bazel test //..."
   }
 }
