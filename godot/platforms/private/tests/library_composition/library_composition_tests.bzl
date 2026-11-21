@@ -56,47 +56,39 @@ def _fails_with_message(env, target):
         matching.contains(env.ctx.attr.message),
     )
 
-def _failure_test(name, target, message, platform, config_settings = {}):
+def _rejected_app_test(name, platform, message, **app):
+    """Declare an application with the attributes app and expect its analysis to fail with message."""
+    godot_app(name = name + "_app", tags = ["manual"], **app)
     analysis_test(
         name = name,
-        target = target,
+        target = ":%s_app" % name,
         impl = _fails_with_message,
         expect_failure = True,
         attrs = {"message": attr.string()},
-        config_settings = platform.config_settings | config_settings,
+        config_settings = platform.config_settings,
         attr_values = platform.attr_values | {"message": message},
     )
 
 def _test_android_app_rejects_unsupported_platform_input(name):
-    godot_app(
-        name = name + "_app",
+    _rejected_app_test(
+        name,
+        _ANDROID,
+        "Android platform_deps does not support input",
         application_id = "org.example.composition.unsupported",
         pack = _ANDROID_APPS + "pack",
         platform_deps = [_ANDROID_APPS + "unsupported_input"],
-        tags = ["manual"],
-    )
-    _failure_test(
-        name = name,
-        target = ":%s_app" % name,
-        message = "Android platform_deps does not support input",
-        platform = _ANDROID,
     )
 
 # Keys the merger treats as overrides belong to a godot_app attribute or a pack setting; each
 # diagnostic names that owner.
 def _manifest_value_test(name, key, value, owner):
-    godot_app(
-        name = name + "_app",
+    _rejected_app_test(
+        name,
+        _ANDROID,
+        owner,
         android_manifest_values = {key: value},
         application_id = "org.example.manifestvalues.reserved",
         pack = _ANDROID_APPS + "pack",
-        tags = ["manual"],
-    )
-    _failure_test(
-        name = name,
-        target = ":%s_app" % name,
-        message = owner,
-        platform = _ANDROID,
     )
 
 def _test_manifest_values_reject_application_id(name):
@@ -118,18 +110,13 @@ def _test_manifest_values_reject_max_sdk(name):
     _manifest_value_test(name, "maxSdkVersion", "35", "an override godot_app does not expose")
 
 def _test_ios_app_rejects_android_platform_input(name):
-    godot_app(
-        name = name + "_app",
+    _rejected_app_test(
+        name,
+        _IOS,
+        "iOS platform_deps input",
         application_id = "org.example.composition.unsupported",
         pack = _IOS_APPS + "composition_base_pack",
         platform_deps = [_ANDROID_APPS + "composition"],
-        tags = ["manual"],
-    )
-    _failure_test(
-        name = name,
-        target = ":%s_app" % name,
-        message = "iOS platform_deps input",
-        platform = _IOS,
     )
 
 # FR-007, D8: an application delivers the platform libraries and Info.plist fragments of the
