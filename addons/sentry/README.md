@@ -49,7 +49,9 @@ SentrySDK.capture_message("Hello from Godot")
   Android the Godot plugin and `io.sentry:sentry-android` in `platform_deps`, on iOS the
   `SentryObjC` framework, embedded beside the extension's framework without linking.
 - On Linux, Sentry writes native crash reports with its Crashpad handler, which the
-  extension places as `data`.
+  extension declares as `data`: runs and the editor find it at its path in the release,
+  applications beside their executable. Sentry's Linux library needs the system's
+  `libcurl.so.4`.
 - The release's repository holds only filegroups and imports; the `godot_addon` in this
   module places its user-feedback UI.
 - Windows and the web are not wired, since rules_godot builds no applications for them.
