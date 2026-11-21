@@ -34,20 +34,7 @@ slice. Put properties those actions need on `parents`, `constraint_values` or
 environment fails analysis.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| metadata | none | always | select operating system and CPUs; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| PlatformInfo | Bazel target platform constraints | always |
+- metadata (none): select operating system and CPUs; no run behavior
 
 
 **PARAMETERS**

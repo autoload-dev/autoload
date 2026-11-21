@@ -23,7 +23,6 @@ def contract(kind: str = "library", testonly: str = "false") -> Contract:
         ({"kind": "repository", "cardinality": "none", "availability": "always"},),
         (),
         (row,),
-        (),
     )
 
 

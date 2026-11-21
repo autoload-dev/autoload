@@ -446,20 +446,7 @@ godot_resources = rule(
     files, import ordering and runtime reference cycles.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build declared resource files; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotResourcesInfo | Members, import inputs, imports and the add-ons used, transitively | always |
+    - files (many): build declared resource files; no run behavior
     """,
     implementation = _resources_impl,
     attrs = {

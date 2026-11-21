@@ -37,29 +37,39 @@ godot_engine_source_build(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
+- repository (none): repository creation; generated entrypoints described above
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//toolchains:editor_{platform}_{cpu} | files | operation | the editor component of one selected editor row | public | false | editor row selected | editor |
-| @{repository}//toolchains:runtime_{platform}_{cpu}_{variant} | files | operation | the runtime component of one selected Linux or macOS template row | public | false | desktop row selected | desktop |
-| @{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant} | files | operation | the runtime component of one selected iOS template row | public | false | iOS row selected | ios |
-| @{repository}//toolchains:runtime_android_{cpu}_{variant} | files | operation | the runtime component of one selected Android template row | public | false | Android row selected | android |
-| @{repository}//android:{variant} | files | operation | the Android runtime of one template variant: the source build's Android shell library with each CPU's engine library | public | false | Android row selected | android |
-| @{repository}//android:plugin_api | files | operation | the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant | public | false | Android row selected | android |
-| @{repository}//toolchains:editor_{platform}_{cpu}.toolchain | metadata | analysis_boundary | register one editor slot alone | public | false | none | editor |
-| @{repository}//toolchains:runtime_{platform}_{cpu}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | desktop |
-| @{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | ios |
-| @{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain | metadata | analysis_boundary | register one runtime slot alone | public | false | none | android |
-
-### Providers
-none
+- `@{repository}//toolchains:editor_{platform}_{cpu}` (files): the editor component of one selected editor row
+  - prerequisites: editor row selected
+  - availability: editor
+- `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}` (files): the runtime component of one selected Linux or macOS template row
+  - prerequisites: desktop row selected
+  - availability: desktop
+- `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the runtime component of one selected iOS template row
+  - prerequisites: iOS row selected
+  - availability: ios
+- `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the runtime component of one selected Android template row
+  - prerequisites: Android row selected
+  - availability: android
+- `@{repository}//android:{variant}` (files): the Android runtime of one template variant: the source build's Android shell library with each CPU's engine library
+  - prerequisites: Android row selected
+  - availability: android
+- `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
+  - prerequisites: Android row selected
+  - availability: android
+- `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone
+  - purpose: analysis_boundary
+  - availability: editor
+- `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
+  - purpose: analysis_boundary
+  - availability: desktop
+- `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain` (metadata): register one runtime slot alone
+  - purpose: analysis_boundary
+  - availability: ios
+- `@{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
+  - purpose: analysis_boundary
+  - availability: android
 
 
 **PARAMETERS**
@@ -114,20 +124,11 @@ godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
+- repository (none): repository creation; generated entrypoints described above
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//:{variant} | files | operation | the Android shell library of one template variant; its .aar output is a godot_android_runtime shell | public | false | Android SDK | always |
-
-### Providers
-none
+- `@{repository}//:{variant}` (files): the Android shell library of one template variant; its .aar output is a godot_android_runtime shell
+  - prerequisites: Android SDK
 
 **ATTRIBUTES**
 
@@ -184,24 +185,22 @@ options, unresolvable modules and rejected patch hunks fail the recipe. See
 [source-built engines](../../engine.md) for custom modules, options and patches.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
+- repository (none): repository creation; generated entrypoints described above
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//:godot | executable | operation | the desktop editor or template executable, a component payload | public | false | desktop recipe | desktop |
-| @{repository}//:godot | files | operation | the Android engine library with provenance | public | false | Android recipe | android |
-| @{repository}//:engine_library | library | operation | link the engine library through CcInfo; the iOS component payload | public | false | recipe configured with the owning operating system's SDK | always |
-| @{repository}//:libgodot_android.so | library | operation | the Android engine library, godot_android_runtime's engine_library | public | false | Android recipe | android |
-| @{repository}//:engine_manifest.json | files | operation | inspect captured SCons configuration facts | public | false | recipe configured | always |
-
-### Providers
-none
+- `@{repository}//:godot` (executable): the desktop editor or template executable, a component payload
+  - prerequisites: desktop recipe
+  - availability: desktop
+- `@{repository}//:godot` (files): the Android engine library with provenance
+  - prerequisites: Android recipe
+  - availability: android
+- `@{repository}//:engine_library` (library): link the engine library through CcInfo; the iOS component payload
+  - prerequisites: recipe configured with the owning operating system's SDK
+- `@{repository}//:libgodot_android.so` (library): the Android engine library, godot_android_runtime's engine_library
+  - prerequisites: Android recipe
+  - availability: android
+- `@{repository}//:engine_manifest.json` (files): inspect captured SCons configuration facts
+  - prerequisites: recipe configured
 
 **ATTRIBUTES**
 
@@ -271,21 +270,13 @@ godot_engine_source(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
+- repository (none): repository creation; generated entrypoints described above
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//:source.json | files | operation | the source descriptor godot_engine_build recipes take as source | public | false | archive acquired | always |
-| @{repository}//:{archive} | files | operation | the acquired archive, which recipes extract independently | public | false | archive acquired | always |
-
-### Providers
-none
+- `@{repository}//:source.json` (files): the source descriptor godot_engine_build recipes take as source
+  - prerequisites: archive acquired
+- `@{repository}//:{archive}` (files): the acquired archive, which recipes extract independently
+  - prerequisites: archive acquired
 
 **ATTRIBUTES**
 

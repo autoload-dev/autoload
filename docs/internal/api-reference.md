@@ -18,8 +18,10 @@ reference pages link to them.
 Use `godot:defs.bzl` for projects, resources, exports, runs and tests. Use the
 dedicated extension, platform, engine, toolchain, repository and provider
 entrypoints for those tasks. Application packaging and optional signing use the symbolic
-`godot:app.bzl` entrypoint; engine acquisition keeps dedicated modules. All public Godot
-providers live in `godot:providers.bzl`.
+`godot:app.bzl` entrypoint; engine acquisition keeps dedicated modules. The public providers,
+`GodotPackInfo` and `GodotDesktopAppInfo`, live in `godot:providers.bzl` and name the rules
+that produce them; the providers between the ruleset's own rules live in
+`godot/private:providers.bzl`.
 
 Core rule implementations live in `godot/private/`; the shared desktop
 implementation lives in `godot/platforms/private/`. Their explicit Starlark
@@ -79,18 +81,34 @@ The convention, including slash-suffixed rules_android basenames, is owned there
 not grant public visibility, and output-group keys and artifact filenames do not inherit
 the target separator. Document only the supported public companion targets as consumer interfaces.
 
-Each owning source docstring contains four Markdown sections: `### Default outputs`,
-`### Output groups`, `### Generated targets` and `### Providers`. Use the typed tables defined
-by the [output-contract parser](../../tools/docs/output_contracts.py), or literal `none`
-for an absent interface. The parser reads evaluated docstrings from Bazel's `starlark_doc_extract`;
-Stardoc renders the same source together with its signature and attributes.
+Each owning source docstring contains the Markdown section `### Default outputs` and, where
+the API has them, `### Output groups` and `### Generated targets`; a section without entries is
+omitted. Each section is a list, which stays readable on narrow pages such as the BCR's, in
+the form the [output-contract parser](../../tools/docs/output_contracts.py) defines:
 
-Default rows declare artifact kind, cardinality, availability and run/test behavior.
-Group rows declare exact keys, contents, availability and prerequisites. Companion target rows
-declare their name pattern, kind, purpose, concrete reason, visibility, testonly,
-prerequisites and availability. Provider rows declare public identity, role and
-availability; their fields remain documented at the provider definition. Providers produce
-no outputs and carry no contract sections. Conditional availability must have representative
+```markdown
+### Default outputs
+- executable (one): build the application; bazel run installs and launches it
+  - availability: ios
+
+### Output groups
+- `bundle`: Selected unpacked application bundle
+  - prerequisites: matching desktop runtime component
+
+### Generated targets
+- `{name}.debug_symbols` (alias): Analyze the symbol producer without signer identities
+  - purpose: analysis_boundary
+  - visibility: caller
+```
+
+An entry's first line names a default output's kind and cardinality, a group's key or a
+companion target's name pattern and kind, followed by its behavior, contents or concrete
+reason. Indented `field: value` lines give the other fields where they differ from their
+defaults: availability `always`, prerequisites `none`, purpose `operation`, visibility
+`public` and testonly `false`. The parser reads evaluated docstrings from Bazel's
+`starlark_doc_extract`; Stardoc renders the same source together with its signature and
+attributes. Docstrings do not list the providers a target returns: a public provider names
+its producers in its own documentation. Conditional availability must have representative
 configured evidence. Configuration-only targets have explicit metadata roles; they must not
 invent files.
 
@@ -100,12 +118,11 @@ that show why an API's public companion targets are separate; the checker requir
 resolve. A case or behavior test names its `module` when its fixture lives in a consumer
 module, such as the regression module `tests`; the checker evaluates it there, and
 resolves a consumer module's behavior tests in the host lane, whose cases evaluate that module
-anyway. The checker compares actual default files, executability, groups, public ruleset
-providers and public companion targets against the source in both directions. Bazel's loading facts
+anyway. The checker compares actual default files, executability, groups and public companion
+targets against the source in both directions. Bazel's loading facts
 establish target kinds, visibility, testonly and test behavior. Generated repositories have
 independent entrypoint checks instead of a fictitious repository-wide main target. Only
-interfaces the ruleset promises are compared: underscore-prefixed groups, upstream providers
-and, for roots that forward an upstream target, its groups are not. New public APIs or
+interfaces the ruleset promises are compared: underscore-prefixed groups and, for roots that forward an upstream target, its groups are not. New public APIs or
 unsupported API kinds cannot silently escape required coverage.
 
 `mise run docs` checks source schema, inventory, reference freshness, registry coverage, the

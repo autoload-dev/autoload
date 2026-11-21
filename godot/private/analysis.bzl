@@ -78,18 +78,7 @@ def godot_resource_graph(name, project, deps = [], validate = True, require_decl
     See [resource graph diagnostics](../../resources.md).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | one | always | build resource graph JSON with selected declaration/validation policy; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - files (one): build resource graph JSON with selected declaration/validation policy; no run behavior
 
     Args:
         name: Name of the graph target.

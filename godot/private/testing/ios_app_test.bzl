@@ -71,18 +71,7 @@ ios_app_test = rule(
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | test | one | always | inspect the application under bazel test on a macOS execution platform |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - test (one): inspect the application under bazel test on a macOS execution platform
     """,
     implementation = _ios_app_test_impl,
     attrs = {

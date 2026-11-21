@@ -91,18 +91,7 @@ android_bundle_test = rule(
     in the caller's `MODULE.bazel`.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | test | one | always | inspect the bundle under bazel test on the execution platform; bundle.json is an undeclared test output |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - test (one): inspect the bundle under bazel test on the execution platform; bundle.json is an undeclared test output
     """,
     implementation = _android_bundle_test_impl,
     attrs = {

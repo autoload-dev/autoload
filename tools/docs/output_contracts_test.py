@@ -20,64 +20,60 @@ DOC = """
 An independently useful API.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | one | always | build |
+- files (one): build
 
 ### Output groups
-| name | contents | availability | prerequisites |
-| --- | --- | --- | --- |
-| debug_symbols | detached symbols | symbols | none |
+- `debug_symbols`: detached
+  symbols
+  - availability: symbols
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.debug_symbols | alias | analysis_boundary | Avoid signer analysis | public | false | none | always |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| AppInfo | selected artifact | always |
+- `{name}.debug_symbols` (alias): Avoid signer analysis
+  - purpose: analysis_boundary
 """
-
-PROVIDERS = {"AppInfo": "//godot:providers.bzl%AppInfo"}
 FILES = ConfiguredTarget("//:app", 1, 0, False, frozenset(), frozenset())
 EXECUTABLE = ConfiguredTarget("//:run", 1, 1, True, frozenset(), frozenset())
 
 
 class OutputContractsTest(unittest.TestCase):
-    def test_parses_complete_contract_and_conditional_groups(self) -> None:
+    def test_parses_entries_with_defaults_fields_and_continuations(self) -> None:
         contract = parse(DOC)
+        self.assertEqual("detached symbols", contract.groups[0]["contents"])
         self.assertEqual("symbols", contract.groups[0]["availability"])
-        self.assertEqual("AppInfo", contract.providers[0]["name"])
+        self.assertEqual("none", contract.groups[0]["prerequisites"])
+        companion = contract.companions[0]
+        self.assertEqual("analysis_boundary", companion["purpose"])
+        self.assertEqual(
+            ("public", "false"), (companion["visibility"], companion["testonly"])
+        )
 
-    def test_requires_each_section_and_explicit_none(self) -> None:
-        for section in (
-            "Default outputs",
-            "Output groups",
-            "Generated targets",
-            "Providers",
-        ):
-            with (
-                self.subTest(section=section),
-                self.assertRaisesRegex(ValueError, section),
-            ):
-                parse(DOC.replace("### " + section, "### Removed"))
-        with self.assertRaisesRegex(ValueError, "explicit none"):
-            parse(DOC.split("### Providers")[0] + "### Providers\n")
+    def test_omitted_sections_are_empty_and_default_outputs_required(self) -> None:
+        contract = parse(DOC.split("### Output groups")[0])
+        self.assertEqual(((), ()), (contract.groups, contract.companions))
+        with self.assertRaisesRegex(ValueError, "Default outputs"):
+            parse(DOC.replace("### Default outputs", "### Removed"))
+        with self.assertRaisesRegex(ValueError, "omitted"):
+            parse(DOC.split("### Output groups")[0] + "### Output groups\n")
 
-    def test_rejects_invalid_tables_and_rows(self) -> None:
+    def test_rejects_invalid_entries_and_fields(self) -> None:
         for invalid in (
-            DOC.replace("| name | role |", "| name | unknown |"),
-            DOC.replace("| AppInfo | selected artifact |", "| AppInfo | |"),
-            DOC + "\n### Providers\nnone\n",
+            DOC.replace("- files (one): build", "files (one): build"),
+            DOC.replace("- files (one): build", "- files: build"),
+            DOC.replace("  - availability: symbols", "  - unknown: symbols"),
             DOC.replace(
-                "| AppInfo | selected artifact | always |",
-                "| AppInfo | selected artifact | always |\n| AppInfo | other | always |",
+                "  - availability: symbols",
+                "  - availability: symbols\n  - availability: other",
+            ),
+            DOC.replace(
+                "  - availability: symbols",
+                "  - availability: symbols\n- `debug_symbols`: again\n  - availability: symbols",
             ),
             DOC.replace("analysis_boundary", "file_subset"),
-            DOC.replace("| alias | analysis_boundary |", "| alias | test |"),
-            DOC.replace("| public | false |", "| public | maybe |"),
+            DOC.replace("  - purpose: analysis_boundary", "  - purpose: test"),
+            DOC.replace(
+                "  - purpose: analysis_boundary",
+                "  - purpose: analysis_boundary\n  - testonly: maybe",
+            ),
             DOC.replace("Avoid signer analysis", "none"),
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
@@ -129,13 +125,7 @@ class OutputContractsTest(unittest.TestCase):
                 self.assertEqual(expected, kind_errors(kind, target, **arguments))
 
     def test_configured_comparison_is_bidirectional_and_conditional(self) -> None:
-        good = replace(
-            FILES,
-            groups=frozenset({"debug_symbols", "_validation"}),
-            providers=frozenset(
-                {"DefaultInfo", "@@autoload_rules_godot+//godot:providers.bzl%AppInfo"}
-            ),
-        )
+        good = replace(FILES, groups=frozenset({"debug_symbols", "_validation"}))
 
         def check(
             target: ConfiguredTarget,
@@ -148,7 +138,6 @@ class OutputContractsTest(unittest.TestCase):
                 test=False,
                 companions=companions,
                 conditions={"symbols"},
-                providers=PROVIDERS,
                 forwarded_groups=forwarded_groups,
             )
 
@@ -157,9 +146,8 @@ class OutputContractsTest(unittest.TestCase):
             [
                 "missing documented group: debug_symbols",
                 "undocumented group: report",
-                "missing documented provider: //godot:providers.bzl%AppInfo",
             ],
-            check(replace(good, groups=frozenset({"report"}), providers=frozenset())),
+            check(replace(good, groups=frozenset({"report"}))),
         )
         forwarded = replace(good, groups=frozenset({"debug_symbols", "dossier"}))
         self.assertEqual([], check(forwarded, forwarded_groups=True))
@@ -168,7 +156,7 @@ class OutputContractsTest(unittest.TestCase):
             check(good, frozenset({"{name}.debug_symbols", "{name}.extra"})),
         )
 
-    def test_only_public_ruleset_providers_are_compared(self) -> None:
+    def test_provider_identities_drop_the_ruleset_repository(self) -> None:
         self.assertEqual(
             "//godot:a.bzl%A", provider_identity("@@autoload_rules_godot+//godot:a.bzl%A")
         )
@@ -178,20 +166,6 @@ class OutputContractsTest(unittest.TestCase):
         self.assertEqual(
             "@@rules_cc+//cc:x.bzl%CcInfo",
             provider_identity("@@rules_cc+//cc:x.bzl%CcInfo"),
-        )
-        contract = parse(DOC.replace("| AppInfo |", "| ApkInfo |"))
-        upstream = replace(
-            FILES, providers=frozenset({"ApkInfo", "//godot/private:x.bzl%Internal"})
-        )
-        self.assertEqual(
-            [],
-            compare(
-                contract,
-                upstream,
-                test=False,
-                companions={"{name}.debug_symbols"},
-                providers=PROVIDERS,
-            ),
         )
 
     def test_restricted_visibility_still_exports_an_interface(self) -> None:

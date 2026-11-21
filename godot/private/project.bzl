@@ -558,22 +558,12 @@ godot_project = macro(
     See [resource and configuration semantics](../../resources.md).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | metadata | none | always | name the configuration context operations use; no build or run behavior |
-
-    ### Output groups
-    none
+    - metadata (none): name the configuration context operations use; no build or run behavior
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.named_addons | metadata | analysis_boundary | The add-ons the project names, which the operations of the project reach without the project; not for direct use | caller | false | none | always |
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotProjectInfo | The configuration context operations name and resources import under | always |
+    - `{name}.named_addons` (metadata): The add-ons the project names, which the operations of the project reach without the project; not for direct use
+      - purpose: analysis_boundary
+      - visibility: caller
     """,
     implementation = _project_macro_impl,
     inherit_attrs = _godot_project,

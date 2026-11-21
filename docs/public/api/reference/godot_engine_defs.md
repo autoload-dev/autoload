@@ -43,18 +43,7 @@ godot_android_runtime(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build imported AAR metadata and engine libraries; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- files (many): build imported AAR metadata and engine libraries; no run behavior
 
 
 **PARAMETERS**
@@ -101,24 +90,18 @@ godot_editor_component(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the editor payload and its runfiles; no run behavior |
-
-### Output groups
-none
+- files (many): build the editor payload and its runfiles; no run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.toolchain | metadata | analysis_boundary | register the slot with editor_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| ToolchainInfo | godot editor files, executable, version and provenance | always |
-| GodotComponentInfo | Provenance of the declared slot | always |
+- `{name}.toolchain` (metadata): register the slot with editor_toolchain_type; toolchain resolution is a separate boundary
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+- `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+  - availability: engine named
 
 **ATTRIBUTES**
 
@@ -173,24 +156,18 @@ godot_runtime_component(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the runtime payload; no run behavior |
-
-### Output groups
-none
+- files (many): build the runtime payload; no run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.toolchain | metadata | analysis_boundary | register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| ToolchainInfo | godot runtime payload, GodotRuntimeInfo where known, version and provenance | always |
-| GodotComponentInfo | Provenance of the declared slot | always |
+- `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+- `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+  - availability: engine named
 
 **ATTRIBUTES**
 

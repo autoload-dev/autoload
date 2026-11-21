@@ -49,10 +49,8 @@ def repository_errors(
         ("repository", "none")
     ]:
         errors.append("evaluated repository API must declare repository default kind")
-    if contract.groups or contract.providers:
-        errors.append(
-            "repository APIs do not directly expose output groups or rule providers"
-        )
+    if contract.groups:
+        errors.append("repository APIs do not directly expose output groups")
     rows = {row["name"]: row for row in active(contract.companions, case["conditions"])}
     entrypoints = case["entrypoints"]
     for name in sorted(rows.keys() - entrypoints.keys()):

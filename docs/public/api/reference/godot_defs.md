@@ -37,20 +37,7 @@ See [resource composition](../../resources.md) for resource paths, generated
 files, import ordering and runtime reference cycles.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build declared resource files; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotResourcesInfo | Members, import inputs, imports and the add-ons used, transitively | always |
+- files (many): build declared resource files; no run behavior
 
 **ATTRIBUTES**
 
@@ -115,18 +102,7 @@ godot_editor(
 `bazel run :edit` opens the editor on `.godot-editor/<package>/edit`.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| executable | one | always | run an editable staged project in Godot; editor and project are runfiles |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- executable (one): run an editable staged project in Godot; editor and project are runfiles
 
 
 **PARAMETERS**
@@ -185,20 +161,14 @@ godot_metadata_sync(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| executable | one | always | run writes missing metadata to the checkout; editor/project runfiles |
-
-### Output groups
-none
+- executable (one): run writes missing metadata to the checkout; editor/project runfiles
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.test | test | test | Execute missing-metadata validation as a Bazel test; an output group cannot execute tests | caller | true | project imports and execution-platform editor | always |
-
-### Providers
-none
+- `{name}.test` (test): Execute missing-metadata validation as a Bazel test; an output group cannot execute tests
+  - purpose: test
+  - visibility: caller
+  - testonly: true
+  - prerequisites: project imports and execution-platform editor
 
 
 **PARAMETERS**
@@ -247,18 +217,7 @@ godot_resource_graph(
 See [resource graph diagnostics](../../resources.md).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | one | always | build resource graph JSON with selected declaration/validation policy; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- files (one): build resource graph JSON with selected declaration/validation policy; no run behavior
 
 
 **PARAMETERS**
@@ -307,18 +266,7 @@ godot_run(
 [execution and tests](../../development.md#execution-and-tests).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| executable | one | always | run Godot with project or PCK; project and editor data are runfiles |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- executable (one): run Godot with project or PCK; project and editor data are runfiles
 
 
 **PARAMETERS**
@@ -374,18 +322,7 @@ Watch it with `bazel test :smoke_test --@autoload_rules_godot//godot:headless=fa
 See [execution and tests](../../development.md#execution-and-tests).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| test | one | always | execute Godot under bazel test; failure follows the exit status and engine_errors; project/editor are runfiles |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- test (one): execute Godot under bazel test; failure follows the exit status and engine_errors; project/editor are runfiles
 
 
 **PARAMETERS**
@@ -463,22 +400,12 @@ godot_resources(name = "shop", srcs = ["shop.gd"], deps = [":inventory"])
 See [add-ons](../../resources.md#add-ons) and [importers](../../resources.md#importers).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the files of both parts; no run behavior |
-
-### Output groups
-none
+- files (many): build the files of both parts; no run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.editor | metadata | operation | the editor part as resources of test-only operations, such as suites of its editor tooling, which products cannot reach | caller | true | none | always |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotAddonInfo | Parts, roles, extensions, platform libraries and contributions of the add-on | always |
+- `{name}.editor` (metadata): the editor part as resources of test-only operations, such as suites of its editor tooling, which products cannot reach
+  - visibility: caller
+  - testonly: true
 
 **ATTRIBUTES**
 
@@ -536,24 +463,14 @@ Example: godot_pack(name = "pack", project = ":project", deps = [":game"]).
 See [export behavior](../../resources.md).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | one | always | build output_name.pck; no run behavior |
+- files (one): build output_name.pck; no run behavior
 
 ### Output groups
-| name | contents | availability | prerequisites |
-| --- | --- | --- | --- |
-| report | Godot export JSON report | always | execution-platform editor |
-| export_facts | What Godot reports about the export, as JSON | always | execution-platform editor |
-| selection | Selected content JSON and the selection's warnings | always | none |
-
-### Generated targets
-none
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotPackInfo | The PCK, and the project, operating system and CPUs of the platform slice | always |
+- `report`: Godot export JSON report
+  - prerequisites: execution-platform editor
+- `export_facts`: What Godot reports about the export, as JSON
+  - prerequisites: execution-platform editor
+- `selection`: Selected content JSON and the selection's warnings
 
 **ATTRIBUTES**
 
@@ -628,22 +545,12 @@ godot_pack(
 See [resource and configuration semantics](../../resources.md).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| metadata | none | always | name the configuration context operations use; no build or run behavior |
-
-### Output groups
-none
+- metadata (none): name the configuration context operations use; no build or run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.named_addons | metadata | analysis_boundary | The add-ons the project names, which the operations of the project reach without the project; not for direct use | caller | false | none | always |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotProjectInfo | The configuration context operations name and resources import under | always |
+- `{name}.named_addons` (metadata): The add-ons the project names, which the operations of the project reach without the project; not for direct use
+  - purpose: analysis_boundary
+  - visibility: caller
 
 **ATTRIBUTES**
 

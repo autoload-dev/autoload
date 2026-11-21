@@ -162,7 +162,6 @@ def check_case(
             shared_library=is_shared_library(root_fact.kind, root_fact.booleans),
             companions=discovered,
             conditions=case["conditions"],
-            providers=providers,
             forwarded_groups=case.get("forwarded_groups", False),
         )
     )

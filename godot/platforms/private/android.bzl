@@ -50,18 +50,7 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build imported AAR metadata and engine libraries; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - files (many): build imported AAR metadata and engine libraries; no run behavior
 
     Args:
         name: Public aar_import target name.

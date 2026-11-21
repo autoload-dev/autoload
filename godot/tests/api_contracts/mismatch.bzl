@@ -8,27 +8,13 @@ _FILES_DOC = """
 Produce one controlled artifact.
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | one | always | build |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
+- files (one): build
 """
 
-_GROUP_DOC = _FILES_DOC.replace(
-    "### Output groups\nnone",
-    "### Output groups\n| name | contents | availability | prerequisites |\n| --- | --- | --- | --- |\n| report | fixture artifact | always | none |",
-).replace(
-    "### Providers\nnone",
-    "### Providers\n| name | role | availability |\n| --- | --- | --- |\n| FixtureInfo | fixture identity | always |",
-)
+_GROUP_DOC = _FILES_DOC + """
+### Output groups
+- `report`: fixture artifact
+"""
 
 def _file(ctx):
     output = ctx.actions.declare_file(ctx.label.name + ".txt")
@@ -48,9 +34,9 @@ def _executable_impl(ctx):
     return [DefaultInfo(executable = output, runfiles = ctx.runfiles(files = [output]))]
 
 good = rule(doc = _GROUP_DOC, implementation = _good_impl)
-missing_group = rule(doc = _GROUP_DOC.replace("| report |", "| missing |"), implementation = _good_impl)
+missing_group = rule(doc = _GROUP_DOC.replace("`report`", "`missing`"), implementation = _good_impl)
 executable_claim = rule(
-    doc = _FILES_DOC.replace("| files |", "| test |").replace("| build |", "| test |"),
+    doc = _FILES_DOC.replace("- files (one): build", "- test (one): test"),
     implementation = _executable_impl,
     executable = True,
 )
@@ -72,10 +58,12 @@ restricted_companion = macro(
 )
 
 def _companion_doc(kind, purpose):
-    return _FILES_DOC.replace(
-        "### Generated targets\nnone",
-        "### Generated targets\n| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| {name}.boundary | " + kind + " | " + purpose + " | Check a separately analyzed operation | public | inherit | none | always |",
-    )
+    return _FILES_DOC + """
+### Generated targets
+- `{name}.boundary` (%s): Check a separately analyzed operation
+  - purpose: %s
+  - testonly: inherit
+""" % (kind, purpose)
 
 def _executable_companion_impl(name, visibility, **kwargs):
     _plain(name = name, visibility = visibility, **kwargs)

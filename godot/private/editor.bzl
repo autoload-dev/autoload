@@ -157,18 +157,7 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kw
     `bazel run :edit` opens the editor on `.godot-editor/<package>/edit`.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | executable | one | always | run an editable staged project in Godot; editor and project are runfiles |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - executable (one): run an editable staged project in Godot; editor and project are runfiles
 
     Args:
         name: Name of the executable target.
@@ -277,20 +266,14 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, *
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | executable | one | always | run writes missing metadata to the checkout; editor/project runfiles |
-
-    ### Output groups
-    none
+    - executable (one): run writes missing metadata to the checkout; editor/project runfiles
 
     ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | {name}.test | test | test | Execute missing-metadata validation as a Bazel test; an output group cannot execute tests | caller | true | project imports and execution-platform editor | always |
-
-    ### Providers
-    none
+    - `{name}.test` (test): Execute missing-metadata validation as a Bazel test; an output group cannot execute tests
+      - purpose: test
+      - visibility: caller
+      - testonly: true
+      - prerequisites: project imports and execution-platform editor
 
     Args:
         name: Name of the writer; the test is `<name>.test`.

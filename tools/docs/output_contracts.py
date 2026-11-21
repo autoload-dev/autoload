@@ -1,10 +1,11 @@
 """Parse evaluated source contracts and compare them with evaluated Bazel evidence.
 
-The tables are part of the API's Stardoc prose. This module never reads or evaluates
+The lists are part of the API's Stardoc prose. This module never reads or evaluates
 Starlark: callers supply the docstring emitted by starlark_doc_extract and the facts
 Bazel reports for configured fixtures.
 """
 
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
@@ -24,7 +25,26 @@ SECTIONS = {
         "prerequisites",
         "availability",
     ),
-    "Providers": ("name", "role", "availability"),
+}
+# The first line of an entry: `- kind (cardinality): behavior` for default outputs,
+# `- `name`: contents` for output groups and `- `name` (kind): reason` for generated
+# targets. Indented `- field: value` lines below it give the other fields; an omitted
+# field has its default.
+FIRST_LINES = {
+    "Default outputs": re.compile(
+        r"(?P<kind>[a-z_]+) \((?P<cardinality>[a-z]+)\): (?P<behavior>.+)"
+    ),
+    "Output groups": re.compile(r"`(?P<name>[^`]+)`: (?P<contents>.+)"),
+    "Generated targets": re.compile(
+        r"`(?P<name>[^`]+)` \((?P<kind>[a-z_]+)\): (?P<reason>.+)"
+    ),
+}
+FIELD_DEFAULTS = {
+    "availability": "always",
+    "prerequisites": "none",
+    "purpose": "operation",
+    "visibility": "public",
+    "testonly": "false",
 }
 DEFAULT_KINDS = frozenset({"files", "executable", "test", "metadata", "repository"})
 COMPANION_KINDS = frozenset(
@@ -53,7 +73,6 @@ class Contract:
     defaults: tuple[dict[str, str], ...] = ()
     groups: tuple[dict[str, str], ...] = ()
     companions: tuple[dict[str, str], ...] = ()
-    providers: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -77,37 +96,57 @@ class ConfiguredTarget:
     groups: frozenset[str]
 
 
-def _table(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
-    lines = [line.strip() for line in lines if line.strip()]
-    if lines == ["none"]:
-        return ()
-    if not lines:
-        raise ValueError(f"{section}: require a table or explicit none")
-    if any(not line.startswith("|") or not line.endswith("|") for line in lines):
-        raise ValueError(f"{section}: expected a Markdown table or explicit none")
-    rows = [[cell.strip() for cell in line[1:-1].split("|")] for line in lines]
+def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
+    """Read a section's list: entries, their indented fields and continuation lines."""
     fields = SECTIONS[section]
-    if tuple(rows[0]) != fields:
-        raise ValueError(f"{section}: expected fields {', '.join(fields)}")
-    if len(rows) < 3 or any(set(cell) - {"-", ":"} or not cell for cell in rows[1]):
-        raise ValueError(f"{section}: require table separator and at least one row")
+    entries: list[dict[str, str]] = []
+    last = None
+    for line in lines:
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        text = line.strip()
+        if not entries or indent <= entries[-1]["_indent"]:
+            if not text.startswith("- "):
+                raise ValueError(f"{section}: expected a list entry: {text}")
+            match = FIRST_LINES[section].fullmatch(text[2:])
+            if not match:
+                raise ValueError(f"{section}: malformed entry: {text}")
+            entries.append({"_indent": indent, **match.groupdict()})
+            last = next(iter(reversed(match.groupdict())))
+        elif text.startswith("- "):
+            field, separator, value = text[2:].partition(": ")
+            entry = entries[-1]
+            if not separator or field not in fields or field in entry or not value:
+                raise ValueError(f"{section}: unknown or repeated field: {text}")
+            entry[field] = value
+            last = field
+        else:
+            entries[-1][last] += " " + text
+    if not entries:
+        raise ValueError(f"{section}: an empty section is omitted")
     result = []
     identities = set()
-    for row in rows[2:]:
-        if len(row) != len(fields) or not all(row):
-            raise ValueError(f"{section}: missing or unknown fields")
-        values = dict(zip(fields, row, strict=True))
+    for entry in entries:
+        values = {
+            field: entry.get(field, FIELD_DEFAULTS.get(field, "")) for field in fields
+        }
+        if not all(values.values()):
+            raise ValueError(f"{section}: missing fields")
         # A name may repeat across availabilities; defaults are keyed by kind.
-        identity = (row[0], values["availability"])
+        identity = (values[fields[0]], values["availability"])
         if identity in identities:
-            raise ValueError(f"{section}: duplicate {row[0]}")
+            raise ValueError(f"{section}: duplicate {values[fields[0]]}")
         identities.add(identity)
         result.append(values)
     return tuple(result)
 
 
 def parse(doc: str) -> Contract:
-    """Require explicit, typed contract sections in a Bazel-evaluated docstring."""
+    """Read the typed contract sections of a Bazel-evaluated docstring.
+
+    Default outputs is required; a section without entries is omitted.
+    """
     sections: dict[str, list[str]] = {}
     active = None
     for line in doc.splitlines():
@@ -122,10 +161,14 @@ def parse(doc: str) -> Contract:
             active = None
         elif active:
             sections[active].append(line)
-    for title in SECTIONS:
-        if title not in sections:
-            raise ValueError(f"{title}: missing section")
-    contract = Contract(*(_table(title, sections[title]) for title in SECTIONS))
+    if "Default outputs" not in sections:
+        raise ValueError("Default outputs: missing section")
+    contract = Contract(
+        *(
+            _entries(title, sections[title]) if title in sections else ()
+            for title in SECTIONS
+        )
+    )
     for row in contract.defaults:
         if row["kind"] not in DEFAULT_KINDS:
             raise ValueError("Default outputs: unknown kind " + row["kind"])
@@ -212,12 +255,10 @@ def compare(
     shared_library: bool = False,
     companions: Iterable[str] = (),
     conditions: Iterable[str] = (),
-    providers: Mapping[str, str],
     forwarded_groups: bool = False,
 ) -> list[str]:
     """Reject missing promises and undocumented observed public interfaces.
 
-    ``providers`` maps public ruleset provider names to their defining identity.
     Groups whose name starts with ``_`` are Bazel/implementation groups. A root that
     forwards an upstream target's groups is only checked for its documented ones.
     """
@@ -238,14 +279,6 @@ def compare(
     if forwarded_groups:
         observed &= groups
     errors.extend(_difference("group", groups, observed))
-    documented = {
-        providers[row["name"]]
-        for row in active(contract.providers, conditions)
-        if row["name"] in providers
-    }
-    errors.extend(
-        _difference("provider", documented, public_providers(target, providers))
-    )
     errors.extend(
         _difference(
             "companion",
@@ -289,7 +322,6 @@ def coverage_errors(
             for section in (
                 contract.defaults,
                 contract.groups,
-                contract.providers,
                 contract.companions,
             )
             for row in section

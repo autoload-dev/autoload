@@ -796,24 +796,14 @@ godot_pack = macro(
     See [export behavior](../../resources.md).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | one | always | build output_name.pck; no run behavior |
+    - files (one): build output_name.pck; no run behavior
 
     ### Output groups
-    | name | contents | availability | prerequisites |
-    | --- | --- | --- | --- |
-    | report | Godot export JSON report | always | execution-platform editor |
-    | export_facts | What Godot reports about the export, as JSON | always | execution-platform editor |
-    | selection | Selected content JSON and the selection's warnings | always | none |
-
-    ### Generated targets
-    none
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | GodotPackInfo | The PCK, and the project, operating system and CPUs of the platform slice | always |
+    - `report`: Godot export JSON report
+      - prerequisites: execution-platform editor
+    - `export_facts`: What Godot reports about the export, as JSON
+      - prerequisites: execution-platform editor
+    - `selection`: Selected content JSON and the selection's warnings
     """,
     implementation = _pack_macro_impl,
     inherit_attrs = _pack_export,

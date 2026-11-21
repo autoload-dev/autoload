@@ -49,22 +49,7 @@ Example:
 See [a complete C++ extension](../../gdextension.md).
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the descriptor fragment, the extension library and its runtime dependencies; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotExtensionInfo | Configured extension library, descriptor fragment and resource paths | always |
-| GodotAddonInfo | The add-on of only this extension, which resources and projects use like any add-on | always |
-| CcInfo | Forwarded from the iOS static library or framework import; supports iOS linking and embedding | when_cc |
+- files (many): build the descriptor fragment, the extension library and its runtime dependencies; no run behavior
 
 
 **PARAMETERS**
@@ -141,22 +126,7 @@ godot_extension(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the descriptor fragment, the extension library and its runtime dependencies; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| GodotExtensionInfo | Configured extension library, descriptor fragment and resource paths | always |
-| GodotAddonInfo | The add-on of only this extension, which resources and projects use like any add-on | always |
-| CcInfo | Forwarded from a static library or framework; supports iOS linking | when_cc |
+- files (many): build the descriptor fragment, the extension library and its runtime dependencies; no run behavior
 
 **ATTRIBUTES**
 

@@ -33,20 +33,7 @@ def godot_export_platform(
     environment fails analysis.
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | metadata | none | always | select operating system and CPUs; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    | name | role | availability |
-    | --- | --- | --- |
-    | PlatformInfo | Bazel target platform constraints | always |
+    - metadata (none): select operating system and CPUs; no run behavior
 
     Args:
         name: Public export platform target name, selected through --platforms.

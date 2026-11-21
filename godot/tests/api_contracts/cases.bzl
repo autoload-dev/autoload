@@ -34,7 +34,7 @@ def _source_build_entrypoints(hub, slots, extra = {}):
     rows = {}
     for pattern, names in slots.items():
         rows["@{repository}//toolchains:" + pattern] = {
-            "@%s//toolchains:%s" % (hub, name): ["GodotComponentInfo"]
+            "@%s//toolchains:%s" % (hub, name): []
             for name in names
         }
         rows["@{repository}//toolchains:%s.toolchain" % pattern] = {
@@ -47,7 +47,7 @@ def _hub_entrypoints(runtimes, extra = {}):
     """Entrypoint cases of a godot_engines hub: its editors plus the given runtime rows."""
     rows = {
         "@{repository}//toolchains:editor_{platform}_{cpu}": {
-            "@godot//toolchains:editor_" + slot: ["GodotComponentInfo"]
+            "@godot//toolchains:editor_" + slot: []
             for slot in _HUB_EDITORS
         },
         "@{repository}//toolchains:editor_{platform}_{cpu}.toolchain": {
@@ -57,7 +57,7 @@ def _hub_entrypoints(runtimes, extra = {}):
     }
     for pattern, slots in runtimes.items():
         rows["@{repository}//toolchains:runtime_" + pattern] = {
-            "@godot//toolchains:runtime_" + slot: ["GodotComponentInfo"]
+            "@godot//toolchains:runtime_" + slot: []
             for slot in slots
         }
         rows["@{repository}//toolchains:runtime_%s.toolchain" % pattern] = {
@@ -218,7 +218,7 @@ API_CASES = {
         "module": "tests",
         "conditions": ["desktop"],
         "entrypoints": {
-            "@{repository}//:godot": {_SOURCE + "//:godot": ["GodotRuntimeInfo"]},
+            "@{repository}//:godot": {_SOURCE + "//:godot": []},
             "@{repository}//:engine_library": {_SOURCE + "//:engine_library": []},
             "@{repository}//:engine_manifest.json": {_SOURCE + "//:engine_manifest.json": []},
         },
@@ -229,7 +229,7 @@ API_CASES = {
         "options": ["--config=android"],
         "conditions": ["android"],
         "entrypoints": {
-            "@{repository}//:godot": {"@godot_source_build_android_android_arm64_template_release//:godot": ["GodotRuntimeInfo"]},
+            "@{repository}//:godot": {"@godot_source_build_android_android_arm64_template_release//:godot": []},
             "@{repository}//:engine_library": {"@godot_source_build_android_android_arm64_template_release//:engine_library": []},
             "@{repository}//:libgodot_android.so": {"@godot_source_build_android_android_arm64_template_release//:libgodot_android.so": []},
             "@{repository}//:engine_manifest.json": {"@godot_source_build_android_android_arm64_template_release//:engine_manifest.json": []},
@@ -312,7 +312,7 @@ API_CASES = {
         "options": ["--config=source"],
         "conditions": ["ios"],
         "entrypoints": {
-            "@{repository}//:engine_library": {"@godot_source_build_ios_ios_arm64_simulator_template_release//:engine_library": ["GodotRuntimeInfo"]},
+            "@{repository}//:engine_library": {"@godot_source_build_ios_ios_arm64_simulator_template_release//:engine_library": []},
             "@{repository}//:engine_manifest.json": {"@godot_source_build_ios_ios_arm64_simulator_template_release//:engine_manifest.json": []},
         },
     },
