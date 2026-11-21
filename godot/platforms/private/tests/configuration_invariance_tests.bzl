@@ -184,7 +184,9 @@ def _test_ios_simulator_pack_compiles_its_extension_for_the_simulator(name):
     analysis_test(
         name = name,
         # The pack itself, without an application whose rules_apple edge configures Apple
-        # builds for iOS.
+        # builds for iOS. The build's own configuration for the export platform is the
+        # subject, so the test sets only --platforms instead of using in_platform_slice
+        # (//godot/private/tests:configurations.bzl).
         target = MOBILE_FIXTURE + "pack",
         impl = _ios_simulator_pack_compiles_its_extension_for_the_simulator,
         config_settings = {

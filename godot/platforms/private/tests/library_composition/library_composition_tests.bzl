@@ -12,6 +12,7 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot:app.bzl", "godot_app")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private/config:application.bzl", "application_pack", "loadable_pack")
+load("//godot/private/tests:configurations.bzl", "in_platform_slice")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
 _ANDROID_APPS = "//godot/platforms/private/tests/library_composition/fixtures/android_apps_with_transitive_platform_libraries:"
@@ -35,20 +36,6 @@ _IOS = struct(
         "//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_x86_64")),
     },
     attr_values = {"size": "small", "target_compatible_with": ["@platforms//os:macos"]},
-)
-
-# An application pack analyzed by itself, in the settings its pack's content configuration
-# has: the iOS CPU and platform type the content transition sets, and the --strip=never
-# that iOS applications set. In _IOS instead, the pack's native code would take a
-# configuration with a macOS CPU name that no application build has and a second one per
-# --strip value, each with its own C/C++ and Swift toolchains.
-_IOS_CONTENT = struct(
-    config_settings = _IOS.config_settings | {
-        "//command_line_option:cpu": "ios_x86_64",
-        "//command_line_option:apple_platform_type": "ios",
-        "//command_line_option:strip": "never",
-    },
-    attr_values = _IOS.attr_values,
 )
 
 def _fails_with_message(env, target):
@@ -123,7 +110,8 @@ def _test_ios_app_rejects_android_platform_input(name):
 # add-ons of its start pack and of every pack it may load later, those the packs' resources
 # use and those their projects name. godot_app passes its pack and loadable_packs to its
 # application pack in this order, each loadable pack through loadable_pack; the
-# build-output tests build the applications.
+# build-output tests build the applications. The application pack is analyzed in the
+# platform slice in which an application's split analyzes it.
 def _delivered_test(name, packs, platform, libraries, infoplists):
     loadable = []
     for index, pack in enumerate(packs[1:]):
@@ -135,9 +123,10 @@ def _delivered_test(name, packs, platform, libraries, infoplists):
         tags = ["manual"],
         deps = packs[:1] + loadable,
     )
+    in_platform_slice(name = name + "_in_platform_slice", tags = ["manual"], target = name + "_subject")
     analysis_test(
         name = name,
-        target = name + "_subject",
+        target = name + "_in_platform_slice",
         impl = _delivers,
         attrs = {"libraries": attr.string_list(), "infoplists": attr.string_list()},
         config_settings = platform.config_settings,
@@ -160,7 +149,7 @@ def _test_ios_app_delivers_libraries_of_loadable_packs(name):
     _delivered_test(
         name,
         [_IOS_APPS + "composition_base_pack", _IOS_APPS + "composition_transitive_pack", _IOS_APPS + "pack"],
-        _IOS_CONTENT,
+        _IOS,
         ["composition_resources", "controller", "swift"],
         ["addon.plist"],
     )
