@@ -1,6 +1,5 @@
 """The view an operation runs Godot on: its project's configuration over the resources it names."""
 
-load("//godot:providers.bzl", "GodotProjectInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "merge_configuration")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "context_transition")
@@ -20,6 +19,7 @@ load(
 )
 load("//godot/private:paths.bzl", "declared_path", "exec_paths", "resolve_project_path", "with_extensions_for")
 load("//godot/private:project.bzl", "NamedAddonsInfo", "configuration_file", "configuration_kinds", "left_out_entries", "named_addons_label")
+load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private:resources.bzl", "classify", "compose", "composition_import_inputs", "configuration_contributions", "dependency_units", "extension_file_paths", "validate_composition")
 load("//godot/private:setting_values.bzl", "named_paths", "names_directories", "override_applies", "setting_kind")
 load("//godot/private/config:settings.bzl", "entry_features")

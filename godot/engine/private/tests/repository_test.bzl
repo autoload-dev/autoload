@@ -2,7 +2,7 @@
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
-load("//godot:providers.bzl", "GodotRuntimeInfo")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
 visibility([
     "//godot/engine/private/tests",

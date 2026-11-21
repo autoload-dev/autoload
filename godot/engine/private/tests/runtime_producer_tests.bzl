@@ -5,8 +5,8 @@ prebuilt runtime and the facts a source-built engine binary reports from its rec
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//godot:providers.bzl", "GodotRuntimeInfo")
 load("//godot/engine/private/tests:engines.bzl", "prebuilt_runtime")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
 _SOURCE_BINARY = "//godot/engine/private/tests/fixtures/source_built_runtime:godot"
 

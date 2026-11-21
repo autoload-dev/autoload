@@ -2,71 +2,10 @@
 
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-Engine components and the Android runtime payload.
+Engine components.
 
 godot_editor_component and godot_runtime_component declare the editor or the runtime of one
-slot and its toolchain registration; godot_android_runtime combines the Android shell
-library with the engine library into an Android runtime payload. See
-[engines](../../engine.md).
-
-<a id="godot_android_runtime"></a>
-
-## godot_android_runtime
-
-<pre>
-load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_android_runtime")
-
-godot_android_runtime(<a href="#godot_android_runtime-name">name</a>, <a href="#godot_android_runtime-shell">shell</a>, <a href="#godot_android_runtime-engine_library">engine_library</a>, <a href="#godot_android_runtime-kwargs">**kwargs</a>)
-</pre>
-
-Join Godot's Android shell library with an engine library into one aar_import runtime.
-
-`shell` is an Android shell AAR file, such as the one of an official release or the
-AAR of a source-built shell library. Without `engine_library`, the shell's own JNI
-libraries are used. With it, the shell AAR is repacked in the configuration of each
-platform slice, as the engine AAR, with that platform slice's engine library as
-`jni/<abi>/libgodot_android.so`; the ABI follows the CPU of the platform slice, so
-one target per variant serves every CPU, and `engine_library` may be a select()
-over the CPU. Delivery copies are stripped as Bazel's `--strip` asks; the
-`<name>.debug_symbols` of applications with this runtime contain them unstripped.
-The ruleset supplies the shell library's Maven dependencies. Use the result as the
-payload of a godot_runtime_component for an Android slot. This macro returns no
-value.
-
-Example:
-```starlark
-godot_android_runtime(
-    name = "android_release",
-    shell = "@godot_android_shell//:release.aar",
-    engine_library = "@godot_android_arm64_release//:libgodot_android.so",
-)
-```
-
-### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build imported AAR metadata and engine libraries; no run behavior |
-
-### Output groups
-none
-
-### Generated targets
-none
-
-### Providers
-none
-
-
-**PARAMETERS**
-
-
-| Name  | Description | Default Value |
-| :------------- | :------------- | :------------- |
-| <a id="godot_android_runtime-name"></a>name |  Public aar_import target name.   |  none |
-| <a id="godot_android_runtime-shell"></a>shell |  Godot's Android shell .aar file.   |  none |
-| <a id="godot_android_runtime-engine_library"></a>engine_library |  Optional engine library .so target of the current platform slice.   |  `None` |
-| <a id="godot_android_runtime-kwargs"></a>kwargs |  Remaining aar_import attributes, such as tags and visibility.   |  none |
-
+slot and its toolchain registration. See [engines](../../engine.md).
 
 <a id="godot_editor_component"></a>
 
@@ -101,24 +40,18 @@ godot_editor_component(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the editor payload and its runfiles; no run behavior |
-
-### Output groups
-none
+- files (many): build the editor payload and its runfiles; no run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.toolchain | metadata | analysis_boundary | register the slot with editor_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| ToolchainInfo | godot editor files, executable, version and provenance | always |
-| GodotComponentInfo | Provenance of the declared slot | always |
+- `{name}.toolchain` (metadata): register the slot with editor_toolchain_type; toolchain resolution is a separate boundary
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+- `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+  - availability: engine named
 
 **ATTRIBUTES**
 
@@ -173,24 +106,18 @@ godot_runtime_component(
 ```
 
 ### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| files | many | always | build the runtime payload; no run behavior |
-
-### Output groups
-none
+- files (many): build the runtime payload; no run behavior
 
 ### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| {name}.toolchain | metadata | analysis_boundary | register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary | caller | inherit | none | always |
-| {name}.engine | metadata | analysis_boundary | the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine | caller | inherit | none | engine named |
-
-### Providers
-| name | role | availability |
-| --- | --- | --- |
-| ToolchainInfo | godot runtime payload, GodotRuntimeInfo where known, version and provenance | always |
-| GodotComponentInfo | Provenance of the declared slot | always |
+- `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+- `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
+  - purpose: analysis_boundary
+  - visibility: caller
+  - testonly: inherit
+  - availability: engine named
 
 **ATTRIBUTES**
 

@@ -8,7 +8,6 @@ from tools.docs.output_contracts import ConfiguredTarget, Contract
 from tools.docs.repository_contracts import repository_errors, toolchain_bound
 
 LABEL = "@cpp//:godot_cpp"
-PROVIDERS = {"GodotRuntimeInfo": "//godot:providers.bzl%GodotRuntimeInfo"}
 
 
 def contract(kind: str = "library", testonly: str = "false") -> Contract:
@@ -23,7 +22,6 @@ def contract(kind: str = "library", testonly: str = "false") -> Contract:
         ({"kind": "repository", "cardinality": "none", "availability": "always"},),
         (),
         (row,),
-        (),
     )
 
 
@@ -35,7 +33,7 @@ def rule(kind: str = "cc_library", **booleans: bool) -> SimpleNamespace:
     )
 
 
-CASE = {"conditions": [], "entrypoints": {"@{repository}//:godot_cpp": {LABEL: []}}}
+CASE = {"conditions": [], "entrypoints": {"@{repository}//:godot_cpp": [LABEL]}}
 LIBRARY = ConfiguredTarget(LABEL, 1, 0, False, frozenset({"CcInfo"}), frozenset())
 
 
@@ -43,7 +41,7 @@ class RepositoryContractsTest(unittest.TestCase):
     def errors(
         self, contract: Contract, rules: dict, observed: dict, case: dict = CASE
     ) -> list[str]:
-        return repository_errors(contract, case, rules, set(), observed, PROVIDERS)
+        return repository_errors(contract, case, rules, set(), observed)
 
     def test_matching_repository(self) -> None:
         self.assertEqual([], self.errors(contract(), {LABEL: rule()}, {LABEL: LIBRARY}))
@@ -90,20 +88,9 @@ class RepositoryContractsTest(unittest.TestCase):
                 else:
                     self.assertIn(f"{LABEL}: {expected}", errors)
 
-    def test_testonly_and_public_providers_follow_evaluated_facts(self) -> None:
+    def test_testonly_follows_evaluated_facts(self) -> None:
         errors = self.errors(contract(testonly="true"), {LABEL: rule()}, {LABEL: LIBRARY})
         self.assertIn(f"{LABEL}: source testonly differs from evaluated loading", errors)
-        runtime = replace(
-            LIBRARY,
-            providers=frozenset(
-                {
-                    "CcInfo",
-                    "@@autoload_rules_godot+//godot:providers.bzl%GodotRuntimeInfo",
-                }
-            ),
-        )
-        errors = self.errors(contract(), {LABEL: rule()}, {LABEL: runtime})
-        self.assertTrue(any("public providers differ" in error for error in errors))
 
     def test_inactive_conditional_rows_scope_discovery(self) -> None:
         mobile = {
@@ -128,8 +115,8 @@ class RepositoryContractsTest(unittest.TestCase):
         case = {
             "conditions": [],
             "entrypoints": {
-                "@{repository}//:godot_cpp": {},
-                "@{repository}//:extra": {LABEL: []},
+                "@{repository}//:godot_cpp": [],
+                "@{repository}//:extra": [LABEL],
             },
         }
         errors = self.errors(contract(), {}, {}, case)

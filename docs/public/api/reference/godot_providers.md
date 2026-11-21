@@ -2,11 +2,10 @@
 
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-Public interfaces between resource, engine, extension and packaging rules.
+Public providers of the applications and packs godot_pack and godot_app build.
 
-Read these providers in a consuming rule's implementation after declaring a
-provider constraint on the input attribute. Fields describe Bazel artifacts
-and stable resource identities.
+Read them in a consuming rule's implementation after declaring a provider constraint on
+the input attribute, for example to deploy a pack or a desktop application.
 
 Example:
 ```starlark
@@ -21,76 +20,6 @@ consume_pack = rule(
     attrs = {"pack": attr.label(providers = [GodotPackInfo])},
 )
 ```
-
-The same indexing pattern applies to every provider below. See
-[resource composition](../../resources.md), [engines](../../engine.md) and
-[extensions](../../gdextension.md) for producer and consumer examples.
-
-<a id="GodotAddonInfo"></a>
-
-## GodotAddonInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotAddonInfo")
-
-GodotAddonInfo(<a href="#GodotAddonInfo-label">label</a>, <a href="#GodotAddonInfo-directory">directory</a>, <a href="#GodotAddonInfo-runtime_files">runtime_files</a>, <a href="#GodotAddonInfo-editor_files">editor_files</a>, <a href="#GodotAddonInfo-plugin_config">plugin_config</a>, <a href="#GodotAddonInfo-importer_suffixes">importer_suffixes</a>,
-               <a href="#GodotAddonInfo-importer_resource_paths">importer_resource_paths</a>, <a href="#GodotAddonInfo-importer_resource_path_manifest">importer_resource_path_manifest</a>, <a href="#GodotAddonInfo-import_settings">import_settings</a>, <a href="#GodotAddonInfo-extensions">extensions</a>,
-               <a href="#GodotAddonInfo-platform_libraries">platform_libraries</a>, <a href="#GodotAddonInfo-platform_contributions">platform_contributions</a>, <a href="#GodotAddonInfo-autoloads">autoloads</a>, <a href="#GodotAddonInfo-settings">settings</a>, <a href="#GodotAddonInfo-addons">addons</a>)
-</pre>
-
-An add-on: its runtime part, its editor part with its roles, its extensions, platform libraries and Info.plist fragments, its autoloads and settings, and the add-ons it needs. Produced by godot_addon and, as an add-on of only that extension, by godot_extension and godot_cc_extension; consumed by resources that use it, projects that name it and the operations containing it.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotAddonInfo-label"></a>label |  Label of the add-on    |
-| <a id="GodotAddonInfo-directory"></a>directory |  string: resource path of the directory every file of the add-on lives below, without a trailing slash; empty for an extension-only add-on, whose files are its extension's    |
-| <a id="GodotAddonInfo-runtime_files"></a>runtime_files |  GodotResourcesInfo of the runtime part: members of every operation containing the add-on, one import unit owned by the add-on    |
-| <a id="GodotAddonInfo-editor_files"></a>editor_files |  GodotResourcesInfo of the editor part: the plugin.cfg and the files its editor plugin loads, which only the Godot processes of its roles stage and no pack, source run or application contains    |
-| <a id="GodotAddonInfo-plugin_config"></a>plugin_config |  string: resource path of the editor part's plugin.cfg, or empty without an editor part    |
-| <a id="GodotAddonInfo-importer_suffixes"></a>importer_suffixes |  sorted list[string] of the lowercase file suffixes, without a dot, the add-on's importers convert; empty without an importer role    |
-| <a id="GodotAddonInfo-importer_resource_paths"></a>importer_resource_paths |  dict of resource paths to the Files an importer of the add-on needs to run: both parts of the add-on and of the add-ons it needs, and the editor files of their extensions; empty without an importer role    |
-| <a id="GodotAddonInfo-importer_resource_path_manifest"></a>importer_resource_path_manifest |  JSON File of importer_resource_paths by execution path, which the imports staging the importer read; None without an importer role and under a context, since imports take the add-on from their project's index    |
-| <a id="GodotAddonInfo-import_settings"></a>import_settings |  sorted list of the keys of its settings its importer reads at import time, which the Godot processes staging the importer set    |
-| <a id="GodotAddonInfo-extensions"></a>extensions |  list of GodotExtensionInfo of the extensions in the add-on's deps    |
-| <a id="GodotAddonInfo-platform_libraries"></a>platform_libraries |  list[Target] of Android and Apple libraries of the add-on and its extensions, sorted by label    |
-| <a id="GodotAddonInfo-platform_contributions"></a>platform_contributions |  struct with infoplists, a depset[File] of Info.plist fragments applications merge    |
-| <a id="GodotAddonInfo-autoloads"></a>autoloads |  list of (name, res:// path, owner) autoload contributions, in declaration order    |
-| <a id="GodotAddonInfo-settings"></a>settings |  list of (key, Godot literal, owner) setting contributions    |
-| <a id="GodotAddonInfo-addons"></a>addons |  postorder depset of GodotAddonInfo the add-on needs, with the add-ons those need, dependencies first    |
-
-
-<a id="GodotComponentInfo"></a>
-
-## GodotComponentInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotComponentInfo")
-
-GodotComponentInfo(<a href="#GodotComponentInfo-component">component</a>, <a href="#GodotComponentInfo-engine">engine</a>, <a href="#GodotComponentInfo-role">role</a>, <a href="#GodotComponentInfo-platform">platform</a>, <a href="#GodotComponentInfo-cpu">cpu</a>, <a href="#GodotComponentInfo-environment">environment</a>, <a href="#GodotComponentInfo-variant">variant</a>, <a href="#GodotComponentInfo-version">version</a>, <a href="#GodotComponentInfo-kind">kind</a>,
-                   <a href="#GodotComponentInfo-origin">origin</a>, <a href="#GodotComponentInfo-digest">digest</a>, <a href="#GodotComponentInfo-customizations">customizations</a>)
-</pre>
-
-The provenance of one engine component slot. Produced by godot_editor_component/godot_runtime_component; carried as provenance on the resolved editor and runtime toolchains for diagnostics, never as a compatibility condition.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotComponentInfo-component"></a>component |  string: label of the component that declares the payload    |
-| <a id="GodotComponentInfo-engine"></a>engine |  string: name of the engine the component belongs to; empty for the default engine    |
-| <a id="GodotComponentInfo-role"></a>role |  string: editor or runtime    |
-| <a id="GodotComponentInfo-platform"></a>platform |  string: the Godot platform, that is the operating system of the editor platform for editors and of the target platform for runtimes: linux, macos, ios or android    |
-| <a id="GodotComponentInfo-cpu"></a>cpu |  string: arm64 or x86_64    |
-| <a id="GodotComponentInfo-environment"></a>environment |  string: device or simulator for iOS runtimes; empty otherwise    |
-| <a id="GodotComponentInfo-variant"></a>variant |  string: debug or release for runtimes; empty for editors    |
-| <a id="GodotComponentInfo-version"></a>version |  string: producer version where known, otherwise the declared version    |
-| <a id="GodotComponentInfo-kind"></a>kind |  string: source for source-built payloads, prebuilt otherwise    |
-| <a id="GodotComponentInfo-origin"></a>origin |  string: producer or payload label    |
-| <a id="GodotComponentInfo-digest"></a>digest |  string: source or artifact content digest where the producer supplies one; empty when unknown    |
-| <a id="GodotComponentInfo-customizations"></a>customizations |  dict of requested build customization (patches, modules, options) where the producer supplies it; empty otherwise    |
-
 
 <a id="GodotDesktopAppInfo"></a>
 
@@ -119,38 +48,7 @@ tree artifact; executable_path locates the runtime executable inside it.
 | <a id="GodotDesktopAppInfo-archive"></a>archive |  File: deterministic ZIP (macos) or tar.gz (linux) distribution archive.    |
 | <a id="GodotDesktopAppInfo-operating_system"></a>operating_system |  string: linux or macos.    |
 | <a id="GodotDesktopAppInfo-executable_path"></a>executable_path |  string: POSIX executable path relative to the bundle root.    |
-| <a id="GodotDesktopAppInfo-runtime_component"></a>runtime_component |  GodotComponentInfo of the runtime component packaged in the bundle, or None for an opaque runtime    |
-
-
-<a id="GodotExtensionInfo"></a>
-
-## GodotExtensionInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotExtensionInfo")
-
-GodotExtensionInfo(<a href="#GodotExtensionInfo-files">files</a>, <a href="#GodotExtensionInfo-library">library</a>, <a href="#GodotExtensionInfo-runtime_resource_paths">runtime_resource_paths</a>, <a href="#GodotExtensionInfo-editor_resource_paths">editor_resource_paths</a>,
-                   <a href="#GodotExtensionInfo-host_editor_resource_paths">host_editor_resource_paths</a>, <a href="#GodotExtensionInfo-runtime_descriptor">runtime_descriptor</a>, <a href="#GodotExtensionInfo-descriptor_path">descriptor_path</a>, <a href="#GodotExtensionInfo-entry_symbol">entry_symbol</a>,
-                   <a href="#GodotExtensionInfo-platform_libraries">platform_libraries</a>, <a href="#GodotExtensionInfo-platform_contributions">platform_contributions</a>, <a href="#GodotExtensionInfo-minimum_os_versions">minimum_os_versions</a>)
-</pre>
-
-A GDExtension in one configuration: its configured extension library, its descriptor fragment and the resource paths of both, and those of its tool view. Produced by godot_extension/godot_cc_extension; consumed by resources, projects and application rules.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotExtensionInfo-files"></a>files |  depset of the descriptor fragment, the configured extension library and its runtime dependencies    |
-| <a id="GodotExtensionInfo-library"></a>library |  struct, or None where the extension has no library in this configuration: the configured extension library, with tags (string: Godot's feature tags of the configuration joined with '.', such as android.arm64.release), operating_system (linux, macos, android or ios), cpu (Godot's CPU tag, such as arm32 or arm64), environment (device or simulator on iOS, otherwise empty), link_kind (static, dynamic or framework, from the library's providers), file (File: the static archive, shared library or framework binary), resource_path (string: where the descriptor fragment names it), cc_info (CcInfo that links a static library or framework, otherwise None), runtime_dependencies (dict of resource paths, beside the library, to the Files it needs at run time: dynamic libraries and frameworks of its providers and the extension's data), debug_symbols (File: the .dSYM directory the linker wrote for it, or None)    |
-| <a id="GodotExtensionInfo-runtime_resource_paths"></a>runtime_resource_paths |  dict of resource paths to the Files that packs, source runs and applications place in the project: the descriptor fragment, the configured extension library and its runtime dependencies; empty where the extension has no library in this configuration    |
-| <a id="GodotExtensionInfo-editor_resource_paths"></a>editor_resource_paths |  dict of resource paths to the Files editor actions such as exports stage: the runtime_resource_paths of the tool view, configured for their execution platform; empty where the tool configuration has no library    |
-| <a id="GodotExtensionInfo-host_editor_resource_paths"></a>host_editor_resource_paths |  dict of resource paths to the Files of the tool view configured for the host, which godot_editor and bazel run for a target platform the host cannot run stage    |
-| <a id="GodotExtensionInfo-runtime_descriptor"></a>runtime_descriptor |  the descriptor fragment File of this configuration: one [libraries] entry and its [dependencies] entry with the configuration's feature tags. Packs merge the fragments of their platform slices    |
-| <a id="GodotExtensionInfo-descriptor_path"></a>descriptor_path |  the resource path of the descriptor in runtime_resource_paths, editor_resource_paths and host_editor_resource_paths    |
-| <a id="GodotExtensionInfo-entry_symbol"></a>entry_symbol |  string: GDExtension initialization symbol shared by all extension libraries    |
-| <a id="GodotExtensionInfo-platform_libraries"></a>platform_libraries |  list[Target] of Android and Apple libraries from the extension's deps that applications link and package    |
-| <a id="GodotExtensionInfo-platform_contributions"></a>platform_contributions |  struct with infoplists, a depset[File] of the Info.plist fragments iOS applications merge for the extension, as GodotAddonInfo.platform_contributions    |
-| <a id="GodotExtensionInfo-minimum_os_versions"></a>minimum_os_versions |  dict of macos and ios to the minimum operating-system version the extension's libraries need there; an application whose minimum is lower fails. Empty where the libraries run on every version the engine supports    |
+| <a id="GodotDesktopAppInfo-runtime_component"></a>runtime_component |  provenance of the runtime component packaged in the bundle, with the fields of editor_component of GodotPackInfo, or None for an opaque runtime    |
 
 
 <a id="GodotPackInfo"></a>
@@ -180,111 +78,9 @@ A Godot-exported PCK and its declared project. Produced by godot_pack; consumed 
 | <a id="GodotPackInfo-export_options"></a>export_options |  dict[string, string] of the export preset options the pack sets, as Godot literals    |
 | <a id="GodotPackInfo-facts"></a>facts |  File: JSON of what Godot decides for the pack's export, which application rules write their shell files from: features, the export's feature tags; options, every export option of the operating system with its value or default; settings, the project settings with the export's feature overrides; versions, the values of the version options as Godot's exporter reads them; name_translations, the project's name by locale of its translations    |
 | <a id="GodotPackInfo-version"></a>version |  string: canonical version of the editor that exported the pack; diagnostic only, never compared with the runtime    |
-| <a id="GodotPackInfo-editor_component"></a>editor_component |  GodotComponentInfo of the editor component that exported the pack    |
+| <a id="GodotPackInfo-editor_component"></a>editor_component |  provenance of the editor component that exported the pack: label (component), kind, version, origin, digest and customizations    |
 | <a id="GodotPackInfo-variant"></a>variant |  string: release or debug, the template variant of the export and of the runtime it needs; debug in the editor variant    |
 | <a id="GodotPackInfo-icons"></a>icons |  list[File] of the application icons Godot renders for the pack's operating system, which only applications using them build: for Android a resource directory with the launcher icons, for iOS an asset catalog with the AppIcon set, for macOS a directory with icon.icns; empty for other operating systems    |
 | <a id="GodotPackInfo-splash"></a>splash |  list[File] of the splash images Godot renders for the pack's operating system: for Android a resource directory with the splash screen's drawables, for iOS an asset catalog with the launch screen's SplashImage, Godot's boot splash unless the project sets one; empty for other operating systems    |
-
-
-<a id="GodotProjectInfo"></a>
-
-## GodotProjectInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotProjectInfo")
-
-GodotProjectInfo(<a href="#GodotProjectInfo-label">label</a>, <a href="#GodotProjectInfo-import_configuration">import_configuration</a>, <a href="#GodotProjectInfo-importable">importable</a>, <a href="#GodotProjectInfo-importers">importers</a>, <a href="#GodotProjectInfo-authored_project_file">authored_project_file</a>,
-                 <a href="#GodotProjectInfo-authored_autoloads">authored_autoloads</a>, <a href="#GodotProjectInfo-settings">settings</a>, <a href="#GodotProjectInfo-setting_overrides">setting_overrides</a>, <a href="#GodotProjectInfo-autoloads">autoloads</a>, <a href="#GodotProjectInfo-autoload_overrides">autoload_overrides</a>,
-                 <a href="#GodotProjectInfo-main_scene">main_scene</a>, <a href="#GodotProjectInfo-context_files">context_files</a>, <a href="#GodotProjectInfo-named_addons">named_addons</a>, <a href="#GodotProjectInfo-custom_features">custom_features</a>, <a href="#GodotProjectInfo-flag_settings">flag_settings</a>)
-</pre>
-
-The configuration context of one product: its authored project.godot, settings, autoloads, main scene and the add-ons it names. Produced by godot_project; operations name it as their project, and resources import under the context their operation sets.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotProjectInfo-label"></a>label |  Label of the godot_project, or of //godot/private:no_project for no context    |
-| <a id="GodotProjectInfo-import_configuration"></a>import_configuration |  project.godot File every import of the context reads: the authored file, the project's settings and the import settings of the add-ons it names, filtered by the import purpose; None for no context    |
-| <a id="GodotProjectInfo-importable"></a>importable |  tree artifact File listing the file suffixes Godot imports under this context, the importers of the add-ons it names included, one empty file per suffix; None for no context    |
-| <a id="GodotProjectInfo-importers"></a>importers |  dict of lowercase file suffixes to the GodotAddonInfo, outside every context, of the add-ons the project names whose importer role declares that suffix, in the order of named_addons    |
-| <a id="GodotProjectInfo-authored_project_file"></a>authored_project_file |  project.godot File the configuration starts from, as declared; None for no context    |
-| <a id="GodotProjectInfo-authored_autoloads"></a>authored_autoloads |  JSON File of the authored project.godot's autoloads, name to value as written, which content validations register; None for no context    |
-| <a id="GodotProjectInfo-settings"></a>settings |  dict[string, string] of the project's own settings, section/property to Godot literal    |
-| <a id="GodotProjectInfo-setting_overrides"></a>setting_overrides |  dict[string, string] of settings replacing conflicting contributions    |
-| <a id="GodotProjectInfo-autoloads"></a>autoloads |  dict[string, string] of the project's own autoloads, name to res:// path    |
-| <a id="GodotProjectInfo-autoload_overrides"></a>autoload_overrides |  dict[string, string] of autoloads replacing conflicting contributions    |
-| <a id="GodotProjectInfo-main_scene"></a>main_scene |  string: declared resource path of the main scene, or empty    |
-| <a id="GodotProjectInfo-context_files"></a>context_files |  dict of resource paths to the Files bound to the context, such as the application icon    |
-| <a id="GodotProjectInfo-named_addons"></a>named_addons |  postorder depset of GodotAddonInfo of the add-ons the project names in deps, with the add-ons those need, dependencies first, reached outside every context; every operation of the project contains them and they import their parts under its context    |
-| <a id="GodotProjectInfo-custom_features"></a>custom_features |  sorted list[string] of the Godot custom features the project's custom-feature build settings give in this configuration; packs export with them and source runs start with them; empty for no context    |
-| <a id="GodotProjectInfo-flag_settings"></a>flag_settings |  dict of the setting keys settings_from_flags sets to the Godot literals of the flags' values in this configuration; packs export with them and source runs start with them    |
-
-
-<a id="GodotResourcesInfo"></a>
-
-## GodotResourcesInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotResourcesInfo")
-
-GodotResourcesInfo(<a href="#GodotResourcesInfo-imports">imports</a>, <a href="#GodotResourcesInfo-units">units</a>, <a href="#GodotResourcesInfo-unit_heads">unit_heads</a>, <a href="#GodotResourcesInfo-resource_path_manifests">resource_path_manifests</a>, <a href="#GodotResourcesInfo-member_resource_paths">member_resource_paths</a>,
-                   <a href="#GodotResourcesInfo-import_resource_paths">import_resource_paths</a>, <a href="#GodotResourcesInfo-member_owners">member_owners</a>, <a href="#GodotResourcesInfo-import_owners">import_owners</a>, <a href="#GodotResourcesInfo-ignored_resource_paths">ignored_resource_paths</a>,
-                   <a href="#GodotResourcesInfo-relationships">relationships</a>, <a href="#GodotResourcesInfo-addons">addons</a>, <a href="#GodotResourcesInfo-class_fragments">class_fragments</a>, <a href="#GodotResourcesInfo-interfaces">interfaces</a>, <a href="#GodotResourcesInfo-interfaced_resource_paths">interfaced_resource_paths</a>,
-                   <a href="#GodotResourcesInfo-validations">validations</a>)
-</pre>
-
-Godot resources, their import units and explicit dependency metadata. Produced by godot_resources and consumed by godot_resources and the operations that name them; an add-on's runtime and editor parts carry one each.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotResourcesInfo-imports"></a>imports |  depset[File] of the import results of these resources and their dependencies under the context of the operation that reached them; empty without a context    |
-| <a id="GodotResourcesInfo-units"></a>units |  list[dict] of import units, dependencies first: owner is a label string; outputs is list[string] of its own resource paths; deps is list[string] of nearest dependency unit owners    |
-| <a id="GodotResourcesInfo-unit_heads"></a>unit_heads |  list[string] of the owner labels of the import units this target stands for when another unit depends on it: its own unit, or, without files of its own, the units its dependencies stand for; a dependent unit imports after them    |
-| <a id="GodotResourcesInfo-resource_path_manifests"></a>resource_path_manifests |  depset of JSON resource path manifests, one per contributing target, that together map every path an import of these resources stages to its File's path    |
-| <a id="GodotResourcesInfo-member_resource_paths"></a>member_resource_paths |  dict of resource paths to the source or generated Files of the members    |
-| <a id="GodotResourcesInfo-import_resource_paths"></a>import_resource_paths |  dict of resource paths to the Files of the import inputs, disjoint from member_resource_paths    |
-| <a id="GodotResourcesInfo-member_owners"></a>member_owners |  dict[string, string] of the members' resource paths to the label strings declaring them    |
-| <a id="GodotResourcesInfo-import_owners"></a>import_owners |  dict[string, string] of the import inputs' resource paths to the label strings declaring them    |
-| <a id="GodotResourcesInfo-ignored_resource_paths"></a>ignored_resource_paths |  dict of the resource paths of the members and import inputs Godot ignores to their Files: hidden ones and those below a directory whose .gdignore or project.godot the same target declares. Each target decides it once for its own files; staging still takes them from member_resource_paths and import_resource_paths    |
-| <a id="GodotResourcesInfo-relationships"></a>relationships |  depset of (source, target, kind, owner) string tuples; runtime cycles are allowed    |
-| <a id="GodotResourcesInfo-addons"></a>addons |  postorder depset of GodotAddonInfo the files of these resources and their dependencies use, with the add-ons those need, dependencies first; never an import input    |
-| <a id="GodotResourcesInfo-class_fragments"></a>class_fragments |  depset[File] of the class fragments of these resources' scripts and their dependencies', which validations merge into Godot's global script class cache; empty without a context    |
-| <a id="GodotResourcesInfo-interfaces"></a>interfaces |  depset[File] of the interfaces of these resources and their dependencies under the context, which their dependents' validations stage in place of the files interfaced_resource_paths names and of the import results; empty without a context    |
-| <a id="GodotResourcesInfo-interfaced_resource_paths"></a>interfaced_resource_paths |  depset[string] of the resource paths of the members that interfaces replace for dependents' validations: scripts, imported assets and their .import files; empty without a context    |
-| <a id="GodotResourcesInfo-validations"></a>validations |  depset[File] of the validation outputs of these resources and their dependencies under the context, each in its target's _validation output group; empty without a context    |
-
-
-<a id="GodotRuntimeInfo"></a>
-
-## GodotRuntimeInfo
-
-<pre>
-load("@autoload_rules_godot//godot:providers.bzl", "GodotRuntimeInfo")
-
-GodotRuntimeInfo(<a href="#GodotRuntimeInfo-executable">executable</a>, <a href="#GodotRuntimeInfo-files">files</a>, <a href="#GodotRuntimeInfo-platform">platform</a>, <a href="#GodotRuntimeInfo-cpu">cpu</a>, <a href="#GodotRuntimeInfo-environment">environment</a>, <a href="#GodotRuntimeInfo-facts_source">facts_source</a>, <a href="#GodotRuntimeInfo-origin">origin</a>, <a href="#GodotRuntimeInfo-version">version</a>,
-                 <a href="#GodotRuntimeInfo-bundle_files">bundle_files</a>, <a href="#GodotRuntimeInfo-variant">variant</a>, <a href="#GodotRuntimeInfo-debug_symbols">debug_symbols</a>, <a href="#GodotRuntimeInfo-minimum_os">minimum_os</a>)
-</pre>
-
-A prebuilt or source-built engine runtime for one target platform. Produced by export-template archives and source recipes; carried by runtime components and consumed by desktop packaging.
-
-**FIELDS**
-
-| Name  | Description |
-| :------------- | :------------- |
-| <a id="GodotRuntimeInfo-executable"></a>executable |  File of the executable runtime, or None when the runtime is an engine library    |
-| <a id="GodotRuntimeInfo-files"></a>files |  depset of runtime inputs    |
-| <a id="GodotRuntimeInfo-platform"></a>platform |  string: the Godot platform, that is the operating system the runtime is for: linux, macos, ios or android    |
-| <a id="GodotRuntimeInfo-cpu"></a>cpu |  string: target CPU identifier, such as arm64 or x86_64    |
-| <a id="GodotRuntimeInfo-environment"></a>environment |  string: device or simulator for iOS; empty for non-iOS runtimes    |
-| <a id="GodotRuntimeInfo-facts_source"></a>facts_source |  string: where the runtime's facts come from: source for a source recipe, declared for a prebuilt or opaque payload    |
-| <a id="GodotRuntimeInfo-origin"></a>origin |  string: producer or imported target label used in mismatch diagnostics    |
-| <a id="GodotRuntimeInfo-version"></a>version |  string: actual runtime version; declared imports use canonical versions, while source producers may retain an unnumbered prerelease channel    |
-| <a id="GodotRuntimeInfo-bundle_files"></a>bundle_files |  dict of desktop bundle-relative paths to the Files the runtime executable needs beside it    |
-| <a id="GodotRuntimeInfo-variant"></a>variant |  string: release or debug, the Godot template variant of the runtime    |
-| <a id="GodotRuntimeInfo-debug_symbols"></a>debug_symbols |  File or None: .dSYM directory the linker wrote for a source recipe executable, as rules_cc's cc_binary does on Apple platforms with --apple_generate_dsym    |
-| <a id="GodotRuntimeInfo-minimum_os"></a>minimum_os |  string: the deployment target the runtime was built for on Apple platforms, such as 11.0 for a macOS source recipe; empty where the producer does not declare one, as for prebuilt and imported payloads    |
 
 

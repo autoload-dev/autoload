@@ -14,7 +14,7 @@ load(
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
-load("//godot:providers.bzl", "GodotPackInfo", "GodotRuntimeInfo")
+load("//godot:providers.bzl", "GodotPackInfo")
 load(
     "//godot/platforms/private:shell.bzl",
     "ENGINE_CHECK_ATTRS",
@@ -26,6 +26,7 @@ load(
 )
 load("//godot/private:macros.bzl", "common_kwargs", "filegroup_kwargs")
 load("//godot/private:minimum_os.bzl", "check_minimum_os")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:shell_assets.bzl", "asset_catalog")
 load("//godot/private/config:settings.bzl", "ENVIRONMENT", "PLATFORM_ATTRS", "target_platform")

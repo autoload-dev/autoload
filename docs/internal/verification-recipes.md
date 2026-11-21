@@ -233,7 +233,7 @@ cd tests
 bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/stable:all
 bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/beta:all
 bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all
-bazel aquery 'mnemonic("CppCompile|ObjcCompile|GodotGenerate", @godot_source//:godot)'
+bazel aquery 'mnemonic("CppCompile|ObjcCompile|GodotGenerate", @godot_source_macos_arm64_template_release//:godot)'
 ```
 
 The patch changes the engine banner. The `BazelProbe` module registers a class

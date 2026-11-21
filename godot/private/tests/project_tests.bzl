@@ -7,7 +7,7 @@ disables for each purpose and the files it derives.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:defs.bzl", "godot_project")
-load("//godot:providers.bzl", "GodotExtensionInfo")
+load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load(":views.bzl", "run_view")
 

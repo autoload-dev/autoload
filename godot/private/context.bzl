@@ -12,7 +12,7 @@ host test and a macOS application of one project share each unit's actions; the 
 code takes them on the pack's native path, outside the context.
 """
 
-load("//godot:providers.bzl", "GodotProjectInfo")
+load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT", "MACOS_MINIMUM_OS_OUTSIDE_APPLICATION")
 
 visibility(["//godot/..."])

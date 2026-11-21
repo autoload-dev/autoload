@@ -1,4 +1,4 @@
-load({DEFS_BZL}, "godot_android_runtime")
+load({ANDROID_BZL}, "godot_android_runtime")
 load({RULES_ANDROID_BZL}, "android_library")
 
 package(default_visibility = ["//visibility:public"])

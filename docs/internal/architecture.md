@@ -3,8 +3,8 @@
 The project and pack API is in `godot/defs.bzl`; `godot/app.bzl` provides the unified
 application API. Export platforms from `godot/platforms/defs.bzl` select the operating
 system, CPU set and iOS environment. The application backends, the operating-system rules
-`godot_app` selects, live under `godot/platforms/private/`. `godot_android_runtime`, exported
-from `godot/engine/defs.bzl`, is in `godot/platforms/private/android.bzl`.
+`godot_app` selects, live under `godot/platforms/private/`. `godot_android_runtime`, which
+generated engine hubs load, is in `godot/platforms/private/android.bzl`.
 `godot_app` selects optional macOS signing through `//godot:macos_signing`; the private
 signer is `godot/platforms/private/macos_signing.bzl`.
 Providers in `godot/providers.bzl` join the independent build layers.
@@ -103,7 +103,7 @@ provisioning. Generated compile actions use Bazel's C++/Apple toolchains.
 
 White-box tests beside the implementation packages cover build contracts and
 diagnostics; the regression module `tests/` exports and runs real projects as a consumer,
-through the public module boundary and the public test helper of `godot/testing/`. Cache checks compare selected Bazel actions and output bytes.
+through the public module boundary and the artifact test rules of `godot/private/testing/`. Cache checks compare selected Bazel actions and output bytes.
 Repository commands and controlled fixture inputs are documented in the
 [fixture catalogue](verification-recipes.md#regression-fixtures).
 

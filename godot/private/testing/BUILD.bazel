@@ -1,8 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-# The implementation of the public inspection helper //godot/testing:artifact_tests.bzl:
-# its rules, launch templates and inspectors. The inspectors carry their own trimmed
-# readers, so the helper depends on no build tool of the ruleset.
+# Test rules that inspect a built Android App Bundle or iOS application for the ruleset's
+# own tests and its tests module: their rules, launch templates and inspectors. The tests
+# module loads the rules across repositories; they are not supported API.
 package(default_visibility = ["//visibility:private"])
 
 exports_files(
@@ -22,7 +22,7 @@ exports_files(
 py_library(
     name = "native_symbols",
     srcs = ["native_symbols.py"],
-    visibility = ["//godot/testing/private/tests:__pkg__"],
+    visibility = ["//godot/private/testing/tests:__pkg__"],
 )
 
 py_library(
@@ -31,7 +31,7 @@ py_library(
         "inspect_android_bundle.py",
         "pck.py",
     ],
-    visibility = ["//godot/testing/private/tests:__pkg__"],
+    visibility = ["//godot/private/testing/tests:__pkg__"],
     deps = [":native_symbols"],
 )
 
@@ -47,7 +47,7 @@ py_library(
         "apple_bundle.py",
         "inspect_ios_app.py",
     ],
-    visibility = ["//godot/testing/private/tests:__pkg__"],
+    visibility = ["//godot/private/testing/tests:__pkg__"],
     deps = [":native_symbols"],
 )
 

@@ -1,6 +1,6 @@
 """Small acquired datasets exercise real repository generators without native compilation."""
 
-load("//godot/engine:repositories.bzl", "godot_export_templates_archive")
+load("//godot/engine/private:archives.bzl", "godot_export_templates_archive")
 
 def _fixtures_impl(ctx):
     archive = ctx.path(Label(":split_templates.zip"))

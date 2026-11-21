@@ -11,7 +11,7 @@ importer's files it reads.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:defs.bzl", "godot_addon")
-load("//godot:providers.bzl", "GodotProjectInfo")
+load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(":action_inputs.bzl", "expect_not_read", "expect_reads", "godot_actions", "import_manifests", "written_manifests")

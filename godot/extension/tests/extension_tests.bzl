@@ -10,8 +10,8 @@ fail analysis.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
-load("//godot:providers.bzl", "GodotExtensionInfo")
 load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load(":descriptor_tests.bzl", "descriptor_contents")
 
 _SMALL = {"size": "small"}

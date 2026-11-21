@@ -40,12 +40,13 @@ For a reproducer or existing fixture, use the relevant entry in the
 its focused target from this directory. The root verification policy owns TDD, timing and
 evidence.
 
-## Public test helper
+## Artifact test rules
 
-To inspect a built Android App Bundle or iOS application, load
-`@autoload_rules_godot//godot/testing:artifact_tests.bzl`; the
-[API reference](../docs/public/api/index.md) documents it. The ruleset offers no other
-test labels: a scenario owns its project files, native fixtures and inspectors.
+To inspect a built Android App Bundle or iOS application, load `android_bundle_test` or
+`ios_app_test` from `@autoload_rules_godot//godot/private/testing`, with
+`# buildifier: disable=bzl-visibility`. They are the ruleset's own test rules, not
+supported API. The ruleset offers no other test labels: a scenario owns its project files,
+native fixtures and inspectors.
 
 ## Fixture scope
 

@@ -1,7 +1,6 @@
 """Public core rules for resources, add-ons, projects, PCK exports, runs, tests and editor views."""
 
 load("//godot/private:addon.bzl", _godot_addon = "godot_addon")
-load("//godot/private:analysis.bzl", _godot_resource_graph = "godot_resource_graph")
 load(
     "//godot/private:editor.bzl",
     _godot_editor = "godot_editor",
@@ -24,4 +23,3 @@ godot_run = _godot_run
 godot_test = _godot_test
 godot_editor = _godot_editor
 godot_metadata_sync = _godot_metadata_sync
-godot_resource_graph = _godot_resource_graph

@@ -7,8 +7,8 @@ validation then records its failures in its output and succeeds, so a test can r
 and build the operations over the same content.
 """
 
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "context_transition")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 
 visibility(["//godot/private/tests/..."])
 

@@ -7,8 +7,8 @@ is public.
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
-load("//godot:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 
 visibility("public")

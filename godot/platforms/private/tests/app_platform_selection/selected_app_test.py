@@ -39,7 +39,7 @@ ADDON_RESOURCES = {
 }
 
 
-# A copy of the DEX reader of //godot/testing/private:inspect_android_bundle.py, whose
+# A copy of the DEX reader of //godot/private/testing:inspect_android_bundle.py, whose
 # library serves the public inspection helper only.
 def defined_classes(dex: bytes) -> set[str]:
     """Read defined class names from standard little-endian DEX class_defs tables."""

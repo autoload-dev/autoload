@@ -14,7 +14,7 @@ from tools.tool_environment import nested_tool_environment
 
 ROLES = (
     "PUBLIC_APIS",
-    "GENERATED_REPOSITORY_MODULES",
+    "CROSS_REPOSITORY_MODULES",
     "SUPPORT_MODULES",
 )
 
@@ -92,13 +92,13 @@ def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
             errors.append(
                 f"{label}: public entrypoints need a task group, purpose and primary symbols"
             )
-    for label, purpose in inventory["GENERATED_REPOSITORY_MODULES"].items():
+    for label, purpose in inventory["CROSS_REPOSITORY_MODULES"].items():
         if not purpose.strip():
             errors.append(
-                f"{label}: generated-repository implementations need a cross-repository load explanation"
+                f"{label}: cross-repository modules need a cross-repository load explanation"
             )
     for label in list(inventory["SUPPORT_MODULES"]) + list(
-        inventory["GENERATED_REPOSITORY_MODULES"]
+        inventory["CROSS_REPOSITORY_MODULES"]
     ):
         path = module_path(root, label)
         if not path.is_file():
@@ -111,21 +111,21 @@ def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
             and isinstance(node.value.func, ast.Name)
             and node.value.func.id == "visibility"
         ]
-        generated = label in inventory["GENERATED_REPOSITORY_MODULES"]
+        cross_repository = label in inventory["CROSS_REPOSITORY_MODULES"]
         specs = [ast.literal_eval(call.args[0]) for call in calls]
         public = any(
             spec == "public" or isinstance(spec, list) and "public" in spec
             for spec in specs
         )
-        if not calls and not generated:
+        if not calls and not cross_repository:
             errors.append(
                 f"{label}: support modules need explicit restricted load visibility"
             )
-        if generated and not public:
+        if cross_repository and not public:
             errors.append(
-                f"{label}: generated-repository implementations need explicit public load visibility"
+                f"{label}: cross-repository modules need explicit public load visibility"
             )
-        elif not generated and public:
+        elif not cross_repository and public:
             errors.append(f"{label}: support modules cannot have public load visibility")
     # This is a syntax check, not Starlark evaluation. Real exports and
     # attribute schemas are obtained independently from Bazel's evaluated extractor.
@@ -229,7 +229,7 @@ def main() -> None:
         sys.exit("\n".join(errors))
     print(
         f"API inventory: {len(inventory['PUBLIC_APIS'])} primary entrypoints, "
-        f"{len(inventory['GENERATED_REPOSITORY_MODULES'])} generated-repository implementation modules excluded from the reference; all Godot modules classified.",
+        f"{len(inventory['CROSS_REPOSITORY_MODULES'])} cross-repository modules excluded from the reference; all Godot modules classified.",
         flush=True,
     )
     labels = {

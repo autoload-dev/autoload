@@ -10,13 +10,12 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 | --- | --- |
 | `@autoload_rules_godot//godot:app.bzl` | Compose a start pack and the registered runtime into one application target.<br>[`godot_app`](reference/godot_app.md#godot_app) |
 | `@autoload_rules_godot//godot/platforms:defs.bzl` | Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.<br>[`godot_export_platform`](reference/godot_platforms_defs.md#godot_export_platform) |
-| `@autoload_rules_godot//godot/testing:artifact_tests.bzl` | Test what a built Android App Bundle or iOS application contains, without a device.<br>[`android_bundle_test`](reference/godot_testing_artifact_tests.md#android_bundle_test), [`ios_app_test`](reference/godot_testing_artifact_tests.md#ios_app_test) |
 
 ## Projects and resources
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync), [`godot_resource_graph`](reference/godot_defs.md#godot_resource_graph) |
+| `@autoload_rules_godot//godot:defs.bzl` | Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.<br>[`godot_resources`](reference/godot_defs.md#godot_resources), [`godot_addon`](reference/godot_defs.md#godot_addon), [`godot_project`](reference/godot_defs.md#godot_project), [`godot_pack`](reference/godot_defs.md#godot_pack), [`godot_run`](reference/godot_defs.md#godot_run), [`godot_test`](reference/godot_defs.md#godot_test), [`godot_editor`](reference/godot_defs.md#godot_editor), [`godot_metadata_sync`](reference/godot_defs.md#godot_metadata_sync) |
 | `@autoload_rules_godot//godot/gdunit:defs.bzl` | Run GdUnit4 suites as a Bazel test with sharding, test filters and JUnit reports.<br>[`godot_gdunit_test`](reference/godot_gdunit_defs.md#godot_gdunit_test) |
 
 ## Extensions
@@ -30,8 +29,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component), [`godot_android_runtime`](reference/godot_engine_defs.md#godot_android_runtime) |
-| `@autoload_rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build), [`godot_editor_archive`](reference/godot_engine_repositories.md#godot_editor_archive), [`godot_export_templates_archive`](reference/godot_engine_repositories.md#godot_export_templates_archive) |
+| `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component) |
 
 ## Module setup
 
@@ -43,7 +41,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot:providers.bzl` | Exchange resource, add-on, project, engine, extension and desktop application metadata.<br>[`GodotResourcesInfo`](reference/godot_providers.md#GodotResourcesInfo), [`GodotAddonInfo`](reference/godot_providers.md#GodotAddonInfo), [`GodotProjectInfo`](reference/godot_providers.md#GodotProjectInfo), [`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotRuntimeInfo`](reference/godot_providers.md#GodotRuntimeInfo), [`GodotComponentInfo`](reference/godot_providers.md#GodotComponentInfo), [`GodotExtensionInfo`](reference/godot_providers.md#GodotExtensionInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
+| `@autoload_rules_godot//godot:providers.bzl` | Read exported packs and desktop applications in your own rules, for example to deploy them.<br>[`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
 
 ## Public target labels
 
@@ -78,12 +76,12 @@ See [platform prerequisites](../platforms.md) for SDK and toolchain setup.
 | `@autoload_rules_godot//godot:debug` | config_setting matching --@autoload_rules_godot//godot:variant=debug, the debug export template. |
 | `@autoload_rules_godot//godot:default_engine` | config_setting matching an empty --@autoload_rules_godot//godot:engine: the default engine, which components without an engine name require. |
 | `@autoload_rules_godot//godot:editor` | config_setting matching --@autoload_rules_godot//godot:variant=editor: a godot_app running from sources with Godot's editor binary, and the tool configuration. |
-| `@autoload_rules_godot//godot:editor_toolchain_type` | Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance (GodotComponentInfo). |
+| `@autoload_rules_godot//godot:editor_toolchain_type` | Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance: the component's label, kind, version, origin and digest. |
 | `@autoload_rules_godot//godot:engine` | String build setting, default empty: the engine a build uses, by name, such as --@autoload_rules_godot//godot:engine=petri. Only components whose engine attribute has this name fill its slots; empty selects the default engine, the components that name none. |
 | `@autoload_rules_godot//godot:headless` | Boolean build setting, default true: whether godot_run and godot_test targets that leave headless unset run headless. Set --@autoload_rules_godot//godot:headless=false to watch tests render. |
 | `@autoload_rules_godot//godot:macos_signing` | macOS app signing selection: unsigned (default), adhoc or local certificate; app identity and entitlements remain app-specific. |
 | `@autoload_rules_godot//godot:pack_conversion` | String build setting, auto (default), godot or none: how packs make their PCK. godot exports it with Godot's conversions; none writes scenes, resources and scripts as text without a Godot export, for development builds; auto is godot under --compilation_mode=opt and none otherwise. |
 | `@autoload_rules_godot//godot:release` | config_setting matching the release variant, the default. |
-| `@autoload_rules_godot//godot:runtime_toolchain_type` | Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (GodotRuntimeInfo or None), files, version and provenance (GodotComponentInfo). |
+| `@autoload_rules_godot//godot:runtime_toolchain_type` | Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (the runtime's files and facts, or None), files, version and provenance: the component's label, kind, version, origin and digest. |
 | `@autoload_rules_godot//godot:tool` | config_setting matching the tool configuration, in which Godot runs as a build tool for imports, initialization, exports and the editor; it refines //godot:editor. Select an extension library or backend for editor processes with it. |
 | `@autoload_rules_godot//godot:variant` | String build setting, release (default), debug or editor: the variant, which of Godot's binaries a build is for. release and debug are the export templates: packs export with the variant's feature tags; engine aliases and extension libraries follow it. editor runs a godot_app's project from its sources with Godot's editor binary on a Linux or macOS target platform, without an export. |

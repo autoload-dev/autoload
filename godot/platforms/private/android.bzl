@@ -9,7 +9,8 @@ load(":android_outputs.bzl", "godot_android_apk", "godot_android_app_bundle", "g
 load(":android_platform_libraries.bzl", "godot_android_manifest_order", "godot_android_platform_libraries")
 load(":android_runtime_bridge.bzl", _runtime_bridge_android = "runtime_bridge_android")
 
-visibility(["//godot", "//godot/engine", "//godot/platforms", "//godot/platforms/private/tests"])
+# Generated engine hubs load godot_android_runtime; it is not supported API.
+visibility("public")
 
 # The Java/Android dependencies of Godot's Android shell library; rules_godot contributes
 # them to the shared maven repository.
@@ -50,18 +51,7 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     ```
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | files | many | always | build imported AAR metadata and engine libraries; no run behavior |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - files (many): build imported AAR metadata and engine libraries; no run behavior
 
     Args:
         name: Public aar_import target name.

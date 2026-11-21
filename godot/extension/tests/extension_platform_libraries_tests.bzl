@@ -7,8 +7,8 @@ add-on.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:defs.bzl", "godot_addon")
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo")
 load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo")
 
 def _test_platform_libraries_keep_provider_edge(name):
     analysis_test(

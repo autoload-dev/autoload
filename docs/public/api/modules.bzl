@@ -16,11 +16,6 @@ PUBLIC_APIS = {
         "purpose": "Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.",
         "symbols": ["godot_export_platform"],
     },
-    "//godot/testing:artifact_tests.bzl": {
-        "group": "Platform applications",
-        "purpose": "Test what a built Android App Bundle or iOS application contains, without a device.",
-        "symbols": ["android_bundle_test", "ios_app_test"],
-    },
     "//godot:defs.bzl": {
         "group": "Projects and resources",
         "purpose": "Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.",
@@ -33,7 +28,6 @@ PUBLIC_APIS = {
             "godot_test",
             "godot_editor",
             "godot_metadata_sync",
-            "godot_resource_graph",
         ],
     },
     "//godot/gdunit:defs.bzl": {
@@ -60,23 +54,10 @@ PUBLIC_APIS = {
     },
     "//godot/engine:defs.bzl": {
         "group": "Engines and toolchains",
-        "purpose": "Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.",
+        "purpose": "Declare editor/runtime component slots with their toolchain registrations.",
         "symbols": [
             "godot_editor_component",
             "godot_runtime_component",
-            "godot_android_runtime",
-        ],
-    },
-    "//godot/engine:repositories.bzl": {
-        "group": "Engines and toolchains",
-        "purpose": "Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.",
-        "symbols": [
-            "godot_engine_source",
-            "godot_engine_build",
-            "godot_android_shell",
-            "godot_engine_source_build",
-            "godot_editor_archive",
-            "godot_export_templates_archive",
         ],
     },
     "//godot:extensions.bzl": {
@@ -89,28 +70,27 @@ PUBLIC_APIS = {
     },
     "//godot:providers.bzl": {
         "group": "Provider contracts",
-        "purpose": "Exchange resource, add-on, project, engine, extension and desktop application metadata.",
+        "purpose": "Read exported packs and desktop applications in your own rules, for example to deploy them.",
         "symbols": [
-            "GodotResourcesInfo",
-            "GodotAddonInfo",
-            "GodotProjectInfo",
             "GodotPackInfo",
-            "GodotRuntimeInfo",
-            "GodotComponentInfo",
-            "GodotExtensionInfo",
             "GodotDesktopAppInfo",
         ],
     },
 }
 
-GENERATED_REPOSITORY_MODULES = {
+CROSS_REPOSITORY_MODULES = {
     "//godot/engine/private:prebuilt.bzl": "Payload rules loaded by generated prebuilt archive BUILD files; requires cross-repository load access.",
     "//godot/engine/private:generator.bzl": "Implementation loaded by generated engine BUILD files; requires cross-repository load access.",
     "//godot/engine/private:pin.bzl": "Recipe pin rules loaded by generated engine and hub BUILD files; requires cross-repository load access.",
     "//godot/extension/private:bindings.bzl": "Implementation loaded by generated godot-cpp BUILD files; requires cross-repository load access.",
+    "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
+    "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
+    "//godot/platforms/private:android.bzl": "godot_android_runtime, loaded by generated engine hub BUILD files; requires cross-repository load access.",
 }
 
 SUPPORT_MODULES = [
+    "//godot/engine/private:repositories.bzl",
+    "//godot/private:providers.bzl",
     "//godot/engine/private:archives.bzl",
     "//godot/engine/private:catalogue.bzl",
     "//godot/engine/private:resolution.bzl",
@@ -123,7 +103,6 @@ SUPPORT_MODULES = [
     "//godot/extension/private:godot_cpp.bzl",
     "//godot/extension/private:ios_framework.bzl",
     "//godot/platforms/private:macos_signing.bzl",
-    "//godot/platforms/private:android.bzl",
     "//godot/platforms/private:android_bootstrap.bzl",
     "//godot/platforms/private:android_jni_libraries.bzl",
     "//godot/platforms/private:android_outputs.bzl",
@@ -175,8 +154,6 @@ SUPPORT_MODULES = [
     "//godot/platforms/private:launch.bzl",
     "//godot/platforms/private:shell.bzl",
     "//godot/platforms/private:ios.bzl",
-    "//godot/testing/private:android_bundle_test.bzl",
-    "//godot/testing/private:ios_app_test.bzl",
 ]
 
 EXTERNAL_LOADS = [
@@ -214,8 +191,8 @@ PUBLIC_TARGETS = {
     "//godot:editor": "config_setting matching --@autoload_rules_godot//godot:variant=editor: a godot_app running from sources with Godot's editor binary, and the tool configuration.",
     "//godot:release": "config_setting matching the release variant, the default.",
     "//godot:tool": "config_setting matching the tool configuration, in which Godot runs as a build tool for imports, initialization, exports and the editor; it refines //godot:editor. Select an extension library or backend for editor processes with it.",
-    "//godot:editor_toolchain_type": "Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance (GodotComponentInfo).",
-    "//godot:runtime_toolchain_type": "Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (GodotRuntimeInfo or None), files, version and provenance (GodotComponentInfo).",
+    "//godot:editor_toolchain_type": "Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance: the component's label, kind, version, origin and digest.",
+    "//godot:runtime_toolchain_type": "Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (the runtime's files and facts, or None), files, version and provenance: the component's label, kind, version, origin and digest.",
     "//godot/platforms:linux_x86_64": "Linux x86_64 export platform; requires a matching runtime and a C++ cross toolchain when building native code.",
     "//godot/platforms:linux_arm64": "Linux arm64 export platform; requires an arm64 runtime and a matching C++ toolchain.",
     "//godot/platforms:linux_x86_32": "Linux x86_32 export platform; requires an x86_32 runtime and a matching C++ toolchain.",

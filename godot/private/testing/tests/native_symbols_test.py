@@ -3,7 +3,7 @@
 import struct
 import unittest
 
-from godot.testing.private.native_symbols import elf_build_id, elf_sections, macho_uuids
+from godot.private.testing.native_symbols import elf_build_id, elf_sections, macho_uuids
 from tools.platforms.native_fixtures import elf, macho, universal
 
 _ARM64 = bytes.fromhex("5ef81f68a5cb3b0c82ffe288702e954d")

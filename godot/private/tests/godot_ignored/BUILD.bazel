@@ -1,5 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_test")
-load("//godot:defs.bzl", "godot_metadata_sync", "godot_resource_graph", "godot_test")
+load("//godot:defs.bzl", "godot_metadata_sync", "godot_test")
+load("//godot/private:analysis.bzl", "godot_resource_graph")
 
 # Godot-ignored files, which Godot never scans, imports or registers: packs leave out their
 # directories, source runs read them, and no rule asks for their sidecars.

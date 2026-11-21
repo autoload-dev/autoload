@@ -59,18 +59,7 @@ def godot_gdunit_test(name, suites, **kwargs):
     [GdUnit tests](../../development.md#gdunit).
 
     ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | test | one | always | execute GdUnit suites under bazel test; JUnit reports are test outputs; editor/project are runfiles |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    none
-
-    ### Providers
-    none
+    - test (one): execute GdUnit suites under bazel test; JUnit reports are test outputs; editor/project are runfiles
 
     Args:
         name: Name of the test target.

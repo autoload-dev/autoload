@@ -241,7 +241,7 @@ A new action takes a verb of the table, or extends the table with the action's r
 | consumer scenario | A [test kind](verification-architecture.md#consumer-scenario): a package of the consumer module `rules_godot_tests` that shows, with the public API only, what a user can build, inspect and run. | A regression project, which predates the verification architecture; an example. | none |
 | example test | A [test kind](verification-architecture.md#example-test): an example's tests for its own behavior. | Ruleset coverage, which examples do not provide. | `examples/**/tests/` |
 | repository-tooling test | A [test kind](verification-architecture.md#repository-tooling-test): a Python test of a tool that serves the repository, such as a check, a CI script or a setup tool, beside that tool. | A build-tool unit test, which tests a tool that runs in builds. | `tools/conventions/**/*_test.py`, `tools/ci/*_test.py` |
-| public test helper | A test rule or macro that users may load, with an API reference entry and a contract case. It loads only public files ([boundary rule B3](verification-architecture.md#boundary-rules)). | A helper in a ruleset `tests` package, which only white-box tests load. | `//godot/testing:artifact_tests.bzl` |
+| artifact test rule | A test rule of the ruleset that inspects a built App Bundle or iOS application. Not supported API; the tests module loads it across repositories ([artifact test rules](verification-architecture.md#artifact-test-rules)). | A public test rule users may rely on. | `//godot/private/testing:ios_app_test.bzl` |
 
 ## Terms to avoid
 
