@@ -19,6 +19,7 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
+load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
 
@@ -262,6 +263,47 @@ def _ios_framework_binary_combines_every_cpu(env, target):
             expr = "a library of the %s configuration among %s" % (cpu, libraries),
         ).equals(True)
 
+_FrameworkBinariesInfo = provider(
+    doc = "The paths of the iOS framework binary each platform slice of an extension reaches.",
+    fields = ["paths"],
+)
+
+def _framework_slices_impl(ctx):
+    return [_FrameworkBinariesInfo(paths = {
+        cpu: extension[GodotExtensionInfo].library.file.path
+        for cpu, extension in ctx.split_attr.extension.items()
+    })]
+
+# What a pack does with an extension: splits it once per platform slice of the application.
+_framework_slices = rule(
+    implementation = _framework_slices_impl,
+    attrs = {
+        "extension": attr.label(mandatory = True, providers = [GodotExtensionInfo], cfg = platform_slice_transition),
+        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
+    },
+)
+
+def _test_ios_framework_is_one_configuration_for_every_cpu(name):
+    _extension(name + "_extension")
+    _framework_slices(name = name + "_slices", extension = ":" + name + "_extension", tags = ["manual"])
+    analysis_test(
+        name = name,
+        target = name + "_slices",
+        impl = _ios_framework_is_one_configuration_for_every_cpu,
+        attr_values = _MACOS_ONLY,
+        config_settings = _IOS_SIMULATOR_BOTH_CPUS,
+    )
+
+def _ios_framework_is_one_configuration_for_every_cpu(env, target):
+    # Every platform slice reaches the same framework, so its one action combines the
+    # libraries for all of them; rules_apple embeds the one binary whichever it takes.
+    paths = target[_FrameworkBinariesInfo].paths
+    env.expect.that_collection(paths.keys(), expr = "platform slices").contains_exactly(["arm64", "x86_64"])
+    env.expect.that_int(
+        len({binary: None for binary in paths.values()}),
+        expr = "distinct framework binaries of the slices",
+    ).equals(1)
+
 def _test_ios_static_linkage_links_the_archive(name):
     _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
 
@@ -284,6 +326,7 @@ def cc_extension_test_suite(name):
             _test_ios_extension_is_a_framework,
             _test_ios_framework_binary_has_its_install_name,
             _test_ios_framework_binary_combines_every_cpu,
+            _test_ios_framework_is_one_configuration_for_every_cpu,
             _test_ios_static_linkage_links_the_archive,
         ],
     )

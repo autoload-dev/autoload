@@ -8,14 +8,14 @@ extensions from different modules never share or collide on godot-cpp's symbols.
 rules_apple's ios_dynamic_framework would relink the binary from deps under its own
 transition, without the extension's export list and configuration; this rule combines
 the libraries godot_cc_extension already linked for each CPU of the application into the
-framework's binary. Its Info.plist has fixed string keys, so it
-is written here rather than by a plist tool action.
+framework's binary. Its Info.plist has fixed string keys, so it is written here rather
+than by a plist tool action.
 """
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
-load("//godot/private/config:transitions.bzl", "platform_slice_transition")
+load("//godot/private/config:transitions.bzl", "platform_slice_transition", "shared_slices_transition")
 
 visibility(["//godot/extension/..."])
 
@@ -147,6 +147,9 @@ ios_framework_files = rule(
         "bundle_id": attr.string(doc = "CFBundleIdentifier of the framework.", mandatory = True),
     } | PLATFORM_ATTRS | apple_support.action_required_attrs(),
     fragments = ["apple"],
+    # One configured framework for every platform slice of an application: its binary
+    # combines the libraries of all of them, so the slices that reach it share one action.
+    cfg = shared_slices_transition,
     # install_name_tool comes with Xcode, which only macOS execution platforms have.
     exec_compatible_with = ["@platforms//os:osx"],
 )
