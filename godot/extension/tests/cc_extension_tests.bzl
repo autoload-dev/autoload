@@ -299,8 +299,10 @@ def _ios_framework_is_one_configuration_for_every_cpu(env, target):
     # libraries for all of them; rules_apple embeds the one binary whichever it takes.
     paths = target[_FrameworkBinariesInfo].paths
     env.expect.that_collection(paths.keys(), expr = "platform slices").contains_exactly(["arm64", "x86_64"])
-    binaries = paths.values()
-    env.expect.that_collection(binaries, expr = "framework binaries of the slices").contains_exactly([binaries[0]] * len(binaries))
+    env.expect.that_int(
+        len({binary: None for binary in paths.values()}),
+        expr = "distinct framework binaries of the slices",
+    ).equals(1)
 
 def _test_ios_static_linkage_links_the_archive(name):
     _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
