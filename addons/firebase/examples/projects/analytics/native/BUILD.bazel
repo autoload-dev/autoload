@@ -1,0 +1,12 @@
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+
+# The application's own C++ extension, built with this module's godot-cpp. On iOS it is a
+# dynamic framework (the default) with its own godot-cpp, apart from the add-ons' copy.
+godot_cc_extension(
+    name = "native",
+    srcs = ["demo_native.cc"],
+    entry_symbol = "demo_native_init",
+    resource_path = "native/demo_native.gdextension",
+    visibility = ["//projects/analytics:__subpackages__"],
+    deps = ["@godot_cpp"],
+)
