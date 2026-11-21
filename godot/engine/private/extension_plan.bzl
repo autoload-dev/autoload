@@ -114,7 +114,8 @@ def prebuilt_plan(tag, *, _fail = fail):
 
 def _missing_runtime_source(tag, release):
     """The catalogued sources of the missing runtimes; none for a fork's pinned artifacts."""
-    if not tag.build_missing_runtimes or tag.templates_urls or tag.editor_urls or tag.android_shell_urls:
+    pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls, tag.android_shell_urls])
+    if not tag.build_missing_runtimes or pins_fork_artifacts:
         return None
     return (release or {}).get("source")
 
@@ -249,6 +250,7 @@ def missing_runtimes(tag, plan, slots):
     rows = [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
     if not rows:
         return None
+
     # A double underscore keeps the recipes apart from the repositories of a source build.
     name = tag.name + "__missing"
     source = "@%s_archive//:source.json" % name
