@@ -29,6 +29,7 @@ load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:shell_assets.bzl", "asset_catalog")
+load("//godot/private/config:native.bzl", "application_options")
 load("//godot/private/config:settings.bzl", "ENVIRONMENT", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":ios_runtime_bridge.bzl", "runtime_bridge_ios")
@@ -332,26 +333,21 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
 
 _TREE_OUTPUTS = str(Label("@rules_apple//apple/build_settings:use_tree_artifacts_outputs"))
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
-_STRIP = "//command_line_option:strip"
+_NATIVE_OPTIONS = application_options("ios")
 
 def _application_settings_impl(settings, _attr):
     # Simulator apps and unoptimized builds are never distributed, so their
     # bundle stays a directory instead of an archive written on every change.
     # Transitions read the compilation mode as an enum value, not a string.
     development = settings[ENVIRONMENT] == "simulator" or str(settings[_COMPILATION_MODE]) != "opt"
-    return {
-        _TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development,
-        # rules_apple strips the executable with --objc_enable_binary_stripping and
-        # ignores --strip, and the extension frameworks it embeds already link without
-        # it (keep_debug_info). Setting it for the whole application gives its native
-        # code one configuration instead of one with and one without --strip.
-        _STRIP: "never",
-    }
+    # The application's native options hold for its whole graph, so the rules_apple
+    # split configures its native code as the pack's platform slices do.
+    return {_TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development} | _NATIVE_OPTIONS
 
 _application_settings = transition(
     implementation = _application_settings_impl,
     inputs = [ENVIRONMENT, _COMPILATION_MODE, _TREE_OUTPUTS],
-    outputs = [_TREE_OUTPUTS, _STRIP],
+    outputs = [_TREE_OUTPUTS] + _NATIVE_OPTIONS.keys(),
 )
 
 _FORWARDED = [

@@ -4,21 +4,22 @@ load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("//godot/private:flags.bzl", "FlagInfo")
+load("//godot/private/config:native.bzl", "LIBRARY_OPTIONS")
 
 visibility("//godot/...")
 
 def _keep_debug_info_impl(_settings, _attr):
     # Transitions read --strip as an opaque value, so they cannot leave the
     # configurations alone whose links would not strip.
-    return {"//command_line_option:strip": "never"}
+    return LIBRARY_OPTIONS
 
 # Native code that applications package links without Bazel's --strip, whose
 # link-time stripping would remove the DWARF their debug symbols need; the
-# applications apply --strip to the copy they package.
+# applications apply --strip to the copy they package. LIBRARY_OPTIONS holds the options.
 keep_debug_info = transition(
     implementation = _keep_debug_info_impl,
     inputs = [],
-    outputs = ["//command_line_option:strip"],
+    outputs = LIBRARY_OPTIONS.keys(),
 )
 
 # Rules that strip native code add these private attributes, the C/C++

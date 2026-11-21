@@ -13,15 +13,13 @@ code takes them on the pack's native path, outside the context.
 """
 
 load("//godot/private:providers.bzl", "GodotProjectInfo")
-load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT", "MACOS_MINIMUM_OS_OUTSIDE_APPLICATION")
+load("//godot/private/config:native.bzl", "MACOS_APPLICATION_OPTIONS", "outside_application_options")
+load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT")
 
 visibility(["//godot/..."])
 
 PROJECT_SETTING = str(Label("//godot/private:project"))
 NO_PROJECT = str(Label("//godot/private:no_project"))
-
-# Set by the macOS application's edge to its pack (godot/platforms/private/desktop.bzl).
-_MACOS_MINIMUM_OS = "//command_line_option:macos_minimum_os"
 
 # The attribute every rule with a transition of its own declares.
 TRANSITION_ATTRS = {
@@ -32,19 +30,16 @@ TRANSITION_ATTRS = {
 
 def _context_impl(settings, attr):
     project = getattr(attr, "project", None)
-    outside = settings[MACOS_MINIMUM_OS_OUTSIDE_APPLICATION]
     return {
         PROJECT_SETTING: str(project) if project else NO_PROJECT,
         # An application's context belongs to its pack export, not to the imports.
         APPLICATION_CONTEXT: "{}",
-        _MACOS_MINIMUM_OS: json.decode(outside) if outside else settings[_MACOS_MINIMUM_OS],
-        MACOS_MINIMUM_OS_OUTSIDE_APPLICATION: "",
-    }
+    } | outside_application_options(settings)
 
 context_transition = transition(
     implementation = _context_impl,
-    inputs = [_MACOS_MINIMUM_OS, MACOS_MINIMUM_OS_OUTSIDE_APPLICATION],
-    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT, _MACOS_MINIMUM_OS, MACOS_MINIMUM_OS_OUTSIDE_APPLICATION],
+    inputs = MACOS_APPLICATION_OPTIONS,
+    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT] + MACOS_APPLICATION_OPTIONS,
 )
 
 def _reset_impl(_settings, _attr):
