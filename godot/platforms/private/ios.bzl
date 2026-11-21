@@ -279,7 +279,7 @@ _ios_extension_libraries = rule(
     } | PLATFORM_ATTRS | ENGINE_CHECK_ATTRS,
 )
 
-def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, families, app_name, executable_name, common, platform_deps = [], overrides = {}):
+def ios_application_inputs(name, pack, runtime, shell, common):
     """
     Declare the inputs shared by a bundle and the unsigned device-link regression.
 
@@ -287,15 +287,14 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
         name: Prefix of the private input targets.
         pack: Configured start pack.
         runtime: The runtime to link, an engine library target.
-        bundle_id: Apple bundle identifier.
-        minimum_os_version: Minimum iOS version.
-        families: Supported Apple device families.
-        app_name: Fallback display name.
-        executable_name: Physical executable and PCK basename.
+        shell: The application's _ios_shell attributes besides pack: bundle_id (Apple
+            bundle identifier), minimum_os_version (minimum iOS version), families
+            (supported Apple device families), app_name (fallback display name) and
+            executable_name (physical executable and PCK basename); optionally
+            platform_deps (platform libraries of the application, validated for iOS)
+            and the shell overrides infoplist_overrides, app_icon_overrides,
+            launch_storyboard and resource_overrides.
         common: Conventional target attributes.
-        platform_deps: Platform libraries of the application, validated for iOS.
-        overrides: The shell overrides of _ios_shell: infoplist_overrides,
-            app_icon_overrides, launch_storyboard and resource_overrides.
 
     Returns:
         The shell target name and the dependencies to link.
@@ -303,15 +302,9 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
     data = name.replace("/", "_") + ".godot_shell"
     _ios_shell(
         name = data,
-        platform_deps = platform_deps,
         pack = pack,
-        bundle_id = bundle_id,
-        minimum_os_version = minimum_os_version,
-        families = families,
-        app_name = app_name,
-        executable_name = executable_name,
         visibility = ["//visibility:private"],
-        **(common | overrides)
+        **(common | shell)
     )
     for group in ["plist", "app_icons"]:
         native.filegroup(
@@ -331,7 +324,7 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
     _ios_extension_libraries(
         name = data + ".extension_libraries",
         deps = [pack],
-        minimum_os_version = minimum_os_version,
+        minimum_os_version = shell["minimum_os_version"],
         runtime = runtime,
         visibility = ["//visibility:private"],
         **common
@@ -521,19 +514,19 @@ def godot_ios_application(
         name = name,
         pack = pack,
         runtime = runtime,
-        bundle_id = bundle_id,
-        minimum_os_version = minimum_os_version,
-        families = families,
-        app_name = kwargs.get("bundle_name") or name,
-        executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
-        common = common,
-        platform_deps = deps,
-        overrides = dict(
+        shell = dict(
+            bundle_id = bundle_id,
+            minimum_os_version = minimum_os_version,
+            families = families,
+            app_name = kwargs.get("bundle_name") or name,
+            executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
+            platform_deps = deps,
             infoplist_overrides = infoplists,
             app_icon_overrides = app_icons,
             launch_storyboard = launch_storyboard,
             resource_overrides = resources,
         ),
+        common = common,
     )
     data = inputs.data
 
