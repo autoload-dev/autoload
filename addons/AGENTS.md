@@ -66,8 +66,10 @@ mise run addon:android <module>   # each example project's app for Android
 mise run addon:ios <module>       # each example project's app for the iOS Simulator
 ```
 
-`host` runs `bazel test` over `@autoload_<module>//...` and `//projects/...`, so tests in
-the module or its examples need no registration. CI selects a module's lanes for changes in
+`host` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
+the module or its examples need no registration. Tests that need more than the module's own
+dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
+what they use; the release archive leaves them out with the examples. CI selects a module's lanes for changes in
 its directory or the shared `addons/*.bazelrc`; `mise run addon:template <lane>` checks the
 template the same way.
 
