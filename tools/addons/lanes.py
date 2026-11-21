@@ -31,13 +31,19 @@ def command(lane: str, module: AddonModule) -> list[str]:
     if not module.projects:
         raise ValueError(f"{module.path}: no example project in examples/projects/")
     if lane == "host":
-        apps = [f"-//projects/{project}:app" for project in module.projects]
+        apps = (
+            [f"-//projects/{project}:app" for project in module.projects]
+            if module.builds_apps
+            else []
+        )
         return ["bazel", "test", "--", f"@{module.name}//...", "//...", *apps]
     apps = [f"//projects/{project}:app" for project in module.projects]
     return ["bazel", "build", APP_CONFIGS[lane], *apps]
 
 
 def run(lane: str, module: AddonModule) -> None:
+    if lane not in module.lanes:
+        sys.exit(f"{module.path}: its addon.pkl names no {lane} lane")
     if lane == "host" and host() not in module.hosts:
         print(
             f"{module.path}: its host lane runs on {', '.join(module.hosts)}, not {host()}"

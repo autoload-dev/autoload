@@ -60,3 +60,16 @@ class GeneratedTest(RepositoryTestCase):
         write(self.root)
         self.assertFalse((self.root / ".bcr/addons/widget").exists())
         self.assertEqual(stale(self.root), [])
+
+    def test_consumers_are_the_modules_that_override_an_add_on_module(self) -> None:
+        generate("widget", root=self.root)
+        (self.root / ".bazelignore").write_text("addons\ntests\n")
+        (self.root / "tests").mkdir()
+        (self.root / "tests/MODULE.bazel").write_text(
+            'local_path_override(module_name = "autoload_widget", '
+            'path = "../addons/widget")\n'
+        )
+        write(self.root)
+        self.assertIn(
+            '["widget"] = List("tests")', (self.root / "addons/consumers.pkl").read_text()
+        )

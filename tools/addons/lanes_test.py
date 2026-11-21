@@ -26,6 +26,22 @@ class LanesTest(unittest.TestCase):
             ],
         )
 
+    def test_host_of_a_module_without_application_lanes_tests_all_its_examples(
+        self,
+    ) -> None:
+        widget = AddonModule(
+            Path("addons/widget"),
+            "autoload_widget",
+            "0.1.0",
+            "",
+            ("demo",),
+            lanes=("host",),
+        )
+        self.assertEqual(
+            command("host", widget),
+            ["bazel", "test", "--", "@autoload_widget//...", "//..."],
+        )
+
     def test_mobile_lanes_build_each_example_app(self) -> None:
         self.assertEqual(
             command("ios", module("demo")),

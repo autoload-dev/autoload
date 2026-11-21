@@ -10,7 +10,10 @@ py_library(
     name = "requirements_lib",
     srcs = ["requirements.py"],
     visibility = ["//tools/platforms:__pkg__"],
-    deps = ["//tools/setup:modules_lib"],
+    deps = [
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
+    ],
 )
 
 py_test(

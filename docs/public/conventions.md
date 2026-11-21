@@ -161,7 +161,8 @@ that the documented workflow succeeds.
 ## RG007
 
 **Godot test operations and their helpers are test-only.** The targets created by
-`godot_test` and autoload_gdunit's `gdunit_test` must have effective
+`godot_test` and the test operations an add-on module declares in its `addon.pkl`
+(`testOperations`), such as autoload_gdunit's `gdunit_test`, must have effective
 `testonly = True`. This includes their generated case lists, resources and views of
 the project. They belong exclusively to the test operation and must not become production
 dependencies, following [test ownership](project-layout.md#test-ownership).
@@ -174,7 +175,7 @@ value, including package defaults, without requiring a literal attribute.
 [Bazel's test-only dependency check](https://bazel.build/reference/be/common-definitions#common.testonly)
 then protects the marked targets from production consumers.
 
-Applicability comes from the evaluated `generator_function` metadata of the three named
+Applicability comes from the evaluated `generator_function` metadata of these
 operations, including source aliases and comprehensions. Each attributed rule target is
 checked. Each false flag is reported at the call with the affected target label. Missing
 scalar flags or missing generator evidence for a directly named operation are reported as
@@ -395,14 +396,18 @@ module lists it. Each module:
 
 - is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
   `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`,
-  `presubmit.yml` and an `examples/` module with `MODULE.bazel`, `BUILD.bazel`, `.bazelrc`
-  and `.bazelversion`;
+  `presubmit.yml` and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
+  and `.bazelversion`, and, when it builds applications, `BUILD.bazel` and
+  `maven_install.json`;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
   `examples/.bazelrc` imports `addons/examples.bazelrc`;
-- sets `lanes` (some of `host`, `android`, `ios`) and `hosts` (some of `linux`, `macos`) in
-  `addon.pkl`, each a `List`, and nothing else;
+- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
+  properties: `lanes` (some of `host`, `android`, `ios`), and optionally `hosts` (some of
+  `linux`, `macos`) and `testOperations`. hk's Pkl evaluator does not check the schema's
+  types, so this rule checks the values. A module builds applications when its lanes include
+  `android` or `ios`;
 - has at least one example project in `examples/projects/<name>/`, each defining the targets
-  `app`, `edit` and `pack`;
+  `edit` and `pack`, and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 
