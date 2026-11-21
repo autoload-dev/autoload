@@ -8,6 +8,16 @@ from tools.conventions.test_support import Record, RepositoryTest
 
 
 class TestOnlyOperationsTest(RepositoryTest):
+    def setUp(self) -> None:
+        super().setUp()
+        # An add-on module that declares gdunit_test a test operation.
+        self.write("addons/gdunit/MODULE.bazel", 'module(name = "autoload_gdunit")\n')
+        self.write(
+            "addons/gdunit/addon.pkl",
+            'amends "../../tools/addons/Addon.pkl"\n'
+            'lanes = List("host")\ntestOperations = List("gdunit_test")\n',
+        )
+
     def test_true_defaults_satisfy_the_rule_without_a_literal_attribute(self) -> None:
         for operation in ("godot_test", "gdunit_test"):
             call = Call(Location("BUILD.bazel", 1), operation, frozenset({"name"}))

@@ -1,12 +1,27 @@
 """RG007: Godot test operations and their generated helpers are test-only."""
 
 from collections.abc import Iterable
+from pathlib import Path
 
-from tools.conventions.context import Context
+from tools.addons.modules import addon_manifest
+from tools.conventions.context import Context, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 
-# gdunit_test is autoload_gdunit's test operation.
-OPERATIONS = frozenset({"godot_test", "gdunit_test"})
+# rules_godot's test operation; add-on modules declare theirs in addon.pkl's testOperations.
+OPERATIONS = frozenset({"godot_test"})
+
+
+def declared_operations(workspace: Workspace) -> frozenset[str]:
+    """godot_test and the test operations the add-on modules of the workspace declare."""
+    manifests = [
+        path.as_posix()
+        for module in workspace.module_paths
+        if module.parent == Path("addons")
+        and (path := module / "addon.pkl").as_posix() in workspace.file_set
+    ]
+    return OPERATIONS.union(
+        *(addon_manifest(workspace.text(path))["testOperations"] for path in manifests)
+    )
 
 
 class TestOnlyOperations:
@@ -17,16 +32,17 @@ class TestOnlyOperations:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
+        known = declared_operations(context.workspace)
         for module in context.workspace.modules:
             for declaration in context.declarations(module):
                 call = declaration.call
                 operations = [
                     target
                     for target in declaration.targets
-                    if target.strings.get("generator_function") in OPERATIONS
+                    if target.strings.get("generator_function") in known
                 ]
                 if not operations:
-                    if call.kind in OPERATIONS:
+                    if call.kind in known:
                         yield Finding(
                             call.location,
                             "cannot identify test operation from Bazel generator metadata",
