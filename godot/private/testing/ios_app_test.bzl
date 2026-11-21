@@ -2,7 +2,8 @@
 
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
 
-visibility("//godot/testing")
+# The tests module loads it; it is not supported API.
+visibility("public")
 
 def _runfile(ctx, path):
     # Runfiles paths of external files start with ../<repository>.
@@ -107,11 +108,11 @@ ios_app_test = rule(
             """,
         ),
         "_launcher_template": attr.label(
-            default = Label("//godot/testing/private:ios_app_test.sh.tpl"),
+            default = Label("//godot/private/testing:ios_app_test.sh.tpl"),
             allow_single_file = True,
         ),
         "_inspector": attr.label(
-            default = Label("//godot/testing/private:inspect_ios_app"),
+            default = Label("//godot/private/testing:inspect_ios_app"),
             executable = True,
             cfg = config.exec("test"),
         ),

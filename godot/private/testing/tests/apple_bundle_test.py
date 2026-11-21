@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from godot.testing.private.apple_bundle import application_bundle
+from godot.private.testing.apple_bundle import application_bundle
 
 
 class AppleBundleTest(unittest.TestCase):

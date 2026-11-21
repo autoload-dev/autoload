@@ -151,12 +151,12 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(lanes["android"], ["contracts:android", "android"])
         self.assertEqual(lanes["ios"], ["contracts:ios"])
 
-    def test_public_test_helpers_select_the_consumers_and_contracts(self) -> None:
+    def test_private_test_rules_select_the_consumers_and_contracts(self) -> None:
         lanes = lane_plan(
-            self.plan("godot/testing/artifact_tests.bzl", profiles=PROFILE_LANES)
+            self.plan("godot/private/testing/ios_app_test.bzl", profiles=PROFILE_LANES)
         )
-        # Public test helpers are ruleset code: they select the consumers and every
-        # lane's contracts.
+        # The ruleset's own artifact test rules are ruleset code: they select the
+        # consumers and every lane's contracts.
         self.assertIn("test:regressions", lanes["host"])
         self.assertEqual(lanes["android"], ["contracts:android", "android"])
         self.assertEqual(lanes["ios"], ["contracts:ios", "ios"])

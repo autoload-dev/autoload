@@ -12,7 +12,7 @@ reference pages link to them.
 | Role | Purpose | Generated reference |
 | --- | --- | --- |
 | `PUBLIC_APIS` | Consumer entrypoints, grouped by task, with their exact public symbols | `reference/`: full contracts for public symbols |
-| `GENERATED_REPOSITORY_MODULES` | Implementation helpers loaded by generated repositories; external load access is required | No API reference page or BCR metadata |
+| `CROSS_REPOSITORY_MODULES` | Modules other repositories load without them being supported API: implementation helpers of generated repositories and the test rules of the tests module; external load access is required | No API reference page or BCR metadata |
 | `SUPPORT_MODULES` | Private implementation files without a standalone load contract | No consumer reference page |
 
 Use `godot:defs.bzl` for projects, resources, exports, runs and tests. Use the
@@ -151,7 +151,7 @@ belong to that entrypoint's exact symbol set. Duplicate ownership, additional
 public load paths, unowned exports, missing selections and internal helpers
 leaked through public entrypoints fail, even if selected explicitly for
 documentation. Private support modules must declare restricted load visibility;
-generated-repository implementation modules must retain public load visibility.
+cross-repository modules must retain public load visibility.
 All source modules remain classified even when excluded from the API reference.
 
 The coverage tests inspect Bazel's `starlark_doc_extract` metadata using

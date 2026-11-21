@@ -3,7 +3,8 @@
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo")
 load("@rules_java//java/common:java_common.bzl", "java_common")
 
-visibility("//godot/testing")
+# The tests module loads it; it is not supported API.
+visibility("public")
 
 def _quote(value):
     # bazel_skylib is only a development dependency of this module.
@@ -149,11 +150,11 @@ android_bundle_test = rule(
             doc = "Fully qualified Java classes the universal APK's dex files must define, such as a plugin's entry class; a class only referenced does not count.",
         ),
         "_launcher_template": attr.label(
-            default = Label("//godot/testing/private:android_bundle_test.sh.tpl"),
+            default = Label("//godot/private/testing:android_bundle_test.sh.tpl"),
             allow_single_file = True,
         ),
         "_inspector": attr.label(
-            default = Label("//godot/testing/private:inspect_android_bundle"),
+            default = Label("//godot/private/testing:inspect_android_bundle"),
             executable = True,
             cfg = config.exec("test"),
         ),

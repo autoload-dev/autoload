@@ -51,7 +51,7 @@ local whiteBox = List(
   "godot/engine/private/tests/**",
   "godot/extension/tests/**",
   "godot/platforms/private/tests/**",
-  "godot/testing/private/tests/**",
+  "godot/private/testing/tests/**",
   "tools/tests/**",
   "tools/engine/tests/**",
   "tools/platforms/tests/**",

@@ -72,7 +72,7 @@ def assign_surface(
 
     for label, entry in inventory["PUBLIC_APIS"].items():
         for export in all_exports[label].values():
-            if export.identity[1] in inventory["GENERATED_REPOSITORY_MODULES"]:
+            if export.identity[1] in inventory["CROSS_REPOSITORY_MODULES"]:
                 errors.append(
                     f"{label}%{export.name}: generated-repository implementation leaked through a public entrypoint; remove the export"
                 )

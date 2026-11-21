@@ -16,7 +16,7 @@ from tools.docs.api_docs import (
 def inventory() -> dict[str, Any]:
     return {
         "PUBLIC_APIS": {},
-        "GENERATED_REPOSITORY_MODULES": {},
+        "CROSS_REPOSITORY_MODULES": {},
         "SUPPORT_MODULES": [],
     }
 
@@ -68,7 +68,7 @@ class InventoryTest(unittest.TestCase):
                 "purpose": "Build.",
                 "symbols": ["helper"],
             }
-            config["GENERATED_REPOSITORY_MODULES"]["//godot:helper.bzl"] = (
+            config["CROSS_REPOSITORY_MODULES"]["//godot:helper.bzl"] = (
                 "Internal helper."
             )
             self.assertTrue(
@@ -106,7 +106,7 @@ class InventoryTest(unittest.TestCase):
         self.assertTrue(documented_target("//godot:variant"))
         self.assertTrue(documented_target("//godot/platforms:linux_x86_64"))
         self.assertFalse(documented_target("//godot/private:default_project"))
-        self.assertFalse(documented_target("//godot/testing/private:inspect_ios_app"))
+        self.assertFalse(documented_target("//godot/private/testing:inspect_ios_app"))
         self.assertFalse(documented_target("//godot/tests/api_contracts:pack"))
         self.assertFalse(documented_target("//godot/extension/tests:fixture"))
 
@@ -131,7 +131,7 @@ class InventoryTest(unittest.TestCase):
             (root / "godot/private").mkdir(parents=True)
             path = root / "godot/private/helper.bzl"
             config = inventory()
-            config["GENERATED_REPOSITORY_MODULES"]["//godot/private:helper.bzl"] = (
+            config["CROSS_REPOSITORY_MODULES"]["//godot/private:helper.bzl"] = (
                 "Loaded by generated BUILD files."
             )
             path.write_text('"""Implementation."""\nvisibility("private")\n')

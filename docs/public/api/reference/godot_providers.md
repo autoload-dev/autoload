@@ -48,7 +48,7 @@ tree artifact; executable_path locates the runtime executable inside it.
 | <a id="GodotDesktopAppInfo-archive"></a>archive |  File: deterministic ZIP (macos) or tar.gz (linux) distribution archive.    |
 | <a id="GodotDesktopAppInfo-operating_system"></a>operating_system |  string: linux or macos.    |
 | <a id="GodotDesktopAppInfo-executable_path"></a>executable_path |  string: POSIX executable path relative to the bundle root.    |
-| <a id="GodotDesktopAppInfo-runtime_component"></a>runtime_component |  GodotComponentInfo of the runtime component packaged in the bundle, or None for an opaque runtime    |
+| <a id="GodotDesktopAppInfo-runtime_component"></a>runtime_component |  provenance of the runtime component packaged in the bundle, with the fields of editor_component of GodotPackInfo, or None for an opaque runtime    |
 
 
 <a id="GodotPackInfo"></a>
@@ -78,7 +78,7 @@ A Godot-exported PCK and its declared project. Produced by godot_pack; consumed 
 | <a id="GodotPackInfo-export_options"></a>export_options |  dict[string, string] of the export preset options the pack sets, as Godot literals    |
 | <a id="GodotPackInfo-facts"></a>facts |  File: JSON of what Godot decides for the pack's export, which application rules write their shell files from: features, the export's feature tags; options, every export option of the operating system with its value or default; settings, the project settings with the export's feature overrides; versions, the values of the version options as Godot's exporter reads them; name_translations, the project's name by locale of its translations    |
 | <a id="GodotPackInfo-version"></a>version |  string: canonical version of the editor that exported the pack; diagnostic only, never compared with the runtime    |
-| <a id="GodotPackInfo-editor_component"></a>editor_component |  GodotComponentInfo of the editor component that exported the pack    |
+| <a id="GodotPackInfo-editor_component"></a>editor_component |  provenance of the editor component that exported the pack: label (component), kind, version, origin, digest and customizations    |
 | <a id="GodotPackInfo-variant"></a>variant |  string: release or debug, the template variant of the export and of the runtime it needs; debug in the editor variant    |
 | <a id="GodotPackInfo-icons"></a>icons |  list[File] of the application icons Godot renders for the pack's operating system, which only applications using them build: for Android a resource directory with the launcher icons, for iOS an asset catalog with the AppIcon set, for macOS a directory with icon.icns; empty for other operating systems    |
 | <a id="GodotPackInfo-splash"></a>splash |  list[File] of the splash images Godot renders for the pack's operating system: for Android a resource directory with the splash screen's drawables, for iOS an asset catalog with the launch screen's SplashImage, Godot's boot splash unless the project sets one; empty for other operating systems    |

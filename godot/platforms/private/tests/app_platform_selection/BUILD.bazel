@@ -1,8 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+load("//godot/private/testing:android_bundle_test.bzl", "android_bundle_test")
+load("//godot/private/testing:ios_app_test.bzl", "ios_app_test")
 load("//godot/private/tests:packaging.bzl", "in_export_platform")
-load("//godot/testing:artifact_tests.bzl", "android_bundle_test", "ios_app_test")
 load(":app_outputs_tests.bzl", "app_outputs_test_suite")
 
 _DESKTOP = "//godot/platforms/private/tests/app_platform_selection/fixtures/project_with_desktop_apps:"

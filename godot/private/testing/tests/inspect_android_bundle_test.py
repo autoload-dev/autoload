@@ -13,8 +13,8 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from godot.testing.private import inspect_android_bundle
-from godot.testing.private.inspect_android_bundle import apk_classes, defined_classes
+from godot.private.testing import inspect_android_bundle
+from godot.private.testing.inspect_android_bundle import apk_classes, defined_classes
 
 
 def dex_types(defined: str, referenced: str) -> bytes:

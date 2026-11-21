@@ -148,18 +148,6 @@ API_CASES = {
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
         "forwarded_groups": True,
     },
-    "//godot/testing:artifact_tests.bzl%android_bundle_test": {
-        "lane": "android",
-        "module": "tests",
-        "target": "//smoke/android:bundle_packages_extension_and_pack_test",
-        "options": [_EXPORT_PLATFORM + "android_arm64", "--config=android", "--@autoload_rules_godot//godot:android_format=aab"],
-    },
-    "//godot/testing:artifact_tests.bzl%ios_app_test": {
-        "lane": "ios",
-        "module": "tests",
-        "target": "//smoke/ios:app_embeds_extension_framework_test",
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
-    },
     "//godot/engine:defs.bzl%godot_android_runtime": {
         "lane": "android",
         "module": "tests",

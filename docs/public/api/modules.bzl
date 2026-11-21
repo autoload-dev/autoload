@@ -16,11 +16,6 @@ PUBLIC_APIS = {
         "purpose": "Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.",
         "symbols": ["godot_export_platform"],
     },
-    "//godot/testing:artifact_tests.bzl": {
-        "group": "Platform applications",
-        "purpose": "Test what a built Android App Bundle or iOS application contains, without a device.",
-        "symbols": ["android_bundle_test", "ios_app_test"],
-    },
     "//godot:defs.bzl": {
         "group": "Projects and resources",
         "purpose": "Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.",
@@ -95,11 +90,13 @@ PUBLIC_APIS = {
     },
 }
 
-GENERATED_REPOSITORY_MODULES = {
+CROSS_REPOSITORY_MODULES = {
     "//godot/engine/private:prebuilt.bzl": "Payload rules loaded by generated prebuilt archive BUILD files; requires cross-repository load access.",
     "//godot/engine/private:generator.bzl": "Implementation loaded by generated engine BUILD files; requires cross-repository load access.",
     "//godot/engine/private:pin.bzl": "Recipe pin rules loaded by generated engine and hub BUILD files; requires cross-repository load access.",
     "//godot/extension/private:bindings.bzl": "Implementation loaded by generated godot-cpp BUILD files; requires cross-repository load access.",
+    "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
+    "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
 }
 
 SUPPORT_MODULES = [
@@ -168,8 +165,6 @@ SUPPORT_MODULES = [
     "//godot/platforms/private:launch.bzl",
     "//godot/platforms/private:shell.bzl",
     "//godot/platforms/private:ios.bzl",
-    "//godot/testing/private:android_bundle_test.bzl",
-    "//godot/testing/private:ios_app_test.bzl",
 ]
 
 EXTERNAL_LOADS = [

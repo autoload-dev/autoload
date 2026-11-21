@@ -22,7 +22,7 @@ def manifest() -> dict[str, Any]:
                 "symbols": ["other_thing"],
             },
         },
-        "GENERATED_REPOSITORY_MODULES": {},
+        "CROSS_REPOSITORY_MODULES": {},
         "PUBLIC_TARGETS": {},
     }
 
@@ -94,7 +94,7 @@ class SurfaceTest(unittest.TestCase):
             for selected in (False, True):
                 with self.subTest(category=category, explicitly_selected=selected):
                     config = manifest()
-                    config["GENERATED_REPOSITORY_MODULES"][INTERNAL] = (
+                    config["CROSS_REPOSITORY_MODULES"][INTERNAL] = (
                         "Used by generated BUILD files."
                     )
                     modules = inputs()

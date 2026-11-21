@@ -13,8 +13,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from godot.testing.private.apple_bundle import application_bundle
-from godot.testing.private.native_symbols import macho_uuids
+from godot.private.testing.apple_bundle import application_bundle
+from godot.private.testing.native_symbols import macho_uuids
 
 
 def inspect(args: argparse.Namespace, work: Path) -> None:
