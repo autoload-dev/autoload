@@ -41,27 +41,28 @@ _SETTINGS = [
     ENGINE,
 ]
 
+# The attributes that replace a setting when they are set, by attribute name.
+_REPLACED = {
+    "compilation_mode": _COMPILATION_MODE,
+    "strip": _STRIP,
+    "apple_generate_dsym": _DSYM,
+    "objc_enable_binary_stripping": _OBJC_STRIP,
+    "android_format": _ANDROID_FORMAT,
+    "android_api_level": _ANDROID_API_LEVEL,
+    "variant": _VARIANT,
+}
+
 def _configured_impl(settings, attr):
     result = {setting: settings[setting] for setting in _SETTINGS}
     if attr.platform:
         result[_PLATFORMS] = [str(attr.platform)]
     result[_EXTRA_TOOLCHAINS] = settings[_EXTRA_TOOLCHAINS] + attr.extra_toolchains
-    if attr.compilation_mode:
-        result[_COMPILATION_MODE] = attr.compilation_mode
-    if attr.strip:
-        result[_STRIP] = attr.strip
     if attr.copts:
         result[_COPT] = list(settings[_COPT]) + attr.copts
-    if attr.apple_generate_dsym:
-        result[_DSYM] = True
-    if attr.objc_enable_binary_stripping:
-        result[_OBJC_STRIP] = True
-    if attr.android_format:
-        result[_ANDROID_FORMAT] = attr.android_format
-    if attr.android_api_level:
-        result[_ANDROID_API_LEVEL] = attr.android_api_level
-    if attr.variant:
-        result[_VARIANT] = attr.variant
+    for name, setting in _REPLACED.items():
+        value = getattr(attr, name)
+        if value:
+            result[setting] = value
     if attr.engine:
         result.update(development_engine(attr.engine))
     return result
