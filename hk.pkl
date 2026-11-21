@@ -123,6 +123,10 @@ local exampleInputs = new Mapping<String, List<String>> {
   ["dart"] = List("examples/deps/dart_sdk.BUILD.bazel", "examples/deps/dart_sdk.patch")
 }
 
+// The add-on modules in addons/, each with its example applications in examples/. Their
+// lanes run only for changes to the module itself: rule changes alone do not select them.
+local addonModules = List("firebase")
+
 // Examples whose suites need a lane other than host: Petri's run in an editor built from
 // the engine sources with its module.
 local exampleProfiles = new Mapping<String, String> {
@@ -147,6 +151,12 @@ local checks = new Mapping<String, Step> {
       "*/MODULE.bazel",
       "*/.bazelrc",
       "*/.bazelversion",
+      "addons/*/MODULE.bazel",
+      "addons/*/.bazelrc",
+      "addons/*/.bazelversion",
+      "addons/*/examples/MODULE.bazel",
+      "addons/*/examples/.bazelrc",
+      "addons/*/examples/.bazelversion",
       "tools/setup/**",
       "godot/platforms/private/android_toolchains.bzl",
     )
@@ -201,6 +211,7 @@ local checks = new Mapping<String, Step> {
       "docs/**",
       "examples/**",
       "tests/**",
+      "addons/**",
     )
   }
   ["test:regressions"] = (task("test:regressions")) {
@@ -223,6 +234,15 @@ local checks = new Mapping<String, Step> {
         "examples/addons/" + example + "/**",
         "examples/projects/" + example + "/**",
       ) + inputs
+    }
+  }
+  for (module in addonModules) {
+    for (lane in List("host", "android", "ios")) {
+      [if (lane == "host") "test:addon:" + module else lane + ":addon:" + module] =
+        (task(if (lane == "host") "test:addon:" + module else lane + ":addon:" + module)) {
+          profiles = List(lane)
+          glob = List("addons/" + module + "/**")
+        }
     }
   }
   ["test:gdextension"] = (task("test:gdextension")) {

@@ -132,6 +132,7 @@ jobs:
             .
             tests
             examples
+            addons/firebase/examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 

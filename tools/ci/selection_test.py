@@ -198,6 +198,22 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(lanes["android"], [])
         self.assertEqual(lanes["ios"], [])
 
+    def test_an_add_on_module_selects_only_its_own_lanes(self) -> None:
+        lanes = lane_plan(
+            self.plan(
+                "addons/firebase/core/native/firebase_core.cc", profiles=PROFILE_LANES
+            )
+        )
+        self.assertEqual(lanes["host"], ["test:addon:firebase"])
+        self.assertEqual(lanes["android"], ["android:addon:firebase"])
+        self.assertEqual(lanes["ios"], ["ios:addon:firebase"])
+
+    def test_rule_changes_do_not_select_the_add_on_modules(self) -> None:
+        lanes = lane_plan(self.plan("godot/defs.bzl", profiles=PROFILE_LANES))
+        self.assertFalse(
+            any(":addon:" in task for tasks in lanes.values() for task in tasks)
+        )
+
     def test_default_check_does_not_build_examples(self) -> None:
         lanes = lane_plan(self.plan("examples/deps/gdunit4.BUILD.bazel"))
         self.assertFalse(
