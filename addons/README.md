@@ -9,6 +9,7 @@ release tags:
 | Module | Directory | Add-ons | Version |
 | --- | --- | --- | --- |
 | `autoload_firebase` | [`firebase/`](firebase) | Firebase Core, Analytics | 0.1.0 |
+| `autoload_gdunit` | [`gdunit/`](gdunit) | GdUnit4 and `gdunit_test` | 0.1.0 |
 
 There is one module per add-on, or per group of add-ons that must be versioned together, like
 the Firebase add-ons, which share one Firebase SDK. Each module keeps its example applications in

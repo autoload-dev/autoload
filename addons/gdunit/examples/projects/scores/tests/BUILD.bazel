@@ -7,7 +7,7 @@ godot_resources(
     testonly = True,
     srcs = ["ScoreboardTest.gd"],
     deps = [
-        "//projects/scores/game",
+        "//projects/scores/main",
         "@autoload_gdunit//:gdunit",
     ],
 )
