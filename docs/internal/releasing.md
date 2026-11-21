@@ -4,9 +4,11 @@ Each Bazel module of this repository is released on its own: the ruleset
 `autoload_rules_godot` at the root and the add-on modules in [`addons/`](../../addons). A
 release is a tag `<module>-vX.Y.Z`, such as `autoload_rules_godot-v0.2.0` or
 `autoload_firebase-v0.1.0`; the tags `v0.1.0` and `v0.1.1` predate this scheme.
-[release_modules.json](../../.github/workflows/release_modules.json) names each module's
-directory, its release test and whether it is published to the Bazel Central Registry; the
-add-on modules are not yet. Pushing a tag runs
+[release_module.py](../../tools/ci/release_module.py) derives the rest from the tag: the
+module's directory, from the module that declares the name; its release test, the registry
+test module for the ruleset and `python3 -m tools.addons.lanes host <module>` for an add-on;
+and whether the Bazel Central Registry gets it, which its templates in [.bcr](../../.bcr)
+decide. No list names the modules. Pushing a tag runs
 [release.yaml](../../.github/workflows/release.yaml), which:
 
 1. **Release:** bazel-contrib's
@@ -20,7 +22,7 @@ add-on modules are not yet. Pushing a tag runs
    Stardoc metadata of `//docs/public/api:bcr_docs` ([API reference
    maintenance](api-reference.md#metadata-for-the-bcr-documentation-archive)); the
    registry renders it from the `docs_url` of the registry entry.
-2. **Publish**, only for a module that release_modules.json publishes:
+2. **Publish**, for a module with templates in `.bcr` (every module has them):
    [publish.yaml](../../.github/workflows/publish.yaml) runs
    [Publish to BCR](https://github.com/bazel-contrib/publish-to-bcr) for the tag's module
    alone (`module_roots`, `tag_prefix`). It fills the module's templates in
@@ -58,8 +60,9 @@ directories. `e2e/` stays in, because the registry's presubmit builds `e2e/smoke
 archive. An add-on's archive leaves its `examples/` out through the module's own
 `.gitattributes` and adds the repository's `LICENSE`.
 
-To publish an add-on module, set its `bcr` in release_modules.json and give its
-`.bcr/<directory>/presubmit.yml` a test module that builds an application.
+An add-on module's registry templates in `.bcr/addons/<module>/` are generated from its name
+and its `presubmit.yml` (`mise run addons:generate`, checked by `mise run test:setup`), so a
+module is ready to publish from its first commit; it is published when its tag is pushed.
 
 The registry runs the test module on Linux and macOS with Bazel 9
 ([presubmit.yml](../../.bcr/presubmit.yml)). A first submission and any later change to

@@ -1,4 +1,4 @@
-#include "addons/platform_paths/backends/linux/xdg_directories.h"
+#include "addons/platform_paths/native/backends/linux/xdg_directories.h"
 #include <cstdlib>
 #include <iostream>
 using namespace platform_paths;

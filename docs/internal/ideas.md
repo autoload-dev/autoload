@@ -258,7 +258,7 @@ manifest placeholders; the rest is open.
 - **Android plugin bridge:** an extension reaching Java needs a `GodotPlugin`, manifest
   meta-data, a C++ call through `Variant::callp` on the Engine singleton, plugin signals for
   asynchronous results, keep rules and `@godot//android:plugin_api`
-  (`examples/addons/platform_paths/backends/android/`). The platform guide's template covers
+  (`examples/addons/platform_paths/native/backends/android/`). The platform guide's template covers
   only the declarations. Generated backends are a separate entry (GEN-01/02/04 under
   capability gaps).
 - **Per-operating-system declarations:** an extension with backends repeats one `select()`

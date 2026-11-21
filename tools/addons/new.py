@@ -122,7 +122,9 @@ def pin(directory: str, root: Path = ROOT) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("module", help="the module's directory below addons/")
-    parser.add_argument("--addon", default="", help="the add-on's directory in the module")
+    parser.add_argument(
+        "--addon", default="", help="the add-on's directory in the module"
+    )
     parser.add_argument(
         "--replace",
         action="store_true",

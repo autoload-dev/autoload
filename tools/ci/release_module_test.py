@@ -19,13 +19,18 @@ class ReleaseModuleTest(unittest.TestCase):
         (self.root / "MODULE.bazel").write_text(module("autoload_rules_godot"))
         (self.root / ".bcr").mkdir()
         (self.root / ".bcr/metadata.template.json").write_text("{}")
-        for directory, name in (("widget", "autoload_widget"), ("gadget", "autoload_gadget")):
+        for directory, name in (
+            ("widget", "autoload_widget"),
+            ("gadget", "autoload_gadget"),
+        ):
             (self.root / "addons" / directory).mkdir(parents=True)
             (self.root / "addons" / directory / "MODULE.bazel").write_text(module(name))
         (self.root / ".bcr/addons/widget").mkdir(parents=True)
         (self.root / ".bcr/addons/widget/metadata.template.json").write_text("{}")
 
-    def test_the_ruleset_releases_from_the_root_with_its_registry_test_module(self) -> None:
+    def test_the_ruleset_releases_from_the_root_with_its_registry_test_module(
+        self,
+    ) -> None:
         self.assertEqual(
             describe("autoload_rules_godot-v0.2.0", self.root),
             {

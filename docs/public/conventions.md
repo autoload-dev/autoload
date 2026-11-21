@@ -21,6 +21,7 @@ authored target declarations.
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root in both areas, owned by their nearest `project.godot` | Error |
+| [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
 
 The [project layout guide](project-layout.md) shows where these conventions fit into an
 application, add-on or test project. Choosing the main entry point and useful package
@@ -303,7 +304,7 @@ following [test ownership](project-layout.md#test-ownership).
 
 A test scope is a `tests/` directory below the root of a project or add-on, such as
 `<project>/tests/`, `<addon>/tests/`, `<addon>/demo/tests/` or a backend's
-`<addon>/backends/linux/tests/`. Outside projects and add-ons it is a `tests/` directory below the
+`<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/` directory below the
 module root, such as the ruleset's white-box packages `godot/private/tests/`. Paths are measured
 from the owning module, so the regression module's directory `tests/` is not itself a test
 scope: a regression project's `main/` may use the module's `support/` fixtures, but not its own
@@ -383,6 +384,30 @@ A stray directory is reported once, at its first file. An add-on's own `register
 without `config.py` is an extension, not an engine module. Files outside every project
 root, such as dependency patches in `examples/deps/`, are outside this rule. The check does
 not read module or patch contents and does not prove that a recipe consumes them.
+
+## RG015
+
+**Add-on modules share one layout, and backends live in `native/backends/`.** This
+repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
+template, so that the same tasks build, test and release every module and nothing outside a
+module lists it. Each module:
+
+- is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
+  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`,
+  `presubmit.yml` and an `examples/` module with `MODULE.bazel`, `BUILD.bazel`, `.bazelrc`
+  and `.bazelversion`;
+- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
+  `examples/.bazelrc` imports `addons/examples.bazelrc`;
+- sets `lanes` (some of `host`, `android`, `ios`) and `hosts` (some of `linux`, `macos`) in
+  `addon.pkl`, each a `List`, and nothing else;
+- has at least one example project in `examples/projects/<name>/`, each defining the targets
+  `app`, `edit` and `pack`;
+- gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
+  extension's framework, and an application's frameworks share one directory.
+
+In every add-on, including those of `examples/`, a `backends/` directory sits in `native/`:
+the backends implement the platform-independent API beside them. The check reads the files
+and their text without loading Bazel; it reports a stray `backends/` directory once.
 
 ## Run and maintain the checks
 

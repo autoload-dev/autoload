@@ -223,7 +223,7 @@ and test level, not the presence of an extension or a desire for symmetric direc
 
 | Tested behavior | Owner and context |
 |---|---|
-| Native implementation/backend | Unit tests beside the implementation, such as `<addon>/backends/linux/tests/`; depend on its interface/implementation without requiring Godot |
+| Native implementation/backend | Unit tests beside the implementation, such as `<addon>/native/backends/linux/tests/`; depend on its interface/implementation without requiring Godot |
 | Deterministic Godot API behavior or contract | Add-on `tests/unit/`, with suites, helpers and execution together |
 | Real operating-system behavior | Add-on `tests/integration/`, using the required operating-system context |
 | Exported demo behavior | `demo/tests/`, consuming the demo artifact |

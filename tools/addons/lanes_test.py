@@ -8,7 +8,9 @@ from tools.addons.modules import AddonModule
 
 
 def module(*projects: str) -> AddonModule:
-    return AddonModule(Path("addons/widget"), "autoload_widget", "0.1.0", "", "", projects)
+    return AddonModule(
+        Path("addons/widget"), "autoload_widget", "0.1.0", "", "", projects
+    )
 
 
 class LanesTest(unittest.TestCase):
@@ -33,9 +35,7 @@ class LanesTest(unittest.TestCase):
             commands("ios", module("demo")),
             [["bazel", "build", "--config=ios_sim", "//projects/demo:app"]],
         )
-        self.assertEqual(
-            commands("android", module("demo"))[0][2], "--config=android"
-        )
+        self.assertEqual(commands("android", module("demo"))[0][2], "--config=android")
 
     def test_a_module_without_example_projects_is_refused(self) -> None:
         with self.assertRaises(ValueError):

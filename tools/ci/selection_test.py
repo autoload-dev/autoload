@@ -48,9 +48,7 @@ def regression_contract_packages() -> Iterator[tuple[str, str]]:
 
 
 class SelectionTest(unittest.TestCase):
-    def plan(
-        self, *files: str, profiles: tuple[str, ...] = (), cwd: Path = ROOT
-    ) -> dict:
+    def plan(self, *files: str, profiles: tuple[str, ...] = (), cwd: Path = ROOT) -> dict:
         command = ["hk"]
         for profile in profiles:
             command.extend(["--profile", profile])

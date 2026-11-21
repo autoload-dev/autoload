@@ -29,18 +29,25 @@ class GenerateTest(RepositoryTestCase):
     def test_a_module_with_its_add_on_examples_and_settings(self) -> None:
         generate("widget", root=self.root)
         self.assertIn('name = "autoload_widget"', self.read("widget/MODULE.bazel"))
-        self.assertEqual(self.read("widget/.bazelversion"), (self.root / ".bazelversion").read_text())
+        self.assertEqual(
+            self.read("widget/.bazelversion"), (self.root / ".bazelversion").read_text()
+        )
         build = self.read("widget/widget/BUILD.bazel")
         self.assertIn('name = "widget_extension"', build)
         self.assertIn("//widget/native/backends/android:plugin", build)
-        self.assertIn("class Widget : public godot::Object", self.read("widget/widget/native/widget.h"))
+        self.assertIn(
+            "class Widget : public godot::Object",
+            self.read("widget/widget/native/widget.h"),
+        )
         plugin = "widget/widget/native/backends/android/dev/autoload/widget/widget/WidgetPlugin.java"
         self.assertIn("package dev.autoload.widget.widget;", self.read(plugin))
         scene = self.read("widget/examples/projects/demo/main/demo.tscn")
         uid = self.read("widget/examples/projects/demo/main/demo.gd.uid").strip()
         self.assertRegex(uid, r"^uid://[a-z0-9]+$")
         self.assertIn(f'uid="{uid}" path="res://main/demo.gd"', scene)
-        generated = [path for path in (self.root / "addons/widget").rglob("*") if path.is_file()]
+        generated = [
+            path for path in (self.root / "addons/widget").rglob("*") if path.is_file()
+        ]
         self.assertFalse([path for path in generated if TOKEN.search(path.read_text())])
 
     def test_an_add_on_joins_an_existing_module(self) -> None:
@@ -49,7 +56,9 @@ class GenerateTest(RepositoryTestCase):
         written = generate("firebase", "analytics", root=self.root)
         self.assertEqual(self.read("firebase/MODULE.bazel"), module)
         self.assertTrue(all("firebase/analytics/" in path.as_posix() for path in written))
-        self.assertIn('name = "firebase_analytics"', self.read("firebase/analytics/BUILD.bazel"))
+        self.assertIn(
+            'name = "firebase_analytics"', self.read("firebase/analytics/BUILD.bazel")
+        )
 
     def test_existing_add_ons_and_unusual_names_are_refused(self) -> None:
         generate("widget", root=self.root)

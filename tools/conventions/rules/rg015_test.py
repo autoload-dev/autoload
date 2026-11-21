@@ -1,0 +1,94 @@
+"""Add-on modules share the template's layout, and backends live in native/backends."""
+
+import unittest
+
+from tools.addons.new import generate
+from tools.conventions.rules.rg015 import AddonModuleLayout
+from tools.conventions.test_support import RepositoryTest
+
+
+class AddonModuleLayoutTest(RepositoryTest):
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(".bazelversion", "9.3.0\n")
+
+    def module(self, directory: str, addon: str | None = None) -> None:
+        """A module as the generator writes it, in the workspace inventory."""
+        for path in generate(directory, addon, root=self.root):
+            self.files.add(path.relative_to(self.root).as_posix())
+
+    def evaluate(self) -> list[str]:
+        return [item.message for item in AddonModuleLayout().evaluate(self.context())]
+
+    def test_generated_modules_follow_the_layout(self) -> None:
+        self.module("widget")
+        self.module("firebase", "core")
+        self.module("firebase", "analytics")
+        self.assertEqual([], self.evaluate())
+
+    def test_missing_files_names_and_shared_settings(self) -> None:
+        self.module("widget")
+        self.files.discard("addons/widget/presubmit.yml")
+        self.write("addons/widget/MODULE.bazel", 'module(name = "widget")\n')
+        self.write("addons/widget/.bazelrc", "common --config=x\n")
+        self.assertEqual(
+            sorted(self.evaluate()),
+            [
+                "add-on module must be named autoload_widget",
+                "add-on module must own addons/widget/presubmit.yml",
+                "must import the shared settings: import %workspace%/../module.bazelrc",
+            ],
+        )
+
+    def test_addon_pkl_names_known_lanes_and_some_host(self) -> None:
+        self.module("widget")
+        for text, message in (
+            ('lanes = List("desktop")\nhosts = List("macos")\n', "lanes names some"),
+            ('lanes = List("host")\nhosts = List()\n', "hosts names some"),
+            ('lanes = List("host")\n', "exactly lanes and hosts"),
+        ):
+            with self.subTest(text=text):
+                self.write("addons/widget/addon.pkl", text)
+                findings = self.evaluate()
+                self.assertEqual(len(findings), 1)
+                self.assertIn(message, findings[0])
+
+    def test_example_projects_define_the_targets_the_lanes_build(self) -> None:
+        self.module("widget")
+        build = "addons/widget/examples/projects/demo/BUILD.bazel"
+        self.write(
+            build, (self.root / build).read_text().replace('name = "edit"', 'name = "e"')
+        )
+        self.assertEqual(["example project must define :edit"], self.evaluate())
+
+    def test_extension_names_are_unique_across_modules(self) -> None:
+        self.module("widget")
+        self.module("gadget")
+        build = "addons/gadget/gadget/BUILD.bazel"
+        self.write(
+            build,
+            (self.root / build)
+            .read_text()
+            .replace("gadget_extension", "widget_extension"),
+        )
+        findings = self.evaluate()
+        self.assertEqual(len(findings), 1)
+        self.assertIn("widget_extension is taken by", findings[0])
+
+    def test_backends_outside_native_are_reported_once_per_directory(self) -> None:
+        self.write("examples/addons/widget/backends/apple/BUILD.bazel", "")
+        self.write("examples/addons/widget/backends/apple/apple_backend.mm", "")
+        self.write("examples/addons/widget/native/backends/linux/BUILD.bazel", "")
+        self.assertEqual(
+            [
+                (
+                    "an add-on's backends belong in its native/backends/: "
+                    "examples/addons/widget/backends"
+                )
+            ],
+            self.evaluate(),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

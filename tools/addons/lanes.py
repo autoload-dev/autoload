@@ -44,7 +44,8 @@ def run(lane: str, module: AddonModule, hosts: list[str]) -> None:
         return
     for command in commands(lane, module):
         print("+", " ".join(command), flush=True)
-        status = subprocess.run(command, cwd=ROOT / module.path / "examples").returncode
+        examples = ROOT / module.path / "examples"
+        status = subprocess.run(command, cwd=examples, check=False).returncode
         if status not in (0, NO_TESTS if lane == "host" else 0):
             sys.exit(status)
 

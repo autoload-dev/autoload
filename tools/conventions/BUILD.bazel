@@ -33,6 +33,7 @@ py_library(
         "rules/rg012.py",
         "rules/rg013.py",
         "rules/rg014.py",
+        "rules/rg015.py",
     ],
     deps = [
         ":context_lib",
@@ -220,5 +221,16 @@ py_test(
     deps = [
         ":rules_lib",
         ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg015_test",
+    size = "small",
+    srcs = ["rules/rg015_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+        "//tools/addons:new_lib",
     ],
 )

@@ -1,5 +1,7 @@
 """The add-on modules of addons/ and what their own files say about them."""
 
+from __future__ import annotations
+
 import ast
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +27,7 @@ class AddonModule:
         return self.path.name
 
     @classmethod
-    def load(cls, path: Path, root: Path = ROOT) -> "AddonModule":
+    def load(cls, path: Path, root: Path = ROOT) -> AddonModule:
         """Read the module at `path`, relative to the repository root."""
         module = root / path
         attributes = next(
@@ -60,7 +62,9 @@ def readme_lead(readme: Path) -> tuple[str, str]:
     lines = readme.read_text().splitlines() if readme.is_file() else []
     title = next((line[2:].strip() for line in lines if line.startswith("# ")), "")
     paragraph: list[str] = []
-    for line in lines[next((i for i, line in enumerate(lines) if line.startswith("# ")), 0) + 1 :]:
+    for line in lines[
+        next((i for i, line in enumerate(lines) if line.startswith("# ")), 0) + 1 :
+    ]:
         if line.strip():
             paragraph.append(line.strip())
         elif paragraph:

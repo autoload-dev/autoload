@@ -2,7 +2,7 @@
 The checkout's Bazel modules and what their declaration files say, for the setup checks.
 
 The root module ignores each consumer module nested in the checkout, so `.bazelignore`
-names them. Declarations are read with Python's ast, without evaluating Starlark.
+names them; it ignores `addons/` as a whole, whose modules are found by their files. Declarations are read with Python's ast, without evaluating Starlark.
 """
 
 import ast
@@ -11,7 +11,6 @@ import shlex
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
 
 # The add-on modules, each a directory below it with its examples/ beside its own module.
 ADDONS = "addons"

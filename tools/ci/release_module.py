@@ -24,21 +24,26 @@ RULESET_TEST = "cd e2e/smoke && bazel test //..."
 
 
 def declared(module: Path) -> dict[str, str]:
-    """The literal attributes of a MODULE.bazel's module() call."""
+    """The string attributes of a MODULE.bazel's module() call, such as its name."""
     for node in ast.walk(ast.parse((module / "MODULE.bazel").read_text())):
         match node:
             case ast.Call(func=ast.Name(id="module"), keywords=keywords):
                 return {
                     keyword.arg: keyword.value.value
                     for keyword in keywords
-                    if keyword.arg and isinstance(keyword.value, ast.Constant)
+                    if keyword.arg
+                    and isinstance(keyword.value, ast.Constant)
+                    and isinstance(keyword.value.value, str)
                 }
     return {}
 
 
 def module_root(name: str, root: Path = ROOT) -> str:
     """The directory of the module the name declares, relative to the repository."""
-    candidates = [root, *sorted(path.parent for path in root.glob("addons/*/MODULE.bazel"))]
+    candidates = [
+        root,
+        *sorted(path.parent for path in root.glob("addons/*/MODULE.bazel")),
+    ]
     for directory in candidates:
         if declared(directory).get("name") == name:
             return directory.relative_to(root).as_posix() or "."

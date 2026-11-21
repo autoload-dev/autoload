@@ -166,7 +166,9 @@ def for_host(lanes: dict[str, list[str]], host: str) -> dict[str, list[str]]:
         addon = addon_task(task)
         return addon is None or not addon[2] or host in addon[2]
 
-    return {lane: [task for task in tasks if runs_here(task)] for lane, tasks in lanes.items()}
+    return {
+        lane: [task for task in tasks if runs_here(task)] for lane, tasks in lanes.items()
+    }
 
 
 def lane_for(task: str) -> str:

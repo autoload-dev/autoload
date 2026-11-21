@@ -7,7 +7,7 @@ godot_cc_extension(
     srcs = ["//addons/app_auth/native:registration"],
     entry_symbol = "app_auth_addon_init",
     platform_deps = select({
-        "@platforms//os:android": ["//addons/app_auth/backends/android:plugin"],
+        "@platforms//os:android": ["//addons/app_auth/native/backends/android:plugin"],
         "//conditions:default": [],
     }),
     target_compatible_with = select({
@@ -22,7 +22,7 @@ godot_cc_extension(
     # games, so the tool configuration builds neither AppAuth nor its Swift package. Source
     # runs and applications load the library with the platform's backend.
     deps = ["//addons/app_auth/native"] + select({
-        "@autoload_rules_godot//godot:tool": ["//addons/app_auth/backends/unsupported"],
+        "@autoload_rules_godot//godot:tool": ["//addons/app_auth/native/backends/unsupported"],
         "//conditions:default": [":platform_backend"],
     }),
 )
@@ -30,9 +30,9 @@ godot_cc_extension(
 alias(
     name = "platform_backend",
     actual = select({
-        "@platforms//os:osx": "//addons/app_auth/backends/apple",
-        "@platforms//os:ios": "//addons/app_auth/backends/apple",
-        "@platforms//os:android": "//addons/app_auth/backends/android",
-        "//conditions:default": "//addons/app_auth/backends/unsupported",
+        "@platforms//os:osx": "//addons/app_auth/native/backends/apple",
+        "@platforms//os:ios": "//addons/app_auth/native/backends/apple",
+        "@platforms//os:android": "//addons/app_auth/native/backends/android",
+        "//conditions:default": "//addons/app_auth/native/backends/unsupported",
     }),
 )

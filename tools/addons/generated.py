@@ -61,7 +61,9 @@ def table(modules: tuple[AddonModule, ...]) -> str:
         f"| [`{module.name}`]({module.directory}) | {module.summary} | {module.version} |"
         for module in modules
     ]
-    return "\n".join(["| Module | Add-ons | Version |", "| --- | --- | --- |", *rows]) + "\n"
+    return (
+        "\n".join(["| Module | Add-ons | Version |", "| --- | --- | --- |", *rows]) + "\n"
+    )
 
 
 def readme(text: str, modules: tuple[AddonModule, ...]) -> str:
