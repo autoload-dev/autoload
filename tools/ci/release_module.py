@@ -2,52 +2,41 @@
 Print the module that a release tag `<module>-v<version>` releases, one `key=value` per line.
 
 - name and version: from the tag;
-- root: the module's directory, `.` for autoload_rules_godot and `addons/<directory>` for an
-  add-on module, the one whose MODULE.bazel declares the name;
+- root: the module's directory, `.` for autoload_rules_godot and `addons/<directory>` for
+  the add-on module `autoload_<directory>` (RG015);
 - bcr: whether the Bazel Central Registry gets the release, which its templates in .bcr/
   (.bcr/addons/<directory>/ for an add-on) decide;
 - test: the command that tests the release in a checkout of the tag.
 
 No table lists the modules: a new add-on module is releasable as soon as it exists.
+Run it from the repository root: `python3 -m tools.ci.release_module <tag>`.
 """
 
-import ast
 import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+from tools.addons.modules import ROOT, module_attributes, module_path
+
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
+RULESET = "autoload_rules_godot"
 # The ruleset's release test: the registry's test module, as its presubmit.yml runs it. Its
 # own //... builds engines and mobile packages.
 RULESET_TEST = "cd e2e/smoke && bazel test //..."
 
 
-def declared(module: Path) -> dict[str, str]:
-    """The string attributes of a MODULE.bazel's module() call, such as its name."""
-    for node in ast.walk(ast.parse((module / "MODULE.bazel").read_text())):
-        match node:
-            case ast.Call(func=ast.Name(id="module"), keywords=keywords):
-                return {
-                    keyword.arg: keyword.value.value
-                    for keyword in keywords
-                    if keyword.arg
-                    and isinstance(keyword.value, ast.Constant)
-                    and isinstance(keyword.value.value, str)
-                }
-    return {}
-
-
-def module_root(name: str, root: Path = ROOT) -> str:
+def module_root(name: str, root: Path = ROOT) -> Path:
     """The directory of the module the name declares, relative to the repository."""
-    candidates = [
-        root,
-        *sorted(path.parent for path in root.glob("addons/*/MODULE.bazel")),
-    ]
-    for directory in candidates:
-        if declared(directory).get("name") == name:
-            return directory.relative_to(root).as_posix() or "."
-    raise ValueError(f"No module of this repository is named {name}")
+    directory = (
+        Path(".") if name == RULESET else module_path(name.removeprefix("autoload_"))
+    )
+    manifest = root / directory / "MODULE.bazel"
+    if (
+        not manifest.is_file()
+        or module_attributes(manifest.read_text()).get("name") != name
+    ):
+        raise ValueError(f"No module of this repository is named {name}")
+    return directory
 
 
 def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
@@ -56,17 +45,18 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
         raise ValueError(f"Release tags are named <module>-v<version>, not {tag}")
     name, version = match.groups()
     directory = module_root(name, root)
-    templates = root / ".bcr" / ("" if directory == "." else directory)
     test = (
         RULESET_TEST
-        if directory == "."
-        else f"python3 -m tools.addons.lanes host {Path(directory).name}"
+        if name == RULESET
+        else f"python3 -m tools.addons.lanes host {directory.name}"
     )
     return {
         "name": name,
         "version": version,
-        "root": directory,
-        "bcr": str((templates / "metadata.template.json").is_file()).lower(),
+        "root": directory.as_posix(),
+        "bcr": str(
+            (root / ".bcr" / directory / "metadata.template.json").is_file()
+        ).lower(),
         "test": test,
     }
 

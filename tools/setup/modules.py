@@ -11,6 +11,7 @@ import shlex
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # The add-on modules, each a directory below it with its examples/ beside its own module.
 ADDONS = "addons"
@@ -102,6 +103,18 @@ def declarations(source: str) -> list[Declaration]:
         }
         found.append(Declaration(kind, keywords))
     return found
+
+
+def literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
+    """The keywords of a declaration whose values are literals; computed ones are left out."""
+    values = {}
+    for keyword, value in keywords.items():
+        try:
+            values[keyword] = ast.literal_eval(value)
+        except ValueError:
+            # A computed value, such as a comprehension's variable.
+            continue
+    return values
 
 
 def bazelrc_options(root: Path, module: str) -> Iterator[tuple[str, str]]:

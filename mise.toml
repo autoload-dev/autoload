@@ -210,11 +210,8 @@ run = "bazel test --build_tests_only //addons/dart/..."
 # checkout. hk.pkl selects them per module from its addon.pkl.
 [tasks."addon:host"]
 description = "Run an add-on module's tests and build its example projects for the editor and desktop"
-usage = """
-arg "<module>" help="The module directory below addons/"
-flag "--hosts <hosts>" help="The hosts its addon.pkl limits the host lane to, comma-separated"
-"""
-run = "python3 -m tools.addons.lanes host {{usage.module}} --hosts '{{usage.hosts}}'"
+usage = 'arg "<module>" help="The module directory below addons/"'
+run = "python3 -m tools.addons.lanes host {{usage.module}}"
 
 [tasks."addon:android"]
 extends = "android"
@@ -239,8 +236,9 @@ run = "python3 -m tools.addons.new {{usage.module}} --addon '{{usage.addon}}'"
 [tasks."addon:template"]
 description = "Generate a module from the add-on template and run one of its lanes"
 usage = 'arg "<lane>" help="host, android or ios"'
+# Only the Android lane reads the examples' Maven graph, so only it pins one.
 run = [
-  "python3 -m tools.addons.new .selftest --replace",
+  "python3 -m tools.addons.new .selftest {% if usage.lane != 'android' %}--no-pin{% endif %}",
   "mise run addon:{{usage.lane}} .selftest",
 ]
 

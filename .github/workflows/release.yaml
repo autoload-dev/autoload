@@ -26,7 +26,7 @@ jobs:
         id: module
         env:
           TAG: ${{ github.ref_name }}
-        run: python3 tools/ci/release_module.py "$TAG" >> "$GITHUB_OUTPUT"
+        run: python3 -m tools.ci.release_module "$TAG" >> "$GITHUB_OUTPUT"
   release:
     needs: module
     # https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml

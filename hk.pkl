@@ -141,8 +141,9 @@ local addonModules = new Mapping<String, Dynamic> {
 // What every add-on module reads beside its own directory: the shared Bazel settings.
 local addonShared = List("addons/*.bazelrc")
 
-// A host lane task restricted to some hosts names them, such as host:addon:<module>@macos.
-// (hk's Pkl compares lists by their joined text.)
+// A host lane task limited to some hosts names them, such as host:addon:<module>@macos, so
+// that the CI plan leaves it out of other hosts' runners (tools/ci/verification.py); the
+// task itself reads addon.pkl. (hk's Pkl compares lists by their joined text.)
 local function addonTask(lane: String, module: String, hosts: List<String>): String =
   lane + ":addon:" + module
     + if (lane == "host" && hosts.join(",") != "linux,macos") "@" + hosts.join(",") else ""
@@ -273,11 +274,20 @@ local checks = new Mapping<String, Step> {
     }
   }
   // The add-on generator's self-test: a module generated from its template, in each lane.
+  // Its desktop build does the same on every host, so its host lane runs on Linux only.
   for (lane in addonLanes) {
-    [lane + ":addon-template"] = (task("addon:template " + lane)) {
-      profiles = List(lane)
-      glob = List("tools/addons/**") + addonShared
-    }
+    [lane + ":addon-template" + if (lane == "host") "@linux" else ""] =
+      (task("addon:template " + lane)) {
+        profiles = List(lane)
+        glob = List(
+          "tools/addons/template/**",
+          "tools/addons/new.py",
+          "tools/addons/lanes.py",
+          "tools/addons/modules.py",
+          "tools/setup/modules.py",
+          "tools/resource_uids.py",
+        ) + addonShared
+      }
   }
   ["test:gdextension"] = (task("test:gdextension")) {
     profiles = List("host")

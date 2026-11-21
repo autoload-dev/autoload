@@ -234,7 +234,7 @@ class SelectionTest(unittest.TestCase):
         lanes = self.addon_plan("addons/module.bazelrc")
         self.assertEqual(
             lanes["host"],
-            ["host:addon:gadget@macos", "host:addon:widget", "host:addon-template"],
+            ["host:addon:gadget@macos", "host:addon:widget", "host:addon-template@linux"],
         )
 
     def test_rule_changes_do_not_select_the_add_on_modules(self) -> None:
@@ -245,9 +245,17 @@ class SelectionTest(unittest.TestCase):
 
     def test_the_generator_selects_its_self_test_in_every_lane(self) -> None:
         lanes = lane_plan(self.plan("tools/addons/new.py", profiles=PROFILE_LANES))
-        for lane in ("host", "android", "ios"):
-            with self.subTest(lane=lane):
-                self.assertIn(f"{lane}:addon-template", lanes[lane])
+        self.assertIn("host:addon-template@linux", lanes["host"])
+        self.assertIn("android:addon-template", lanes["android"])
+        self.assertIn("ios:addon-template", lanes["ios"])
+
+    def test_the_add_on_tools_own_tests_build_no_module(self) -> None:
+        lanes = lane_plan(
+            self.plan("tools/addons/generated_test.py", profiles=PROFILE_LANES)
+        )
+        self.assertFalse(
+            any(":addon" in task for tasks in lanes.values() for task in tasks)
+        )
 
     def test_default_check_does_not_build_examples(self) -> None:
         lanes = lane_plan(self.plan("examples/deps/gdunit4.BUILD.bazel"))

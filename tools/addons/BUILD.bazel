@@ -9,6 +9,12 @@ py_library(
         "new.py",
     ],
     data = glob(["template/**"]),
-    visibility = ["//tools/conventions:__pkg__"],
-    deps = ["//tools/setup:modules_lib"],
+    visibility = [
+        "//tools/ci:__pkg__",
+        "//tools/conventions:__pkg__",
+    ],
+    deps = [
+        "//tools:resource_uids_lib",
+        "//tools/setup:modules_lib",
+    ],
 )

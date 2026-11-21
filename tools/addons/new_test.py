@@ -2,24 +2,31 @@
 
 from tools.addons.new import TOKEN, Names, generate
 from tools.addons.test_support import RepositoryTestCase
+from tools.resource_uids import is_uid
 
 
 class NamesTest(RepositoryTestCase):
     def test_an_add_on_named_like_its_module(self) -> None:
-        tokens = Names("platform_paths", "platform_paths").tokens()
+        tokens = Names("platform_paths").tokens("9.3.0")
         self.assertEqual(tokens["module_name"], "autoload_platform_paths")
         self.assertEqual(tokens["extension"], "platform_paths_extension")
         self.assertEqual(tokens["class"], "PlatformPaths")
         self.assertEqual(tokens["title"], "Platform Paths")
 
     def test_an_add_on_of_a_module_with_several(self) -> None:
-        tokens = Names("firebase", "core").tokens()
+        tokens = Names("firebase", "core").tokens("9.3.0")
         self.assertEqual(tokens["extension"], "firebase_core")
         self.assertEqual(tokens["class"], "FirebaseCore")
         self.assertEqual(tokens["title"], "Firebase Core")
 
     def test_the_self_test_module_drops_its_dot(self) -> None:
-        self.assertEqual(Names(".selftest", "selftest").tokens()["module"], "selftest")
+        self.assertEqual(Names(".selftest").tokens("9.3.0")["module"], "selftest")
+
+    def test_resource_uids_are_stable_and_godot_reads_them(self) -> None:
+        first, again = Names("widget").tokens("9"), Names("widget").tokens("9")
+        self.assertEqual(first["script_uid"], again["script_uid"])
+        self.assertNotEqual(first["script_uid"], first["scene_uid"])
+        self.assertTrue(is_uid(first["scene_uid"]))
 
 
 class GenerateTest(RepositoryTestCase):

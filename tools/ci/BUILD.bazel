@@ -20,4 +20,5 @@ py_test(
         "release_module.py",
         "release_module_test.py",
     ],
+    deps = ["//tools/addons:new_lib"],
 )

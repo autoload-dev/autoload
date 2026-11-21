@@ -5,9 +5,11 @@ import unittest
 from pathlib import Path
 
 from tools.resource_uids import (
+    id_to_uid,
     known_uids,
     reference_updates,
     uid_sources,
+    uid_to_id,
     with_resource_uids,
 )
 
@@ -29,6 +31,15 @@ _UIDS = {
 
 
 class ResourceUidTest(unittest.TestCase):
+    def test_ids_and_their_uid_texts_round_trip(self) -> None:
+        for value in (0, 24, 25, 33, 34, 2**63 - 1):
+            with self.subTest(value=value):
+                self.assertEqual(uid_to_id(id_to_uid(value)), value)
+        # A UID the Godot editor wrote.
+        self.assertEqual(
+            id_to_uid(uid_to_id("uid://c4fbx2ahn1kqw")), "uid://c4fbx2ahn1kqw"
+        )
+
     def test_uids_come_from_sidecars_imports_and_resource_headers(self) -> None:
         self.assertEqual(
             {

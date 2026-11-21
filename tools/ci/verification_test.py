@@ -187,10 +187,14 @@ class VerificationTest(unittest.TestCase):
         )
         self.assertEqual(
             task_command("host:addon:gadget@macos"),
-            ["mise", "run", "addon:host", "gadget", "--hosts", "macos"],
+            ["mise", "run", "addon:host", "gadget"],
         )
         self.assertEqual(
             task_command("ios:addon-template"), ["mise", "run", "addon:template", "ios"]
+        )
+        self.assertEqual(
+            task_command("host:addon-template@linux"),
+            ["mise", "run", "addon:template", "host"],
         )
         self.assertEqual(task_command("test:setup"), ["mise", "run", "test:setup"])
 

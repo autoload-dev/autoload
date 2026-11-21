@@ -6,14 +6,13 @@ cannot see that they drift apart. This check reads every MODULE.bazel with Pytho
 ast and compares each pin that two or more modules declare.
 """
 
-import ast
 import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from tools.setup.modules import declarations, module_paths
+from tools.setup.modules import declarations, literals, module_paths
 
 ARCHIVE = ("sha256", "urls")
 # The attributes compared for each kind of declaration: a function, a repository rule or
@@ -37,17 +36,6 @@ UNPINNED = {"bazel_dep:autoload_rules_godot"}
 EXCEPTIONS: dict[str, set[str]] = {}
 
 
-def _literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
-    values = {}
-    for keyword, value in keywords.items():
-        try:
-            values[keyword] = ast.literal_eval(value)
-        except ValueError:
-            # A computed value, such as a comprehension's variable, is no pin.
-            continue
-    return values
-
-
 def _key(kind: str, name: str | None, attribute: str) -> str:
     if kind == "bazel_dep":
         return f"bazel_dep:{name}"
@@ -61,7 +49,7 @@ def module_pins(source: str) -> dict[str, Any]:
     pins: dict[str, Any] = {}
     for declaration in declarations(source):
         kind = declaration.kind
-        values = _literals(declaration.keywords)
+        values = literals(declaration.keywords)
         name = values.get("name")
         if kind == MAVEN:
             # Maven coordinates group:artifact[:packaging[:classifier]]:version.

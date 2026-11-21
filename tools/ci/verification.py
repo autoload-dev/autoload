@@ -133,18 +133,20 @@ def _family_lane(task: str) -> str | None:
 
 def addon_task(task: str) -> tuple[str, str | None, tuple[str, ...]] | None:
     """
-    Split an add-on task into its lane, its module and the hosts its host lane is limited
-    to: `host:addon:<module>@macos` (hk.pkl, addonTask). The self-test has no module.
+    Split an add-on task into its lane, its module and the hosts it is limited to, which
+    hk.pkl appends to the name: `host:addon:<module>@macos`. The self-test,
+    `<lane>:addon-template`, has no module.
     """
     lane, separator, rest = task.partition(":addon")
     if not separator or lane not in PROFILE_LANES:
         return None
-    if rest == "-template":
-        return lane, None, ()
-    if not rest.startswith(":") or not rest[1:]:
+    target, _, listed = rest.partition("@")
+    hosts = tuple(listed.split(",")) if listed else ()
+    if target == "-template":
+        return lane, None, hosts
+    if not target.startswith(":") or not target[1:]:
         return None
-    module, _, hosts = rest[1:].partition("@")
-    return lane, module, tuple(hosts.split(",")) if hosts else ()
+    return lane, target[1:], hosts
 
 
 def task_command(task: str) -> list[str]:
@@ -152,11 +154,10 @@ def task_command(task: str) -> list[str]:
     addon = addon_task(task)
     if addon is None:
         return ["mise", "run", task]
-    lane, module, hosts = addon
+    lane, module, _ = addon
     if module is None:
         return ["mise", "run", "addon:template", lane]
-    command = ["mise", "run", f"addon:{lane}", module]
-    return command + (["--hosts", ",".join(hosts)] if hosts else [])
+    return ["mise", "run", f"addon:{lane}", module]
 
 
 def for_host(lanes: dict[str, list[str]], host: str) -> dict[str, list[str]]:

@@ -5,37 +5,28 @@ from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
+from tools.addons.modules import HOSTS, LANES, addon_values, module_attributes
+from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 
 ADDONS = Path("addons")
-# The files every module addons/<directory> owns, as tools/addons/template has them.
-REQUIRED = (
-    ".bazelrc",
-    ".bazelversion",
-    ".gitattributes",
-    ".gitignore",
-    "BUILD.bazel",
-    "MODULE.bazel",
-    "README.md",
-    "REPO.bazel",
-    "addon.pkl",
-    "presubmit.yml",
-    "examples/.bazelrc",
-    "examples/.bazelversion",
-    "examples/BUILD.bazel",
-    "examples/MODULE.bazel",
+# The files every module addons/<directory> owns: those of the generator's template, but
+# its example project, which a module may name and shape as it likes.
+REQUIRED = tuple(
+    relative
+    for _, relative in template_files("module")
+    if not relative.startswith("examples/projects/")
 )
 # The shared settings each module's .bazelrc files import.
 IMPORTS = {
     ".bazelrc": "import %workspace%/../module.bazelrc",
     "examples/.bazelrc": "import %workspace%/../../examples.bazelrc",
 }
-# What addon.pkl may name: the lanes hk.pkl runs and the hosts of the host lane.
-ADDON_VALUES = {"lanes": {"host", "android", "ios"}, "hosts": {"linux", "macos"}}
+# What addon.pkl may name.
+ADDON_VALUES = {"lanes": set(LANES), "hosts": set(HOSTS)}
 # The targets the generic lanes build in each example project (tools/addons/lanes.py).
 PROJECT_TARGETS = ("app", "edit", "pack")
-LIST = re.compile(r"^(\w+)\s*=\s*List\(([^)]*)\)\s*$")
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
 
@@ -54,13 +45,22 @@ def backends_directory(name: str) -> Path | None:
     return None
 
 
-def addon_values(text: str) -> dict[str, list[str]]:
-    """The `name = List(...)` properties of an addon.pkl, without its comments."""
-    values = {}
-    for line in text.splitlines():
-        if (match := LIST.match(line.split("//")[0].strip())) is not None:
-            values[match[1]] = re.findall(r'"([^"]*)"', match[2])
-    return values
+def in_modules(name: str, modules: list[Path]) -> bool:
+    return any(Path(name).is_relative_to(module) for module in modules)
+
+
+def extension_owners(workspace: Workspace, modules: list[Path]) -> dict[str, list[str]]:
+    """The BUILD files of the modules that declare each extension name, in file order."""
+    owners: dict[str, list[str]] = defaultdict(list)
+    builds = [
+        name
+        for name in workspace.files
+        if Path(name).name in BUILD_FILES and in_modules(name, modules)
+    ]
+    for build in builds:
+        for extension in EXTENSION.findall(workspace.text(build)):
+            owners[extension].append(build)
+    return owners
 
 
 class AddonModuleLayout:
@@ -73,11 +73,7 @@ class AddonModuleLayout:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace
         yield from self.backends(workspace)
-        modules = sorted(
-            Path(name).parent
-            for name in workspace.files
-            if Path(name).name == "MODULE.bazel" and Path(name).parent.parent == ADDONS
-        )
+        modules = sorted(path for path in workspace.module_paths if path.parent == ADDONS)
         for module in modules:
             yield from self.files(workspace, module)
             yield from self.imports(workspace, module)
@@ -105,8 +101,7 @@ class AddonModuleLayout:
             if (module / relative).as_posix() not in workspace.file_set:
                 yield Finding(at(manifest), f"add-on module must own {module / relative}")
         expected = f"autoload_{module.name}"
-        declared = NAME.search(workspace.text(manifest.as_posix()))
-        if declared is None or declared[1] != expected:
+        if module_attributes(workspace.text(manifest.as_posix())).get("name") != expected:
             yield Finding(at(manifest), f"add-on module must be named {expected}")
 
     @staticmethod
@@ -154,17 +149,7 @@ class AddonModuleLayout:
     @staticmethod
     def extensions(workspace: Workspace, modules: list[Path]) -> Iterable[Finding]:
         """Extension names are unique across modules: on iOS they name the frameworks."""
-        builds = [
-            name
-            for name in workspace.files
-            if Path(name).name in BUILD_FILES
-            and any(Path(name).is_relative_to(module) for module in modules)
-        ]
-        owners: dict[str, list[str]] = defaultdict(list)
-        for build in builds:
-            for extension in EXTENSION.findall(workspace.text(build)):
-                owners[extension].append(build)
-        for extension, owning in sorted(owners.items()):
+        for extension, owning in sorted(extension_owners(workspace, modules).items()):
             for build in owning[1:]:
                 yield Finding(
                     at(build), f"extension name {extension} is taken by {owning[0]}"

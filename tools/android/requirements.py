@@ -5,7 +5,12 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.setup.modules import bazelrc_options, declarations, module_paths
+from tools.setup.modules import (
+    addon_modules,
+    bazelrc_options,
+    declarations,
+    module_paths,
+)
 
 # Provisioning must cover the SDK and .bazelrc overrides of every module: the root
 # module's development SDK and each consumer module's SDK.
@@ -56,9 +61,8 @@ def application_modules(root: Path) -> list[str]:
     The modules that build applications: every module but the add-on modules in addons/,
     which use their examples' SDK. Each of them must configure its SDK.
     """
-    return [
-        module for module in module_paths(root) if Path(module).parent != Path("addons")
-    ]
+    addons = set(addon_modules(root))
+    return [module for module in module_paths(root) if module not in addons]
 
 
 def configuration_errors(root: Path) -> list[str]:

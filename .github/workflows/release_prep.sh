@@ -4,12 +4,13 @@
 set -o errexit -o nounset -o pipefail
 
 TAG=$1
-MODULE="$(python3 "$(dirname "$0")/../../tools/ci/release_module.py" "$TAG")"
+MODULE="$(cd "$(dirname "$0")/../.." && python3 -m tools.ci.release_module "$TAG")"
 field() { sed -n "s/^$1=//p" <<< "$MODULE"; }
 NAME="$(field name)"
 VERSION="$(field version)"
 ROOT="$(field root)"
 PREFIX="${NAME}-${VERSION}"
+REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/rules_godot}"
 ARCHIVE="${PREFIX}.tar.gz"
 
 # The archive holds the module's directory at its root. .gitattributes files keep
@@ -42,7 +43,6 @@ register_toolchains("@godot//toolchains:all")'
 fi
 # A module that is not on the Bazel Central Registry resolves from this release's archive.
 if [ "$(field bcr)" != true ]; then
-    REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/rules_godot}"
     INTEGRITY="sha256-$(openssl dgst -sha256 -binary "$ARCHIVE" | openssl base64 -A)"
     SETUP="${SETUP}
 archive_override(
@@ -63,5 +63,5 @@ bazel_dep(name = "${NAME}", version = "${VERSION}")${SETUP}
 \`\`\`
 
 See the module's README for its setup:
-https://github.com/${GITHUB_REPOSITORY:-autoload-dev/rules_godot}/blob/${TAG}/${ROOT}/README.md
+https://github.com/${REPOSITORY}/blob/${TAG}/${ROOT}/README.md
 NOTES

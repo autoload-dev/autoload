@@ -33,7 +33,7 @@ jobs:
         id: module
         env:
           TAG: ${{ inputs.tag_name }}
-        run: python3 tools/ci/release_module.py "$TAG" >> "$GITHUB_OUTPUT"
+        run: python3 -m tools.ci.release_module "$TAG" >> "$GITHUB_OUTPUT"
   publish:
     needs: module
     # https://github.com/bazel-contrib/publish-to-bcr/blob/main/.github/workflows/publish.yaml

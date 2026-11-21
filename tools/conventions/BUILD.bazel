@@ -39,6 +39,7 @@ py_library(
         ":context_lib",
         ":framework_lib",
         "//tools:ruleset_lib",
+        "//tools/addons:new_lib",
     ],
 )
 
