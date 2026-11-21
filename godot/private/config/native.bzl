@@ -83,6 +83,9 @@ def content_options(settings):
         values[_APPLE_CPU] = ""
         values[_APPLE_PLATFORM_TYPE] = "ios"
     elif operating_system == "android":
+        # The content configuration is the same whether an application's configuration
+        # or a platform slice's reached it; the slices take this linking mode from
+        # rules_android's split.
         values[_DYNAMIC] = "off"
         values[_ANDROID_PLATFORMS] = settings[PLATFORM_SLICES].split(",")
         values[_ANDROID_SETTING] = settings[PLATFORM_SLICES].split(",")
