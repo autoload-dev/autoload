@@ -219,6 +219,10 @@ _MISSING_RUNTIME_POLICY = {
     "configure_timeout": 600,
 }
 
+# Platform options of those runtimes. Vulkan would need the MoltenVK SDK on the configuring
+# Mac; Metal and OpenGL stay.
+_MISSING_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}}
+
 def missing_runtimes(tag, plan, slots):
     """
     Return the source declarations, slots and Android runtimes of the runtimes a prebuilt lacks.
@@ -241,18 +245,18 @@ def missing_runtimes(tag, plan, slots):
         return None
     name = tag.name + "_source"
     source = "@%s_archive//:source.json" % name
-    rows_plan = plan_rows(name, rows)
+
+    # The catalogue knows the sources' version, so the hub need not read the archive.
+    rows_plan = plan_rows(name, rows, version = plan.source["version"])
     declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
     for declaration in recipe_declarations(name, source, rows_plan, _MISSING_RUNTIME_POLICY):
-        if declaration.attrs.get("platform") == "ios":
-            # Vulkan would need the MoltenVK SDK on the configuring Mac; Metal and OpenGL stay.
-            declaration.attrs["build_options"] = {"vulkan": "no"}
+        options = _MISSING_RUNTIME_OPTIONS.get(declaration.attrs.get("platform"))
+        if options:
+            declaration.attrs["build_options"] = declaration.attrs["build_options"] | options
         declarations.append(declaration)
-    # The catalogue knows the sources' version, so the hub need not read the archive.
-    version = plan.source["version"]
     return struct(
         declarations = declarations,
-        slots = [slot | {"version": version} for slot in rows_plan.slots],
+        slots = rows_plan.slots,
         android = rows_plan.android,
     )
 

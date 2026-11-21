@@ -733,17 +733,56 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-def include_closure(root: Path, sources: Collection[str]) -> set[str]:
-    """Godot shader builders recursively read #include files themselves."""
-    root = root.resolve()
-    found = set(sources)
-    pending = list(sources)
+_SOURCE_INCLUDE = re.compile(
+    r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE
+)
+
+
+def _source_includes(root: Path, path: Path) -> list[str]:
+    """Return the C++ sources that a source includes, relative to the source root."""
+    if not path.is_file():
+        return []
+    text = path.read_bytes()
+    if b'.cpp"' not in text and b'.cc"' not in text and b'.cxx"' not in text:
+        return []
+    found = []
+    for include in _SOURCE_INCLUDE.findall(text.decode(errors="replace")):
+        for base in (path.parent, root):
+            candidate = (base / include).resolve()
+            if candidate.is_file() and candidate.is_relative_to(root):
+                found.append(relative(candidate, root))
+                break
+    return found
+
+
+def _discovered_includes(
+    root: Path, sources: Collection[str], includes: Callable[[Path, Path], list[str]]
+) -> set[str]:
+    """Return the files the sources include, transitively, relative to the source root."""
+    found: set[str] = set()
+    pending = list(dict.fromkeys(sources))
     while pending:
-        for logical in _shader_includes(root, root / pending.pop()):
+        for logical in includes(root, root / pending.pop()):
             if logical not in found:
                 found.add(logical)
                 pending.append(logical)
     return found
+
+
+def include_closure(root: Path, sources: Collection[str]) -> set[str]:
+    """Godot shader builders recursively read #include files themselves."""
+    root = root.resolve()
+    return set(sources) | _discovered_includes(root, sources, _shader_includes)
+
+
+def included_sources(root: Path, sources: Collection[str]) -> list[str]:
+    """
+    Return the C++ sources that other sources include, relative to the source root.
+
+    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
+    source that includes others; those must reach each compile action as textual headers.
+    """
+    return sorted(_discovered_includes(root.resolve(), sources, _source_includes))
 
 
 def generated_include_directories(
@@ -1294,38 +1333,6 @@ def _generator_rules(
             name for name in spec["targets"] if Path(name).suffix not in SOURCE_SUFFIXES
         )
     return lines, generated_headers
-
-
-_SOURCE_INCLUDE = re.compile(
-    r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE
-)
-
-
-def included_sources(root: Path, sources: Iterable[str]) -> list[str]:
-    """
-    Return the C++ sources that other sources include, relative to the source root.
-
-    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
-    source that includes others; those must reach each compile action as textual headers.
-    """
-    root = root.resolve()
-    found: set[str] = set()
-    pending = [root / source for source in sources]
-    while pending:
-        path = pending.pop()
-        if not path.is_file():
-            continue
-        text = path.read_text(errors="replace")
-        for include in _SOURCE_INCLUDE.findall(text):
-            for base in (path.parent, root):
-                candidate = (base / include).resolve()
-                if candidate.is_file() and candidate.is_relative_to(root):
-                    logical = relative(candidate, root)
-                    if logical not in found:
-                        found.add(logical)
-                        pending.append(candidate)
-                    break
-    return sorted(found)
 
 
 def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:

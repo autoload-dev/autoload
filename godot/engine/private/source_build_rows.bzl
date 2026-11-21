@@ -90,13 +90,15 @@ def slot_name(row):
     variant = row.build_target.removeprefix("template_")
     return "_".join([part for part in ["runtime", row.platform, row.cpu, row.environment, variant] if part])
 
-def plan_rows(name, rows):
+def plan_rows(name, rows, version = ""):
     """
     Return the recipes, hub slots and Android runtimes of source recipes for the given rows.
 
     Args:
         name: Prefix of the recipe repositories and of the Android shell repository.
         rows: Rows of ROWS.
+        version: Canonical Godot version of the sources; empty takes the hub's
+            version_source descriptor.
 
     Returns:
         A struct of `recipes`, one struct per godot_engine_build repository with its
@@ -116,7 +118,7 @@ def plan_rows(name, rows):
                 payload = "@%s//:godot" % repository,
                 platform = row.platform,
                 cpu = row.cpu,
-                version = "",
+                version = version,
             ))
             continue
         variant = row.build_target.removeprefix("template_")
@@ -136,7 +138,7 @@ def plan_rows(name, rows):
             payload = payload,
             platform = row.platform,
             cpu = row.cpu,
-            version = "",
+            version = version,
             variant = variant,
             environment = row.environment,
         ))
