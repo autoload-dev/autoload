@@ -12,7 +12,7 @@ PROFILE_LANES = ("host", "source-engine", "android", "ios")
 
 
 def verify_results(needs: dict, *, apple_required: bool) -> None:
-    """Require selected lanes; Apple lanes only when a label or the event requests them."""
+    """Require selected lanes; Apple lanes only when the event runs them."""
     selection = needs.get("selection", {})
     if selection.get("result") != "success":
         raise ValueError("selection did not succeed")
@@ -96,11 +96,14 @@ def lane_plan(plan: dict) -> dict[str, list[str]]:
 
 
 def selection_args(event_name: str, event: dict) -> list[str]:
-    """Compare PR merge contents or pushed changes; dispatch explicitly checks all."""
+    """Compare PR merge contents, a merge group or pushed changes; dispatch checks all."""
     if event_name == "workflow_dispatch":
         return ["--all"]
     if event_name == "pull_request":
         return ["--from-ref", event["pull_request"]["base"]["sha"], "--to-ref", "HEAD"]
+    if event_name == "merge_group":
+        # The group's parent: the base branch, or the group queued before this one.
+        return ["--from-ref", event["merge_group"]["base_sha"], "--to-ref", "HEAD"]
     if event_name == "push":
         before = event["before"]
         if before and set(before) != {"0"}:

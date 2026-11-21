@@ -102,17 +102,25 @@ useful immediate feedback, without duplicating the whole CI suite.
 
 ### Apple lanes on pull requests
 
-Pull requests run the Apple lanes in CI only with the `ci:macos` label, because macOS runners
-are expensive. The label is the user's decision. When the branch's selection includes the
-`host`, `source-engine` or `ios` step, an agent opening or updating the pull request asks
-the user whether to add it and names the selected steps and the changes that could affect
-macOS or iOS behavior. `hk check --plan --from-ref origin/main` shows the selection, as does
-the CI selection job. The `host` step covers the macOS host tests as well as the Linux ones.
-Pure Markdown changes select none of these steps. An agent that cannot ask states the same
-in the pull request body and leaves the label off.
+A pull request's CI run leaves out the Apple lanes, because macOS runners are expensive. The
+merge queue runs every selected lane, the Apple lanes included, on the result of the merge,
+and `Verification result` is its required check: a pull request whose Apple lanes fail there
+leaves the queue and does not reach main. The `host` step covers the macOS host tests as
+well as the Linux ones. Pure Markdown changes select no Apple lane. Main and manual dispatch
+also run the selected Apple lanes; a manual dispatch selects all lanes.
 
-Add the label after the first CI run has started; opening and labeling together can cancel
-the first run. Remove it when later changes no longer select an Apple lane. Main and manual
-dispatch run the selected Apple lanes without a label. A manual dispatch selects all lanes.
-The workflow keeps job identities and a final result even when unrelated lanes are skipped;
-repository branch-protection settings are managed separately.
+The `ci:macos` label starts a preview of the selected Apple lanes on the pull request, in the
+[macOS preview](../../.github/workflows/macos-preview.yml) workflow. Labeling starts it, each
+further commit of a labeled pull request runs it again, and the checks of the CI run stay as
+they are. The preview is optional and the label is the user's decision: it suits changes
+that work on macOS or iOS behavior, where a failure in the merge queue would come late. An
+agent opening or updating such a pull request asks the user whether to add it and names the
+selected steps and the changes that could affect macOS or iOS behavior; an agent that cannot
+ask states the same in the pull request body and leaves the label off.
+`hk check --plan --from-ref origin/main` shows the selection, as does the CI selection job.
+Remove the label when later changes no longer select an Apple lane. On a Mac, running the
+affected lane locally with its profile gives the same feedback without a runner.
+
+The workflow keeps job identities and a final result even when unrelated lanes are skipped.
+The ruleset of main, which requires the merge queue and `Verification result`, is managed
+in the repository settings.

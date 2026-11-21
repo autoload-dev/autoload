@@ -124,6 +124,12 @@ class VerificationTest(unittest.TestCase):
             ["--from-ref", "base", "--to-ref", "HEAD"],
         )
 
+    def test_merge_group_uses_its_parent_and_checked_out_head(self) -> None:
+        self.assertEqual(
+            selection_args("merge_group", {"merge_group": {"base_sha": "parent"}}),
+            ["--from-ref", "parent", "--to-ref", "HEAD"],
+        )
+
     def test_push_and_dispatch_boundaries(self) -> None:
         self.assertEqual(
             selection_args("push", {"before": "old"}),

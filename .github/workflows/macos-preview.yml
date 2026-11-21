@@ -1,0 +1,31 @@
+name: macOS preview
+
+# The selected Apple lanes of a pull request labelled ci:macos, before the
+# merge queue runs them. Its checks are its own: labelling a pull request
+# neither restarts nor replaces the checks of the CI workflow.
+# Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+
+# A new commit replaces the running preview. Another label starts a run that
+# skips the lanes; its own group keeps it from cancelling a running preview.
+concurrency:
+  group: >-
+    macos-preview-${{ github.ref }}-${{
+    github.event.action == 'labeled' && github.event.label.name != 'ci:macos' && github.run_id || 'lanes' }}
+  cancel-in-progress: true
+
+jobs:
+  lanes:
+    name: Apple lanes
+    # The label starts the lanes, and so does each commit while it is set.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'ci:macos') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:macos')
+    uses: ./.github/workflows/ci.yml
+    with:
+      apple-only: true
