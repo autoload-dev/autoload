@@ -89,16 +89,29 @@ def _invalid_impl(ctx):
 
 _invalid_context = rule(implementation = _invalid_impl, attrs = _context_attrs())
 
-def _pack_inputs(name, pack, loadable_packs, context, hidden):
+def _hidden(tags, testonly):
     """
-    Declare the inputs every backend of a godot_app shares.
+    The attributes of a godot_app's private targets.
+
+    Typed aliases retain caller-private labels even when they are selectors. Helper target
+    names are implementation identities; physical output names use name.
+    """
+    return dict(tags = tags + ["manual"], testonly = testonly)
+
+def _hidden_of(common):
+    """The attributes of a godot_app's private targets among those of its backends."""
+    return {key: common[key] for key in ["tags", "testonly"]}
+
+def _pack_and_runtime(name, pack, loadable_packs, hidden, **context):
+    """
+    Declare the application pack and the resolved runtime that every backend of a godot_app uses.
 
     Args:
         name: Name of the godot_app.
         pack: The start pack.
         loadable_packs: The packs the application may load later.
-        context: The application context's values, as application_pack attributes.
         hidden: Attributes of private targets.
+        **context: The application context's values, which are application_pack's attributes.
     """
     native.alias(name = name + ".pack_input", actual = pack, **hidden)
     loadable = []
@@ -110,14 +123,21 @@ def _pack_inputs(name, pack, loadable_packs, context, hidden):
     # resolves in their platform slice; Android and iOS application backends resolve it
     # inside their Android or Apple split.
     _resolved_runtime(name = name + ".runtime", **hidden)
-    _application_id(name = name + ".application_id", application_id = context["application_id"], **hidden)
     _application_pack(
         name = name + ".pack",
         deps = [":" + name + ".pack_input"] + loadable,
         **(context | hidden)
     )
 
-def _desktop_backends(name, application_id, macos_minimum_os_version, macos_signing, platform_inputs, common, hidden):
+def _desktop_backends(
+        name,
+        application_id,
+        macos_minimum_os_version,
+        macos_signing_identity,
+        macos_entitlements,
+        platform_deps,
+        platform_resources,
+        common):
     """
     Declare the Linux and macOS backends of a godot_app and the macOS signing choice.
 
@@ -125,17 +145,20 @@ def _desktop_backends(name, application_id, macos_minimum_os_version, macos_sign
         name: Name of the godot_app.
         application_id: The macOS bundle identifier.
         macos_minimum_os_version: The application's minimum macOS version.
-        macos_signing: The signer's identity and entitlements.
-        platform_inputs: The application's platform_deps and platform_resources.
-        common: Attributes of every backend.
-        hidden: Attributes of private targets.
+        macos_signing_identity: The signer's identity.
+        macos_entitlements: The signer's entitlements.
+        platform_deps: The application's platform libraries.
+        platform_resources: The application's platform resources.
+        common: Attributes of every backend, the private targets' among them.
     """
     _godot_linux_application(
         name = name + ".linux",
         app_name = name,
         pack = ":" + name + ".pack",
         runtime = ":" + name + ".runtime",
-        **(platform_inputs | common)
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
+        **common
     )
     _godot_macos_application(
         name = name + ".macos",
@@ -144,12 +167,16 @@ def _desktop_backends(name, application_id, macos_minimum_os_version, macos_sign
         minimum_os_version = macos_minimum_os_version,
         pack = ":" + name + ".pack",
         runtime = ":" + name + ".runtime",
-        **(platform_inputs | common)
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
+        **common
     )
     _godot_macos_sign(
         name = name + ".macos_signed",
         app = ":" + name + ".macos",
-        **(macos_signing | common)
+        identity = macos_signing_identity,
+        entitlements = macos_entitlements,
+        **common
     )
     native.alias(
         name = name + ".macos_result",
@@ -158,28 +185,38 @@ def _desktop_backends(name, application_id, macos_minimum_os_version, macos_sign
             # The flag rejects values other than adhoc and certificate.
             "//conditions:default": ":" + name + ".macos_signed",
         }),
-        **hidden
+        **_hidden_of(common)
     )
 
-def _android_backends(name, manifest_values, manifest, debug_key, platform_inputs, common, hidden):
+def _android_backends(
+        name,
+        application_id,
+        manifest_values,
+        manifest,
+        debug_key,
+        platform_deps,
+        platform_resources,
+        common):
     """
     Declare the APK and App Bundle backends of a godot_app and the format choice.
 
-    The application ID reaches them as the make variable of the application's
-    application_id target, which carries only the ID: a select() cannot sit inside the
-    manifest_values dictionary, and reading the pack for it would analyze the pack's
-    native code in the backends' own configurations.
+    The application ID reaches them as the make variable of an application_id target,
+    which carries only the ID: a select() cannot sit inside the manifest_values
+    dictionary, and reading the pack for it would analyze the pack's native code in the
+    backends' own configurations.
 
     Args:
         name: Name of the godot_app.
+        application_id: The Android application ID.
         manifest_values: The application's manifest placeholder values.
         manifest: The application's own manifest, or None.
         debug_key: The application's debug signing key, or None.
-        platform_inputs: The application's platform_deps and platform_resources, as
-            deps and resource_files.
-        common: Attributes of every backend.
-        hidden: Attributes of private targets.
+        platform_deps: The application's platform libraries.
+        platform_resources: The application's resource files.
+        common: Attributes of every backend, the private targets' among them.
     """
+    hidden = _hidden_of(common)
+    _application_id(name = name + ".application_id", application_id = application_id, **hidden)
     for format, bundle in [("apk", False), ("aab", True)]:
         _godot_android_application(
             name = name + ".android_" + format + "/" + name,
@@ -189,8 +226,10 @@ def _android_backends(name, manifest_values, manifest, debug_key, platform_input
             manifest_values = manifest_values,
             manifest = manifest,
             debug_key = debug_key,
+            deps = platform_deps,
+            resource_files = platform_resources,
             bundle = bundle,
-            **(platform_inputs | common)
+            **common
         )
     native.alias(
         name = name + ".android",
@@ -201,14 +240,13 @@ def _android_backends(name, manifest_values, manifest, debug_key, platform_input
         **hidden
     )
 
-def _editor_backend(name, common, hidden):
+def _editor_backend(name, common):
     """
     Declare the editor variant's backend of a godot_app and its empty debug symbols.
 
     Args:
         name: Name of the godot_app.
-        common: Attributes of every backend.
-        hidden: Attributes of private targets.
+        common: Attributes of every backend, the private targets' among them.
     """
 
     # The editor variant runs the start pack's project from sources: no export, runtime
@@ -228,7 +266,11 @@ def _editor_backend(name, common, hidden):
         target_compatible_with = editor_compatible,
         **common
     )
-    native.filegroup(name = name + ".editor.debug_symbols", target_compatible_with = editor_compatible, **hidden)
+    native.filegroup(
+        name = name + ".editor.debug_symbols",
+        target_compatible_with = editor_compatible,
+        **_hidden_of(common)
+    )
 
 def _backend_debug_symbols(name, hidden):
     """
@@ -254,7 +296,7 @@ def _backend_debug_symbols(name, hidden):
         **hidden
     )
 
-def _public_targets(name, visibility, target_compatible_with, deprecation, tags, hidden):
+def _public_targets(name, visibility, target_compatible_with, deprecation, tags, testonly):
     """
     Declare godot_app's public application and debug symbols, which forward to the selected backend.
 
@@ -264,8 +306,9 @@ def _public_targets(name, visibility, target_compatible_with, deprecation, tags,
         target_compatible_with: The godot_app's own compatibility.
         deprecation: The godot_app's deprecation message, or empty.
         tags: The godot_app's tags.
-        hidden: Attributes of private targets.
+        testonly: The godot_app's testonly.
     """
+    hidden = _hidden(tags, testonly)
     _invalid_context(name = name + ".invalid_context", **hidden)
     invalid = ":" + name + ".invalid_context"
     _backend_debug_symbols(name = name, hidden = hidden)
@@ -286,7 +329,7 @@ def _public_targets(name, visibility, target_compatible_with, deprecation, tags,
         target_compatible_with = compatible,
         visibility = visibility,
         tags = tags + ["manual"],
-        testonly = hidden["testonly"],
+        testonly = testonly,
     )
     native.alias(
         name = name,
@@ -297,7 +340,7 @@ def _public_targets(name, visibility, target_compatible_with, deprecation, tags,
         target_compatible_with = compatible,
         visibility = visibility,
         tags = tags,
-        testonly = hidden["testonly"],
+        testonly = testonly,
         deprecation = deprecation or None,
     )
 
@@ -334,22 +377,18 @@ def _app_impl(
     # The inherited testonly is None unless set, which applies the package default.
     testonly = kwargs.pop("testonly")
 
-    # Typed aliases retain caller-private labels even when they are selectors.
-    # Helper target names are implementation identities; physical output names use name.
-    hidden = dict(tags = tags + ["manual"], testonly = testonly)
-    _pack_inputs(
+    hidden = _hidden(tags, testonly)
+    _pack_and_runtime(
         name = name,
         pack = pack,
         loadable_packs = loadable_packs,
-        context = dict(
-            application_id = application_id,
-            macos_minimum_os_version = macos_minimum_os_version,
-            ios_minimum_os_version = ios_minimum_os_version,
-            ios_families = ios_families,
-            android_min_sdk_version = android_min_sdk_version,
-            android_target_sdk_version = android_target_sdk_version,
-        ),
         hidden = hidden,
+        application_id = application_id,
+        macos_minimum_os_version = macos_minimum_os_version,
+        ios_minimum_os_version = ios_minimum_os_version,
+        ios_families = ios_families,
+        android_min_sdk_version = android_min_sdk_version,
+        android_target_sdk_version = android_target_sdk_version,
     )
     common = hidden | dict(
         exec_compatible_with = exec_compatible_with,
@@ -360,19 +399,21 @@ def _app_impl(
         name = name,
         application_id = application_id,
         macos_minimum_os_version = macos_minimum_os_version,
-        macos_signing = dict(identity = macos_signing_identity, entitlements = macos_entitlements),
-        platform_inputs = dict(platform_deps = platform_deps, platform_resources = platform_resources),
+        macos_signing_identity = macos_signing_identity,
+        macos_entitlements = macos_entitlements,
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
         common = common,
-        hidden = hidden,
     )
     _android_backends(
         name = name,
+        application_id = application_id,
         manifest_values = android_manifest_values,
         manifest = android_manifest,
         debug_key = android_debug_key,
-        platform_inputs = dict(deps = platform_deps, resource_files = platform_resources),
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
         common = common,
-        hidden = hidden,
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -391,14 +432,14 @@ def _app_impl(
         launch_storyboard = ios_launch_storyboard,
         **common
     )
-    _editor_backend(name = name, common = common, hidden = hidden)
+    _editor_backend(name = name, common = common)
     _public_targets(
         name = name,
         visibility = visibility,
         target_compatible_with = target_compatible_with,
         deprecation = deprecation,
         tags = tags,
-        hidden = hidden,
+        testonly = testonly,
     )
 
 godot_app = macro(
