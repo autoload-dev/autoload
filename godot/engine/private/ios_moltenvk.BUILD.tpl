@@ -8,5 +8,5 @@ apple_static_xcframework_import(
         "Foundation",
         "IOSurface",
     ],
-    xcframework_imports = glob(["ios/MoltenVK.xcframework/**"]),
+    xcframework_imports = glob(["{XCFRAMEWORK}/**"]),
 )

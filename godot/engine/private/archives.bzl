@@ -50,14 +50,47 @@ def _extract_members(ctx, members):
         watch_archive = "no",
     )
 
-def _extract_nested(ctx, archive, output, _fail):
-    """Extract a ZIP archive inside the repository to `output` and delete it; False if it is missing."""
-    if not ctx.path(archive).exists:
-        _fail("Godot template archive does not contain " + archive)
+def _extract_nested(ctx, nested, _fail):
+    """Expand a nested ZIP, a struct of its member and output, and delete it; False if it is missing."""
+    if not ctx.path(nested.member).exists:
+        _fail("Godot template archive does not contain " + nested.member)
         return False
-    ctx.extract(archive, output = output)
-    ctx.delete(archive)
+    ctx.extract(nested.member, output = nested.output)
+    ctx.delete(nested.member)
     return True
+
+def template_target(platform, cpu, variant):
+    """
+    Return the name of the runtime target a templates repository declares for a binary.
+
+    Args:
+        platform: The Godot platform: linux, macos or ios.
+        cpu: The binary's suffix: a Godot CPU tag, `universal` for a macOS universal
+            binary, or empty for iOS, whose XCFramework serves every CPU.
+        variant: release or debug.
+
+    Returns:
+        `<platform>_<cpu>_<variant>`, or `<platform>_<variant>` for a universal or iOS
+        binary.
+    """
+    return "_".join([platform] + ([cpu] if cpu not in ["", "universal"] else []) + [variant])
+
+# Godot's layout of an export-template archive: its members, and the nested ZIPs with the
+# directories this repository expands them to.
+def _linux_binary(variant, cpu):
+    return "templates/linux_%s.%s" % (variant, cpu)
+
+_MACOS_ZIP = struct(member = "templates/macos.zip", output = "macos")
+_IOS_ZIP = struct(member = "templates/ios.zip", output = "ios")
+
+def _macos_binary(variant, cpu):
+    return "%s/macos_template.app/Contents/MacOS/godot_macos_%s.%s" % (_MACOS_ZIP.output, variant, cpu)
+
+def _ios_xcframework(name):
+    return "%s/%s.xcframework" % (_IOS_ZIP.output, name)
+
+def _ios_engine(variant):
+    return _ios_xcframework("libgodot.ios." + variant)
 
 def editor_archive_impl(ctx, *, _fail = fail):
     """
@@ -92,16 +125,16 @@ EDITOR_ARCHIVE_RULE_ATTRS = EDITOR_ARCHIVE_ATTRS | {
     "_build_template": attr.label(default = Label("//godot/engine/private:editor_archive.BUILD.tpl")),
 }
 
-def _runtimes(ctx, platform, name, binary, cpu):
-    """Return the release and, when present, debug runtime declarations of one binary."""
+def _runtimes(ctx, platform, cpu, binary):
+    """Return the release and, when present, debug runtime declarations of the binary `binary(variant, cpu)` names."""
     rules = []
     for variant in ["release", "debug"]:
-        if variant == "debug" and not ctx.path(binary % variant).exists:
+        if variant == "debug" and not ctx.path(binary(variant, cpu)).exists:
             continue
         rules.append(fill_template(ctx, ctx.attr._runtime_template, {
-            "{NAME}": repr("%s_%s" % (name, variant)),
+            "{NAME}": repr(template_target(platform, cpu, variant)),
             "{CPU}": repr(cpu),
-            "{BINARY}": repr(binary % variant),
+            "{BINARY}": repr(binary(variant, cpu)),
             # The macOS runtime needs the template's application bundle.
             "{DATA}": '\n    data = [":macos_files"],' if platform == "macos" else "",
             "{PLATFORM}": repr(platform),
@@ -122,75 +155,68 @@ def _ios_libraries(ctx):
         A tuple of the filled import declarations and, per variant, the labels of the
         imports the engine of that variant depends on.
     """
-    camera = "libgodot_camera.ios.%s.xcframework"
     candidates = [
-        ("MoltenVK.xcframework", ctx.attr._ios_moltenvk_template, "ios_moltenvk", ["debug", "release"], {}),
-        ("AccessKit.xcframework", ctx.attr._ios_accesskit_template, "ios_accesskit", ["debug", "release"], {}),
+        ("MoltenVK", ctx.attr._ios_moltenvk_template, "ios_moltenvk", ["debug", "release"], {}),
+        ("AccessKit", ctx.attr._ios_accesskit_template, "ios_accesskit", ["debug", "release"], {}),
     ] + [
-        (camera % variant, ctx.attr._ios_camera_template, "ios_camera_" + variant, [variant], {
+        ("libgodot_camera.ios." + variant, ctx.attr._ios_camera_template, "ios_camera_" + variant, [variant], {
             "{VARIANT}": variant,
-            "{XCFRAMEWORK}": camera % variant,
         })
         for variant in ["debug", "release"]
     ]
     libraries = []
     dependencies = {"debug": [], "release": []}
-    for xcframework, template, name, variants, substitutions in candidates:
-        if not ctx.path("ios/%s/Info.plist" % xcframework).exists:
+    for name, template, target, variants, substitutions in candidates:
+        xcframework = _ios_xcframework(name)
+        if not ctx.path(xcframework + "/Info.plist").exists:
             continue
-        libraries.append(fill_template(ctx, template, substitutions))
+        libraries.append(fill_template(ctx, template, substitutions | {"{XCFRAMEWORK}": xcframework}))
         for variant in variants:
-            dependencies[variant].append(":" + name)
+            dependencies[variant].append(":" + target)
     return libraries, dependencies
 
 def _ios(ctx, _fail):
     """Return the iOS XCFramework import declarations of an archive's ios.zip, or None after an error."""
-    if not _extract_nested(ctx, "templates/ios.zip", "ios", _fail):
+    if not _extract_nested(ctx, _IOS_ZIP, _fail):
         return None
     for variant in ["debug", "release"]:
-        path = "ios/libgodot.ios.%s.xcframework/Info.plist" % variant
+        path = _ios_engine(variant) + "/Info.plist"
         if not ctx.path(path).exists:
             _fail("Godot templates ios.zip is missing %s; expected Godot's ios.zip layout" % path)
             return None
     libraries, dependencies = _ios_libraries(ctx)
-    return fill_template(ctx, ctx.attr._ios_template, {
+    engines = [
+        fill_template(ctx, ctx.attr._ios_engine_template, {
+            "{NAME}": repr(template_target("ios", "", variant)),
+            "{XCFRAMEWORK}": _ios_engine(variant),
+            "{DEPS}": starlark_list(sorted(dependencies[variant]), indent = "    "),
+        })
+        for variant in ["debug", "release"]
+    ]
+    return [fill_template(ctx, ctx.attr._ios_template, {
         "{SIMULATOR}": repr(str(ctx.attr._simulator_constraint)),
         # Each library is set off by blank lines; without any, nothing.
         "{LIBRARIES}": "".join(["\n" + library + "\n" for library in libraries]),
-        "{DEBUG_DEPS}": starlark_list(sorted(dependencies["debug"]), indent = "    "),
-        "{RELEASE_DEPS}": starlark_list(sorted(dependencies["release"]), indent = "    "),
-    })
+        "{ENGINES}": "\n\n".join(engines),
+    })]
 
-def _linux_runtimes(ctx, _fail):
-    """Return the runtime declarations of the Linux templates, or None after an error."""
+def _binary_runtimes(ctx, _fail):
+    """Return the runtime declarations of the platform's binary per CPU in cpus, or None after an error."""
+    platform = _PLATFORMS[ctx.attr.platform]
     runtimes = []
     for cpu in ctx.attr.cpus:
-        binary = "templates/linux_%s." + cpu
-        if not ctx.path(binary % "release").exists:
-            _fail(
-                "Godot template archive does not contain %s; " % (binary % "release") +
-                "its Linux CPUs differ from the catalogue's",
-            )
+        release = platform.binary("release", cpu)
+        if not ctx.path(release).exists:
+            _fail("Godot template archive does not contain %s; %s" % (release, platform.missing_binary))
             return None
-        runtimes.extend(_runtimes(ctx, "linux", "linux_" + cpu, binary, cpu))
+        runtimes.extend(_runtimes(ctx, ctx.attr.platform, cpu, platform.binary))
     return runtimes
 
 def _macos_runtimes(ctx, _fail):
     """Return the runtime declarations of an archive's macos.zip, or None after an error."""
-    if not _extract_nested(ctx, "templates/macos.zip", "macos", _fail):
+    if not _extract_nested(ctx, _MACOS_ZIP, _fail):
         return None
-    runtimes = []
-    for cpu in ctx.attr.cpus:
-        name = "macos" if cpu == "universal" else "macos_" + cpu
-        binary = "macos/macos_template.app/Contents/MacOS/godot_macos_%s." + cpu
-        if not ctx.path(binary % "release").exists:
-            _fail(
-                "Godot template archive does not contain %s; " % (binary % "release") +
-                "set cpus to match the archive layout",
-            )
-            return None
-        runtimes.extend(_runtimes(ctx, "macos", name, binary, cpu))
-    return runtimes
+    return _binary_runtimes(ctx, _fail)
 
 def _linux_cpus_error(cpus):
     if cpus and all([cpu in CPU_TABLE for cpu in cpus]):
@@ -205,32 +231,29 @@ def _macos_cpus_error(cpus):
 def _ios_cpus_error(cpus):
     return "cpus must be empty for iOS templates" if cpus else None
 
-def _ios_targets(ctx, _fail):
-    ios = _ios(ctx, _fail)
-    return None if ios == None else [ios]
-
 # Per Godot platform: the error of cpus that do not describe its templates, or None; the
-# archive entries its targets are made of; and its target declarations, or None after an
-# error.
+# archive entries its targets are made of; its target declarations, or None after an
+# error; and for desktop platforms, the path of a template binary by variant and CPU and
+# the advice when an archive lacks one.
 _PLATFORMS = {
     "linux": struct(
         cpus_error = _linux_cpus_error,
-        members = lambda cpus: [
-            "templates/linux_%s.%s" % (variant, cpu)
-            for cpu in cpus
-            for variant in ["release", "debug"]
-        ],
-        targets = _linux_runtimes,
+        members = lambda cpus: [_linux_binary(variant, cpu) for cpu in cpus for variant in ["release", "debug"]],
+        targets = _binary_runtimes,
+        binary = _linux_binary,
+        missing_binary = "its Linux CPUs differ from the catalogue's",
     ),
     "macos": struct(
         cpus_error = _macos_cpus_error,
-        members = lambda _cpus: ["templates/macos.zip"],
+        members = lambda _cpus: [_MACOS_ZIP.member],
         targets = _macos_runtimes,
+        binary = _macos_binary,
+        missing_binary = "set cpus to match the archive layout",
     ),
     "ios": struct(
         cpus_error = _ios_cpus_error,
-        members = lambda _cpus: ["templates/ios.zip"],
-        targets = _ios_targets,
+        members = lambda _cpus: [_IOS_ZIP.member],
+        targets = _ios,
     ),
 }
 
@@ -306,6 +329,7 @@ TEMPLATES_ARCHIVE_RULE_ATTRS = TEMPLATES_ARCHIVE_ATTRS | {
     "_apple_bzl": attr.label(default = Label("@rules_apple//apple:apple.bzl")),
     "_simulator_constraint": attr.label(default = Label("@apple_support//constraints:simulator")),
     "_ios_template": attr.label(default = Label("//godot/engine/private:ios_templates.BUILD.tpl")),
+    "_ios_engine_template": attr.label(default = Label("//godot/engine/private:ios_engine.BUILD.tpl")),
     "_ios_moltenvk_template": attr.label(default = Label("//godot/engine/private:ios_moltenvk.BUILD.tpl")),
     "_ios_accesskit_template": attr.label(default = Label("//godot/engine/private:ios_accesskit.BUILD.tpl")),
     "_ios_camera_template": attr.label(default = Label("//godot/engine/private:ios_camera.BUILD.tpl")),

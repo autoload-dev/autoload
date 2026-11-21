@@ -26,9 +26,10 @@ _IOS = [
 # Each template shows its substitutions; repository_ctx.template keeps the file's text.
 _TEMPLATES = {
     "runtime.tpl": "{NAME}|{CPU}|{BINARY}|{PLATFORM}|{VARIANT}|{VERSION}|{DIGEST}{DATA}\n",
-    "ios.tpl": "ios {SIMULATOR}{LIBRARIES}|{DEBUG_DEPS}|{RELEASE_DEPS}\n",
-    "moltenvk.tpl": "moltenvk\n",
-    "accesskit.tpl": "accesskit\n",
+    "ios.tpl": "ios {SIMULATOR}{LIBRARIES}|{ENGINES}\n",
+    "ios_engine.tpl": "{NAME} {XCFRAMEWORK} {DEPS}\n",
+    "moltenvk.tpl": "moltenvk {XCFRAMEWORK}\n",
+    "accesskit.tpl": "accesskit {XCFRAMEWORK}\n",
     "camera.tpl": "camera {VARIANT} {XCFRAMEWORK}\n",
 }
 
@@ -52,6 +53,7 @@ def _templates(*, platform, tree, **overrides):
             "_apple_bzl": "@@rules_apple+//apple:apple.bzl",
             "_simulator_constraint": "@@apple_support+//constraints:simulator",
             "_ios_template": "ios.tpl",
+            "_ios_engine_template": "ios_engine.tpl",
             "_ios_moltenvk_template": "moltenvk.tpl",
             "_ios_accesskit_template": "accesskit.tpl",
             "_ios_camera_template": "camera.tpl",
@@ -218,15 +220,20 @@ def _test_ios_zip_exposes_ios_variants(env):
     )
     env.expect.that_str(substitutions["{TARGETS}"]).equals(
         '\nios "@@apple_support+//constraints:simulator"' +
-        "\nmoltenvk\n\naccesskit\n\ncamera release libgodot_camera.ios.release.xcframework\n" +
-        '|[\n        ":ios_accesskit",\n        ":ios_moltenvk",\n    ]' +
-        '|[\n        ":ios_accesskit",\n        ":ios_camera_release",\n        ":ios_moltenvk",\n    ]\n',
+        "\nmoltenvk ios/MoltenVK.xcframework\n\naccesskit ios/AccessKit.xcframework\n" +
+        "\ncamera release ios/libgodot_camera.ios.release.xcframework\n|" +
+        '"ios_debug" ios/libgodot.ios.debug.xcframework [\n        ":ios_accesskit",\n        ":ios_moltenvk",\n    ]\n\n' +
+        '"ios_release" ios/libgodot.ios.release.xcframework [\n        ":ios_accesskit",\n        ":ios_camera_release",\n        ":ios_moltenvk",\n    ]\n',
     )
 
 def _test_ios_zip_without_dependencies_imports_the_engine_alone(env):
     ctx, errors = _templates(platform = "ios", tree = ["templates/ios.zip"] + _IOS)
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_str(_substitutions(ctx)["{TARGETS}"]).equals('\nios "@@apple_support+//constraints:simulator"|[]|[]\n')
+    env.expect.that_str(_substitutions(ctx)["{TARGETS}"]).equals(
+        '\nios "@@apple_support+//constraints:simulator"|' +
+        '"ios_debug" ios/libgodot.ios.debug.xcframework []\n\n' +
+        '"ios_release" ios/libgodot.ios.release.xcframework []\n',
+    )
 
 def _test_invalid_cpus_fail(env):
     macos = 'cpus of macOS templates must be ["universal"] or a subset of ["arm64", "x86_64"]'

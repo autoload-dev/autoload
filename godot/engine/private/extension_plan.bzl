@@ -6,6 +6,7 @@ extension instantiates them. Errors go through `_fail`, so a Starlark unit test 
 modules collects them; the planner returns None after an error.
 """
 
+load("//godot/engine/private:archives.bzl", "template_target")
 load("//godot/engine/private:catalogue.bzl", "EDITOR_PLATFORMS", "RELEASES", "TEMPLATE_CPUS")
 load("//godot/engine/private:hub.bzl", "component")
 load("//godot/private:versions.bzl", "godot_version_error")
@@ -206,13 +207,13 @@ def _template_payload(tag, platform, target):
 def _macos_target(macos_cpus, cpu, variant):
     """The macOS runtime target that serves a CPU, or None when the templates lack it."""
     if macos_cpus == ["universal"]:
-        return "macos_" + variant
-    return "macos_%s_%s" % (cpu, variant) if cpu in macos_cpus else None
+        return template_target("macos", "universal", variant)
+    return template_target("macos", cpu, variant) if cpu in macos_cpus else None
 
 def _desktop_runtime_slots(tag, templates):
     slots = []
     for variant in ["release", "debug"]:
-        targets = [("linux", cpu, "linux_%s_%s" % (cpu, variant)) for cpu in templates.linux_cpus] + [
+        targets = [("linux", cpu, template_target("linux", cpu, variant)) for cpu in templates.linux_cpus] + [
             ("macos", cpu, _macos_target(templates.macos_cpus, cpu, variant))
             for cpu in ["arm64", "x86_64"]
         ]
@@ -231,7 +232,7 @@ def _ios_runtime_slots(tag, templates, simulator_cpus):
             "ios",
             cpu,
             variant,
-            _template_payload(tag, "ios", "ios_" + variant),
+            _template_payload(tag, "ios", template_target("ios", "", variant)),
             environment = environment,
             digest = templates.integrity,
         )

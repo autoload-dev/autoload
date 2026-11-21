@@ -7,5 +7,5 @@ apple_static_xcframework_import(
         "CoreVideo",
         "Foundation",
     ],
-    xcframework_imports = glob(["ios/{XCFRAMEWORK}/**"]),
+    xcframework_imports = glob(["{XCFRAMEWORK}/**"]),
 )
