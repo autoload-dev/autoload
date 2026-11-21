@@ -98,18 +98,11 @@ def _editor(tag, release, editor_platform, _fail):
 
 def _templates(tag, release, _fail):
     """Return the export-template archive of a prebuilt tag and its layout, or None after an error."""
-    for attribute in ["templates_macos_cpus", "templates_linux_cpus"]:
-        if getattr(tag, attribute) and not tag.templates_urls:
-            return _fail("godot_engines.prebuilt %r: %s describes templates_urls; set both" % (tag.name, attribute))
     if tag.templates_urls:
-        if not tag.templates_integrity:
-            return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
-        return struct(
-            urls = tag.templates_urls,
-            integrity = tag.templates_integrity,
-            macos_cpus = tag.templates_macos_cpus or ["universal"],
-            linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
-        )
+        return _pinned_templates(tag, _fail)
+    layouts = [attribute for attribute in ["templates_macos_cpus", "templates_linux_cpus"] if getattr(tag, attribute)]
+    if layouts:
+        return _fail("godot_engines.prebuilt %r: %s describes templates_urls; set both" % (tag.name, layouts[0]))
     if release:
         return struct(
             urls = _release_urls(release["tag"], "export_templates.tpz"),
@@ -118,6 +111,17 @@ def _templates(tag, release, _fail):
             linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
         )
     return _fail("godot_engines.prebuilt %r: Godot %s needs templates_urls and templates_integrity" % (tag.name, tag.version))
+
+def _pinned_templates(tag, _fail):
+    """Return the export-template archive a tag pins with templates_urls, or None after an error."""
+    if not tag.templates_integrity:
+        return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
+    return struct(
+        urls = tag.templates_urls,
+        integrity = tag.templates_integrity,
+        macos_cpus = tag.templates_macos_cpus or ["universal"],
+        linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
+    )
 
 # The Android shell AARs a prebuilt tag can pin, by attribute prefix.
 _SHELL_PINS = ["android_shell", "android_debug_shell"]
@@ -193,13 +197,15 @@ def _macos_target(macos_cpus, cpu, variant):
 def _desktop_runtime_slots(tag, templates):
     slots = []
     for variant in ["release", "debug"]:
-        for cpu in templates.linux_cpus:
-            payload = _template_payload(tag, "linux", "linux_%s_%s" % (cpu, variant))
-            slots.append(_runtime_slot(tag, "linux", cpu, variant, payload))
-        for cpu in ["arm64", "x86_64"]:
-            target = _macos_target(templates.macos_cpus, cpu, variant)
-            if target:
-                slots.append(_runtime_slot(tag, "macos", cpu, variant, _template_payload(tag, "macos", target)))
+        targets = [("linux", cpu, "linux_%s_%s" % (cpu, variant)) for cpu in templates.linux_cpus] + [
+            ("macos", cpu, _macos_target(templates.macos_cpus, cpu, variant))
+            for cpu in ["arm64", "x86_64"]
+        ]
+        slots.extend([
+            _runtime_slot(tag, platform, cpu, variant, _template_payload(tag, platform, target))
+            for platform, cpu, target in targets
+            if target
+        ])
     return slots
 
 def _ios_runtime_slots(tag, templates, simulator_cpus):
@@ -262,30 +268,36 @@ def selected_tags(modules, *, tag_attributes, _fail = fail):
         an error.
     """
     requests = {}
-    for mod in modules:
-        # The three tags share one namespace of names.
-        for kind in ["prebuilt", "source", "source_build"]:
-            for tag in getattr(mod.tags, kind):
-                requests.setdefault(tag.name, []).append(struct(
-                    kind = kind,
-                    tag = tag,
-                    signature = _signature(kind, tag, tag_attributes[kind]),
-                    module = mod.name,
-                    is_root = mod.is_root,
-                ))
+    for request in _requests(modules, tag_attributes):
+        requests.setdefault(request.tag.name, []).append(request)
     selected = []
     for name in sorted(requests):
         candidates = requests[name]
         effective = [candidate for candidate in candidates if candidate.is_root] or candidates
         first = effective[0]
-        for candidate in effective[1:]:
-            if candidate.signature != first.signature:
-                return _fail((
-                    "Conflicting Godot requests named %r from %s and %s. " +
-                    "Pin one configuration with this name in the root module."
-                ) % (name, first.module, candidate.module))
+        conflicts = [candidate for candidate in effective[1:] if candidate.signature != first.signature]
+        if conflicts:
+            return _fail((
+                "Conflicting Godot requests named %r from %s and %s. " +
+                "Pin one configuration with this name in the root module."
+            ) % (name, first.module, conflicts[0].module))
         selected.append(first)
     return selected
+
+def _requests(modules, tag_attributes):
+    """Every tag of the three tag classes, which share one namespace of names, with its module."""
+    return [
+        struct(
+            kind = kind,
+            tag = tag,
+            signature = _signature(kind, tag, tag_attributes[kind]),
+            module = mod.name,
+            is_root = mod.is_root,
+        )
+        for mod in modules
+        for kind in ["prebuilt", "source", "source_build"]
+        for tag in getattr(mod.tags, kind)
+    ]
 
 def _declaration(rule, **attrs):
     return struct(rule = rule, attrs = attrs)
