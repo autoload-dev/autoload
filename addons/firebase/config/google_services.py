@@ -66,23 +66,21 @@ def android_values(config: dict[str, Any], application_id: str) -> dict[str, str
     return values
 
 
-def _client(config: dict[str, Any], application_id: str) -> dict[str, Any]:
-    clients = config.get("client", [])
-    for client in clients:
-        if (
-            client.get("client_info", {})
-            .get("android_client_info", {})
-            .get("package_name")
-            == application_id
-        ):
-            return client
-    known = sorted(
+def _package_name(client: dict[str, Any]) -> str:
+    return (
         client.get("client_info", {})
         .get("android_client_info", {})
         .get("package_name", "?")
-        for client in clients
     )
-    clients_text = ", ".join(known) or "no Android clients"
+
+
+def _client(config: dict[str, Any], application_id: str) -> dict[str, Any]:
+    clients = config.get("client", [])
+    # The first client of a package wins, as in the Gradle plugin.
+    by_package = {_package_name(client): client for client in reversed(clients)}
+    if application_id in by_package:
+        return by_package[application_id]
+    clients_text = ", ".join(sorted(by_package)) or "no Android clients"
     raise ConfigError(
         f"No client for application ID {application_id!r} in google-services.json; it has "
         f"{clients_text}. Register the app in the Firebase console or download the file of "

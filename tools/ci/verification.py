@@ -97,33 +97,42 @@ def verify_results(workflow: str, needs: dict) -> None:
 EXAMPLE_LANES = {"petri": "source-engine"}
 
 
-def lane_for(task: str) -> str:
-    """Assign a selected mise task to its lane."""
-    if task in {
-        "lint",
-        "lint:ci",
-        "conventions:code",
-        "conventions:docs",
-        "test:selection",
-        "test:setup",
-    }:
-        return "quality"
-    if task in {"docs", "source-engine", "android", "ios"}:
-        return task
+# Tasks named for themselves, by lane.
+TASK_LANES = {
+    **dict.fromkeys(
+        (
+            "lint",
+            "lint:ci",
+            "conventions:code",
+            "conventions:docs",
+            "test:selection",
+            "test:setup",
+        ),
+        "quality",
+    ),
+    **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
+    **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
+}
+
+
+def _family_lane(task: str) -> str | None:
+    """The lane of a task of a family: contracts, examples and add-on modules."""
     if task.startswith("contracts:") and task.removeprefix("contracts:") in PROFILE_LANES:
         return task.removeprefix("contracts:")
+    if task.startswith("test:example:"):
+        return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
     # The add-on modules' tasks are named <lane>:addon:<module>.
     if ":addon:" in task:
         return task.partition(":addon:")[0]
-    if task.startswith("test:example:"):
-        return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
-    if task in {
-        "test:bazel",
-        "test:regressions",
-        "test:gdextension",
-    }:
-        return "host"
-    raise ValueError(f"No lane for selected task: {task}")
+    return None
+
+
+def lane_for(task: str) -> str:
+    """Assign a selected mise task to its lane."""
+    lane = TASK_LANES.get(task) or _family_lane(task)
+    if lane is None:
+        raise ValueError(f"No lane for selected task: {task}")
+    return lane
 
 
 def lane_plan(plan: dict) -> dict[str, list[str]]:
