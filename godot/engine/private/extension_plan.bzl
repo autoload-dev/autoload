@@ -145,87 +145,88 @@ def prebuilt_slots(tag, plan):
     Returns:
         A list of hub component descriptions.
     """
-    slots = []
-    for editor_platform, editor in plan.editors.items():
-        for cpu in editor.layout.cpus:
-            slots.append(component(
-                role = "editor",
-                name = "editor_%s_%s" % (editor.layout.platform, cpu),
-                payload = "@%s_editor_%s//:editor" % (tag.name, editor_platform),
-                platform = editor.layout.platform,
-                cpu = cpu,
-                version = tag.version,
-            ))
-    templates = "@%s_templates_{platform}//:{target}" % tag.name
-    for variant in ["release", "debug"]:
-        for cpu in plan.templates.linux_cpus:
-            slots.append(component(
-                role = "runtime",
-                name = "runtime_linux_%s_%s" % (cpu, variant),
-                payload = templates.format(platform = "linux", target = "linux_%s_%s" % (cpu, variant)),
-                platform = "linux",
-                cpu = cpu,
-                version = tag.version,
-                variant = variant,
-            ))
-        for cpu in ["arm64", "x86_64"]:
-            if plan.templates.macos_cpus == ["universal"]:
-                payload = templates.format(platform = "macos", target = "macos_" + variant)
-            elif cpu in plan.templates.macos_cpus:
-                payload = templates.format(platform = "macos", target = "macos_%s_%s" % (cpu, variant))
-            else:
-                continue
-            slots.append(component(
-                role = "runtime",
-                name = "runtime_macos_%s_%s" % (cpu, variant),
-                payload = payload,
-                platform = "macos",
-                cpu = cpu,
-                version = tag.version,
-                variant = variant,
-            ))
-    for variant in ["release", "debug"]:
-        slots.append(component(
-            role = "runtime",
-            name = "runtime_ios_arm64_device_" + variant,
-            payload = templates.format(platform = "ios", target = "ios_" + variant),
-            platform = "ios",
-            cpu = "arm64",
-            version = tag.version,
-            variant = variant,
-            environment = "device",
-            digest = plan.templates.integrity,
-        ))
-        for cpu in plan.ios_simulator_cpus:
-            slots.append(component(
-                role = "runtime",
-                name = "runtime_ios_%s_simulator_%s" % (cpu, variant),
-                payload = templates.format(platform = "ios", target = "ios_" + variant),
-                platform = "ios",
-                cpu = cpu,
-                version = tag.version,
-                variant = variant,
-                environment = "simulator",
-                digest = plan.templates.integrity,
-            ))
+    return (
+        _editor_slots(tag, plan.editors) +
+        _desktop_runtime_slots(tag, plan.templates) +
+        _ios_runtime_slots(tag, plan.templates, plan.ios_simulator_cpus) +
+        _android_runtime_slots(tag, plan)
+    )
 
+def _editor_slots(tag, editors):
+    return [
+        component(
+            role = "editor",
+            name = "editor_%s_%s" % (editor.layout.platform, cpu),
+            payload = "@%s_editor_%s//:editor" % (tag.name, editor_platform),
+            platform = editor.layout.platform,
+            cpu = cpu,
+            version = tag.version,
+        )
+        for editor_platform, editor in editors.items()
+        for cpu in editor.layout.cpus
+    ]
+
+def _runtime_slot(tag, platform, cpu, variant, payload, environment = "", digest = ""):
+    """A runtime slot, named runtime_<platform>_<cpu>[_<environment>]_<variant>."""
+    return component(
+        role = "runtime",
+        name = "_".join(["runtime", platform, cpu] + ([environment] if environment else []) + [variant]),
+        payload = payload,
+        platform = platform,
+        cpu = cpu,
+        version = tag.version,
+        variant = variant,
+        environment = environment,
+        digest = digest,
+    )
+
+def _template_payload(tag, platform, target):
+    """The label of a target in the export-template repository of a platform."""
+    return "@%s_templates_%s//:%s" % (tag.name, platform, target)
+
+def _macos_target(macos_cpus, cpu, variant):
+    """The macOS runtime target that serves a CPU, or None when the templates lack it."""
+    if macos_cpus == ["universal"]:
+        return "macos_" + variant
+    return "macos_%s_%s" % (cpu, variant) if cpu in macos_cpus else None
+
+def _desktop_runtime_slots(tag, templates):
+    slots = []
+    for variant in ["release", "debug"]:
+        for cpu in templates.linux_cpus:
+            payload = _template_payload(tag, "linux", "linux_%s_%s" % (cpu, variant))
+            slots.append(_runtime_slot(tag, "linux", cpu, variant, payload))
+        for cpu in ["arm64", "x86_64"]:
+            target = _macos_target(templates.macos_cpus, cpu, variant)
+            if target:
+                slots.append(_runtime_slot(tag, "macos", cpu, variant, _template_payload(tag, "macos", target)))
+    return slots
+
+def _ios_runtime_slots(tag, templates, simulator_cpus):
+    """The device slot and one simulator slot per CPU of each variant; one XCFramework serves them all."""
+    return [
+        _runtime_slot(
+            tag,
+            "ios",
+            cpu,
+            variant,
+            _template_payload(tag, "ios", "ios_" + variant),
+            environment = environment,
+            digest = templates.integrity,
+        )
+        for variant in ["release", "debug"]
+        for cpu, environment in [("arm64", "device")] + [(cpu, "simulator") for cpu in simulator_cpus]
+    ]
+
+def _android_runtime_slots(tag, plan):
     # The Android shell AARs of official releases are template_release builds with every
     # ABI's engine library; a debug shell is an explicit pin.
-    for variant, shell in [("release", plan.android_shell), ("debug", plan.android_debug_shell)]:
-        if not shell:
-            continue
-        for cpu in plan.android_cpus:
-            slots.append(component(
-                role = "runtime",
-                name = "runtime_android_%s_%s" % (cpu, variant),
-                payload = "//android:" + variant,
-                platform = "android",
-                cpu = cpu,
-                version = tag.version,
-                variant = variant,
-                digest = shell.integrity,
-            ))
-    return slots
+    return [
+        _runtime_slot(tag, "android", cpu, variant, "//android:" + variant, digest = shell.integrity)
+        for variant, shell in [("release", plan.android_shell), ("debug", plan.android_debug_shell)]
+        if shell
+        for cpu in plan.android_cpus
+    ]
 
 def _scalar(value):
     return str(value) if type(value) == "Label" else value
