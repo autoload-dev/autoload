@@ -153,7 +153,8 @@ use_repo(godot_engines, "godot", "godot_petri", "godot_sources")
 # The official 4.7.2 iOS simulator libraries contain x86_64 code only, which current
 # simulators on Apple silicon refuse. godot-mobile-plugins/godot-ios-builds publishes the
 # arm64 simulator engine libraries of each release; //engines/ios_simulator registers them
-# for the arm64 simulator slots ahead of the official hub.
+# for the arm64 simulator slots ahead of the official hub, so its source-built arm64
+# simulator runtimes are not compiled.
 register_toolchains(
     "//engines/ios_simulator:all",
     "@godot//toolchains:all",

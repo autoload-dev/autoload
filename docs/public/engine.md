@@ -36,14 +36,24 @@ release pins.
 
 For a catalogued version, `version` is enough: the hub covers the official editors per
 editor platform, the Linux and macOS runtimes, the iOS device and simulator runtimes and
-the Android release runtime. Coverage follows the official artifacts:
+the Android runtimes. Where the official artifacts lack a runtime slot, the hub builds it
+from the release's sources:
 
-- Official Android shell AARs are release builds, so Android debug builds need a
-  [source build](#declare-a-source-build) or a pinned `android_debug_shell_urls` and
+- Official Android shell AARs are release builds, so the Android debug runtimes are
+  source-built, unless you pin `android_debug_shell_urls` and
   `android_debug_shell_integrity`.
-- The official 4.7.2 iOS simulator libraries contain x86_64 code only; an arm64 simulator
-  build needs a [source-built engine](#build-an-engine-from-source) or another arm64
-  simulator runtime in that slot ([iOS](platforms.md#source-built-engines)).
+- The official 4.7.2 iOS simulator libraries contain x86_64 code only, so the arm64
+  simulator runtimes are source-built ([iOS](platforms.md#source-built-engines)).
+
+These source recipes enable the modules Godot's official builds enable by default
+(`default_modules` of `godot_engine_build`); iOS recipes leave out Vulkan, which would need
+the MoltenVK SDK on the configuring Mac, and keep Metal and OpenGL. Like any
+[source build](#declare-a-source-build), a recipe downloads the sources, configures and
+compiles only when a build selects its slot, on a host Godot accepts for its platform, such
+as a Mac for iOS. The prebuilt slots keep the official artifacts. To fail the missing slots
+instead, or to fill them with your own engine, set `build_missing_runtimes = False`, or
+register your components [ahead of the hub](#replace-slots). Versions outside the
+catalogue build no missing runtimes.
 
 For a release outside the catalogue, or an archive built elsewhere, pin each artifact.
 Digests are Subresource Integrity strings; explicit values replace catalogue entries:
@@ -234,7 +244,9 @@ rendering method to `gl_compatibility`. A headless engine can disable all
 renderers; keep a renderer enabled when configuring a graphical game. Some options apply
 to templates only, such as `disable_3d`; an editor recipe rejects them.
 
-The module list is an allowlist: other modules start disabled. Required
+The module list is an allowlist: other modules start disabled, unless
+`default_modules = True` starts from the modules Godot enables by default for the platform,
+as its official builds do. Required
 upstream dependencies are added transitively (`theora`, for example, needs
 `vorbis` and `ogg`); optional dependencies remain disabled. Editor builds also
 include upstream's required `freetype`, `regex` and `svg` modules. Misspelled
