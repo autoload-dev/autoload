@@ -9,6 +9,7 @@ load("//godot/engine/private:archives.bzl", "templates_archive_impl")
 load("//godot/private/tests:mocks.bzl", "mocks")
 
 _INTEGRITY = "sha512-" + "B" * 86 + "=="
+_ARCHIVE = "@godot_templates_archive//file:export_templates.tpz"
 _MACOS = "macos/macos_template.app/Contents/MacOS/godot_macos_%s.%s"
 _LINUX_CPUS = ["arm32", "arm64", "x86_32", "x86_64"]
 _LINUX = [
@@ -40,7 +41,7 @@ def _templates(*, platform, tree, **overrides):
     """
     ctx = mocks.repository_ctx(
         attr = {
-            "urls": ["https://example.com/export_templates.tpz"],
+            "archive": _ARCHIVE,
             "integrity": _INTEGRITY,
             "version": "4.7.2",
             "platform": platform,
@@ -77,10 +78,14 @@ def _runtime(name, cpu, binary, platform, variant, data = ""):
 
 def _extracted_members(ctx):
     """The archive entries the rule extracts, which strip_prefix keeps by their renaming."""
-    download = mocks.calls(ctx, "download_and_extract")[0]
-    if download.strip_prefix != "kept":
+    extract = [call for call in mocks.calls(ctx, "extract") if call.archive == _ARCHIVE][0]
+    if extract.strip_prefix != "kept" or extract.type != "zip":
         return None
-    return [member for member, renamed in download.rename_files.items() if renamed == "kept/" + member]
+    return [member for member, renamed in extract.rename_files.items() if renamed == "kept/" + member]
+
+def _nested_extracts(ctx):
+    """The archive and output of each extraction of a ZIP inside the repository."""
+    return [(call.archive, call.output) for call in mocks.calls(ctx, "extract") if call.archive != _ARCHIVE]
 
 def _test_each_platform_extracts_only_its_members(env):
     for platform, tree, members in [
@@ -97,7 +102,7 @@ def _test_each_platform_extracts_only_its_members(env):
 def _test_linux_exposes_cpu_variants(env):
     ctx, errors = _templates(platform = "linux", tree = _LINUX)
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
+    env.expect.that_collection(_nested_extracts(ctx)).contains_exactly([])
     runtimes = _runtimes(ctx)
     env.expect.that_collection(runtimes.keys()).contains_exactly([
         "linux_arm32_release",
@@ -124,10 +129,7 @@ def _test_linux_exposes_cpu_variants(env):
 def _test_universal_macos_exposes_macos_variants(env):
     ctx, errors = _templates(platform = "macos", tree = ["templates/macos.zip"] + _UNIVERSAL)
     env.expect.that_collection(errors).contains_exactly([])
-    extracts = mocks.calls(ctx, "extract")
-    env.expect.that_collection([(call.archive, call.output) for call in extracts]).contains_exactly(
-        [("templates/macos.zip", "macos")],
-    )
+    env.expect.that_collection(_nested_extracts(ctx)).contains_exactly([("templates/macos.zip", "macos")])
 
     # The expanded ZIP replaces the archive's copy.
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "delete")]).contains_exactly(
@@ -206,9 +208,7 @@ def _test_ios_zip_exposes_ios_variants(env):
         "ios/libgodot_camera.ios.release.xcframework/Info.plist",
     ])
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_collection([(call.archive, call.output) for call in mocks.calls(ctx, "extract")]).contains_exactly(
-        [("templates/ios.zip", "ios")],
-    )
+    env.expect.that_collection(_nested_extracts(ctx)).contains_exactly([("templates/ios.zip", "ios")])
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "delete")]).contains_exactly(
         ["templates/ios.zip"],
     )
@@ -245,13 +245,6 @@ def _test_invalid_cpus_fail(env):
             env.expect.where(platform = platform, cpus = cpus).that_str(errors[0]).contains(message)
         env.expect.where(platform = platform, cpus = cpus).that_collection(ctx.calls).contains_exactly([])
 
-def _test_templates_archive_without_integrity_fails(env):
-    ctx, errors = _templates(platform = "linux", integrity = "", tree = _LINUX)
-    env.expect.that_collection(errors).contains_exactly([
-        "integrity is required: every Godot download must be checksum-pinned",
-    ])
-    env.expect.that_collection(ctx.calls).contains_exactly([])
-
 def _test_missing_macos_release_template_fails(env):
     ctx, errors = _templates(platform = "macos", cpus = ["arm64"], tree = ["templates/macos.zip"] + _UNIVERSAL)
     env.expect.that_collection(errors).contains_exactly([
@@ -283,7 +276,6 @@ def export_templates_archive_test_suite(name):
             _test_ios_zip_exposes_ios_variants,
             _test_ios_zip_without_dependencies_imports_the_engine_alone,
             _test_invalid_cpus_fail,
-            _test_templates_archive_without_integrity_fails,
             _test_missing_macos_release_template_fails,
             _test_ios_zip_without_xcframework_layout_fails,
         ],

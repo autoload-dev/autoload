@@ -6,56 +6,49 @@ load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
 
-ARCHIVE_ATTRS = {
+_VERSION_ATTR = attr.string(
+    doc = "Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.",
+    mandatory = True,
+)
+
+EDITOR_ARCHIVE_ATTRS = {
     "urls": attr.string_list(
-        doc = "Ordered mirror URLs of the same ZIP or TPZ archive.",
+        doc = "Ordered mirror URLs of the same ZIP archive.",
         mandatory = True,
     ),
     "integrity": attr.string(
         doc = "Subresource Integrity digest of the archive, including the hash algorithm, such as sha512-...; required.",
         mandatory = True,
     ),
-    "version": attr.string(
-        doc = "Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.",
-        mandatory = True,
-    ),
-}
-
-EDITOR_ARCHIVE_ATTRS = ARCHIVE_ATTRS | {
+    "version": _VERSION_ATTR,
     "binary": attr.string(
         doc = "Path of the editor executable inside the archive.",
         mandatory = True,
     ),
 }
 
+def _download(ctx, _fail):
+    if not ctx.attr.integrity:
+        _fail("integrity is required: every Godot download must be checksum-pinned")
+        return False
+    ctx.download_and_extract(url = ctx.attr.urls, integrity = ctx.attr.integrity, type = "zip")
+    return True
+
 # The directory that the archive members a repository keeps are renamed into, so that
 # strip_prefix extracts them alone: Bazel skips the entries outside the prefix.
 _KEPT = "kept"
 
-def _download(ctx, _fail, members = None):
-    """
-    Download and extract the archive, or only `members`, its entries by exact name.
-
-    Args:
-        ctx: Repository rule context.
-        _fail: Replaces fail in Starlark unit tests.
-        members: Archive entry names to extract; None extracts every entry. A member the
-            archive lacks is not extracted; at least one must be present.
-
-    Returns:
-        True, or False after an error.
-    """
-    if not ctx.attr.integrity:
-        _fail("integrity is required: every Godot download must be checksum-pinned")
-        return False
-    selection = {}
-    if members != None:
-        selection = {
-            "rename_files": {member: _KEPT + "/" + member for member in members},
-            "strip_prefix": _KEPT,
-        }
-    ctx.download_and_extract(url = ctx.attr.urls, integrity = ctx.attr.integrity, type = "zip", **selection)
-    return True
+def _extract_members(ctx, members):
+    """Extract the archive entries named `members` that the archive has; at least one must be present."""
+    ctx.extract(
+        ctx.path(ctx.attr.archive),
+        type = "zip",
+        rename_files = {member: _KEPT + "/" + member for member in members},
+        strip_prefix = _KEPT,
+        # The archive's repository verifies it against the integrity this repository's
+        # definition also carries, so watching the archive would only rehash it.
+        watch_archive = "no",
+    )
 
 def _extract_nested(ctx, archive, output, _fail):
     """Extract a ZIP archive inside the repository to `output` and delete it; False if it is missing."""
@@ -248,7 +241,7 @@ _VERSION_FILE = "templates/version.txt"
 
 def templates_archive_impl(ctx, *, _fail = fail):
     """
-    Download one export-template archive and generate the runtime targets of one platform.
+    Extract the templates of one platform from an export-template archive and generate their targets.
 
     Only the platform's members leave the archive.
 
@@ -266,8 +259,7 @@ def templates_archive_impl(ctx, *, _fail = fail):
     if error:
         _fail(error)
         return None
-    if not _download(ctx, _fail, [_VERSION_FILE] + platform.members(ctx.attr.cpus)):
-        return None
+    _extract_members(ctx, [_VERSION_FILE] + platform.members(ctx.attr.cpus))
     targets = platform.targets(ctx, _fail)
     if targets == None:
         return None
@@ -283,7 +275,16 @@ def templates_archive_impl(ctx, *, _fail = fail):
     # cache, local or remote, may reuse them.
     return ctx.repo_metadata(reproducible = True)
 
-TEMPLATES_ARCHIVE_ATTRS = ARCHIVE_ATTRS | {
+TEMPLATES_ARCHIVE_ATTRS = {
+    "archive": attr.label(
+        doc = "The export-template archive, a TPZ or ZIP file, such as another repository's download.",
+        mandatory = True,
+    ),
+    "integrity": attr.string(
+        doc = "Subresource Integrity digest of the archive, which the runtimes record as their provenance; whoever provides the archive verifies it.",
+        mandatory = True,
+    ),
+    "version": _VERSION_ATTR,
     "platform": attr.string(
         doc = "Godot platform whose templates the repository extracts: linux, macos or ios.",
         mandatory = True,
@@ -327,17 +328,18 @@ godot_editor_archive = repository_rule(
 
 godot_export_templates_archive = repository_rule(
     doc = """
-    Acquire the export templates of one Godot platform from a checksum-pinned archive.
+    Extract the export templates of one Godot platform from an export-template archive.
 
     Only that platform's templates leave the archive, so a build extracts the templates
-    of the platforms it uses. A Linux or macOS repository exposes one runtime target per
+    of the platforms it uses, while the repositories of all platforms share one download
+    of the archive. A Linux or macOS repository exposes one runtime target per
     CPU and template variant, such as `:linux_x86_64_release` or `:macos_debug`, each
     carrying GodotRuntimeInfo, for godot_runtime_component payloads; an archive without a
     debug template omits the debug target, and cpus describes the macOS layout. An iOS
     repository exposes `:ios_debug` and `:ios_release`, XCFramework imports with the
     dependent frameworks the archive carries; they serve device and simulator slots
-    alike. A platform whose templates the archive lacks fails. Downloading happens only
-    when a payload is requested.
+    alike. A platform whose templates the archive lacks fails. Extracting, and
+    downloading the archive, happen only when a payload is requested.
     """,
     implementation = templates_archive_impl,
     attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,

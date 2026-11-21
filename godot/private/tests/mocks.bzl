@@ -181,6 +181,7 @@ def _repository_ctx(
             archive = _key(archive),
             output = _key(output),
             stripPrefix = stripPrefix,
+            **kwargs
         ),
         report_progress = lambda status = "": None,
         repo_metadata = lambda **kwargs: struct(**kwargs),

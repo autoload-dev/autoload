@@ -267,23 +267,32 @@ def _declaration(rule, **attrs):
 
 def _templates_declarations(tag, templates):
     """
-    Return the export-template repositories of a prebuilt tag, one per Godot platform.
+    Return the export-template repositories of a prebuilt tag.
 
-    A build extracts only the templates of the platforms it uses; the repositories share
-    the one download.
+    One repository downloads the archive, and one per Godot platform extracts that
+    platform's templates from it: a build extracts only the templates of the platforms it
+    uses, and downloads the archive once however many it uses.
 
     Args:
         tag: The godot_engines.prebuilt tag.
         templates: The templates of the tag's prebuilt plan.
 
     Returns:
-        A list of godot_export_templates_archive declarations.
+        The http_file declaration of the archive, then the godot_export_templates_archive
+        declarations.
     """
-    return [
+    archive = _declaration(
+        "http_file",
+        name = tag.name + "_templates_archive",
+        urls = templates.urls,
+        integrity = templates.integrity,
+        downloaded_file_path = "export_templates.tpz",
+    )
+    return [archive] + [
         _declaration(
             "godot_export_templates_archive",
             name = "%s_templates_%s" % (tag.name, platform),
-            urls = templates.urls,
+            archive = "@%s//file:export_templates.tpz" % archive.attrs["name"],
             integrity = templates.integrity,
             version = tag.version,
             platform = platform,

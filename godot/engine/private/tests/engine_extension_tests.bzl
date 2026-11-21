@@ -149,7 +149,7 @@ def _test_catalogue_downloads_prefer_godot_cdn(env):
         "https://downloads.godotengine.org/?version=4.8&flavor=beta1&slug=linux.x86_64.zip",
         "https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/Godot_v4.8-beta1_linux.x86_64.zip",
     ]).in_order()
-    env.expect.that_collection(_declared(declarations, "godot_templates_ios")[0].attrs["urls"]).contains_exactly([
+    env.expect.that_collection(_declared(declarations, "godot_templates_archive")[0].attrs["urls"]).contains_exactly([
         "https://downloads.godotengine.org/?version=4.8&flavor=beta1&slug=export_templates.tpz",
         "https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/Godot_v4.8-beta1_export_templates.tpz",
     ]).in_order()
@@ -217,7 +217,16 @@ def _test_template_pins_replace_catalogue_templates(env):
     declarations, errors = _plan(_root(templates_urls = ["file:///templates.tpz"], templates_integrity = "sha256-templates"))
     env.expect.that_collection(errors).contains_exactly([])
 
-    # Each platform's templates have a repository of their own, from the one archive.
+    # One repository downloads the archive; each platform's templates have a repository
+    # of their own that extracts them from it.
+    archive = _declared(declarations, "godot_templates_archive")[0]
+    env.expect.that_str(archive.rule).equals("http_file")
+    env.expect.that_dict(archive.attrs).contains_exactly({
+        "name": "godot_templates_archive",
+        "urls": ["file:///templates.tpz"],
+        "integrity": "sha256-templates",
+        "downloaded_file_path": "export_templates.tpz",
+    })
     for platform, cpus in [
         ("linux", ["arm32", "arm64", "x86_32", "x86_64"]),
         ("macos", ["universal"]),
@@ -226,7 +235,7 @@ def _test_template_pins_replace_catalogue_templates(env):
         name = "godot_templates_" + platform
         env.expect.where(platform = platform).that_dict(_declared(declarations, name)[0].attrs).contains_exactly({
             "name": name,
-            "urls": ["file:///templates.tpz"],
+            "archive": "@godot_templates_archive//file:export_templates.tpz",
             "integrity": "sha256-templates",
             "version": "4.7.2",
             "platform": platform,

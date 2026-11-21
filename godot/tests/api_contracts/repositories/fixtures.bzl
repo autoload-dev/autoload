@@ -3,10 +3,9 @@
 load("//godot/engine/private:archives.bzl", "godot_export_templates_archive")
 
 def _fixtures_impl(ctx):
-    archive = ctx.path(Label(":split_templates.zip"))
     godot_export_templates_archive(
         name = "godot_split_templates",
-        urls = ["file://" + str(archive)],
+        archive = Label(":split_templates.zip"),
         integrity = "sha256-kfwGFsjCwq4s8Og4Cj91SmF79iQwxKPaknknuekHtnA=",
         platform = "macos",
         cpus = ["arm64", "x86_64"],
