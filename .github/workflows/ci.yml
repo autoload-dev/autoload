@@ -136,7 +136,7 @@ jobs:
       - name: Run tests
         run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$VERIFICATION_TASKS")"
       - name: Save Bazel downloads
-        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
   tests-macos:
@@ -179,7 +179,7 @@ jobs:
       - name: Run apps with source-built engines
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
-        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
   android:
@@ -233,7 +233,7 @@ jobs:
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
-        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
   verification:

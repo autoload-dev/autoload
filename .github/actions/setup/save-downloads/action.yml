@@ -2,15 +2,15 @@ name: Save Bazel downloads
 description: >-
   Save the downloads of Bazel's repository cache that the setup action
   restored from the cache service, when the job changed the set. Run it as a
-  macOS job's last step.
+  job's last step; it does nothing where the setup action restored none.
 
 runs:
   using: composite
   steps:
-    # Bazel refreshes a download's modification time on every cache hit, so
-    # a download no job used for 30 days leaves the saved set. The key names
-    # the set's file list: an unchanged set has the restored key and is not
-    # saved again.
+    # The setup action's pruning of the Linux disk, after the job instead of
+    # before it: a restored download has the modification time of its entry's
+    # save, and Bazel refreshes it only when the job uses the download. An
+    # unchanged set has the restored key and is not saved again.
     - name: Prune and identify downloads
       id: downloads
       shell: bash

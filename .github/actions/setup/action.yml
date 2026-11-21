@@ -124,11 +124,10 @@ runs:
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
         echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
-    # macOS runners have no sticky disk, so a job would fetch its downloads,
-    # such as the export templates, on every run. The cache service keeps
-    # them, without the extracted repositories. One entry per job, as with
-    # the disks; a key ends in the digest of its file list, and the newest
-    # entry is restored. save-downloads saves the job's set at its end.
+    # macOS runners have no sticky disk: the cache service keeps a job's
+    # downloads, such as the export templates, without the extracted
+    # repositories. A key ends in the digest of the entry's file list; the
+    # newest entry is restored, and save-downloads saves at the job's end.
     - name: Restore downloads
       if: inputs.bazel == 'true' && runner.os == 'macOS'
       id: downloads
