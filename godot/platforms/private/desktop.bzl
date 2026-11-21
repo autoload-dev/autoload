@@ -170,8 +170,11 @@ def _desktop_application_impl(ctx):
 
     # Destinations are resource paths: extension libraries stay loose files beside the
     # mounted pack. The library and the shared libraries it needs are native code to
-    # package; its descriptor and other runtime files are copied.
+    # package; its descriptor and other runtime files are copied. The extension's other
+    # data goes where Godot's export puts [dependencies]: beside the executable, in
+    # Contents/Frameworks on macOS, keeping its mode.
     prefix = "Contents/Resources/" if operating_system == "macos" else ""
+    beside_executable = "Contents/Frameworks/" if operating_system == "macos" else ""
     for extension in pack.project.runtime_extensions:
         library = extension.library
         context = "res://%s: %s" % (extension.descriptor_path, library.tags)
@@ -188,6 +191,9 @@ def _desktop_application_impl(ctx):
                 binary_contexts[prefix + destination] = context
                 continue
             copied_files.append(source)
+            if destination in library.beside_executable:
+                copies.append({"source": source.path, "destination": beside_executable + source.basename, "keep_mode": True})
+                continue
             copies.append({"source": source.path, "destination": prefix + destination})
     packaged_binaries = _package_binaries(ctx, binaries, linked_dsyms)
     for destination, source in packaged_binaries.packaged.items():

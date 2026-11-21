@@ -4,6 +4,7 @@ import argparse
 import gzip
 import io
 import json
+import os
 import plistlib
 import shutil
 import stat
@@ -137,7 +138,10 @@ def package(args: argparse.Namespace) -> None:
             install(
                 entry["source"],
                 root / destination,
-                entry.get("executable", False),
+                entry.get("executable", False)
+                or (
+                    entry.get("keep_mode", False) and os.access(entry["source"], os.X_OK)
+                ),
                 entry.get("context"),
             )
     archive_tree(root, args.archive, args.operating_system)

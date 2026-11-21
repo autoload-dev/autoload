@@ -81,12 +81,24 @@ def _check_prefixes(path: str, files: dict[str, str], prefixes: dict[str, str]) 
 
 
 def copy_file(source: Path, destination: Path) -> None:
+    """Copy source's bytes to destination; an executable source stays executable."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, destination)
+    if executable(source):
+        destination.chmod(destination.stat().st_mode | 0o111)
 
 
 # Where a staged file's bytes came from: a file, an archive member or content.
 Original = Path | tuple[Path, tarfile.TarInfo] | bytes
+
+
+def executable(original: Original) -> bool:
+    """Whether original is an executable file, such as an extension's crash handler."""
+    if isinstance(original, bytes):
+        return False
+    if isinstance(original, Path):
+        return os.access(original, os.X_OK)
+    return bool(original[1].mode & 0o111)
 
 
 @contextlib.contextmanager
