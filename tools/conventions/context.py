@@ -496,6 +496,22 @@ def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
     return repository
 
 
+def generator_location(
+    root: Path, module: Module, rule: ET.Element, origin: str | None
+) -> Location | None:
+    """
+    Return the authored macro call of a rule, or None to take the rule's own location.
+
+    For targets of a symbolic macro that another module defines, Bazel reports a
+    generator_location that names no file below the declaring repository; the rule's own
+    location is that call then.
+    """
+    if not origin:
+        return None
+    resolved = location(root, repository_root(root, module, rule), origin)
+    return resolved if (root / resolved.path).is_file() else None
+
+
 def query_targets(root: Path, module: Module, query: ET.Element) -> tuple[Target, ...]:
     """Decode loading metadata without naming policy, exemptions or diagnostics."""
     targets = []
@@ -540,11 +556,7 @@ def query_targets(root: Path, module: Module, query: ET.Element) -> tuple[Target
                 location=location(root, root / module.path, rule.attrib["location"]),
                 strings=MappingProxyType(strings),
                 booleans=MappingProxyType(booleans),
-                generator_location=(
-                    location(root, repository_root(root, module, rule), origin)
-                    if origin
-                    else None
-                ),
+                generator_location=generator_location(root, module, rule, origin),
                 kind=rule.attrib["class"],
                 labels=MappingProxyType(labels),
                 label_lists=MappingProxyType(label_lists),
