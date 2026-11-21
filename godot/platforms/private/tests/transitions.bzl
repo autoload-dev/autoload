@@ -8,6 +8,7 @@ with every other variant.
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private/config:native.bzl", "PLATFORMS", "STRIP")
 load("//godot/private/config:settings.bzl", "VARIANT")
 load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
@@ -17,24 +18,22 @@ visibility([
     "//godot/platforms/private/tests/...",
 ])
 
-_PLATFORMS = "//command_line_option:platforms"
 _EXTRA_TOOLCHAINS = "//command_line_option:extra_toolchains"
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
-_STRIP = "//command_line_option:strip"
 _COPT = "//command_line_option:copt"
 _DSYM = "//command_line_option:apple_generate_dsym"
-_OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
+_OBJCSTRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
 
 _SETTINGS = [
-    _PLATFORMS,
+    PLATFORMS,
     _EXTRA_TOOLCHAINS,
     _COMPILATION_MODE,
-    _STRIP,
+    STRIP,
     _COPT,
     _DSYM,
-    _OBJC_STRIP,
+    _OBJCSTRIP,
     _ANDROID_FORMAT,
     _ANDROID_API_LEVEL,
     VARIANT,
@@ -44,9 +43,9 @@ _SETTINGS = [
 # The attributes that replace a setting when they are set, by attribute name.
 _REPLACED = {
     "compilation_mode": _COMPILATION_MODE,
-    "strip": _STRIP,
+    "strip": STRIP,
     "apple_generate_dsym": _DSYM,
-    "objc_enable_binary_stripping": _OBJC_STRIP,
+    "objc_enable_binary_stripping": _OBJCSTRIP,
     "android_format": _ANDROID_FORMAT,
     "android_api_level": _ANDROID_API_LEVEL,
     "variant": VARIANT,
@@ -55,7 +54,7 @@ _REPLACED = {
 def _configured_impl(settings, attr):
     result = {setting: settings[setting] for setting in _SETTINGS}
     if attr.platform:
-        result[_PLATFORMS] = [str(attr.platform)]
+        result[PLATFORMS] = [str(attr.platform)]
     result[_EXTRA_TOOLCHAINS] = settings[_EXTRA_TOOLCHAINS] + attr.extra_toolchains
     if attr.copts:
         result[_COPT] = list(settings[_COPT]) + attr.copts

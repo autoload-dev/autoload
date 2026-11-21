@@ -22,7 +22,7 @@ load(
     "reached_actions",
     "reads",
 )
-load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "ANDROID_TOOLCHAINS", "MOBILE_FIXTURE")
+load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "MOBILE_FIXTURE", "OWN_TOOLCHAINS")
 
 _FORMAT = str(Label("//godot:android_format"))
 _SIGNING = str(Label("//godot:macos_signing"))
@@ -94,7 +94,7 @@ def _test_android_bundle_reuses_content_and_native_actions(name):
         impl = _android_bundle_reuses_content_and_native_actions,
         config_settings = {
             "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-        } | ANDROID_TOOLCHAINS | GODOT_EXPORT,
+        } | OWN_TOOLCHAINS | GODOT_EXPORT,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = ANDROID_SDK,
     )
@@ -166,7 +166,7 @@ def _platform_slices_test(name, export_platform, cpus):
         attrs = {"cpus": attr.string_list()},
         config_settings = {
             "//command_line_option:platforms": str(Label(export_platform)),
-        } | ANDROID_TOOLCHAINS,
+        } | OWN_TOOLCHAINS,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = ANDROID_SDK | {"cpus": cpus},
     )

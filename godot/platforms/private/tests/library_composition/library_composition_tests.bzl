@@ -11,24 +11,16 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot:app.bzl", "godot_app")
 load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/platforms/private/tests:android_settings.bzl", "ANDROID", "ANDROID_SDK")
 load("//godot/private/config:application.bzl", "application_pack", "loadable_pack")
 load("//godot/private/tests:configurations.bzl", "in_platform_slice")
-load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
 _ANDROID_APPS = "//godot/platforms/private/tests/library_composition/fixtures/android_apps_with_transitive_platform_libraries:"
 _IOS_APPS = "//godot/platforms/private/tests/library_composition/fixtures/ios_apps_with_transitive_platform_libraries:"
 
 # Android applications analyze with the Android SDK and NDK toolchains that MODULE.bazel
 # registers; rules_android's SDK has them only where it found one.
-_ANDROID = struct(
-    config_settings = {
-        "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-    } | own_toolchains(),
-    attr_values = {
-        "size": "small",
-        "target_compatible_with": ["//godot/platforms/private/tests:requires_android_sdk"],
-    },
-)
+_ANDROID = struct(config_settings = ANDROID, attr_values = ANDROID_SDK)
 
 # The iOS backend needs a C/C++ toolchain for iOS, which only Xcode on a macOS host has.
 _IOS = struct(
