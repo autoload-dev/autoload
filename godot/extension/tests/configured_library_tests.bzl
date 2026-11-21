@@ -151,7 +151,7 @@ def _shared_library_dependencies_load_from_beside_it(env, target):
     # add-on lays it out; applications place it beside the executable.
     handler = _directory(target) + "%s_handler_fixture/crash_handler" % target.label.name.removesuffix("_extension")
     env.expect.that_str(library.file.basename).equals("libvendor.so")
-    env.expect.that_collection(library.runtime_dependencies).contains_exactly([
+    env.expect.that_collection(library.runtime_dependencies.keys()).contains_exactly([
         handler,
         directory + "libdependency.so",
     ])
@@ -163,7 +163,7 @@ def _shared_library_dependencies_load_from_beside_it(env, target):
     ])
     lines = descriptor_contents(target)[0].split("\n")
     env.expect.that_collection(lines).contains(
-        '%s = {"res://%s": "", "res://%slibdependency.so": ""}' % (library.tags, handler, directory),
+        '%s = {"res://%slibdependency.so": "", "res://%s": ""}' % (library.tags, directory, handler),
     )
 
 def _test_linked_shared_library_carries_its_shared_deps(name):
