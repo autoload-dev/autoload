@@ -22,16 +22,17 @@ def _read(source: IO[bytes], fmt: str) -> tuple[Any, ...]:
     return struct.unpack(fmt, _exact(source, struct.calcsize(fmt)))
 
 
+def _supported(header: tuple[Any, ...]) -> bool:
+    """Whether a header is that of an unencrypted standalone Godot 4.7.2+ PCK v4."""
+    magic, version, major, minor, patch, flags = header
+    is_pck_v4 = magic == _MAGIC and version == 4
+    return is_pck_v4 and (major, minor, patch) >= (4, 7, 2) and not flags & 5
+
+
 def pck_paths(path: Path) -> list[str]:
     """Return the sorted resource paths of an unencrypted standalone PCK v4."""
     with path.open("rb") as source:
-        magic, version, major, minor, patch, flags = _read(source, "<6I")
-        if (
-            magic != _MAGIC
-            or version != 4
-            or (major, minor, patch) < (4, 7, 2)
-            or flags & 5
-        ):
+        if not _supported(_read(source, "<6I")):
             raise ValueError(
                 "expected an unencrypted standalone Godot 4.7.2+ PCK v4 without sparse storage"
             )
