@@ -29,8 +29,8 @@ def prebuilt_plan(tag, *, _fail = fail):
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
-        A struct of editors, templates, Android shells and iOS simulator CPUs, or None after
-        an error.
+        A struct of editors, templates, the Android shells by variant and iOS simulator
+        CPUs, or None after an error.
     """
     error = godot_version_error(tag.version)
     if error:
@@ -48,10 +48,7 @@ def prebuilt_plan(tag, *, _fail = fail):
     return struct(
         editors = editors,
         templates = templates,
-        android_shell = _pinned_shell(tag, "android_shell") or (
-            struct(**release["android_shell"]) if release and "android_shell" in release else None
-        ),
-        android_debug_shell = _pinned_shell(tag, "android_debug_shell"),
+        android_shells = _android_shells(tag, release),
         ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
         android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
     )
@@ -123,20 +120,34 @@ def _pinned_templates(tag, _fail):
         linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
     )
 
-# The Android shell AARs a prebuilt tag can pin, by attribute prefix.
-_SHELL_PINS = ["android_shell", "android_debug_shell"]
+# The Android shell AARs of a prebuilt engine: the variant each serves and the prefix of
+# its tag attributes, catalogue key and repository name. The shells of official releases
+# are template_release builds with every ABI's engine library; a debug shell is an
+# explicit pin.
+_SHELL_PINS = [("release", "android_shell"), ("debug", "android_debug_shell")]
 
 def _shell_error(tag):
     """The error of a shell AAR pinned without its integrity, or None."""
-    for pin in _SHELL_PINS:
+    for _, pin in _SHELL_PINS:
         if getattr(tag, pin + "_urls") and not getattr(tag, pin + "_integrity"):
             return "godot_engines.prebuilt %r: %s_integrity is required with %s_urls" % (tag.name, pin, pin)
     return None
 
-def _pinned_shell(tag, pin):
-    """The shell AAR a tag pins with `<pin>_urls` and `<pin>_integrity`, or None."""
-    urls = getattr(tag, pin + "_urls")
-    return struct(urls = urls, integrity = getattr(tag, pin + "_integrity")) if urls else None
+def _android_shells(tag, release):
+    """
+    Return the shell AARs of a prebuilt tag by variant, in _SHELL_PINS order.
+
+    Each is pinned on the tag with `<pin>_urls` and `<pin>_integrity` or catalogued under
+    `<pin>`; a struct of its pin, urls and integrity.
+    """
+    shells = {}
+    for variant, pin in _SHELL_PINS:
+        urls = getattr(tag, pin + "_urls")
+        if urls:
+            shells[variant] = struct(pin = pin, urls = urls, integrity = getattr(tag, pin + "_integrity"))
+        elif release and pin in release:
+            shells[variant] = struct(pin = pin, **release[pin])
+    return shells
 
 def prebuilt_slots(tag, plan):
     """
@@ -225,12 +236,9 @@ def _ios_runtime_slots(tag, templates, simulator_cpus):
     ]
 
 def _android_runtime_slots(tag, plan):
-    # The Android shell AARs of official releases are template_release builds with every
-    # ABI's engine library; a debug shell is an explicit pin.
     return [
         _runtime_slot(tag, "android", cpu, variant, "//android:" + variant, digest = shell.integrity)
-        for variant, shell in [("release", plan.android_shell), ("debug", plan.android_debug_shell)]
-        if shell
+        for variant, shell in plan.android_shells.items()
         for cpu in plan.android_cpus
     ]
 
@@ -358,7 +366,6 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
     for selection in selections:
         tag = selection.tag
         if selection.kind in _SOURCE_RULES:
-            # A source or source build repository takes its tag's attributes unchanged.
             attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
             declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
             continue
@@ -379,34 +386,7 @@ def _prebuilt_declarations(tag, _fail):
     plan = prebuilt_plan(tag, _fail = _fail)
     if plan == None:
         return None
-    editors = [
-        _declaration(
-            "godot_editor_archive",
-            name = "%s_editor_%s" % (tag.name, editor_platform),
-            urls = editor.urls,
-            integrity = editor.integrity,
-            binary = editor.binary,
-            version = tag.version,
-        )
-        for editor_platform, editor in plan.editors.items()
-    ]
-    shells = []
-    android_runtimes = {}
-    for variant, pin, shell in [
-        ("release", "android_shell", plan.android_shell),
-        ("debug", "android_debug_shell", plan.android_debug_shell),
-    ]:
-        if not shell:
-            continue
-        name = "%s_%s" % (tag.name, pin)
-        shells.append(_declaration(
-            "http_file",
-            name = name,
-            urls = shell.urls,
-            integrity = shell.integrity,
-            downloaded_file_path = "shell.aar",
-        ))
-        android_runtimes[variant] = {"shell": "@%s//file" % name}
+    shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
     hub = _declaration(
         "engine_hub",
         name = tag.name,
@@ -415,4 +395,43 @@ def _prebuilt_declarations(tag, _fail):
         android_runtimes = json.encode(android_runtimes),
         engine = tag.engine,
     )
-    return editors + _templates_declarations(tag, plan.templates) + shells + [hub]
+    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + [hub]
+
+def _editor_declarations(tag, editors):
+    return [
+        _declaration(
+            "godot_editor_archive",
+            name = "%s_editor_%s" % (tag.name, editor_platform),
+            urls = editor.urls,
+            integrity = editor.integrity,
+            binary = editor.binary,
+            version = tag.version,
+        )
+        for editor_platform, editor in editors.items()
+    ]
+
+def _shell_declarations(tag, shells):
+    """
+    Return the repositories of a prebuilt tag's shell AARs and the hub's Android runtimes.
+
+    Args:
+        tag: The godot_engines.prebuilt tag.
+        shells: The shell AARs of the tag's prebuilt plan, by variant.
+
+    Returns:
+        A tuple of the http_file declarations and, by variant, the Android runtime of the
+        hub: a dict whose `shell` is the label of the AAR.
+    """
+    declarations = []
+    android_runtimes = {}
+    for variant, shell in shells.items():
+        name = "%s_%s" % (tag.name, shell.pin)
+        declarations.append(_declaration(
+            "http_file",
+            name = name,
+            urls = shell.urls,
+            integrity = shell.integrity,
+            downloaded_file_path = "shell.aar",
+        ))
+        android_runtimes[variant] = {"shell": "@%s//file" % name}
+    return declarations, android_runtimes
