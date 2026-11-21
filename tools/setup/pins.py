@@ -28,6 +28,16 @@ ATTRIBUTES = {
     "godot_engines.source": ("version", "sha256", "urls", "strip_prefix"),
 }
 MAVEN = "maven.install"
+# Each consumer module overrides the ruleset with its checkout, so its version is no pin.
+# An add-on module declares the release it needs instead.
+UNPINNED = {"bazel_dep:autoload_rules_godot"}
+# Deliberate drifts: module -> keys. Remove an entry once its reason no longer holds.
+EXCEPTIONS = {
+    # Firebase's Kotlin Multiplatform artifacts (androidx.datastore) need rules_jvm_external
+    # 7.2 with the gradle resolver; the ruleset's modules stay on 6.10 until they move too.
+    "addons/firebase": {"bazel_dep:rules_jvm_external"},
+    "addons/firebase/examples": {"bazel_dep:rules_jvm_external"},
+}
 
 
 def _literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
@@ -85,6 +95,8 @@ def drifts(root: Path) -> list[str]:
         for file, pins in locations.items():
             location = (Path(module) / file).as_posix()
             for key, value in pins.items():
+                if key in UNPINNED or key in EXCEPTIONS.get(module, ()):
+                    continue
                 declared.setdefault(key, {})[module] = (location, value)
     lines = []
     for key, modules in declared.items():

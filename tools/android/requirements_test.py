@@ -33,7 +33,18 @@ class RequirementsTest(unittest.TestCase):
         target.write_text(source.replace(before, after))
 
     def test_repository_requirements_are_provisioned(self) -> None:
-        self.assertEqual((".", "examples", "tests"), module_paths(self.root))
+        self.assertEqual(
+            (".", "examples", "tests", "addons/firebase", "addons/firebase/examples"),
+            module_paths(self.root),
+        )
+        self.assertEqual(configuration_errors(self.root), [])
+
+    def test_skips_a_module_that_configures_no_sdk(self) -> None:
+        # An add-on module builds no application; its examples configure the SDK.
+        self.assertNotIn(
+            "android_sdk_repository_extension",
+            (self.root / "addons/firebase/MODULE.bazel").read_text(),
+        )
         self.assertEqual(configuration_errors(self.root), [])
 
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
@@ -56,9 +67,10 @@ class RequirementsTest(unittest.TestCase):
             'android_build_tools = "99.0.0"',
         )
         errors = configuration_errors(self.root)
-        self.assertEqual(len(errors), 4)
+        # Every module that configures an SDK, then the Linux toolchains.
+        self.assertEqual(len(errors), 5)
         self.assertTrue(all("build_tools_version '35.0.0'" in error for error in errors))
-        self.assertTrue(errors[3].startswith(f"{LINUX_TOOLCHAINS}: "))
+        self.assertTrue(errors[-1].startswith(f"{LINUX_TOOLCHAINS}: "))
 
     def test_detects_an_ndk_bump_missing_from_the_linux_toolchains(self) -> None:
         self.replace(

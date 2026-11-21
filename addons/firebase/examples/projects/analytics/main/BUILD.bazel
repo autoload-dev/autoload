@@ -1,0 +1,17 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//projects/analytics:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "analytics_demo.gd",
+        "analytics_demo.gd.uid",
+        "analytics_demo.tscn",
+    ],
+    prefix = "main",
+    deps = [
+        "//projects/analytics/native",
+        "@autoload_firebase//analytics",
+    ],
+)

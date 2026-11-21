@@ -237,6 +237,7 @@ repository uses the same layout of projects and add-ons, measured from its modul
 |---|---|---|
 | Examples, `examples/` | `examples/projects/<name>/` | `examples/addons/<name>/` |
 | Regression tests, `tests/` | `tests/smoke/<operating_system>/`, `tests/script_run/`, `tests/patched_engine/` | `tests/shared_addon/` |
+| Add-on examples, `addons/<module>/examples/` | `addons/<module>/examples/projects/<name>/` | none: the add-ons are in the module |
 
 The path determines whether a directory is a project or an add-on, and which rules apply.
 A project case owns a BUILD

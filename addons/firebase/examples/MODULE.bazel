@@ -1,0 +1,89 @@
+"""Example application of autoload_firebase: a Godot application that consumes the module as
+an external Bazel module, as applications outside this repository do."""
+
+module(name = "autoload_firebase_examples")
+
+bazel_dep(name = "autoload_firebase", version = "0.1.0")
+local_path_override(
+    module_name = "autoload_firebase",
+    path = "..",
+)
+
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+
+# The rules of this repository, so that the add-on is built against the rules it is changed
+# with.
+local_path_override(
+    module_name = "autoload_rules_godot",
+    path = "../../..",
+)
+
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_cc", version = "0.2.27")
+bazel_dep(name = "rules_apple", version = "5.3.1")
+bazel_dep(name = "rules_android", version = "0.8.0")
+
+# 7.2 or later: with resolver = "gradle", 6.10 pins the POM's checksum for the Kotlin
+# Multiplatform artifacts Firebase pulls in (androidx.datastore), and their fetch fails.
+bazel_dep(name = "rules_jvm_external", version = "7.2")
+
+# The application's Maven graph. autoload_firebase adds the Firebase libraries to it; this
+# module pins the merged graph: `bazel run @maven//:pin` after changing either.
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    name = "maven",
+    aar_import_bzl_label = "@rules_android//rules:rules.bzl",
+    artifacts = ["androidx.fragment:fragment:1.8.6"],
+    known_contributing_modules = [
+        "autoload_firebase",
+        "autoload_rules_godot",
+        "protobuf",
+    ],
+    lock_file = "//:maven_install.json",
+    repositories = [
+        "https://repo.maven.apache.org/maven2",
+        "https://dl.google.com/dl/android/maven2",
+    ],
+    resolver = "gradle",
+    use_starlark_android_rules = True,
+)
+use_repo(maven, "maven")
+
+android_sdk = use_extension(
+    "@rules_android//rules/android_sdk_repository:rule.bzl",
+    "android_sdk_repository_extension",
+)
+android_sdk.configure(
+    api_level = 35,
+    build_tools_version = "35.0.0",
+)
+use_repo(android_sdk, "androidsdk")
+
+godot_android_toolchains = use_extension(
+    "@autoload_rules_godot//godot:extensions.bzl",
+    "godot_android_toolchains",
+)
+godot_android_toolchains.configure(ndk_api_level = 24)
+use_repo(godot_android_toolchains, "android_toolchains")
+
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+use_repo(godot_engines, "godot")
+
+register_toolchains("@godot//toolchains:all")
+
+# The application's own godot-cpp, for its own extension: a second copy beside the one of
+# autoload_firebase.
+godot_cpp_bindings = use_repo_rule(
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    enabled_classes = ["Node"],
+)

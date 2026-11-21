@@ -14,10 +14,13 @@ SDK = "android_sdk_repository_extension.configure"
 LINUX_TOOLCHAINS = "godot/platforms/private/android_toolchains.bzl"
 
 
-def sdk_requirements(source: str) -> dict[str, str | int]:
+def sdk_requirements(source: str) -> dict[str, str | int] | None:
+    """The SDK a module configures, or None for a module that builds no application."""
     calls = [call for call in declarations(source) if call.kind == SDK]
+    if not calls:
+        return None
     if len(calls) != 1:
-        raise ValueError(f"Expected one {SDK} declaration")
+        raise ValueError(f"Expected at most one {SDK} declaration")
     return {
         keyword: ast.literal_eval(value)
         for keyword, value in calls[0].keywords.items()
@@ -73,6 +76,8 @@ def configuration_errors(root: Path) -> list[str]:
             required = sdk_requirements((root / manifest).read_text())
         except (SyntaxError, ValueError) as error:
             errors.append(f"{manifest}: {error}")
+            continue
+        if required is None:
             continue
         for key in ("api_level", "build_tools_version"):
             check(manifest, key, required.get(key))
