@@ -195,9 +195,13 @@ def _runtime_slot(tag, platform, cpu, variant, payload, environment = "", digest
         digest = digest,
     )
 
+def _templates_repository(tag, platform):
+    """The name of the repository of a Godot platform's export templates."""
+    return "%s_templates_%s" % (tag.name, platform)
+
 def _template_payload(tag, platform, target):
     """The label of a target in the export-template repository of a platform."""
-    return "@%s_templates_%s//:%s" % (tag.name, platform, target)
+    return "@%s//:%s" % (_templates_repository(tag, platform), target)
 
 def _macos_target(macos_cpus, cpu, variant):
     """The macOS runtime target that serves a CPU, or None when the templates lack it."""
@@ -310,6 +314,11 @@ def _requests(modules, tag_attributes):
 def _declaration(rule, **attrs):
     return struct(rule = rule, attrs = attrs)
 
+# The file name of a downloaded export-template archive. The platform repositories
+# extract the file itself, so they name it rather than the archive repository's //file
+# target.
+_ARCHIVE_FILE = "export_templates.tpz"
+
 def _templates_declarations(tag, templates):
     """
     Return the export-template repositories of a prebuilt tag.
@@ -326,18 +335,18 @@ def _templates_declarations(tag, templates):
         The http_file declaration of the archive, then the godot_export_templates_archive
         declarations.
     """
-    archive = _declaration(
+    archive = _templates_repository(tag, "archive")
+    return [_declaration(
         "http_file",
-        name = tag.name + "_templates_archive",
+        name = archive,
         urls = templates.urls,
         integrity = templates.integrity,
-        downloaded_file_path = "export_templates.tpz",
-    )
-    return [archive] + [
+        downloaded_file_path = _ARCHIVE_FILE,
+    )] + [
         _declaration(
             "godot_export_templates_archive",
-            name = "%s_templates_%s" % (tag.name, platform),
-            archive = "@%s//file:export_templates.tpz" % archive.attrs["name"],
+            name = _templates_repository(tag, platform),
+            archive = "@%s//file:%s" % (archive, _ARCHIVE_FILE),
             integrity = templates.integrity,
             version = tag.version,
             platform = platform,
