@@ -216,65 +216,6 @@ API_CASES = {
         }),
         "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
     },
-    # The public editor contract is independent of the host's operating system.
-    "//godot/engine:repositories.bzl%godot_editor_archive": {
-        "lane": "host",
-        "entrypoints": {
-            "@{repository}//:" + name: {"@godot_editor_macos//:" + name: []}
-            for name in ["editor", "binary", "distribution"]
-        },
-        "host_replacements": {"linux": {"@godot_editor_macos": "@godot_editor_linux_x86_64"}},
-    },
-    "//godot/engine:repositories.bzl%godot_export_templates_archive": {
-        "lane": "host",
-        "conditions": ["macos_present", "macos_universal"],
-        "entrypoints": {
-            "@{repository}//:files": {"@godot_templates//:files": []},
-            "@{repository}//:macos_files": {"@godot_templates//:macos_files": []},
-            "@{repository}//:linux_{cpu}_{variant}": {
-                "@godot_templates//:linux_{}_{}".format(cpu, variant): ["GodotRuntimeInfo"]
-                for cpu in _TEMPLATE_CPUS
-                for variant in ["debug", "release"]
-            },
-            "@{repository}//:macos_{variant}": {"@godot_templates//:macos_" + variant: ["GodotRuntimeInfo"] for variant in ["debug", "release"]},
-        },
-        "datasets": {"@{repository}//:templates/{file}": "@godot_templates//:templates/"},
-    },
-    "//godot/engine:repositories.bzl%godot_export_templates_archive#ios": {
-        "lane": "ios",
-        "module": "tests",
-        "conditions": ["ios"],
-        "entrypoints": {
-            "@{repository}//:files": {"@godot_templates//:files": []},
-            "@{repository}//:linux_{cpu}_{variant}": {
-                "@godot_templates//:linux_{}_{}".format(cpu, variant): ["GodotRuntimeInfo"]
-                for cpu in _TEMPLATE_CPUS
-                for variant in _VARIANTS
-            },
-            "@{repository}//:ios_{variant}": {"@godot_templates//:ios_" + v: [] for v in _VARIANTS},
-        },
-        "datasets": {"@{repository}//:templates/{file}": "@godot_templates//:templates/"},
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
-    },
-    "//godot/engine:repositories.bzl%godot_export_templates_archive#split_macos": {
-        "lane": "host",
-        "conditions": ["macos_present", "macos_split"],
-        "entrypoints": {
-            "@{repository}//:files": {"@godot_split_templates//:files": []},
-            "@{repository}//:macos_files": {"@godot_split_templates//:macos_files": []},
-            "@{repository}//:linux_{cpu}_{variant}": {
-                "@godot_split_templates//:linux_{}_{}".format(cpu, variant): ["GodotRuntimeInfo"]
-                for cpu in ["arm64", "x86_64"]
-                for variant in ["debug", "release"]
-            },
-            "@{repository}//:macos_{cpu}_{variant}": {
-                "@godot_split_templates//:macos_{}_{}".format(cpu, variant): ["GodotRuntimeInfo"]
-                for cpu in ["arm64", "x86_64"]
-                for variant in ["debug", "release"]
-            },
-        },
-        "datasets": {"@{repository}//:templates/{file}": "@godot_split_templates//:templates/"},
-    },
     # The engine sources are fetched only by the source-engine lane.
     "//godot/engine:repositories.bzl%godot_engine_source": {
         "lane": "source-engine",
@@ -406,11 +347,6 @@ BEHAVIOR_TESTS = {
     "//godot:extensions.bzl%godot_engines": [_FIXTURES + "repository_hub"],
     "//godot:extensions.bzl%godot_android_toolchains": [
         "//godot/platforms/private/tests:test_linux_executor_uses_linux_android_tools",
-    ],
-    "//godot/engine:repositories.bzl%godot_editor_archive": [_FIXTURES + "repository_editor"],
-    "//godot/engine:repositories.bzl%godot_export_templates_archive": [
-        _FIXTURES + "repository_templates",
-        _FIXTURES + "repository_templates_split",
     ],
     "//godot/engine:repositories.bzl%godot_engine_build": [
         "//godot/engine/private/tests:test_engine_build_godot_is_an_executable_runtime",

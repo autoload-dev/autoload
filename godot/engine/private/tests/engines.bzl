@@ -7,9 +7,9 @@ engine repositories load, so that regression projects can declare the same paylo
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
-load("//godot:providers.bzl", "GodotRuntimeInfo")
 load("//godot/engine/private:generator.bzl", _godot_source_binary = "godot_source_binary")
 load("//godot/engine/private:prebuilt.bzl", _prebuilt_runtime = "prebuilt_runtime")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
 visibility([
     "//godot/engine/private/tests/...",

@@ -1,12 +1,5 @@
-"""Engine acquisition: prebuilt archives, immutable sources and configure-only source recipes."""
+"""Engine acquisition: immutable sources and configure-only source recipes."""
 
-load(
-    "//godot/engine/private:archives.bzl",
-    "EDITOR_ARCHIVE_RULE_ATTRS",
-    "TEMPLATES_ARCHIVE_RULE_ATTRS",
-    "editor_archive_impl",
-    "templates_archive_impl",
-)
 load("//godot/engine/private:hub.bzl", "engine_hub")
 load("//godot/engine/private:source_build_rows.bzl", "source_build_declarations")
 load(
@@ -227,109 +220,6 @@ godot_engine_build = repository_rule(
         "GODOT_VERSION_STATUS",
         "SCRIPT_AES256_ENCRYPTION_KEY",
     ],
-)
-
-godot_editor_archive = repository_rule(
-    doc = """
-    Acquire one checksum-pinned prebuilt editor archive.
-
-    Call from a module extension or through use_repo_rule. The repository exposes
-    `:editor`, the executable with the complete distribution as runfiles, for a
-    godot_editor_component; it registers nothing. The editor must match the operating
-    system and CPU of the execution platform of the slot it fills. The declared
-    version is checked for ruleset support; it is not read from the archive.
-    godot_engines.prebuilt uses this rule for catalogued releases.
-
-    Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-    ```starlark
-    godot_editor_archive = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl",
-        "godot_editor_archive",
-    )
-    godot_editor_archive(
-        name = "godot_editor_custom",
-        urls = ["https://example.com/godot-editor.zip"],
-        integrity = "sha256-<base64-digest>",
-        binary = "Godot.app/Contents/MacOS/Godot",
-        version = "4.7.2",
-    )
-    ```
-
-    ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:editor | executable | operation | run the acquired editor; the payload of an editor component | public | false | repository acquired | always |
-    | @{repository}//:binary | files | operation | consume the raw editor executable | public | false | repository acquired | always |
-    | @{repository}//:distribution | files | operation | consume the complete editor distribution | public | false | repository acquired | always |
-
-    ### Providers
-    none
-    """,
-    implementation = editor_archive_impl,
-    attrs = EDITOR_ARCHIVE_RULE_ATTRS,
-)
-
-godot_export_templates_archive = repository_rule(
-    doc = """
-    Acquire one checksum-pinned export-template archive.
-
-    Call from a module extension or through use_repo_rule. The repository exposes one
-    runtime target per desktop operating system, CPU and template variant,
-    such as `:linux_x86_64_release` or `:macos_debug`, each carrying GodotRuntimeInfo,
-    for godot_runtime_component payloads. Coverage follows the archive contents: an
-    archive without a debug template omits the debug target, and macos_cpus
-    describes its macOS layout. An archive with iOS templates also exposes `:ios_debug`
-    and `:ios_release`, XCFramework imports with the dependent frameworks the
-    archive carries; they serve device and simulator slots alike. Downloading happens
-    only when a payload is requested. godot_engines.prebuilt uses this rule for
-    catalogued releases.
-
-    Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-    ```starlark
-    godot_export_templates_archive = use_repo_rule(
-        "@autoload_rules_godot//godot/engine:repositories.bzl",
-        "godot_export_templates_archive",
-    )
-    godot_export_templates_archive(
-        name = "godot_templates_custom",
-        urls = ["https://example.com/export_templates.tpz"],
-        integrity = "sha512-<base64-digest>",
-        version = "4.7.2",
-    )
-    ```
-
-    ### Default outputs
-    | kind | cardinality | availability | behavior |
-    | --- | --- | --- | --- |
-    | repository | none | always | repository creation; generated entrypoints described above |
-
-    ### Output groups
-    none
-
-    ### Generated targets
-    | name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | @{repository}//:files | files | operation | inspect acquired export templates | public | false | repository acquired | always |
-    | @{repository}//:macos_files | files | operation | preserve macOS template bundle resources | public | false | repository acquired | macos_present |
-    | @{repository}//:linux_{cpu}_{variant} | files | operation | a Linux runtime payload for one CPU and template variant | public | false | variant present in the archive | always |
-    | @{repository}//:macos_{variant} | files | operation | a universal macOS runtime payload | public | false | universal archive; variant present | macos_universal |
-    | @{repository}//:macos_{cpu}_{variant} | files | operation | a CPU-specific macOS runtime payload | public | false | CPU-specific archive; variant present | macos_split |
-    | @{repository}//:ios_{variant} | library | operation | the iOS engine XCFramework import with its dependent frameworks, for device and simulator runtime components | public | false | iOS templates present in the archive | ios |
-    | @{repository}//:templates/{file} | files | operation | consume the archive's raw template files for custom packaging | public | false | repository acquired | always |
-
-    ### Providers
-    none
-    """,
-    implementation = templates_archive_impl,
-    attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,
 )
 
 godot_android_shell = repository_rule(

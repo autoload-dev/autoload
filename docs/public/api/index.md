@@ -31,7 +31,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
 | `@autoload_rules_godot//godot/engine:defs.bzl` | Declare editor/runtime component slots with their toolchain registrations and join an Android shell library with the engine library.<br>[`godot_editor_component`](reference/godot_engine_defs.md#godot_editor_component), [`godot_runtime_component`](reference/godot_engine_defs.md#godot_runtime_component), [`godot_android_runtime`](reference/godot_engine_defs.md#godot_android_runtime) |
-| `@autoload_rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build), [`godot_editor_archive`](reference/godot_engine_repositories.md#godot_editor_archive), [`godot_export_templates_archive`](reference/godot_engine_repositories.md#godot_export_templates_archive) |
+| `@autoload_rules_godot//godot/engine:repositories.bzl` | Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source.<br>[`godot_engine_source`](reference/godot_engine_repositories.md#godot_engine_source), [`godot_engine_build`](reference/godot_engine_repositories.md#godot_engine_build), [`godot_android_shell`](reference/godot_engine_repositories.md#godot_android_shell), [`godot_engine_source_build`](reference/godot_engine_repositories.md#godot_engine_source_build) |
 
 ## Module setup
 
@@ -43,7 +43,7 @@ Choose an entrypoint by task. Each public symbol has one reference and one publi
 
 | Primary load entrypoint | Purpose and symbols |
 | --- | --- |
-| `@autoload_rules_godot//godot:providers.bzl` | Exchange resource, add-on, project, engine, extension and desktop application metadata.<br>[`GodotResourcesInfo`](reference/godot_providers.md#GodotResourcesInfo), [`GodotAddonInfo`](reference/godot_providers.md#GodotAddonInfo), [`GodotProjectInfo`](reference/godot_providers.md#GodotProjectInfo), [`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotRuntimeInfo`](reference/godot_providers.md#GodotRuntimeInfo), [`GodotComponentInfo`](reference/godot_providers.md#GodotComponentInfo), [`GodotExtensionInfo`](reference/godot_providers.md#GodotExtensionInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
+| `@autoload_rules_godot//godot:providers.bzl` | Read exported packs and desktop applications in your own rules, for example to deploy them.<br>[`GodotPackInfo`](reference/godot_providers.md#GodotPackInfo), [`GodotDesktopAppInfo`](reference/godot_providers.md#GodotDesktopAppInfo) |
 
 ## Public target labels
 

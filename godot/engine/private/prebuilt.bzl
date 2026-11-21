@@ -5,7 +5,7 @@ Loaded by the BUILD files of godot_editor_archive and godot_export_templates_arc
 so it needs public load visibility; it is not a consumer API.
 """
 
-load("//godot:providers.bzl", "GodotRuntimeInfo")
+load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:versions.bzl", "require_supported_godot_version")
 
 visibility("public")

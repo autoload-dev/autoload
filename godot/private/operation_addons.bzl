@@ -1,8 +1,8 @@
 """The add-ons of an operation: their order, the files they declare, their editor parts and importers."""
 
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotResourcesInfo")
 load("//godot/private:graph.bzl", "addon_owners")
 load("//godot/private:import_units.bzl", "importer_staging")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "addon_closure", "unique_extensions")
 
 visibility("//godot/private/...")

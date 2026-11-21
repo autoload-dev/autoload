@@ -66,11 +66,6 @@ generated targets. Names are shared with the `source` and `source_build` tags: a
 request owns its name, identical requests from dependencies share one hub, and
 conflicting ones fail.
 
-The prebuilt repositories are also public rules for your own extensions or `MODULE.bazel`:
-`godot_editor_archive` and `godot_export_templates_archive` acquire one archive, and the
-templates archive exposes the desktop runtimes and the iOS XCFramework imports
-(`:ios_debug`, `:ios_release`) with their MoltenVK, AccessKit and camera frameworks.
-
 ## Replace slots
 
 Registration order decides between the candidates of one engine for a slot. Register a set
@@ -402,7 +397,7 @@ CPU and variant of what it receives.
 
 ## Inspect the selection
 
-Every resolved component carries `GodotComponentInfo`: its label, kind (`prebuilt` or
+Every resolved component carries a provenance record: its label, kind (`prebuilt` or
 `source`), version, origin, digest (the archive integrity or the source sha256) and the
 requested modules, patches and options. The pack names its editor and a desktop app the
 runtime it packages:

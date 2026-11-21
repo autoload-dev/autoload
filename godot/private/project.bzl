@@ -1,7 +1,6 @@
 """Projects as configuration contexts: their configuration files and the add-ons they name."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotProjectInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_autoloads", "validate_custom_feature", "validate_settings")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
@@ -9,6 +8,7 @@ load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:import_units.bzl", "importer_staging")
 load("//godot/private:paths.bzl", "exec_paths", "mapped_path", "mapped_paths", "validate_resource_path")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo")
 load("//godot/private:resources.bzl", "addon_closure")
 load("//godot/private/config:settings.bzl", "ENGINE_FEATURE_TAGS", "entry_features")
 load("//godot/private/engine:setting_kinds.bzl", "engine_sections", "setting_kinds")

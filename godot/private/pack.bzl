@@ -1,6 +1,6 @@
 """PCK exports of a project's view, with the native code of each platform slice."""
 
-load("//godot:providers.bzl", "GodotPackInfo", "GodotProjectInfo")
+load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_export_options", "validate_preset_settings", "validate_settings")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS")
@@ -12,6 +12,7 @@ load("//godot/private:pack_conversion.bzl", "PACK_CONVERSION_ATTRS", "pack_conve
 load("//godot/private:pack_project.bzl", "GodotPackNativeInfo", "godot_pack_native", "pack_project")
 load("//godot/private:paths.bzl", "declared_path", "exec_paths", "with_extensions_for")
 load("//godot/private:project.bzl", "configuration_file", "configuration_kinds", "left_out_entries", "named_addons_label")
+load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS", "app_version")
 load("//godot/private:shell_assets.bzl", "pack_shell_assets")
 load("//godot/private:variant.bzl", "VARIANT_ATTRS", "variant")

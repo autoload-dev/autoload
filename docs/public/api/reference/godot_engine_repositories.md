@@ -2,7 +2,7 @@
 
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-Engine acquisition: prebuilt archives, immutable sources and configure-only source recipes.
+Engine acquisition: immutable sources and configure-only source recipes.
 
 <a id="godot_engine_source_build"></a>
 
@@ -138,70 +138,6 @@ none
 | <a id="godot_android_shell-patch_strip"></a>patch_strip |  Number of leading path components removed from each patch filename.   | Integer | optional |  `1`  |
 | <a id="godot_android_shell-patches"></a>patches |  Patch files applied in order, such as a fork's Java changes.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="godot_android_shell-source"></a>source |  The `:source.json` descriptor of a godot_engine_source repository.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-
-
-<a id="godot_editor_archive"></a>
-
-## godot_editor_archive
-
-<pre>
-load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_editor_archive")
-
-godot_editor_archive(<a href="#godot_editor_archive-name">name</a>, <a href="#godot_editor_archive-binary">binary</a>, <a href="#godot_editor_archive-integrity">integrity</a>, <a href="#godot_editor_archive-urls">urls</a>, <a href="#godot_editor_archive-version">version</a>)
-</pre>
-
-Acquire one checksum-pinned prebuilt editor archive.
-
-Call from a module extension or through use_repo_rule. The repository exposes
-`:editor`, the executable with the complete distribution as runfiles, for a
-godot_editor_component; it registers nothing. The editor must match the operating
-system and CPU of the execution platform of the slot it fills. The declared
-version is checked for ruleset support; it is not read from the archive.
-godot_engines.prebuilt uses this rule for catalogued releases.
-
-Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-```starlark
-godot_editor_archive = use_repo_rule(
-    "@autoload_rules_godot//godot/engine:repositories.bzl",
-    "godot_editor_archive",
-)
-godot_editor_archive(
-    name = "godot_editor_custom",
-    urls = ["https://example.com/godot-editor.zip"],
-    integrity = "sha256-<base64-digest>",
-    binary = "Godot.app/Contents/MacOS/Godot",
-    version = "4.7.2",
-)
-```
-
-### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
-
-### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//:editor | executable | operation | run the acquired editor; the payload of an editor component | public | false | repository acquired | always |
-| @{repository}//:binary | files | operation | consume the raw editor executable | public | false | repository acquired | always |
-| @{repository}//:distribution | files | operation | consume the complete editor distribution | public | false | repository acquired | always |
-
-### Providers
-none
-
-**ATTRIBUTES**
-
-
-| Name  | Description | Type | Mandatory | Default |
-| :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="godot_editor_archive-name"></a>name |  A unique name for this repository.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="godot_editor_archive-binary"></a>binary |  Path of the editor executable inside the archive.   | String | required |  |
-| <a id="godot_editor_archive-integrity"></a>integrity |  Subresource Integrity digest of the archive, including the hash algorithm, such as sha512-...; required.   | String | required |  |
-| <a id="godot_editor_archive-urls"></a>urls |  Ordered mirror URLs of the same ZIP or TPZ archive.   | List of strings | required |  |
-| <a id="godot_editor_archive-version"></a>version |  Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.   | String | required |  |
 
 
 <a id="godot_engine_build"></a>
@@ -361,77 +297,5 @@ none
 | <a id="godot_engine_source-strip_prefix"></a>strip_prefix |  Top-level directory removed on extraction.   | String | optional |  `""`  |
 | <a id="godot_engine_source-urls"></a>urls |  Ordered mirror URLs of the same archive; the first one's suffix names its type.   | List of strings | required |  |
 | <a id="godot_engine_source-version"></a>version |  Canonical Godot version of the sources, such as 4.7.2 or 4.8.0-beta1.   | String | required |  |
-
-
-<a id="godot_export_templates_archive"></a>
-
-## godot_export_templates_archive
-
-<pre>
-load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_export_templates_archive")
-
-godot_export_templates_archive(<a href="#godot_export_templates_archive-name">name</a>, <a href="#godot_export_templates_archive-integrity">integrity</a>, <a href="#godot_export_templates_archive-linux_cpus">linux_cpus</a>, <a href="#godot_export_templates_archive-macos_cpus">macos_cpus</a>, <a href="#godot_export_templates_archive-urls">urls</a>, <a href="#godot_export_templates_archive-version">version</a>)
-</pre>
-
-Acquire one checksum-pinned export-template archive.
-
-Call from a module extension or through use_repo_rule. The repository exposes one
-runtime target per desktop operating system, CPU and template variant,
-such as `:linux_x86_64_release` or `:macos_debug`, each carrying GodotRuntimeInfo,
-for godot_runtime_component payloads. Coverage follows the archive contents: an
-archive without a debug template omits the debug target, and macos_cpus
-describes its macOS layout. An archive with iOS templates also exposes `:ios_debug`
-and `:ios_release`, XCFramework imports with the dependent frameworks the
-archive carries; they serve device and simulator slots alike. Downloading happens
-only when a payload is requested. godot_engines.prebuilt uses this rule for
-catalogued releases.
-
-Example (MODULE.bazel; replace URL and digest with a real pinned archive):
-```starlark
-godot_export_templates_archive = use_repo_rule(
-    "@autoload_rules_godot//godot/engine:repositories.bzl",
-    "godot_export_templates_archive",
-)
-godot_export_templates_archive(
-    name = "godot_templates_custom",
-    urls = ["https://example.com/export_templates.tpz"],
-    integrity = "sha512-<base64-digest>",
-    version = "4.7.2",
-)
-```
-
-### Default outputs
-| kind | cardinality | availability | behavior |
-| --- | --- | --- | --- |
-| repository | none | always | repository creation; generated entrypoints described above |
-
-### Output groups
-none
-
-### Generated targets
-| name | kind | purpose | reason | visibility | testonly | prerequisites | availability |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| @{repository}//:files | files | operation | inspect acquired export templates | public | false | repository acquired | always |
-| @{repository}//:macos_files | files | operation | preserve macOS template bundle resources | public | false | repository acquired | macos_present |
-| @{repository}//:linux_{cpu}_{variant} | files | operation | a Linux runtime payload for one CPU and template variant | public | false | variant present in the archive | always |
-| @{repository}//:macos_{variant} | files | operation | a universal macOS runtime payload | public | false | universal archive; variant present | macos_universal |
-| @{repository}//:macos_{cpu}_{variant} | files | operation | a CPU-specific macOS runtime payload | public | false | CPU-specific archive; variant present | macos_split |
-| @{repository}//:ios_{variant} | library | operation | the iOS engine XCFramework import with its dependent frameworks, for device and simulator runtime components | public | false | iOS templates present in the archive | ios |
-| @{repository}//:templates/{file} | files | operation | consume the archive's raw template files for custom packaging | public | false | repository acquired | always |
-
-### Providers
-none
-
-**ATTRIBUTES**
-
-
-| Name  | Description | Type | Mandatory | Default |
-| :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="godot_export_templates_archive-name"></a>name |  A unique name for this repository.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="godot_export_templates_archive-integrity"></a>integrity |  Subresource Integrity digest of the archive, including the hash algorithm, such as sha512-...; required.   | String | required |  |
-| <a id="godot_export_templates_archive-linux_cpus"></a>linux_cpus |  Linux template binary suffixes in the archive, as Godot's CPU tags such as arm64 or x86_64. A missing binary fails.   | List of strings | optional |  `["arm32", "arm64", "x86_32", "x86_64"]`  |
-| <a id="godot_export_templates_archive-macos_cpus"></a>macos_cpus |  macOS template binary suffixes in the archive: ["universal"] or a subset of ["arm64", "x86_64"]. Empty disables macOS runtimes; archives without macos.zip omit them.   | List of strings | optional |  `["universal"]`  |
-| <a id="godot_export_templates_archive-urls"></a>urls |  Ordered mirror URLs of the same ZIP or TPZ archive.   | List of strings | required |  |
-| <a id="godot_export_templates_archive-version"></a>version |  Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.   | String | required |  |
 
 

@@ -2,12 +2,12 @@
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
-load("//godot:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
 load("//godot/engine/private:prebuilt.bzl", "PrebuiltArtifactInfo")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "ANDROID_PAYLOAD_ASPECTS")
 load("//godot/platforms/private:ios_runtime_bridge.bzl", "IOS_PAYLOAD_ASPECTS")
+load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private:versions.bzl", "require_supported_godot_version", "require_supported_source_version")
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "CPU_TABLE", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 

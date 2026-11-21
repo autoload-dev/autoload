@@ -1,6 +1,7 @@
 """Packaging test fixtures; deliberately do not claim to be Godot runtime tests."""
 
-load("//godot:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "GodotPackInfo")
+load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 
 visibility([

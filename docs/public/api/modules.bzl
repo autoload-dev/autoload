@@ -69,14 +69,12 @@ PUBLIC_APIS = {
     },
     "//godot/engine:repositories.bzl": {
         "group": "Engines and toolchains",
-        "purpose": "Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source; acquire checksum-pinned prebuilt editor and export-template archives.",
+        "purpose": "Acquire immutable engine sources, configure source recipes and source builds with custom modules and patches, build the Android shell library from source.",
         "symbols": [
             "godot_engine_source",
             "godot_engine_build",
             "godot_android_shell",
             "godot_engine_source_build",
-            "godot_editor_archive",
-            "godot_export_templates_archive",
         ],
     },
     "//godot:extensions.bzl": {
@@ -89,15 +87,9 @@ PUBLIC_APIS = {
     },
     "//godot:providers.bzl": {
         "group": "Provider contracts",
-        "purpose": "Exchange resource, add-on, project, engine, extension and desktop application metadata.",
+        "purpose": "Read exported packs and desktop applications in your own rules, for example to deploy them.",
         "symbols": [
-            "GodotResourcesInfo",
-            "GodotAddonInfo",
-            "GodotProjectInfo",
             "GodotPackInfo",
-            "GodotRuntimeInfo",
-            "GodotComponentInfo",
-            "GodotExtensionInfo",
             "GodotDesktopAppInfo",
         ],
     },
@@ -111,6 +103,7 @@ GENERATED_REPOSITORY_MODULES = {
 }
 
 SUPPORT_MODULES = [
+    "//godot/private:providers.bzl",
     "//godot/engine/private:archives.bzl",
     "//godot/engine/private:catalogue.bzl",
     "//godot/engine/private:resolution.bzl",
@@ -214,8 +207,8 @@ PUBLIC_TARGETS = {
     "//godot:editor": "config_setting matching --@autoload_rules_godot//godot:variant=editor: a godot_app running from sources with Godot's editor binary, and the tool configuration.",
     "//godot:release": "config_setting matching the release variant, the default.",
     "//godot:tool": "config_setting matching the tool configuration, in which Godot runs as a build tool for imports, initialization, exports and the editor; it refines //godot:editor. Select an extension library or backend for editor processes with it.",
-    "//godot:editor_toolchain_type": "Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance (GodotComponentInfo).",
-    "//godot:runtime_toolchain_type": "Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (GodotRuntimeInfo or None), files, version and provenance (GodotComponentInfo).",
+    "//godot:editor_toolchain_type": "Execution-platform Godot editor toolchain type. godot_editor_component registers candidates; ToolchainInfo.godot carries role, editor (FilesToRunProvider), files (depset[File]), version and provenance: the component's label, kind, version, origin and digest.",
+    "//godot:runtime_toolchain_type": "Target-platform Godot runtime toolchain type. godot_runtime_component registers candidates per operating system, CPU, iOS environment and variant; ToolchainInfo.godot carries role, payload (Target), runtime (the runtime's files and facts, or None), files, version and provenance: the component's label, kind, version, origin and digest.",
     "//godot/platforms:linux_x86_64": "Linux x86_64 export platform; requires a matching runtime and a C++ cross toolchain when building native code.",
     "//godot/platforms:linux_arm64": "Linux arm64 export platform; requires an arm64 runtime and a matching C++ toolchain.",
     "//godot/platforms:linux_x86_32": "Linux x86_32 export platform; requires an x86_32 runtime and a matching C++ toolchain.",
