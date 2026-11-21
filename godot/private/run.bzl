@@ -459,9 +459,9 @@ def godot_test(
 
     The test passes when Godot exits with 0, so a script reports a failed check
     with `quit(1)`. Test frameworks run as the main script: autoload_gdunit's
-    gdunit_test sets up GdUnit this way. Godot receives Bazel's test environment, such as
-    TEST_SHARD_INDEX, TESTBRIDGE_TEST_ONLY and XML_OUTPUT_FILE, so a test framework
-    can implement sharding, `--test_filter` and JUnit reports. size, timeout,
+    gdunit_test sets up GdUnit this way. Godot receives Bazel's test environment,
+    such as TEST_SHARD_INDEX, TESTBRIDGE_TEST_ONLY and XML_OUTPUT_FILE, so a test
+    framework can implement sharding, `--test_filter` and JUnit reports. size, timeout,
     shard_count and flaky work as for any Bazel test. The test and its view of the
     project are testonly unless testonly = False is passed, so production
     targets cannot depend on them.

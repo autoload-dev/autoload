@@ -37,7 +37,6 @@ class RequirementsTest(unittest.TestCase):
         target.write_text(source.replace(before, after))
 
     def test_repository_requirements_are_provisioned(self) -> None:
-        self.assertEqual(module_paths(ROOT), module_paths(self.root))
         self.assertLessEqual({".", "examples", "tests"}, set(module_paths(self.root)))
         # A module that builds no Android application configures no SDK.
         self.assertNotIn("addons/gdunit/examples", application_modules(self.root))

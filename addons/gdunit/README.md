@@ -23,6 +23,7 @@ bazel_dep(name = "autoload_gdunit", version = "0.1.0", dev_dependency = True)
 
 ```starlark
 load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 godot_resources(
     name = "unit_suites",

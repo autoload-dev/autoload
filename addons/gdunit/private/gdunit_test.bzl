@@ -42,6 +42,7 @@ def gdunit_test(name, suites, **kwargs):
     Example:
     ```starlark
     load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+    load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
     godot_resources(
         name = "unit_suites",

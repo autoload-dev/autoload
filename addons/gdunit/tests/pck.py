@@ -26,7 +26,8 @@ def _supported(header: tuple[Any, ...]) -> bool:
     """Whether a header is that of an unencrypted standalone Godot 4.7.2+ PCK v4."""
     magic, version, major, minor, patch, flags = header
     is_pck_v4 = magic == _MAGIC and version == 4
-    return is_pck_v4 and (major, minor, patch) >= (4, 7, 2) and not flags & 5
+    is_godot_4 = major == 4 and (minor, patch) >= (7, 2)
+    return is_pck_v4 and is_godot_4 and not flags & 5
 
 
 def pck_paths(path: Path) -> list[str]:

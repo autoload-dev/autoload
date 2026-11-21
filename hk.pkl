@@ -83,7 +83,9 @@ local regressionModule = List(
 local regressionCore = core + regressionModule
 
 // What examples/ and tests/ read of autoload_gdunit, whose gdunit_test runs their GdUnit
-// suites: the add-on and the rule, not the module's own tests and examples.
+// suites: the add-on and the rule, not the module's own tests and examples. Only the tasks
+// that run GdUnit suites read it; its MODULE.bazel adds no dependency of their Android and
+// iOS builds but rules_godot, which they override.
 local gdunitModule = List(
   "addons/gdunit/MODULE.bazel",
   "addons/gdunit/BUILD.bazel",
@@ -148,7 +150,11 @@ local addonModules = new Mapping<String, AddonModule> {
   // supported API.
   ["gdunit"] = new AddonModule {
     lanes = List("host")
-    inputs = List("godot/private/adapter.bzl", "godot/private/test_cases.gd")
+    inputs = List(
+      "godot/private/adapter.bzl",
+      "godot/private/test_cases.gd",
+      "godot/private/BUILD.bazel",
+    )
   }
 }
 
