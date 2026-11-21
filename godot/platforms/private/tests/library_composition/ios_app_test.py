@@ -7,6 +7,7 @@ from pathlib import Path
 
 from godot.platforms.private.tests.library_composition.ios_apps import (
     defined_symbols,
+    framework_binary,
     unpacked,
 )
 
@@ -18,15 +19,15 @@ class IosAppTest(unittest.TestCase):
         cls.addClassCleanup(directory.cleanup)
         cls.app, cls.info, executable = unpacked(sys.argv[1:], Path(directory.name))
         cls.symbols = defined_symbols(executable)
+        cls.extension_symbols = defined_symbols(framework_binary(cls.app, "hello"))
 
-    def test_executable_links_the_libraries_of_the_addon_and_extension(self) -> None:
-        for symbol in (
-            "rules_godot_example_controllers",
-            "rules_godot_example_swift",
-            "rules_godot_library_init",
-            "rules_godot_hello_support",
-        ):
+    def test_executable_links_the_libraries_of_the_addon(self) -> None:
+        for symbol in ("rules_godot_example_controllers", "rules_godot_example_swift"):
             self.assertIn(symbol, self.symbols)
+
+    def test_extension_framework_links_the_extension_and_its_deps(self) -> None:
+        for symbol in ("rules_godot_library_init", "rules_godot_hello_support"):
+            self.assertIn(symbol, self.extension_symbols)
 
     def test_bundle_carries_the_libraries_resources(self) -> None:
         for path in (

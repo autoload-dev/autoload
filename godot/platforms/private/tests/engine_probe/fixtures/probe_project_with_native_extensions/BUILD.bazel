@@ -5,13 +5,16 @@ load("//godot/platforms/private/tests:ios_link.bzl", "ios_unsigned_link")
 
 # A project with a godot-cpp and a C ABI extension, packaged into Android and iOS
 # applications for whichever engine the test's configuration selects. main/main.gd is the
-# manual mobile runtime acceptance probe; no test runs it.
+# manual mobile runtime acceptance probe; no test runs it. The extensions link statically
+# on iOS: the probe's tests inspect the engine and godot-cpp linked into one executable,
+# and the iOS smoke and library composition tests cover extension frameworks.
 package(default_visibility = ["//godot/platforms/private/tests/engine_probe:__subpackages__"])
 
 godot_cc_extension(
     name = "extension",
     srcs = ["example.cc"],
     entry_symbol = "example_library_init",
+    ios_linkage = "static",
     resource_path = "native/cpp_example.gdextension",
     tags = ["manual"],
     deps = ["@godot_cpp"],
@@ -22,6 +25,7 @@ godot_cc_extension(
     name = "hello",
     srcs = ["hello.cc"],
     entry_symbol = "rules_godot_library_init",
+    ios_linkage = "static",
     resource_path = "native/hello.gdextension",
     tags = ["manual"],
 )

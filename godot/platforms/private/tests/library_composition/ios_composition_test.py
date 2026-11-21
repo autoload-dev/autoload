@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from godot.platforms.private.tests.library_composition.ios_apps import (
     bundle,
     defined_symbols,
+    framework_binary,
     unpacked,
 )
 from tools.platforms.apple_bundle import bundle_files
@@ -56,8 +57,9 @@ class IosCompositionTest(unittest.TestCase):
             for path in ("addon_notice.txt", "composition_notice.txt"):
                 self.assertTrue((app / path).exists(), path)
             symbols = defined_symbols(executable)
-        for symbol in ("rules_godot_example_controllers", "rules_godot_library_init"):
-            self.assertIn(symbol, symbols)
+            extension_symbols = defined_symbols(framework_binary(app, "hello"))
+        self.assertIn("rules_godot_example_controllers", symbols)
+        self.assertIn("rules_godot_library_init", extension_symbols)
 
     def test_project_and_extension_paths_bundle_the_library_resource(self) -> None:
         for role in ("direct", "loadable", "source", "transitive"):

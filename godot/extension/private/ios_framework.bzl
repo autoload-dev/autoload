@@ -133,6 +133,8 @@ ios_framework_files = rule(
         "bundle_id": attr.string(doc = "CFBundleIdentifier of the framework.", mandatory = True),
     } | PLATFORM_ATTRS | apple_support.action_required_attrs(),
     fragments = ["apple"],
+    # install_name_tool comes with Xcode, which only macOS execution platforms have.
+    exec_compatible_with = ["@platforms//os:osx"],
 )
 
 def ios_framework(name, shared, bundle_id, generated):

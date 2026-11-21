@@ -196,21 +196,27 @@ def inspect(args: argparse.Namespace) -> None:
         assert info["CFBundleSupportedPlatforms"] == [
             "iPhoneOS" if environment == "device" else "iPhoneSimulator"
         ], info
-        binary = plist_name.removesuffix("Info.plist") + info["CFBundleExecutable"]
-        require_slices(read_file(binary), cpus, "ios_" + environment, binary)
+        bundle = plist_name.removesuffix("Info.plist")
+        binary = bundle + info["CFBundleExecutable"]
+        # The add-on's libraries link into the executable; the extension's library is
+        # its own framework, which exports the entry symbol.
+        framework = bundle + "Frameworks/hello.framework/hello"
+        expected = {
+            binary: ["rules_godot_example_controllers", "rules_godot_example_swift"],
+            framework: ["rules_godot_library_init"],
+        }
         with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
-            executable = Path(directory) / "app"
-            executable.write_bytes(read_file(binary))
-            for cpu in sorted(cpus):
-                symbols = subprocess.check_output(
-                    ["/usr/bin/nm", "-arch", cpu, "-U", str(executable)], text=True
-                )
-                for symbol in [
-                    "rules_godot_example_controllers",
-                    "rules_godot_example_swift",
-                    "rules_godot_library_init",
-                ]:
-                    assert symbol in symbols, (cpu, symbol)
+            for name, wanted in expected.items():
+                assert name in files, (name, names)
+                require_slices(read_file(name), cpus, "ios_" + environment, name)
+                image = Path(directory) / Path(name).name
+                image.write_bytes(read_file(name))
+                for cpu in sorted(cpus):
+                    symbols = subprocess.check_output(
+                        ["/usr/bin/nm", "-arch", cpu, "-U", str(image)], text=True
+                    )
+                    for symbol in wanted:
+                        assert symbol in symbols, (cpu, name, symbol)
     else:
         binary = next(name for name in names if name.endswith("/app"))
         require_slices(

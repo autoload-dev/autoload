@@ -24,12 +24,17 @@ def unpacked(paths: list[str], work: Path) -> tuple[Path, dict, Path]:
     return app, info, app / info["CFBundleExecutable"]
 
 
+def framework_binary(app: Path, name: str) -> Path:
+    """Return the binary of the framework name that the application embeds."""
+    return app / "Frameworks" / (name + ".framework") / name
+
+
 def defined_symbols(executable: Path) -> set[str]:
     """
-    Return the C names of the symbols the executable defines, local ones included.
+    Return the C names of the symbols an executable or library defines, local ones included.
 
-    An exported symbols list, such as static extension libraries add, keeps everything else
-    out of the exports.
+    An exported symbols list, such as extension libraries have, keeps everything else out
+    of the exports.
     """
     output = subprocess.run(
         ["/usr/bin/nm", "-U", str(executable)],
