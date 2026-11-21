@@ -294,6 +294,38 @@ def _ios_app_compiles_its_platform_slice_in_one_configuration(env, target):
     roots = _compilation_roots(target, lambda entry: entry.platform.endswith(":ios_sim_x86_64.platform_slice_x86_64"))
     env.expect.that_collection(roots, expr = "configurations compiling for the platform slice").has_size(1)
 
+def _test_android_app_compiles_its_extension_once_per_configuration_role(name):
+    analysis_test(
+        name = name,
+        target = MOBILE_FIXTURE + "app",
+        impl = _android_app_compiles_its_extension_once_per_configuration_role,
+        config_settings = ANDROID,
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = ANDROID_SDK,
+    )
+
+def _extension_roots(target, platform_suffix):
+    """The configurations in which the fixture's extension compiles for a target platform."""
+    return _compilation_roots(
+        target,
+        lambda entry: entry.owner.endswith(":hello.native") and entry.platform.endswith(platform_suffix),
+    )
+
+def _android_app_compiles_its_extension_once_per_configuration_role(env, target):
+    # rules_android's split, which the application packages: android_binary's own
+    # configuration and the bootstrap reach no native code of the pack.
+    env.expect.that_collection(
+        _extension_roots(target, ":android_arm64.platform_slice_arm64"),
+        expr = "configurations compiling the extension for the platform slice",
+    ).has_size(1)
+
+    # The content configuration of the pack's export: the application's own edges, such as
+    # the one its ID comes from, reach no native code of the pack.
+    env.expect.that_collection(
+        _extension_roots(target, ":android_arm64"),
+        expr = "configurations compiling the extension for the export platform",
+    ).has_size(1)
+
 def _test_macos_app_extension_shares_the_project_context_configuration(name):
     analysis_test(
         name = name,
@@ -322,6 +354,7 @@ def configuration_invariance_test_suite(name):
     test_suite(
         name = name,
         tests = [
+            _test_android_app_compiles_its_extension_once_per_configuration_role,
             _test_android_bundle_reuses_content_and_native_actions,
             _test_android_permission_merging_keeps_one_pack_configuration,
             _test_arm64_android_app_configures_only_arm64_platform_slice,
