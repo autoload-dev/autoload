@@ -23,9 +23,10 @@ HK = (
     or "hk"
 )
 # Add-on modules by directory, with their addon.pkl.
+AMENDS = 'amends "../../tools/addons/Addon.pkl"\n'
 ADDON_MODULES = {
-    "widget": 'lanes = List("host", "android", "ios")\nhosts = List("linux", "macos")\n',
-    "gadget": 'lanes = List("host")\nhosts = List("macos")\n',
+    "widget": AMENDS + 'lanes = List("host", "android", "ios")\n',
+    "gadget": AMENDS + 'lanes = List("host")\nhosts = List("macos")\n',
 }
 
 
@@ -234,7 +235,9 @@ class SelectionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-            shutil.copyfile(ROOT / "hk.pkl", root / "hk.pkl")
+            for name in ("hk.pkl", "addons/consumers.pkl", "tools/addons/Addon.pkl"):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / name, root / name)
             for module, addon in ADDON_MODULES.items():
                 (root / "addons" / module).mkdir(parents=True)
                 (root / "addons" / module / "addon.pkl").write_text(addon)
