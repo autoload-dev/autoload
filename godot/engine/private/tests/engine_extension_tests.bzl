@@ -229,6 +229,7 @@ def _test_template_pins_replace_catalogue_templates(env):
         templates_urls = ["file:///templates.tpz"],
         templates_integrity = "sha256-templates",
         templates_macos_cpus = ["arm64"],
+        build_missing_runtimes = False,
     ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_declared(declarations, "godot_templates")[0].attrs["macos_cpus"]).contains_exactly(["arm64"])
@@ -239,6 +240,7 @@ def _test_template_pins_replace_catalogue_templates(env):
         templates_urls = ["file:///templates.tpz"],
         templates_integrity = "sha256-templates",
         templates_linux_cpus = ["x86_64"],
+        build_missing_runtimes = False,
     ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_declared(declarations, "godot_templates")[0].attrs["linux_cpus"]).contains_exactly(["x86_64"])
@@ -246,7 +248,11 @@ def _test_template_pins_replace_catalogue_templates(env):
     env.expect.that_collection(linux).contains_exactly(["runtime_linux_x86_64_debug", "runtime_linux_x86_64_release"])
 
 def _test_shell_pins_replace_catalogue_shell(env):
-    declarations, errors = _plan(_root(android_shell_urls = ["file:///shell.aar"], android_shell_integrity = "sha256-shell"))
+    declarations, errors = _plan(_root(
+        android_shell_urls = ["file:///shell.aar"],
+        android_shell_integrity = "sha256-shell",
+        build_missing_runtimes = False,
+    ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_dict(_declared(declarations, "godot_android_shell")[0].attrs).contains_exactly({
         "name": "godot_android_shell",

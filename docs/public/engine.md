@@ -52,8 +52,9 @@ the MoltenVK SDK on the configuring Mac, and keep Metal and OpenGL. Like any
 compiles only when a build selects its slot, on a host Godot accepts for its platform, such
 as a Mac for iOS. The prebuilt slots keep the official artifacts. To fail the missing slots
 instead, or to fill them with your own engine, set `build_missing_runtimes = False`, or
-register your components [ahead of the hub](#replace-slots). Versions outside the
-catalogue build no missing runtimes.
+register your components [ahead of the hub](#replace-slots). The sources are the
+catalogued release's, also when you pin other artifacts, so set it to `False` for a fork's
+archives; versions outside the catalogue build no missing runtimes.
 
 For a release outside the catalogue, or an archive built elsewhere, pin each artifact.
 Digests are Subresource Integrity strings; explicit values replace catalogue entries:

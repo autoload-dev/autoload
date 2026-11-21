@@ -18,6 +18,7 @@ from tools.engine.configure import (
     engine_link_options,
     generated_include_directories,
     include_closure,
+    included_sources,
     inputs_hash,
     is_directory_action,
     merge_swift_module_options,
@@ -765,6 +766,30 @@ class GraphTranslationTest(unittest.TestCase):
             self.assertEqual(
                 include_closure(root, ["shaders/main.glsl"]),
                 {"shaders/main.glsl", "shaders/common.inc", "thirdparty/shared.h"},
+            )
+
+
+class IncludedSourcesTest(unittest.TestCase):
+    def test_sources_that_other_sources_include_become_textual_headers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kernels = root / "thirdparty/embree/kernels/bvh"
+            kernels.mkdir(parents=True)
+            (kernels / "hybrid4.cpp").write_text('#include "bvh_intersector_hybrid.cpp"\n')
+            (kernels / "bvh_intersector_hybrid.cpp").write_text(
+                '#include "../common/shared.cpp"\n#include "bvh.h"\n'
+            )
+            (root / "thirdparty/embree/kernels/common").mkdir()
+            (root / "thirdparty/embree/kernels/common/shared.cpp").write_text("")
+            (root / "core.cpp").write_text('#include "missing.cpp"\n')
+            self.assertEqual(
+                included_sources(
+                    root, ["thirdparty/embree/kernels/bvh/hybrid4.cpp", "core.cpp"]
+                ),
+                [
+                    "thirdparty/embree/kernels/bvh/bvh_intersector_hybrid.cpp",
+                    "thirdparty/embree/kernels/common/shared.cpp",
+                ],
             )
 
 

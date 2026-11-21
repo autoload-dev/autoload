@@ -1296,12 +1296,46 @@ def _generator_rules(
     return lines, generated_headers
 
 
-def _headers_rule(generated_headers: Iterable[str]) -> str:
+_SOURCE_INCLUDE = re.compile(
+    r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE
+)
+
+
+def included_sources(root: Path, sources: Iterable[str]) -> list[str]:
+    """
+    Return the C++ sources that other sources include, relative to the source root.
+
+    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
+    source that includes others; those must reach each compile action as textual headers.
+    """
+    root = root.resolve()
+    found: set[str] = set()
+    pending = [root / source for source in sources]
+    while pending:
+        path = pending.pop()
+        if not path.is_file():
+            continue
+        text = path.read_text(errors="replace")
+        for include in _SOURCE_INCLUDE.findall(text):
+            for base in (path.parent, root):
+                candidate = (base / include).resolve()
+                if candidate.is_file() and candidate.is_relative_to(root):
+                    logical = relative(candidate, root)
+                    if logical not in found:
+                        found.add(logical)
+                        pending.append(candidate)
+                    break
+    return sorted(found)
+
+
+def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:
     # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm.
     return (
         'cc_library(\n    name = "_headers",\n    visibility = ["//visibility:private"],\n    hdrs = glob(["**/*.h", "**/*.hh", "**/*.hpp", "**/*.hxx"], exclude = ["_scons/**"], allow_empty = True) + '
         f"{list(generated_headers)!r},\n"
-        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm"], exclude = ["_scons/**"], allow_empty = True),\n    includes = ["."],\n)'
+        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm"], exclude = ["_scons/**"], allow_empty = True) + '
+        f"{list(included)!r},\n"
+        '    includes = ["."],\n)'
     )
 
 
@@ -1480,7 +1514,8 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines = _header_rules(args, bool(graph["swift_sources"]))
     generator_rules, generated_headers = _generator_rules(root, generators)
     lines += generator_rules
-    lines.append(_headers_rule(generated_headers))
+    compiled = [source for _key, sources in groups.items() for source in sources]
+    lines.append(_headers_rule(generated_headers, included_sources(root, compiled)))
     object_rules, dependencies = _object_rules(groups, generators, generated_headers)
     lines += object_rules
     if graph["swift_sources"]:
