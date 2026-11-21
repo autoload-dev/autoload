@@ -78,17 +78,17 @@ def resource_path(
         validate_resource_path(strip_prefix)
         source += strip_prefix + "/"
     if file.owner.workspace_name != target.workspace_name or not path.startswith(source):
-        fail("%s is outside %r of %s; %s" % (file.short_path, source, target.repo_name or "the main repository", outside))
+        fail("%s is outside %r of %s; %s" % (file.short_path, source, target, outside))
     return validate_resource_path(prefix + path[len(source):])
 
-def placed_resource_paths(ctx, targets, strip_prefix, prefix, outside):
+def placed_resource_paths(ctx, targets, prefix, outside):
     """
     Place the files of srcs-like targets, each relative to its target's package.
 
     Args:
-        ctx: Rule analysis context.
+        ctx: Rule analysis context with strip_prefix, the package-relative directory
+            prefix to remove.
         targets: The listed targets, such as ctx.attr.srcs.
-        strip_prefix: Package-relative directory prefix to remove.
         prefix: Resource path of the directory the files are placed under.
         outside: What the failure for a file outside the package tells the user to do.
 
@@ -100,7 +100,7 @@ def placed_resource_paths(ctx, targets, strip_prefix, prefix, outside):
         for file in target[DefaultInfo].files.to_list():
             merge_resource_paths(
                 resource_paths,
-                {resource_path(file, target.label, strip_prefix, prefix, outside): file},
+                {resource_path(file, target.label, ctx.attr.strip_prefix, prefix, outside): file},
                 owner = str(ctx.label),
             )
     return resource_paths
@@ -321,7 +321,6 @@ def collect_resource_paths(ctx):
     resource_paths = placed_resource_paths(
         ctx,
         ctx.attr.srcs,
-        ctx.attr.strip_prefix,
         directory_prefix(getattr(ctx.attr, "prefix", "")),
         outside = "list the files through a target in their own package, or give each its path in resource_paths",
     )

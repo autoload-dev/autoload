@@ -88,7 +88,7 @@ def extension_addon(label, extension):
 def _placed(ctx, srcs, resource_paths, prefix):
     """Place a part's files below the add-on's directory, as srcs and resource_paths place resources."""
     outside = "every file of the add-on %s lives below its directory res://%s" % (ctx.label, prefix)
-    paths = placed_resource_paths(ctx, srcs, ctx.attr.strip_prefix, prefix, outside)
+    paths = placed_resource_paths(ctx, srcs, prefix, outside)
     explicit = explicit_resource_paths(ctx, resource_paths)
     for path in explicit:
         if not path.startswith(prefix):
@@ -461,14 +461,19 @@ _godot_addon = rule(
         ),
         "resource_paths": attr.label_keyed_string_dict(
             doc = """
-            Runtime part: single-file target to explicit resource path below directory,
-            as godot_resources' resource_paths; use it to rename a file.
+            Files of the runtime part at explicit resource paths, keyed by single-file
+            target, such as `{"@vendor//:settings.cfg": "addons/vendor/settings.cfg"}`.
+            Use it for a file whose path relative to its package is not its place in the
+            add-on, such as a renamed or generated file. Each path lies below directory.
             """,
             allow_files = True,
             cfg = reset_transition,
         ),
         "editor_resource_paths": attr.label_keyed_string_dict(
-            doc = "Like resource_paths, for the editor part.",
+            doc = """
+            Files of the editor part at explicit resource paths below directory, keyed by
+            single-file target, as resource_paths places runtime files.
+            """,
             allow_files = True,
             cfg = reset_transition,
         ),
@@ -631,7 +636,9 @@ godot_addon = macro(
     scripts and scenes as godot_resources validates its own.
 
     Every file lives below directory, by default addons/<name>; srcs and editor_srcs
-    are placed there after strip_prefix. Two add-ons of one operation with overlapping
+    from any package or repository are placed there by their path relative to the
+    package of the listed target, after strip_prefix, and resource_paths and
+    editor_resource_paths at explicit paths. Two add-ons of one operation with overlapping
     directories fail, as does a file in both parts.
 
     Example:

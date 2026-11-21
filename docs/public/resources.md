@@ -109,9 +109,14 @@ and it reaches every operation and application that contains them.
 
 ## Keep resource paths stable
 
-`srcs` paths are relative to the declaring BUILD package, optionally after
-`strip_prefix`. For generated files or files from another package/repository,
-assign the desired resource path explicitly:
+Each file in `srcs` takes its path relative to the package of the target that lists
+it, optionally after `strip_prefix`: a file of the declaring package, a generated file,
+or a filegroup of another package or repository. `glob(["levels/**"])` in `//game` places
+`levels/level_01.tscn` at `res://levels/level_01.tscn`, and `@vendor//data:values`, a
+filegroup of `values/default.tres` in the vendor's `data` package, places it at
+`res://values/default.tres`. A target that lists a file outside its own package, such as
+a filegroup of a sibling package's files, fails analysis. Where a file's path relative to
+its package is not its resource path, assign the resource path explicitly:
 
 ```starlark
 godot_resources(
@@ -425,7 +430,8 @@ godot_project(
 Every file lives below the add-on's directory, `res://addons/<name>/` unless `directory`
 says otherwise: `srcs` and `editor_srcs` are placed there after `strip_prefix`, as `prefix`
 places resources, so `runtime/inventory.gd` becomes
-`res://addons/inventory/runtime/inventory.gd`. Every extension in `deps` is the add-on's,
+`res://addons/inventory/runtime/inventory.gd`. `resource_paths` and
+`editor_resource_paths` place single files at explicit paths below the directory. Every extension in `deps` is the add-on's,
 wherever its descriptor lies: operations containing the add-on contain it, and its parts
 and importer load it. A file in both parts, a `.uid` or `.import` sidecar in
 another part than its file, a `plugin.cfg` outside the editor part, two add-ons of one
@@ -448,6 +454,30 @@ godot_addon(
     testonly = True,
 )
 ```
+
+A release downloaded into a repository of its own keeps only filegroups of its parts in
+the repository's `build_file`; the add-on lives in the consumer's package and places them
+by their path in the release, so `directory` names where the release keeps it:
+
+```starlark
+# BUILD file of @vendor_release, given to http_archive as build_file.
+filegroup(name = "runtime", srcs = glob(["addons/vendor/runtime/**"]))
+
+filegroup(name = "editor", srcs = glob(["addons/vendor/plugin.cfg", "addons/vendor/editor/**"]))
+```
+
+```starlark
+# //third_party/vendor/BUILD.bazel
+godot_addon(
+    name = "vendor",
+    srcs = ["@vendor_release//:runtime"],
+    editor_srcs = ["@vendor_release//:editor"],
+    directory = "addons/vendor",
+    strip_prefix = "addons/vendor",
+)
+```
+
+Without `directory`, the add-on's directory follows its target name, `addons/<name>`.
 
 A release with prebuilt libraries, such as Sentry's, declares its libraries as the
 `library` of a `godot_extension` in `deps` and leaves the descriptor it ships out of both

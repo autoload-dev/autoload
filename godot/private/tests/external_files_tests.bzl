@@ -56,7 +56,7 @@ def _test_file_outside_its_target_package_fails(name):
     failure_test(
         name,
         _FIXTURE + ":file_outside_its_target_package",
-        "*data/values/default.tres is outside ''*; list the files through a target in their own package*",
+        "*addons/vendor/plugin_settings.cfg is outside \"data/\" of *external_release//data:foreign;*; list the files through a target in their own package*",
     )
 
 def external_files_test_suite(name):

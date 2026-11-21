@@ -4,3 +4,9 @@ filegroup(
     name = "values",
     srcs = glob(["values/**"]),
 )
+
+# A file of a sibling package: a target here cannot place it relative to its own package.
+filegroup(
+    name = "foreign",
+    srcs = ["//:addons/vendor/plugin_settings.cfg"],
+)

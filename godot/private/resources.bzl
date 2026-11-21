@@ -462,8 +462,9 @@ godot_resources = rule(
         ),
         "resource_paths": attr.label_keyed_string_dict(
             doc = """
-            Single-file target to explicit resource path; use for
-            generated or external files.
+            Files at explicit resource paths, keyed by single-file target, such as
+            `{"//configuration:generated": "config/generated.tres"}`. Use it for a file
+            whose path relative to its package is not its resource path.
             """,
             allow_files = True,
             cfg = reset_transition,

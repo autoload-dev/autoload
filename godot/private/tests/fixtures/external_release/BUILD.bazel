@@ -17,9 +17,3 @@ exports_files([
     "addons/vendor/editor/plugin.gd",
     "addons/vendor/plugin_settings.cfg",
 ])
-
-# Files of another package: a target here cannot place them relative to its own.
-filegroup(
-    name = "foreign",
-    srcs = ["//data:values"],
-)

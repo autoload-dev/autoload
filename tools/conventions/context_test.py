@@ -259,6 +259,20 @@ custom(name = "computed" + "_name")
             [("",), ("demo",)], [module.packages for module in workspace.modules]
         )
 
+    def test_repository_fixtures_belong_to_no_module(self) -> None:
+        for name in ("fixtures/repo/REPO.bazel", "fixtures/repo/data/BUILD.bazel"):
+            self.write(name, "")
+        workspace = Workspace(
+            self.root,
+            (
+                "MODULE.bazel",
+                "BUILD.bazel",
+                "fixtures/repo/REPO.bazel",
+                "fixtures/repo/data/BUILD.bazel",
+            ),
+        )
+        self.assertEqual([("",)], [module.packages for module in workspace.modules])
+
     def test_string_literals_skip_comments_and_keep_escapes(self) -> None:
         source = """# "comment"
 load("//a:b.bzl", 'c')

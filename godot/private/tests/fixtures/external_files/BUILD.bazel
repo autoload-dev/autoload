@@ -43,6 +43,6 @@ godot_addon(
 
 godot_resources(
     name = "file_outside_its_target_package",
-    srcs = ["@external_release//:foreign"],
+    srcs = ["@external_release//data:foreign"],
     tags = ["manual"],
 )
