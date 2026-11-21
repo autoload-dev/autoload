@@ -94,19 +94,25 @@ def copy_tree(source: Path, target: Path, tokens: dict[str, str]) -> list[Path]:
 def generate(directory: str, addon: str | None = None, root: Path = ROOT) -> list[Path]:
     """Write a new module with one add-on, or one add-on into an existing module."""
     names = Names(directory, addon or directory.removeprefix("."))
-    for name in (names.module, names.addon):
-        if not NAME.fullmatch(name):
-            raise ValueError(f"{name}: use lower snake case, such as platform_paths")
+    invalid = [name for name in (names.module, names.addon) if not NAME.fullmatch(name)]
+    if invalid:
+        raise ValueError(f"{invalid[0]}: use lower snake case, such as platform_paths")
     module = root / "addons" / directory
     tokens = names.tokens()
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree(TEMPLATE / "module", module, tokens)
-        for bazelversion in (module / ".bazelversion", module / "examples/.bazelversion"):
-            shutil.copyfile(root / ".bazelversion", bazelversion)
-            written.append(bazelversion)
+        written += copy_bazelversion(root, module)
     written += copy_tree(TEMPLATE / "addon", module / names.addon, tokens)
     return written
+
+
+def copy_bazelversion(root: Path, module: Path) -> list[Path]:
+    """A new module and its examples use the repository's Bazel version."""
+    copies = [module / ".bazelversion", module / "examples/.bazelversion"]
+    for copy in copies:
+        shutil.copyfile(root / ".bazelversion", copy)
+    return copies
 
 
 def pin(directory: str, root: Path = ROOT) -> None:

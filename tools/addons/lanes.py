@@ -38,15 +38,21 @@ def commands(lane: str, module: AddonModule) -> list[list[str]]:
     return [["bazel", "build", APP_CONFIGS[lane], *apps]]
 
 
+def runs_here(lane: str, hosts: list[str]) -> bool:
+    """Whether this machine runs the lane: addon.pkl may limit the host lane to some hosts."""
+    return lane != "host" or not hosts or host() in hosts
+
+
 def run(lane: str, module: AddonModule, hosts: list[str]) -> None:
-    if lane == "host" and hosts and host() not in hosts:
+    if not runs_here(lane, hosts):
         print(f"{module.path}: its host lane runs on {', '.join(hosts)}, not {host()}")
         return
+    passing = {0, NO_TESTS} if lane == "host" else {0}
     for command in commands(lane, module):
         print("+", " ".join(command), flush=True)
         examples = ROOT / module.path / "examples"
         status = subprocess.run(command, cwd=examples, check=False).returncode
-        if status not in (0, NO_TESTS if lane == "host" else 0):
+        if status not in passing:
             sys.exit(status)
 
 

@@ -98,17 +98,20 @@ def stale(root: Path = ROOT) -> list[str]:
     return sorted(paths)
 
 
+def write_file(target: Path, content: str | None) -> None:
+    """Write one generated file, or remove it and its directory once that is empty."""
+    if content is not None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+        return
+    target.unlink()
+    if not any(target.parent.iterdir()):
+        target.parent.rmdir()
+
+
 def write(root: Path = ROOT) -> None:
     for path, content in expected(root).items():
-        target = root / path
-        if content is None:
-            target.unlink()
-        else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
-    for directory in sorted((root / ".bcr/addons").glob("*"), reverse=True):
-        if directory.is_dir() and not any(directory.iterdir()):
-            directory.rmdir()
+        write_file(root / path, content)
 
 
 def main() -> None:

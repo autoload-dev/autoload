@@ -44,6 +44,16 @@ def at(path: Path | str) -> Location:
     return Location(Path(path).as_posix(), 1)
 
 
+def backends_directory(name: str) -> Path | None:
+    """The first backends/ directory of a path that is not an add-on's native/backends/."""
+    parts = Path(name).parts
+    for index, part in enumerate(parts[:-1]):
+        previous = parts[index - 1] if index else ""
+        if part == "backends" and previous != "native":
+            return Path(*parts[: index + 1])
+    return None
+
+
 def addon_values(text: str) -> dict[str, list[str]]:
     """The `name = List(...)` properties of an addon.pkl, without its comments."""
     values = {}
@@ -69,7 +79,10 @@ class AddonModuleLayout:
             if Path(name).name == "MODULE.bazel" and Path(name).parent.parent == ADDONS
         )
         for module in modules:
-            yield from self.module(workspace, module)
+            yield from self.files(workspace, module)
+            yield from self.imports(workspace, module)
+            yield from self.addon_pkl(workspace, module / "addon.pkl")
+            yield from self.projects(workspace, module / "examples/projects")
         yield from self.extensions(workspace, modules)
 
     @staticmethod
@@ -77,17 +90,16 @@ class AddonModuleLayout:
         """One finding per backends/ directory that is not an add-on's native/backends/."""
         misplaced: dict[Path, str] = {}
         for name in workspace.files:
-            parts = Path(name).parts
-            for index, part in enumerate(parts[:-1]):
-                if part == "backends" and (index == 0 or parts[index - 1] != "native"):
-                    misplaced.setdefault(Path(*parts[: index + 1]), name)
+            if (directory := backends_directory(name)) is not None:
+                misplaced.setdefault(directory, name)
         for directory, name in sorted(misplaced.items()):
             yield Finding(
                 at(name),
                 f"an add-on's backends belong in its native/backends/: {directory.as_posix()}",
             )
 
-    def module(self, workspace: Workspace, module: Path) -> Iterable[Finding]:
+    @staticmethod
+    def files(workspace: Workspace, module: Path) -> Iterable[Finding]:
         manifest = module / "MODULE.bazel"
         for relative in REQUIRED:
             if (module / relative).as_posix() not in workspace.file_set:
@@ -96,15 +108,17 @@ class AddonModuleLayout:
         declared = NAME.search(workspace.text(manifest.as_posix()))
         if declared is None or declared[1] != expected:
             yield Finding(at(manifest), f"add-on module must be named {expected}")
-        for relative, line in IMPORTS.items():
-            path = (module / relative).as_posix()
-            if (
-                path in workspace.file_set
-                and line not in workspace.text(path).splitlines()
-            ):
+
+    @staticmethod
+    def imports(workspace: Workspace, module: Path) -> Iterable[Finding]:
+        present = [
+            (path, line)
+            for relative, line in IMPORTS.items()
+            if (path := (module / relative).as_posix()) in workspace.file_set
+        ]
+        for path, line in present:
+            if line not in workspace.text(path).splitlines():
                 yield Finding(at(path), f"must import the shared settings: {line}")
-        yield from self.addon_pkl(workspace, module / "addon.pkl")
-        yield from self.projects(workspace, module / "examples/projects")
 
     @staticmethod
     def addon_pkl(workspace: Workspace, path: Path) -> Iterable[Finding]:
@@ -134,21 +148,24 @@ class AddonModuleLayout:
             )
         for build in builds:
             names = set(NAME.findall(workspace.text(build.as_posix())))
-            for target in PROJECT_TARGETS:
-                if target not in names:
-                    yield Finding(at(build), f"example project must define :{target}")
+            for target in sorted(set(PROJECT_TARGETS) - names):
+                yield Finding(at(build), f"example project must define :{target}")
 
     @staticmethod
     def extensions(workspace: Workspace, modules: list[Path]) -> Iterable[Finding]:
         """Extension names are unique across modules: on iOS they name the frameworks."""
+        builds = [
+            name
+            for name in workspace.files
+            if Path(name).name in BUILD_FILES
+            and any(Path(name).is_relative_to(module) for module in modules)
+        ]
         owners: dict[str, list[str]] = defaultdict(list)
-        for name in workspace.files:
-            path = Path(name)
-            if path.name in BUILD_FILES and any(path.is_relative_to(m) for m in modules):
-                for extension in EXTENSION.findall(workspace.text(name)):
-                    owners[extension].append(name)
-        for extension, builds in sorted(owners.items()):
-            for build in builds[1:]:
+        for build in builds:
+            for extension in EXTENSION.findall(workspace.text(build)):
+                owners[extension].append(build)
+        for extension, owning in sorted(owners.items()):
+            for build in owning[1:]:
                 yield Finding(
-                    at(build), f"extension name {extension} is taken by {builds[0]}"
+                    at(build), f"extension name {extension} is taken by {owning[0]}"
                 )
