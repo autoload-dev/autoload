@@ -44,5 +44,5 @@ runs:
         TASKS: ${{ inputs.tasks }}
       run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
     - name: Save Bazel downloads
-      if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+      if: ${{ !cancelled() }}
       uses: ./.github/actions/setup/save-downloads

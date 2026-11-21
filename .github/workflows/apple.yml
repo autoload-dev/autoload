@@ -2,8 +2,8 @@ name: Apple
 
 # The lanes that need a macOS runner: the host tests on macOS, the apps with
 # source-built engines and the iOS apps. CI calls this workflow from the merge
-# queue, on main and on dispatch. On a pull request, the ci:macos label runs it
-# once, for the commit that is labelled.
+# queue and on dispatch. On a pull request, the ci:macos label runs it once, for
+# the commit that is labelled.
 # Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
 on:
   pull_request:
@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   selection:
-    name: Select verification
+    name: Plan
     if: github.event_name != 'pull_request' || github.event.label.name == 'ci:macos'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
@@ -86,7 +86,7 @@ jobs:
       - name: Run apps with source-built engines
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
-        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
   ios:
@@ -112,11 +112,11 @@ jobs:
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
-        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
   result:
-    name: Result
+    name: Finalize
     # A run that another label started has nothing to report.
     if: ${{ always() && needs.selection.result != 'skipped' }}
     needs: [selection, tests-macos, source-engine, ios]

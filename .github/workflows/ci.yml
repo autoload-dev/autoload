@@ -2,10 +2,9 @@ name: CI
 
 on:
   pull_request:
-  # The merge queue runs every selected lane on the result of the merge.
+  # The merge queue runs every selected lane on the result of the merge. Main
+  # then receives that commit unchanged, so a push to main runs nothing again.
   merge_group:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,15 +20,16 @@ permissions:
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
 # .github/actions/setup keeps only Bazel's downloads between runs, on Linux
-# with the extracted repositories. A merge group does not save them: no later
-# run can read the cache entries of its temporary branch.
+# with the extracted repositories. The merge queue saves the caches that later
+# runs read: Blacksmith's branch protection for the Actions cache and sticky
+# disks is off, so every branch reads the entries of a merge group's branch.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   selection:
-    name: Select verification
+    name: Plan
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     outputs:
@@ -142,7 +142,7 @@ jobs:
     uses: ./.github/workflows/apple.yml
 
   verification:
-    name: Verification result
+    name: Finalize
     if: always()
     needs: [selection, formatting, api-docs, tests-linux, android, apple]
     runs-on: blacksmith-2vcpu-ubuntu-2404
