@@ -54,15 +54,43 @@ _OWNED_PLIST_KEYS = {
     "CFBundleIconName": "godot_app.ios_app_icons",
 }
 
-def _ios_shell_impl(ctx):
+def _check_platform_deps(platform_deps):
     # ios_application accepts arbitrary deps, so a foreign library can otherwise
     # disappear silently. Keep real platform libraries on the application for aspects.
-    for dependency in ctx.attr.platform_deps:
+    for dependency in platform_deps:
         if CcInfo not in dependency:
             fail("iOS platform_deps input %s must provide CcInfo; use platform_resources for bundle resources" % dependency.label)
+
+def _bundle_keys(attr, pack):
+    """The Info.plist keys the application sets itself, which _OWNED_PLIST_KEYS lists."""
+    return {
+        "CFBundleIdentifier": attr.bundle_id,
+        "CFBundleExecutable": attr.executable_name,
+        "CFBundlePackageType": "APPL",
+        "MinimumOSVersion": attr.minimum_os_version,
+        "UIDeviceFamily": [number for family, number in [("iphone", 1), ("ipad", 2)] if family in attr.families],
+        "CFBundleSupportedPlatforms": ["iPhoneSimulator" if pack.environment == "simulator" else "iPhoneOS"],
+    }
+
+def _overrides_privacy_manifest(resources):
+    """
+    Whether the application's resources have a privacy manifest that replaces the shell's.
+
+    It must lie at the root of the resources; rules_apple keeps one inside a resource
+    bundle, localization or framework there.
+    """
+    return any([
+        file.basename == "PrivacyInfo.xcprivacy" and not any([
+            part.endswith((".bundle", ".lproj", ".framework"))
+            for part in file.short_path.split("/")[:-1]
+        ])
+        for file in resources
+    ])
+
+def _ios_shell_impl(ctx):
+    _check_platform_deps(ctx.attr.platform_deps)
     pack = ctx.attr.pack[GodotPackInfo]
     profile = engine_profile(pack.version)
-    families = [number for family, number in [("iphone", 1), ("ipad", 2)] if family in ctx.attr.families]
     pack_file = ctx.actions.declare_file(
         ctx.label.name + "/" + ctx.attr.executable_name + ".pck",
     )
@@ -90,14 +118,7 @@ def _ios_shell_impl(ctx):
         {
             "profile": profile["ios"],
             "fallback_name": ctx.attr.app_name,
-            "bundle_keys": {
-                "CFBundleIdentifier": ctx.attr.bundle_id,
-                "CFBundleExecutable": ctx.attr.executable_name,
-                "CFBundlePackageType": "APPL",
-                "MinimumOSVersion": ctx.attr.minimum_os_version,
-                "UIDeviceFamily": families,
-                "CFBundleSupportedPlatforms": ["iPhoneSimulator" if pack.environment == "simulator" else "iPhoneOS"],
-            },
+            "bundle_keys": _bundle_keys(ctx.attr, pack),
             "owned_plist_keys": _OWNED_PLIST_KEYS,
             # The application's own launch storyboard replaces the launch screen.
             "launch_storyboard": bool(ctx.file.launch_storyboard),
@@ -108,18 +129,8 @@ def _ios_shell_impl(ctx):
         overrides = ctx.files.infoplist_overrides,
     )
 
-    # A privacy manifest at the root of the application's resources replaces the shell's;
-    # rules_apple keeps one inside a resource bundle, localization or framework there.
     resources = [pack_file, strings]
-    if not [
-        file
-        for file in ctx.files.resource_overrides
-        if file.basename == "PrivacyInfo.xcprivacy" and not [
-            part
-            for part in file.short_path.split("/")[:-1]
-            if part.endswith((".bundle", ".lproj", ".framework"))
-        ]
-    ]:
+    if not _overrides_privacy_manifest(ctx.files.resource_overrides):
         privacy = ctx.actions.declare_file(ctx.label.name + "/PrivacyInfo.xcprivacy")
         privacy_manifest(ctx, pack, profile, "ios", privacy)
         resources.append(privacy)
