@@ -98,7 +98,7 @@ godot_app(
 ios_unsigned_link(
     name = "ios_beta_link",
     pack = ":ios_pack",
-    runtime = "@godot_beta_templates//:ios_release",
+    runtime = "@godot_beta_templates_ios//:ios_release",
 )
 
 godot_app(
