@@ -405,6 +405,50 @@ _ios_bundle = rule(
     } | LAUNCH_ATTRS,
 )
 
+def _bundle_targets(name, inputs, visibility, common, application):
+    """
+    Declare an iOS application's ios_application, its public bundle and its debug symbols.
+
+    Args:
+        name: Name of the public bundle target.
+        inputs: What ios_application_inputs returned for the application.
+        visibility: Visibility of the public targets.
+        common: Conventional target attributes.
+        application: ios_application attributes: bundle_id, minimum_os_version,
+            families, the application's own deps, resources, infoplists and
+            launch_storyboard, and the remaining ios_application attributes, such as
+            bundle_name and signing options.
+    """
+    data = inputs.data
+
+    # rules_apple names its outputs after the last name segment, so the nested
+    # application keeps that basename; name forwards it in its bundle format.
+    base = name.rpartition("/")[2]
+    target = name + ".bundle/" + base
+    ios_application(
+        name = target,
+        bundle_name = application.pop("bundle_name", None) or base,
+        deps = inputs.deps + application.pop("deps"),
+        resources = [":" + data] + application.pop("resources"),
+        infoplists = [":" + data + ".plist"] + application.pop("infoplists"),
+        app_icons = [":" + data + ".app_icons"],
+        visibility = ["//visibility:private"],
+        **application
+    )
+    _ios_bundle(
+        name = name,
+        application = ":" + target,
+        visibility = visibility,
+        **common
+    )
+    native.filegroup(
+        name = name + ".debug_symbols",
+        srcs = [":" + name],
+        output_group = "dsyms",
+        visibility = visibility,
+        **filegroup_kwargs(common)
+    )
+
 def godot_ios_application(
         name,
         pack,
@@ -528,36 +572,18 @@ def godot_ios_application(
         ),
         common = common,
     )
-    data = inputs.data
-
-    # rules_apple names its outputs after the last name segment, so the nested
-    # application keeps that basename; name forwards it in its bundle format.
-    base = name.rpartition("/")[2]
-    application = name + ".bundle/" + base
-    ios_application(
-        name = application,
-        bundle_id = bundle_id,
-        bundle_name = kwargs.pop("bundle_name", None) or base,
-        minimum_os_version = minimum_os_version,
-        families = families,
-        deps = inputs.deps + deps,
-        resources = [":" + data] + resources,
-        infoplists = [":" + data + ".plist"] + infoplists,
-        app_icons = [":" + data + ".app_icons"],
-        launch_storyboard = launch_storyboard,
-        visibility = ["//visibility:private"],
-        **kwargs
-    )
-    _ios_bundle(
+    _bundle_targets(
         name = name,
-        application = ":" + application,
+        inputs = inputs,
         visibility = visibility,
-        **common
-    )
-    native.filegroup(
-        name = name + ".debug_symbols",
-        srcs = [":" + name],
-        output_group = "dsyms",
-        visibility = visibility,
-        **filegroup_kwargs(common)
+        common = common,
+        application = dict(
+            bundle_id = bundle_id,
+            minimum_os_version = minimum_os_version,
+            families = families,
+            deps = deps,
+            resources = resources,
+            infoplists = infoplists,
+            launch_storyboard = launch_storyboard,
+        ) | kwargs,
     )
