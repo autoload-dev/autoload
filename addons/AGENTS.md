@@ -27,17 +27,25 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and `examples/.bazelrc` imports
   [examples.bazelrc](examples.bazelrc); each adds only its BuildBuddy tag. Settings for all
   modules go in those two files.
-- `addon.pkl` names the lanes that verify the module and the hosts of its host lane, such
-  as `lanes = List("host")` and `hosts = List("macos")`. hk.pkl reads it; nothing outside the
-  module lists the module.
+- `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
+  documents what a module declares: the lanes that verify it, the hosts of its host lane and
+  its test operations, such as `lanes = List("host")` and `hosts = List("macos")`. A module
+  without the `android` and `ios` lanes builds no application: its examples have no `app`,
+  no Android SDK and no Maven graph. hk.pkl, the lanes and the conventions read it; nothing
+  outside the module lists the module.
 - `presubmit.yml`: the Bazel Central Registry's checks of a release.
   `mise run addons:generate` copies it to `.bcr/addons/<module>/` beside the generated
   templates. Never edit `.bcr/addons/`, `.bcr/config.yml` or the README table by hand.
 - `examples/`: an independent root module with the module's example applications in
-  `projects/<name>/`, each with the targets `app`, `edit` and `pack`. It consumes the module
+  `projects/<name>/`, each with the targets `edit`, `pack` and, for a module that builds
+  applications, `app`. It consumes the module
   like an external application (`local_path_override` to `..`) and the rules of this
   repository (`local_path_override` to `../../..`), so an add-on always builds against the
   rules it is changed with.
+- A module of this checkout that uses an add-on module through `local_path_override`, such
+  as `examples/` and `tests/` with autoload_gdunit, is its consumer: `mise run
+  addons:generate` writes them to `addons/consumers.pkl`, and hk.pkl selects the consumer's
+  tasks for changes to the add-on module but its `examples/`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in

@@ -29,8 +29,9 @@ class RequirementsTest(unittest.TestCase):
         for module in module_paths(ROOT):
             target = self.root / module
             target.mkdir(parents=True, exist_ok=True)
-            for name in ("MODULE.bazel", ".bazelrc"):
-                shutil.copyfile(ROOT / module / name, target / name)
+            for name in ("MODULE.bazel", ".bazelrc", "addon.pkl"):
+                if (ROOT / module / name).is_file():
+                    shutil.copyfile(ROOT / module / name, target / name)
         (self.root / LINUX_TOOLCHAINS).parent.mkdir(parents=True)
         shutil.copyfile(ROOT / LINUX_TOOLCHAINS, self.root / LINUX_TOOLCHAINS)
 

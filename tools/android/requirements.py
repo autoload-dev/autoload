@@ -5,6 +5,7 @@ import sys
 import tomllib
 from pathlib import Path
 
+from tools.addons.modules import all_modules
 from tools.setup.modules import (
     addon_modules,
     bazelrc_options,
@@ -59,10 +60,18 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 def application_modules(root: Path) -> list[str]:
     """
     The modules that build applications: every module but the add-on modules in addons/,
-    which use their examples' SDK. Each of them must configure its SDK.
+    which use their examples' SDK, and the examples of an add-on module whose addon.pkl
+    names no application lane. Each of them must configure its SDK.
     """
     addons = set(addon_modules(root))
-    return [module for module in module_paths(root) if module not in addons]
+    without_apps = {
+        f"{module.path.as_posix()}/examples"
+        for module in all_modules(root)
+        if not module.builds_apps
+    }
+    return [
+        module for module in module_paths(root) if module not in addons | without_apps
+    ]
 
 
 def configuration_errors(root: Path) -> list[str]:
