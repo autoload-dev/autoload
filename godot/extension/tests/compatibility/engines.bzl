@@ -4,23 +4,29 @@ load("//godot/private:execution.bzl", "TEST_EXEC_GROUPS")
 
 visibility("private")
 
-_TOOLCHAINS = "//command_line_option:extra_toolchains"
+_ENGINE = str(Label("//godot:engine"))
 
-# The toolchain hubs of the root module's development engines.
+# The toolchain hubs of the root module's development engines, which MODULE.bazel registers.
 ENGINES = {
     "beta": "@godot_beta//toolchains:all",
     "stable": "@godot//toolchains:all",
 }
 
-def _engine_transition_impl(settings, attr):
-    # Appended, so the command line's toolchains, such as a remote execution platform's
-    # C++ toolchain, stay in place.
-    return {_TOOLCHAINS: settings[_TOOLCHAINS] + [str(Label(ENGINES[attr.engine]))]}
+# The engine name that selects each hub: the stable engine is the default one.
+_ENGINE_NAMES = {
+    "beta": "beta",
+    "stable": "",
+}
+
+def _engine_transition_impl(_settings, attr):
+    # A build setting, unlike --extra_toolchains, stays out of the exec configuration, so
+    # the tools of every engine's test share one.
+    return {_ENGINE: _ENGINE_NAMES[attr.engine]}
 
 _engine_transition = transition(
     implementation = _engine_transition_impl,
-    inputs = [_TOOLCHAINS],
-    outputs = [_TOOLCHAINS],
+    inputs = [],
+    outputs = [_ENGINE],
 )
 
 _ENGINE_ATTR = attr.string(mandatory = True, values = ENGINES.keys())

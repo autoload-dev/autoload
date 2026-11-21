@@ -10,7 +10,9 @@ _PROBE = "//godot/platforms/private/tests/engine_probe/fixtures/probe_project_wi
 
 _ANDROID = "//godot/platforms:android_arm64"
 
-_BETA = "@godot_beta//toolchains:all"
+# The prebuilt beta engine, which MODULE.bazel registers under this engine name; the
+# source-built beta engines join it and take priority for their slots.
+_BETA = "beta"
 
 _ANDROID_SDK = ["//godot/platforms/private/tests:requires_android_sdk"]
 
@@ -130,7 +132,7 @@ py_test(
 configured_outputs(
     name = "official_beta_android_app_packages_selected_engine_test_app",
     android_api_level = "36",
-    extra_toolchains = [_BETA],
+    engine = _BETA,
     platform = _ANDROID,
     tags = ["manual"],
     target = _PROBE + "android_beta_app",
@@ -153,10 +155,8 @@ beta_engine_test(
 configured_outputs(
     name = "source_built_beta_android_app_packages_patched_engine_test_app",
     android_api_level = "36",
-    extra_toolchains = [
-        _BETA,
-        "@godot_beta_source_build_android//toolchains:all",
-    ],
+    engine = _BETA,
+    extra_toolchains = ["@godot_beta_source_build_android//toolchains:all"],
     platform = _ANDROID,
     tags = ["manual"],
     target = _PROBE + "android_beta_source_built_app",
@@ -186,7 +186,7 @@ beta_engine_test(
 # extension and carry the 4.8 pack.
 configured_outputs(
     name = "official_beta_ios_link_links_selected_engine_test_link",
-    extra_toolchains = [_BETA],
+    engine = _BETA,
     platform = "//godot/platforms:ios_arm64",
     tags = ["manual"],
     target = _PROBE + "ios_beta_link",
@@ -204,10 +204,8 @@ beta_engine_test(
 
 configured_outputs(
     name = "source_built_beta_ios_app_links_patched_engine_test_app",
-    extra_toolchains = [
-        _BETA,
-        "@godot_beta_source_build_ios//toolchains:all",
-    ],
+    engine = _BETA,
+    extra_toolchains = ["@godot_beta_source_build_ios//toolchains:all"],
     platform = "//godot/platforms:ios_sim_arm64",
     tags = ["manual"],
     target = _PROBE + "ios_beta_source_built_app",

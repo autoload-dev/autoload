@@ -25,6 +25,7 @@ _OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
 _VARIANT = str(Label("//godot:variant"))
+_ENGINE = str(Label("//godot:engine"))
 
 _SETTINGS = [
     _PLATFORMS,
@@ -37,6 +38,7 @@ _SETTINGS = [
     _ANDROID_FORMAT,
     _ANDROID_API_LEVEL,
     _VARIANT,
+    _ENGINE,
 ]
 
 def _configured_impl(settings, attr):
@@ -60,6 +62,8 @@ def _configured_impl(settings, attr):
         result[_ANDROID_API_LEVEL] = attr.android_api_level
     if attr.variant:
         result[_VARIANT] = attr.variant
+    if attr.engine:
+        result[_ENGINE] = attr.engine
     return result
 
 _configured = transition(
@@ -94,6 +98,7 @@ configured_outputs = rule(
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),
         "platform": attr.label(doc = "The export platform or platform slice; the build's own target platform by default."),
         "extra_toolchains": attr.string_list(doc = "Further toolchain patterns as absolute labels, such as a source-built engine's `@<hub>//toolchains:all`."),
+        "engine": attr.string(doc = "The `//godot:engine` setting, such as `beta` for a registered named engine; a build setting keeps the exec configuration of the tools unchanged, unlike `extra_toolchains`."),
         "compilation_mode": attr.string(values = ["", "fastbuild", "dbg", "opt"]),
         "strip": attr.string(values = ["", "always", "sometimes", "never"]),
         "copts": attr.string_list(doc = "Appended to `--copt`."),
