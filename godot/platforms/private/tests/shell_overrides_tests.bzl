@@ -43,19 +43,23 @@ def _shell_actions(target):
         struct(writers, yields): the GodotShellFile actions by command, as a dict of
         lists, and the GodotShellYield actions.
     """
-    actions = {}
-    for entry in reached(target):
-        if entry.action.mnemonic in ["GodotShellFile", "GodotShellYield"]:
-            actions[entry.action.outputs.to_list()[0].short_path] = entry.action
+    actions = _unique_shell_actions(target)
     writers = {}
-    yields = []
-    for action in actions.values():
-        if action.mnemonic == "GodotShellYield":
-            yields.append(action)
-        else:
+    for action in actions:
+        if action.mnemonic == "GodotShellFile":
             # The command is the first argument after the tool.
             writers.setdefault(action.argv[1], []).append(action)
+    yields = [action for action in actions if action.mnemonic == "GodotShellYield"]
     return struct(writers = writers, yields = yields)
+
+def _unique_shell_actions(target):
+    """Return the GodotShellFile and GodotShellYield actions a target reaches, once per output."""
+    actions = {
+        entry.action.outputs.to_list()[0].short_path: entry.action
+        for entry in reached(target)
+        if entry.action.mnemonic in ["GodotShellFile", "GodotShellYield"]
+    }
+    return actions.values()
 
 def _expect_closure(env, target, present, absent):
     """Assert which files the target's bundle is built from."""
