@@ -6,7 +6,7 @@ def _fixtures_impl(ctx):
     godot_export_templates_archive(
         name = "godot_split_templates",
         archive = Label(":split_templates.zip"),
-        integrity = "sha256-kfwGFsjCwq4s8Og4Cj91SmF79iQwxKPaknknuekHtnA=",
+        integrity = "sha256-Cee2KM1WR9JwQDGio9ablBuzn62v9dNG+WaU8nq4Y+8=",
         platform = "macos",
         cpus = ["arm64", "x86_64"],
         version = "4.7.2",
