@@ -23,8 +23,7 @@ build:android --config=android-toolchains
 build:android --platforms=@autoload_rules_godot//godot/platforms:android_arm64
 
 build:official --platforms=@autoload_rules_godot//godot/platforms:ios_sim_x86_64
-# The arm64 Simulator slot of the source-built engine, which the iOS API contract cases of
-# the source build inspect.
+# The arm64 Simulator slot, which the hub builds from the release's sources.
 build:source --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
 
 build:aab --@autoload_rules_godot//godot:android_format=aab

@@ -150,9 +150,13 @@ API_CASES = {
         "module": "tests",
         "conditions": ["android_shell"],
         "entrypoints": _hub_entrypoints(
-            {"android_{cpu}_{variant}": ["android_%s_release" % cpu for cpu in _TEMPLATE_CPUS]},
+            # The hub builds the debug runtimes the official release lacks from its sources.
+            {"android_{cpu}_{variant}": [
+                "android_%s_release" % cpu
+                for cpu in _TEMPLATE_CPUS
+            ] + ["android_%s_debug" % cpu for cpu in ["arm64", "x86_64"]]},
             {
-                "@{repository}//android:{variant}": ["@godot//android:release"],
+                "@{repository}//android:{variant}": ["@godot//android:" + v for v in _VARIANTS],
                 "@{repository}//android:plugin_api": ["@godot//android:plugin_api"],
             },
         ),
@@ -174,7 +178,8 @@ API_CASES = {
         "entrypoints": _hub_entrypoints({
             "ios_{cpu}_{environment}_{variant}": [
                 slot + "_" + v
-                for slot in ["ios_arm64_device", "ios_x86_64_simulator"]
+                # The hub builds the arm64 Simulator runtimes from the release's sources.
+                for slot in ["ios_arm64_device", "ios_arm64_simulator", "ios_x86_64_simulator"]
                 for v in _VARIANTS
             ],
         }),
