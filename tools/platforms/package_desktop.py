@@ -32,8 +32,16 @@ def copy_file(source: str | Path, destination: Path, executable: bool = False) -
 
 
 def _executable(entry: dict) -> bool:
-    """Whether a manifest entry is installed executable, as is an executable source such as a crash handler."""
-    return entry.get("executable", False) or os.access(entry["source"], os.X_OK)
+    """
+    Whether a manifest entry is installed executable.
+
+    An entry that keeps its mode, such as an extension's crash handler, is executable when
+    its source is. Only those entries ask the source: Bazel marks every output it writes
+    executable, so the mode of other sources, such as generated descriptors, says nothing.
+    """
+    return entry.get("executable", False) or (
+        entry.get("keep_mode", False) and os.access(entry["source"], os.X_OK)
+    )
 
 
 def archive_tree(root: Path, archive: str | Path, operating_system: str) -> None:

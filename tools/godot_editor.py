@@ -192,6 +192,9 @@ def place_file(
         status = path.stat()
         fingerprint = [origin, status.st_size, status.st_mtime_ns]
         if known == fingerprint:
+            # The bytes are placed; the mode can still change, as when an original
+            # becomes executable. chmod keeps the modification time of the fingerprint.
+            path.chmod(mode)
             return fingerprint
         if not same_content(path, original):
             path.unlink()
