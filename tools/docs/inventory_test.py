@@ -68,9 +68,7 @@ class InventoryTest(unittest.TestCase):
                 "purpose": "Build.",
                 "symbols": ["helper"],
             }
-            config["CROSS_REPOSITORY_MODULES"]["//godot:helper.bzl"] = (
-                "Internal helper."
-            )
+            config["CROSS_REPOSITORY_MODULES"]["//godot:helper.bzl"] = "Internal helper."
             self.assertTrue(
                 any(
                     "multiple module roles" in error
