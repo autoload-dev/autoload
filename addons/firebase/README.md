@@ -4,12 +4,14 @@ Firebase add-ons of autoload-dev for Godot as the Bazel module `autoload_firebas
 with [rules_godot](https://github.com/autoload-dev/rules_godot). Applications depend on the
 module and list the add-ons they use; the add-ons bring the Firebase SDKs.
 
-Prototype status: Firebase Core and Google Analytics for Firebase on Android and iOS.
+Prototype status: Firebase Core, Google Analytics for Firebase and Cloud Firestore on Android
+and iOS.
 
 | Add-on | Target | GDScript API |
 | --- | --- | --- |
 | Firebase Core | `@autoload_firebase//core` | autoload `Firebase`, class `FirebaseCore` |
 | Analytics | `@autoload_firebase//analytics` | class `FirebaseAnalytics` |
+| Cloud Firestore | `@autoload_firebase//firestore` | classes `FirebaseFirestore`, `FirestoreTask` |
 
 ## Use in an application
 
@@ -65,6 +67,18 @@ godot_app(
 
 ```gdscript
 FirebaseAnalytics.log_event("level_start", {"level": 3})
+
+# Firestore operations return a FirestoreTask; await its `completed` signal, then read
+# `error` (empty on success) and `result`.
+var task := FirebaseFirestore.set_document("players/alice", {"level": 3}, true)  # merge
+await task.completed
+task = FirebaseFirestore.get_document("players/alice")
+await task.completed
+print(task.result)  # {"level": 3, ...}, or null when the document does not exist
+task = FirebaseFirestore.query("players", [["level", ">=", 2]], "level", true, 10)
+await task.completed
+for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
+    print(document.id)
 ```
 
 ## Design
@@ -73,7 +87,14 @@ FirebaseAnalytics.log_event("level_start", {"level": 3})
   calls a Godot Android plugin (Java) that the extension carries in `platform_deps`, iOS calls
   the Firebase Apple SDK from Objective-C++, and the editor and desktop platforms take a
   backend that reports Firebase as unsupported. Editor builds never fetch an SDK.
-- Analytics needs Core (`deps`), so its autoload initializes the default app first.
+- Analytics and Firestore need Core (`deps`), so its autoload initializes the default app
+  first.
+- Firestore is asynchronous: every operation returns a `FirestoreTask` whose `completed`
+  signal is deferred, so it fires after the caller awaits it, even for a task that failed at
+  once (a malformed path, an unsupported platform). Firestore values map to Godot as
+  maps to dictionaries, lists to arrays, timestamps to seconds since the epoch, references
+  to paths, geo points to dictionaries with latitude and longitude, and blobs to byte
+  arrays; the same mapping applies on Android and iOS.
 - Android dependencies come from Maven: the module's `maven.install(name = "maven")` merges
   into the root module's `@maven`, which pins the merged graph.
 - iOS dependencies come from Firebase's binary distribution, `Firebase.zip`, as static
@@ -82,7 +103,9 @@ FirebaseAnalytics.log_event("level_start", {"level": 3})
   `use_frameworks! :linkage => :dynamic` (`ios/`): `FirebaseCore.framework` holds the core
   libraries (FirebaseCore, FirebaseCoreInternal, FirebaseInstallations, GoogleUtilities,
   FBLPromises, nanopb) and the application's one FIRApp; `FirebaseAnalytics.framework`
-  holds the rest of Analytics and links `FirebaseCore`. Firebase publishes no dynamic
+  holds the rest of Analytics and links `FirebaseCore`; `FirebaseFirestore.framework` holds
+  Firestore with gRPC, BoringSSL and LevelDB, and its code compiles against the headers of
+  FirebaseFirestoreInternal, which it holds too (`header_libraries`). Firebase publishes no dynamic
   frameworks, so `ios/` links them from the static XCFrameworks and copies their headers,
   modules and privacy bundles into them.
   The add-ons' extensions are rules_godot's default dynamic frameworks, each with its own
@@ -101,7 +124,10 @@ FirebaseAnalytics.log_event("level_start", {"level": 3})
 
 ## Development
 
-`bazel test //...` in this directory runs the `firebase_config` tests. The application in
+`bazel test //...` in this directory runs the `firebase_config` tests. The Firestore part of
+the example talks to the Firebase project of the placeholder configuration unless the project
+setting `examples/firestore_emulator` names a Firestore emulator as `host:port`, such as
+`10.0.2.2:8080` from the Android emulator. The application in
 [`examples/`](examples) builds the add-ons for every platform. Both use the rules of this
 repository, not a release.
 

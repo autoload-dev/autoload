@@ -6,6 +6,7 @@ product's static XCFrameworks (README.md, "Design").
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 # The Info.plist of a framework; the layout of rules_godot's extension frameworks.
@@ -127,12 +128,25 @@ _firebase_framework_files = rule(
     fragments = ["apple"],
 )
 
+def _compilation_only_impl(ctx):
+    return [CcInfo(compilation_context = cc_common.merge_compilation_contexts(
+        compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
+    ))]
+
+_compilation_only = rule(
+    doc = "Forward only the headers and framework search paths of deps, nothing to link.",
+    implementation = _compilation_only_impl,
+    attrs = {"deps": attr.label_list(providers = [CcInfo])},
+    provides = [CcInfo],
+)
+
 def firebase_framework(
         name,
         framework_name,
         libraries,
         version,
         frameworks = [],
+        header_libraries = [],
         sdk_frameworks = [],
         sdk_dylibs = [],
         xcframeworks = ["@firebase_ios//:xcframework_files"],
@@ -150,6 +164,9 @@ def firebase_framework(
         libraries: The static XCFramework imports the framework holds, entirely.
         version: The Firebase version.
         frameworks: Names of the firebase_framework targets this one links.
+        header_libraries: Libraries among libraries whose headers the framework's headers
+            include, such as FirebaseFirestoreInternal: code that compiles against the
+            framework finds them in their XCFramework, but links only the framework.
         sdk_frameworks: System frameworks the libraries need.
         sdk_dylibs: System libraries the libraries need, without the lib prefix.
         xcframeworks: The files of the XCFrameworks' iOS slices.
@@ -185,12 +202,22 @@ def firebase_framework(
         target_compatible_with = compatible,
         visibility = ["//visibility:private"],
     )
+    headers = []
+    if header_libraries:
+        headers = [":" + name + ".headers"]
+        _compilation_only(
+            name = name + ".headers",
+            deps = header_libraries,
+            tags = ["manual"],
+            target_compatible_with = compatible,
+            visibility = ["//visibility:private"],
+        )
     for suffix, bundle_only in [("", False), (".bundle", True)]:
         apple_dynamic_framework_import(
             name = name + suffix,
             bundle_only = bundle_only,
             framework_imports = [":" + files],
-            deps = [framework + suffix for framework in frameworks],
+            deps = [framework + suffix for framework in frameworks] + ([] if bundle_only else headers),
             target_compatible_with = compatible,
             visibility = visibility,
         )

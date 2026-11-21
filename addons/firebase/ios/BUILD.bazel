@@ -56,3 +56,29 @@ firebase_framework(
     sdk_frameworks = _SDK_FRAMEWORKS + ["StoreKit"],
     version = _VERSION,
 )
+
+# FirebaseFirestore.framework: Cloud Firestore with gRPC, BoringSSL and LevelDB, linked
+# against FirebaseCore.framework.
+firebase_framework(
+    name = "firestore",
+    framework_name = "FirebaseFirestore",
+    frameworks = [":core"],
+    # FirebaseFirestore.h includes the Objective-C API of FirebaseFirestoreInternal.
+    header_libraries = ["@firebase_ios//:FirebaseFirestoreInternal"],
+    libraries = ["@firebase_ios//:" + n for n in [
+        "FirebaseAppCheckInterop",
+        "FirebaseCoreExtension",
+        "FirebaseFirestore",
+        "FirebaseFirestoreInternal",
+        "FirebaseSharedSwift",
+        "absl",
+        "grpc",
+        "grpcpp",
+        "leveldb",
+        "openssl_grpc",
+    ]],
+    sdk_dylibs = _SDK_DYLIBS,
+    # gRPC watches network reachability with Network.framework.
+    sdk_frameworks = _SDK_FRAMEWORKS + ["Network"],
+    version = _VERSION,
+)

@@ -49,8 +49,23 @@ godot_cpp_bindings(
     enabled_classes = [
         "Engine",
         "Object",
+        "RefCounted",
     ],
 )
+
+# Kotlin Multiplatform modules of androidx.datastore, which firebase-common uses for its
+# heartbeat storage, at the version Firebase selects. The gradle resolver of
+# rules_jvm_external (7.2) resolves for the JVM and maps each root module to its JVM module,
+# which lacks the Android API firebase-common calls (PreferenceDataStoreDelegateKt): Firestore
+# crashes with NoClassDefFoundError on its first request. The overrides below select the
+# Android modules instead. Remove them, and the Guava pin below, once the gradle resolver
+# resolves for Android (org.gradle.jvm.environment=android), and repin.
+_DATASTORE_MODULES = [
+    "datastore",
+    "datastore-core",
+    "datastore-preferences",
+    "datastore-preferences-core",
+]
 
 # Android: the Firebase libraries join the root module's @maven graph. The root module lists
 # autoload_firebase in known_contributing_modules and pins the merged graph in its lock file.
@@ -61,12 +76,36 @@ maven.install(
     artifacts = [
         "com.google.firebase:firebase-analytics:24.0.0",
         "com.google.firebase:firebase-common:23.0.0",
-    ],
+        "com.google.firebase:firebase-firestore:27.2.0",
+    ] + ["androidx.datastore:%s-android:1.1.7" % m for m in _DATASTORE_MODULES],
     repositories = [
         "https://dl.google.com/dl/android/maven2",
         "https://repo.maven.apache.org/maven2",
     ],
 )
+
+# Firestore's gRPC selects Guava 33.6.0-android. Guava's Gradle module metadata hands a JVM
+# resolution the JRE jar of that version, and the gradle resolver of rules_jvm_external
+# (7.2) records the JRE jar's checksum under the Android coordinates, so the fetch fails.
+# Requesting the JRE flavor keeps coordinates and checksum together; the graph held Guava's
+# JRE flavor before (protobuf's 32.0.1-jre). Keep the version at the one gRPC selects.
+maven.artifact(
+    name = "maven",
+    artifact = "guava",
+    force_version = True,
+    group = "com.google.guava",
+    version = "33.6.0-jre",
+)
+
+[
+    maven.override(
+        name = "maven",
+        coordinates = "androidx.datastore:" + m,
+        target = "@maven//:androidx_datastore_%s_android" % m.replace("-", "_"),
+    )
+    for m in _DATASTORE_MODULES
+]
+
 use_repo(maven, "maven")
 
 # iOS: Firebase's official binary distribution, static XCFrameworks. No SwiftPM, so a
