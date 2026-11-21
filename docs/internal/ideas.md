@@ -73,8 +73,18 @@ what is still open. Line references are to `main` as of 2026-11-04.
   The time goes to about 1,000 configurations, most of them from the 126 tests in
   `//godot/platforms/...` (1.0 million configured targets, 158 of 185 CPU seconds).
 - A fresh CI job also extracts 13 GB of repositories, 6.4 GB of them export templates.
-- Open: fewer distinct configurations in the platform tests; which fixtures could assert at
-  rule level instead of on whole applications.
+- Since `godot/private/config/native.bzl` decides the native options and an application
+  configures its native code once per platform slice, the host set configures 1.31 million
+  targets in 890 configurations (845 target, 45 exec) on macOS.
+- Remaining: the content configuration and the project context still analyze the native
+  edges of extensions and add-ons (an extension's `library` and `implementation_deps`, an
+  add-on's `platform_deps`), although only platform slices build them: one native
+  configuration per application on iOS and Android that nothing packages, and on macOS
+  where the build's minimum differs from the application's.
+- A fix needs the export and the project context to describe an extension's libraries
+  without analyzing them, for example from names the extension declares, or native edges
+  that reach nothing outside platform slices.
+- Open: which fixtures could assert at rule level instead of on whole applications.
 
 ## Tests and conventions
 
