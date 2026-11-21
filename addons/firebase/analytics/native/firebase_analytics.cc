@@ -5,6 +5,28 @@
 
 using namespace godot;
 
+namespace {
+// The parameters every backend logs: string keys, and booleans, integers, floats and strings
+// as values. Other values become their Godot string form; null values are left out, since
+// Firebase has no null parameter. Converted here, Android and iOS log the same event.
+Dictionary event_parameters(const Dictionary &parameters) {
+  Dictionary result;
+  const Array keys = parameters.keys();
+  for (int64_t i = 0; i < keys.size(); ++i) {
+    const Variant value = parameters[keys[i]];
+    switch (value.get_type()) {
+    case Variant::NIL: continue;
+    case Variant::BOOL:
+    case Variant::INT:
+    case Variant::FLOAT:
+    case Variant::STRING: result[String(keys[i])] = value; break;
+    default: result[String(keys[i])] = value.stringify(); break;
+    }
+  }
+  return result;
+}
+} // namespace
+
 void FirebaseAnalytics::_bind_methods() {
   ClassDB::bind_static_method("FirebaseAnalytics",
                               D_METHOD("log_event", "name", "parameters"),
@@ -21,7 +43,7 @@ void FirebaseAnalytics::_bind_methods() {
 }
 
 void FirebaseAnalytics::log_event(const String &name, const Dictionary &parameters) {
-  firebase_analytics::backend_log_event(name, parameters);
+  firebase_analytics::backend_log_event(name, event_parameters(parameters));
 }
 void FirebaseAnalytics::set_user_id(const String &user_id) {
   firebase_analytics::backend_set_user_id(user_id);
