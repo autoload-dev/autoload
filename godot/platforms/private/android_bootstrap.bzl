@@ -85,6 +85,7 @@ def _yield_resources(ctx, trees, candidates, name):
 
 def _android_bootstrap_impl(ctx):
     _check_manifest_values(ctx)
+
     # A transitioned attribute holds a list, here of the one pack.
     pack = ctx.attr.pack[0][GodotPackInfo]
     engine = engine_profile(pack.version)
