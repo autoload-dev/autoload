@@ -733,9 +733,7 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-_SOURCE_INCLUDE = re.compile(
-    r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE
-)
+_SOURCE_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE)
 
 
 def _source_includes(root: Path, path: Path) -> list[str]:

@@ -212,8 +212,8 @@ none
 load("@autoload_rules_godot//godot/engine:repositories.bzl", "godot_engine_build")
 
 godot_engine_build(<a href="#godot_engine_build-name">name</a>, <a href="#godot_engine_build-build_name">build_name</a>, <a href="#godot_engine_build-build_options">build_options</a>, <a href="#godot_engine_build-build_target">build_target</a>, <a href="#godot_engine_build-configure_timeout">configure_timeout</a>, <a href="#godot_engine_build-cpu">cpu</a>,
-                   <a href="#godot_engine_build-custom_modules">custom_modules</a>, <a href="#godot_engine_build-enabled_modules">enabled_modules</a>, <a href="#godot_engine_build-environment">environment</a>, <a href="#godot_engine_build-lock_file">lock_file</a>, <a href="#godot_engine_build-lock_key">lock_key</a>, <a href="#godot_engine_build-patch_strip">patch_strip</a>,
-                   <a href="#godot_engine_build-patches">patches</a>, <a href="#godot_engine_build-platform">platform</a>, <a href="#godot_engine_build-python">python</a>, <a href="#godot_engine_build-repin">repin</a>, <a href="#godot_engine_build-source">source</a>)
+                   <a href="#godot_engine_build-custom_modules">custom_modules</a>, <a href="#godot_engine_build-default_modules">default_modules</a>, <a href="#godot_engine_build-enabled_modules">enabled_modules</a>, <a href="#godot_engine_build-environment">environment</a>, <a href="#godot_engine_build-lock_file">lock_file</a>, <a href="#godot_engine_build-lock_key">lock_key</a>,
+                   <a href="#godot_engine_build-patch_strip">patch_strip</a>, <a href="#godot_engine_build-patches">patches</a>, <a href="#godot_engine_build-platform">platform</a>, <a href="#godot_engine_build-python">python</a>, <a href="#godot_engine_build-repin">repin</a>, <a href="#godot_engine_build-source">source</a>)
 </pre>
 
 Configure one fixed Godot source recipe and emit granular rules_cc build targets.
@@ -279,6 +279,7 @@ none
 | <a id="godot_engine_build-configure_timeout"></a>configure_timeout |  Maximum configure-only subprocess duration in seconds.   | Integer | optional |  `600`  |
 | <a id="godot_engine_build-cpu"></a>cpu |  Target CPU, such as arm64 or x86_64.   | String | required |  |
 | <a id="godot_engine_build-custom_modules"></a>custom_modules |  Each custom module's config.py label mapped to its module name; the containing source tree is watched.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: Label -> String</a> | optional |  `{}`  |
+| <a id="godot_engine_build-default_modules"></a>default_modules |  Also enable every module Godot enables by default for the platform, as its official builds do; `enabled_modules` must then name only modules Godot can build.   | Boolean | optional |  `False`  |
 | <a id="godot_engine_build-enabled_modules"></a>enabled_modules |  Enabled Godot modules; their dependencies come from the source's module graph.   | List of strings | optional |  `["gdscript", "text_server_fb"]`  |
 | <a id="godot_engine_build-environment"></a>environment |  iOS environment, device or simulator; required for iOS and empty elsewhere.   | String | optional |  `""`  |
 | <a id="godot_engine_build-lock_file"></a>lock_file |  The lock file that pins this recipe's build graph, as a source build's lock_file names it. With it, the repository configures nothing on this host and declares `:pin`, which configures the recipe on an execution platform Godot accepts.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |

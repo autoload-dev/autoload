@@ -775,7 +775,9 @@ class IncludedSourcesTest(unittest.TestCase):
             root = Path(directory)
             kernels = root / "thirdparty/embree/kernels/bvh"
             kernels.mkdir(parents=True)
-            (kernels / "hybrid4.cpp").write_text('#include "bvh_intersector_hybrid.cpp"\n')
+            (kernels / "hybrid4.cpp").write_text(
+                '#include "bvh_intersector_hybrid.cpp"\n'
+            )
             (kernels / "bvh_intersector_hybrid.cpp").write_text(
                 '#include "../common/shared.cpp"\n#include "bvh.h"\n'
             )

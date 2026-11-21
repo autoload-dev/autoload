@@ -84,7 +84,15 @@ def select_rows(name, platforms, cpus = [], build_targets = [], ios_environments
     return rows
 
 def slot_name(row):
-    """The hub component name of a row's slot, such as runtime_ios_arm64_simulator_debug."""
+    """
+    Return the hub component name of a row's slot.
+
+    Args:
+        row: Row of ROWS.
+
+    Returns:
+        The slot name, such as runtime_ios_arm64_simulator_debug.
+    """
     if row.build_target == "editor":
         return "editor_%s_%s" % (row.platform, row.cpu)
     variant = row.build_target.removeprefix("template_")
