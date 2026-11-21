@@ -12,6 +12,7 @@ package(default_visibility = ["//godot:__subpackages__"])
 
 exports_files([
     "application.bzl",
+    "native.bzl",
     "settings.bzl",
     "transitions.bzl",
 ])

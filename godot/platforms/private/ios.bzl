@@ -29,6 +29,7 @@ load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:shell_assets.bzl", "asset_catalog")
+load("//godot/private/config:native.bzl", "APPLICATION_OPTIONS")
 load("//godot/private/config:settings.bzl", "ENVIRONMENT", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":ios_runtime_bridge.bzl", "runtime_bridge_ios")
@@ -53,15 +54,43 @@ _OWNED_PLIST_KEYS = {
     "CFBundleIconName": "godot_app.ios_app_icons",
 }
 
-def _ios_shell_impl(ctx):
+def _check_platform_deps(platform_deps):
     # ios_application accepts arbitrary deps, so a foreign library can otherwise
     # disappear silently. Keep real platform libraries on the application for aspects.
-    for dependency in ctx.attr.platform_deps:
+    for dependency in platform_deps:
         if CcInfo not in dependency:
             fail("iOS platform_deps input %s must provide CcInfo; use platform_resources for bundle resources" % dependency.label)
+
+def _bundle_keys(attr, pack):
+    """The Info.plist keys the application sets itself, which _OWNED_PLIST_KEYS lists."""
+    return {
+        "CFBundleIdentifier": attr.bundle_id,
+        "CFBundleExecutable": attr.executable_name,
+        "CFBundlePackageType": "APPL",
+        "MinimumOSVersion": attr.minimum_os_version,
+        "UIDeviceFamily": [number for family, number in [("iphone", 1), ("ipad", 2)] if family in attr.families],
+        "CFBundleSupportedPlatforms": ["iPhoneSimulator" if pack.environment == "simulator" else "iPhoneOS"],
+    }
+
+def _overrides_privacy_manifest(resources):
+    """
+    Whether the application's resources have a privacy manifest that replaces the shell's.
+
+    It must lie at the root of the resources; rules_apple keeps one inside a resource
+    bundle, localization or framework there.
+    """
+    return any([
+        file.basename == "PrivacyInfo.xcprivacy" and not any([
+            part.endswith((".bundle", ".lproj", ".framework"))
+            for part in file.short_path.split("/")[:-1]
+        ])
+        for file in resources
+    ])
+
+def _ios_shell_impl(ctx):
+    _check_platform_deps(ctx.attr.platform_deps)
     pack = ctx.attr.pack[GodotPackInfo]
     profile = engine_profile(pack.version)
-    families = [number for family, number in [("iphone", 1), ("ipad", 2)] if family in ctx.attr.families]
     pack_file = ctx.actions.declare_file(
         ctx.label.name + "/" + ctx.attr.executable_name + ".pck",
     )
@@ -89,14 +118,7 @@ def _ios_shell_impl(ctx):
         {
             "profile": profile["ios"],
             "fallback_name": ctx.attr.app_name,
-            "bundle_keys": {
-                "CFBundleIdentifier": ctx.attr.bundle_id,
-                "CFBundleExecutable": ctx.attr.executable_name,
-                "CFBundlePackageType": "APPL",
-                "MinimumOSVersion": ctx.attr.minimum_os_version,
-                "UIDeviceFamily": families,
-                "CFBundleSupportedPlatforms": ["iPhoneSimulator" if pack.environment == "simulator" else "iPhoneOS"],
-            },
+            "bundle_keys": _bundle_keys(ctx.attr, pack),
             "owned_plist_keys": _OWNED_PLIST_KEYS,
             # The application's own launch storyboard replaces the launch screen.
             "launch_storyboard": bool(ctx.file.launch_storyboard),
@@ -107,18 +129,8 @@ def _ios_shell_impl(ctx):
         overrides = ctx.files.infoplist_overrides,
     )
 
-    # A privacy manifest at the root of the application's resources replaces the shell's;
-    # rules_apple keeps one inside a resource bundle, localization or framework there.
     resources = [pack_file, strings]
-    if not [
-        file
-        for file in ctx.files.resource_overrides
-        if file.basename == "PrivacyInfo.xcprivacy" and not [
-            part
-            for part in file.short_path.split("/")[:-1]
-            if part.endswith((".bundle", ".lproj", ".framework"))
-        ]
-    ]:
+    if not _overrides_privacy_manifest(ctx.files.resource_overrides):
         privacy = ctx.actions.declare_file(ctx.label.name + "/PrivacyInfo.xcprivacy")
         privacy_manifest(ctx, pack, profile, "ios", privacy)
         resources.append(privacy)
@@ -267,7 +279,7 @@ _ios_extension_libraries = rule(
     } | PLATFORM_ATTRS | ENGINE_CHECK_ATTRS,
 )
 
-def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, families, app_name, executable_name, common, platform_deps = [], overrides = {}):
+def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, common):
     """
     Declare the inputs shared by a bundle and the unsigned device-link regression.
 
@@ -275,15 +287,9 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
         name: Prefix of the private input targets.
         pack: Configured start pack.
         runtime: The runtime to link, an engine library target.
-        bundle_id: Apple bundle identifier.
-        minimum_os_version: Minimum iOS version.
-        families: Supported Apple device families.
-        app_name: Fallback display name.
-        executable_name: Physical executable and PCK basename.
+        minimum_os_version: Minimum iOS version, for the shell and the extension check.
+        shell: The application's other _ios_shell attributes, by name.
         common: Conventional target attributes.
-        platform_deps: Platform libraries of the application, validated for iOS.
-        overrides: The shell overrides of _ios_shell: infoplist_overrides,
-            app_icon_overrides, launch_storyboard and resource_overrides.
 
     Returns:
         The shell target name and the dependencies to link.
@@ -291,15 +297,10 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
     data = name.replace("/", "_") + ".godot_shell"
     _ios_shell(
         name = data,
-        platform_deps = platform_deps,
         pack = pack,
-        bundle_id = bundle_id,
         minimum_os_version = minimum_os_version,
-        families = families,
-        app_name = app_name,
-        executable_name = executable_name,
         visibility = ["//visibility:private"],
-        **(common | overrides)
+        **(common | shell)
     )
     for group in ["plist", "app_icons"]:
         native.filegroup(
@@ -332,18 +333,22 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
 
 _TREE_OUTPUTS = str(Label("@rules_apple//apple/build_settings:use_tree_artifacts_outputs"))
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
+_NATIVE_OPTIONS = APPLICATION_OPTIONS["ios"]
 
-def _bundle_format_impl(settings, _attr):
+def _application_settings_impl(settings, _attr):
     # Simulator apps and unoptimized builds are never distributed, so their
     # bundle stays a directory instead of an archive written on every change.
     # Transitions read the compilation mode as an enum value, not a string.
     development = settings[ENVIRONMENT] == "simulator" or str(settings[_COMPILATION_MODE]) != "opt"
-    return {_TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development}
 
-_bundle_format = transition(
-    implementation = _bundle_format_impl,
+    # The application's native options hold for its whole graph, so the rules_apple
+    # split configures its native code as the pack's platform slices do.
+    return {_TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development} | _NATIVE_OPTIONS
+
+_application_settings = transition(
+    implementation = _application_settings_impl,
     inputs = [ENVIRONMENT, _COMPILATION_MODE, _TREE_OUTPUTS],
-    outputs = [_TREE_OUTPUTS],
+    outputs = [_TREE_OUTPUTS] + _NATIVE_OPTIONS.keys(),
 )
 
 _FORWARDED = [
@@ -386,15 +391,62 @@ _ios_bundle = rule(
     Forward an ios_application whose bundle format follows the build's purpose.
 
     Simulator and non-`opt` builds produce the `.app` directory; optimized
-    device builds produce the `.ipa` archive.
+    device builds produce the `.ipa` archive. The application's native code
+    builds without Bazel's `--strip`.
     """,
     implementation = _ios_bundle_impl,
-    cfg = _bundle_format,
+    cfg = _application_settings,
     executable = True,
     attrs = {
         "application": attr.label(mandatory = True, providers = [AppleBundleInfo]),
     } | LAUNCH_ATTRS,
 )
+
+def _bundle_targets(name, inputs, visibility, common, bundle_name, deps, resources, infoplists, application):
+    """
+    Declare an iOS application's ios_application, its public bundle and its debug symbols.
+
+    Args:
+        name: Name of the public bundle target.
+        inputs: What ios_application_inputs returned for the application.
+        visibility: Visibility of the public targets.
+        common: Conventional target attributes.
+        bundle_name: The application's bundle name, or None for the last segment of name.
+        deps: The application's own platform libraries.
+        resources: The application's own bundle resources.
+        infoplists: The application's own Info.plist fragments.
+        application: The other ios_application attributes, such as bundle_id,
+            minimum_os_version and signing options.
+    """
+    data = inputs.data
+
+    # rules_apple names its outputs after the last name segment, so the nested
+    # application keeps that basename; name forwards it in its bundle format.
+    base = name.rpartition("/")[2]
+    target = name + ".bundle/" + base
+    ios_application(
+        name = target,
+        bundle_name = bundle_name or base,
+        deps = inputs.deps + deps,
+        resources = [":" + data] + resources,
+        infoplists = [":" + data + ".plist"] + infoplists,
+        app_icons = [":" + data + ".app_icons"],
+        visibility = ["//visibility:private"],
+        **application
+    )
+    _ios_bundle(
+        name = name,
+        application = ":" + target,
+        visibility = visibility,
+        **common
+    )
+    native.filegroup(
+        name = name + ".debug_symbols",
+        srcs = [":" + name],
+        output_group = "dsyms",
+        visibility = visibility,
+        **filegroup_kwargs(common)
+    )
 
 def godot_ios_application(
         name,
@@ -461,7 +513,7 @@ def godot_ios_application(
     one executable, so the dSYM covers all of them. Build with
     `--apple_generate_dsym`, without which it is empty. rules_apple strips the
     executable with `-c opt --objc_enable_binary_stripping`; Bazel's `--strip`
-    does not apply to it.
+    applies neither to it nor to the application's other native code.
 
     Example:
         godot_ios_application(
@@ -505,50 +557,33 @@ def godot_ios_application(
         name = name,
         pack = pack,
         runtime = runtime,
-        bundle_id = bundle_id,
         minimum_os_version = minimum_os_version,
-        families = families,
-        app_name = kwargs.get("bundle_name") or name,
-        executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
-        common = common,
-        platform_deps = deps,
-        overrides = dict(
+        shell = dict(
+            bundle_id = bundle_id,
+            families = families,
+            app_name = kwargs.get("bundle_name") or name,
+            executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
+            platform_deps = deps,
             infoplist_overrides = infoplists,
             app_icon_overrides = app_icons,
             launch_storyboard = launch_storyboard,
             resource_overrides = resources,
         ),
+        common = common,
     )
-    data = inputs.data
-
-    # rules_apple names its outputs after the last name segment, so the nested
-    # application keeps that basename; name forwards it in its bundle format.
-    base = name.rpartition("/")[2]
-    application = name + ".bundle/" + base
-    ios_application(
-        name = application,
-        bundle_id = bundle_id,
-        bundle_name = kwargs.pop("bundle_name", None) or base,
-        minimum_os_version = minimum_os_version,
-        families = families,
-        deps = inputs.deps + deps,
-        resources = [":" + data] + resources,
-        infoplists = [":" + data + ".plist"] + infoplists,
-        app_icons = [":" + data + ".app_icons"],
-        launch_storyboard = launch_storyboard,
-        visibility = ["//visibility:private"],
-        **kwargs
-    )
-    _ios_bundle(
+    _bundle_targets(
         name = name,
-        application = ":" + application,
+        inputs = inputs,
         visibility = visibility,
-        **common
-    )
-    native.filegroup(
-        name = name + ".debug_symbols",
-        srcs = [":" + name],
-        output_group = "dsyms",
-        visibility = visibility,
-        **filegroup_kwargs(common)
+        common = common,
+        bundle_name = kwargs.pop("bundle_name", None),
+        deps = deps,
+        resources = resources,
+        infoplists = infoplists,
+        application = dict(
+            bundle_id = bundle_id,
+            minimum_os_version = minimum_os_version,
+            families = families,
+            launch_storyboard = launch_storyboard,
+        ) | kwargs,
     )

@@ -7,7 +7,7 @@ load("@rules_testing//lib:truth.bzl", "subjects")
 load("//godot:defs.bzl", "godot_pack")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:providers.bzl", "GodotProjectInfo")
-load("//godot/private/config:application.bzl", "application_pack")
+load("//godot/private/config:application.bzl", "application_id", "application_pack")
 load(":failures.bzl", "failure_test")
 
 _ContextInfo = provider(doc = "Whether this configured node has an empty application context.", fields = ["empty"])
@@ -192,7 +192,7 @@ def _test_authored_bundle_identifier_conflict_fails(name):
     )
     failure_test(name, "conflicts with authoritative godot_app value", [":" + name + "_subject"], config_settings = _MACOS)
 
-_VariablesInfo = provider(doc = "Make variables an application_pack resolves.", fields = ["application_id"])
+_VariablesInfo = provider(doc = "Make variables an application_id target resolves.", fields = ["application_id"])
 
 def _variable_fixture_impl(ctx):
     return [_VariablesInfo(application_id = ctx.var.get("GODOT_APPLICATION_ID", ""))]
@@ -203,14 +203,13 @@ def _application_id_variable_follows_the_platform_impl(env, target):
     env.expect.that_str(target[_VariablesInfo].application_id).equals("org.example.android")
 
 def _test_application_id_variable_follows_the_platform(name):
-    application_pack(
+    application_id(
         name = name + "_variables",
         application_id = select({
             "@platforms//os:android": "org.example.android",
             "//conditions:default": "org.example.desktop",
         }),
         tags = ["manual"],
-        deps = [":empty_pack"],
     )
     _variable_fixture(
         name = name + "_subject",

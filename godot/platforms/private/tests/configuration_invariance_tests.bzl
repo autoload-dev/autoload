@@ -11,7 +11,7 @@ platform does.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/config:application.bzl", "application_pack")
-load("//godot/private/config:settings.bzl", "MERGE_ANDROID_MANIFEST_PERMISSIONS")
+load("//godot/private/config:settings.bzl", "MERGE_ANDROID_MANIFEST_PERMISSIONS", "platform_slice_name")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(
     ":action_graph.bzl",
@@ -22,7 +22,7 @@ load(
     "reached_actions",
     "reads",
 )
-load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "ANDROID_TOOLCHAINS", "MOBILE_FIXTURE")
+load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "MOBILE_FIXTURE", "OWN_TOOLCHAINS")
 
 _FORMAT = str(Label("//godot:android_format"))
 _SIGNING = str(Label("//godot:macos_signing"))
@@ -31,6 +31,12 @@ _MACOS_FIXTURE = "//godot/platforms/private/tests/fixtures/macos_app_with_extens
 
 # macOS signing runs on a macOS host only.
 _MACOS_HOST = {"size": "small", "target_compatible_with": ["@platforms//os:macos"]}
+
+# A macOS application whose minimum, Godot's default 11.0, is also the build's.
+_MACOS = {
+    "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
+    "//command_line_option:macos_minimum_os": "11.0",
+}
 
 def _configured_transition_impl(settings, attr):
     return {
@@ -94,7 +100,7 @@ def _test_android_bundle_reuses_content_and_native_actions(name):
         impl = _android_bundle_reuses_content_and_native_actions,
         config_settings = {
             "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-        } | ANDROID_TOOLCHAINS | GODOT_EXPORT,
+        } | OWN_TOOLCHAINS | GODOT_EXPORT,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = ANDROID_SDK,
     )
@@ -129,9 +135,7 @@ def _test_macos_signing_mode_reruns_only_signing(name):
         name = name,
         targets = _arrange(name, _MACOS_FIXTURE + "app", "macos_signing", ["unsigned", "adhoc"]),
         impl = _macos_signing_mode_reruns_only_signing,
-        config_settings = {
-            "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
-        },
+        config_settings = _MACOS,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = _MACOS_HOST,
     )
@@ -166,7 +170,7 @@ def _platform_slices_test(name, export_platform, cpus):
         attrs = {"cpus": attr.string_list()},
         config_settings = {
             "//command_line_option:platforms": str(Label(export_platform)),
-        } | ANDROID_TOOLCHAINS,
+        } | OWN_TOOLCHAINS,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = ANDROID_SDK | {"cpus": cpus},
     )
@@ -184,7 +188,9 @@ def _test_ios_simulator_pack_compiles_its_extension_for_the_simulator(name):
     analysis_test(
         name = name,
         # The pack itself, without an application whose rules_apple edge configures Apple
-        # builds for iOS.
+        # builds for iOS. The build's own configuration for the export platform is the
+        # subject, so the test sets only --platforms instead of using in_platform_slice
+        # (//godot/private/tests:configurations.bzl).
         target = MOBILE_FIXTURE + "pack",
         impl = _ios_simulator_pack_compiles_its_extension_for_the_simulator,
         config_settings = {
@@ -261,16 +267,100 @@ def _android_permission_merging_keeps_one_pack_configuration(env, targets):
     env.expect.that_bool(bool(_output_paths(targets.pack, ["CppCompile"])), expr = "the pack compiles native code").equals(True)
     env.expect.that_collection(_output_paths(targets.merging_pack, _PACK_ACTIONS), expr = "merging pack actions").contains_exactly(paths)
 
+def _compilation_roots(target, accept):
+    """The output roots, one per configuration, of the compile actions accept selects."""
+    return sorted({
+        file.root.path: None
+        for entry in reached(target)
+        if is_compilation(entry.action.mnemonic) and accept(entry)
+        for file in entry.action.outputs.to_list()
+    })
+
+def _test_ios_app_compiles_its_platform_slice_in_one_configuration(name):
+    analysis_test(
+        name = name,
+        target = MOBILE_FIXTURE + "app",
+        impl = _ios_app_compiles_its_platform_slice_in_one_configuration,
+        config_settings = {
+            "//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_x86_64")),
+        },
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = _MACOS_HOST,
+    )
+
+def _ios_app_compiles_its_platform_slice_in_one_configuration(env, target):
+    # The application's entry support, its platform libraries and the extension's
+    # library, which rules_apple's split and the pack's platform slice reach.
+    platform_slice = ":" + platform_slice_name("ios_sim_x86_64", "x86_64")
+    roots = _compilation_roots(target, lambda entry: entry.platform.endswith(platform_slice))
+    env.expect.that_collection(roots, expr = "configurations compiling for the platform slice").has_size(1)
+
+def _test_android_app_compiles_its_extension_once_per_configuration_role(name):
+    analysis_test(
+        name = name,
+        target = MOBILE_FIXTURE + "app",
+        impl = _android_app_compiles_its_extension_once_per_configuration_role,
+        config_settings = ANDROID,
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = ANDROID_SDK,
+    )
+
+def _extension_roots(target, platform_suffix):
+    """The configurations in which the fixture's extension compiles for a target platform."""
+    return _compilation_roots(
+        target,
+        lambda entry: entry.owner.endswith(":hello.native") and entry.platform.endswith(platform_suffix),
+    )
+
+def _android_app_compiles_its_extension_once_per_configuration_role(env, target):
+    # rules_android's split, which the application packages: android_binary's own
+    # configuration and the bootstrap reach no native code of the pack.
+    env.expect.that_collection(
+        _extension_roots(target, ":" + platform_slice_name("android_arm64", "arm64")),
+        expr = "configurations compiling the extension for the platform slice",
+    ).has_size(1)
+
+    # The content configuration of the pack's export: the application's own edges, such as
+    # the one its ID comes from, reach no native code of the pack.
+    env.expect.that_collection(
+        _extension_roots(target, ":android_arm64"),
+        expr = "configurations compiling the extension for the export platform",
+    ).has_size(1)
+
+def _test_macos_app_extension_shares_the_project_context_configuration(name):
+    analysis_test(
+        name = name,
+        target = _MACOS_FIXTURE + "app",
+        impl = _macos_app_extension_shares_the_project_context_configuration,
+        # The signing test's configuration: unsigned is the default, so its unsigned
+        # application shares this test's configurations.
+        config_settings = _MACOS,
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = _MACOS_HOST,
+    )
+
+def _macos_app_extension_shares_the_project_context_configuration(env, target):
+    # The extension's library is reached through the application's pack and through the
+    # project context. It passes because the build's minimum equals the application's
+    # default: with another build minimum, the project context compiles it for that one.
+    env.expect.that_collection(
+        _extension_roots(target, ":macos_arm64"),
+        expr = "configurations compiling the extension",
+    ).has_size(1)
+
 def configuration_invariance_test_suite(name):
     test_suite(
         name = name,
         tests = [
+            _test_android_app_compiles_its_extension_once_per_configuration_role,
             _test_android_bundle_reuses_content_and_native_actions,
             _test_android_permission_merging_keeps_one_pack_configuration,
             _test_arm64_android_app_configures_only_arm64_platform_slice,
             _test_desktop_pack_ignores_android_format,
             _test_distribution_android_app_configures_both_platform_slices,
+            _test_ios_app_compiles_its_platform_slice_in_one_configuration,
             _test_ios_simulator_pack_compiles_its_extension_for_the_simulator,
+            _test_macos_app_extension_shares_the_project_context_configuration,
             _test_macos_signing_mode_reruns_only_signing,
         ],
     )

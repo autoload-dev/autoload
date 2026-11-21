@@ -95,7 +95,6 @@ def _pack_impl(ctx):
             splash = start.splash,
         ),
         pack[OutputGroupInfo],
-        platform_common.TemplateVariableInfo({"GODOT_APPLICATION_ID": ctx.attr.application_id}),
     ]
 
 def _loadable_pack_impl(ctx):
@@ -110,6 +109,18 @@ loadable_pack = rule(
         "deps": attr.label_list(mandatory = True, cfg = project_transition, providers = [GodotPackInfo]),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
+)
+
+def _application_id_impl(ctx):
+    return [platform_common.TemplateVariableInfo({"GODOT_APPLICATION_ID": ctx.attr.application_id})]
+
+# A select() of godot_app.application_id cannot sit inside the dictionary of an attribute,
+# such as android_binary's manifest_values; the application's rules read it as this make
+# variable instead. It carries only the ID, so reading it reaches no pack.
+application_id = rule(
+    implementation = _application_id_impl,
+    doc = "The application ID of a godot_app as the make variable GODOT_APPLICATION_ID.",
+    attrs = {"application_id": attr.string()},
 )
 
 application_pack = rule(

@@ -183,11 +183,13 @@ beta_engine_test(
 # Build-output tests: an unsigned arm64 device link with the prebuilt beta engine links the
 # selected engine and AccessKit archives, and a Simulator application with the source-built
 # beta engine links its compile archives with the custom module; both link the godot-cpp
-# extension and carry the 4.8 pack.
+# extension and carry the 4.8 pack. The link builds without --strip, as the iOS
+# application whose inputs it links does.
 configured_outputs(
     name = "official_beta_ios_link_links_selected_engine_test_link",
     engine = _BETA,
     platform = "//godot/platforms:ios_arm64",
+    strip = "never",
     tags = ["manual"],
     target = _PROBE + "ios_beta_link",
 )

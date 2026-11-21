@@ -6,14 +6,14 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 # library.
 MOBILE_FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"
 
-# The Android SDK and NDK toolchains that MODULE.bazel registers, without the caller's extra
-# toolchains.
-ANDROID_TOOLCHAINS = own_toolchains()
+# The toolchains MODULE.bazel registers, the Android SDK and NDK among them, without the
+# caller's extra toolchains and execution platforms.
+OWN_TOOLCHAINS = own_toolchains()
 
 # An arm64 Android application with those toolchains.
 ANDROID = {
     "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
-} | ANDROID_TOOLCHAINS
+} | OWN_TOOLCHAINS
 
 # Android applications and imports need an installed Android SDK; without one the tests are
 # skipped.
