@@ -5,7 +5,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.addons.modules import APP_LANES, addon_manifest
+from tools.addons.modules import all_modules
 from tools.setup.modules import (
     addon_modules,
     bazelrc_options,
@@ -65,11 +65,9 @@ def application_modules(root: Path) -> list[str]:
     """
     addons = set(addon_modules(root))
     without_apps = {
-        f"{addon}/examples"
-        for addon in addons
-        if (manifest := root / addon / "addon.pkl").is_file()
-        and not set(addon_manifest(manifest.read_text()).get("lanes", APP_LANES))
-        & set(APP_LANES)
+        f"{module.path.as_posix()}/examples"
+        for module in all_modules(root)
+        if not module.builds_apps
     }
     return [
         module for module in module_paths(root) if module not in addons | without_apps

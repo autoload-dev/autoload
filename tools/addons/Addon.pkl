@@ -1,6 +1,7 @@
 /// What an add-on module of addons/ declares about itself: `addons/<module>/addon.pkl`
 /// amends this module (addons/AGENTS.md). hk.pkl, the lanes (tools/addons/lanes.py) and
-/// the conventions read it; Pkl checks its values whenever hk evaluates hk.pkl.
+/// the conventions read it. hk's Pkl evaluator applies the defaults below but not the
+/// types, so the conventions check (RG015) checks the values against them.
 module Addon
 
 typealias Lane = "host" | "android" | "ios"

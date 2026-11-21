@@ -45,9 +45,10 @@ def _schema_aliases(text: str) -> dict[str, tuple[str, ...]]:
 
 
 _SCHEMA_TEXT = SCHEMA.read_text()
+_ALIASES = _schema_aliases(_SCHEMA_TEXT)
 # The lanes hk.pkl runs and the hosts of the host lane, as the schema names them.
-LANES = _schema_aliases(_SCHEMA_TEXT)["Lane"]
-HOSTS = _schema_aliases(_SCHEMA_TEXT)["Host"]
+LANES = _ALIASES["Lane"]
+HOSTS = _ALIASES["Host"]
 # What an addon.pkl may set, and the defaults of what it may leave out.
 PROPERTIES = tuple(
     match[1]
@@ -57,6 +58,11 @@ PROPERTIES = tuple(
 DEFAULTS = addon_values(_SCHEMA_TEXT)
 # The lanes that build applications: a module without them has no app and no Android SDK.
 APP_LANES = ("android", "ios")
+
+
+def builds_apps(lanes: tuple[str, ...] | list[str]) -> bool:
+    """Whether a module with these lanes builds applications, and so has an app and SDK."""
+    return not set(lanes).isdisjoint(APP_LANES)
 
 
 def module_attributes(manifest: str) -> dict[str, object]:
@@ -92,6 +98,10 @@ class AddonModule:
     @property
     def directory(self) -> str:
         return self.path.name
+
+    @property
+    def builds_apps(self) -> bool:
+        return builds_apps(self.lanes)
 
     @classmethod
     def load(cls, path: Path, root: Path = ROOT) -> AddonModule:

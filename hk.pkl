@@ -91,8 +91,10 @@ local function consumedAddons(consumer: String): List<String> =
   addonConsumers.toMap().filter((name, users) -> users.contains(consumer)).keys.toList()
 local function consumedAddonFiles(consumer: String): List<String> =
   consumedAddons(consumer).map((name) -> "addons/" + name + "/**")
+// A consumer reads an add-on module's sources, not its examples or what describes the module.
 local function consumedAddonExcludes(consumer: String): List<String> =
-  consumedAddons(consumer).map((name) -> "addons/" + name + "/examples/**")
+  consumedAddons(consumer).flatMap((name) -> List("examples/**", "addon.pkl", "presubmit.yml")
+    .map((path) -> "addons/" + name + "/" + path))
 
 local conventionSources = List(
   "**/BUILD",
@@ -236,7 +238,10 @@ local checks = new Mapping<String, Step> {
       ".buildifier.json",
       "pyproject.toml",
       // hk validate evaluates hk.pkl with the Pkl files it imports.
-      "**/*.pkl",
+      "hk.pkl",
+      "addons/consumers.pkl",
+      "addons/*/addon.pkl",
+      "tools/addons/Addon.pkl",
       "tools/format/**",
       "tools/lint/**",
     )

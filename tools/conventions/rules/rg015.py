@@ -7,12 +7,12 @@ from pathlib import Path
 
 from tools.addons.modules import (
     AMENDS,
-    APP_LANES,
     HOSTS,
     LANES,
     PROPERTIES,
     addon_manifest,
     addon_values,
+    builds_apps,
     module_attributes,
 )
 from tools.addons.new import template_files
@@ -115,8 +115,9 @@ class AddonModuleLayout:
         """Whether a module's addon.pkl names an application lane, or there is none yet."""
         if path.as_posix() not in workspace.file_set:
             return True
-        lanes = addon_manifest(workspace.text(path.as_posix())).get("lanes", ())
-        return bool(set(lanes) & set(APP_LANES))
+        return builds_apps(
+            addon_manifest(workspace.text(path.as_posix())).get("lanes", ())
+        )
 
     @staticmethod
     def files(workspace: Workspace, module: Path, builds_apps: bool) -> Iterable[Finding]:
@@ -157,10 +158,13 @@ class AddonModuleLayout:
         if "lanes" not in values:
             yield Finding(at(path), "addon.pkl sets lanes")
         for key, allowed in ADDON_VALUES.items():
-            if key in values and not (values[key] and set(values[key]) <= allowed):
+            listed = values.get(key)
+            if listed is not None and not (
+                listed and set(listed) <= allowed and len(set(listed)) == len(listed)
+            ):
                 yield Finding(
                     at(path),
-                    f"addon.pkl's {key} names some of {', '.join(sorted(allowed))}",
+                    f"addon.pkl's {key} names some of {', '.join(sorted(allowed))}, once each",
                 )
 
     @staticmethod
