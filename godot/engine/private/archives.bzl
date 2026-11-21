@@ -1,6 +1,5 @@
 """Checksum-pinned acquisition of prebuilt editor and export-template archives."""
 
-load("//godot/engine/private:catalogue.bzl", "TEMPLATE_CPUS")
 load("//godot/private:repository_templates.bzl", "fill_template", "starlark_list")
 load("//godot/private:versions.bzl", "require_supported_godot_version")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
@@ -28,10 +27,6 @@ EDITOR_ARCHIVE_ATTRS = ARCHIVE_ATTRS | {
         mandatory = True,
     ),
 }
-
-# Desktop runtime targets an export-template archive exposes, by operating system and
-# CPU.
-MACOS_CPUS = ["universal", "arm64", "x86_64"]
 
 # The directory that the archive members a repository keeps are renamed into, so that
 # strip_prefix extracts them alone: Bazel skips the entries outside the prefix.
@@ -62,10 +57,14 @@ def _download(ctx, _fail, members = None):
     ctx.download_and_extract(url = ctx.attr.urls, integrity = ctx.attr.integrity, type = "zip", **selection)
     return True
 
-def _extract_nested(ctx, archive, output):
-    """Extract a ZIP archive inside the repository to `output`, then delete the archive."""
+def _extract_nested(ctx, archive, output, _fail):
+    """Extract a ZIP archive inside the repository to `output` and delete it; False if it is missing."""
+    if not ctx.path(archive).exists:
+        _fail("Godot template archive does not contain " + archive)
+        return False
     ctx.extract(archive, output = output)
     ctx.delete(archive)
+    return True
 
 def editor_archive_impl(ctx, *, _fail = fail):
     """
@@ -119,34 +118,48 @@ def _runtimes(ctx, platform, name, binary, cpu):
         }))
     return rules
 
+def _ios_libraries(ctx):
+    """
+    Return the imports of the dependent XCFrameworks an expanded ios.zip carries.
+
+    Args:
+        ctx: Repository rule context.
+
+    Returns:
+        A tuple of the filled import declarations and, per variant, the labels of the
+        imports the engine of that variant depends on.
+    """
+    camera = "libgodot_camera.ios.%s.xcframework"
+    candidates = [
+        ("MoltenVK.xcframework", ctx.attr._ios_moltenvk_template, "ios_moltenvk", ["debug", "release"], {}),
+        ("AccessKit.xcframework", ctx.attr._ios_accesskit_template, "ios_accesskit", ["debug", "release"], {}),
+    ] + [
+        (camera % variant, ctx.attr._ios_camera_template, "ios_camera_" + variant, [variant], {
+            "{VARIANT}": variant,
+            "{XCFRAMEWORK}": camera % variant,
+        })
+        for variant in ["debug", "release"]
+    ]
+    libraries = []
+    dependencies = {"debug": [], "release": []}
+    for xcframework, template, name, variants, substitutions in candidates:
+        if not ctx.path("ios/%s/Info.plist" % xcframework).exists:
+            continue
+        libraries.append(fill_template(ctx, template, substitutions))
+        for variant in variants:
+            dependencies[variant].append(":" + name)
+    return libraries, dependencies
+
 def _ios(ctx, _fail):
-    """Return the iOS XCFramework import declarations of an archive's ios.zip, "" or None after an error."""
-    if not ctx.path("templates/ios.zip").exists:
-        return ""
-    _extract_nested(ctx, "templates/ios.zip", "ios")
+    """Return the iOS XCFramework import declarations of an archive's ios.zip, or None after an error."""
+    if not _extract_nested(ctx, "templates/ios.zip", "ios", _fail):
+        return None
     for variant in ["debug", "release"]:
         path = "ios/libgodot.ios.%s.xcframework/Info.plist" % variant
         if not ctx.path(path).exists:
             _fail("Godot templates ios.zip is missing %s; expected Godot's ios.zip layout" % path)
             return None
-    libraries = []
-    dependencies = {"debug": [], "release": []}
-    if ctx.path("ios/MoltenVK.xcframework/Info.plist").exists:
-        libraries.append(fill_template(ctx, ctx.attr._ios_moltenvk_template, {}))
-        for variant in dependencies:
-            dependencies[variant].append(":ios_moltenvk")
-    if ctx.path("ios/AccessKit.xcframework/Info.plist").exists:
-        libraries.append(fill_template(ctx, ctx.attr._ios_accesskit_template, {}))
-        for variant in dependencies:
-            dependencies[variant].append(":ios_accesskit")
-    for variant in ["debug", "release"]:
-        camera = "libgodot_camera.ios.%s.xcframework" % variant
-        if ctx.path("ios/" + camera + "/Info.plist").exists:
-            libraries.append(fill_template(ctx, ctx.attr._ios_camera_template, {
-                "{VARIANT}": variant,
-                "{XCFRAMEWORK}": camera,
-            }))
-            dependencies[variant].append(":ios_camera_" + variant)
+    libraries, dependencies = _ios_libraries(ctx)
     return fill_template(ctx, ctx.attr._ios_template, {
         "{SIMULATOR}": repr(str(ctx.attr._simulator_constraint)),
         # Each library is set off by blank lines; without any, nothing.
@@ -155,9 +168,89 @@ def _ios(ctx, _fail):
         "{RELEASE_DEPS}": starlark_list(sorted(dependencies["release"]), indent = "    "),
     })
 
+def _linux_runtimes(ctx, _fail):
+    """Return the runtime declarations of the Linux templates, or None after an error."""
+    runtimes = []
+    for cpu in ctx.attr.cpus:
+        binary = "templates/linux_%s." + cpu
+        if not ctx.path(binary % "release").exists:
+            _fail(
+                "Godot template archive does not contain %s; " % (binary % "release") +
+                "its Linux CPUs differ from the catalogue's",
+            )
+            return None
+        runtimes.extend(_runtimes(ctx, "linux", "linux_" + cpu, binary, cpu))
+    return runtimes
+
+def _macos_runtimes(ctx, _fail):
+    """Return the runtime declarations of an archive's macos.zip, or None after an error."""
+    if not _extract_nested(ctx, "templates/macos.zip", "macos", _fail):
+        return None
+    runtimes = []
+    for cpu in ctx.attr.cpus:
+        name = "macos" if cpu == "universal" else "macos_" + cpu
+        binary = "macos/macos_template.app/Contents/MacOS/godot_macos_%s." + cpu
+        if not ctx.path(binary % "release").exists:
+            _fail(
+                "Godot template archive does not contain %s; " % (binary % "release") +
+                "set cpus to match the archive layout",
+            )
+            return None
+        runtimes.extend(_runtimes(ctx, "macos", name, binary, cpu))
+    return runtimes
+
+def _linux_cpus_error(cpus):
+    if cpus and all([cpu in CPU_TABLE for cpu in cpus]):
+        return None
+    return "cpus of Linux templates must be Godot CPU tags: " + ", ".join(CPU_TABLE)
+
+def _macos_cpus_error(cpus):
+    if sorted(cpus) in [["universal"], ["arm64"], ["x86_64"], ["arm64", "x86_64"]]:
+        return None
+    return 'cpus of macOS templates must be ["universal"] or a subset of ["arm64", "x86_64"]'
+
+def _ios_cpus_error(cpus):
+    return "cpus must be empty for iOS templates" if cpus else None
+
+def _ios_targets(ctx, _fail):
+    ios = _ios(ctx, _fail)
+    return None if ios == None else [ios]
+
+# Per Godot platform: the error of cpus that do not describe its templates, or None; the
+# archive entries its targets are made of; and its target declarations, or None after an
+# error.
+_PLATFORMS = {
+    "linux": struct(
+        cpus_error = _linux_cpus_error,
+        members = lambda cpus: [
+            "templates/linux_%s.%s" % (variant, cpu)
+            for cpu in cpus
+            for variant in ["release", "debug"]
+        ],
+        targets = _linux_runtimes,
+    ),
+    "macos": struct(
+        cpus_error = _macos_cpus_error,
+        members = lambda _cpus: ["templates/macos.zip"],
+        targets = _macos_runtimes,
+    ),
+    "ios": struct(
+        cpus_error = _ios_cpus_error,
+        members = lambda _cpus: ["templates/ios.zip"],
+        targets = _ios_targets,
+    ),
+}
+
+# Godot's version file, which every export-template archive Godot installs carries.
+# Extracting it with a platform's members keeps strip_prefix satisfied when the archive
+# lacks them, so the repository can name the missing member.
+_VERSION_FILE = "templates/version.txt"
+
 def templates_archive_impl(ctx, *, _fail = fail):
     """
-    Download one export-template archive and generate its runtime targets.
+    Download one export-template archive and generate the runtime targets of one platform.
+
+    Only the platform's members leave the archive.
 
     Args:
         ctx: Repository rule context.
@@ -168,57 +261,22 @@ def templates_archive_impl(ctx, *, _fail = fail):
     """
     if not require_supported_godot_version(ctx.attr.version, _fail = _fail):
         return None
-    cpus = ctx.attr.macos_cpus
-    if (
-        len(depset(cpus).to_list()) != len(cpus) or
-        any([cpu not in MACOS_CPUS for cpu in cpus]) or
-        ("universal" in cpus and len(cpus) != 1)
-    ):
-        _fail('macos_cpus must be ["universal"] or a subset of ["arm64", "x86_64"]')
+    platform = _PLATFORMS[ctx.attr.platform]
+    error = platform.cpus_error(ctx.attr.cpus)
+    if error:
+        _fail(error)
         return None
-    if any([cpu not in CPU_TABLE for cpu in ctx.attr.linux_cpus]):
-        _fail("linux_cpus must be Godot CPU tags: %s" % ", ".join(CPU_TABLE))
+    if not _download(ctx, _fail, [_VERSION_FILE] + platform.members(ctx.attr.cpus)):
         return None
-    members = [
-        "templates/linux_%s.%s" % (variant, cpu)
-        for cpu in ctx.attr.linux_cpus
-        for variant in ["release", "debug"]
-    ] + (["templates/macos.zip"] if cpus else []) + ["templates/ios.zip"]
-    if not _download(ctx, _fail, members):
+    targets = platform.targets(ctx, _fail)
+    if targets == None:
         return None
-    if ctx.path("templates/macos.zip").exists:
-        _extract_nested(ctx, "templates/macos.zip", "macos")
-    else:
-        cpus = []
-    runtimes = []
-    for cpu in ctx.attr.linux_cpus:
-        binary = "templates/linux_%s." + cpu
-        if not ctx.path(binary % "release").exists:
-            _fail(
-                "Godot template archive does not contain %s; " % (binary % "release") +
-                "its Linux CPUs differ from the catalogue's",
-            )
-            return None
-        runtimes.extend(_runtimes(ctx, "linux", "linux_" + cpu, binary, cpu))
-    for cpu in cpus:
-        name = "macos" if cpu == "universal" else "macos_" + cpu
-        binary = "macos/macos_template.app/Contents/MacOS/godot_macos_%s." + cpu
-        if not ctx.path(binary % "release").exists:
-            _fail(
-                "Godot template archive does not contain %s; " % (binary % "release") +
-                "set macos_cpus to match the archive layout",
-            )
-            return None
-        runtimes.extend(_runtimes(ctx, "macos", name, binary, cpu))
-    ios = _ios(ctx, _fail)
-    if ios == None:
-        return None
+    apple_load = "load(%r, \"apple_static_xcframework_import\")" % str(ctx.attr._apple_bzl)
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
         "{PREBUILT_BZL}": repr(str(ctx.attr._prebuilt_bzl)),
-        "{APPLE_LOAD}": "load(%r, \"apple_static_xcframework_import\")" % str(ctx.attr._apple_bzl) if ios else "",
-        # Each rule is set off by blank lines.
-        "{RUNTIMES}": "".join(["\n" + rule + "\n" for rule in runtimes]),
-        "{IOS}": ios,
+        "{APPLE_LOAD}": apple_load if ctx.attr.platform == "ios" else "",
+        # Each declaration is set off by blank lines.
+        "{TARGETS}": "".join(["\n" + target + "\n" for target in targets]),
     })
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
@@ -226,13 +284,17 @@ def templates_archive_impl(ctx, *, _fail = fail):
     return ctx.repo_metadata(reproducible = True)
 
 TEMPLATES_ARCHIVE_ATTRS = ARCHIVE_ATTRS | {
-    "macos_cpus": attr.string_list(
-        doc = 'macOS template binary suffixes in the archive: ["universal"] or a subset of ["arm64", "x86_64"]. Empty disables macOS runtimes; archives without macos.zip omit them.',
-        default = ["universal"],
+    "platform": attr.string(
+        doc = "Godot platform whose templates the repository extracts: linux, macos or ios.",
+        mandatory = True,
+        values = ["linux", "macos", "ios"],
     ),
-    "linux_cpus": attr.string_list(
-        doc = "Linux template binary suffixes in the archive, as Godot's CPU tags such as arm64 or x86_64. A missing binary fails.",
-        default = TEMPLATE_CPUS["linux"],
+    "cpus": attr.string_list(
+        doc = """
+        Template binary suffixes of the platform in the archive. Linux: Godot's CPU tags,
+        such as arm64 or x86_64; a missing binary fails. macOS: ["universal"] or a subset of
+        ["arm64", "x86_64"]. iOS: empty.
+        """,
     ),
 }
 
@@ -265,17 +327,17 @@ godot_editor_archive = repository_rule(
 
 godot_export_templates_archive = repository_rule(
     doc = """
-    Acquire one checksum-pinned export-template archive.
+    Acquire the export templates of one Godot platform from a checksum-pinned archive.
 
-    The repository exposes one runtime target per desktop operating system, CPU and
-    template variant,
-    such as `:linux_x86_64_release` or `:macos_debug`, each carrying GodotRuntimeInfo,
-    for godot_runtime_component payloads. Coverage follows the archive contents: an
-    archive without a debug template omits the debug target, and macos_cpus
-    describes its macOS layout. An archive with iOS templates also exposes `:ios_debug`
-    and `:ios_release`, XCFramework imports with the dependent frameworks the
-    archive carries; they serve device and simulator slots alike. Downloading happens
-    only when a payload is requested.
+    Only that platform's templates leave the archive, so a build extracts the templates
+    of the platforms it uses. A Linux or macOS repository exposes one runtime target per
+    CPU and template variant, such as `:linux_x86_64_release` or `:macos_debug`, each
+    carrying GodotRuntimeInfo, for godot_runtime_component payloads; an archive without a
+    debug template omits the debug target, and cpus describes the macOS layout. An iOS
+    repository exposes `:ios_debug` and `:ios_release`, XCFramework imports with the
+    dependent frameworks the archive carries; they serve device and simulator slots
+    alike. A platform whose templates the archive lacks fails. Downloading happens only
+    when a payload is requested.
     """,
     implementation = templates_archive_impl,
     attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,

@@ -237,7 +237,7 @@ use_repo(
     "godot_beta_source_build_android_android_arm64_template_release",
     "godot_beta_source_build_ios",
     "godot_beta_source_build_ios_ios_arm64_simulator_template_release",
-    "godot_beta_templates",
+    "godot_beta_templates_ios",
     "godot_editor_linux_arm64",
     "godot_editor_linux_x86_64",
     "godot_editor_macos",
@@ -246,7 +246,6 @@ use_repo(
     "godot_sources",
     "godot_sources_beta",
     "godot_sources_snapshot",
-    "godot_templates",
 )
 
 register_toolchains(

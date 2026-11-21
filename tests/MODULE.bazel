@@ -192,7 +192,6 @@ use_repo(
     "godot_sources",
     "godot_sources_beta",
     "godot_sources_snapshot",
-    "godot_templates",
 )
 
 # The prebuilt 4.7.2 simulator runtime is x86_64 only; the source build fills the arm64

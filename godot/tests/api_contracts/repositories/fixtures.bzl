@@ -8,8 +8,8 @@ def _fixtures_impl(ctx):
         name = "godot_split_templates",
         urls = ["file://" + str(archive)],
         integrity = "sha256-kfwGFsjCwq4s8Og4Cj91SmF79iQwxKPaknknuekHtnA=",
-        linux_cpus = ["arm64", "x86_64"],
-        macos_cpus = ["arm64", "x86_64"],
+        platform = "macos",
+        cpus = ["arm64", "x86_64"],
         version = "4.7.2",
     )
     return ctx.extension_metadata(reproducible = True)

@@ -132,13 +132,13 @@ def prebuilt_slots(tag, plan):
                 cpu = cpu,
                 version = tag.version,
             ))
-    templates = "@%s_templates//:" % tag.name
+    templates = "@%s_templates_{platform}//:{target}" % tag.name
     for variant in ["release", "debug"]:
         for cpu in plan.templates.linux_cpus:
             slots.append(component(
                 role = "runtime",
                 name = "runtime_linux_%s_%s" % (cpu, variant),
-                payload = templates + "linux_%s_%s" % (cpu, variant),
+                payload = templates.format(platform = "linux", target = "linux_%s_%s" % (cpu, variant)),
                 platform = "linux",
                 cpu = cpu,
                 version = tag.version,
@@ -146,9 +146,9 @@ def prebuilt_slots(tag, plan):
             ))
         for cpu in ["arm64", "x86_64"]:
             if plan.templates.macos_cpus == ["universal"]:
-                payload = templates + "macos_" + variant
+                payload = templates.format(platform = "macos", target = "macos_" + variant)
             elif cpu in plan.templates.macos_cpus:
-                payload = templates + "macos_%s_%s" % (cpu, variant)
+                payload = templates.format(platform = "macos", target = "macos_%s_%s" % (cpu, variant))
             else:
                 continue
             slots.append(component(
@@ -164,7 +164,7 @@ def prebuilt_slots(tag, plan):
         slots.append(component(
             role = "runtime",
             name = "runtime_ios_arm64_device_" + variant,
-            payload = templates + "ios_" + variant,
+            payload = templates.format(platform = "ios", target = "ios_" + variant),
             platform = "ios",
             cpu = "arm64",
             version = tag.version,
@@ -176,7 +176,7 @@ def prebuilt_slots(tag, plan):
             slots.append(component(
                 role = "runtime",
                 name = "runtime_ios_%s_simulator_%s" % (cpu, variant),
-                payload = templates + "ios_" + variant,
+                payload = templates.format(platform = "ios", target = "ios_" + variant),
                 platform = "ios",
                 cpu = cpu,
                 version = tag.version,
@@ -265,6 +265,33 @@ def selected_tags(modules, *, tag_attributes, _fail = fail):
 def _declaration(rule, **attrs):
     return struct(rule = rule, attrs = attrs)
 
+def _templates_declarations(tag, templates):
+    """
+    Return the export-template repositories of a prebuilt tag, one per Godot platform.
+
+    A build extracts only the templates of the platforms it uses; the repositories share
+    the one download.
+
+    Args:
+        tag: The godot_engines.prebuilt tag.
+        templates: The templates of the tag's prebuilt plan.
+
+    Returns:
+        A list of godot_export_templates_archive declarations.
+    """
+    return [
+        _declaration(
+            "godot_export_templates_archive",
+            name = "%s_templates_%s" % (tag.name, platform),
+            urls = templates.urls,
+            integrity = templates.integrity,
+            version = tag.version,
+            platform = platform,
+            cpus = cpus,
+        )
+        for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
+    ]
+
 def plan_engines(modules, *, tag_attributes, _fail = fail):
     """
     Return the repositories the godot_engines extension declares.
@@ -327,15 +354,7 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
                 binary = editor.binary,
                 version = tag.version,
             ))
-        declarations.append(_declaration(
-            "godot_export_templates_archive",
-            name = tag.name + "_templates",
-            urls = plan.templates.urls,
-            integrity = plan.templates.integrity,
-            version = tag.version,
-            macos_cpus = plan.templates.macos_cpus,
-            linux_cpus = plan.templates.linux_cpus,
-        ))
+        declarations.extend(_templates_declarations(tag, plan.templates))
         android_runtimes = {}
         if plan.android_shell:
             declarations.append(_declaration(

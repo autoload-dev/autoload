@@ -256,7 +256,8 @@ environment variables do not reach the application, `--env` does.
 ## Linux and macOS
 
 The [registered engines](engine.md#use-a-prebuilt-engine) supply the runtime of each
-operating system; the large export-templates archive is fetched only when an app needs it.
+operating system; the large export-templates archive is fetched only when an app needs it,
+and only the templates of the app's operating system are extracted from it.
 Declare one pack and app:
 
 ```starlark

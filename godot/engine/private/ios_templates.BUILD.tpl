@@ -1,4 +1,3 @@
-
 config_setting(
     name = "ios_simulator",
     visibility = ["//visibility:private"],
