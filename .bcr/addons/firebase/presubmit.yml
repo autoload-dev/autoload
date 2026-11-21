@@ -1,0 +1,12 @@
+# Not yet used: autoload_firebase is not published (release_modules.json). Before the first
+# publication, replace these targets with a test module that builds an application.
+matrix:
+  platform: ["debian13", "ubuntu2204", "macos", "macos_arm64"]
+  bazel: ["9.*"]
+tasks:
+  verify_targets:
+    name: Verify the configuration tools
+    platform: ${{ platform }}
+    bazel: ${{ bazel }}
+    test_targets:
+      - "@autoload_firebase//config/..."
