@@ -32,6 +32,7 @@ _ATTRS = {
     "build_target": "template_release",
     "environment": "",
     "enabled_modules": ["gdscript", "text_server_fb"],
+    "default_modules": False,
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,
@@ -185,6 +186,14 @@ def _module_paths(modules):
     """A path mapping that gives each custom module key a path struct, as Bazel does."""
     return lambda value: mocks.path(value) if str(value) in modules else str(value)
 
+def _test_default_modules_reach_configure(env):
+    ctx, errors = _build(default_modules = True)
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_configure(ctx).args).contains("--default-modules")
+    ctx, errors = _build()
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_configure(ctx).args).not_contains("--default-modules")
+
 def _test_custom_module_sources_are_watched(env):
     modules = {"third_party/rive/config.py": "rive", "third_party/steam/config.py": "steam"}
     ctx, errors = _build(custom_modules = modules, path = _module_paths(modules))
@@ -325,6 +334,7 @@ def engine_build_test_suite(name):
             _test_build_options_become_sorted_options,
             _test_scons_platform_follows_the_recipe_platform,
             _test_import_env_vars_are_read,
+            _test_default_modules_reach_configure,
             _test_custom_module_sources_are_watched,
             _test_custom_module_key_not_config_py_fails,
             _test_ios_recipe_without_environment_fails,

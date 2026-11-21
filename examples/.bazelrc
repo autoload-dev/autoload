@@ -32,8 +32,8 @@ build:android-release --strip=always
 build:android-release --copt=-fdebug-compilation-dir=.
 
 build:official --platforms=@autoload_rules_godot//godot/platforms:ios_sim_x86_64
-# arm64 Simulator, as current Simulators on Apple silicon require; //engines/ios_simulator
-# supplies its runtime.
+# arm64 Simulator, as current Simulators on Apple silicon require; the @godot hub builds its
+# runtime from the release's sources.
 build:simulator --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
 build:ios-release --config=official
 build:ios-release -c opt

@@ -9,6 +9,8 @@ load("//godot/engine/private:extension_plan.bzl", "plan_engines")
 load("//godot/engine/private:hub.bzl", "engine_hub")
 load(
     "//godot/engine/private:repositories.bzl",
+    "godot_android_shell",
+    "godot_engine_build",
     "godot_engine_source",
     "godot_engine_source_build",
 )
@@ -69,6 +71,17 @@ _PREBUILT_ATTRS = {
     "android_debug_shell_integrity": attr.string(
         doc = "Subresource Integrity digest of the AAR in android_debug_shell_urls.",
     ),
+    "build_missing_runtimes": attr.bool(
+        doc = """
+            Build the runtime slots the prebuilt artifacts lack from the release's sources,
+            such as the arm64 iOS simulator runtimes of 4.7.2 or the Android debug runtimes.
+            Each recipe is configured and compiled only when a build selects its slot.
+            Catalogued versions with pinned sources only; none when templates_urls or
+            editor_urls pin a fork's artifacts, and no Android runtimes when
+            android_shell_urls does.
+            """,
+        default = True,
+    ),
     "engine": _ENGINE_ATTR,
 }
 
@@ -96,6 +109,9 @@ _SOURCE_BUILD_ATTRS = {
     "enabled_modules": attr.string_list(
         doc = "Enabled Godot modules; dependencies come from the source's module graph.",
         default = ["gdscript", "text_server_fb"],
+    ),
+    "default_modules": attr.bool(
+        doc = "Also enable every module Godot enables by default for the platform, as its official builds do.",
     ),
     "custom_modules": attr.label_keyed_string_dict(
         doc = "Each custom module's config.py label mapped to its module name.",
@@ -128,7 +144,9 @@ _ENGINE_TAG_ATTRIBUTES = {
 # The repository rules and macros that plan_engines declarations name.
 _ENGINE_RULES = {
     "engine_hub": engine_hub,
+    "godot_android_shell": godot_android_shell,
     "godot_editor_archive": godot_editor_archive,
+    "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,
     "godot_engine_source_build": godot_engine_source_build,
     "godot_export_templates_archive": godot_export_templates_archive,
@@ -192,13 +210,13 @@ godot_engines = module_extension(
       - prerequisites: template archive contains the slot
       - availability: desktop
     - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-      - prerequisites: template archive contains the slot
+      - prerequisites: template archive contains the slot, or build_missing_runtimes with catalogued sources
       - availability: ios
     - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-      - prerequisites: Android shell AAR pinned
+      - prerequisites: Android shell AAR pinned, or build_missing_runtimes with catalogued sources
       - availability: android_shell
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-      - prerequisites: Android shell library pinned or a source build with Android rows
+      - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes with catalogued sources
       - availability: android_shell
     - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
       - prerequisites: Android shell library pinned or a source build with Android rows

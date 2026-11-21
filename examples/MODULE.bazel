@@ -150,14 +150,9 @@ godot_engines.source_build(
 )
 use_repo(godot_engines, "godot", "godot_petri", "godot_sources")
 
-# The official 4.7.2 iOS simulator libraries contain x86_64 code only, which current
-# simulators on Apple silicon refuse. godot-mobile-plugins/godot-ios-builds publishes the
-# arm64 simulator engine libraries of each release; //engines/ios_simulator registers them
-# for the arm64 simulator slots ahead of the official hub.
-register_toolchains(
-    "//engines/ios_simulator:all",
-    "@godot//toolchains:all",
-)
+# The hub builds the arm64 simulator runtimes the official 4.7.2 templates lack from the
+# release's sources, the first time an arm64 simulator build asks for them.
+register_toolchains("@godot//toolchains:all")
 
 # AppAuth for iOS and macOS from its Swift package, pinned in Package.resolved. Only the
 # Apple backend of iOS and macOS applications and source runs needs it; the add-on's editor
@@ -251,32 +246,6 @@ http_archive(
     sha256 = "cd2a1450f33cfeb35f180d33b836ab92a663d1335ee7f953ae3ebcb20308c99d",
     strip_prefix = "sdk-3.13.7",
     urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.13.7.tar.gz"],
-)
-
-http_archive(
-    name = "godot_ios_simulator_arm64_release",
-    build_file = "//deps:godot_ios_simulator.BUILD.bazel",
-    # The patch adds the XCFramework manifest; the command moves the library into it.
-    patch_cmds = [
-        "mkdir -p libgodot.xcframework/ios-arm64-simulator && mv godot-4.7.2-stable/bin/libgodot.ios.template_release.arm64.simulator.a libgodot.xcframework/ios-arm64-simulator/libgodot.a",
-    ],
-    patch_strip = 1,
-    patches = ["//deps:godot_ios_simulator_xcframework.patch"],
-    sha256 = "6bc189d78aca76c799416382e8c40f023ab970b8c6d7225a390b5db07c48b34d",
-    urls = ["https://github.com/godot-mobile-plugins/godot-ios-builds/releases/download/4.7.2-stable/godot-ios-simulator-release-4.7.2-stable.zip"],
-)
-
-http_archive(
-    name = "godot_ios_simulator_arm64_debug",
-    build_file = "//deps:godot_ios_simulator.BUILD.bazel",
-    # The patch adds the XCFramework manifest; the command moves the library into it.
-    patch_cmds = [
-        "mkdir -p libgodot.xcframework/ios-arm64-simulator && mv godot-4.7.2-stable/bin/libgodot.ios.template_debug.arm64.simulator.a libgodot.xcframework/ios-arm64-simulator/libgodot.a",
-    ],
-    patch_strip = 1,
-    patches = ["//deps:godot_ios_simulator_xcframework.patch"],
-    sha256 = "bd354e44bb77d9f887ab42639031fdf7f7edaad16367014e2e0ea6938b6c387d",
-    urls = ["https://github.com/godot-mobile-plugins/godot-ios-builds/releases/download/4.7.2-stable/godot-ios-simulator-debug-4.7.2-stable.zip"],
 )
 
 http_archive(

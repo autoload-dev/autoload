@@ -125,6 +125,14 @@ def file_digests(
     }
 
 
+def _module_selection(args: argparse.Namespace) -> dict[str, Any]:
+    """The requested modules; the upstream defaults only when requested, so earlier digests hold."""
+    selection: dict[str, Any] = {"modules": args.modules}
+    if args.default_modules:
+        selection["default_modules"] = True
+    return selection
+
+
 def inputs_hash(args: argparse.Namespace) -> str:
     """
     Return the hash an unstamped source-built engine names in place of a Git commit.
@@ -143,7 +151,7 @@ def inputs_hash(args: argparse.Namespace) -> str:
         "configuration": {
             "platform": args.platform,
             "build_target": args.build_target,
-            "modules": args.modules,
+            **_module_selection(args),
             "options": sorted(args.options),
         },
     }
@@ -725,17 +733,59 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-def include_closure(root: Path, sources: Collection[str]) -> set[str]:
-    """Godot shader builders recursively read #include files themselves."""
-    root = root.resolve()
-    found = set(sources)
-    pending = list(sources)
+_SOURCE_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE)
+
+
+_INCLUDED_SOURCE_MARKERS = (b'.cpp"', b'.cc"', b'.cxx"')
+
+
+def _resolve_source_include(root: Path, path: Path, include: str) -> str | None:
+    """Resolve an include beside the including source, else below the source root."""
+    for base in (path.parent, root):
+        candidate = (base / include).resolve()
+        if candidate.is_file() and candidate.is_relative_to(root):
+            return relative(candidate, root)
+    return None
+
+
+def _source_includes(root: Path, path: Path) -> list[str]:
+    """Return the C++ sources that a source includes, relative to the source root."""
+    text = path.read_bytes() if path.is_file() else b""
+    if not any(marker in text for marker in _INCLUDED_SOURCE_MARKERS):
+        return []
+    includes = _SOURCE_INCLUDE.findall(text.decode(errors="replace"))
+    resolved = (_resolve_source_include(root, path, include) for include in includes)
+    return [logical for logical in resolved if logical]
+
+
+def _discovered_includes(
+    root: Path, sources: Collection[str], includes: Callable[[Path, Path], list[str]]
+) -> set[str]:
+    """Return the files the sources include, transitively, relative to the source root."""
+    found: set[str] = set()
+    pending = list(dict.fromkeys(sources))
     while pending:
-        for logical in _shader_includes(root, root / pending.pop()):
+        for logical in includes(root, root / pending.pop()):
             if logical not in found:
                 found.add(logical)
                 pending.append(logical)
     return found
+
+
+def include_closure(root: Path, sources: Collection[str]) -> set[str]:
+    """Godot shader builders recursively read #include files themselves."""
+    root = root.resolve()
+    return set(sources) | _discovered_includes(root, sources, _shader_includes)
+
+
+def included_sources(root: Path, sources: Collection[str]) -> list[str]:
+    """
+    Return the C++ sources that other sources include, relative to the source root.
+
+    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
+    source that includes others; those must reach each compile action as textual headers.
+    """
+    return sorted(_discovered_includes(root.resolve(), sources, _source_includes))
 
 
 def generated_include_directories(
@@ -1288,12 +1338,14 @@ def _generator_rules(
     return lines, generated_headers
 
 
-def _headers_rule(generated_headers: Iterable[str]) -> str:
+def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:
     # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm.
     return (
         'cc_library(\n    name = "_headers",\n    visibility = ["//visibility:private"],\n    hdrs = glob(["**/*.h", "**/*.hh", "**/*.hpp", "**/*.hxx"], exclude = ["_scons/**"], allow_empty = True) + '
         f"{list(generated_headers)!r},\n"
-        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm"], exclude = ["_scons/**"], allow_empty = True),\n    includes = ["."],\n)'
+        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm"], exclude = ["_scons/**"], allow_empty = True) + '
+        f"{list(included)!r},\n"
+        '    includes = ["."],\n)'
     )
 
 
@@ -1472,7 +1524,8 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines = _header_rules(args, bool(graph["swift_sources"]))
     generator_rules, generated_headers = _generator_rules(root, generators)
     lines += generator_rules
-    lines.append(_headers_rule(generated_headers))
+    compiled = [source for _key, sources in groups.items() for source in sources]
+    lines.append(_headers_rule(generated_headers, included_sources(root, compiled)))
     object_rules, dependencies = _object_rules(groups, generators, generated_headers)
     lines += object_rules
     if graph["swift_sources"]:
@@ -1556,12 +1609,15 @@ def require_host_platform(root: Path, platform: str) -> None:
 
 def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
     """The requested build customization a recipe's components record as provenance."""
-    return {
+    requested = {
         "patches": [path.name for path in args.patch],
         "modules": list(args.modules),
         "custom_modules": sorted(args.custom_module_names),
         "options": sorted(args.options),
     }
+    if args.default_modules:
+        requested["default_modules"] = ["yes"]
+    return requested
 
 
 def _is_module_name(name: str) -> bool:
@@ -1636,7 +1692,7 @@ def pin_digest(args: argparse.Namespace, scons: Path) -> str:
                 "platform": args.platform,
                 "cpu": args.cpu,
                 "build_target": args.build_target,
-                "modules": args.modules,
+                **_module_selection(args),
                 "options": sorted(args.options),
             },
             "build_name": args.build_name,
@@ -1724,6 +1780,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--environment", choices=("", "device", "simulator"), default="")
     parser.add_argument("--expected-version", default="")
     parser.add_argument("--modules", default="gdscript,text_server_fb")
+    # Start from the modules upstream enables by default, as Godot's official builds do.
+    parser.add_argument("--default-modules", action="store_true")
     parser.add_argument("--custom-modules", action="append", default=[])
     parser.add_argument("--custom-module-source", action="append", default=[])
     # A custom module already below _custom_modules, as in a pin action's source tree.
@@ -1846,7 +1904,7 @@ def _scons_arguments(args: argparse.Namespace) -> list[str]:
         f"platform={args.platform}",
         f"arch={args.cpu}",
         f"target={args.build_target}",
-        "modules_enabled_by_default=no",
+        "modules_enabled_by_default=" + ("yes" if args.default_modules else "no"),
         "scu_build=no",
         "generate_bundle=no",
         "debug_symbols=no",

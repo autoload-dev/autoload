@@ -6,7 +6,7 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
 
 # buildifier: disable=bzl-visibility
-load("//godot/engine/private:source_build_rows.bzl", "plan_source_build")
+load("//godot/engine/private:source_build_rows.bzl", "plan_rows", "select_rows")
 
 # buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
@@ -26,6 +26,7 @@ _PREBUILT = {
     "android_shell_integrity": "",
     "android_debug_shell_urls": [],
     "android_debug_shell_integrity": "",
+    "build_missing_runtimes": True,
     "engine": "",
 }
 
@@ -45,6 +46,7 @@ _SOURCE_BUILD = {
     "build_targets": ["template_release"],
     "ios_environments": [],
     "enabled_modules": ["gdscript", "text_server_fb"],
+    "default_modules": False,
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,
@@ -161,7 +163,7 @@ def _test_catalogue_downloads_prefer_godot_cdn(env):
     ]).in_order()
 
 def _test_source_build_hub_names_each_recipe(env):
-    plan = plan_source_build("godot_source_build", ["android", "macos"], cpus = ["arm64"], build_targets = ["template_release"])
+    plan = plan_rows("godot_source_build", select_rows("godot_source_build", ["android", "macos"], cpus = ["arm64"], build_targets = ["template_release"]))
     env.expect.that_collection([slot["name"] for slot in plan.slots]).contains_exactly([
         "runtime_android_arm64_release",
         "runtime_macos_arm64_release",
@@ -249,6 +251,7 @@ def _test_template_pins_replace_catalogue_templates(env):
         templates_urls = ["file:///templates.tpz"],
         templates_integrity = "sha256-templates",
         templates_macos_cpus = ["arm64"],
+        build_missing_runtimes = False,
     ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_declared(declarations, "godot_templates_macos")[0].attrs["cpus"]).contains_exactly(["arm64"])
@@ -259,6 +262,7 @@ def _test_template_pins_replace_catalogue_templates(env):
         templates_urls = ["file:///templates.tpz"],
         templates_integrity = "sha256-templates",
         templates_linux_cpus = ["x86_64"],
+        build_missing_runtimes = False,
     ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_declared(declarations, "godot_templates_linux")[0].attrs["cpus"]).contains_exactly(["x86_64"])
@@ -266,7 +270,11 @@ def _test_template_pins_replace_catalogue_templates(env):
     env.expect.that_collection(linux).contains_exactly(["runtime_linux_x86_64_debug", "runtime_linux_x86_64_release"])
 
 def _test_shell_pins_replace_catalogue_shell(env):
-    declarations, errors = _plan(_root(android_shell_urls = ["file:///shell.aar"], android_shell_integrity = "sha256-shell"))
+    declarations, errors = _plan(_root(
+        android_shell_urls = ["file:///shell.aar"],
+        android_shell_integrity = "sha256-shell",
+        build_missing_runtimes = False,
+    ))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_dict(_declared(declarations, "godot_android_shell")[0].attrs).contains_exactly({
         "name": "godot_android_shell",
@@ -376,6 +384,78 @@ def _test_tags_name_the_engine_of_their_hubs(env):
     env.expect.that_str(_declared(declarations, "godot")[0].attrs["engine"]).equals("stock")
     env.expect.that_str(_declared(declarations, "godot_source_build")[0].attrs["engine"]).equals("petri")
 
+def _test_missing_runtimes_build_from_the_release_sources(env):
+    declarations, errors = _plan(_root())
+    env.expect.that_collection(errors).contains_exactly([])
+    slots = _slots(declarations, "godot")
+
+    # The official simulator libraries are x86_64 only, and the official shells are release builds.
+    env.expect.that_str(slots["runtime_ios_x86_64_simulator_release"]["payload"]).equals("@godot_templates_ios//:ios_release")
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["payload"]).equals(
+        "@godot__missing_ios_arm64_simulator_template_release//:engine_library",
+    )
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_debug"]["version"]).equals("4.7.2")
+    env.expect.that_str(slots["runtime_android_arm64_debug"]["payload"]).equals("//android:debug")
+    env.expect.that_str(slots["runtime_ios_arm64_device_release"]["payload"]).equals("@godot_templates_ios//:ios_release")
+    source = _declared(declarations, "godot__missing_archive")
+    env.expect.that_collection([declaration.rule for declaration in source]).contains_exactly(["godot_engine_source"])
+    env.expect.that_str(source[0].attrs["version"]).equals("4.7.2")
+    recipes = [declaration.attrs["name"] for declaration in _rules(declarations, "godot_engine_build")]
+    env.expect.that_collection(recipes).contains_exactly([
+        "godot__missing_android_arm64_template_debug",
+        "godot__missing_android_x86_64_template_debug",
+        "godot__missing_ios_arm64_simulator_template_debug",
+        "godot__missing_ios_arm64_simulator_template_release",
+    ])
+    env.expect.that_collection(_declared(declarations, "godot__missing_android_shell")).has_size(1)
+    hub = _declared(declarations, "godot")[0].attrs
+    env.expect.that_collection(json.decode(hub["android_runtimes"]).keys()).contains_exactly(["debug", "release"])
+
+def _test_missing_runtimes_can_be_left_unbuilt(env):
+    declarations, errors = _plan(_root(build_missing_runtimes = False))
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_rules(declarations, "godot_engine_build")).contains_exactly([])
+    env.expect.that_bool("runtime_ios_arm64_simulator_release" in _slots(declarations, "godot")).equals(False)
+
+def _test_pinned_runtimes_need_no_source_build(env):
+    declarations, errors = _plan(_root(
+        ios_simulator_cpus = ["arm64", "x86_64"],
+        android_debug_shell_urls = ["file:///shell-debug.aar"],
+        android_debug_shell_integrity = "sha256-" + "A" * 43 + "=",
+    ))
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_declared(declarations, "godot__missing_archive")).contains_exactly([])
+    env.expect.that_collection(_rules(declarations, "godot_engine_build")).contains_exactly([])
+
+def _test_pinned_artifacts_build_no_upstream_runtimes(env):
+    declarations, errors = _plan(_root(
+        templates_urls = ["file:///fork_templates.tpz"],
+        templates_integrity = "sha256-" + "A" * 43 + "=",
+    ))
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_rules(declarations, "godot_engine_build")).contains_exactly([])
+
+def _test_pinned_shells_build_no_upstream_android_runtimes(env):
+    declarations, errors = _plan(_root(
+        android_shell_urls = ["file:///fork_shell.aar"],
+        android_shell_integrity = "sha256-" + "A" * 43 + "=",
+    ))
+    env.expect.that_collection(errors).contains_exactly([])
+    recipes = [declaration.attrs["name"] for declaration in _rules(declarations, "godot_engine_build")]
+    env.expect.that_collection(recipes).contains_exactly([
+        "godot__missing_ios_arm64_simulator_template_debug",
+        "godot__missing_ios_arm64_simulator_template_release",
+    ])
+
+def _test_prerelease_simulator_runtimes_build_from_its_sources(env):
+    declarations, errors = _plan(_root(name = "godot_beta", version = "4.8.0-beta1"))
+    env.expect.that_collection(errors).contains_exactly([])
+    slots = _slots(declarations, "godot_beta")
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["version"]).equals("4.8.0-beta")
+    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["payload"]).equals(
+        "@godot_beta__missing_ios_arm64_simulator_template_release//:engine_library",
+    )
+
 def engine_extension_test_suite(name):
     test_suite(
         name = name,
@@ -398,5 +478,11 @@ def engine_extension_test_suite(name):
             _test_source_tag_declares_engine_source,
             _test_identical_dependency_requests_share_repositories,
             _test_tags_name_the_engine_of_their_hubs,
+            _test_missing_runtimes_build_from_the_release_sources,
+            _test_missing_runtimes_can_be_left_unbuilt,
+            _test_pinned_runtimes_need_no_source_build,
+            _test_pinned_artifacts_build_no_upstream_runtimes,
+            _test_pinned_shells_build_no_upstream_android_runtimes,
+            _test_prerelease_simulator_runtimes_build_from_its_sources,
         ],
     )

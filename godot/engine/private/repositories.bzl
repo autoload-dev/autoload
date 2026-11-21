@@ -144,6 +144,12 @@ godot_engine_build = repository_rule(
             doc = "Enabled Godot modules; their dependencies come from the source's module graph.",
             default = ["gdscript", "text_server_fb"],
         ),
+        "default_modules": attr.bool(
+            doc = """
+            Also enable every module Godot enables by default for the platform, as its
+            official builds do; `enabled_modules` must then name only modules Godot can build.
+            """,
+        ),
         "custom_modules": attr.label_keyed_string_dict(
             doc = """
             Each custom module's config.py label mapped to its module name; the containing
@@ -282,6 +288,7 @@ def godot_engine_source_build(
         build_targets = [],
         ios_environments = [],
         enabled_modules = ["gdscript", "text_server_fb"],
+        default_modules = False,
         custom_modules = {},
         patches = [],
         patch_strip = 1,
@@ -355,6 +362,7 @@ def godot_engine_source_build(
         build_targets: Optional editor/template_debug/template_release filter; empty selects all.
         ios_environments: Optional device/simulator filter for iOS rows; empty selects both.
         enabled_modules: As for godot_engine_build.
+        default_modules: As for godot_engine_build.
         custom_modules: As for godot_engine_build.
         patches: As for godot_engine_build; Android shell libraries apply them too.
         patch_strip: As for godot_engine_build.
@@ -369,6 +377,7 @@ def godot_engine_source_build(
     """
     common = {
         "enabled_modules": enabled_modules,
+        "default_modules": default_modules,
         "custom_modules": custom_modules,
         "patches": patches,
         "patch_strip": patch_strip,

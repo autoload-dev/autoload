@@ -110,22 +110,16 @@ godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+
+# The hub builds the runtimes the official 4.7.2 artifacts lack, such as the arm64 Simulator
+# runtimes, from the release's sources, the first time a build selects their slots.
 godot_engines.prebuilt(
     name = "godot",
     version = "4.7.2",
 )
 
-# Source-built engines; fetched and configured only when a lane's targets or API contract
-# cases need them.
-godot_engines.source(
-    name = "godot_sources",
-    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
-    strip_prefix = "godot-4.7.2-stable",
-    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
-    version = "4.7.2",
-)
-
-# The archive's version.py names the unnumbered beta.
+# Source archives; fetched only when a lane's targets or API contract cases need them. The
+# beta archive's version.py names the unnumbered beta.
 godot_engines.source(
     name = "godot_sources_beta",
     sha256 = "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
@@ -143,63 +137,14 @@ godot_engines.source(
     urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
     version = "4.7.3-rc",
 )
-
-# Each source build has one policy; Android and iOS differ in renderer options and modules.
-godot_engines.source_build(
-    name = "godot_source_build_android",
-    build_options = {
-        "vulkan": "no",
-        "opengl3": "yes",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
-    },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
-    platforms = ["android"],
-    source = "@godot_sources//:source.json",
-)
-godot_engines.source_build(
-    name = "godot_source_build_ios",
-    build_options = {
-        "metal": "no",
-        "vulkan": "no",
-        "opengl3": "yes",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
-    },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
-    enabled_modules = [
-        "gdscript",
-        "text_server_fb",
-        # The counter scene uses the default font and an imported WebP texture.
-        "freetype",
-        "webp",
-    ],
-    ios_environments = ["simulator"],
-    platforms = ["ios"],
-    source = "@godot_sources//:source.json",
-)
 use_repo(
     godot_engines,
     "godot",
-    "godot_source_build_android",
-    "godot_source_build_ios",
-    "godot_sources",
     "godot_sources_beta",
     "godot_sources_snapshot",
 )
 
-# The prebuilt 4.7.2 simulator runtime is x86_64 only; the source build fills the arm64
-# simulator slot, ahead of the prebuilt hub.
-register_toolchains(
-    "@godot_source_build_ios//toolchains:all",
-    "@godot//toolchains:all",
-)
+register_toolchains("@godot//toolchains:all")
 
 # The patched desktop engines of patched_engine and its source-built tests; built
 # only by the source-engine lane. Each recipe has its own policy, so each is a source

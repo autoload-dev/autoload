@@ -9,6 +9,7 @@ modules collects them; the planner returns None after an error.
 load("//godot/engine/private:archives.bzl", "template_target")
 load("//godot/engine/private:catalogue.bzl", "EDITOR_PLATFORMS", "RELEASES", "TEMPLATE_CPUS")
 load("//godot/engine/private:hub.bzl", "component")
+load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recipe_declarations", "slot_name")
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
@@ -30,8 +31,8 @@ def prebuilt_plan(tag, *, _fail = fail):
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
-        A struct of editors, templates, the Android shells by variant and iOS simulator
-        CPUs, or None after an error.
+        A struct of editors, templates, the Android shells by variant, iOS simulator CPUs
+        and the source archive that builds missing runtimes, or None after an error.
     """
     error = godot_version_error(tag.version)
     if error:
@@ -52,6 +53,7 @@ def prebuilt_plan(tag, *, _fail = fail):
         android_shells = _android_shells(tag, release),
         ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
         android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
+        source = _missing_runtime_source(tag, release),
     )
 
 def _editors(tag, release, _fail):
@@ -150,6 +152,13 @@ def _android_shells(tag, release):
             shells[variant] = struct(pin = pin, **release[pin])
     return shells
 
+def _missing_runtime_source(tag, release):
+    """The catalogued sources of the missing runtimes; none for a fork's pinned artifacts."""
+    pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls])
+    if not tag.build_missing_runtimes or pins_fork_artifacts:
+        return None
+    return (release or {}).get("source")
+
 def prebuilt_slots(tag, plan):
     """
     Return the hub slots of a prebuilt plan.
@@ -246,6 +255,69 @@ def _android_runtime_slots(tag, plan):
         for variant, shell in plan.android_shells.items()
         for cpu in plan.android_cpus
     ]
+
+# The build policy of the runtimes a prebuilt engine builds from its release's sources: the
+# modules of Godot's official builds.
+_MISSING_RUNTIME_POLICY = {
+    "enabled_modules": [],
+    "default_modules": True,
+    "custom_modules": {},
+    "patches": [],
+    "patch_strip": 1,
+    "build_options": {},
+    "build_name": "custom",
+    "python": None,
+    "configure_timeout": 600,
+}
+
+# Platform options of those runtimes. Vulkan would need the MoltenVK SDK on the configuring
+# Mac; Metal and OpenGL stay.
+_MISSING_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}}
+
+def _missing_rows(tag, slots):
+    """The runtime rows no prebuilt slot covers; a pinned shell AAR may be a fork's, so its Android rows stay unbuilt."""
+    covered = {slot["name"]: True for slot in slots}
+    if tag.android_shell_urls:
+        covered.update({slot_name(row): True for row in ROWS if row.platform == "android"})
+    return [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
+
+def missing_runtimes(tag, plan, slots):
+    """
+    Return the source declarations, slots and Android runtimes of the runtimes a prebuilt lacks.
+
+    Args:
+        tag: The godot_engines.prebuilt tag of the plan.
+        plan: The result of prebuilt_plan.
+        slots: The prebuilt slots of the plan.
+
+    Returns:
+        A struct of `declarations`, the source archive and recipe repositories, `slots`,
+        the source-built hub slots, and `android`, their Android runtimes by variant; None
+        without a missing runtime or a source archive.
+    """
+    if not plan.source:
+        return None
+    rows = _missing_rows(tag, slots)
+    if not rows:
+        return None
+
+    # A double underscore keeps the recipes apart from the repositories of a source build.
+    name = tag.name + "__missing"
+    source = "@%s_archive//:source.json" % name
+
+    # The catalogue knows the sources' version, so the hub need not read the archive.
+    rows_plan = plan_rows(name, rows, version = plan.source["version"])
+    declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
+    for declaration in recipe_declarations(name, source, rows_plan, _MISSING_RUNTIME_POLICY):
+        options = _MISSING_RUNTIME_OPTIONS.get(declaration.attrs.get("platform"))
+        if options:
+            declaration.attrs["build_options"] = declaration.attrs["build_options"] | options
+        declarations.append(declaration)
+    return struct(
+        declarations = declarations,
+        slots = rows_plan.slots,
+        android = rows_plan.android,
+    )
 
 def _scalar(value):
     return str(value) if type(value) == "Label" else value
@@ -397,15 +469,22 @@ def _prebuilt_declarations(tag, _fail):
     if plan == None:
         return None
     shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
+    slots = prebuilt_slots(tag, plan)
+    missing = missing_runtimes(tag, plan, slots)
+    sources = []
+    if missing:
+        sources = missing.declarations
+        slots = slots + missing.slots
+        android_runtimes = missing.android | android_runtimes
     hub = _declaration(
         "engine_hub",
         name = tag.name,
         display_name = tag.name,
-        components = json.encode(prebuilt_slots(tag, plan)),
+        components = json.encode(slots),
         android_runtimes = json.encode(android_runtimes),
         engine = tag.engine,
     )
-    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + [hub]
+    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + sources + [hub]
 
 def _editor_declarations(tag, editors):
     return [

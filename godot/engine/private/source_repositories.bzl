@@ -192,6 +192,8 @@ def engine_build_impl(ctx, *, _fail = fail):
         "--patch-strip",
         str(ctx.attr.patch_strip),
     ]
+    if ctx.attr.default_modules:
+        arguments.append("--default-modules")
     for option in sorted(ctx.attr.build_options):
         arguments.extend(["--option", option + "=" + ctx.attr.build_options[option]])
     command = [
