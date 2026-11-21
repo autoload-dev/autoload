@@ -14,6 +14,7 @@ is written here rather than by a plist tool action.
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
+load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 
 visibility(["//godot/extension/..."])
 
@@ -86,6 +87,10 @@ def _ios_framework_files_impl(ctx):
     binary = ctx.actions.declare_file(directory + name)
     xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
 
+    # One binary with the library of every CPU of the application: rules_apple embeds a
+    # single binary per framework, whichever CPU's framework it takes it from.
+    slices = [ctx.split_attr.binary[key].files.to_list()[0] for key in sorted(ctx.split_attr.binary)]
+
     # rules_cc's toolchain sets the install name after the target's linkopts, from the
     # shared library's own file name; a framework's binary carries its framework path.
     # The application signs the framework when it embeds it.
@@ -93,9 +98,9 @@ def _ios_framework_files_impl(ctx):
         actions = ctx.actions,
         xcode_config = xcode_config,
         apple_fragment = ctx.fragments.apple,
-        command = 'cp "$1" "$2" && chmod u+w "$2" && xcrun install_name_tool -id "$3" "$2"',
-        arguments = [ctx.file.binary.path, binary.path, "@rpath/%s.framework/%s" % (name, name)],
-        inputs = [ctx.file.binary],
+        command = 'out="$1" id="$2" && shift 2 && xcrun lipo -create "$@" -output "$out" && xcrun install_name_tool -id "$id" "$out"',
+        arguments = [binary.path, "@rpath/%s.framework/%s" % (name, name)] + [file.path for file in slices],
+        inputs = slices,
         outputs = [binary],
         mnemonic = "GodotFrameworkInstallName",
         progress_message = "Setting the install name of %{output}",
@@ -125,9 +130,13 @@ ios_framework_files = rule(
     implementation = _ios_framework_files_impl,
     attrs = {
         "binary": attr.label(
-            doc = "The dynamic library; its copy in the framework gets the framework's install name.",
-            allow_single_file = True,
+            doc = """
+            The dynamic library, built for each platform slice of the application; the
+            framework's binary combines them and gets the framework's install name.
+            """,
+            allow_files = True,
             mandatory = True,
+            cfg = platform_slice_transition,
         ),
         "framework_name": attr.string(doc = "Name of the framework and its binary.", mandatory = True),
         "bundle_id": attr.string(doc = "CFBundleIdentifier of the framework.", mandatory = True),

@@ -285,7 +285,8 @@ shows this.
 With an iOS target toolchain, `godot_cc_extension` links the same shared library as on
 other platforms and wraps it in a dynamic framework named after the target,
 `<name>.framework`, with an `Info.plist` whose `MinimumOSVersion` is the deployment target
-of the link. The iOS application embeds and signs it in its `Frameworks` directory, as it
+of the link. Its binary holds the library of every CPU of the application's export platform,
+such as both CPUs of an iOS Simulator platform. The iOS application embeds and signs it in its `Frameworks` directory, as it
 does a vendor's [dynamic framework](#dynamic-frameworks), and Godot loads it when it loads
 the extension. Each framework links its own godot-cpp, so extensions from different
 Bazel modules, each with their own `godot_cpp_bindings`, never share godot-cpp symbols, and
