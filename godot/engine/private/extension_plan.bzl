@@ -123,8 +123,8 @@ def _pinned_templates(tag, _fail):
 
 # The Android shell AARs of a prebuilt engine: the variant each serves and the prefix of
 # its tag attributes, catalogue key and repository name. The shells of official releases
-# are template_release builds with every ABI's engine library; a debug shell is an
-# explicit pin.
+# are template_release builds with every ABI's engine library, so the catalogue has no
+# debug shell today and a debug shell is an explicit pin.
 _SHELL_PINS = [("release", "android_shell"), ("debug", "android_debug_shell")]
 
 def _shell_error(tag):
