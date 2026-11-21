@@ -51,6 +51,31 @@ what is still open. Line references are to `main` as of 2026-11-04.
   and `tests/analysis/engine_configuration/repositories_test.py`.
 - Open: which processes hold the mount in practice; extraction cost of moving the cache.
 
+### The run on main after the merge queue
+
+- The merge queue runs every selected lane on the merge group; the push to main then runs
+  them again (`.github/workflows/ci.yml`, `push`).
+- The run on main also saves the caches that pull requests read: the downloads of the macOS
+  jobs (`.github/actions/setup/save-downloads`) and the mise tools. A merge group saves none,
+  because its entries belong to a temporary branch.
+- Idea: on main, run only what must save caches, or nothing where the cache keys are
+  unchanged.
+- Open: does main receive the merge group's commit unchanged, so that the two runs test the
+  same tree?
+
+### Analysis size of the host tests
+
+- `mise run test:bazel` configures 1.54 million targets on macOS (0.96 million on Linux).
+  1.11 million are `toolchain` targets: every configuration evaluates all 1,295 registered
+  toolchains, 696 of them Go toolchains (12 Go SDKs for 58 platforms each, from rules_go and
+  rules_android).
+- The toolchain targets are cheap: 700 more per configuration cost 1 s of 12 s on an M5 Max.
+  The time goes to about 1,000 configurations, most of them from the 126 tests in
+  `//godot/platforms/...` (1.0 million configured targets, 158 of 185 CPU seconds).
+- A fresh CI job also extracts 13 GB of repositories, 6.4 GB of them export templates.
+- Open: fewer distinct configurations in the platform tests; which fixtures could assert at
+  rule level instead of on whole applications.
+
 ## Tests and conventions
 
 ### Regression project layout
