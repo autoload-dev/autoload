@@ -75,7 +75,7 @@ def godot_resource_graph(name, project, deps = [], validate = True, require_decl
     )
     ```
 
-    See [resource graph diagnostics](../../resources.md).
+    See [detected references](../../resources.md#detected-references).
 
     ### Default outputs
     - files (one): build resource graph JSON with selected declaration/validation policy; no run behavior
