@@ -11,7 +11,7 @@ platform does.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/config:application.bzl", "application_pack")
-load("//godot/private/config:settings.bzl", "MERGE_ANDROID_MANIFEST_PERMISSIONS")
+load("//godot/private/config:settings.bzl", "MERGE_ANDROID_MANIFEST_PERMISSIONS", "platform_slice_name")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(
     ":action_graph.bzl",
@@ -31,6 +31,12 @@ _MACOS_FIXTURE = "//godot/platforms/private/tests/fixtures/macos_app_with_extens
 
 # macOS signing runs on a macOS host only.
 _MACOS_HOST = {"size": "small", "target_compatible_with": ["@platforms//os:macos"]}
+
+# A macOS application whose minimum, Godot's default 11.0, is also the build's.
+_MACOS = {
+    "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
+    "//command_line_option:macos_minimum_os": "11.0",
+}
 
 def _configured_transition_impl(settings, attr):
     return {
@@ -129,9 +135,7 @@ def _test_macos_signing_mode_reruns_only_signing(name):
         name = name,
         targets = _arrange(name, _MACOS_FIXTURE + "app", "macos_signing", ["unsigned", "adhoc"]),
         impl = _macos_signing_mode_reruns_only_signing,
-        config_settings = {
-            "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
-        },
+        config_settings = _MACOS,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = _MACOS_HOST,
     )
@@ -263,10 +267,6 @@ def _android_permission_merging_keeps_one_pack_configuration(env, targets):
     env.expect.that_bool(bool(_output_paths(targets.pack, ["CppCompile"])), expr = "the pack compiles native code").equals(True)
     env.expect.that_collection(_output_paths(targets.merging_pack, _PACK_ACTIONS), expr = "merging pack actions").contains_exactly(paths)
 
-# The native code of one application is configured once per platform slice: every option
-# that an application's edge, its pack's transitions and an extension's library edge set
-# for native code comes from godot/private/config/native.bzl, so they agree.
-
 def _compilation_roots(target, accept):
     """The output roots, one per configuration, of the compile actions accept selects."""
     return sorted({
@@ -291,7 +291,8 @@ def _test_ios_app_compiles_its_platform_slice_in_one_configuration(name):
 def _ios_app_compiles_its_platform_slice_in_one_configuration(env, target):
     # The application's entry support, its platform libraries and the extension's
     # library, which rules_apple's split and the pack's platform slice reach.
-    roots = _compilation_roots(target, lambda entry: entry.platform.endswith(":ios_sim_x86_64.platform_slice_x86_64"))
+    platform_slice = ":" + platform_slice_name("ios_sim_x86_64", "x86_64")
+    roots = _compilation_roots(target, lambda entry: entry.platform.endswith(platform_slice))
     env.expect.that_collection(roots, expr = "configurations compiling for the platform slice").has_size(1)
 
 def _test_android_app_compiles_its_extension_once_per_configuration_role(name):
@@ -315,7 +316,7 @@ def _android_app_compiles_its_extension_once_per_configuration_role(env, target)
     # rules_android's split, which the application packages: android_binary's own
     # configuration and the bootstrap reach no native code of the pack.
     env.expect.that_collection(
-        _extension_roots(target, ":android_arm64.platform_slice_arm64"),
+        _extension_roots(target, ":" + platform_slice_name("android_arm64", "arm64")),
         expr = "configurations compiling the extension for the platform slice",
     ).has_size(1)
 
@@ -331,24 +332,21 @@ def _test_macos_app_extension_shares_the_project_context_configuration(name):
         name = name,
         target = _MACOS_FIXTURE + "app",
         impl = _macos_app_extension_shares_the_project_context_configuration,
-        config_settings = {
-            "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
-            # The application's default minimum; the pack's own configuration has it too.
-            "//command_line_option:macos_minimum_os": "11.0",
-        },
+        # The signing test's configuration: unsigned is the default, so its unsigned
+        # application shares this test's configurations.
+        config_settings = _MACOS,
         extra_target_under_test_aspects = [reached_actions],
         attr_values = _MACOS_HOST,
     )
 
 def _macos_app_extension_shares_the_project_context_configuration(env, target):
     # The extension's library is reached through the application's pack and through the
-    # project context; with the build's minimum equal to the application's, both edges
-    # configure it alike.
-    roots = _compilation_roots(
-        target,
-        lambda entry: entry.owner.endswith(":hello.native") and entry.platform.endswith(":macos_arm64"),
-    )
-    env.expect.that_collection(roots, expr = "configurations compiling the extension").has_size(1)
+    # project context. It passes because the build's minimum equals the application's
+    # default: with another build minimum, the project context compiles it for that one.
+    env.expect.that_collection(
+        _extension_roots(target, ":macos_arm64"),
+        expr = "configurations compiling the extension",
+    ).has_size(1)
 
 def configuration_invariance_test_suite(name):
     test_suite(
