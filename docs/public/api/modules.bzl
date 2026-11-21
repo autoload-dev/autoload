@@ -86,10 +86,10 @@ CROSS_REPOSITORY_MODULES = {
     "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
     "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
     "//godot/platforms/private:android.bzl": "godot_android_runtime, loaded by generated engine hub BUILD files; requires cross-repository load access.",
-    "//godot/engine/private:repositories.bzl": "Engine source repository rules godot_engines declares; the tests module declares them directly across repositories; not supported API.",
 }
 
 SUPPORT_MODULES = [
+    "//godot/engine/private:repositories.bzl",
     "//godot/private:providers.bzl",
     "//godot/engine/private:archives.bzl",
     "//godot/engine/private:catalogue.bzl",

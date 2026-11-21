@@ -188,11 +188,7 @@ use_repo(
     godot_engines,
     "godot",
     "godot_source_build_android",
-    # Recipe and shell repositories of the source builds, for the API contract cases.
-    "godot_source_build_android_android_arm64_template_release",
-    "godot_source_build_android_android_shell",
     "godot_source_build_ios",
-    "godot_source_build_ios_ios_arm64_simulator_template_release",
     "godot_sources",
     "godot_sources_beta",
     "godot_sources_snapshot",
@@ -207,21 +203,21 @@ register_toolchains(
 )
 
 # The patched desktop engines of patched_engine and its source-built tests; built
-# only by the source-engine lane.
-godot_engine_build = use_repo_rule(
-    "@autoload_rules_godot//godot/engine/private:repositories.bzl",
-    "godot_engine_build",
-)
+# only by the source-engine lane. Each recipe has its own policy, so each is a source
+# build of one slot; patched_engine/engines registers their recipes' payloads.
+_BAZEL_PROBE = {"//patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"}
+
+_ENGINE_NAME_PATCH = ["//patched_engine/engine/patches:engine-name.patch"]
 
 # The snapshot's fuller editor: the same module and patch, without the runtime's
 # template-only reductions, plus the font and SVG support the editor itself uses.
-godot_engine_build(
+godot_engines.source_build(
     name = "godot_source_editor",
     # Metal and OpenGL stay; Vulkan would need the MoltenVK SDK on the configuring host.
     build_options = {"vulkan": "no"},
-    build_target = "editor",
-    cpu = "arm64",
-    custom_modules = {"//patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"},
+    build_targets = ["editor"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
     enabled_modules = [
         "gdscript",
         "text_server_fb",
@@ -229,54 +225,59 @@ godot_engine_build(
         "svg",
         "bazel_probe",
     ],
-    patches = ["//patched_engine/engine/patches:engine-name.patch"],
-    platform = "macos",
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
     source = "@godot_sources_snapshot//:source.json",
 )
 
-[
-    godot_engine_build(
-        name = name,
-        build_options = {
-            "vulkan": "no",
-            "metal": "no",
-            "opengl3": "no",
-            "disable_3d": "yes",
-            "disable_physics_2d": "yes",
-            "disable_navigation_2d": "yes",
-            "disable_navigation_3d": "yes",
-        },
-        build_target = "template_release",
-        cpu = "arm64",
-        custom_modules = {"//patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"},
-        enabled_modules = modules,
-        patches = ["//patched_engine/engine/patches:engine-name.patch"],
-        platform = "macos",
-        source = source,
-    )
-    for name, source, modules in [
-        (
-            # The reduced runtime of the snapshot; godot_source_editor is its fuller editor.
-            "godot_source",
-            "@godot_sources_snapshot//:source.json",
-            [
-                "gdscript",
-                "text_server_fb",
-                "bazel_probe",
-            ],
-        ),
-        (
-            "godot_source_beta",
-            "@godot_sources_beta//:source.json",
-            [
-                "gdscript",
-                "text_server_fb",
-                "freetype",
-                "bazel_probe",
-            ],
-        ),
-    ]
-]
+_REDUCED_RUNTIME = {
+    "vulkan": "no",
+    "metal": "no",
+    "opengl3": "no",
+    "disable_3d": "yes",
+    "disable_physics_2d": "yes",
+    "disable_navigation_2d": "yes",
+    "disable_navigation_3d": "yes",
+}
+
+# The reduced runtime of the snapshot; godot_source_editor is its fuller editor.
+godot_engines.source_build(
+    name = "godot_source",
+    build_options = _REDUCED_RUNTIME,
+    build_targets = ["template_release"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "bazel_probe",
+    ],
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
+    source = "@godot_sources_snapshot//:source.json",
+)
+godot_engines.source_build(
+    name = "godot_source_beta",
+    build_options = _REDUCED_RUNTIME,
+    build_targets = ["template_release"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "bazel_probe",
+    ],
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
+    source = "@godot_sources_beta//:source.json",
+)
+use_repo(
+    godot_engines,
+    "godot_source_beta_macos_arm64_template_release",
+    "godot_source_editor_macos_arm64_editor",
+    "godot_source_macos_arm64_template_release",
+)
 
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 

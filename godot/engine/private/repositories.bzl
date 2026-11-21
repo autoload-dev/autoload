@@ -1,8 +1,8 @@
 """
 Engine acquisition: immutable sources and configure-only source recipes.
 
-godot_engines declares these repositories through its source and source_build tags. They
-are not supported API; the tests module and the API contract fixtures declare them directly.
+godot_engines declares these repositories through its source and source_build tags; the
+ruleset's own test fixtures also declare them directly.
 """
 
 load("//godot/engine/private:hub.bzl", "engine_hub")
@@ -14,8 +14,7 @@ load(
     "engine_source_impl",
 )
 
-# The tests module loads these rules; they are not supported API.
-visibility("public")
+visibility(["//..."])
 
 godot_engine_source = repository_rule(
     doc = """

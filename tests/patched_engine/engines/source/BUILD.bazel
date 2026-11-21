@@ -8,7 +8,7 @@ _ORIGIN = "godotengine/godot@2ea68c7, a 4.7 maintenance-branch snapshot"
 godot_editor_component(
     name = "editor_macos_arm64",
     cpu = "arm64",
-    editor = "@godot_source_editor//:godot",
+    editor = "@godot_source_editor_macos_arm64_editor//:godot",
     origin = _ORIGIN,
     platform = "macos",
     tags = ["manual"],
@@ -18,6 +18,6 @@ godot_editor_component(
 desktop_runtimes(
     name = "runtime",
     origin = _ORIGIN,
-    payloads = {"macos/arm64/release": "@godot_source//:godot"},
+    payloads = {"macos/arm64/release": "@godot_source_macos_arm64_template_release//:godot"},
     version = "4.7.3-rc",
 )
