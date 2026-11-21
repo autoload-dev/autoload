@@ -332,18 +332,26 @@ def ios_application_inputs(name, pack, runtime, bundle_id, minimum_os_version, f
 
 _TREE_OUTPUTS = str(Label("@rules_apple//apple/build_settings:use_tree_artifacts_outputs"))
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
+_STRIP = "//command_line_option:strip"
 
-def _bundle_format_impl(settings, _attr):
+def _application_settings_impl(settings, _attr):
     # Simulator apps and unoptimized builds are never distributed, so their
     # bundle stays a directory instead of an archive written on every change.
     # Transitions read the compilation mode as an enum value, not a string.
     development = settings[ENVIRONMENT] == "simulator" or str(settings[_COMPILATION_MODE]) != "opt"
-    return {_TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development}
+    return {
+        _TREE_OUTPUTS: settings[_TREE_OUTPUTS] or development,
+        # rules_apple strips the executable with --objc_enable_binary_stripping and
+        # ignores --strip, and the extension frameworks it embeds already link without
+        # it (keep_debug_info). Setting it for the whole application gives its native
+        # code one configuration instead of one with and one without --strip.
+        _STRIP: "never",
+    }
 
-_bundle_format = transition(
-    implementation = _bundle_format_impl,
+_application_settings = transition(
+    implementation = _application_settings_impl,
     inputs = [ENVIRONMENT, _COMPILATION_MODE, _TREE_OUTPUTS],
-    outputs = [_TREE_OUTPUTS],
+    outputs = [_TREE_OUTPUTS, _STRIP],
 )
 
 _FORWARDED = [
@@ -386,10 +394,11 @@ _ios_bundle = rule(
     Forward an ios_application whose bundle format follows the build's purpose.
 
     Simulator and non-`opt` builds produce the `.app` directory; optimized
-    device builds produce the `.ipa` archive.
+    device builds produce the `.ipa` archive. The application's native code
+    builds without Bazel's `--strip`.
     """,
     implementation = _ios_bundle_impl,
-    cfg = _bundle_format,
+    cfg = _application_settings,
     executable = True,
     attrs = {
         "application": attr.label(mandatory = True, providers = [AppleBundleInfo]),
@@ -461,7 +470,7 @@ def godot_ios_application(
     one executable, so the dSYM covers all of them. Build with
     `--apple_generate_dsym`, without which it is empty. rules_apple strips the
     executable with `-c opt --objc_enable_binary_stripping`; Bazel's `--strip`
-    does not apply to it.
+    applies neither to it nor to the application's other native code.
 
     Example:
         godot_ios_application(
