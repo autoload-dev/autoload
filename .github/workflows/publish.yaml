@@ -18,11 +18,32 @@ on:
         required: true
         type: string
 jobs:
+  module:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      name: ${{ steps.module.outputs.name }}
+      root: ${{ steps.module.outputs.root }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Find the tag's module
+        id: module
+        env:
+          TAG: ${{ inputs.tag_name }}
+        run: .github/workflows/release_module.sh "$TAG" >> "$GITHUB_OUTPUT"
   publish:
+    needs: module
     # https://github.com/bazel-contrib/publish-to-bcr/blob/main/.github/workflows/publish.yaml
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
     with:
       tag_name: ${{ inputs.tag_name }}
+      # Publish only the tag's module: without module_roots, one run publishes every root
+      # of .bcr/config.yml.
+      tag_prefix: ${{ needs.module.outputs.name }}-v
+      module_roots: ${{ needs.module.outputs.root }}
       # The fork of bazelbuild/bazel-central-registry the pull request is opened from.
       registry_fork: autoload-dev/bazel-central-registry
       # Opened with a personal token, the maintainer marks the draft ready for review,

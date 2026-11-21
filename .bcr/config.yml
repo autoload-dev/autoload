@@ -1,0 +1,6 @@
+# The modules of this repository that publish-to-bcr knows. Each release publishes only its
+# tag's module (publish.yaml sets module_roots); release_modules.json says which modules are
+# published at all. A module below the root has its templates in .bcr/<root>/.
+moduleRoots:
+  - "."
+  - "addons/firebase"

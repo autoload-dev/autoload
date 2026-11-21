@@ -1,0 +1,12 @@
+{
+  "autoload_rules_godot": {
+    "root": ".",
+    "bcr": true,
+    "test": "cd e2e/smoke && bazel test //..."
+  },
+  "autoload_firebase": {
+    "root": "addons/firebase",
+    "bcr": false,
+    "test": "cd addons/firebase && bazel test //config/..."
+  }
+}
