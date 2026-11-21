@@ -1,0 +1,130 @@
+name: Apple
+
+# The lanes that need a macOS runner: the host tests on macOS, the apps with
+# source-built engines and the iOS apps. CI calls this workflow from the merge
+# queue, on main and on dispatch. On a pull request, the ci:macos label runs it
+# once, for the commit that is labelled.
+# Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
+on:
+  pull_request:
+    types: [labeled]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A called run has CI's name in its group and ends with CI's run. On a pull
+# request, another label starts a run that skips every job; its own group
+# keeps it from cancelling the run of the ci:macos label.
+concurrency:
+  group: >-
+    apple-${{ github.workflow }}-${{ github.ref }}-${{
+    (github.event.label.name || 'ci:macos') == 'ci:macos' && 'lanes' || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  selection:
+    name: Select verification
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ci:macos'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    outputs:
+      host: ${{ steps.plan.outputs.host }}
+      source_engine: ${{ steps.plan.outputs['source-engine'] }}
+      ios: ${{ steps.plan.outputs.ios }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up selection tools
+        uses: ./.github/actions/setup
+        with:
+          bazel: "false"
+      - name: Select verification tasks
+        id: plan
+        run: python3 tools/ci/verification.py plan apple
+
+  tests-macos:
+    name: Tests (macOS)
+    needs: selection
+    if: needs.selection.outputs.host != '[]'
+    timeout-minutes: 30
+    runs-on: blacksmith-6vcpu-macos-26
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run host tests
+        uses: ./.github/actions/host-tests
+        with:
+          tasks: ${{ needs.selection.outputs.host }}
+
+  source-engine:
+    name: Source engine
+    needs: selection
+    if: needs.selection.outputs.source_engine != '[]'
+    env:
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.source_engine }}
+    timeout-minutes: 60
+    runs-on: blacksmith-6vcpu-macos-26
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+        with:
+          # The ruleset's source_engine tests include Android source builds.
+          android-cache: "true"
+          bazel-modules: |
+            .
+            tests
+      - name: Run apps with source-built engines
+        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        uses: ./.github/actions/setup/save-downloads
+
+  ios:
+    name: iOS
+    needs: selection
+    if: needs.selection.outputs.ios != '[]'
+    env:
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
+    timeout-minutes: 60
+    runs-on: blacksmith-6vcpu-macos-26
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+        with:
+          bazel-modules: |
+            .
+            tests
+            examples
+      - name: Build and inspect apps
+        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        uses: ./.github/actions/setup/save-downloads
+
+  result:
+    name: Result
+    # A run that another label started has nothing to report.
+    if: ${{ always() && needs.selection.result != 'skipped' }}
+    needs: [selection, tests-macos, source-engine, ios]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require selected jobs to succeed
+        env:
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: python3 tools/ci/verification.py verify apple

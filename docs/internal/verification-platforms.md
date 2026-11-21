@@ -54,7 +54,8 @@ all source suites in every release configuration.
 ## Change selection and execution
 
 [`hk.pkl`](../../hk.pkl) owns changed-path selection, [`mise.toml`](../../mise.toml) owns the
-commands, and [CI](../../.github/workflows/ci.yml) assigns execution environments. The CI planner
+commands, and [CI](../../.github/workflows/ci.yml), with the [Apple](../../.github/workflows/apple.yml)
+workflow it calls, assigns execution environments. The CI planner
 reads hk's JSON plan; it has no separate path policy. It fails on unknown selected steps or
 statuses. A selection failure fails the final Verification result rather than appearing as
 an empty successful plan. Local hooks and CI use complementary code and documentation
@@ -102,17 +103,23 @@ useful immediate feedback, without duplicating the whole CI suite.
 
 ### Apple lanes on pull requests
 
-Pull requests run the Apple lanes in CI only with the `ci:macos` label, because macOS runners
-are expensive. The label is the user's decision. When the branch's selection includes the
-`host`, `source-engine` or `ios` step, an agent opening or updating the pull request asks
-the user whether to add it and names the selected steps and the changes that could affect
-macOS or iOS behavior. `hk check --plan --from-ref origin/main` shows the selection, as does
-the CI selection job. The `host` step covers the macOS host tests as well as the Linux ones.
-Pure Markdown changes select none of these steps. An agent that cannot ask states the same
-in the pull request body and leaves the label off.
+The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
+with source-built engines and the iOS apps. They run in the
+[Apple](../../.github/workflows/apple.yml) workflow, which CI calls. A pull request's CI run
+leaves them out, because macOS runners are expensive. The merge queue runs every selected
+lane, the Apple lanes included, on the result of the merge, and `Verification result` is its
+required check: a pull request whose Apple lanes fail there leaves the queue and does not
+reach main. The ruleset of main, which requires the merge queue and that check, is managed
+in the repository settings. Pure Markdown changes select no Apple lane. Main and manual
+dispatch also run the selected Apple lanes; a manual dispatch selects all lanes.
+`hk check --plan --from-ref origin/main` shows the selection, as does the selection job.
 
-Add the label after the first CI run has started; opening and labeling together can cancel
-the first run. Remove it when later changes no longer select an Apple lane. Main and manual
-dispatch run the selected Apple lanes without a label. A manual dispatch selects all lanes.
-The workflow keeps job identities and a final result even when unrelated lanes are skipped;
-repository branch-protection settings are managed separately.
+The `ci:macos` label runs the Apple workflow on a pull request before the merge queue does:
+once, for the commit that is labeled, beside the checks of the CI run. To run it for a later
+commit, remove the label and add it again. The run is optional and the label is the user's
+decision. An agent opening or updating a pull request whose changes could affect macOS or
+iOS behavior asks the user whether to add it and names the selected steps and those
+changes; an agent that cannot ask states the same in the pull request body and leaves the
+label off.
+
+Each workflow keeps job identities and a final result even when unrelated lanes are skipped.

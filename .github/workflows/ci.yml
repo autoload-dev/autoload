@@ -1,11 +1,9 @@
 name: CI
 
 on:
-  # Adding a label starts a run, so labelling a pull request ci:macos starts
-  # its macOS jobs. Any label restarts all jobs: skipping on other labels
-  # would record skipped checks for the commit and hide earlier results.
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+  # The merge queue runs every selected lane on the result of the merge.
+  merge_group:
   push:
     branches: [main]
   workflow_dispatch:
@@ -14,15 +12,17 @@ permissions:
   contents: read
 
 # hk.pkl selects tasks for both local verification and CI. The selection job
-# avoids provisioning runners for unrelated changes. PRs run the selected
-# Apple lanes only with ci:macos, which the user decides on; main and dispatch
-# run them without a label.
+# avoids provisioning runners for unrelated changes. This workflow runs the
+# lanes that Linux runners can run and calls apple.yml for those that need a
+# macOS runner, except in a pull request's run: the merge queue runs them, and
+# the ci:macos label runs apple.yml for a pull request.
 # Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
 # .github/actions/setup keeps only Bazel's downloads between runs, on Linux
-# with the extracted repositories.
+# with the extracted repositories. A merge group does not save them: no later
+# run can read the cache entries of its temporary branch.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -36,9 +36,8 @@ jobs:
       quality: ${{ steps.plan.outputs.quality }}
       docs: ${{ steps.plan.outputs.docs }}
       host: ${{ steps.plan.outputs.host }}
-      source_engine: ${{ steps.plan.outputs['source-engine'] }}
       android: ${{ steps.plan.outputs.android }}
-      ios: ${{ steps.plan.outputs.ios }}
+      apple: ${{ steps.plan.outputs.apple }}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,7 +50,7 @@ jobs:
           bazel: "false"
       - name: Select verification tasks
         id: plan
-        run: python3 tools/ci/verification.py plan
+        run: python3 tools/ci/verification.py plan ci
 
   formatting:
     name: Source quality
@@ -95,92 +94,21 @@ jobs:
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
   tests-linux:
+    name: Tests (Linux)
     needs: selection
     if: needs.selection.outputs.host != '[]'
-    env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.host }}
-    name: Tests (Linux)
     timeout-minutes: 30
     # Uncached Godot imports and exports are CPU-bound; 4 vCPUs ran 4 at a time.
     runs-on: blacksmith-8vcpu-ubuntu-2404
-    steps: &tests-steps
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
-        with:
-          # The ruleset's host set includes its Android packaging tests.
-          android-cache: "true"
-          bazel-modules: |
-            .
-            examples
-            tests
-      # The regression module's host set runs first, so that the output base check sees
-      # only its repositories: later host tasks may configure Android targets.
-      - name: Run the regression module's host set
-        if: contains(env.VERIFICATION_TASKS, '"test:regressions"')
-        run: python3 tools/ci/verification.py run '["test:regressions"]'
-      - name: Require a regression host set without Android tools
-        if: contains(env.VERIFICATION_TASKS, '"test:regressions"')
-        working-directory: tests
-        run: |
-          external="$(bazel info output_base)/external"
-          # rules_jvm_external++maven+ prefixes the hub and artifact repositories of both
-          # Maven installs, maven and rules_android_maven.
-          if ls "$external" | grep -E 'rules_jvm_external\+\+maven\+|android_toolchains'; then
-            echo "The regression module's host set fetched Android tools or Maven artifacts" >&2
-            exit 1
-          fi
-      - name: Run tests
-        run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$VERIFICATION_TASKS")"
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
-
-  tests-macos:
-    name: Tests (macOS)
-    needs: selection
-    if: >-
-      needs.selection.outputs.host != '[]' &&
-      (github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'ci:macos'))
-    env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.host }}
-    timeout-minutes: 30
-    runs-on: blacksmith-6vcpu-macos-26
-    steps: *tests-steps
-
-  source-engine:
-    name: Source engine
-    needs: selection
-    if: >-
-      needs.selection.outputs.source_engine != '[]' &&
-      (github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'ci:macos'))
-    env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.source_engine }}
-    timeout-minutes: 60
-    runs-on: blacksmith-6vcpu-macos-26
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
+      - name: Run host tests
+        uses: ./.github/actions/host-tests
         with:
-          # The ruleset's source_engine tests include Android source builds.
-          android-cache: "true"
-          bazel-modules: |
-            .
-            tests
-      - name: Run apps with source-built engines
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
+          tasks: ${{ needs.selection.outputs.host }}
 
   android:
     name: Android
@@ -207,39 +135,16 @@ jobs:
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
-  ios:
-    name: iOS
+  apple:
+    name: Apple
     needs: selection
-    if: >-
-      needs.selection.outputs.ios != '[]' &&
-      (github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'ci:macos'))
-    env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
-    timeout-minutes: 60
-    runs-on: blacksmith-6vcpu-macos-26
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
-        with:
-          bazel-modules: |
-            .
-            tests
-            examples
-      - name: Build and inspect apps
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
+    if: needs.selection.outputs.apple == 'true'
+    uses: ./.github/workflows/apple.yml
 
   verification:
     name: Verification result
     if: always()
-    needs: [selection, formatting, api-docs, tests-linux, tests-macos, source-engine, android, ios]
+    needs: [selection, formatting, api-docs, tests-linux, android, apple]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -247,8 +152,4 @@ jobs:
       - name: Require selected jobs to succeed
         env:
           VERIFICATION_NEEDS: ${{ toJSON(needs) }}
-          APPLE_REQUIRED: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:macos') }}
-        run: |
-          args=()
-          if [ "$APPLE_REQUIRED" = true ]; then args+=(--apple-required); fi
-          python3 tools/ci/verification.py verify "${args[@]}"
+        run: python3 tools/ci/verification.py verify ci
