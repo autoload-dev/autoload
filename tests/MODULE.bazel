@@ -112,6 +112,9 @@ use_repo(godot_android_toolchains, "android_toolchains")
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(
     name = "godot",
+    # The official artifacts only; the source builds below fill the slots they lack, so the
+    # Android and iOS lanes configure no engine sources for this hub.
+    build_missing_runtimes = False,
     version = "4.7.2",
 )
 
