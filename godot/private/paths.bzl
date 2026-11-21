@@ -65,16 +65,23 @@ def resource_path(file, target, strip_prefix, prefix = ""):
         The file's stable resource path.
     """
     path = _repository_relative(file)
-    source = target.package + "/" if target.package else ""
+    package = target.package + "/" if target.package else ""
+    if file.owner.workspace_name != target.workspace_name or not path.startswith(package):
+        fail((
+            "%s is outside %r of %s; list the files through a target in their own " +
+            "package, or give each its path in resource_paths"
+        ) % (file.short_path, package, target))
+    source = package
     if strip_prefix:
         strip_prefix = strip_prefix.rstrip("/")
         validate_resource_path(strip_prefix)
         source += strip_prefix + "/"
-    if file.owner.workspace_name != target.workspace_name or not path.startswith(source):
-        fail((
-            "%s is outside %r of %s; list the files through a target in their own " +
-            "package, or give each its path in resource_paths"
-        ) % (file.short_path, source, target))
+    if not path.startswith(source):
+        fail("%s is outside strip_prefix %r of %s; give it its path in resource_paths" % (
+            file.short_path,
+            source,
+            target,
+        ))
     return validate_resource_path(prefix + path[len(source):])
 
 def placed_resource_paths(ctx, srcs, resource_paths, prefix):
