@@ -39,6 +39,7 @@ _ANDROID_ABIS = {
     aar_import(
         name = "android_plugin_" + variant,
         aar = "bin/android/sentry_android_godot_plugin.%s.aar" % variant,
+        target_compatible_with = ["@platforms//os:android"],
         deps = [
             "@godot//android:plugin_api",
             "@maven//:io_sentry_sentry_android",
@@ -92,11 +93,14 @@ cc_import(
 ]
 
 # iOS: Godot loads the extension's framework, which loads SentryObjC.framework; neither is
-# linked into the executable, see rules_godot's gdextension.md, "Dynamic frameworks".
+# linked into the executable, see rules_godot's gdextension.md, "Dynamic frameworks". Like
+# the Android plugin, the imports are incompatible elsewhere, so that a host's `bazel test
+# //...` skips them instead of resolving their toolchains.
 [
     apple_dynamic_xcframework_import(
         name = "ios_" + variant,
         bundle_only = True,
+        target_compatible_with = ["@platforms//os:ios"],
         xcframework_imports = glob(["bin/ios/libsentry.ios.%s.xcframework/**" % variant]),
     )
     for variant in _VARIANTS
@@ -105,5 +109,6 @@ cc_import(
 apple_dynamic_xcframework_import(
     name = "sentry_cocoa_ios",
     bundle_only = True,
+    target_compatible_with = ["@platforms//os:ios"],
     xcframework_imports = glob(["bin/ios/Sentry.xcframework/**"]),
 )
