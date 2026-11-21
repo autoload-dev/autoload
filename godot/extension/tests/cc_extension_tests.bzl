@@ -244,7 +244,7 @@ def _ios_framework_binary_has_its_install_name(env, target):
     # The toolchain names the linked library after its file, so the framework's copy
     # gets the framework's install name afterwards.
     framework = target.label.name.removesuffix(".ios_framework_files")
-    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkInstallName"]
+    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkBinary"]
     env.expect.that_int(len(actions), expr = "number of install name actions").equals(1)
     env.expect.that_collection(actions[0].argv).contains("@rpath/%s.framework/%s" % (framework, framework))
 
@@ -253,12 +253,14 @@ def _test_ios_framework_binary_combines_every_cpu(name):
 
 def _ios_framework_binary_combines_every_cpu(env, target):
     # rules_apple embeds one binary per framework, whichever CPU's framework it takes.
-    (action,) = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkInstallName"]
-    libraries = [file for file in action.inputs.to_list() if file.basename == "lib%s_native.so" % target.label.name.removesuffix(".ios_framework_files")]
-    env.expect.that_collection(
-        [library.path.split("/")[1].split("-")[0] for library in libraries],
-        expr = "the configurations of the combined libraries",
-    ).contains_exactly(["ios_sim_arm64", "ios_x86_64"])
+    (action,) = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkBinary"]
+    libraries = [file.path for file in action.inputs.to_list() if file.extension == "so"]
+    env.expect.that_int(len(libraries), expr = "number of combined libraries").equals(2)
+    for cpu in ["ios_sim_arm64", "ios_x86_64"]:
+        env.expect.that_bool(
+            any([cpu in path for path in libraries]),
+            expr = "a library of the %s configuration among %s" % (cpu, libraries),
+        ).equals(True)
 
 def _test_ios_static_linkage_links_the_archive(name):
     _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
