@@ -157,19 +157,14 @@ no mobile automation framework or Store deployment is required.
 
 ## Engines in ruleset tests
 
-A ruleset test selects its engine and toolchains as a consumer would, in one of three ways;
-[toolchains.bzl](../../godot/private/tests/toolchains.bzl) owns the helpers and their contract.
+A ruleset test selects its engine and toolchains as a consumer would. The contract
+docstring of [toolchains.bzl](../../godot/private/tests/toolchains.bzl) owns the details.
 
 | The test needs | It uses |
 | --- | --- |
-| The default engine `@godot` or the Android SDK and NDK | Nothing: MODULE.bazel registers them. An analysis test merges `own_toolchains([])` so that the caller's `--extra_toolchains` do not change what it analyzes. |
-| Another complete development engine, such as the beta engine | The engine's name: MODULE.bazel registers `@godot_beta` as engine `beta`, and the `engine` attribute of `configured_outputs` or `engine_test` sets `--//godot:engine` for it. |
-| A few slots of its own, a source-built hub, or registration order as its subject | `--extra_toolchains`: `own_toolchains` in an analysis test's `config_settings`, the `extra_toolchains` attribute of `configured_outputs` in a build-output test. |
-
-A whole engine is selected by name rather than by its hub: `--extra_toolchains` reaches the
-exec configuration, so each list gives the test's tools a configuration of their own, while
-a build setting does not. Tests whose subject is `--extra_toolchains` or registration
-order say so where they set it.
+| The default engine `@godot` or the Android SDK and NDK | Nothing: MODULE.bazel registers them. |
+| Another complete development engine, such as the beta engine | The engine's name: the `engine` attribute of `configured_outputs` or `engine_test`. |
+| A few slots of its own, a source-built hub, or registration order as its subject | `--extra_toolchains`: `own_toolchains` in an analysis test, the `extra_toolchains` attribute of `configured_outputs` in a build-output test. |
 
 ## Regression fixtures
 
