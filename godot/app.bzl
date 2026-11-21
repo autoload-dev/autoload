@@ -89,6 +89,218 @@ def _invalid_impl(ctx):
 
 _invalid_context = rule(implementation = _invalid_impl, attrs = _context_attrs())
 
+def _pack_inputs(name, pack, loadable_packs, context, hidden):
+    """
+    Declare the inputs every backend of a godot_app shares.
+
+    Args:
+        name: Name of the godot_app.
+        pack: The start pack.
+        loadable_packs: The packs the application may load later.
+        context: The application context's values, as application_pack attributes.
+        hidden: Attributes of private targets.
+    """
+    native.alias(name = name + ".pack_input", actual = pack, **hidden)
+    loadable = []
+    for index, loadable_pack in enumerate(loadable_packs or []):
+        _loadable_pack(name = "%s.loadable_pack_input_%d" % (name, index), deps = [loadable_pack], **hidden)
+        loadable.append(":%s.loadable_pack_input_%d" % (name, index))
+
+    # Desktop application backends package the runtime component the runtime toolchain
+    # resolves in their platform slice; Android and iOS application backends resolve it
+    # inside their Android or Apple split.
+    _resolved_runtime(name = name + ".runtime", **hidden)
+    _application_id(name = name + ".application_id", application_id = context["application_id"], **hidden)
+    _application_pack(
+        name = name + ".pack",
+        deps = [":" + name + ".pack_input"] + loadable,
+        **(context | hidden)
+    )
+
+def _desktop_backends(name, application_id, macos_minimum_os_version, macos_signing, platform_inputs, common, hidden):
+    """
+    Declare the Linux and macOS backends of a godot_app and the macOS signing choice.
+
+    Args:
+        name: Name of the godot_app.
+        application_id: The macOS bundle identifier.
+        macos_minimum_os_version: The application's minimum macOS version.
+        macos_signing: The signer's identity and entitlements.
+        platform_inputs: The application's platform_deps and platform_resources.
+        common: Attributes of every backend.
+        hidden: Attributes of private targets.
+    """
+    _godot_linux_application(
+        name = name + ".linux",
+        app_name = name,
+        pack = ":" + name + ".pack",
+        runtime = ":" + name + ".runtime",
+        **(platform_inputs | common)
+    )
+    _godot_macos_application(
+        name = name + ".macos",
+        app_name = name,
+        bundle_id = application_id,
+        minimum_os_version = macos_minimum_os_version,
+        pack = ":" + name + ".pack",
+        runtime = ":" + name + ".runtime",
+        **(platform_inputs | common)
+    )
+    _godot_macos_sign(
+        name = name + ".macos_signed",
+        app = ":" + name + ".macos",
+        **(macos_signing | common)
+    )
+    native.alias(
+        name = name + ".macos_result",
+        actual = select({
+            Label("//godot:macos_signing_unsigned"): ":" + name + ".macos",
+            # The flag rejects values other than adhoc and certificate.
+            "//conditions:default": ":" + name + ".macos_signed",
+        }),
+        **hidden
+    )
+
+def _android_backends(name, manifest_values, manifest, debug_key, platform_inputs, common, hidden):
+    """
+    Declare the APK and App Bundle backends of a godot_app and the format choice.
+
+    The application ID reaches them as the make variable of the application's
+    application_id target, which carries only the ID: a select() cannot sit inside the
+    manifest_values dictionary, and reading the pack for it would analyze the pack's
+    native code in the backends' own configurations.
+
+    Args:
+        name: Name of the godot_app.
+        manifest_values: The application's manifest placeholder values.
+        manifest: The application's own manifest, or None.
+        debug_key: The application's debug signing key, or None.
+        platform_inputs: The application's platform_deps and platform_resources, as
+            deps and resource_files.
+        common: Attributes of every backend.
+        hidden: Attributes of private targets.
+    """
+    for format, bundle in [("apk", False), ("aab", True)]:
+        _godot_android_application(
+            name = name + ".android_" + format + "/" + name,
+            pack = ":" + name + ".pack",
+            application_id = "$(GODOT_APPLICATION_ID)",
+            toolchains = [":" + name + ".application_id"],
+            manifest_values = manifest_values,
+            manifest = manifest,
+            debug_key = debug_key,
+            bundle = bundle,
+            **(platform_inputs | common)
+        )
+    native.alias(
+        name = name + ".android",
+        actual = select({
+            Label("//godot:android_aab"): _backend(name, "android_aab"),
+            "//conditions:default": _backend(name, "android_apk"),
+        }),
+        **hidden
+    )
+
+def _editor_backend(name, common, hidden):
+    """
+    Declare the editor variant's backend of a godot_app and its empty debug symbols.
+
+    Args:
+        name: Name of the godot_app.
+        common: Attributes of every backend.
+        hidden: Attributes of private targets.
+    """
+
+    # The editor variant runs the start pack's project from sources: no export, runtime
+    # or shell; its extensions build for the target platform. Elsewhere than on Linux and
+    # macOS the backend is incompatible, and so is the application forwarding to it.
+    editor_compatible = select({
+        _LINUX: [],
+        _MACOS: [],
+        "//conditions:default": [Label("//godot:editor_variant_needs_linux_or_macos")],
+    })
+    _godot_source_application(
+        name = name + ".editor",
+        view = ":" + name + ".pack_input",
+        headless = False,
+        # A game's errors show in its log; its exit status stays Godot's.
+        engine_errors = "report",
+        target_compatible_with = editor_compatible,
+        **common
+    )
+    native.filegroup(name = name + ".editor.debug_symbols", target_compatible_with = editor_compatible, **hidden)
+
+def _backend_debug_symbols(name, hidden):
+    """
+    Declare the debug symbols of the desktop and Android backends of a godot_app.
+
+    Args:
+        name: Name of the godot_app.
+        hidden: Attributes of private targets.
+    """
+    for backend in ["linux", "macos"]:
+        native.filegroup(
+            name = name + "." + backend + ".debug_symbols",
+            srcs = [_backend(name, backend)],
+            output_group = "debug_symbols",
+            **hidden
+        )
+    native.alias(
+        name = name + ".android.debug_symbols",
+        actual = select({
+            Label("//godot:android_aab"): _backend(name, "android_aab") + ".debug_symbols",
+            "//conditions:default": _backend(name, "android_apk") + ".debug_symbols",
+        }),
+        **hidden
+    )
+
+def _public_targets(name, visibility, target_compatible_with, deprecation, tags, hidden):
+    """
+    Declare godot_app's public application and debug symbols, which forward to the selected backend.
+
+    Args:
+        name: Name of the godot_app.
+        visibility: Visibility of the public targets.
+        target_compatible_with: The godot_app's own compatibility.
+        deprecation: The godot_app's deprecation message, or empty.
+        tags: The godot_app's tags.
+        hidden: Attributes of private targets.
+    """
+    _invalid_context(name = name + ".invalid_context", **hidden)
+    invalid = ":" + name + ".invalid_context"
+    _backend_debug_symbols(name = name, hidden = hidden)
+    compatible = target_compatible_with + select({
+        _LINUX: [],
+        _MACOS: [],
+        _ANDROID: [],
+        _IOS_DEVICE: [],
+        _IOS_SIMULATOR: [],
+        "//conditions:default": [Label("@platforms//:incompatible")],
+    })
+    native.alias(
+        name = name + ".debug_symbols",
+        actual = _by_variant(name, ".debug_symbols", select({
+            condition: _symbols(name, backend)
+            for condition, backend in _DISPATCH.items()
+        } | {"//conditions:default": invalid}), hidden),
+        target_compatible_with = compatible,
+        visibility = visibility,
+        tags = tags + ["manual"],
+        testonly = hidden["testonly"],
+    )
+    native.alias(
+        name = name,
+        actual = _by_variant(name, "", select({
+            condition: ":" + name + ".macos_result" if backend == "macos" else _backend(name, backend)
+            for condition, backend in _DISPATCH.items()
+        } | {"//conditions:default": invalid}), hidden),
+        target_compatible_with = compatible,
+        visibility = visibility,
+        tags = tags,
+        testonly = hidden["testonly"],
+        deprecation = deprecation or None,
+    )
+
 def _app_impl(
         name,
         visibility,
@@ -125,90 +337,42 @@ def _app_impl(
     # Typed aliases retain caller-private labels even when they are selectors.
     # Helper target names are implementation identities; physical output names use name.
     hidden = dict(tags = tags + ["manual"], testonly = testonly)
-    native.alias(name = name + ".pack_input", actual = pack, **hidden)
-    loadable = []
-    for index, loadable_pack in enumerate(loadable_packs or []):
-        _loadable_pack(name = "%s.loadable_pack_input_%d" % (name, index), deps = [loadable_pack], **hidden)
-        loadable.append(":%s.loadable_pack_input_%d" % (name, index))
-
-    # Desktop application backends package the runtime component the runtime toolchain
-    # resolves in their platform slice; Android and iOS application backends resolve it
-    # inside their Android or Apple split.
-    _resolved_runtime(name = name + ".runtime", **hidden)
-    _application_id(name = name + ".application_id", application_id = application_id, **hidden)
-    _application_pack(
-        name = name + ".pack",
-        deps = [":" + name + ".pack_input"] + loadable,
-        application_id = application_id,
-        macos_minimum_os_version = macos_minimum_os_version,
-        ios_minimum_os_version = ios_minimum_os_version,
-        ios_families = ios_families,
-        android_min_sdk_version = android_min_sdk_version,
-        android_target_sdk_version = android_target_sdk_version,
-        **hidden
+    _pack_inputs(
+        name = name,
+        pack = pack,
+        loadable_packs = loadable_packs,
+        context = dict(
+            application_id = application_id,
+            macos_minimum_os_version = macos_minimum_os_version,
+            ios_minimum_os_version = ios_minimum_os_version,
+            ios_families = ios_families,
+            android_min_sdk_version = android_min_sdk_version,
+            android_target_sdk_version = android_target_sdk_version,
+        ),
+        hidden = hidden,
     )
     common = hidden | dict(
         exec_compatible_with = exec_compatible_with,
         exec_properties = exec_properties,
         features = features,
     )
-    _godot_linux_application(
-        name = name + ".linux",
-        app_name = name,
-        pack = ":" + name + ".pack",
-        runtime = ":" + name + ".runtime",
-        platform_deps = platform_deps,
-        platform_resources = platform_resources,
-        **common
+    _desktop_backends(
+        name = name,
+        application_id = application_id,
+        macos_minimum_os_version = macos_minimum_os_version,
+        macos_signing = dict(identity = macos_signing_identity, entitlements = macos_entitlements),
+        platform_inputs = dict(platform_deps = platform_deps, platform_resources = platform_resources),
+        common = common,
+        hidden = hidden,
     )
-    _godot_macos_application(
-        name = name + ".macos",
-        app_name = name,
-        bundle_id = application_id,
-        minimum_os_version = macos_minimum_os_version,
-        pack = ":" + name + ".pack",
-        runtime = ":" + name + ".runtime",
-        platform_deps = platform_deps,
-        platform_resources = platform_resources,
-        **common
-    )
-    _godot_macos_sign(
-        name = name + ".macos_signed",
-        app = ":" + name + ".macos",
-        identity = macos_signing_identity,
-        entitlements = macos_entitlements,
-        **common
-    )
-    native.alias(
-        name = name + ".macos_result",
-        actual = select({
-            Label("//godot:macos_signing_unsigned"): ":" + name + ".macos",
-            # The flag rejects values other than adhoc and certificate.
-            "//conditions:default": ":" + name + ".macos_signed",
-        }),
-        **hidden
-    )
-    for format, bundle in [("apk", False), ("aab", True)]:
-        _godot_android_application(
-            name = name + ".android_" + format + "/" + name,
-            pack = ":" + name + ".pack",
-            application_id = "$(GODOT_APPLICATION_ID)",
-            toolchains = [":" + name + ".application_id"],
-            manifest_values = android_manifest_values,
-            manifest = android_manifest,
-            debug_key = android_debug_key,
-            deps = platform_deps,
-            resource_files = platform_resources,
-            bundle = bundle,
-            **common
-        )
-    native.alias(
-        name = name + ".android",
-        actual = select({
-            Label("//godot:android_aab"): _backend(name, "android_aab"),
-            "//conditions:default": _backend(name, "android_apk"),
-        }),
-        **hidden
+    _android_backends(
+        name = name,
+        manifest_values = android_manifest_values,
+        manifest = android_manifest,
+        debug_key = android_debug_key,
+        platform_inputs = dict(deps = platform_deps, resource_files = platform_resources),
+        common = common,
+        hidden = hidden,
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -227,72 +391,14 @@ def _app_impl(
         launch_storyboard = ios_launch_storyboard,
         **common
     )
-
-    # The editor variant runs the start pack's project from sources: no export, runtime
-    # or shell; its extensions build for the target platform. Elsewhere than on Linux and
-    # macOS the backend is incompatible, and so is the application forwarding to it.
-    editor_compatible = select({
-        _LINUX: [],
-        _MACOS: [],
-        "//conditions:default": [Label("//godot:editor_variant_needs_linux_or_macos")],
-    })
-    _godot_source_application(
-        name = name + ".editor",
-        view = ":" + name + ".pack_input",
-        headless = False,
-        # A game's errors show in its log; its exit status stays Godot's.
-        engine_errors = "report",
-        target_compatible_with = editor_compatible,
-        **common
-    )
-    native.filegroup(name = name + ".editor.debug_symbols", target_compatible_with = editor_compatible, **hidden)
-    _invalid_context(name = name + ".invalid_context", **hidden)
-    invalid = ":" + name + ".invalid_context"
-    for backend in ["linux", "macos"]:
-        native.filegroup(
-            name = name + "." + backend + ".debug_symbols",
-            srcs = [_backend(name, backend)],
-            output_group = "debug_symbols",
-            **hidden
-        )
-    native.alias(
-        name = name + ".android.debug_symbols",
-        actual = select({
-            Label("//godot:android_aab"): _backend(name, "android_aab") + ".debug_symbols",
-            "//conditions:default": _backend(name, "android_apk") + ".debug_symbols",
-        }),
-        **hidden
-    )
-    compatible = target_compatible_with + select({
-        _LINUX: [],
-        _MACOS: [],
-        _ANDROID: [],
-        _IOS_DEVICE: [],
-        _IOS_SIMULATOR: [],
-        "//conditions:default": [Label("@platforms//:incompatible")],
-    })
-    native.alias(
-        name = name + ".debug_symbols",
-        actual = _by_variant(name, ".debug_symbols", select({
-            condition: _symbols(name, backend)
-            for condition, backend in _DISPATCH.items()
-        } | {"//conditions:default": invalid}), hidden),
-        target_compatible_with = compatible,
-        visibility = visibility,
-        tags = tags + ["manual"],
-        testonly = testonly,
-    )
-    native.alias(
+    _editor_backend(name = name, common = common, hidden = hidden)
+    _public_targets(
         name = name,
-        actual = _by_variant(name, "", select({
-            condition: ":" + name + ".macos_result" if backend == "macos" else _backend(name, backend)
-            for condition, backend in _DISPATCH.items()
-        } | {"//conditions:default": invalid}), hidden),
-        target_compatible_with = compatible,
         visibility = visibility,
+        target_compatible_with = target_compatible_with,
+        deprecation = deprecation,
         tags = tags,
-        testonly = testonly,
-        deprecation = deprecation or None,
+        hidden = hidden,
     )
 
 godot_app = macro(
