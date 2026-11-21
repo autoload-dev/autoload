@@ -8,6 +8,7 @@ with every other variant.
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
 visibility([
     "//godot/engine/private/tests/...",
@@ -25,7 +26,6 @@ _OBJC_STRIP = "//command_line_option:objc_enable_binary_stripping"
 _ANDROID_FORMAT = str(Label("//godot:android_format"))
 _ANDROID_API_LEVEL = "@androidsdk//:api_level"
 _VARIANT = str(Label("//godot:variant"))
-_ENGINE = str(Label("//godot:engine"))
 
 _SETTINGS = [
     _PLATFORMS,
@@ -38,7 +38,7 @@ _SETTINGS = [
     _ANDROID_FORMAT,
     _ANDROID_API_LEVEL,
     _VARIANT,
-    _ENGINE,
+    ENGINE,
 ]
 
 def _configured_impl(settings, attr):
@@ -63,7 +63,7 @@ def _configured_impl(settings, attr):
     if attr.variant:
         result[_VARIANT] = attr.variant
     if attr.engine:
-        result[_ENGINE] = attr.engine
+        result.update(development_engine(attr.engine))
     return result
 
 _configured = transition(
@@ -97,8 +97,11 @@ configured_outputs = rule(
     attrs = {
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),
         "platform": attr.label(doc = "The export platform or platform slice; the build's own target platform by default."),
-        "extra_toolchains": attr.string_list(doc = "Further toolchain patterns as absolute labels, such as a source-built engine's `@<hub>//toolchains:all`."),
-        "engine": attr.string(doc = "The `//godot:engine` setting, such as `beta` for a registered named engine; a build setting keeps the exec configuration of the tools unchanged, unlike `extra_toolchains`."),
+        "extra_toolchains": attr.string_list(doc = "Registration sets as absolute labels, appended to `--extra_toolchains` ahead of the registered engines, such as a source-built hub's `@<hub>//toolchains:all` that replaces slots of an engine, as a consumer registers one."),
+        "engine": attr.string(
+            doc = "The development engine, a key of DEVELOPMENT_ENGINES such as `beta`, selected by its engine name; the build's own by default.",
+            values = [""] + DEVELOPMENT_ENGINES.keys(),
+        ),
         "compilation_mode": attr.string(values = ["", "fastbuild", "dbg", "opt"]),
         "strip": attr.string(values = ["", "always", "sometimes", "never"]),
         "copts": attr.string_list(doc = "Appended to `--copt`."),
