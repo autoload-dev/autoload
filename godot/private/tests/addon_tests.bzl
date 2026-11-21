@@ -387,7 +387,7 @@ def _declaration_failure_test(name, target, message):
 # FR-012: every file lives below the directory, in one part; the editor part holds exactly
 # one plugin.cfg.
 def _test_file_outside_the_addon_fails(name):
-    _declaration_failure_test(name, "outside_directory", "*main/main.gd is outside *; every file of the add-on * lives below its directory res://addons/outside_directory/")
+    _declaration_failure_test(name, "outside_directory", "*main/main.gd is outside *; list the files through a target in their own package*")
 
 def _test_file_in_both_parts_fails(name):
     _declaration_failure_test(name, "in_both_parts", "*res://addons/in_both_parts/plugin.gd is in both srcs and editor_srcs*")

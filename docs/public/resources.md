@@ -431,9 +431,10 @@ Every file lives below the add-on's directory, `res://addons/<name>/` unless `di
 says otherwise: `srcs` and `editor_srcs` are placed there after `strip_prefix`, as `prefix`
 places resources, so `runtime/inventory.gd` becomes
 `res://addons/inventory/runtime/inventory.gd`. `resource_paths` and
-`editor_resource_paths` place single files at explicit paths below the directory. Every extension in `deps` is the add-on's,
-wherever its descriptor lies: operations containing the add-on contain it, and its parts
-and importer load it. A file in both parts, a `.uid` or `.import` sidecar in
+`editor_resource_paths` place single files at explicit paths below the directory.
+
+Every extension in `deps` is the add-on's, wherever its descriptor lies: operations
+containing the add-on contain it, and its parts and importer load it. A file in both parts, a `.uid` or `.import` sidecar in
 another part than its file, a `plugin.cfg` outside the editor part, two add-ons of one
 operation whose directories overlap, and resources with a file in the directory of an
 add-on of the operation fail analysis.

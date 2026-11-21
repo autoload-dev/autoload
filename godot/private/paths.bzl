@@ -49,12 +49,7 @@ def _repository_relative(file):
     path = file.short_path
     return path.split("/", 2)[2] if path.startswith("../") else path
 
-def resource_path(
-        file,
-        target,
-        strip_prefix,
-        prefix = "",
-        outside = "list the files through a target in their own package"):
+def resource_path(file, target, strip_prefix, prefix = ""):
     """
     Return the resource path of a file from the package of the target that brings it.
 
@@ -65,8 +60,6 @@ def resource_path(
         strip_prefix: Additional package-relative directory prefix to remove.
         prefix: Resource path of a directory, ending in a slash, that the remaining
             path is placed under; empty for the project root.
-        outside: What the failure for a file outside the package and strip_prefix tells the
-            user to do.
 
     Returns:
         The file's stable resource path.
@@ -78,51 +71,44 @@ def resource_path(
         validate_resource_path(strip_prefix)
         source += strip_prefix + "/"
     if file.owner.workspace_name != target.workspace_name or not path.startswith(source):
-        fail("%s is outside %r of %s; %s" % (file.short_path, source, target, outside))
+        fail((
+            "%s is outside %r of %s; list the files through a target in their own " +
+            "package, or give each its path in resource_paths"
+        ) % (file.short_path, source, target))
     return validate_resource_path(prefix + path[len(source):])
 
-def placed_resource_paths(ctx, targets, prefix, outside):
+def placed_resource_paths(ctx, srcs, resource_paths, prefix):
     """
-    Place the files of srcs-like targets, each relative to its target's package.
+    Place the files of srcs-like targets and of single-file targets at explicit paths.
 
     Args:
         ctx: Rule analysis context with strip_prefix, the package-relative directory
-            prefix to remove.
-        targets: The listed targets, such as ctx.attr.srcs.
-        prefix: Resource path of the directory the files are placed under.
-        outside: What the failure for a file outside the package tells the user to do.
+            prefix to remove from srcs paths.
+        srcs: The listed targets, such as ctx.attr.srcs; each file's path is relative
+            to its target's package.
+        resource_paths: A label-keyed dictionary of single-file targets to explicit
+            resource paths, which prefix does not change.
+        prefix: Resource path of the directory the srcs files are placed under.
 
     Returns:
         A dictionary of resource paths to Files.
     """
-    resource_paths = {}
-    for target in targets:
+    placed = {}
+    owner = str(ctx.label)
+    for target in srcs:
         for file in target[DefaultInfo].files.to_list():
-            merge_resource_paths(
-                resource_paths,
-                {resource_path(file, target.label, ctx.attr.strip_prefix, prefix, outside): file},
-                owner = str(ctx.label),
-            )
-    return resource_paths
+            path = resource_path(file, target.label, ctx.attr.strip_prefix, prefix)
+            merge_resource_paths(placed, {path: file}, owner = owner)
+    for target, path in resource_paths.items():
+        merge_resource_paths(placed, {path: _single_file(target)}, owner = owner)
+    return placed
 
-def explicit_resource_paths(ctx, resource_paths_attr):
-    """
-    Collect single-file targets placed at explicit resource paths.
-
-    Args:
-        ctx: Rule analysis context.
-        resource_paths_attr: A label-keyed dictionary of targets to resource paths.
-
-    Returns:
-        A dictionary of resource paths to Files.
-    """
-    resource_paths = {}
-    for target, path in resource_paths_attr.items():
-        files = target[DefaultInfo].files.to_list()
-        if len(files) != 1:
-            fail("resource_paths requires a single file per label: %s" % target.label)
-        merge_resource_paths(resource_paths, {path: files[0]}, owner = str(ctx.label))
-    return resource_paths
+def _single_file(target):
+    """The one file of a resource_paths target."""
+    files = target[DefaultInfo].files.to_list()
+    if len(files) != 1:
+        fail("resource_paths requires a single file per label: %s" % target.label)
+    return files[0]
 
 def directory_prefix(path):
     """
@@ -318,14 +304,12 @@ def collect_resource_paths(ctx):
     Returns:
         A dictionary of resource paths to Files.
     """
-    resource_paths = placed_resource_paths(
+    return placed_resource_paths(
         ctx,
         ctx.attr.srcs,
+        ctx.attr.resource_paths,
         directory_prefix(getattr(ctx.attr, "prefix", "")),
-        outside = "list the files through a target in their own package, or give each its path in resource_paths",
     )
-    merge_resource_paths(resource_paths, explicit_resource_paths(ctx, ctx.attr.resource_paths), owner = str(ctx.label))
-    return resource_paths
 
 def declared_path(resource_paths, path, kind):
     """

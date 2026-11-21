@@ -269,11 +269,15 @@ class Workspace:
             )
         return self._typed_directories[kind]
 
+    def _roots(self, marker: str) -> tuple[Path, ...]:
+        """Directories holding a file named marker, such as MODULE.bazel."""
+        return tuple(
+            Path(name).parent for name in self.files if Path(name).name == marker
+        )
+
     @cached_property
     def module_paths(self) -> tuple[Path, ...]:
-        return tuple(
-            Path(name).parent for name in self.files if Path(name).name == "MODULE.bazel"
-        )
+        return self._roots("MODULE.bazel")
 
     def owner(self, name: str) -> Path:
         """Return the nearest module directory, including nested standalone modules."""
@@ -285,9 +289,7 @@ class Workspace:
     @cached_property
     def repository_paths(self) -> tuple[Path, ...]:
         """Roots of repositories that are no module, such as local_repository fixtures."""
-        return tuple(
-            Path(name).parent for name in self.files if Path(name).name == "REPO.bazel"
-        )
+        return self._roots("REPO.bazel")
 
     @cached_property
     def modules(self) -> tuple[Module, ...]:

@@ -8,7 +8,7 @@ load("//godot/private:configuration.bzl", "validate_autoloads", "validate_settin
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:import_units.bzl", "VALIDATION_ATTRS", "class_fragment", "import_unit", "unit_interface", "validate_unit")
-load("//godot/private:paths.bzl", "directory_prefix", "explicit_resource_paths", "godot_ignore_markers", "godot_ignored", "mapped_paths", "merge_resource_paths", "placed_resource_paths", "sidecar_source", "validate_namespace", "with_extensions_for")
+load("//godot/private:paths.bzl", "directory_prefix", "godot_ignore_markers", "godot_ignored", "mapped_paths", "placed_resource_paths", "sidecar_source", "validate_namespace", "with_extensions_for")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "GodotProjectInfo", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "addon_closure", "configuration_contributions", "import_staged", "unique_extensions", "unique_platform_libraries")
 
@@ -87,13 +87,10 @@ def extension_addon(label, extension):
 
 def _placed(ctx, srcs, resource_paths, prefix):
     """Place a part's files below the add-on's directory, as srcs and resource_paths place resources."""
-    outside = "every file of the add-on %s lives below its directory res://%s" % (ctx.label, prefix)
-    paths = placed_resource_paths(ctx, srcs, prefix, outside)
-    explicit = explicit_resource_paths(ctx, resource_paths)
-    for path in explicit:
+    paths = placed_resource_paths(ctx, srcs, resource_paths, prefix)
+    for path in paths:
         if not path.startswith(prefix):
-            fail("%s: res://%s is outside res://%s; %s" % (ctx.label, path, prefix, outside))
-    merge_resource_paths(paths, explicit, owner = str(ctx.label))
+            fail("%s: res://%s is outside res://%s; every file of the add-on lives below its directory" % (ctx.label, path, prefix))
     return paths
 
 def _passed_on(part, field):
