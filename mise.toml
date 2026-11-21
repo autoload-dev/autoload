@@ -206,7 +206,7 @@ run = "bazel test --build_tests_only //addons/dart/..."
 
 # Each add-on module's tasks run from its examples/, which consumes the module and the
 # rules of this checkout: one Bazel server per module and lane.
-[tasks."test:addon:firebase"]
+[tasks."host:addon:firebase"]
 description = "Run autoload_firebase's tests and build its example for the editor and desktop"
 dir = "{{config_root}}/addons/firebase/examples"
 run = "bazel test @autoload_firebase//... //projects/analytics:edit //projects/analytics:pack"

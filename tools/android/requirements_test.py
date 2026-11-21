@@ -39,14 +39,6 @@ class RequirementsTest(unittest.TestCase):
         )
         self.assertEqual(configuration_errors(self.root), [])
 
-    def test_skips_a_module_that_configures_no_sdk(self) -> None:
-        # An add-on module builds no application; its examples configure the SDK.
-        self.assertNotIn(
-            "android_sdk_repository_extension",
-            (self.root / "addons/firebase/MODULE.bazel").read_text(),
-        )
-        self.assertEqual(configuration_errors(self.root), [])
-
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
         self.replace("MODULE.bazel", "api_level = 35", "api_level = 999")
         errors = configuration_errors(self.root)

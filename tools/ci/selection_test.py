@@ -204,7 +204,7 @@ class SelectionTest(unittest.TestCase):
                 "addons/firebase/core/native/firebase_core.cc", profiles=PROFILE_LANES
             )
         )
-        self.assertEqual(lanes["host"], ["test:addon:firebase"])
+        self.assertEqual(lanes["host"], ["host:addon:firebase"])
         self.assertEqual(lanes["android"], ["android:addon:firebase"])
         self.assertEqual(lanes["ios"], ["ios:addon:firebase"])
 

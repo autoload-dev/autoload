@@ -22,6 +22,8 @@ else
         | gzip > "$ARCHIVE"
 fi
 
+# The ruleset's API documentation and the setup its release notes show.
+SETUP=""
 if [ "$NAME" = autoload_rules_godot ]; then
     # The API documentation the registry renders: the curated Stardoc metadata of the public
     # entrypoints (docs/internal/api-reference.md), not every starlark_doc_extract output.
@@ -32,10 +34,6 @@ if [ "$NAME" = autoload_rules_godot ]; then
     bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \
         | sed "s#^bazel-out/[^/]*/bin/##" \
         | tar --create --gzip --directory "$BAZEL_BIN" --file "${PREFIX}.docs.tar.gz" --files-from -
-fi
-
-SETUP=""
-if [ "$NAME" = autoload_rules_godot ]; then
     SETUP='
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot", version = "4.7.2")

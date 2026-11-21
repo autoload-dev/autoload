@@ -238,11 +238,10 @@ local checks = new Mapping<String, Step> {
   }
   for (module in addonModules) {
     for (lane in List("host", "android", "ios")) {
-      [if (lane == "host") "test:addon:" + module else lane + ":addon:" + module] =
-        (task(if (lane == "host") "test:addon:" + module else lane + ":addon:" + module)) {
-          profiles = List(lane)
-          glob = List("addons/" + module + "/**")
-        }
+      [lane + ":addon:" + module] = (task(lane + ":addon:" + module)) {
+        profiles = List(lane)
+        glob = List("addons/" + module + "/**")
+      }
     }
   }
   ["test:gdextension"] = (task("test:gdextension")) {

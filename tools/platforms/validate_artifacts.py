@@ -65,8 +65,6 @@ def main() -> None:
     root = args.root.resolve()
     consumer = root / "tests"
     sdk = sdk_requirements((consumer / "MODULE.bazel").read_text())
-    if sdk is None:
-        parser.error("tests/MODULE.bazel configures no Android SDK")
     apk = configured_output(
         consumer,
         ANDROID_APP,

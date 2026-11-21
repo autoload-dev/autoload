@@ -112,11 +112,9 @@ def lane_for(task: str) -> str:
         return task
     if task.startswith("contracts:") and task.removeprefix("contracts:") in PROFILE_LANES:
         return task.removeprefix("contracts:")
-    # The add-on modules' tasks: test:addon:<module>, android:addon:<module> and
-    # ios:addon:<module>.
+    # The add-on modules' tasks are named <lane>:addon:<module>.
     if ":addon:" in task:
-        lane = task.partition(":addon:")[0]
-        return "host" if lane == "test" else lane
+        return task.partition(":addon:")[0]
     if task.startswith("test:example:"):
         return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
     if task in {
