@@ -9,6 +9,7 @@ ast and compares each pin that two or more modules declare.
 import ast
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,12 @@ ATTRIBUTES = {
     "godot_engines.source": ("version", "sha256", "urls", "strip_prefix"),
 }
 MAVEN = "maven.install"
+# Each consumer module overrides the ruleset with its checkout, so its version is no pin.
+# An add-on module declares the release it needs instead.
+UNPINNED = {"bazel_dep:autoload_rules_godot"}
+# Deliberate drifts: module -> keys, such as "addons/<name>": {"bazel_dep:<module>"}, with
+# the reason beside the entry. Remove an entry once its reason no longer holds.
+EXCEPTIONS: dict[str, set[str]] = {}
 
 
 def _literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
@@ -71,21 +78,27 @@ def _format(value: Any) -> str:
     return ", ".join(value) if isinstance(value, list) else str(value)
 
 
+def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
+    """The pins of one module that other modules must agree on, with their file."""
+    path = root / module
+    locations = {
+        "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
+        ".bazelversion": {"bazelversion": (path / ".bazelversion").read_text().strip()},
+    }
+    skipped = UNPINNED | EXCEPTIONS.get(module, set())
+    for file, pins in locations.items():
+        location = (Path(module) / file).as_posix()
+        for key, value in pins.items():
+            if key not in skipped:
+                yield key, location, value
+
+
 def drifts(root: Path) -> list[str]:
     """One line per module whose shared pin differs from the most common value."""
     declared: dict[str, dict[str, tuple[str, Any]]] = {}
     for module in module_paths(root):
-        path = root / module
-        locations = {
-            "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
-            ".bazelversion": {
-                "bazelversion": (path / ".bazelversion").read_text().strip()
-            },
-        }
-        for file, pins in locations.items():
-            location = (Path(module) / file).as_posix()
-            for key, value in pins.items():
-                declared.setdefault(key, {})[module] = (location, value)
+        for key, location, value in _shared_pins(root, module):
+            declared.setdefault(key, {})[module] = (location, value)
     lines = []
     for key, modules in declared.items():
         if len(modules) < 2:

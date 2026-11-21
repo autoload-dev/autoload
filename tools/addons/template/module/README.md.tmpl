@@ -1,0 +1,40 @@
+# {{title}}
+
+{{title}} for Godot applications built with Bazel. Describe in this sentence what the add-ons
+do for an application; the add-on index in addons/README.md shows it.
+
+| Add-on | Label | Platforms |
+| --- | --- | --- |
+| {{title}} | `@{{module_name}}//{{addon}}` | Android, iOS; the editor and desktop do nothing |
+
+## Setup
+
+Depend on the module and add its add-ons to a project's resources:
+
+```starlark
+bazel_dep(name = "{{module_name}}", version = "0.1.0")
+```
+
+```starlark
+godot_resources(
+    name = "main",
+    srcs = ["main.gd"],
+    deps = ["@{{module_name}}//{{addon}}"],
+)
+```
+
+GDScript then calls the add-on's class, `{{class}}`:
+
+```gdscript
+if {{class}}.is_supported():
+    print({{class}}.platform_name())
+```
+
+## Design
+
+Each add-on is a `godot_addon` with a C++ extension, `{{extension}}`, whose API in `native/`
+is the same on every platform. `native/backends/` holds one backend per platform: Android
+calls a Godot Android plugin in Java, iOS the Apple SDK, and the editor and desktop platforms
+use the unsupported backend.
+
+The example application in `examples/` consumes the module as applications do.

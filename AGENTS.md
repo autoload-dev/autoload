@@ -19,6 +19,7 @@ Read linked sections when their stated condition applies; links are not a reques
 every referenced document. For examples, read [example guidance](examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
 For ruleset regression work under `tests/`, read [the test-area map](tests/AGENTS.md).
+For the add-on modules under `addons/`, read [add-on guidance](addons/AGENTS.md).
 
 Use English for code, game/example UI, documentation, commits and pull requests.
 Use the terms of the [glossary](docs/internal/glossary.md) in code, documentation and

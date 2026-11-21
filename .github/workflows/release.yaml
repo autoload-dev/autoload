@@ -1,22 +1,41 @@
-# Cut a release when a version tag is pushed, then publish it to the Bazel Central Registry.
+# Cut a release when a module's tag `<module>-v<version>` is pushed, then publish it to the
+# Bazel Central Registry if the module has templates in .bcr (tools/ci/release_module.py).
 name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "*-v*.*.*"
 permissions:
   id-token: write
   attestations: write
   contents: write
 jobs:
+  module:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      name: ${{ steps.module.outputs.name }}
+      bcr: ${{ steps.module.outputs.bcr }}
+      test: ${{ steps.module.outputs.test }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Find the tag's module
+        id: module
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 tools/ci/release_module.py "$TAG" >> "$GITHUB_OUTPUT"
   release:
+    needs: module
     # https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml
     uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
     with:
-      release_files: rules_godot-*.tar.gz
-      # The root module's //... builds engines and mobile packages; the registry's test
-      # module is the consumer check that matters for a release.
-      bazel_test_command: "cd e2e/smoke && bazel test //..."
+      release_files: ${{ needs.module.outputs.name }}-*.tar.gz
+      # The module's release test: for the ruleset, the registry's test module; its //...
+      # builds engines and mobile packages.
+      bazel_test_command: ${{ needs.module.outputs.test }}
       prerelease: false
       # Open the release as a draft so that publish.yaml can upload the attestations;
       # finalize publishes it. See
@@ -24,14 +43,17 @@ jobs:
       draft: true
       tag_name: ${{ github.ref_name }}
   publish:
-    needs: release
+    needs: [module, release]
+    if: needs.module.outputs.bcr == 'true'
     uses: ./.github/workflows/publish.yaml
     with:
       tag_name: ${{ github.ref_name }}
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
   finalize:
-    needs: publish
+    needs: [release, publish]
+    # After publishing, or right after the release for a module that is not published.
+    if: ${{ !cancelled() && needs.release.result == 'success' && needs.publish.result != 'failure' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

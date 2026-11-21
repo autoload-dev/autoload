@@ -5,7 +5,7 @@ description: >-
 
 inputs:
   bazel-modules:
-    description: Newline-separated Bazel module directories to shut down.
+    description: Newline-separated Bazel module directories to shut down, besides the add-on modules in addons/ that a build ran in.
     default: .
 
   shutdown-timeout-seconds:

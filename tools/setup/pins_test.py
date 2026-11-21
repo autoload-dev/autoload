@@ -145,6 +145,16 @@ class PinsTest(unittest.TestCase):
         self.assertEqual(1, status)
         self.assertIn("consumer/MODULE.bazel: bazel_dep:rules_android is 0.9.0", output)
 
+    def test_the_ruleset_version_is_no_pin(self) -> None:
+        dependency = 'bazel_dep(name = "autoload_rules_godot", version = "{}")\n'
+        for module, version in (("examples", "0.0.0"), ("tests", "0.1.1")):
+            self.write(
+                module,
+                MODULE.format(fragment="1.8.6", name=module, android="0.8.0")
+                + dependency.format(version),
+            )
+        self.assertEqual((0, ""), self.run_check())
+
     def test_tags_of_other_extensions_are_no_pins(self) -> None:
         other = (
             'other = use_extension("//other:extensions.bzl", "other")\n'

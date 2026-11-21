@@ -1,0 +1,13 @@
+// iOS: the Apple SDK.
+#include "{{module}}/{{addon}}/native/backend.h"
+#import <UIKit/UIKit.h>
+
+namespace {{extension}} {
+bool backend_is_supported() { return true; }
+
+std::string backend_platform_name() {
+  UIDevice *device = [UIDevice currentDevice];
+  return [[NSString stringWithFormat:@"%@ %@", device.systemName, device.systemVersion]
+      UTF8String];
+}
+} // namespace {{extension}}

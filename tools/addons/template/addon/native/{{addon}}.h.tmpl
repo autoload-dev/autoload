@@ -1,0 +1,17 @@
+#pragma once
+
+#include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/variant/string.hpp>
+
+// The GDScript-facing API of {{title}}: static methods, identical on every platform.
+class {{class}} : public godot::Object {
+  GDCLASS({{class}}, godot::Object)
+
+protected:
+  static void _bind_methods();
+
+public:
+  // False in the editor and on desktop platforms, where the add-on does nothing.
+  static bool is_supported();
+  static godot::String platform_name();
+};

@@ -3,7 +3,9 @@
 import ast
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import unittest
 from collections.abc import Iterator
 from pathlib import Path
@@ -12,6 +14,11 @@ from tools.ci.verification import PROFILE_LANES, lane_plan
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ROOT / "godot/tests/api_contracts/cases.bzl"
+# Add-on modules by directory, with their addon.pkl.
+ADDON_MODULES = {
+    "widget": 'lanes = List("host", "android", "ios")\nhosts = List("linux", "macos")\n',
+    "gadget": 'lanes = List("host")\nhosts = List("macos")\n',
+}
 
 
 def regression_contract_packages() -> Iterator[tuple[str, str]]:
@@ -41,14 +48,16 @@ def regression_contract_packages() -> Iterator[tuple[str, str]]:
 
 
 class SelectionTest(unittest.TestCase):
-    def plan(self, *files: str, profiles: tuple[str, ...] = ()) -> dict:
+    def plan(
+        self, *files: str, profiles: tuple[str, ...] = (), cwd: Path = ROOT
+    ) -> dict:
         command = ["hk"]
         for profile in profiles:
             command.extend(["--profile", profile])
         command.extend(["check", "--plan", "--json", *files])
         result = subprocess.run(
             command,
-            cwd=ROOT,
+            cwd=cwd,
             env={
                 **os.environ,
                 "HK_PROFILE": "",
@@ -197,6 +206,50 @@ class SelectionTest(unittest.TestCase):
         self.assertNotIn("contracts:host", lanes["host"])
         self.assertEqual(lanes["android"], [])
         self.assertEqual(lanes["ios"], [])
+
+    def addon_plan(self, *files: str) -> dict[str, list[str]]:
+        """Plan in a checkout of hk.pkl with two add-on modules, one of them macOS only."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            shutil.copyfile(ROOT / "hk.pkl", root / "hk.pkl")
+            for module, addon in ADDON_MODULES.items():
+                (root / "addons" / module).mkdir(parents=True)
+                (root / "addons" / module / "addon.pkl").write_text(addon)
+            for name in files:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).touch()
+            return lane_plan(self.plan(*files, profiles=PROFILE_LANES, cwd=root))
+
+    def test_an_add_on_module_selects_only_its_own_lanes(self) -> None:
+        lanes = self.addon_plan("addons/widget/widget/native/widget.cc")
+        self.assertEqual(lanes["host"], ["host:addon:widget"])
+        self.assertEqual(lanes["android"], ["android:addon:widget"])
+        self.assertEqual(lanes["ios"], ["ios:addon:widget"])
+
+    def test_an_add_on_module_names_the_hosts_and_lanes_it_is_limited_to(self) -> None:
+        lanes = self.addon_plan("addons/gadget/README.txt")
+        self.assertEqual(lanes["host"], ["host:addon:gadget@macos"])
+        self.assertEqual(lanes["android"] + lanes["ios"], [])
+
+    def test_shared_add_on_settings_select_every_module_and_the_self_test(self) -> None:
+        lanes = self.addon_plan("addons/module.bazelrc")
+        self.assertEqual(
+            lanes["host"],
+            ["host:addon:gadget@macos", "host:addon:widget", "host:addon-template"],
+        )
+
+    def test_rule_changes_do_not_select_the_add_on_modules(self) -> None:
+        lanes = self.addon_plan("godot/defs.bzl")
+        self.assertFalse(
+            any(":addon" in task for tasks in lanes.values() for task in tasks)
+        )
+
+    def test_the_generator_selects_its_self_test_in_every_lane(self) -> None:
+        lanes = lane_plan(self.plan("tools/addons/new.py", profiles=PROFILE_LANES))
+        for lane in ("host", "android", "ios"):
+            with self.subTest(lane=lane):
+                self.assertIn(f"{lane}:addon-template", lanes[lane])
 
     def test_default_check_does_not_build_examples(self) -> None:
         lanes = lane_plan(self.plan("examples/deps/gdunit4.BUILD.bazel"))

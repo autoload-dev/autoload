@@ -67,6 +67,23 @@ test("shuts down every module and ignores blank lines and surrounding whitespace
   ].sort());
 });
 
+test("also shuts down the add-on modules a build ran in", (t) => {
+  const f = fixture(t);
+  for (const built of ["addons/widget/examples", "addons/.selftest/examples", "addons/gadget"]) {
+    fs.mkdirSync(path.join(f.root, built), { recursive: true });
+    fs.symlinkSync(f.root, path.join(f.root, built, "bazel-out"));
+  }
+  fs.mkdirSync(path.join(f.root, "addons/unbuilt/examples"), { recursive: true });
+  fs.writeFileSync(path.join(f.root, "addons/README.md"), "");
+  assert.equal(f.run(".\naddons/gadget\n").status, 0);
+  assert.deepEqual(f.calls(), [
+    f.root,
+    path.join(f.root, "addons/.selftest/examples"),
+    path.join(f.root, "addons/gadget"),
+    path.join(f.root, "addons/widget/examples"),
+  ].sort());
+});
+
 test("defaults to the root module", (t) => {
   const f = fixture(t);
   assert.equal(f.run().status, 0);

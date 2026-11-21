@@ -1,0 +1,11 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+
+package(default_visibility = ["//{{addon}}:__subpackages__"])
+
+objc_library(
+    name = "apple",
+    srcs = ["apple_backend.mm"],
+    sdk_frameworks = ["UIKit"],
+    target_compatible_with = ["@platforms//os:ios"],
+    deps = ["//{{addon}}/native:backend_api"],
+)

@@ -1,0 +1,24 @@
+// Android: a bridge to the {{class}}Android plugin singleton.
+#include "{{module}}/{{addon}}/native/backend.h"
+#include <godot_cpp/classes/engine.hpp>
+
+using namespace godot;
+
+namespace {{extension}} {
+namespace {
+Object *plugin() {
+  Engine *engine = Engine::get_singleton();
+  if (!engine || !engine->has_singleton("{{class}}Android")) return nullptr;
+  return engine->get_singleton("{{class}}Android");
+}
+} // namespace
+
+bool backend_is_supported() { return plugin() != nullptr; }
+
+std::string backend_platform_name() {
+  Object *singleton = plugin();
+  // Java singleton methods are dispatched dynamically; a failed call yields a nil Variant.
+  if (!singleton) return {};
+  return String(singleton->call("platform_name")).utf8().get_data();
+}
+} // namespace {{extension}}

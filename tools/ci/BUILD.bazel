@@ -12,3 +12,12 @@ py_test(
     srcs = ["verification_test.py"],
     deps = [":verification_lib"],
 )
+
+py_test(
+    name = "release_module_test",
+    size = "small",
+    srcs = [
+        "release_module.py",
+        "release_module_test.py",
+    ],
+)

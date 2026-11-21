@@ -1,0 +1,26 @@
+package dev.autoload.{{module}}.{{addon}};
+
+import android.os.Build;
+import org.godotengine.godot.Godot;
+import org.godotengine.godot.plugin.GodotPlugin;
+import org.godotengine.godot.plugin.UsedByGodot;
+
+/**
+ * The Android side of {{title}}. The {{class}} class of the extension is the API, this
+ * singleton an implementation detail.
+ */
+public final class {{class}}Plugin extends GodotPlugin {
+    public {{class}}Plugin(Godot godot) {
+        super(godot);
+    }
+
+    @Override
+    public String getPluginName() {
+        return "{{class}}Android";
+    }
+
+    @UsedByGodot
+    public String platform_name() {
+        return "Android " + Build.VERSION.RELEASE;
+    }
+}

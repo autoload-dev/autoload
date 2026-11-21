@@ -1,26 +1,57 @@
 #!/usr/bin/env bash
-# Builds the release archive and prints the release notes, called by bazel-contrib's
-# release_ruleset workflow with the tag being released.
+# Builds the release archive of the module a tag `<module>-v<version>` releases and prints
+# the release notes, called by bazel-contrib's release_ruleset workflow with the tag.
 set -o errexit -o nounset -o pipefail
 
 TAG=$1
-# The prefix matches the one of GitHub's source archives, so strip_prefix stays the same
-# for users who switch between a release archive and a source archive.
-PREFIX="rules_godot-${TAG:1}"
-ARCHIVE="rules_godot-$TAG.tar.gz"
+MODULE="$(python3 "$(dirname "$0")/../../tools/ci/release_module.py" "$TAG")"
+field() { sed -n "s/^$1=//p" <<< "$MODULE"; }
+NAME="$(field name)"
+VERSION="$(field version)"
+ROOT="$(field root)"
+PREFIX="${NAME}-${VERSION}"
+ARCHIVE="${PREFIX}.tar.gz"
 
-# .gitattributes keeps development-only directories out of the archive.
-git archive --format=tar --prefix="${PREFIX}/" "${TAG}" | gzip > "$ARCHIVE"
+# The archive holds the module's directory at its root. .gitattributes files keep
+# development-only directories out of it; a module below the root takes the repository's
+# license along.
+if [ "$ROOT" = . ]; then
+    git archive --format=tar --prefix="${PREFIX}/" "${TAG}" | gzip > "$ARCHIVE"
+else
+    git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" \
+        | gzip > "$ARCHIVE"
+fi
 
-# The API documentation the registry renders: the curated Stardoc metadata of the public
-# entrypoints (docs/internal/api-reference.md), not every starlark_doc_extract output.
-# See https://github.com/bazelbuild/bazel-central-registry/blob/main/docs/stardoc.md
-DOCS_TARGET=//docs/public/api:bcr_docs
-bazel build "$DOCS_TARGET" >&2
-BAZEL_BIN="$(bazel info bazel-bin 2>/dev/null)"
-bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \
-    | sed "s#^bazel-out/[^/]*/bin/##" \
-    | tar --create --gzip --directory "$BAZEL_BIN" --file "${ARCHIVE%.tar.gz}.docs.tar.gz" --files-from -
+# The ruleset's API documentation and the setup its release notes show.
+SETUP=""
+if [ "$NAME" = autoload_rules_godot ]; then
+    # The API documentation the registry renders: the curated Stardoc metadata of the public
+    # entrypoints (docs/internal/api-reference.md), not every starlark_doc_extract output.
+    # See https://github.com/bazelbuild/bazel-central-registry/blob/main/docs/stardoc.md
+    DOCS_TARGET=//docs/public/api:bcr_docs
+    bazel build "$DOCS_TARGET" >&2
+    BAZEL_BIN="$(bazel info bazel-bin 2>/dev/null)"
+    bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \
+        | sed "s#^bazel-out/[^/]*/bin/##" \
+        | tar --create --gzip --directory "$BAZEL_BIN" --file "${PREFIX}.docs.tar.gz" --files-from -
+    SETUP='
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(name = "godot", version = "4.7.2")
+use_repo(godot_engines, "godot")
+register_toolchains("@godot//toolchains:all")'
+fi
+# A module that is not on the Bazel Central Registry resolves from this release's archive.
+if [ "$(field bcr)" != true ]; then
+    REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/rules_godot}"
+    INTEGRITY="sha256-$(openssl dgst -sha256 -binary "$ARCHIVE" | openssl base64 -A)"
+    SETUP="${SETUP}
+archive_override(
+    module_name = \"${NAME}\",
+    integrity = \"${INTEGRITY}\",
+    strip_prefix = \"${PREFIX}\",
+    urls = [\"https://github.com/${REPOSITORY}/releases/download/${TAG}/${ARCHIVE}\"],
+)"
+fi
 
 cat << NOTES
 ## Bzlmod
@@ -28,11 +59,9 @@ cat << NOTES
 Add to your \`MODULE.bazel\` file:
 
 \`\`\`starlark
-bazel_dep(name = "autoload_rules_godot", version = "${TAG:1}")
-
-godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.prebuilt(name = "godot", version = "4.7.2")
-use_repo(godot_engines, "godot")
-register_toolchains("@godot//toolchains:all")
+bazel_dep(name = "${NAME}", version = "${VERSION}")${SETUP}
 \`\`\`
+
+See the module's README for its setup:
+https://github.com/${GITHUB_REPOSITORY:-autoload-dev/rules_godot}/blob/${TAG}/${ROOT}/README.md
 NOTES

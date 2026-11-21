@@ -2,10 +2,29 @@ const { spawn } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const modules = (process.env["INPUT_BAZEL-MODULES"] || ".")
+const listed = (process.env["INPUT_BAZEL-MODULES"] || ".")
   .split(/\r?\n/)
   .map((moduleRoot) => moduleRoot.trim())
   .filter(Boolean);
+
+// The add-on modules and their examples that this job built in: a build leaves the bazel-out
+// symlink. The workflows need not list them, so a new add-on module needs no workflow change.
+function builtAddonModules() {
+  const addons = path.join(process.env.GITHUB_WORKSPACE, "addons");
+  if (!fs.existsSync(addons)) return [];
+  return fs.readdirSync(addons, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => [`addons/${entry.name}`, `addons/${entry.name}/examples`])
+    .filter((moduleRoot) => {
+      try {
+        return fs.lstatSync(path.join(process.env.GITHUB_WORKSPACE, moduleRoot, "bazel-out")).isSymbolicLink();
+      } catch {
+        return false;
+      }
+    });
+}
+
+const modules = [...new Set([...listed, ...builtAddonModules()])];
 const shutdownSeconds = Number(process.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"]) || 30;
 
 // Resolves to the exit status, the terminating signal or "timeout". A SIGTERM-only

@@ -5,7 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.android.requirements import LINUX_TOOLCHAINS, configuration_errors
+from tools.android.requirements import (
+    LINUX_TOOLCHAINS,
+    application_modules,
+    configuration_errors,
+)
 from tools.setup.modules import module_paths
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,7 +37,8 @@ class RequirementsTest(unittest.TestCase):
         target.write_text(source.replace(before, after))
 
     def test_repository_requirements_are_provisioned(self) -> None:
-        self.assertEqual((".", "examples", "tests"), module_paths(self.root))
+        self.assertEqual(module_paths(ROOT), module_paths(self.root))
+        self.assertLessEqual({".", "examples", "tests"}, set(module_paths(self.root)))
         self.assertEqual(configuration_errors(self.root), [])
 
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
@@ -56,9 +61,10 @@ class RequirementsTest(unittest.TestCase):
             'android_build_tools = "99.0.0"',
         )
         errors = configuration_errors(self.root)
-        self.assertEqual(len(errors), 4)
+        # Every module that builds applications, then the Linux toolchains.
+        self.assertEqual(len(errors), len(application_modules(self.root)) + 1)
         self.assertTrue(all("build_tools_version '35.0.0'" in error for error in errors))
-        self.assertTrue(errors[3].startswith(f"{LINUX_TOOLCHAINS}: "))
+        self.assertTrue(errors[-1].startswith(f"{LINUX_TOOLCHAINS}: "))
 
     def test_detects_an_ndk_bump_missing_from_the_linux_toolchains(self) -> None:
         self.replace(
