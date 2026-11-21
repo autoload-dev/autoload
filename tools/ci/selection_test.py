@@ -14,6 +14,14 @@ from tools.ci.verification import PROFILE_LANES, lane_plan
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ROOT / "godot/tests/api_contracts/cases.bzl"
+# hk itself rather than mise's shim, which finds no hk outside this checkout's mise.toml,
+# such as in the temporary checkouts of the add-on cases.
+HK = (
+    subprocess.run(
+        ["mise", "which", "hk"], cwd=ROOT, capture_output=True, text=True, check=False
+    ).stdout.strip()
+    or "hk"
+)
 # Add-on modules by directory, with their addon.pkl.
 ADDON_MODULES = {
     "widget": 'lanes = List("host", "android", "ios")\nhosts = List("linux", "macos")\n',
@@ -49,7 +57,7 @@ def regression_contract_packages() -> Iterator[tuple[str, str]]:
 
 class SelectionTest(unittest.TestCase):
     def plan(self, *files: str, profiles: tuple[str, ...] = (), cwd: Path = ROOT) -> dict:
-        command = ["hk"]
+        command = [HK]
         for profile in profiles:
             command.extend(["--profile", profile])
         command.extend(["check", "--plan", "--json", *files])
