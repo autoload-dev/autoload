@@ -7,7 +7,8 @@ archive, which the shared library links; the shared library exports only the ent
 macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
 operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
-named after the target, whose binary gets the framework's install name, or with
+named after the target, whose binary combines the library of every CPU and gets the
+framework's install name, or with
 ios_linkage = "static" the archive the application links.
 """
 
@@ -24,6 +25,7 @@ load(":descriptor_tests.bzl", "descriptor_contents")
 _SMALL = {"size": "small"}
 _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
 _IOS_SIMULATOR = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))}
+_IOS_SIMULATOR_BOTH_CPUS = {"//command_line_option:platforms": str(Label(":ios_simulator_both_cpus"))}
 
 # Android analysis needs the SDK and NDK toolchains; without an SDK the test is skipped.
 _ANDROID = {
@@ -208,7 +210,7 @@ def _test_minimum_os_versions_reach_extension_info(name):
 def _minimum_os_versions_reach_extension_info(env, target):
     env.expect.that_dict(target[GodotExtensionInfo].minimum_os_versions).contains_exactly({"macos": "13.0"})
 
-def _ios_analysis_test(name, impl, target_suffix = "", **extension_kwargs):
+def _ios_analysis_test(name, impl, target_suffix = "", config_settings = _IOS_SIMULATOR, **extension_kwargs):
     """Declare an extension and analyze it, or its target_suffix target, in the iOS Simulator."""
     _extension(name + "_extension", **extension_kwargs)
     analysis_test(
@@ -216,7 +218,7 @@ def _ios_analysis_test(name, impl, target_suffix = "", **extension_kwargs):
         target = name + "_extension" + target_suffix,
         impl = impl,
         attr_values = _MACOS_ONLY,
-        config_settings = _IOS_SIMULATOR,
+        config_settings = config_settings,
     )
 
 def _test_ios_extension_is_a_framework(name):
@@ -242,9 +244,23 @@ def _ios_framework_binary_has_its_install_name(env, target):
     # The toolchain names the linked library after its file, so the framework's copy
     # gets the framework's install name afterwards.
     framework = target.label.name.removesuffix(".ios_framework_files")
-    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkInstallName"]
+    actions = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkBinary"]
     env.expect.that_int(len(actions), expr = "number of install name actions").equals(1)
     env.expect.that_collection(actions[0].argv).contains("@rpath/%s.framework/%s" % (framework, framework))
+
+def _test_ios_framework_binary_combines_every_cpu(name):
+    _ios_analysis_test(name, _ios_framework_binary_combines_every_cpu, ".ios_framework_files", config_settings = _IOS_SIMULATOR_BOTH_CPUS)
+
+def _ios_framework_binary_combines_every_cpu(env, target):
+    # rules_apple embeds one binary per framework, whichever CPU's framework it takes.
+    (action,) = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "GodotFrameworkBinary"]
+    libraries = [file.path for file in action.inputs.to_list() if file.extension == "so"]
+    env.expect.that_int(len(libraries), expr = "number of combined libraries").equals(2)
+    for cpu in ["ios_sim_arm64", "ios_x86_64"]:
+        env.expect.that_bool(
+            any([cpu in path for path in libraries]),
+            expr = "a library of the %s configuration among %s" % (cpu, libraries),
+        ).equals(True)
 
 def _test_ios_static_linkage_links_the_archive(name):
     _ios_analysis_test(name, _ios_static_linkage_links_the_archive, ios_linkage = "static")
@@ -267,6 +283,7 @@ def cc_extension_test_suite(name):
             _test_minimum_os_versions_reach_extension_info,
             _test_ios_extension_is_a_framework,
             _test_ios_framework_binary_has_its_install_name,
+            _test_ios_framework_binary_combines_every_cpu,
             _test_ios_static_linkage_links_the_archive,
         ],
     )

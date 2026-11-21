@@ -51,7 +51,7 @@ def shared_library(name, archive, entry_symbol, attrs):
     """
     Declare the shared library of extension name linked from archive.
 
-    On iOS the extension's framework carries a copy of it.
+    On iOS the framework's binary combines it across the application's CPUs.
 
     Args:
         name: The extension's target name.

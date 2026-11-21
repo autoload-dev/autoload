@@ -4,6 +4,7 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_pack", "godot_run", "godot_test")
 load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
 load("//godot/extension/tests:extension_contracts.bzl", "extension_library_fixture")
+load("//godot/platforms:defs.bzl", "godot_export_platform")
 load(":cc_extension_tests.bzl", "cc_extension_test_suite")
 load(":configured_library_tests.bzl", "configured_library_test_suite")
 load(":descriptor_tests.bzl", "descriptor_test_suite")
@@ -20,6 +21,17 @@ godot_cc_extension(
 )
 
 configured_library_test_suite(name = "configured_library_test_suite")
+
+# The iOS Simulator with both CPUs, whose applications embed one framework for both.
+godot_export_platform(
+    name = "ios_simulator_both_cpus",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    environment = "simulator",
+    operating_system = "ios",
+)
 
 # The tool configuration links other dependencies than the runtime, for example an
 # unsupported backend in place of one that needs a platform SDK.

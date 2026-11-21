@@ -6,14 +6,16 @@ extension. Each framework links its own godot-cpp and exports only the entry sym
 extensions from different modules never share or collide on godot-cpp's symbols.
 
 rules_apple's ios_dynamic_framework would relink the binary from deps under its own
-transition, without the extension's export list and configuration; this rule lays out
-the binary godot_cc_extension already linked. Its Info.plist has fixed string keys, so it
+transition, without the extension's export list and configuration; this rule combines
+the libraries godot_cc_extension already linked for each CPU of the application into the
+framework's binary. Its Info.plist has fixed string keys, so it
 is written here rather than by a plist tool action.
 """
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
+load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 
 visibility(["//godot/extension/..."])
 
@@ -86,19 +88,27 @@ def _ios_framework_files_impl(ctx):
     binary = ctx.actions.declare_file(directory + name)
     xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
 
-    # rules_cc's toolchain sets the install name after the target's linkopts, from the
-    # shared library's own file name; a framework's binary carries its framework path.
-    # The application signs the framework when it embeds it.
+    # One binary with the library of every CPU of the application: rules_apple embeds a
+    # single binary per framework, whichever CPU's framework it takes it from. Sorted CPUs
+    # keep the command line stable.
+    slices = []
+    for cpu in sorted(ctx.split_attr.binary):
+        (library,) = ctx.split_attr.binary[cpu][DefaultInfo].files.to_list()
+        slices.append(library)
+
+    # lipo combines the libraries; then the binary gets the framework's install name, since
+    # rules_cc's toolchain sets one after the target's linkopts, from the shared library's
+    # own file name. The application signs the framework when it embeds it.
     apple_support.run_shell(
         actions = ctx.actions,
         xcode_config = xcode_config,
         apple_fragment = ctx.fragments.apple,
-        command = 'cp "$1" "$2" && chmod u+w "$2" && xcrun install_name_tool -id "$3" "$2"',
-        arguments = [ctx.file.binary.path, binary.path, "@rpath/%s.framework/%s" % (name, name)],
-        inputs = [ctx.file.binary],
+        command = 'out="$1" id="$2" && shift 2 && xcrun lipo -create "$@" -output "$out" && xcrun install_name_tool -id "$id" "$out"',
+        arguments = [binary.path, "@rpath/%s.framework/%s" % (name, name)] + [file.path for file in slices],
+        inputs = slices,
         outputs = [binary],
-        mnemonic = "GodotFrameworkInstallName",
-        progress_message = "Setting the install name of %{output}",
+        mnemonic = "GodotFrameworkBinary",
+        progress_message = "Combining the CPU libraries of %{output}",
     )
     plist = ctx.actions.declare_file(directory + "Info.plist")
     ctx.actions.write(plist, _info_plist({
@@ -125,9 +135,13 @@ ios_framework_files = rule(
     implementation = _ios_framework_files_impl,
     attrs = {
         "binary": attr.label(
-            doc = "The dynamic library; its copy in the framework gets the framework's install name.",
-            allow_single_file = True,
+            doc = """
+            The dynamic library, built for each platform slice of the application; the
+            framework's binary combines them and gets the framework's install name.
+            """,
+            allow_files = True,
             mandatory = True,
+            cfg = platform_slice_transition,
         ),
         "framework_name": attr.string(doc = "Name of the framework and its binary.", mandatory = True),
         "bundle_id": attr.string(doc = "CFBundleIdentifier of the framework.", mandatory = True),
