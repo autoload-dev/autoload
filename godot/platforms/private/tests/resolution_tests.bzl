@@ -61,7 +61,9 @@ def _test_linux_executor_uses_linux_android_tools(name, **kwargs):
         name = name,
         target = ":probe",
         impl = _linux_executor_uses_linux_android_tools_impl,
-        # BuildBuddy's C++ toolchain builds the probe's Linux tools, as with --config=buildbuddy.
+        # BuildBuddy's C++ toolchain builds the probe's Linux tools, as with --config=buildbuddy;
+        # resolution for that executor is the subject, so the test registers both on the
+        # command line.
         config_settings = {
             "//command_line_option:platforms": str(Label("//godot/platforms:android_arm64")),
             str(Label("@androidsdk//:api_level")): "35",

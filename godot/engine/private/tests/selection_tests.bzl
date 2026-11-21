@@ -13,6 +13,8 @@ _FIXTURES = "//godot/engine/private/tests/fixtures"
 _PLATFORMS = "//godot/engine/private/tests:"
 _PROBE = "//godot/engine/private/tests:probe"
 
+# The priority --extra_toolchains gives a set is the subject, so the tests register their
+# sets with it rather than selecting a development engine by name.
 def _settings(sets = [], execution_platform = None):
     settings = {
         "//command_line_option:platforms": str(Label(_PLATFORMS + "linux_x86_64")),

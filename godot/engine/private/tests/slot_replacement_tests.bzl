@@ -27,7 +27,7 @@ def _desktop_probe(name):
 
 def _settings(variant):
     # Toolchains registered through the command line precede the MODULE.bazel registration
-    # of @godot.
+    # of @godot; that priority is the subject.
     return {
         str(Label("//godot:variant")): variant,
     } | own_toolchains([_RELEASE_OVERRIDE + ":all"])

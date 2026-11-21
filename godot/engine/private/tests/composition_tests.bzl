@@ -17,8 +17,8 @@ _PROBE = "//godot/engine/private/tests:probe"
 _MACOS_ONLY = {"target_compatible_with": ["@platforms//os:macos"]}
 
 def _mixed(target_platform):
-    # --extra_toolchains gives its last entry priority: the overriding registration set goes
-    # ahead.
+    # --extra_toolchains gives its last entry priority, which is the subject: the overriding
+    # registration set goes ahead.
     return {
         "//command_line_option:platforms": str(Label(_PLATFORMS + target_platform)),
         str(Label("//godot:variant")): "release",
