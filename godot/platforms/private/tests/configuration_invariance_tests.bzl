@@ -261,6 +261,61 @@ def _android_permission_merging_keeps_one_pack_configuration(env, targets):
     env.expect.that_bool(bool(_output_paths(targets.pack, ["CppCompile"])), expr = "the pack compiles native code").equals(True)
     env.expect.that_collection(_output_paths(targets.merging_pack, _PACK_ACTIONS), expr = "merging pack actions").contains_exactly(paths)
 
+# The native code of one application is configured once per platform slice: every option
+# that an application's edge, its pack's transitions and an extension's library edge set
+# for native code comes from godot/private/config/native.bzl, so they agree.
+
+def _compilation_roots(target, accept):
+    """The output roots, one per configuration, of the compile actions accept selects."""
+    return sorted({
+        file.root.path: None
+        for entry in reached(target)
+        if is_compilation(entry.action.mnemonic) and accept(entry)
+        for file in entry.action.outputs.to_list()
+    })
+
+def _test_ios_app_compiles_its_platform_slice_in_one_configuration(name):
+    analysis_test(
+        name = name,
+        target = MOBILE_FIXTURE + "app",
+        impl = _ios_app_compiles_its_platform_slice_in_one_configuration,
+        config_settings = {
+            "//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_x86_64")),
+        },
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = _MACOS_HOST,
+    )
+
+def _ios_app_compiles_its_platform_slice_in_one_configuration(env, target):
+    # The application's entry support, its platform libraries and the extension's
+    # library, which rules_apple's split and the pack's platform slice reach.
+    roots = _compilation_roots(target, lambda entry: entry.platform.endswith(":ios_sim_x86_64.platform_slice_x86_64"))
+    env.expect.that_collection(roots, expr = "configurations compiling for the platform slice").has_size(1)
+
+def _test_macos_app_extension_shares_the_project_context_configuration(name):
+    analysis_test(
+        name = name,
+        target = _MACOS_FIXTURE + "app",
+        impl = _macos_app_extension_shares_the_project_context_configuration,
+        config_settings = {
+            "//command_line_option:platforms": str(Label("//godot/platforms:macos_arm64")),
+            # The application's default minimum; the pack's own configuration has it too.
+            "//command_line_option:macos_minimum_os": "11.0",
+        },
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = _MACOS_HOST,
+    )
+
+def _macos_app_extension_shares_the_project_context_configuration(env, target):
+    # The extension's library is reached through the application's pack and through the
+    # project context; with the build's minimum equal to the application's, both edges
+    # configure it alike.
+    roots = _compilation_roots(
+        target,
+        lambda entry: entry.owner.endswith(":hello.native") and entry.platform.endswith(":macos_arm64"),
+    )
+    env.expect.that_collection(roots, expr = "configurations compiling the extension").has_size(1)
+
 def configuration_invariance_test_suite(name):
     test_suite(
         name = name,
@@ -270,7 +325,9 @@ def configuration_invariance_test_suite(name):
             _test_arm64_android_app_configures_only_arm64_platform_slice,
             _test_desktop_pack_ignores_android_format,
             _test_distribution_android_app_configures_both_platform_slices,
+            _test_ios_app_compiles_its_platform_slice_in_one_configuration,
             _test_ios_simulator_pack_compiles_its_extension_for_the_simulator,
+            _test_macos_app_extension_shares_the_project_context_configuration,
             _test_macos_signing_mode_reruns_only_signing,
         ],
     )
