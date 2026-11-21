@@ -345,75 +345,62 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
     declarations = []
     for selection in selections:
         tag = selection.tag
-        if selection.kind == "source":
-            declarations.append(_declaration(
-                "godot_engine_source",
-                name = tag.name,
-                urls = tag.urls,
-                sha256 = tag.sha256,
-                strip_prefix = tag.strip_prefix,
-                version = tag.version,
-            ))
+        if selection.kind in _SOURCE_RULES:
+            # A source or source build repository takes its tag's attributes unchanged.
+            attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
+            declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
             continue
-        if selection.kind == "source_build":
-            declarations.append(_declaration(
-                "godot_engine_source_build",
-                name = tag.name,
-                source = tag.source,
-                platforms = tag.platforms,
-                cpus = tag.cpus,
-                build_targets = tag.build_targets,
-                ios_environments = tag.ios_environments,
-                enabled_modules = tag.enabled_modules,
-                custom_modules = tag.custom_modules,
-                patches = tag.patches,
-                patch_strip = tag.patch_strip,
-                build_options = tag.build_options,
-                build_name = tag.build_name,
-                python = tag.python,
-                configure_timeout = tag.configure_timeout,
-                lock_file = tag.lock_file,
-                engine = tag.engine,
-            ))
-            continue
-        plan = prebuilt_plan(tag, _fail = _fail)
-        if plan == None:
+        prebuilt = _prebuilt_declarations(tag, _fail)
+        if prebuilt == None:
             return None
-        for editor_platform, editor in plan.editors.items():
-            declarations.append(_declaration(
-                "godot_editor_archive",
-                name = "%s_editor_%s" % (tag.name, editor_platform),
-                urls = editor.urls,
-                integrity = editor.integrity,
-                binary = editor.binary,
-                version = tag.version,
-            ))
-        declarations.extend(_templates_declarations(tag, plan.templates))
-        android_runtimes = {}
-        if plan.android_shell:
-            declarations.append(_declaration(
-                "http_file",
-                name = tag.name + "_android_shell",
-                urls = plan.android_shell.urls,
-                integrity = plan.android_shell.integrity,
-                downloaded_file_path = "shell.aar",
-            ))
-            android_runtimes["release"] = {"shell": "@%s_android_shell//file" % tag.name}
-        if plan.android_debug_shell:
-            declarations.append(_declaration(
-                "http_file",
-                name = tag.name + "_android_debug_shell",
-                urls = plan.android_debug_shell.urls,
-                integrity = plan.android_debug_shell.integrity,
-                downloaded_file_path = "shell.aar",
-            ))
-            android_runtimes["debug"] = {"shell": "@%s_android_debug_shell//file" % tag.name}
-        declarations.append(_declaration(
-            "engine_hub",
-            name = tag.name,
-            display_name = tag.name,
-            components = json.encode(prebuilt_slots(tag, plan)),
-            android_runtimes = json.encode(android_runtimes),
-            engine = tag.engine,
-        ))
+        declarations.extend(prebuilt)
     return declarations
+
+# The repository rule that each source tag class declares.
+_SOURCE_RULES = {
+    "source": "godot_engine_source",
+    "source_build": "godot_engine_source_build",
+}
+
+def _prebuilt_declarations(tag, _fail):
+    """Return the editor, template, shell and hub repositories of a prebuilt tag, or None after an error."""
+    plan = prebuilt_plan(tag, _fail = _fail)
+    if plan == None:
+        return None
+    editors = [
+        _declaration(
+            "godot_editor_archive",
+            name = "%s_editor_%s" % (tag.name, editor_platform),
+            urls = editor.urls,
+            integrity = editor.integrity,
+            binary = editor.binary,
+            version = tag.version,
+        )
+        for editor_platform, editor in plan.editors.items()
+    ]
+    shells = []
+    android_runtimes = {}
+    for variant, pin, shell in [
+        ("release", "android_shell", plan.android_shell),
+        ("debug", "android_debug_shell", plan.android_debug_shell),
+    ]:
+        if not shell:
+            continue
+        name = "%s_%s" % (tag.name, pin)
+        shells.append(_declaration(
+            "http_file",
+            name = name,
+            urls = shell.urls,
+            integrity = shell.integrity,
+            downloaded_file_path = "shell.aar",
+        ))
+        android_runtimes[variant] = {"shell": "@%s//file" % name}
+    hub = _declaration(
+        "engine_hub",
+        name = tag.name,
+        display_name = tag.name,
+        components = json.encode(prebuilt_slots(tag, plan)),
+        android_runtimes = json.encode(android_runtimes),
+        engine = tag.engine,
+    )
+    return editors + _templates_declarations(tag, plan.templates) + shells + [hub]
