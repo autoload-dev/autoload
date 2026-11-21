@@ -11,7 +11,8 @@ TEMPLATE_CPUS = {
 }
 
 # Release tag, editor platforms, macOS template layout and archive digests per version, and
-# the release's source archive, which builds the runtime slots its official artifacts lack.
+# for stable releases the source archive, which builds the runtime slots their official
+# artifacts lack.
 RELEASES = {
     "4.7.2": {
         "tag": "4.7.2-stable",
@@ -47,12 +48,6 @@ RELEASES = {
         # The simulator XCFramework slices of the prerelease engine and AccessKit have
         # incompatible CPUs.
         "ios_simulator_cpus": [],
-        "source": {
-            "urls": ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-4.8-beta1.tar.xz"],
-            "sha256": "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
-            "strip_prefix": "godot-4.8-beta1",
-            "version": "4.8.0-beta",
-        },
     },
 }
 

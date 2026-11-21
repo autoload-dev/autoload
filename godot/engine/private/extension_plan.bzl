@@ -104,13 +104,19 @@ def prebuilt_plan(tag, *, _fail = fail):
         simulator_cpus = []
     return struct(
         editors = editors,
-        source = (release or {}).get("source") if tag.build_missing_runtimes else None,
+        source = _missing_runtime_source(tag, release),
         templates = templates,
         android_shell = android_shell,
         android_debug_shell = android_debug_shell,
         ios_simulator_cpus = simulator_cpus,
         android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
     )
+
+def _missing_runtime_source(tag, release):
+    """The catalogued sources of the missing runtimes; none for a fork's pinned artifacts."""
+    if not tag.build_missing_runtimes or tag.templates_urls or tag.editor_urls or tag.android_shell_urls:
+        return None
+    return (release or {}).get("source")
 
 def prebuilt_slots(tag, plan):
     """
@@ -243,7 +249,8 @@ def missing_runtimes(tag, plan, slots):
     rows = [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
     if not rows:
         return None
-    name = tag.name + "_source"
+    # A double underscore keeps the recipes apart from the repositories of a source build.
+    name = tag.name + "__missing"
     source = "@%s_archive//:source.json" % name
 
     # The catalogue knows the sources' version, so the hub need not read the archive.

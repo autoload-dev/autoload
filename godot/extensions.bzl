@@ -76,7 +76,8 @@ _PREBUILT_ATTRS = {
             Build the runtime slots the prebuilt artifacts lack from the release's sources,
             such as the arm64 iOS simulator runtimes of 4.7.2 or the Android debug runtimes.
             Each recipe is configured and compiled only when a build selects its slot.
-            Catalogued versions only; an uncatalogued version builds nothing.
+            Catalogued versions with pinned sources only, and none when templates_urls,
+            editor_urls or android_shell_urls pin a fork's artifacts.
             """,
         default = True,
     ),
@@ -208,13 +209,13 @@ godot_engines = module_extension(
       - prerequisites: template archive contains the slot
       - availability: desktop
     - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-      - prerequisites: template archive contains the slot, or build_missing_runtimes and a catalogued version
+      - prerequisites: template archive contains the slot, or build_missing_runtimes with catalogued sources
       - availability: ios
     - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-      - prerequisites: Android shell AAR pinned, or build_missing_runtimes and a catalogued version
+      - prerequisites: Android shell AAR pinned, or build_missing_runtimes with catalogued sources
       - availability: android_shell
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-      - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes and a catalogued version
+      - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes with catalogued sources
       - availability: android_shell
     - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
       - prerequisites: Android shell library pinned or a source build with Android rows

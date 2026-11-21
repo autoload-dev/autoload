@@ -52,9 +52,12 @@ the MoltenVK SDK on the configuring Mac, and keep Metal and OpenGL. Like any
 compiles only when a build selects its slot, on a host Godot accepts for its platform, such
 as a Mac for iOS. The prebuilt slots keep the official artifacts. To fail the missing slots
 instead, or to fill them with your own engine, set `build_missing_runtimes = False`, or
-register your components [ahead of the hub](#replace-slots). The sources are the
-catalogued release's, also when you pin other artifacts, so set it to `False` for a fork's
-archives; versions outside the catalogue build no missing runtimes.
+register your components [ahead of the hub](#replace-slots). Only catalogued releases
+with pinned sources build missing runtimes, and a hub that pins its own templates, editors
+or Android shell builds none, since the upstream sources would not match a fork's
+artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
+ones, which only a Mac can; fetch the targets you build instead, or set
+`build_missing_runtimes = False` where you need a whole-module fetch.
 
 For a release outside the catalogue, or an archive built elsewhere, pin each artifact.
 Digests are Subresource Integrity strings; explicit values replace catalogue entries:
@@ -84,7 +87,7 @@ before the one it overrides; it replaces only the slots it covers:
 
 ```starlark
 register_toolchains(
-    "//engines/ios_simulator:all",  # wins for its slots
+    "//engines/custom:all",         # wins for its slots
     "@godot//toolchains:all",       # every other slot
 )
 ```

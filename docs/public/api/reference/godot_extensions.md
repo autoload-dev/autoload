@@ -151,13 +151,13 @@ conflicting ones fail. See [engines](../../engine.md).
   - prerequisites: template archive contains the slot
   - availability: desktop
 - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-  - prerequisites: template archive contains the slot, or build_missing_runtimes and a catalogued version
+  - prerequisites: template archive contains the slot, or build_missing_runtimes with catalogued sources
   - availability: ios
 - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-  - prerequisites: Android shell AAR pinned, or build_missing_runtimes and a catalogued version
+  - prerequisites: Android shell AAR pinned, or build_missing_runtimes with catalogued sources
   - availability: android_shell
 - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-  - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes and a catalogued version
+  - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes with catalogued sources
   - availability: android_shell
 - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
   - prerequisites: Android shell library pinned or a source build with Android rows

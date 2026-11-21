@@ -570,10 +570,8 @@ lack from the release's sources ([prebuilt engines](engine.md#use-a-prebuilt-eng
 first arm64 Simulator build on a Mac compiles the engine once, and Bazel's cache keeps it.
 To use other modules, patches or options, register a [source build](engine.md#declare-a-source-build) with
 `platforms = ["ios"]` and `ios_environments = ["simulator"]` ahead of the
-prebuilt engine. A prebuilt arm64 Simulator engine library fills the slot as well: the
-examples module wraps
-[godot-ios-builds](https://github.com/godot-mobile-plugins/godot-ios-builds)' library in a
-`godot_runtime_component` ([`examples/engines/ios_simulator`](../../examples/engines/ios_simulator/BUILD.bazel)).
+prebuilt engine, or a `godot_runtime_component` of a prebuilt arm64 Simulator engine
+library, such as one of [godot-ios-builds](https://github.com/godot-mobile-plugins/godot-ios-builds).
 
 A source-built iOS engine library compiles for the deployment target Godot's own build
 sets, 14.0, whatever `ios_minimum_os_version` the applications linking it declare, so one
@@ -621,8 +619,9 @@ The official Simulator Godot libraries contain x86_64 objects, although the
 **4.7.2** XCFramework metadata advertises an ARM64 slice. In 4.8-beta1, the required
 AccessKit library contains ARM64 objects, so those Simulator libraries cannot link
 together at all. A Simulator build with a missing slice fails validation, naming each
-library and the slices it has. A catalogued prebuilt engine therefore builds its ARM64
-Simulator runtimes from source ([source-built engines](#source-built-engines)).
+library and the slices it has. A prebuilt 4.7.2 engine therefore builds its ARM64
+Simulator runtimes from source ([source-built engines](#source-built-engines)); 4.8-beta1
+has no Simulator runtimes.
 
 ## Version and build number
 

@@ -103,8 +103,6 @@ godot_engines.prebuilt(
     name = "godot_beta",
     android_shell_integrity = "sha256-G1KpV92jFIn4OirzO17zy2euXFLyE40BSATgYs9MI5Y=",
     android_shell_urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-lib.4.8.beta1.template_release.aar"],
-    # The official artifacts only, which the engine probes test.
-    build_missing_runtimes = False,
     version = "4.8.0-beta1",
 )
 
