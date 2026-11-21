@@ -98,6 +98,38 @@ def slot_name(row):
     variant = row.build_target.removeprefix("template_")
     return "_".join([part for part in ["runtime", row.platform, row.cpu, row.environment, variant] if part])
 
+def _slot(name, row, repository, version, android):
+    """The hub slot of a row's recipe; Android rows also add their engine library to android."""
+    if row.build_target == "editor":
+        return component(
+            role = "editor",
+            name = slot_name(row),
+            payload = "@%s//:godot" % repository,
+            platform = row.platform,
+            cpu = row.cpu,
+            version = version,
+        )
+    variant = row.build_target.removeprefix("template_")
+    payload = "@%s//:godot" % repository
+    if row.platform == "android":
+        android.setdefault(variant, {
+            "shell": "@%s_android_shell//:%s.aar" % (name, variant),
+            "engine_libraries": {},
+        })["engine_libraries"][row.cpu] = payload
+        payload = "//android:" + variant
+    elif row.platform == "ios":
+        payload = "@%s//:engine_library" % repository
+    return component(
+        role = "runtime",
+        name = slot_name(row),
+        payload = payload,
+        platform = row.platform,
+        cpu = row.cpu,
+        version = version,
+        variant = variant,
+        environment = row.environment,
+    )
+
 def plan_rows(name, rows, version = ""):
     """
     Return the recipes, hub slots and Android runtimes of source recipes for the given rows.
@@ -119,37 +151,7 @@ def plan_rows(name, rows, version = ""):
     for row in rows:
         repository = "%s_%s" % (name, row.name)
         recipes.append(struct(repository = repository, row = row))
-        if row.build_target == "editor":
-            slots.append(component(
-                role = "editor",
-                name = slot_name(row),
-                payload = "@%s//:godot" % repository,
-                platform = row.platform,
-                cpu = row.cpu,
-                version = version,
-            ))
-            continue
-        variant = row.build_target.removeprefix("template_")
-        if row.platform == "android":
-            android.setdefault(variant, {
-                "shell": "@%s_android_shell//:%s.aar" % (name, variant),
-                "engine_libraries": {},
-            })["engine_libraries"][row.cpu] = "@%s//:godot" % repository
-            payload = "//android:" + variant
-        elif row.platform == "ios":
-            payload = "@%s//:engine_library" % repository
-        else:
-            payload = "@%s//:godot" % repository
-        slots.append(component(
-            role = "runtime",
-            name = slot_name(row),
-            payload = payload,
-            platform = row.platform,
-            cpu = row.cpu,
-            version = version,
-            variant = variant,
-            environment = row.environment,
-        ))
+        slots.append(_slot(name, row, repository, version, android))
     return struct(recipes = recipes, slots = slots, android = android)
 
 def plan_source_build(name, platforms, cpus = [], build_targets = [], ios_environments = [], *, _fail = fail):

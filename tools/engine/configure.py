@@ -736,21 +736,26 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
 _SOURCE_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE)
 
 
+_INCLUDED_SOURCE_MARKERS = (b'.cpp"', b'.cc"', b'.cxx"')
+
+
+def _resolve_source_include(root: Path, path: Path, include: str) -> str | None:
+    """Resolve an include beside the including source, else below the source root."""
+    for base in (path.parent, root):
+        candidate = (base / include).resolve()
+        if candidate.is_file() and candidate.is_relative_to(root):
+            return relative(candidate, root)
+    return None
+
+
 def _source_includes(root: Path, path: Path) -> list[str]:
     """Return the C++ sources that a source includes, relative to the source root."""
-    if not path.is_file():
+    text = path.read_bytes() if path.is_file() else b""
+    if not any(marker in text for marker in _INCLUDED_SOURCE_MARKERS):
         return []
-    text = path.read_bytes()
-    if b'.cpp"' not in text and b'.cc"' not in text and b'.cxx"' not in text:
-        return []
-    found = []
-    for include in _SOURCE_INCLUDE.findall(text.decode(errors="replace")):
-        for base in (path.parent, root):
-            candidate = (base / include).resolve()
-            if candidate.is_file() and candidate.is_relative_to(root):
-                found.append(relative(candidate, root))
-                break
-    return found
+    includes = _SOURCE_INCLUDE.findall(text.decode(errors="replace"))
+    resolved = (_resolve_source_include(root, path, include) for include in includes)
+    return [logical for logical in resolved if logical]
 
 
 def _discovered_includes(
