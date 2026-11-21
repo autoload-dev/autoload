@@ -108,6 +108,8 @@ def platform_slice_options(settings, cpu, platform_slice):
         values[_APPLE_CPU] = bazel_cpu.removeprefix("ios_")
         values[_APPLE_PLATFORM_TYPE] = "ios"
     elif operating_system == "android":
+        # As rules_android's split of an application's deps sets them, so that the
+        # application's native code and the pack's share each platform slice.
         values[_DYNAMIC] = "off"
         values[_ANDROID_PLATFORMS] = []
         values[_ANDROID_SETTING] = []
@@ -116,8 +118,11 @@ def platform_slice_options(settings, cpu, platform_slice):
 # The native options of an extension's library and of the other native code that
 # applications package (keep_debug_info in godot/private/symbols.bzl): it links without
 # --strip, whose link-time stripping would remove the DWARF the applications' debug
-# symbols need; the applications apply --strip to the copy they package.
-LIBRARY_OPTIONS = {STRIP: "never"}
+# symbols need; the applications apply --strip to the copy they package. The build's
+# macOS minimum that a macOS application keeps for the project context means nothing to
+# native code, so the library drops it and shares its configuration with the project
+# context's wherever the application's minimum is the build's.
+LIBRARY_OPTIONS = {STRIP: "never", MACOS_MINIMUM_OS_OUTSIDE_APPLICATION: ""}
 
 # The options macos_application_options and outside_application_options set.
 MACOS_APPLICATION_OPTIONS = [MACOS_MINIMUM_OS, MACOS_MINIMUM_OS_OUTSIDE_APPLICATION]
