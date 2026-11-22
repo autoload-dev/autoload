@@ -28,7 +28,7 @@ Each test runs in one lane. The ruleset's tests, its Android and iOS build-outpu
 included, run in the host sets (`mise run test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
 are `manual`, so the host sets do not analyze their source recipes; those also tagged
-`source_engine_extended` run only in the [extended cases](#extended-source-engine-cases).
+`source_engine_extended` run only in the [Source engine verification](#source-engine-verification) workflow.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -114,12 +114,12 @@ the module's `examples/`. The plan drops a host task from a workflow whose host 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.
 
-### Extended source-engine cases
+### Source engine verification
 
 The source-engine lane is the most expensive one and the least likely to change with a
 commit, so pull requests, the merge queue and CI's dispatch leave it out
 (`SCHEDULED_LANES` in `tools/ci/verification.py`), even when a change selects it. The
-[Extended verification](../../.github/workflows/extended.yml) workflow runs every case,
+[Source engine verification](../../.github/workflows/source-engine.yml) workflow runs every case,
 `mise run source-engine:full`, on main on its schedule, and on manual dispatch whenever a
 change to source-built engines needs checking before then. `mise run source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
@@ -132,7 +132,7 @@ source-built engine join them in `source-engine:full`.
 
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
 with source-built engines and the iOS apps; the source-engine lane runs only in the
-[extended cases](#extended-source-engine-cases). They run in the
+[Source engine verification](#source-engine-verification) workflow. They run in the
 [Apple](../../.github/workflows/apple.yml) workflow, which CI calls, on the self-hosted
 runners labeled `macos-ci`: four runners in one macOS VM, which keep their tools and Bazel
 caches on their own disk between jobs. A pull request's CI run leaves them out, so that the

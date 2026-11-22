@@ -267,7 +267,7 @@ run = [
 # official artifacts lack, built from the release's sources for the iOS arm64 Simulator and
 # for Android, and a patched engine with a custom module, editor included.
 # source-engine:full adds the other cases, tagged source_engine_extended, and the stable,
-# beta and Petri builds; CI runs only it, in the Extended verification workflow.
+# beta and Petri builds; CI runs only it, in the Source engine verification workflow.
 [tasks.source-engine]
 extends = "android"
 description = "Build and run the main cases of source-built engines headless; needs macOS"

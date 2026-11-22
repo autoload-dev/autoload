@@ -1,9 +1,9 @@
-name: Extended verification
+name: Source engine verification
 
 # The only CI run of the source-engine lane: the Apple workflow builds and runs every
 # source-engine case on main, on the schedule below and on manual dispatch. Pull requests
 # and merges leave the lane out. Policy:
-# docs/internal/verification-platforms.md#extended-source-engine-cases.
+# docs/internal/verification-platforms.md#source-engine-verification.
 on:
   schedule:
     # 03:00 in Berlin, summer and winter time alike: the macos-ci runners are idle then.

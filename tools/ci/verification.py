@@ -40,14 +40,14 @@ APPLE_PLAN = "apple_plan"
 HOST_ANDROID = "host_android"
 
 
-# Lanes that pull requests, merges and CI's dispatch leave to the Extended verification
+# Lanes that pull requests, merges and CI's dispatch leave to the Source engine verification
 # workflow, which runs them on a schedule and on its own dispatch: building engines from
 # source is the most expensive work and the least likely to change with a commit.
 SCHEDULED_LANES = ("source-engine",)
 
 
 def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Leave out the tasks of the lanes that only the Extended verification workflow runs."""
+    """Leave out the tasks of the lanes that only the Source engine verification workflow runs."""
     return {lane: [] if lane in SCHEDULED_LANES else tasks for lane, tasks in lanes.items()}
 
 
@@ -132,7 +132,7 @@ TASK_LANES = {
         "quality",
     ),
     **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
-    # Every source-engine case, which the Extended verification workflow runs instead of the
+    # Every source-engine case, which the Source engine verification workflow runs instead of the
     # lane's main ones.
     "source-engine:full": "source-engine",
     **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
