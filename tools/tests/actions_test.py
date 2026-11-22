@@ -58,6 +58,15 @@ def write_pck(path: Path) -> Path:
 
 
 class ActionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # On macOS every export of the user, other builds' included, takes the same lock,
+        # so a test that took it would wait for them. Each test locks a file of its own.
+        temp = self.enterContext(tempfile.TemporaryDirectory())
+        self.export_lock = Path(temp) / "export.lock"
+        self.enterContext(
+            mock.patch.object(godot_export, "export_lock", return_value=self.export_lock)
+        )
+
     def test_extensions_are_registered_before_cold_editor_start(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
@@ -744,11 +753,11 @@ class ActionTest(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS shares tmpproject.binary")
     def test_exports_lock_the_user_temporary_directory(self) -> None:
-        lock = export_lock()
-        if lock is None:
+        # export_lock, imported by name, is the real function; setUp patches the module's.
+        if export_lock() is None:
             self.fail("macOS exports must share a lock")
         with exclusive_export():
-            self.assertTrue(lock.exists())
+            self.assertTrue(self.export_lock.exists())
 
     def run_stub(
         self, behavior: dict, timeout: int = 300, grace: int = 20
