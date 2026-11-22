@@ -81,10 +81,12 @@ class SelectionTest(unittest.TestCase):
                 "HK_SKIP_STEPS": "",
                 "HK_SKIP_HOOKS": "",
             },
-            check=True,
+            check=False,
             capture_output=True,
             text=True,
         )
+        # hk's diagnostics name what failed, such as a Pkl evaluation error.
+        self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
     def test_shared_example_dependencies_select_all_example_suites(self) -> None:
