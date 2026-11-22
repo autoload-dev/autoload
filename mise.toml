@@ -263,11 +263,8 @@ run = [
 
 # The ruleset's tests tagged source_engine build an engine from source, some for Android.
 # They are also manual, so `//...` in the host set never analyzes their source recipes.
-# The lane runs the cases users depend on most: the runtimes the official artifacts lack,
-# built from the release's sources for the iOS arm64 Simulator and for Android, and a
-# patched engine with a custom module, editor included. source-engine:full adds the other
-# cases, tagged source_engine_extended, and the stable, beta and Petri builds; the Extended
-# verification workflow runs it on a schedule.
+# This task runs a quicker subset; source-engine:full, which CI runs in the Source engine
+# workflow, runs every case (docs/internal/verification-platforms.md#source-engine-workflow).
 [tasks.source-engine]
 extends = "android"
 description = "Build and run the main cases of source-built engines headless; needs macOS"

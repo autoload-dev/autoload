@@ -27,8 +27,9 @@ Godot features are covered from one passing cell.
 Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
 included, run in the host sets (`mise run test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
-are `manual`, so the host sets do not analyze their source recipes; those also tagged
-`source_engine_extended` run only in the [extended cases](#extended-source-engine-cases).
+are `manual`, so the host sets do not analyze their source recipes. CI runs the lane only in
+the [Source engine](#source-engine-workflow) workflow; locally,
+`mise run source-engine` leaves out the tests also tagged `source_engine_extended`.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -114,16 +115,20 @@ the module's `examples/`. The plan drops a host task from a workflow whose host 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.
 
-### Extended source-engine cases
+### Source engine workflow
 
-The source-engine lane is the most expensive one, so a merge runs only the cases users
-depend on most: the runtimes the official artifacts lack, built from the release's sources
-for the iOS arm64 Simulator and for Android, and the consumer's patched engine with its
-custom module, editor included (`mise run source-engine`). The extended cases, the tests
-tagged `source_engine_extended`, the stable and beta patched engines and the Petri example's
-source-built engine, run in `mise run source-engine:full`, which the
-[Extended verification](../../.github/workflows/extended.yml) workflow runs on main on its
-schedule and on manual dispatch. A change to Petri still selects its own example suite.
+The source-engine lane is the most expensive one and the least likely to change with a
+commit, so pull requests, the merge queue and CI's dispatch leave it out
+(`SCHEDULED_LANES` in `tools/ci/verification.py`), even when a change selects it. The
+[Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
+`mise run source-engine:full`, on main on its schedule, and on manual dispatch for any
+branch: a pull request that changes source-built engines dispatches it on its own branch
+before it merges. `mise run source-engine` runs
+locally the cases users depend on most: the runtimes the official artifacts lack, built
+from the release's sources for the iOS arm64 Simulator and for Android, and the
+consumer's patched engine with its custom module, editor included; the tests tagged
+`source_engine_extended`, the stable and beta patched engines and the Petri example's
+source-built engine join them in `source-engine:full`.
 
 ### Apple lanes on pull requests
 

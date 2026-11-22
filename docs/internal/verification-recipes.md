@@ -268,9 +268,8 @@ bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel 
 ```
 
 `mise run source-engine:full` runs this command, the `patched_engine` tests above and
-Petri's suite. `mise run source-engine`, which CI runs for a merge, runs only the main cases:
-the tests not tagged `source_engine_extended` and the patched engine built from the snapshot
-([policy](verification-platforms.md#extended-source-engine-cases)).
+Petri's suite; `mise run source-engine` runs a quicker subset
+([which cases, and where CI runs them](verification-platforms.md#source-engine-workflow)).
 
 
 ### Packaged desktop application
