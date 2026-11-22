@@ -121,8 +121,9 @@ The source-engine lane is the most expensive one and the least likely to change 
 commit, so pull requests, the merge queue and CI's dispatch leave it out
 (`SCHEDULED_LANES` in `tools/ci/verification.py`), even when a change selects it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
-`mise run source-engine:full`, on main on its schedule, and on manual dispatch whenever a
-change to source-built engines needs checking before then. `mise run source-engine` runs
+`mise run source-engine:full`, on main on its schedule, and on manual dispatch for any
+branch: a pull request that changes source-built engines dispatches it on its own branch
+before it merges. `mise run source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged
