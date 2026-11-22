@@ -15,8 +15,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
 
-from tools.tool_environment import nested_tool_environment
-
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
 
 
@@ -28,8 +26,10 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
 
 # The typed roots of a consumer module, below its module root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
+# The ruleset's module, which, like the root module, has no typed roots.
+RULESET_MODULE = Path("rules_godot")
 # The regression module and its smoke paths, laid out by the verification architecture.
-REGRESSION_MODULE = Path("tests")
+REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"
 ADDON_SCENARIO = "shared_addon"
 # Packages of the regression module that are no scenario, such as its Bazel launcher link.
@@ -209,12 +209,18 @@ class Workspace:
 
     @cached_property
     def documents(self) -> tuple[str, ...]:
-        """Markdown under docs/ and every README; AGENTS.md files instruct agents instead."""
+        """
+        Markdown under docs/ and rules_godot/docs/ and every README; AGENTS.md files
+        instruct agents instead.
+        """
         return tuple(
             name
             for name in self.files
             if Path(name).suffix == ".md"
-            and (name.startswith("docs/") or Path(name).name.lower().startswith("readme"))
+            and (
+                name.startswith(("docs/", "rules_godot/docs/"))
+                or Path(name).name.lower().startswith("readme")
+            )
             and Path(name).name != "AGENTS.md"
         )
 
@@ -232,11 +238,11 @@ class Workspace:
     def typed_directory(self, path: Path) -> tuple[str, Path] | None:
         """
         Return the kind and root of the project or add-on directory
-        ``<module>/<kind>/<name>/`` that path lies in; the root module has no typed roots,
-        and the regression module's scenario packages are its projects.
+        ``<module>/<kind>/<name>/`` that path lies in; the root and ruleset modules have no
+        typed roots, and the regression module's scenario packages are its projects.
         """
         module = self.owner(path.as_posix())
-        if module == Path("."):
+        if module in (Path("."), RULESET_MODULE):
             return None
         parts = path.relative_to(module).parts
         if module == REGRESSION_MODULE:
@@ -386,6 +392,16 @@ def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
             StringLiteral(Location(name, token.start[0]), body[quotes:-quotes])
         )
     return tuple(literals)
+
+
+def nested_tool_environment(environment: Mapping[str, str]) -> dict[str, str]:
+    """
+    Copy caller variables for a nested Bazel. rules_python enables safe-path mode for its own
+    launcher; passing it through changes the imports of other repositories' Python scripts.
+    """
+    return {
+        name: value for name, value in environment.items() if name != "PYTHONSAFEPATH"
+    }
 
 
 def run_tool(command: list[str], cwd: Path) -> str:

@@ -120,9 +120,13 @@ class RepositoryTest(unittest.TestCase):
         self.write("BUILD.bazel", "")
 
     def write_consumer_modules(self) -> None:
-        """Make examples/ and tests/ consumer modules, as in the repository."""
-        self.write("examples/MODULE.bazel", "")
-        self.write("tests/MODULE.bazel", "")
+        """
+        Make rules_godot/ the ruleset's module and its examples/ and tests/ consumer modules,
+        as in the repository.
+        """
+        self.write("rules_godot/MODULE.bazel", "")
+        self.write("rules_godot/examples/MODULE.bazel", "")
+        self.write("rules_godot/tests/MODULE.bazel", "")
 
     def write(self, name: str, text: str) -> None:
         path = self.root / name

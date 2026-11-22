@@ -117,6 +117,7 @@ TASK_LANES = {
             "conventions:docs",
             "test:selection",
             "test:setup",
+            "test:tools",
         ),
         "quality",
     ),

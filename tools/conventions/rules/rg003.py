@@ -10,7 +10,7 @@ class ExplicitNames:
     info = RuleInfo(
         "RG003",
         "Target declarations pass name explicitly",
-        "docs/public/conventions.md#rg003",
+        "rules_godot/docs/public/conventions.md#rg003",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

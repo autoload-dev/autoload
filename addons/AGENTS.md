@@ -38,7 +38,7 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   `projects/<name>/`, each with the targets `edit`, `pack` and, for a module that builds
   applications, `app`. It consumes the module
   like an external application (`local_path_override` to `..`) and the rules of this
-  repository (`local_path_override` to `../../..`), so an add-on always builds against the
+  repository (`local_path_override` to `../../../rules_godot`), so an add-on always builds against the
   rules it is changed with.
 - A module of this checkout that uses an add-on module through `local_path_override`, such
   as `examples/` and `tests/` with autoload_gdunit, is its consumer: `mise run

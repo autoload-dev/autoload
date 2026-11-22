@@ -129,9 +129,9 @@ those tasks apply it. The remote cache still applies.
 
 Android builds of `examples/` and `tests/` run their actions on BuildBuddy's
 executors: their `android-toolchains` config registers the toolchains of
-[`godot_android_toolchains`](../public/platforms.md#remote-execution-of-android-builds), which
+[`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
-[android_toolchains.bzl](../../godot/platforms/private/android_toolchains.bzl) follow the
+[android_toolchains.bzl](../../rules_godot/godot/platforms/private/android_toolchains.bzl) follow the
 Android versions of [mise.toml](../../mise.toml), which `test:setup` checks.
 
 For settings on every invocation, such as `common --config=buildbuddy`, create
@@ -142,7 +142,7 @@ For settings on every invocation, such as `common --config=buildbuddy`, create
 Use this recipe when changing Platform Paths' Android or iOS operating-system integration,
 or when explicitly accepting its mobile runtime behavior. A BUILD-only move or documentation
 edit does not require repeating it. Build commands and SDK setup remain in the
-[example README](../../examples/addons/platform_paths/README.md#mobile-builds).
+[example README](../../rules_godot/examples/addons/platform_paths/README.md#mobile-builds).
 
 On Android, install and launch on a matching ARM64 device/emulator. Check all five path
 categories, their scopes, absence of an unnecessary storage permission prompt, legitimate
@@ -158,7 +158,7 @@ no mobile automation framework or Store deployment is required.
 ## Engines in ruleset tests
 
 A ruleset test selects its engine and toolchains as a consumer would. The contract
-docstring of [toolchains.bzl](../../godot/private/tests/toolchains.bzl) owns the details.
+docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.bzl) owns the details.
 
 | The test needs | It uses |
 | --- | --- |
@@ -169,7 +169,7 @@ docstring of [toolchains.bzl](../../godot/private/tests/toolchains.bzl) owns the
 ## Regression fixtures
 
 The projects below are controlled inputs for rules_godot regressions, separate from each
-example's own tests. For area responsibilities, see the [test-area map](../../tests/AGENTS.md).
+example's own tests. For area responsibilities, see the [test-area map](../../rules_godot/tests/AGENTS.md).
 They form the consumer module `rules_godot_tests` at `tests/`: run their labels from
 `tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from the repository
 root.

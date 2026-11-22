@@ -99,7 +99,7 @@ that main name, including its existing underscores.
 **Computed macro roots remain a review obligation**: `generator_name` may identify an internal
 helper instead of the authored invocation. Review the expression and its inputs while
 preserving output filenames, registration symbols and resource paths. Record
-the roots in `REVIEWED` in [the RG002 module](../../tools/conventions/rules/rg002.py), by BUILD
+the roots in `REVIEWED` in [the RG002 module](../../../tools/conventions/rules/rg002.py), by BUILD
 path. The roots are the call's emitted names without a role; every other emitted owned label is
 checked against exactly one of them. A changed root set requires renewed review; stale
 reviews fail. Missing required ownership or review evidence fails the check.
@@ -440,7 +440,7 @@ bazel run //tools/conventions -- --rule RG001
 bazel run //tools/conventions -- --list-rules
 ```
 
-Each rule lives in its own module under [`tools/conventions/rules`](../../tools/conventions/rules)
+Each rule lives in its own module under [`tools/conventions/rules`](../../../tools/conventions/rules)
 with its regression tests beside it. The convention checks do not
 prove configured dependencies or runtime behavior.
 

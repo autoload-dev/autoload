@@ -13,7 +13,7 @@ local_path_override(
 bazel_dep(name = "autoload_gdunit", version = "0.1.0")
 local_path_override(
     module_name = "autoload_gdunit",
-    path = "../addons/gdunit",
+    path = "../../addons/gdunit",
 )
 
 bazel_dep(name = "platforms", version = "1.0.0")

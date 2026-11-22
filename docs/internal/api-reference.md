@@ -1,13 +1,13 @@
 # Maintaining the Bazel API reference
 
-Browse the [API index](../public/api/index.md), organized by the task a caller wants to
+Browse the [API index](../../rules_godot/docs/public/api/index.md), organized by the task a caller wants to
 perform. Each symbol has one reference and one public load path.
 Platform setup, tutorials and architecture remain in the existing guides;
 reference pages link to them.
 
 ## Public entrypoints and implementation modules
 
-[`modules.bzl`](../public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
+[`modules.bzl`](../../rules_godot/docs/public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
 
 | Role | Purpose | Generated reference |
 | --- | --- | --- |
@@ -38,8 +38,8 @@ Keep implementation notes in source comments and docstrings.
 Consumers configure `godot_cpp_bindings` in `MODULE.bazel`, then pass its
 generated C++ library as `deps = ["@godot_cpp//:godot_cpp"]` to
 `godot_cc_extension`. These are the public contracts documented in the
-[repository reference](../public/api/reference/godot_extension_repositories.md#godot_cpp_bindings)
-and [C++ integration guide](../public/gdextension.md#c-bindings).
+[repository reference](../../rules_godot/docs/public/api/reference/godot_extension_repositories.md#godot_cpp_bindings)
+and [C++ integration guide](../../rules_godot/docs/public/gdextension.md#c-bindings).
 
 Each public symbol identity (API kind plus its defining file and name) has
 exactly one public owner. A second public export fails CI even when it uses a
@@ -76,7 +76,7 @@ independently named repository datasets and toolchains separately from companion
 main target. Neither an output group per provider field nor a synthetic main target for an entire
 repository is required. Check actual visibility as well as documented support.
 
-Additional macro target names follow [RG002](../public/conventions.md#rg002): `<name>.<role>`.
+Additional macro target names follow [RG002](../../rules_godot/docs/public/conventions.md#rg002): `<name>.<role>`.
 The convention, including slash-suffixed rules_android basenames, is owned there. A dotted name does
 not grant public visibility, and output-group keys and artifact filenames do not inherit
 the target separator. Document only the supported public companion targets as consumer interfaces.
@@ -86,7 +86,7 @@ the API has them, `### Output groups` and `### Generated targets`; a section wit
 omitted. Private rules, macros and repository rules keep these sections too: they document
 the ruleset's internal use and are ready when a symbol becomes public, although only public
 ones are checked against Bazel. Each section is a list, which stays readable on narrow pages
-such as the BCR's, in the form the [output-contract parser](../../tools/docs/output_contracts.py)
+such as the BCR's, in the form the [output-contract parser](../../rules_godot/tools/docs/output_contracts.py)
 defines:
 
 ```markdown
@@ -115,7 +115,7 @@ its producers in its own documentation. Conditional availability must have repre
 configured evidence. Configuration-only targets have explicit metadata roles; they must not
 invent files.
 
-The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
+The [case registry](../../rules_godot/godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
 and configurations, not another copy of the public prose. It also names the behavior tests
 that show why an API's public companion targets are separate; the checker requires them to
 resolve. A case or behavior test names its `module` when its fixture lives in a consumer
@@ -198,7 +198,7 @@ pages without a generated-file marker.
 for public primary references. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
 The release script (`.github/workflows/release_prep.sh`) packs exactly these files into
-`rules_godot-<tag>.docs.tar.gz`, which `docs_url` in `.bcr/source.template.json` names and
+`rules_godot-<tag>.docs.tar.gz`, which `docs_url` in `.bcr/rules_godot/source.template.json` names and
 the registry renders; see [Releasing](releasing.md).
 
 Do not collect every `starlark_doc_extract` output into an archive: unfiltered

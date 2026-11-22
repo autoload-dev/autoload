@@ -9,7 +9,7 @@ below do not themselves introduce new rules, IDs, exceptions or lint gates.
 At that research baseline, implementation and test-project migration still needed a
 subsequent reviewed scope.
 
-**Current enforcement:** The [convention catalogue](../public/conventions.md) owns the
+**Current enforcement:** The [convention catalogue](../../rules_godot/docs/public/conventions.md) owns the
 automated policies, coverage and severity. The
 [convention checker](../../tools/conventions/check.py) implements them. The comparison below
 retains its research baseline; consult the catalogue for current enforcement.
@@ -91,8 +91,8 @@ rule IDs; no proposed predicate overrides the current guidance.
 ## Existing sources and enforcement
 
 [AGENTS.md](../../AGENTS.md) and area instructions provide orientation, work recipes and
-review-only guidance. [Project layout](../public/project-layout.md) owns package, target and
-test ownership; the [convention catalogue](../public/conventions.md) owns automated rules
+review-only guidance. [Project layout](../../rules_godot/docs/public/project-layout.md) owns package, target and
+test ownership; the [convention catalogue](../../rules_godot/docs/public/conventions.md) owns automated rules
 and their coverage limits.
 
 The existing enforcement has several owners:
@@ -102,7 +102,7 @@ The existing enforcement has several owners:
   warnings as well as its ordinary checks.
 - [Language checks](../../tools/lint/lint.py) run pinned Ruff and ty tools over the workspace.
 - The [convention checker](../../tools/conventions/check.py) runs the
-  [catalogued rules](../public/conventions.md): naming, public-doc fixture references,
+  [catalogued rules](../../rules_godot/docs/public/conventions.md): naming, public-doc fixture references,
   example API references and documentation command labels resolved in their owning
   Bazel modules. It is not a full layout-policy checker.
 - [API documentation checks](api-reference.md) use evaluated Bazel/Stardoc metadata and
@@ -265,11 +265,11 @@ rewrite intentionally broken inputs merely to make lint green.
 
 Useful first audit cases:
 
-- [shared math resources](../../godot/private/tests/pack_membership/fixtures/project_with_pack_variants/BUILD.bazel) have a single
+- [shared math resources](../../rules_godot/godot/private/tests/pack_membership/fixtures/project_with_pack_variants/BUILD.bazel) have a single
   resource target named `math`: assess whether the main-entry convention should apply.
-- [C ABI fixture](../../godot/extension/tests/fixtures/c_abi/BUILD.bazel) names its extension
+- [C ABI fixture](../../rules_godot/godot/extension/tests/fixtures/c_abi/BUILD.bazel) names its extension
   `hello`, which determines its library outputs: identify the tested identity before any fix.
-- [dSYM fixtures](../../godot/platforms/private/tests/desktop_package/fixtures/macos_apps_with_dsyms/BUILD.bazel) deliberately use nested output
+- [dSYM fixtures](../../rules_godot/godot/platforms/private/tests/desktop_package/fixtures/macos_apps_with_dsyms/BUILD.bazel) deliberately use nested output
   target names; the [feature-selected libraries fixture](../../godot/extension/tests/fixtures/feature_selected_libraries/BUILD.bazel)
   includes shared library filename targets. Classify these precise cases rather than exempting every
   fixture target or banning every slash/dot in test data.

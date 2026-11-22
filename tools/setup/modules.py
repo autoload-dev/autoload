@@ -29,24 +29,39 @@ def addon_modules(root: Path) -> tuple[str, ...]:
     )
 
 
+def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
+    """
+    The modules nested in a module: each directory of its `.bazelignore` that holds a
+    MODULE.bazel, with the modules nested in those, relative to the repository root.
+    """
+    ignore = root / module / ".bazelignore"
+    lines = ignore.read_text().splitlines() if ignore.is_file() else []
+    nested = (
+        (Path(module) / name).as_posix()
+        for name in (line.strip() for line in lines)
+        if name and not name.startswith("#")
+    )
+    return tuple(
+        found
+        for path in nested
+        if (root / path / "MODULE.bazel").is_file()
+        for found in (path, *ignored_modules(root, path))
+    )
+
+
 def module_paths(root: Path) -> tuple[str, ...]:
     """
-    The root module, every directory of its `.bazelignore` that holds a module, and each
-    add-on module of `addons/` with its examples: the root ignores `addons` as a whole.
+    The root module, every module its `.bazelignore` names, with the modules nested in those,
+    and each add-on module of `addons/` with its examples: the root ignores `addons` as a
+    whole.
     """
-    ignored = (root / ".bazelignore").read_text().splitlines()
-    listed = tuple(
-        name
-        for name in (line.strip() for line in ignored)
-        if name and not name.startswith("#") and (root / name / "MODULE.bazel").is_file()
-    )
     addons = tuple(
         module
         for addon in addon_modules(root)
         for module in (addon, f"{addon}/examples")
         if (root / module / "MODULE.bazel").is_file()
     )
-    return (".",) + listed + addons
+    return (".", *ignored_modules(root), *addons)
 
 
 @dataclass(frozen=True)

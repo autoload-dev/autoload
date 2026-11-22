@@ -10,4 +10,4 @@ finding through its rule in [the catalogue](conventions.md).
 
 In READMEs and getting-started guides, use numbered steps ending in visible success. Preserve
 copyable setup and usage for each supported workflow when reorganizing pages. Ruleset fixture
-commands belong in [maintainer recipes](../internal/verification-recipes.md#regression-fixtures).
+commands belong in [maintainer recipes](../../../docs/internal/verification-recipes.md#regression-fixtures).

@@ -8,21 +8,23 @@ from tools.conventions.test_support import Record, RepositoryTest
 FILES = (
     "MODULE.bazel",
     "BUILD.bazel",
-    "tools/BUILD.bazel",
-    "examples/MODULE.bazel",
-    "examples/BUILD.bazel",
-    "examples/addons/sqlite/demo/BUILD.bazel",
+    "rules_godot/MODULE.bazel",
+    "rules_godot/BUILD.bazel",
+    "rules_godot/tools/BUILD.bazel",
+    "rules_godot/examples/MODULE.bazel",
+    "rules_godot/examples/BUILD.bazel",
+    "rules_godot/examples/addons/sqlite/demo/BUILD.bazel",
     "consumers/demo/MODULE.bazel",
     "consumers/demo/android/BUILD.bazel",
 )
 
 
 RECORDS: list[Record] = [
-    {"name": "//tools:driver", "path": "tools/BUILD.bazel"},
-    {"name": "//:checks", "path": "examples/BUILD.bazel"},
+    {"name": "//tools:driver", "path": "rules_godot/tools/BUILD.bazel"},
+    {"name": "//:checks", "path": "rules_godot/examples/BUILD.bazel"},
     {
         "name": "//addons/sqlite/demo:run",
-        "path": "examples/addons/sqlite/demo/BUILD.bazel",
+        "path": "rules_godot/examples/addons/sqlite/demo/BUILD.bazel",
     },
     {"name": "//android:android", "path": "consumers/demo/android/BUILD.bazel"},
 ]
@@ -68,25 +70,28 @@ bazel build //path/to:target //docs/... //:consumer_snippet
             "README.md": "`bazel build //:consumer_template`\n"
             "`bazel run @autoload_rules_godot//tools:driver`\n"
             "`bazel run //addons/sqlite/demo:run`",
-            "docs/public/project-layout.md": "cd examples\n"
+            "rules_godot/docs/public/project-layout.md": "cd examples\n"
             "bazel run //addons/sqlite/demo:all",
             "docs/internal/development.md": "From `consumers/demo`, run\n"
             "`bazel test //android`",
-            "examples/README.md": "`bazel test //:checks`",
+            "rules_godot/examples/README.md": "`bazel test //:checks`",
         }
         self.assertEqual([], self.evaluate(documents, RECORDS))
 
     def test_missing_targets_and_packages_are_reported_at_their_line(self) -> None:
         documents = {
             "README.md": "Intro.\n`bazel run //tools:missing //missing:target`",
-            "examples/README.md": "`bazel run //addons/sqlite/demo:missing`",
+            "rules_godot/examples/README.md": "`bazel run //addons/sqlite/demo:missing`",
         }
         self.assertEqual(
             [
                 (
                     "README.md",
                     2,
-                    "//tools:missing: no rule 'missing' in package 'tools' of module .",
+                    (
+                        "//tools:missing: no rule 'missing' in package 'tools' of "
+                        "module rules_godot"
+                    ),
                 ),
                 (
                     "README.md",
@@ -97,11 +102,11 @@ bazel build //path/to:target //docs/... //:consumer_snippet
                     ),
                 ),
                 (
-                    "examples/README.md",
+                    "rules_godot/examples/README.md",
                     1,
                     (
                         "//addons/sqlite/demo:missing: no rule 'missing' in package "
-                        "'addons/sqlite/demo' of module examples"
+                        "'addons/sqlite/demo' of module rules_godot/examples"
                     ),
                 ),
             ],
@@ -112,7 +117,7 @@ bazel build //path/to:target //docs/... //:consumer_snippet
         findings = self.evaluate(
             {"README.md": "`bazel run //tools:driver`"},
             RECORDS,
-            ("examples/tools/BUILD.bazel",),
+            ("rules_godot/examples/tools/BUILD.bazel",),
         )
         self.assertEqual(1, len(findings))
         self.assertTrue(findings[0][2].endswith("found 2"))

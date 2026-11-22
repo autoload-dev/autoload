@@ -11,7 +11,7 @@ class FixtureReferences:
     info = RuleInfo(
         "RG004",
         "Public documentation does not reference test fixtures",
-        "docs/public/conventions.md#rg004",
+        "rules_godot/docs/public/conventions.md#rg004",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

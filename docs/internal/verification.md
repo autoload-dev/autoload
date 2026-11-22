@@ -104,13 +104,13 @@ behavior-preserving moves do not by themselves require them; run the checks affe
 changed references.
 
 Examples retain their own meaningful behavior tests under [design principle V](principles.md#v-examples-demonstrate-test-projects-isolate). Follow
-[example scope](../../examples/AGENTS.md#scope-and-design) when changing them. Do not add a
+[example scope](../../rules_godot/examples/AGENTS.md#scope-and-design) when changing them. Do not add a
 mobile automation framework merely to complete verification.
-For tests inside an example's or user's project, read [test ownership](../public/project-layout.md#test-ownership).
-For the existing regression module's layout, use its [module guide](../../tests/AGENTS.md).
+For tests inside an example's or user's project, read [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
+For the existing regression module's layout, use its [module guide](../../rules_godot/tests/AGENTS.md).
 
 Review the diff against the user's scope and applicable AGENTS.md files; for package or target
-changes, also use the relevant [layout sections](../public/project-layout.md). Update rules or temporary exceptions made
+changes, also use the relevant [layout sections](../../rules_godot/docs/public/project-layout.md). Update rules or temporary exceptions made
 obsolete by the change. Check English language, example focus/public API use and documentation
 claims against the owning code. Report conflicts before implementing a conflicting decision.
 Fix findings in their source; suppression comments are for intentional exceptions with a reason.

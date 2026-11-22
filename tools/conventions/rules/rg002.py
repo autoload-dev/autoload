@@ -11,7 +11,7 @@ from tools.conventions.naming import LOWER_SNAKE_CASE
 # authored roots of one computed call, such as a comprehension. The roots are the
 # emitted names without a dotted role, so a changed root set needs a new review.
 REVIEWED: Mapping[str, tuple[tuple[str, ...], ...]] = {
-    "godot/platforms/private/tests/app_platform_selection/BUILD.bazel": (
+    "rules_godot/godot/platforms/private/tests/app_platform_selection/BUILD.bazel": (
         (
             "linux_app_contains_selected_platform_libraries_test",
             "macos_app_contains_selected_platform_libraries_test",
@@ -27,7 +27,7 @@ REVIEWED: Mapping[str, tuple[tuple[str, ...], ...]] = {
             "ios_source_simulator_app_contains_selected_platform_libraries_test",
         ),
     ),
-    "godot/engine/private/tests/fixtures/release_override/BUILD.bazel": (
+    "rules_godot/godot/engine/private/tests/fixtures/release_override/BUILD.bazel": (
         (
             "runtime_linux_arm64_release",
             "runtime_linux_x86_64_release",
@@ -35,10 +35,10 @@ REVIEWED: Mapping[str, tuple[tuple[str, ...], ...]] = {
             "runtime_macos_x86_64_release",
         ),
     ),
-    "godot/platforms/private/tests/platform_libraries/fixtures/extension_library_declarations/BUILD.bazel": (
+    "rules_godot/godot/platforms/private/tests/platform_libraries/fixtures/extension_library_declarations/BUILD.bazel": (
         ("collision_a", "collision_b"),
     ),
-    "godot/private/config/tests/fixtures/desktop_runtimes_only/BUILD.bazel": (
+    "rules_godot/godot/private/config/tests/fixtures/desktop_runtimes_only/BUILD.bazel": (
         (
             "runtime_linux_arm64",
             "runtime_linux_x86_64",
@@ -46,7 +46,7 @@ REVIEWED: Mapping[str, tuple[tuple[str, ...], ...]] = {
             "runtime_macos_x86_64",
         ),
     ),
-    "godot/private/tests/validation/BUILD.bazel": (
+    "rules_godot/godot/private/tests/validation/BUILD.bazel": (
         (
             "validation_runs_no_project_code_authored_autoload_project_test",
             "validation_runs_no_project_code_autoload_project_test",
@@ -99,7 +99,7 @@ class TargetNames:
     info = RuleInfo(
         "RG002",
         "Ordinary target names use lower snake case",
-        "docs/public/conventions.md#rg002",
+        "rules_godot/docs/public/conventions.md#rg002",
     )
 
     def __init__(

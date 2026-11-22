@@ -99,7 +99,8 @@ jobs:
           android-cache: "true"
           bazel-modules: |
             .
-            tests
+            rules_godot
+            rules_godot/tests
       - name: Run apps with source-built engines
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
@@ -124,8 +125,9 @@ jobs:
         with:
           bazel-modules: |
             .
-            tests
-            examples
+            rules_godot
+            rules_godot/tests
+            rules_godot/examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads

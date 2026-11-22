@@ -17,7 +17,7 @@ from tools.setup.modules import (
 # module's development SDK and each consumer module's SDK.
 SDK = "android_sdk_repository_extension.configure"
 # Pins the Linux SDK and NDK of godot_android_toolchains for remote Linux executors.
-LINUX_TOOLCHAINS = "godot/platforms/private/android_toolchains.bzl"
+LINUX_TOOLCHAINS = "rules_godot/godot/platforms/private/android_toolchains.bzl"
 
 
 def sdk_requirements(source: str) -> dict[str, str | int]:
@@ -59,9 +59,10 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 
 def application_modules(root: Path) -> list[str]:
     """
-    The modules that build applications: every module but the add-on modules in addons/,
-    which use their examples' SDK, and the examples of an add-on module whose addon.pkl
-    names no application lane. Each of them must configure its SDK.
+    The modules that build applications: every module but the repository's own tooling at
+    the root, the add-on modules in addons/, which use their examples' SDK, and the examples
+    of an add-on module whose addon.pkl names no application lane. Each of them must
+    configure its SDK.
     """
     addons = set(addon_modules(root))
     without_apps = {
@@ -70,7 +71,9 @@ def application_modules(root: Path) -> list[str]:
         if not module.builds_apps
     }
     return [
-        module for module in module_paths(root) if module not in addons | without_apps
+        module
+        for module in module_paths(root)
+        if module not in addons | without_apps | {"."}
     ]
 
 

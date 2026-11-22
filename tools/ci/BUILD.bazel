@@ -5,7 +5,8 @@ py_library(
     srcs = ["verification.py"],
     # The tasks that provision the Android SDK.
     data = ["//:mise.toml"],
-    visibility = ["//tools/docs:__pkg__"],
+    # The ruleset's output contracts run per lane (rules_godot/).
+    visibility = ["//visibility:public"],
 )
 
 py_test(

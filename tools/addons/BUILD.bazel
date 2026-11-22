@@ -8,6 +8,7 @@ py_library(
         "modules.py",
         "new.py",
         "registry.py",
+        "uids.py",
     ],
     data = ["Addon.pkl"] + glob(["template/**"]),
     visibility = [
@@ -16,7 +17,6 @@ py_library(
         "//tools/conventions:__pkg__",
     ],
     deps = [
-        "//tools:resource_uids_lib",
         "//tools/setup:modules_lib",
     ],
 )

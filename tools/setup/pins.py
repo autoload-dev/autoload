@@ -38,6 +38,10 @@ EXCEPTIONS: dict[str, set[str]] = {
     # 7.2 with the gradle resolver; the ruleset's modules stay on 6.10 until they move too.
     "addons/firebase": {"bazel_dep:rules_jvm_external"},
     "addons/firebase/examples": {"bazel_dep:rules_jvm_external"},
+    # The repository's tooling pins the rules_go the ruleset's graph resolves, which the
+    # ruleset sees through its development dependency on the root module (MODULE.bazel);
+    # the examples' newer one stays theirs.
+    ".": {"bazel_dep:rules_go"},
 }
 
 

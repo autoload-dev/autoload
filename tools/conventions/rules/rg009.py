@@ -3,13 +3,13 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import RULESET_MODULE, Context, Location
 from tools.conventions.framework import Finding, RuleInfo
 
 
 def _white_box(path: Path, module: Path) -> bool:
     """Whether a configuration is a fixture: the ruleset's, or of an add-on module's tests."""
-    if module == Path("."):
+    if module == RULESET_MODULE:
         return True
     return (
         module.parent.parent == Path("addons")
@@ -22,7 +22,7 @@ class TypedRootLayout:
     info = RuleInfo(
         "RG009",
         "Applications and add-ons use their typed roots",
-        "docs/public/conventions.md#rg009",
+        "rules_godot/docs/public/conventions.md#rg009",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

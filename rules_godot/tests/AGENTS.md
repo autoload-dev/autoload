@@ -4,7 +4,7 @@ This independent Bazel module, `rules_godot_tests`, holds the ruleset's regressi
 projects and builds them as a consumer builds: through its own `MODULE.bazel`, with public
 `@autoload_rules_godot` labels only. This page describes the module as it exists. Where a new test
 goes, and what this module will contain, is owned by the
-[verification architecture](../docs/internal/verification-architecture.md).
+[verification architecture](../../docs/internal/verification-architecture.md).
 
 ## Layout
 
@@ -28,7 +28,7 @@ bazel test //...
 are `manual` and run in configuration suites: `test_suite` targets in `BUILD.bazel`, one per
 `.bazelrc` configuration, run with that `--config`. The `android:apps` and `ios:apps`
 tasks run them; the
-[fixture catalogue](../docs/internal/verification-recipes.md#mobile-artifact-checks)
+[fixture catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks)
 lists the suites. To preview the work a branch selects:
 
 ```sh
@@ -36,7 +36,7 @@ hk --profile host check --plan --from-ref origin/main
 ```
 
 For a reproducer or existing fixture, use the relevant entry in the
-[fixture catalogue](../docs/internal/verification-recipes.md#regression-fixtures) and run
+[fixture catalogue](../../docs/internal/verification-recipes.md#regression-fixtures) and run
 its focused target from this directory. The root verification policy owns TDD, timing and
 evidence.
 

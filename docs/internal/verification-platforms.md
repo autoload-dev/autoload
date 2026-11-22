@@ -7,8 +7,8 @@ verification tooling. The [verification policy](verification.md) owns timing, TD
 ## Supported verification matrix
 
 This is the maintained representative verification set, not a Cartesian product. Product
-support and acquisition availability remain in [platform setup](../public/platforms.md),
-[versions](../public/versions.md) and [engines](../public/engine.md). A missing matrix cell
+support and acquisition availability remain in [platform setup](../../rules_godot/docs/public/platforms.md),
+[versions](../../rules_godot/docs/public/versions.md) and [engines](../../rules_godot/docs/public/engine.md). A missing matrix cell
 creates no automatic obligation to add it. Do not infer that all CPUs or upstream
 Godot features are covered from one passing cell.
 

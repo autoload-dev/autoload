@@ -11,7 +11,7 @@ class AddonProjects:
     info = RuleInfo(
         "RG010",
         "Add-ons separate demo and Godot test projects",
-        "docs/public/conventions.md#rg010",
+        "rules_godot/docs/public/conventions.md#rg010",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

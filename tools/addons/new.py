@@ -25,7 +25,7 @@ from pathlib import Path
 
 from tools.addons import registry
 from tools.addons.modules import ROOT, module_name, module_path
-from tools.resource_uids import id_to_uid
+from tools.addons.uids import id_to_uid
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
 # Every template file ends in it, so that no tool takes the templates for sources.

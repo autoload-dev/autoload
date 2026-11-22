@@ -13,6 +13,8 @@ from tools.addons.modules import ROOT, module_name, module_path
 
 METADATA = "metadata.template.json"
 SOURCE = "source.template.json"
+# The ruleset's metadata template, whose maintainers and repositories every module shares.
+RULESET_METADATA = Path(".bcr/rules_godot") / METADATA
 
 
 def templates_directory(directory: str) -> Path:
@@ -25,7 +27,7 @@ def metadata(directory: str, root: Path = ROOT) -> str:
     A module's metadata template: the ruleset's, so that maintainers and repositories have
     one source, with the module's directory as homepage.
     """
-    values = json.loads((root / ".bcr" / METADATA).read_text())
+    values = json.loads((root / RULESET_METADATA).read_text())
     values["homepage"] += f"/tree/main/{module_path(directory).as_posix()}"
     return json.dumps(values, indent=2) + "\n"
 
@@ -33,7 +35,7 @@ def metadata(directory: str, root: Path = ROOT) -> str:
 def metadata_problem(text: str, directory: str, root: Path) -> str | None:
     if text == metadata(directory, root):
         return None
-    return "must be .bcr/metadata.template.json with the module's homepage"
+    return "must be .bcr/rules_godot/metadata.template.json with the module's homepage"
 
 
 def source_problem(text: str, directory: str, root: Path) -> str | None:

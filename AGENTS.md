@@ -1,11 +1,18 @@
-# Working in rules_godot
+# Working in Autoload
 
-This repository provides Bazel rules for Godot projects, extensions and application
-packaging. `godot/` owns the rules and `tools/` the build tools, each with white-box tests in
-`tests/` subpackages. `examples/`
-and `tests/` are independent consumer modules: the examples and the ruleset regressions, run
-from their own directory. Where a test goes and which form it takes is owned by the
-[verification architecture](docs/internal/verification-architecture.md). Public guides are in `docs/public/`, and maintainer references and the
+This repository is the Autoload monorepo: tooling and support for the Godot ecosystem. Each
+component lives in its own directory with its own Bazel module and releases:
+`rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
+and `addons/` the Godot add-on modules. The root module holds only the repository's own
+tooling in `tools/`: CI selection, add-on scaffolding, setup checks, formatting, linting and
+the conventions check. A component never loads files from the root's `tools/`.
+
+In `rules_godot/`, `godot/` owns the rules and `tools/` the build tools, each with white-box
+tests in `tests/` subpackages. `rules_godot/examples/` and `rules_godot/tests/` are
+independent consumer modules: the examples and the ruleset regressions, run from their own
+directory. Where a test goes and which form it takes is owned by the
+[verification architecture](docs/internal/verification-architecture.md). Public guides are in
+`rules_godot/docs/public/`, and maintainer references and the
 [design principles](docs/internal/principles.md) in `docs/internal/`.
 
 Keep ideas and follow-ups that are not yet planned in [ideas.md](docs/internal/ideas.md).
@@ -16,9 +23,9 @@ Follow the file's entry format, and remove an entry once a change delivers it.
 Implementation needs its own approval. Do not propose, create or maintain GitHub Issues.
 
 Read linked sections when their stated condition applies; links are not a request to load
-every referenced document. For examples, read [example guidance](examples/AGENTS.md).
+every referenced document. For examples, read [example guidance](rules_godot/examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
-For ruleset regression work under `tests/`, read [the test-area map](tests/AGENTS.md).
+For ruleset regression work under `tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
 For the add-on modules under `addons/`, read [add-on guidance](addons/AGENTS.md).
 
 Use English for code, game/example UI, documentation, commits and pull requests.
@@ -57,14 +64,14 @@ For its configs, Bazel flags per task and a personal `user.bazelrc`, read
 # Design and review decisions
 
 When adding or moving packages, targets or Godot tests, use the relevant
-[layout section](docs/public/project-layout.md): [package boundaries](docs/public/project-layout.md#build-files-and-package-boundaries),
-[target ownership](docs/public/project-layout.md#target-ownership-and-project-context) or
-[test ownership](docs/public/project-layout.md#test-ownership). Choose boundaries for meaningful
+[layout section](rules_godot/docs/public/project-layout.md): [package boundaries](rules_godot/docs/public/project-layout.md#build-files-and-package-boundaries),
+[target ownership](rules_godot/docs/public/project-layout.md#target-ownership-and-project-context) or
+[test ownership](rules_godot/docs/public/project-layout.md#test-ownership). Choose boundaries for meaningful
 responsibilities, dependencies, reuse or visibility; neither directory count nor coverage
 counts are design goals. Naming/layout checks do not make those choices for you.
 
 When a convention check reports a finding or incomplete coverage, consult the named rule in
-[the catalogue](docs/public/conventions.md). Fix findings in source. Reserve `# noqa`,
+[the catalogue](rules_godot/docs/public/conventions.md). Fix findings in source. Reserve `# noqa`,
 `# ty: ignore` and `# buildifier: disable=...` for intentional exceptions with a reason.
 Computed macro names need a recorded decision in the owning rule, not an assumption that a
 passing run checked them.

@@ -111,7 +111,7 @@ class AddonModuleLayout:
     info = RuleInfo(
         "RG015",
         "Add-on modules share one layout",
-        "docs/public/conventions.md#rg015",
+        "rules_godot/docs/public/conventions.md#rg015",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

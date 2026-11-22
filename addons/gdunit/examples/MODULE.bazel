@@ -17,7 +17,7 @@ bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
 # changed with.
 local_path_override(
     module_name = "autoload_rules_godot",
-    path = "../../..",
+    path = "../../../rules_godot",
 )
 
 bazel_dep(name = "platforms", version = "1.0.0")

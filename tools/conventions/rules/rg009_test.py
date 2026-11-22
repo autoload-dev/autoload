@@ -23,23 +23,23 @@ class TypedRootLayoutTest(RepositoryTest):
         self.assertEqual(
             [],
             self.evaluate(
-                "examples/projects/game/BUILD.bazel",
-                "examples/projects/game/project.godot",
-                "tests/mobile/BUILD.bazel",
-                "tests/mobile/android/project.godot",
-                "examples/addons/widget/demo/project.godot",
-                "examples/addons/widget/tests/project.godot",
-                "tests/shared_addon/demo/project.godot",
-                "tests/shared_addon/tests/project.godot",
+                "rules_godot/examples/projects/game/BUILD.bazel",
+                "rules_godot/examples/projects/game/project.godot",
+                "rules_godot/tests/mobile/BUILD.bazel",
+                "rules_godot/tests/mobile/android/project.godot",
+                "rules_godot/examples/addons/widget/demo/project.godot",
+                "rules_godot/examples/addons/widget/tests/project.godot",
+                "rules_godot/tests/shared_addon/demo/project.godot",
+                "rules_godot/tests/shared_addon/tests/project.godot",
             ),
         )
 
     def test_legacy_groups_unit_packages_and_unnamed_roots_are_rejected(self) -> None:
         findings = self.evaluate(
-            "examples/games/game/project.godot",
-            "examples/projects/project.godot",
-            "tests/project.godot",
-            "tests/smoke/project.godot",
+            "rules_godot/examples/games/game/project.godot",
+            "rules_godot/examples/projects/project.godot",
+            "rules_godot/tests/project.godot",
+            "rules_godot/tests/smoke/project.godot",
         )
         self.assertEqual(len(findings), 4)
         self.assertTrue(
@@ -71,7 +71,8 @@ class TypedRootLayoutTest(RepositoryTest):
 
     def test_project_needs_configuration_and_own_build(self) -> None:
         findings = self.evaluate(
-            "tests/raw_library/native.cc", "examples/projects/app/project.godot"
+            "rules_godot/tests/raw_library/native.cc",
+            "rules_godot/examples/projects/app/project.godot",
         )
         self.assertEqual(len(findings), 3)
         self.assertTrue(
@@ -85,9 +86,9 @@ class TypedRootLayoutTest(RepositoryTest):
         self.assertEqual(
             [],
             self.evaluate(
-                "tests/tools/c_abi/native.cc",
-                "tests/tools/resources/project.godot.tpl",
-                "tests/parser_test.py",
+                "rules_godot/tests/tools/c_abi/native.cc",
+                "rules_godot/tests/tools/resources/project.godot.tpl",
+                "rules_godot/tests/parser_test.py",
                 "godot/private/default_project.godot",
             ),
         )

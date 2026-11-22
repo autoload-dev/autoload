@@ -1,5 +1,5 @@
 # The module roots publish-to-bcr knows when no module_roots input overrides them. Every
 # release overrides them with its tag's module (publish.yaml), whose templates lie in
-# .bcr/<root>/: the ruleset's here, an add-on module's in .bcr/addons/<module>/.
+# .bcr/<root>/: the ruleset's in .bcr/rules_godot/, an add-on module's in .bcr/addons/<module>/.
 moduleRoots:
-  - "."
+  - "rules_godot"

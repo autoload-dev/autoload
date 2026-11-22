@@ -11,7 +11,7 @@ class PackageNames:
     info = RuleInfo(
         "RG001",
         "Package segments use lower snake case",
-        "docs/public/conventions.md#rg001",
+        "rules_godot/docs/public/conventions.md#rg001",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

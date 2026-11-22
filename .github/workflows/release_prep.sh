@@ -13,15 +13,10 @@ PREFIX="${NAME}-${VERSION}"
 REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/autoload}"
 ARCHIVE="${PREFIX}.tar.gz"
 
-# The archive holds the module's directory at its root. .gitattributes files keep
-# development-only directories out of it; a module below the root takes the repository's
-# license along.
-if [ "$ROOT" = . ]; then
-    git archive --format=tar --prefix="${PREFIX}/" "${TAG}" | gzip > "$ARCHIVE"
-else
-    git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" \
-        | gzip > "$ARCHIVE"
-fi
+# The archive holds the module's directory at its root and the repository's license. The
+# module's .gitattributes keeps development-only directories out of it.
+git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" \
+    | gzip > "$ARCHIVE"
 
 # The ruleset's API documentation and the setup its release notes show.
 SETUP=""
@@ -30,11 +25,16 @@ if [ "$NAME" = autoload_rules_godot ]; then
     # entrypoints (docs/internal/api-reference.md), not every starlark_doc_extract output.
     # See https://github.com/bazelbuild/bazel-central-registry/blob/main/docs/stardoc.md
     DOCS_TARGET=//docs/public/api:bcr_docs
+    # The ruleset builds from its own directory; the release files stay at the root.
+    OUTPUT="$PWD"
+    pushd "$ROOT" > /dev/null
     bazel build "$DOCS_TARGET" >&2
     BAZEL_BIN="$(bazel info bazel-bin 2>/dev/null)"
     bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \
         | sed "s#^bazel-out/[^/]*/bin/##" \
-        | tar --create --gzip --directory "$BAZEL_BIN" --file "${PREFIX}.docs.tar.gz" --files-from -
+        | tar --create --gzip --directory "$BAZEL_BIN" --file "${OUTPUT}/${PREFIX}.docs.tar.gz" \
+            --files-from -
+    popd > /dev/null
     SETUP='
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.prebuilt(name = "godot", version = "4.7.2")
