@@ -37,6 +37,14 @@ runs:
           echo "fresh=$fresh"
           echo "persistent-disk=$persistent"
         } >> "$GITHUB_OUTPUT"
+    # A persistent runner keeps its Bazel output bases between jobs, and keeps their Bazel
+    # servers with their analysis caches too unless it stops them at the job's end: it stops
+    # the processes that carry the job's RUNNER_TRACKING_ID. A later job's server then
+    # analyzes only what changed. The machine bounds how long an idle server stays.
+    - name: Keep Bazel servers between jobs
+      if: steps.runner.outputs.fresh == 'false'
+      shell: bash
+      run: echo "RUNNER_TRACKING_ID=" >> "$GITHUB_ENV"
     # Runner images may select an older NDK. Empty values let mise apply the
     # repository default while preserving its local override policy.
     - name: Clear runner NDK defaults
