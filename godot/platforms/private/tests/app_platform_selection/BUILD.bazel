@@ -283,6 +283,7 @@ configured_outputs(
             [
                 "manual",
                 "source_engine",
+                "source_engine_extended",
             ],
         ),
         (
@@ -291,6 +292,7 @@ configured_outputs(
             [
                 "manual",
                 "source_engine",
+                "source_engine_extended",
             ],
         ),
     ]

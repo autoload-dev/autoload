@@ -1,0 +1,21 @@
+name: Extended verification
+
+# The Apple workflow runs every source-engine case on main: a merge runs only the lane's
+# main cases, and the others, tagged source_engine_extended, and the Petri example's
+# source-built engine run here, on the schedule below and on manual dispatch. Policy:
+# docs/internal/verification-platforms.md#extended-source-engine-cases.
+on:
+  schedule:
+    # Midnight in Germany in winter, 01:00 in summer: the macos-ci runners are idle then.
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apple:
+    name: Apple
+    uses: ./.github/workflows/apple.yml
+    with:
+      plan: '{"host": [], "source-engine": ["source-engine:full"], "ios": [], "host_android": false}'
