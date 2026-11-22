@@ -132,8 +132,7 @@ source-built engine join them in `source-engine:full`.
 ### Apple lanes on pull requests
 
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
-with source-built engines and the iOS apps; the source-engine lane runs only in the
-[Source engine](#source-engine-workflow) workflow. They run in the
+with source-built engines and the iOS apps. They run in the
 [Apple](../../.github/workflows/apple.yml) workflow, which CI calls, on the self-hosted
 runners labeled `macos-ci`: four runners in one macOS VM, which keep their tools and Bazel
 caches on their own disk between jobs. A pull request's CI run leaves them out, so that the

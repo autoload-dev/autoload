@@ -40,9 +40,9 @@ APPLE_PLAN = "apple_plan"
 HOST_ANDROID = "host_android"
 
 
-# Lanes that pull requests, merges and CI's dispatch leave to the Source engine
-# workflow, which runs them on a schedule and on its own dispatch: building engines from
-# source is the most expensive work and the least likely to change with a commit.
+# Lanes that every run planning itself leaves to the Source engine workflow, which hands
+# the Apple workflow a fixed plan on a schedule and on its own dispatch: building engines
+# from source is the most expensive work and the least likely to change with a commit.
 SCHEDULED_LANES = ("source-engine",)
 
 
