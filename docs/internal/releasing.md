@@ -60,9 +60,10 @@ directories. `e2e/` stays in, because the registry's presubmit builds `e2e/smoke
 archive. An add-on's archive leaves its `examples/` out through the module's own
 `.gitattributes` and adds the repository's `LICENSE`.
 
-An add-on module's registry templates in `.bcr/addons/<module>/` are generated from its name
-and its `presubmit.yml` (`mise run addons:generate`, checked by `mise run test:setup`), so a
-module is ready to publish from its first commit; it is published when its tag is pushed.
+An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
+module by `mise run addon:new` and checked by the conventions (RG015), so a module is ready to
+publish from its first commit; it is published when its tag is pushed. `.bcr/config.yml`
+lists only the ruleset: every release names its module root itself (`publish.yaml`).
 
 The registry runs the test module on Linux and macOS with Bazel 9
 ([presubmit.yml](../../.bcr/presubmit.yml)). A first submission and any later change to

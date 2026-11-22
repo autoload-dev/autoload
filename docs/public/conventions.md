@@ -395,10 +395,14 @@ template, so that the same tasks build, test and release every module and nothin
 module lists it. Each module:
 
 - is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
-  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`,
-  `presubmit.yml` and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
+  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`
+  and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
   and `.bazelversion`, and, when it builds applications, `BUILD.bazel` and
   `maven_install.json`;
+- owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
+  `presubmit.yml` and a `source.template.json` that releases the archive
+  `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
+  removed with it;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
   `examples/.bazelrc` imports `addons/examples.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its

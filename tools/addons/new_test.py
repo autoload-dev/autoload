@@ -52,8 +52,17 @@ class GenerateTest(RepositoryTestCase):
         uid = self.read("widget/examples/projects/demo/main/demo.gd.uid").strip()
         self.assertRegex(uid, r"^uid://[a-z0-9]+$")
         self.assertIn(f'uid="{uid}" path="res://main/demo.gd"', scene)
+        source = (self.root / ".bcr/addons/widget/source.template.json").read_text()
+        self.assertIn('"strip_prefix": "autoload_widget-{VERSION}"', source)
+        self.assertIn(
+            "@autoload_widget//...",
+            (self.root / ".bcr/addons/widget/presubmit.yml").read_text(),
+        )
         generated = [
-            path for path in (self.root / "addons/widget").rglob("*") if path.is_file()
+            path
+            for tree in ("addons/widget", ".bcr/addons/widget")
+            for path in (self.root / tree).rglob("*")
+            if path.is_file()
         ]
         self.assertFalse([path for path in generated if TOKEN.search(path.read_text())])
 
@@ -66,6 +75,10 @@ class GenerateTest(RepositoryTestCase):
         self.assertIn(
             'name = "firebase_analytics"', self.read("firebase/analytics/BUILD.bazel")
         )
+
+    def test_a_module_that_is_not_released_gets_no_registry_templates(self) -> None:
+        generate("widget", root=self.root, release=False)
+        self.assertFalse((self.root / ".bcr/addons").exists())
 
     def test_existing_add_ons_and_unusual_names_are_refused(self) -> None:
         generate("widget", root=self.root)

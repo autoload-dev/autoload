@@ -154,7 +154,7 @@ description = "Report Code Health of the checkout with the CodeScene CLI, Starla
 run = "python3 -m tools.code_health.codescene"
 
 [tasks."test:setup"]
-description = "Check Android provisioning, the modules' shared pins, the files generated from the add-on modules and the mise environment"
+description = "Check Android provisioning, the modules' shared pins, the add-on consumers file and the mise environment"
 run = [
   "python3 -m tools.android.requirements",
   "python3 -m tools.setup.pins",
@@ -243,7 +243,7 @@ run = [
 ]
 
 [tasks."addons:generate"]
-description = "Regenerate the files derived from the add-on modules: README table and BCR templates"
+description = "Regenerate addons/consumers.pkl from the modules' local_path_overrides"
 run = "python3 -m tools.addons.generated"
 
 [tasks."test:examples"]

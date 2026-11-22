@@ -1,5 +1,4 @@
-# The Bazel Central Registry's checks of a release; .bcr/addons/sentry/ holds a copy
-# (mise run addons:generate).
+# The Bazel Central Registry's checks of a release of {{module_name}}.
 matrix:
   platform: ["macos", "macos_arm64", "ubuntu2204"]
   bazel: ["9.*"]
@@ -9,4 +8,4 @@ tasks:
     platform: ${{ platform }}
     bazel: ${{ bazel }}
     build_targets:
-      - "@autoload_sentry//..."
+      - "@{{module_name}}//..."

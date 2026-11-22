@@ -88,8 +88,6 @@ class AddonModule:
 
     path: Path
     name: str
-    version: str
-    summary: str
     projects: tuple[str, ...]
     hosts: tuple[str, ...] = HOSTS
     lanes: tuple[str, ...] = LANES
@@ -116,8 +114,6 @@ class AddonModule:
         return cls(
             path=path,
             name=str(attributes["name"]),
-            version=str(attributes.get("version", "")),
-            summary=readme_summary(module / "README.md"),
             projects=tuple(sorted(build.parent.name for build in projects)),
             hosts=manifest["hosts"],
             lanes=manifest.get("lanes", LANES),
@@ -125,23 +121,14 @@ class AddonModule:
         )
 
 
-def readme_summary(readme: Path) -> str:
-    """The first sentence of the paragraph after a README's title."""
-    lines = readme.read_text().splitlines() if readme.is_file() else []
-    title = next((i for i, line in enumerate(lines) if line.startswith("# ")), -1)
-    paragraph: list[str] = []
-    for line in lines[title + 1 :]:
-        if line.strip():
-            paragraph.append(line.strip())
-        elif paragraph:
-            break
-    sentence, period, _ = " ".join(paragraph).partition(". ")
-    return sentence + ("." if period else "")
-
-
 def module_path(directory: str) -> Path:
     """An add-on module's directory, relative to the repository root."""
     return Path(ADDONS) / directory
+
+
+def module_name(directory: str) -> str:
+    """The Bazel module name of the add-on module addons/<directory>."""
+    return f"autoload_{directory}"
 
 
 def all_modules(root: Path = ROOT) -> tuple[AddonModule, ...]:

@@ -2,11 +2,13 @@
 Create an add-on module in addons/ from the template, or add an add-on to a module.
 
 `python3 -m tools.addons.new <module> [--addon <addon>]` (`mise run addon:new`) writes
-tools/addons/template/module/ to addons/<module>/ for a new module, and
+tools/addons/template/module/ to addons/<module>/ for a new module, with
+tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases, and
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
 named like the module unless --addon names it. In both trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. A new
-module's examples then pin their Maven graph, which needs Bazel and the network.
+module's examples then pin their Maven graph, which needs Bazel and the network. The
+written files belong to the module from then on: nothing regenerates them.
 
 `addons/.selftest` (gitignored) is the self-test's module (`mise run addon:template`): it is
 regenerated from scratch each time.
@@ -21,7 +23,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.addons.modules import ROOT, module_path
+from tools.addons import registry
+from tools.addons.modules import ROOT, module_name, module_path
 from tools.resource_uids import id_to_uid
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
@@ -61,7 +64,7 @@ class Names:
         parts = [self.module] if self.addon == self.module else [self.module, self.addon]
         return {
             "module": self.module,
-            "module_name": f"autoload_{self.module}",
+            "module_name": module_name(self.module),
             "addon": self.addon,
             # Unique across add-ons and applications, and never the add-on's own name.
             "extension": f"{self.module}_{self.addon}"
@@ -102,8 +105,13 @@ def copy_tree(tree: str, target: Path, tokens: dict[str, str]) -> list[Path]:
     return written
 
 
-def generate(directory: str, addon: str | None = None, root: Path = ROOT) -> list[Path]:
-    """Write a new module with one add-on, or one add-on into an existing module."""
+def generate(
+    directory: str, addon: str | None = None, root: Path = ROOT, release: bool = True
+) -> list[Path]:
+    """
+    Write a new module with one add-on, or one add-on into an existing module. A new module
+    that is released also gets its registry templates in .bcr/addons/<directory>/.
+    """
     names = Names(directory, addon)
     invalid = [name for name in (names.module, names.addon) if not NAME.fullmatch(name)]
     if invalid:
@@ -113,7 +121,18 @@ def generate(directory: str, addon: str | None = None, root: Path = ROOT) -> lis
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
+        if release:
+            written += registry_templates(directory, root, tokens)
     return written + copy_tree("addon", module / names.addon, tokens)
+
+
+def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:
+    """The templates publish-to-bcr reads for the module's releases, written once."""
+    templates = root / registry.templates_directory(directory)
+    written = copy_tree("bcr", templates, tokens)
+    metadata = templates / registry.METADATA
+    metadata.write_text(registry.metadata(directory, root))
+    return [*written, metadata]
 
 
 def pin(directory: str, root: Path = ROOT) -> None:
@@ -140,15 +159,15 @@ def main() -> None:
     args = parser.parse_args()
     if args.module == SELFTEST:
         shutil.rmtree(ROOT / module_path(SELFTEST), ignore_errors=True)
-    written = generate(args.module, args.addon or None)
+    # The self-test module is never released.
+    written = generate(args.module, args.addon or None, release=args.module != SELFTEST)
     for path in written:
         print(path.relative_to(ROOT))
     if any(path.name == "MODULE.bazel" for path in written) and not args.no_pin:
         pin(args.module)
     if args.module != SELFTEST:
         print(
-            "\nNext: describe the module in the first paragraph of its README, run "
-            "`mise run addons:generate` and verify it with "
+            "\nNext: describe the module in its README and verify it with "
             f"`mise run addon:host {args.module}`."
         )
 

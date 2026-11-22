@@ -2,6 +2,7 @@
 
 import unittest
 
+from tools.addons.modules import ROOT
 from tools.addons.new import generate
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.test_support import RepositoryTest
@@ -11,6 +12,10 @@ class AddonModuleLayoutTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
         self.write(".bazelversion", "9.3.0\n")
+        self.write(
+            ".bcr/metadata.template.json",
+            (ROOT / ".bcr/metadata.template.json").read_text(),
+        )
 
     def module(self, directory: str, addon: str | None = None) -> None:
         """A module as the generator writes it, in the workspace inventory."""
@@ -28,17 +33,26 @@ class AddonModuleLayoutTest(RepositoryTest):
 
     def test_missing_files_names_and_shared_settings(self) -> None:
         self.module("widget")
-        self.files.discard("addons/widget/presubmit.yml")
+        self.files.discard(".bcr/addons/widget/presubmit.yml")
+        for template in ("source", "metadata"):
+            path = f".bcr/addons/widget/{template}.template.json"
+            self.write(path, (self.root / path).read_text().replace("widget", "gadget"))
         self.write("addons/widget/MODULE.bazel", 'module(name = "widget")\n')
         self.write("addons/widget/.bazelrc", "common --config=x\n")
         self.assertEqual(
             sorted(self.evaluate()),
             [
                 "add-on module must be named autoload_widget",
-                "add-on module must own addons/widget/presubmit.yml",
+                "add-on module must own .bcr/addons/widget/presubmit.yml",
+                "must be .bcr/metadata.template.json with the module's homepage",
                 "must import the shared settings: import %workspace%/../module.bazelrc",
+                "must release the archive autoload_widget-{VERSION}",
             ],
         )
+
+    def test_registry_templates_of_a_removed_module(self) -> None:
+        self.write(".bcr/addons/gone/source.template.json", "{}\n")
+        self.assertEqual(["no add-on module owns .bcr/addons/gone"], self.evaluate())
 
     def test_addon_pkl_amends_the_schema_with_known_values(self) -> None:
         self.module("widget")
