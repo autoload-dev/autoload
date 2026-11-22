@@ -18,7 +18,7 @@ explains each part.
 Add the dependency and register an engine in your root `MODULE.bazel`. Replace `<version>`
 with the latest version from the
 [Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot); the
-[release notes](https://github.com/autoload-dev/rules_godot/releases) show the same snippet
+[release notes](https://github.com/autoload-dev/autoload/releases) show the same snippet
 with the version filled in.
 
 ```starlark
@@ -42,7 +42,7 @@ and add an override. For a shared build, pin a reviewed full commit SHA:
 ```starlark
 git_override(
     module_name = "autoload_rules_godot",
-    remote = "https://github.com/autoload-dev/rules_godot.git",
+    remote = "https://github.com/autoload-dev/autoload.git",
     commit = "<full commit SHA>",
 )
 ```

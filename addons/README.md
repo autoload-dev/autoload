@@ -36,8 +36,8 @@ module's directory as `strip_prefix`:
 archive_override(
     module_name = "autoload_<module>",
     integrity = "sha256-...",
-    strip_prefix = "rules_godot-<commit>/addons/<module>",
-    urls = ["https://github.com/autoload-dev/rules_godot/archive/<commit>.tar.gz"],
+    strip_prefix = "autoload-<commit>/addons/<module>",
+    urls = ["https://github.com/autoload-dev/autoload/archive/<commit>.tar.gz"],
 )
 ```
 
