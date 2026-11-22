@@ -10,6 +10,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
+load("//godot/private:versions.bzl", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
 
 visibility("public")
@@ -207,7 +208,7 @@ def _library_impl(ctx):
             origin = str(ctx.label),
             bundle_files = {},
             debug_symbols = linked_dsym(target),
-            minimum_os = ctx.attr.minimum_os,
+            minimum_os = _minimum_os(ctx.attr),
         ))
     if CcInfo in target:
         result.append(target[CcInfo])
@@ -258,7 +259,7 @@ _SOURCE_ATTRS = {
     ),
     "digest": attr.string(doc = "Source archive digest, such as sha256:<hex>."),
     "customizations": attr.string_list_dict(doc = "Requested patches, modules, custom_modules and options."),
-    "minimum_os": attr.string(doc = "Deployment target Godot's SCons platform sets, such as 11.0 for macOS arm64; empty where it sets none."),
+    "minimum_os": attr.string(doc = "Deployment target Godot's SCons platform sets, such as 11.0 for macOS arm64; empty where it sets none. Apple engines compile for at least libc++'s floor, iOS 15.0 and macOS 11.0."),
 }
 
 # The deployment-target option each Apple platform's engine compiles against.
@@ -266,6 +267,25 @@ _FLOOR_OPTIONS = {
     "macos": MACOS_MINIMUM_OS_OPTION,
     "ios": IOS_MINIMUM_OS_OPTION,
 }
+
+# The earliest versions the libc++ of current Xcode supports; below them every translation
+# unit warns that libc++ no longer supports the platform. Godot's own build targets iOS 14.0
+# and, on Intel Macs, macOS 10.13.
+_LIBCXX_MINIMUM_OS = {
+    "macos": "11.0",
+    "ios": "15.0",
+}
+
+def _minimum_os(attr):
+    """
+    The deployment target an Apple engine compiles for: Godot's own, raised to libc++'s floor.
+
+    Applications cannot go below it either, since the runtime reports it.
+    """
+    floor = _LIBCXX_MINIMUM_OS.get(attr.platform, "")
+    if attr.minimum_os and floor and version_below(attr.minimum_os, floor):
+        return floor
+    return attr.minimum_os
 
 def _floor(settings, attr):
     """
@@ -278,7 +298,7 @@ def _floor(settings, attr):
     values = {option: settings[option] for option in _FLOOR_OPTIONS.values()}
     option = _FLOOR_OPTIONS.get(attr.platform)
     if option and attr.minimum_os:
-        values[option] = attr.minimum_os
+        values[option] = _minimum_os(attr)
     return values
 
 def _desktop_native_impl(settings, attr):
