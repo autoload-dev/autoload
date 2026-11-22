@@ -48,7 +48,9 @@ SCHEDULED_LANES = ("source-engine",)
 
 def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]:
     """Leave out the tasks of the lanes that only the Source engine workflow runs."""
-    return {lane: [] if lane in SCHEDULED_LANES else tasks for lane, tasks in lanes.items()}
+    return {
+        lane: [] if lane in SCHEDULED_LANES else tasks for lane, tasks in lanes.items()
+    }
 
 
 def runs_apple(lanes: dict[str, list[str]], event_name: str) -> bool:

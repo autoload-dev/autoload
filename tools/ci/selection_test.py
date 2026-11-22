@@ -86,7 +86,9 @@ class SelectionTest(unittest.TestCase):
         )
         # hk's own message is the only clue when it fails, such as in a fresh add-on checkout.
         if result.returncode != 0:
-            self.fail(f"{' '.join(command)} exited with {result.returncode}:\n{result.stderr}")
+            self.fail(
+                f"{' '.join(command)} exited with {result.returncode}:\n{result.stderr}"
+            )
         return json.loads(result.stdout)
 
     def test_shared_example_dependencies_select_all_example_suites(self) -> None:

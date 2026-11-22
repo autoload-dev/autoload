@@ -105,7 +105,9 @@ class VerificationTest(unittest.TestCase):
         only_engines = {lane: [] for lane in LANES} | {"source-engine": ["source-engine"]}
         self.assertFalse(runs_apple(without_scheduled_lanes(only_engines), "merge_group"))
 
-    def test_source_engine_workflow_hands_the_apple_workflow_a_complete_plan(self) -> None:
+    def test_source_engine_workflow_hands_the_apple_workflow_a_complete_plan(
+        self,
+    ) -> None:
         # The Apple workflow reads every lane of its plan; a lane the literal lacks reads null.
         workflow = (ROOT / ".github/workflows/source-engine.yml").read_text()
         literal = re.search(r"plan: '(.*)'", workflow)
