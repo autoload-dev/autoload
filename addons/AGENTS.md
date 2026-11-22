@@ -1,8 +1,8 @@
 # Add-ons
 
 Each directory here is a Bazel module of its own, `addons/<module>` named
-`autoload_<module>`, which applications consume like any other module. A module has its own `MODULE.bazel`, README, version and
-release tags `<module>-v<version>`.
+`autoload_<module>`, which applications consume like any other module. A module has its own
+`MODULE.bazel`, README, version and release tags `<module>-v<version>`.
 
 Create modules and add-ons with the generator, never by copying another module:
 
@@ -13,9 +13,9 @@ mise run addon:new <module> --addon <addon>   # one more add-on in a module
 
 It writes [tools/addons/template](../tools/addons/template), which builds in every lane from
 the start, and a new module's registry templates in `.bcr/addons/<module>/`. From then on
-the module owns those files: nothing regenerates them. Improve the template, not one module, when a pattern should hold for all of them.
-A new add-on gets its own module, unless it must be versioned with others, such as products
-that share one SDK.
+the module owns those files: nothing regenerates them. Improve the template, not one module,
+when a pattern should hold for all of them. A new add-on gets its own module, unless it must
+be versioned with others, such as products that share one SDK.
 
 # Module layout
 

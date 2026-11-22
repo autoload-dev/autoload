@@ -76,9 +76,9 @@ class GenerateTest(RepositoryTestCase):
             'name = "firebase_analytics"', self.read("firebase/analytics/BUILD.bazel")
         )
 
-    def test_the_self_test_module_gets_no_registry_templates(self) -> None:
-        generate(".selftest", root=self.root)
-        self.assertFalse((self.root / ".bcr").exists())
+    def test_a_module_that_is_not_released_gets_no_registry_templates(self) -> None:
+        generate("widget", root=self.root, release=False)
+        self.assertFalse((self.root / ".bcr/addons").exists())
 
     def test_existing_add_ons_and_unusual_names_are_refused(self) -> None:
         generate("widget", root=self.root)

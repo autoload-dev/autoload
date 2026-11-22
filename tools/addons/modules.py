@@ -126,6 +126,11 @@ def module_path(directory: str) -> Path:
     return Path(ADDONS) / directory
 
 
+def module_name(directory: str) -> str:
+    """The Bazel module name of the add-on module addons/<directory>."""
+    return f"autoload_{directory}"
+
+
 def all_modules(root: Path = ROOT) -> tuple[AddonModule, ...]:
     """Every add-on module of the checkout, by directory."""
     return tuple(AddonModule.load(Path(path), root) for path in addon_modules(root))

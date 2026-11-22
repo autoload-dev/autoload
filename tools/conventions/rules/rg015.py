@@ -5,6 +5,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
+from tools.addons import registry as templates
 from tools.addons.modules import (
     AMENDS,
     HOSTS,
@@ -14,6 +15,7 @@ from tools.addons.modules import (
     addon_values,
     builds_apps,
     module_attributes,
+    module_name,
 )
 from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
@@ -29,9 +31,7 @@ REQUIRED = tuple(
 )
 # The registry templates each module owns in .bcr/addons/<directory>/, which the generator
 # writes once with the module; publish-to-bcr reads them there.
-BCR = Path(".bcr")
-REGISTRY = tuple(relative for _, relative in template_files("bcr"))
-SOURCE = "source.template.json"
+REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
 # The shared settings each module's .bazelrc files import.
 IMPORTS = {
     ".bazelrc": "import %workspace%/../module.bazelrc",
@@ -65,22 +65,6 @@ def backends_directory(name: str) -> Path | None:
         if part == "backends" and previous != "native":
             return Path(*parts[: index + 1])
     return None
-
-
-def template_directory(name: str) -> Path | None:
-    """The directory .bcr/addons/<directory>/ that holds a file, if it lies in one."""
-    parts = Path(name).parts
-    inside = parts[:2] == (BCR / ADDONS).parts and len(parts) > 3
-    return Path(*parts[:3]) if inside else None
-
-
-def releases_own_archive(
-    workspace: Workspace, source: Path, directory: str
-) -> Iterable[Finding]:
-    """A module's source template names the archive of the module's own release."""
-    archive = f"autoload_{directory}-{{VERSION}}"
-    if archive not in workspace.text(source.as_posix()):
-        yield Finding(at(source), f"must release the archive {archive}")
 
 
 def in_modules(name: str, modules: list[Path]) -> bool:
@@ -175,40 +159,34 @@ class AddonModuleLayout:
         for relative in required:
             if (module / relative).as_posix() not in workspace.file_set:
                 yield Finding(at(manifest), f"add-on module must own {module / relative}")
-        expected = f"autoload_{module.name}"
+        expected = module_name(module.name)
         if module_attributes(workspace.text(manifest.as_posix())).get("name") != expected:
             yield Finding(at(manifest), f"add-on module must be named {expected}")
 
     @staticmethod
     def registry(workspace: Workspace, module: Path) -> Iterable[Finding]:
-        """The module's registry templates exist and release the module's own archive."""
-        templates = BCR / module
-        missing = [
-            relative
-            for relative in REGISTRY
-            if (templates / relative).as_posix() not in workspace.file_set
-        ]
-        for relative in missing:
-            yield Finding(
-                at(module / "MODULE.bazel"),
-                f"add-on module must own {templates / relative}",
-            )
-        if SOURCE not in missing:
-            yield from releases_own_archive(workspace, templates / SOURCE, module.name)
+        """The module's registry templates exist and describe the module's own releases."""
+        directory = templates.templates_directory(module.name)
+        for name in REGISTRY:
+            path = (directory / name).as_posix()
+            if path not in workspace.file_set:
+                yield Finding(
+                    at(module / "MODULE.bazel"), f"add-on module must own {path}"
+                )
+            elif message := templates.problem(
+                name, workspace.text(path), module.name, workspace.root
+            ):
+                yield Finding(at(path), message)
 
     @staticmethod
     def orphaned_templates(
         workspace: Workspace, modules: list[Path]
     ) -> Iterable[Finding]:
         """Registry templates of a module that no longer exists are removed with it."""
-        owned = {BCR / module for module in modules}
-        directories = {
-            directory
-            for name in workspace.files
-            if (directory := template_directory(name)) is not None
-        }
-        for directory in sorted(directories - owned):
-            yield Finding(at(directory / SOURCE), f"no add-on module owns {directory}")
+        owners = {owner for name in workspace.files if (owner := templates.owner(name))}
+        for directory in sorted(owners - {module.name for module in modules}):
+            path = templates.templates_directory(directory)
+            yield Finding(at(path), f"no add-on module owns {path.as_posix()}")
 
     @staticmethod
     def imports(workspace: Workspace, module: Path) -> Iterable[Finding]:

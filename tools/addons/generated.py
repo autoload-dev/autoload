@@ -38,20 +38,16 @@ def consumers_pkl(users: dict[str, tuple[str, ...]]) -> str:
     )
 
 
-def expected(root: Path = ROOT) -> str:
-    return consumers_pkl(consumers(root))
-
-
-def stale(root: Path = ROOT) -> list[str]:
-    """The generated files whose content differs from what the modules say."""
+def stale(root: Path = ROOT) -> bool:
+    """Whether the file differs from what the modules' overrides say."""
     target = root / PATH
-    current = target.read_text() if target.is_file() else None
-    return [] if current == expected(root) else [PATH]
+    expected = consumers_pkl(consumers(root))
+    return not target.is_file() or target.read_text() != expected
 
 
 def write(root: Path = ROOT) -> None:
     (root / PATH).parent.mkdir(parents=True, exist_ok=True)
-    (root / PATH).write_text(expected(root))
+    (root / PATH).write_text(consumers_pkl(consumers(root)))
 
 
 def main() -> None:

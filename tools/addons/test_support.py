@@ -15,7 +15,7 @@ class RepositoryTestCase(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        for name in (".bazelversion",):
+        for name in (".bazelversion", ".bcr/metadata.template.json"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
         # The root module, which ignores the consumer modules it names here.

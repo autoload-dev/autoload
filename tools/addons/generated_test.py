@@ -14,12 +14,12 @@ class GeneratedTest(RepositoryTestCase):
             'local_path_override(module_name = "autoload_widget", '
             'path = "../addons/widget")\n'
         )
-        self.assertEqual(stale(self.root), [PATH])
+        self.assertTrue(stale(self.root))
         write(self.root)
-        self.assertEqual(stale(self.root), [])
+        self.assertFalse(stale(self.root))
         self.assertIn('["widget"] = List("tests")', (self.root / PATH).read_text())
 
     def test_a_new_module_leaves_the_file_current(self) -> None:
         write(self.root)
         generate("widget", root=self.root)
-        self.assertEqual(stale(self.root), [])
+        self.assertFalse(stale(self.root))
