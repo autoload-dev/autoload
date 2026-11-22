@@ -19,7 +19,7 @@ load(
 load("//godot/platforms/private:ios.bzl", _godot_ios_application = "godot_ios_application")
 load("//godot/platforms/private:macos_signing.bzl", _godot_macos_sign = "godot_macos_sign")
 load("//godot/private:run.bzl", _godot_source_application = "godot_source_application")
-load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
+load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS")
 load(
     "//godot/private/config:application.bzl",
     _application_id = "application_id",
@@ -534,7 +534,7 @@ godot_app = macro(
         "macos_entitlements": attr.label(doc = "Optional declared entitlement plist, including generated files; only the selected signer consumes it."),
         "application_id": attr.string(doc = "Android application ID or Apple bundle identifier; required for mobile. On macOS an empty value keeps the pack's application/bundle_identifier; Linux ignores it."),
         "macos_minimum_os_version": attr.string(doc = "Minimum macOS version of the application: the bundle's LSMinimumSystemVersion and the deployment target of the native code its pack compiles, such as extension libraries. The default is Godot's floor; a source-built engine compiles for that floor regardless.", default = MACOS_MINIMUM_OS),
-        "ios_minimum_os_version": attr.string(doc = "Minimum iOS version of the application. It is part of the application context, so the pack exports with it; the runtime must support it.", default = "15.0"),
+        "ios_minimum_os_version": attr.string(doc = "Minimum iOS version of the application. It is part of the application context, so the pack exports with it; the runtime must support it.", default = IOS_MINIMUM_OS),
         "ios_families": attr.string_list(doc = "Unique nonempty subset of iphone/ipad: the device families of the application's Info.plist and of the pack's export options.", default = ["iphone", "ipad"]),
         "android_min_sdk_version": attr.int(doc = "Minimum SDK; zero uses the selected engine profile fallback. Distinct from NDK/compile SDK."),
         "android_target_sdk_version": attr.int(doc = "Target SDK; zero uses the engine profile fallback and resolved target must be >= minimum."),

@@ -900,7 +900,8 @@ def swift_module_options(flags: Iterable[str], root: Path) -> dict[str, Any]:
         _apply_swift_flag(result, flag, values, root)
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", result["module_name"]):
         raise ValueError("Invalid upstream Swift module name: " + result["module_name"])
-    if not result["bridging_header"]:
+    # _apply_swift_flag sets it through the dictionary, which type checkers do not follow.
+    if not result.get("bridging_header"):
         raise ValueError("Upstream Swift module has no declared bridging header")
     return result
 
