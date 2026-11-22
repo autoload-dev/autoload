@@ -27,8 +27,9 @@ Godot features are covered from one passing cell.
 Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
 included, run in the host sets (`mise run test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
-are `manual`, so the host sets do not analyze their source recipes; those also tagged
-`source_engine_extended` run only in the [Source engine verification](#source-engine-verification) workflow.
+are `manual`, so the host sets do not analyze their source recipes. CI runs the lane only in
+the [Source engine verification](#source-engine-verification) workflow; locally,
+`mise run source-engine` leaves out the tests also tagged `source_engine_extended`.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
