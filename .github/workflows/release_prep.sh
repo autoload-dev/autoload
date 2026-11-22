@@ -10,7 +10,7 @@ NAME="$(field name)"
 VERSION="$(field version)"
 ROOT="$(field root)"
 PREFIX="${NAME}-${VERSION}"
-REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/rules_godot}"
+REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/autoload}"
 ARCHIVE="${PREFIX}.tar.gz"
 
 # The archive holds the module's directory at its root. .gitattributes files keep

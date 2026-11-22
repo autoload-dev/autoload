@@ -1,5 +1,5 @@
 {
-  "homepage": "https://github.com/autoload-dev/rules_godot",
+  "homepage": "https://github.com/autoload-dev/autoload",
   "maintainers": [
     {
       "name": "Gabriel Terwesten",
@@ -7,7 +7,7 @@
       "github_user_id": 5929595
     }
   ],
-  "repository": ["github:autoload-dev/rules_godot"],
+  "repository": ["github:autoload-dev/autoload", "github:autoload-dev/rules_godot"],
   "versions": [],
   "yanked_versions": {}
 }

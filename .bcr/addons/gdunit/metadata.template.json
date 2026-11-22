@@ -1,5 +1,5 @@
 {
-  "homepage": "https://github.com/autoload-dev/rules_godot/tree/main/addons/gdunit",
+  "homepage": "https://github.com/autoload-dev/autoload/tree/main/addons/gdunit",
   "maintainers": [
     {
       "name": "Gabriel Terwesten",
@@ -8,6 +8,7 @@
     }
   ],
   "repository": [
+    "github:autoload-dev/autoload",
     "github:autoload-dev/rules_godot"
   ],
   "versions": [],

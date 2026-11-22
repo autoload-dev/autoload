@@ -1,6 +1,6 @@
 # rules_godot
 
-[![CI](https://github.com/autoload-dev/rules_godot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/autoload-dev/rules_godot/actions/workflows/ci.yml)
+[![CI](https://github.com/autoload-dev/autoload/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/autoload-dev/autoload/actions/workflows/ci.yml)
 [![BCR](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbcr.bazel.build%2Fmodules%2Fautoload_rules_godot%2Fmetadata.json&query=%24.versions%5B-1%3A%5D&label=BCR&color=43a047)](https://registry.bazel.build/modules/autoload_rules_godot)
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
@@ -36,7 +36,7 @@ tests and every application package.
 
 1. Add rules_godot and an engine to your `MODULE.bazel`, with the latest version from the
    [Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) or the
-   [releases](https://github.com/autoload-dev/rules_godot/releases) in place of `<version>`:
+   [releases](https://github.com/autoload-dev/autoload/releases) in place of `<version>`:
 
    ```starlark
    bazel_dep(name = "autoload_rules_godot", version = "<version>")
@@ -91,7 +91,7 @@ Lichtpost is a small one-button courier game that uses tests, an editor view and
 application packaging. With [mise](https://mise.jdx.dev/getting-started.html) installed:
 
 ```sh
-git clone https://github.com/autoload-dev/rules_godot.git
+git clone https://github.com/autoload-dev/autoload.git
 cd rules_godot
 mise trust
 cd examples
