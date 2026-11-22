@@ -6,8 +6,9 @@ name: Extended verification
 # docs/internal/verification-platforms.md#extended-source-engine-cases.
 on:
   schedule:
-    # Midnight in Germany in winter, 01:00 in summer: the macos-ci runners are idle then.
-    - cron: "0 23 * * *"
+    # 03:00 in Berlin, summer and winter time alike: the macos-ci runners are idle then.
+    - cron: "0 3 * * *"
+      timezone: Europe/Berlin
   workflow_dispatch:
 
 permissions:
