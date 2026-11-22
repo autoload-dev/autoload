@@ -178,16 +178,16 @@ Use these project cases to find a concrete behavior:
 
 | Case | Behavior and useful test labels |
 |---|---|
-| `editor_view` | Editor writeback, sidecars and disabled extensions, from the repository root: `//godot/private/tests/editor_view` |
+| `editor_view` | Editor writeback, sidecars and disabled extensions, from `rules_godot/`: `//godot/private/tests/editor_view` |
 | `script_run` | Direct script execution, imports and command-line arguments: `//script_run` |
-| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from the repository root: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's: `cd addons/gdunit/examples && bazel test //tests/...` |
-| `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from the repository root: `//godot/private/tests/validation` |
+| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's: `cd addons/gdunit/examples && bazel test //tests/...` |
+| `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from `rules_godot/`: `//godot/private/tests/validation` |
 | `import_context_runs` | Composed settings and autoloads applied at runtime, an import input's own kept private: `//godot/private/tests/import_context_runs`; sidecars, import units, path and collision failures and metadata policies are analysis tests in `//godot/private/tests` |
-| `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from the repository root: `//godot/private/tests/gltf_import` |
+| `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from `rules_godot/`: `//godot/private/tests/gltf_import` |
 | `import_export_plugins` | Import plugins, that no export runs an add-on's export plugin, the configuration of each purpose and the icons and splash images Godot's exporters render: `//godot/private/tests/import_export_plugins` |
-| `resource_graph_resolution` | Real graph action over generated source declarations, from the repository root: `//godot/private/tests/resource_graph` |
+| `resource_graph_resolution` | Real graph action over generated source declarations, from `rules_godot/`: `//godot/private/tests/resource_graph` |
 | `extension_staging` | The extensions a pack carries and lists, and actual extension library loading: `//godot/extension/tests/staging` |
-| `export_settings` | Godot's exported Android/iOS facts, bridge files, exporter facts, release settings and shell files, from the repository root: `//godot/platforms/private/tests/export_settings` and `//tools/platforms/tests:godot_shell_test` |
+| `export_settings` | Godot's exported Android/iOS facts, bridge files, exporter facts, release settings and shell files, from `rules_godot/`: `//godot/platforms/private/tests/export_settings` and `//tools/platforms/tests:godot_shell_test` |
 
 The export-settings cases intentionally include incomplete engine inputs to inspect
 generated metadata. They are not runnable game examples. The desktop smoke scenarios
@@ -219,7 +219,7 @@ wrapper in `native_counter/`, with its own GdUnit suites in the test project
 own suite:
 
 ```sh
-cd tests
+cd rules_godot/tests
 bazel test //shared_addon/...
 ```
 
@@ -238,7 +238,7 @@ or `bazel test //:ios_official --config=official`.
 
 ### Source-built engine applications
 
-From the repository root, on macOS ARM64 with Xcode selected:
+From `rules_godot/`, on macOS ARM64 with Xcode selected:
 
 ```sh
 bazel test //tools/engine/tests:engine_test
@@ -261,7 +261,7 @@ separately built, fuller editor.
 The ruleset's tests tagged `source_engine` build Android and iOS applications with
 source-built engines, among them the patched beta engine and the source-built ARM64
 Simulator runtime. They are also `manual`, so `//...` does not analyze their source recipes.
-From the repository root, with the Android SDK and NDK installed:
+From `rules_godot/`, with the Android SDK and NDK installed:
 
 ```sh
 bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel test
@@ -277,7 +277,7 @@ and a godot-cpp extension and an imported SVG texture, and are compatible with t
 host only:
 
 ```sh
-cd tests
+cd rules_godot/tests
 bazel test //smoke/linux/... //smoke/macos/...
 bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 ```
@@ -308,7 +308,7 @@ stays the host set. The module root's configuration suites list them per `.bazel
 configuration; from `tests/`, test a suite with `--config` set to its configuration:
 
 ```sh
-cd tests
+cd rules_godot/tests
 bazel test //:android_aab --config=android --config=aab
 bazel test //:ios_official --config=official
 ```
@@ -322,10 +322,10 @@ The `android:apps` and `ios:apps` tasks run these suites. To record artifact-lev
 of the smoke applications, build them, then return to the root to inspect them:
 
 ```sh
-cd tests
+cd rules_godot/tests
 bazel build //smoke/android:app --config=android
 bazel build //smoke/ios:app --config=official
-cd ..
+cd ../..
 mise run inspect:mobile
 ```
 

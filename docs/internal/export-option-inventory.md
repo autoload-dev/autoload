@@ -229,7 +229,7 @@ effects. Hidden previously inventoried keys were checked with `has/get`; newly r
 names were obtained from both live preset property lists. Dynamically hidden new plugin
 names still need an explicit declaration/authored-name candidate as described above.
 
-Reproduce from the repository root by building
+Reproduce from `rules_godot/` by building
 `//godot/platforms/private/tests/app_platform_selection:linux_export_options_match_facts_observations_facts`
 and its `macos_`, `android_` and `ios_` counterparts with
 `--//godot:engine=beta`. Inspect each facts JSON by `editor_version`
