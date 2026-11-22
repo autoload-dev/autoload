@@ -53,16 +53,10 @@ def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]
     }
 
 
-def runs_apple(lanes: dict[str, list[str]], event_name: str) -> bool:
-    """Say whether a CI run calls the Apple workflow.
-
-    A pull request's run leaves it out: the merge queue runs it, and the ci:macos label
-    starts it for a pull request. Every other event calls it when an Apple lane is selected.
-    """
+def runs_apple(lanes: dict[str, list[str]]) -> bool:
+    """Say whether a CI run calls the Apple workflow: whenever an Apple lane is selected."""
     apple = for_host(lanes, WORKFLOW_HOSTS["apple"])
-    return event_name != "pull_request" and any(
-        apple[lane] for lane in WORKFLOW_JOBS["apple"]
-    )
+    return any(apple[lane] for lane in WORKFLOW_JOBS["apple"])
 
 
 def selected_tasks(outputs: dict, lane: str) -> list[str]:
@@ -254,9 +248,7 @@ def needs_android(tasks: list[str], android: frozenset[str]) -> bool:
     return any(task_command(task)[2] in android for task in tasks)
 
 
-def workflow_outputs(
-    workflow: str, lanes: dict[str, list[str]], event_name: str
-) -> dict[str, object]:
+def workflow_outputs(workflow: str, lanes: dict[str, list[str]]) -> dict[str, object]:
     """
     A workflow's selection outputs: each lane's tasks on the workflow's host, and whether its
     host job needs the Android SDK. CI also says whether it calls the Apple workflow, and
@@ -266,13 +258,13 @@ def workflow_outputs(
     outputs: dict[str, object] = {lane: here[lane] for lane in WORKFLOW_JOBS[workflow]}
     outputs[HOST_ANDROID] = needs_android(here["host"], android_tasks())
     if workflow == "ci":
-        outputs[APPLE_JOB] = runs_apple(lanes, event_name)
-        outputs[APPLE_PLAN] = json.dumps(workflow_outputs("apple", lanes, event_name))
+        outputs[APPLE_JOB] = runs_apple(lanes)
+        outputs[APPLE_PLAN] = json.dumps(workflow_outputs("apple", lanes))
     return outputs
 
 
-def write_plan(workflow: str) -> None:
-    """Write the tasks of each of a workflow's lanes for this run to GITHUB_OUTPUT."""
+def write_plan() -> None:
+    """Write CI's selection for this run to GITHUB_OUTPUT, the Apple workflow's plan included."""
     event_name = os.environ["GITHUB_EVENT_NAME"]
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     command = ["hk"]
@@ -282,7 +274,7 @@ def write_plan(workflow: str) -> None:
     command.extend(selection_args(event_name, event))
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
     lanes = without_scheduled_lanes(lane_plan(json.loads(result.stdout)))
-    outputs = workflow_outputs(workflow, lanes, event_name)
+    outputs = workflow_outputs("ci", lanes)
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.writelines(
             f"{name}={value if isinstance(value, str) else json.dumps(value)}\n"
@@ -294,14 +286,12 @@ def write_plan(workflow: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    plan = commands.add_parser(
-        "plan", help="Write the selected tasks of a workflow's lanes to GITHUB_OUTPUT"
-    )
+    # CI plans every run; the Apple workflow takes its plan from its caller.
+    commands.add_parser("plan", help="Write CI's selected tasks to GITHUB_OUTPUT")
     verify = commands.add_parser(
         "verify", help="Require a workflow's selected jobs to succeed"
     )
-    for command in (plan, verify):
-        command.add_argument("workflow", choices=sorted(WORKFLOW_JOBS))
+    verify.add_argument("workflow", choices=sorted(WORKFLOW_JOBS))
     run = commands.add_parser("run", help="Run one selected JSON task array")
     run.add_argument("tasks")
     args = parser.parse_args()
@@ -310,7 +300,7 @@ def main() -> None:
     elif args.command == "run":
         run_tasks(json.loads(args.tasks))
     else:
-        write_plan(args.workflow)
+        write_plan()
 
 
 if __name__ == "__main__":

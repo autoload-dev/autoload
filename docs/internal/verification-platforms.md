@@ -130,17 +130,16 @@ consumer's patched engine with its custom module, editor included; the tests tag
 `source_engine_extended`, the stable and beta patched engines and the Petri example's
 source-built engine join them in `source-engine:full`.
 
-### Apple lanes on pull requests
+### Apple lanes
 
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
 with source-built engines and the iOS apps. They run in the
 [Apple](../../.github/workflows/apple.yml) workflow, which CI calls, on the self-hosted
 runners labeled `macos-ci`: four runners in one macOS VM, which keep their tools and Bazel
-caches on their own disk between jobs. A pull request's CI run leaves them out, so that the
-few macOS runners stay free for the merge queue. The merge queue runs every selected
-lane, the Apple lanes included, on the result of the merge, and CI's `Finalize` is its
-required check: a pull request whose Apple lanes fail there leaves the queue and does not
-reach main. The ruleset of main, which requires the merge queue and that check, is managed
+caches on their own disk between jobs. CI runs every selected Apple lane like any other lane:
+on a pull request, so its checks show the Apple results before it merges, and in the merge
+queue, on the result of the merge. CI's `Finalize` is the merge queue's required check: a
+pull request whose Apple lanes fail there leaves the queue and does not reach main. The ruleset of main, which requires the merge queue and that check, is managed
 in the repository settings. Main receives the merge group's commit unchanged, so its checks
 show on the commit and a push to main runs no CI. The merge queue also saves the caches that
 later runs read, such as the Linux jobs' mise tools: Blacksmith's branch protection for the
@@ -148,13 +147,5 @@ Actions cache and sticky disks is off, so every branch reads a merge group's ent
 Markdown changes select no Apple lane. A manual dispatch runs all lanes, the Apple lanes
 included.
 `hk check --plan --from-ref origin/main` shows the selection, as does the Plan job.
-
-The `ci:macos` label runs the Apple workflow on a pull request before the merge queue does:
-once, for the commit that is labeled, beside the checks of the CI run. To run it for a later
-commit, remove the label and add it again. The run is optional and the label is the user's
-decision. An agent opening or updating a pull request whose changes could affect macOS or
-iOS behavior asks the user whether to add it and names the selected steps and those
-changes; an agent that cannot ask states the same in the pull request body and leaves the
-label off.
 
 Each workflow keeps job identities and a final result even when unrelated lanes are skipped.

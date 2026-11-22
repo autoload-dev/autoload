@@ -58,13 +58,6 @@ class VerificationTest(unittest.TestCase):
         needs["android"]["result"] = "success"
         verify_results("ci", needs)
 
-    def test_pull_request_run_leaves_out_the_apple_workflow(self) -> None:
-        lanes = {lane: [lane] for lane in LANES}
-        self.assertFalse(runs_apple(lanes, "pull_request"))
-        for event in ("merge_group", "workflow_dispatch"):
-            with self.subTest(event=event):
-                self.assertTrue(runs_apple(lanes, event))
-
     def test_run_without_a_selected_apple_lane_does_not_call_the_apple_workflow(
         self,
     ) -> None:
@@ -72,8 +65,8 @@ class VerificationTest(unittest.TestCase):
             "quality": ["lint"],
             "android": ["android"],
         }
-        self.assertFalse(runs_apple(lanes, "merge_group"))
-        self.assertTrue(runs_apple(lanes | {"host": ["test:bazel"]}, "merge_group"))
+        self.assertFalse(runs_apple(lanes))
+        self.assertTrue(runs_apple(lanes | {"host": ["test:bazel"]}))
 
     def test_ci_requires_the_apple_workflow_it_called(self) -> None:
         needs = needs_of("ci", apple="true") | {"apple": {"result": "skipped"}}
@@ -103,7 +96,7 @@ class VerificationTest(unittest.TestCase):
         self.assertEqual(planned["source-engine"], [])
         self.assertEqual(planned["host"], ["test:bazel"])
         only_engines = {lane: [] for lane in LANES} | {"source-engine": ["source-engine"]}
-        self.assertFalse(runs_apple(without_scheduled_lanes(only_engines), "merge_group"))
+        self.assertFalse(runs_apple(without_scheduled_lanes(only_engines)))
 
     def test_source_engine_workflow_hands_the_apple_workflow_a_complete_plan(
         self,
@@ -237,22 +230,22 @@ class VerificationTest(unittest.TestCase):
             for_host(lanes, "macos")["host"], ["test:bazel", "host:addon:gadget@macos"]
         )
         only_macos = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@macos"]}
-        self.assertTrue(runs_apple(only_macos, "merge_group"))
+        self.assertTrue(runs_apple(only_macos))
         only_linux = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@linux"]}
-        self.assertFalse(runs_apple(only_linux, "merge_group"))
+        self.assertFalse(runs_apple(only_linux))
 
     def test_the_plan_says_which_host_jobs_need_the_android_sdk(self) -> None:
         lanes = {lane: [] for lane in LANES} | {"host": ["host:addon:widget"]}
-        self.assertFalse(workflow_outputs("ci", lanes, "merge_group")["host_android"])
+        self.assertFalse(workflow_outputs("ci", lanes)["host_android"])
         lanes["host"].append("test:bazel")
-        self.assertTrue(workflow_outputs("ci", lanes, "merge_group")["host_android"])
+        self.assertTrue(workflow_outputs("ci", lanes)["host_android"])
 
     def test_ci_hands_the_apple_workflow_its_plan(self) -> None:
         lanes = {lane: [] for lane in LANES} | {
             "host": ["test:bazel", "host:addon:widget@linux"],
             "ios": ["ios:addon:widget"],
         }
-        outputs = workflow_outputs("ci", lanes, "merge_group")
+        outputs = workflow_outputs("ci", lanes)
         self.assertEqual(outputs["host"], ["test:bazel", "host:addon:widget@linux"])
         self.assertTrue(outputs["apple"])
         self.assertEqual(

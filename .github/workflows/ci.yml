@@ -13,9 +13,7 @@ permissions:
 # hk.pkl selects tasks for both local verification and CI. The selection job
 # avoids provisioning runners for unrelated changes. This workflow runs the
 # lanes that Linux runners can run and calls apple.yml for those that need a
-# macOS runner, except in a pull request's run: the merge queue runs them, and
-# the ci:macos label runs apple.yml for a pull request.
-# Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
+# macOS runner. Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
@@ -52,7 +50,7 @@ jobs:
           bazel: "false"
       - name: Select verification tasks
         id: plan
-        run: python3 tools/ci/verification.py plan ci
+        run: python3 tools/ci/verification.py plan
 
   formatting:
     name: Source quality
