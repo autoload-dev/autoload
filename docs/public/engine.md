@@ -188,7 +188,7 @@ register_toolchains("@my_engine//toolchains:all")
 or `4.8.0-beta` for an unnumbered beta; a recipe whose sources say otherwise fails.
 `build_targets` are `editor`, `template_debug` and `template_release`; iOS recipes add
 `ios_environments`, `device` or `simulator`. Editors compile for the execution platform.
-macOS and iOS recipes compile for the deployment target Godot's own build sets, 11.0 on macOS arm64 and 14.0 on iOS, whatever
+macOS and iOS recipes compile for the deployment target Godot's own build sets, raised to what the libc++ of current Xcode supports: 11.0 on macOS (Godot sets 10.13 on Intel Macs) and 15.0 on iOS (Godot sets 14.0), whatever
 the build's `--macos_minimum_os` or the application's minimum says, so one engine build
 serves every application; an application's minimum is its bundle's and its extension
 libraries', set by [`macos_minimum_os_version`](platforms.md#linux-and-macos) and

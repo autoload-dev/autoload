@@ -9,6 +9,7 @@ load("//godot/engine/private/tests:engines.bzl", "prebuilt_runtime")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
 _SOURCE_BINARY = "//godot/engine/private/tests/fixtures/source_built_runtime:godot"
+_SOURCE_BINARY_X86_64 = "//godot/engine/private/tests/fixtures/source_built_runtime:godot_x86_64"
 
 def _stand_in(name):
     native.genrule(
@@ -86,6 +87,18 @@ def _source_binary_reports_source_facts(env, target):
     env.expect.where(field = "bundle_files").that_dict(runtime.bundle_files).contains_exactly({})
     env.expect.where(field = "debug_symbols").that_bool(runtime.debug_symbols == None).equals(True)
 
+# An engine whose recipe targets an Apple version below libc++'s floor compiles for the floor
+# and reports it, so an application cannot go below it.
+def _test_source_binary_raises_minimum_to_libcxx_floor(name):
+    analysis_test(
+        name = name,
+        target = _SOURCE_BINARY_X86_64,
+        impl = _source_binary_raises_minimum_to_libcxx_floor,
+    )
+
+def _source_binary_raises_minimum_to_libcxx_floor(env, target):
+    env.expect.where(field = "minimum_os").that_str(target[GodotRuntimeInfo].minimum_os).equals("11.0")
+
 # With --apple_generate_dsym, the binary reports the .dSYM directory its link writes.
 def _test_source_binary_reports_linked_dsym(name):
     analysis_test(
@@ -109,6 +122,7 @@ def runtime_producer_test_suite(name):
         tests = [
             _test_prebuilt_runtime_declares_its_facts,
             _test_source_binary_reports_linked_dsym,
+            _test_source_binary_raises_minimum_to_libcxx_floor,
             _test_source_binary_reports_source_facts,
         ],
     )
