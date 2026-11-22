@@ -83,6 +83,7 @@ class SelectionTest(unittest.TestCase):
             },
             capture_output=True,
             text=True,
+            check=False,
         )
         # hk's own message is the only clue when it fails, such as in a fresh add-on checkout.
         if result.returncode != 0:
