@@ -11,9 +11,9 @@ permissions:
   contents: read
 
 # hk.pkl selects tasks for both local verification and CI. The selection job
-# avoids provisioning runners for unrelated changes. This workflow runs the
-# lanes that Linux runners can run and calls apple.yml for those that need a
-# macOS runner. Policy: docs/internal/verification-platforms.md#apple-lanes.
+# avoids provisioning runners for unrelated changes. The jobs that need a macOS
+# runner run on the self-hosted macos-ci runners, which keep their caches
+# between jobs. Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
@@ -30,14 +30,17 @@ jobs:
     name: Plan
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
+    # One output per job, named like it; a host job's _android one says whether it needs
+    # the Android SDK.
     outputs:
-      quality: ${{ steps.plan.outputs.quality }}
-      docs: ${{ steps.plan.outputs.docs }}
-      host: ${{ steps.plan.outputs.host }}
+      formatting: ${{ steps.plan.outputs.formatting }}
+      api_docs: ${{ steps.plan.outputs.api_docs }}
+      tests_linux: ${{ steps.plan.outputs.tests_linux }}
+      tests_linux_android: ${{ steps.plan.outputs.tests_linux_android }}
+      tests_macos: ${{ steps.plan.outputs.tests_macos }}
+      tests_macos_android: ${{ steps.plan.outputs.tests_macos_android }}
       android: ${{ steps.plan.outputs.android }}
-      apple: ${{ steps.plan.outputs.apple }}
-      apple_plan: ${{ steps.plan.outputs.apple_plan }}
-      host_android: ${{ steps.plan.outputs.host_android }}
+      ios: ${{ steps.plan.outputs.ios }}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,9 +58,9 @@ jobs:
   formatting:
     name: Source quality
     needs: selection
-    if: needs.selection.outputs.quality != '[]'
+    if: needs.selection.outputs.formatting != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.quality }}
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.formatting }}
     timeout-minutes: 10
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -78,9 +81,9 @@ jobs:
   api-docs:
     name: API documentation
     needs: selection
-    if: needs.selection.outputs.docs != '[]'
+    if: needs.selection.outputs.api_docs != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.docs }}
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.api_docs }}
     timeout-minutes: 15
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -96,7 +99,7 @@ jobs:
   tests-linux:
     name: Tests (Linux)
     needs: selection
-    if: needs.selection.outputs.host != '[]'
+    if: needs.selection.outputs.tests_linux != '[]'
     timeout-minutes: 30
     # Uncached Godot imports and exports are CPU-bound; 4 vCPUs ran 4 at a time.
     runs-on: blacksmith-8vcpu-ubuntu-2404
@@ -108,8 +111,25 @@ jobs:
       - name: Run host tests
         uses: ./.github/actions/host-tests
         with:
-          tasks: ${{ needs.selection.outputs.host }}
-          android: ${{ needs.selection.outputs.host_android }}
+          tasks: ${{ needs.selection.outputs.tests_linux }}
+          android: ${{ needs.selection.outputs.tests_linux_android }}
+
+  tests-macos:
+    name: Tests (macOS)
+    needs: selection
+    if: needs.selection.outputs.tests_macos != '[]'
+    timeout-minutes: 30
+    runs-on: macos-ci
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run host tests
+        uses: ./.github/actions/host-tests
+        with:
+          tasks: ${{ needs.selection.outputs.tests_macos }}
+          android: ${{ needs.selection.outputs.tests_macos_android }}
 
   android:
     name: Android
@@ -136,19 +156,36 @@ jobs:
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
-  apple:
-    name: Apple
+  ios:
+    name: iOS
     needs: selection
-    if: needs.selection.outputs.apple == 'true'
-    uses: ./.github/workflows/apple.yml
-    with:
-      # The Apple lanes of this run's plan: the Apple workflow does not plan again.
-      plan: ${{ needs.selection.outputs.apple_plan }}
+    if: needs.selection.outputs.ios != '[]'
+    env:
+      VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
+    timeout-minutes: 60
+    runs-on: macos-ci
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+        with:
+          bazel-modules: |
+            .
+            tests
+            examples
+      - name: Build and inspect apps
+        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup/save-downloads
 
   verification:
     name: Finalize
     if: always()
-    needs: [selection, formatting, api-docs, tests-linux, android, apple]
+    needs: [selection, formatting, api-docs, tests-linux, tests-macos, android, ios]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -156,4 +193,4 @@ jobs:
       - name: Require selected jobs to succeed
         env:
           VERIFICATION_NEEDS: ${{ toJSON(needs) }}
-        run: python3 tools/ci/verification.py verify ci
+        run: python3 tools/ci/verification.py verify

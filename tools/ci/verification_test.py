@@ -1,91 +1,66 @@
 """Regression tests for fail-closed CI selection and the assignment of tasks to lanes."""
 
-import json
-import re
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools.ci.verification import (
-    HOST_ANDROID,
+    JOBS,
     LANES,
-    WORKFLOW_JOBS,
+    SCHEDULED_LANES,
     for_host,
     lane_plan,
-    runs_apple,
+    output_name,
+    plan_outputs,
+    run_tasks,
     selection_args,
     task_command,
     verify_results,
     without_scheduled_lanes,
-    workflow_outputs,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def selection_outputs(workflow: str, **selected: str) -> dict[str, str]:
-    """Use a workflow's output names, including its source_engine mapping."""
-    outputs = {lane.replace("-", "_"): "[]" for lane in WORKFLOW_JOBS[workflow]}
-    if workflow == "ci":
-        outputs["apple"] = "false"
-    return {**outputs, **selected}
+def selection_outputs(**selected: str) -> dict[str, str]:
+    """CI's selection outputs, every job's empty but those given."""
+    return {output_name(job): "[]" for job in JOBS} | selected
 
 
-def needs_of(workflow: str, **selected: str) -> dict:
-    """A workflow's jobs after a successful selection."""
-    return {
-        "selection": {
-            "result": "success",
-            "outputs": selection_outputs(workflow, **selected),
-        }
-    }
+def needs_of(**selected: str) -> dict:
+    """CI's jobs after a successful selection."""
+    return {"selection": {"result": "success", "outputs": selection_outputs(**selected)}}
 
 
 class VerificationTest(unittest.TestCase):
-    def test_every_lane_has_a_job_and_only_the_host_lane_runs_in_both_workflows(
+    def test_every_lane_but_the_scheduled_ones_has_a_job_and_host_runs_on_both_hosts(
         self,
     ) -> None:
-        ci, apple = set(WORKFLOW_JOBS["ci"]), set(WORKFLOW_JOBS["apple"])
-        self.assertEqual(ci | apple, set(LANES))
-        self.assertEqual(ci & apple, {"host"})
+        lanes = [lane for lane, _ in JOBS.values()]
+        self.assertEqual(set(lanes), set(LANES) - set(SCHEDULED_LANES))
+        hosts = {host for lane, host in JOBS.values() if lane == "host"}
+        self.assertEqual(hosts, {"linux", "macos"})
 
     def test_selected_lane_cannot_be_satisfied_by_api_docs_success(self) -> None:
-        needs = needs_of("ci", android='["android"]') | {
+        needs = needs_of(android='["android"]') | {
             "api-docs": {"result": "success"},
             "android": {"result": "skipped"},
         }
         with self.assertRaisesRegex(ValueError, "android.*skipped"):
-            verify_results("ci", needs)
+            verify_results(needs)
         needs["android"]["result"] = "success"
-        verify_results("ci", needs)
+        verify_results(needs)
 
-    def test_run_without_a_selected_apple_lane_does_not_call_the_apple_workflow(
-        self,
-    ) -> None:
-        lanes = {lane: [] for lane in LANES} | {
-            "quality": ["lint"],
-            "android": ["android"],
-        }
-        self.assertFalse(runs_apple(lanes))
-        self.assertTrue(runs_apple(lanes | {"host": ["test:bazel"]}))
-
-    def test_ci_requires_the_apple_workflow_it_called(self) -> None:
-        needs = needs_of("ci", apple="true") | {"apple": {"result": "skipped"}}
-        with self.assertRaisesRegex(ValueError, "apple.*skipped"):
-            verify_results("ci", needs)
-        needs["apple"]["result"] = "success"
-        verify_results("ci", needs)
-        verify_results("ci", needs_of("ci") | {"apple": {"result": "skipped"}})
-
-    def test_host_tasks_require_the_host_job_of_their_workflow(self) -> None:
-        for workflow, job in (("ci", "tests-linux"), ("apple", "tests-macos")):
-            with self.subTest(workflow=workflow):
-                needs = needs_of(workflow, host='["test:bazel"]') | {
+    def test_host_tasks_require_the_host_job_of_each_host(self) -> None:
+        for job in ("tests-linux", "tests-macos"):
+            with self.subTest(job=job):
+                needs = needs_of(**{output_name(job): '["test:bazel"]'}) | {
                     job: {"result": "skipped"}
                 }
                 with self.assertRaisesRegex(ValueError, f"{job}.*skipped"):
-                    verify_results(workflow, needs)
+                    verify_results(needs)
                 needs[job]["result"] = "success"
-                verify_results(workflow, needs)
+                verify_results(needs)
 
     def test_runs_leave_the_scheduled_source_engine_lane_out(self) -> None:
         lanes = {lane: [] for lane in LANES} | {
@@ -95,47 +70,30 @@ class VerificationTest(unittest.TestCase):
         planned = without_scheduled_lanes(lanes)
         self.assertEqual(planned["source-engine"], [])
         self.assertEqual(planned["host"], ["test:bazel"])
-        only_engines = {lane: [] for lane in LANES} | {"source-engine": ["source-engine"]}
-        self.assertFalse(runs_apple(without_scheduled_lanes(only_engines)))
 
-    def test_source_engine_workflow_hands_the_apple_workflow_a_complete_plan(
-        self,
-    ) -> None:
-        # The Apple workflow reads every lane of its plan; a lane the literal lacks reads null.
+    def test_source_engine_workflow_runs_every_source_engine_case(self) -> None:
         workflow = (ROOT / ".github/workflows/source-engine.yml").read_text()
-        literal = re.search(r"plan: '(.*)'", workflow)
-        assert literal is not None, "source-engine.yml hands the Apple workflow no plan"
-        plan = json.loads(literal.group(1))
-        self.assertEqual(set(plan), set(WORKFLOW_JOBS["apple"]) | {HOST_ANDROID})
-        self.assertEqual(plan["source-engine"], ["source-engine:full"])
-
-    def test_source_engine_workflow_output_requires_its_workflow_job(self) -> None:
-        needs = needs_of("apple", source_engine='["source-engine"]') | {
-            "source-engine": {"result": "skipped"}
-        }
-        with self.assertRaisesRegex(ValueError, "source-engine.*skipped"):
-            verify_results("apple", needs)
+        self.assertIn("""verification.py run '["source-engine:full"]'""", workflow)
+        with mock.patch("subprocess.run") as run:
+            run_tasks(["source-engine:full"])
+        run.assert_called_once_with(["mise", "run", "source-engine:full"], check=True)
 
     def test_missing_selection_output_is_not_an_empty_task_list(self) -> None:
         empty = {"selection": {"result": "success", "outputs": {}}}
-        with self.assertRaisesRegex(ValueError, "missing.*quality"):
-            verify_results("ci", empty)
-        with self.assertRaisesRegex(ValueError, "missing.*host"):
-            verify_results("apple", empty)
-        outputs = selection_outputs("ci")
-        del outputs["apple"]
-        with self.assertRaisesRegex(ValueError, "missing.*apple"):
-            verify_results("ci", {"selection": {"result": "success", "outputs": outputs}})
+        with self.assertRaisesRegex(ValueError, "missing.*formatting"):
+            verify_results(empty)
+        outputs = selection_outputs()
+        del outputs["tests_macos"]
+        with self.assertRaisesRegex(ValueError, "missing.*tests_macos"):
+            verify_results({"selection": {"result": "success", "outputs": outputs}})
 
     def test_missing_selection_and_cancelled_jobs_fail_verification(self) -> None:
         with self.assertRaisesRegex(ValueError, "selection"):
-            verify_results("ci", {})
+            verify_results({})
         with self.assertRaisesRegex(ValueError, "cancelled"):
-            verify_results(
-                "ci", needs_of("ci") | {"tests-linux": {"result": "cancelled"}}
-            )
+            verify_results(needs_of() | {"tests-linux": {"result": "cancelled"}})
         with self.assertRaisesRegex(ValueError, "failure"):
-            verify_results("apple", needs_of("apple") | {"ios": {"result": "failure"}})
+            verify_results(needs_of() | {"ios": {"result": "failure"}})
 
     def test_documentation_does_not_request_lane_work(self) -> None:
         lanes = lane_plan(
@@ -221,7 +179,7 @@ class VerificationTest(unittest.TestCase):
         )
         self.assertEqual(task_command("test:setup"), ["mise", "run", "test:setup"])
 
-    def test_a_host_lane_limited_to_macos_runs_in_the_apple_workflow_only(self) -> None:
+    def test_a_host_lane_limited_to_macos_runs_on_macos_only(self) -> None:
         lanes = {lane: [] for lane in LANES} | {
             "host": ["test:bazel", "host:addon:gadget@macos"]
         }
@@ -229,32 +187,34 @@ class VerificationTest(unittest.TestCase):
         self.assertEqual(
             for_host(lanes, "macos")["host"], ["test:bazel", "host:addon:gadget@macos"]
         )
-        only_macos = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@macos"]}
-        self.assertTrue(runs_apple(only_macos))
         only_linux = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@linux"]}
-        self.assertFalse(runs_apple(only_linux))
+        outputs = plan_outputs(only_linux)
+        self.assertEqual(outputs["tests_linux"], ["host:addon:gadget@linux"])
+        self.assertEqual(outputs["tests_macos"], [])
 
     def test_the_plan_says_which_host_jobs_need_the_android_sdk(self) -> None:
         lanes = {lane: [] for lane in LANES} | {"host": ["host:addon:widget"]}
-        self.assertFalse(workflow_outputs("ci", lanes)["host_android"])
+        self.assertFalse(plan_outputs(lanes)["tests_linux_android"])
         lanes["host"].append("test:bazel")
-        self.assertTrue(workflow_outputs("ci", lanes)["host_android"])
+        self.assertTrue(plan_outputs(lanes)["tests_linux_android"])
+        self.assertTrue(plan_outputs(lanes)["tests_macos_android"])
 
-    def test_ci_hands_the_apple_workflow_its_plan(self) -> None:
+    def test_the_plan_assigns_each_job_its_lane_on_its_host(self) -> None:
         lanes = {lane: [] for lane in LANES} | {
             "host": ["test:bazel", "host:addon:widget@linux"],
             "ios": ["ios:addon:widget"],
         }
-        outputs = workflow_outputs("ci", lanes)
-        self.assertEqual(outputs["host"], ["test:bazel", "host:addon:widget@linux"])
-        self.assertTrue(outputs["apple"])
         self.assertEqual(
-            json.loads(str(outputs["apple_plan"])),
+            plan_outputs(lanes),
             {
-                "host": ["test:bazel"],
-                "source-engine": [],
+                "formatting": [],
+                "api_docs": [],
+                "tests_linux": ["test:bazel", "host:addon:widget@linux"],
+                "tests_linux_android": True,
+                "tests_macos": ["test:bazel"],
+                "tests_macos_android": True,
+                "android": [],
                 "ios": ["ios:addon:widget"],
-                "host_android": True,
             },
         )
 
