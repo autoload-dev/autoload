@@ -1,7 +1,9 @@
 name: Set up repository
 description: >-
   Install and cache mise tools, reuse SDK components, and configure Bazel
-  repository caching and cleanup.
+  repository caching and cleanup. A self-hosted runner keeps its tools, SDK
+  components and Bazel caches on its own disk between jobs, so the cache service
+  steps are left out there.
 
 inputs:
   bazel:
@@ -68,8 +70,8 @@ runs:
       with:
         version: ${{ steps.mise.outputs.version }}
         sha256: ${{ steps.mise.outputs.sha256 }}
-        cache: true
-        cache_save_post: true
+        cache: ${{ runner.environment != 'self-hosted' }}
+        cache_save_post: ${{ runner.environment != 'self-hosted' }}
         cache_key_prefix: mise-${{ github.job }}
         # A plan job needs only hk and Python, not Bazelisk.
         install_args: ${{ inputs.bazel == 'false' && 'hk python' || '' }}
@@ -100,20 +102,23 @@ runs:
           } >> "$GITHUB_OUTPUT"
         fi
     - name: Restore missing Android SDK components
-      if: inputs.android-cache == 'true' && steps.sdk-cache.outputs.paths != ''
+      if: >-
+        inputs.android-cache == 'true' && steps.sdk-cache.outputs.paths != ''
+        && runner.environment != 'self-hosted'
       uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
       with:
         path: ${{ steps.sdk-cache.outputs.paths }}
         key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Keep normal progress output without collecting per-invocation trace profiles.
+    # A self-hosted runner keeps ~/.bazelrc between jobs and runs jobs side by side,
+    # so a line is added only once.
     - name: Configure Bazel output
       if: inputs.bazel == 'true'
       shell: bash
       run: |
-        {
-          echo 'common --generate_json_trace_profile=false'
-          echo 'common --show_progress_rate_limit=5'
-        } >> "$HOME/.bazelrc"
+        for line in 'common --generate_json_trace_profile=false' 'common --show_progress_rate_limit=5'; do
+          grep -qxF -- "$line" "$HOME/.bazelrc" 2>/dev/null || echo "$line" >> "$HOME/.bazelrc"
+        done
     # Extracted repositories live under the repository cache and leave it
     # once no build used them for 14 days; a zero idle delay lets Bazel prune
     # them between the job's commands.
@@ -126,12 +131,15 @@ runs:
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
         echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
-    # macOS runners have no sticky disk: the cache service keeps a job's
+    # Hosted macOS runners have no sticky disk: the cache service keeps a job's
     # downloads, such as the export templates, without the extracted
     # repositories. A key ends in the digest of the entry's file list; the
     # newest entry is restored, and save-downloads saves at the job's end.
+    # A self-hosted runner keeps the repository cache on its disk instead.
     - name: Restore downloads
-      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      if: >-
+        inputs.bazel == 'true' && runner.os == 'macOS'
+        && runner.environment != 'self-hosted'
       id: downloads
       uses: actions/cache/restore@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
       with:
@@ -139,7 +147,9 @@ runs:
         key: ${{ steps.cache.outputs.downloads-key }}
         restore-keys: ${{ steps.cache.outputs.downloads-key }}
     - name: Record restored downloads
-      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      if: >-
+        inputs.bazel == 'true' && runner.os == 'macOS'
+        && runner.environment != 'self-hosted'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -159,9 +169,12 @@ runs:
       with:
         key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}
         path: ${{ steps.cache.outputs.path }}
-    # Bazel refreshes a download's modification time on every cache hit.
+    # Bazel refreshes a download's modification time on every cache hit. A
+    # self-hosted runner's repository cache persists like a sticky disk.
     - name: Prune unused downloads
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: >-
+        inputs.bazel == 'true'
+        && (runner.os == 'Linux' || runner.environment == 'self-hosted')
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -175,7 +188,9 @@ runs:
       shell: bash
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}
-      run: printf '%s\n' "$REPOSITORY_BAZELRC" >> "$HOME/.bazelrc"
+      run: |
+        grep -qxF -- "$REPOSITORY_BAZELRC" "$HOME/.bazelrc" 2>/dev/null ||
+          printf '%s\n' "$REPOSITORY_BAZELRC" >> "$HOME/.bazelrc"
     # Persistent workers run from extracted repositories on the disk. Steps
     # clean up in reverse order, so Bazel stops before the disk is unmounted.
     - name: Stop Bazel at job end
