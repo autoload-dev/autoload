@@ -4,18 +4,18 @@ module(
     bazel_compatibility = [">=9.0.0"],
 )
 
-bazel_dep(name = "platforms", version = "1.0.0")
-bazel_dep(name = "rules_cc", version = "0.2.27")
-bazel_dep(name = "rules_python", version = "2.4.5")
-bazel_dep(name = "rules_android", version = "0.8.0")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "rules_python", version = "2.5.1")
+bazel_dep(name = "rules_android", version = "0.8.1")
 bazel_dep(name = "rules_android_ndk", version = "0.1.5")
 
 # Builds Godot's Java/Kotlin Android shell library from source; no Kotlin toolchain is
 # registered.
 bazel_dep(name = "rules_kotlin", version = "2.4.21")
-bazel_dep(name = "rules_apple", version = "5.3.1")
-bazel_dep(name = "rules_swift", version = "4.1.1")
-bazel_dep(name = "apple_support", version = "2.9.1")
+bazel_dep(name = "rules_apple", version = "5.4.0")
+bazel_dep(name = "rules_swift", version = "4.3.0")
+bazel_dep(name = "apple_support", version = "2.12.0")
 
 # The version Bazel 10's bazel_tools requires, so Bazel 9 and 10 resolve the same graph.
 bazel_dep(name = "rules_java", version = "9.9.0")
@@ -27,9 +27,9 @@ bazel_dep(name = "bazel_skylib", version = "1.9.2")
 # The Starlark unit and analysis tests of the ruleset's tests packages.
 bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
-bazel_dep(name = "buildifier_prebuilt", version = "10.1.0", dev_dependency = True)
-bazel_dep(name = "protobuf", version = "34.0.bcr.1", dev_dependency = True)
-bazel_dep(name = "aspect_rules_lint", version = "2.9.0", dev_dependency = True)
+bazel_dep(name = "buildifier_prebuilt", version = "10.2.0", dev_dependency = True)
+bazel_dep(name = "protobuf", version = "36.2", dev_dependency = True)
+bazel_dep(name = "aspect_rules_lint", version = "2.9.1", dev_dependency = True)
 
 # rules_android 0.8.0 exports its API files but keeps the transitive Starlark
 # library private. Expose only its documentation source library for Stardoc.

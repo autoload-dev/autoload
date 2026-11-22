@@ -9,10 +9,10 @@ module(
 # The release of rules_godot the add-ons need. Builds in this repository use the rules beside
 # them instead (addons/module.bazelrc and examples/MODULE.bazel).
 bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
-bazel_dep(name = "platforms", version = "1.0.0")
-bazel_dep(name = "rules_android", version = "0.8.0")
-bazel_dep(name = "rules_apple", version = "5.3.1")
-bazel_dep(name = "rules_cc", version = "0.2.27")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_android", version = "0.8.1")
+bazel_dep(name = "rules_apple", version = "5.4.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
 bazel_dep(name = "rules_jvm_external", version = "6.10")
 
 # The engine whose Android plugin API Sentry's Godot plugin is imported against. The root
