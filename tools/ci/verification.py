@@ -132,8 +132,8 @@ TASK_LANES = {
         "quality",
     ),
     **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
-    # Every source-engine case, which the Source engine workflow runs instead of the
-    # lane's main ones.
+    # Every source-engine case, the only source-engine task CI runs, in the Source engine
+    # workflow.
     "source-engine:full": "source-engine",
     **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
 }
