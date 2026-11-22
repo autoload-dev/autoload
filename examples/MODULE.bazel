@@ -219,7 +219,7 @@ http_archive(
 # Dart for the Dart scripting add-on: rules_dart compiles scripts with the SDK release whose
 # sources build the add-on's embedded runtime; an AOT snapshot runs only on the runtime of
 # its own release.
-bazel_dep(name = "rules_dart", version = "0.10.0")
+bazel_dep(name = "rules_dart", version = "0.9.1")
 
 dart = use_extension("@rules_dart//dart:extensions.bzl", "dart")
 dart.toolchain(dart_version = "3.13.7")
