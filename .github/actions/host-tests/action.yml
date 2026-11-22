@@ -10,6 +10,9 @@ inputs:
   android:
     description: Whether a selected task needs the Android SDK, as the plan's host_android says.
     default: "true"
+  keep-bazel-servers:
+    description: Passed on to the setup action.
+    default: "true"
 
 runs:
   using: composite
@@ -20,6 +23,7 @@ runs:
         # The ruleset's host set includes its Android packaging tests; add-on modules'
         # host lanes need no Android SDK.
         android-cache: ${{ inputs.android }}
+        keep-bazel-servers: ${{ inputs.keep-bazel-servers }}
         bazel-modules: |
           .
           examples
