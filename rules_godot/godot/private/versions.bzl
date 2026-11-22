@@ -4,9 +4,11 @@ visibility(["//godot/..."])
 
 GODOT_MINIMUM_VERSION = "4.7.2"
 
-# Godot's macOS floor, the default minimum of applications; source recipes carry the
-# floor their sources name.
+# The macOS and iOS floors: the default minimums of applications, and the least a
+# source-built engine compiles for, since the libc++ of current Xcode supports no earlier
+# version. Source recipes carry the target their sources name, which may be lower.
 MACOS_MINIMUM_OS = "11.0"
+IOS_MINIMUM_OS = "15.0"
 GODOT_SUPPORTED_VERSION_RANGE = ">=4.7.2 <5.0.0"
 
 def _parse_version(version):

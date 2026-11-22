@@ -16,12 +16,12 @@ local_path_override(
     path = "../../addons/gdunit",
 )
 
-bazel_dep(name = "platforms", version = "1.0.0")
-bazel_dep(name = "rules_cc", version = "0.2.27")
-bazel_dep(name = "rules_python", version = "2.4.5")
-bazel_dep(name = "rules_apple", version = "5.3.1")
-bazel_dep(name = "rules_swift", version = "4.1.1")
-bazel_dep(name = "rules_android", version = "0.8.0")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "rules_python", version = "2.5.1")
+bazel_dep(name = "rules_apple", version = "5.4.0")
+bazel_dep(name = "rules_swift", version = "4.3.0")
+bazel_dep(name = "rules_android", version = "0.8.1")
 bazel_dep(name = "rules_jvm_external", version = "6.10")
 
 # The Linux smoke scenario's build test of its debug symbols.

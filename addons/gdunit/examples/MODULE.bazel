@@ -20,10 +20,10 @@ local_path_override(
     path = "../../../rules_godot",
 )
 
-bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "platforms", version = "1.1.0")
 
 # The module's tests in tests/ are driven by Python.
-bazel_dep(name = "rules_python", version = "2.4.5")
+bazel_dep(name = "rules_python", version = "2.5.1")
 
 # Python targets import only packages that have an __init__.py of their own.
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")

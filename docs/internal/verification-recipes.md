@@ -267,7 +267,9 @@ From `rules_godot/`, with the Android SDK and NDK installed:
 bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel test
 ```
 
-`mise run source-engine` runs this command and the `patched_engine` tests above.
+`mise run source-engine:full` runs this command, the `patched_engine` tests above and
+Petri's suite; `mise run source-engine` runs a quicker subset
+([which cases, and where CI runs them](verification-platforms.md#source-engine-workflow)).
 
 
 ### Packaged desktop application

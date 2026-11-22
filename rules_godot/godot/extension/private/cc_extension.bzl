@@ -114,7 +114,7 @@ def shared_library(name, archive, entry_symbol, attrs):
             ],
             "//conditions:default": [
                 "-Wl,-rpath,$$ORIGIN",
-                "-Wl,--version-script,$(location :%s)" % exports,
+                "-Wl,--version-script,$(execpath :%s)" % exports,
             ],
         }),
         **binary_kwargs

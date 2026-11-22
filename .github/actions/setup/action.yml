@@ -1,7 +1,9 @@
 name: Set up repository
 description: >-
   Install and cache mise tools, reuse SDK components, and configure Bazel
-  repository caching and cleanup.
+  repository caching and cleanup. A persistent runner keeps its tools, SDK
+  components and Bazel caches on its own disk between jobs, and its machine
+  configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
 
 inputs:
   bazel:
@@ -19,6 +21,24 @@ inputs:
 runs:
   using: composite
   steps:
+    # GitHub's and Blacksmith's runners start every job fresh: caches come from the
+    # cache service and Bazel settings go into ~/.bazelrc. A persistent runner, such as
+    # the macos-ci runners, keeps its disk between jobs and runs jobs side by side; its
+    # machine sets PERSISTENT_RUNNER and BAZEL_REPOSITORY_CACHE in the runner's
+    # environment and configures Bazel in /etc/bazel.bazelrc. Linux runners' sticky
+    # disk, like a persistent runner's disk, keeps the repository cache between jobs.
+    # Blacksmith's runners count as self-hosted to GitHub, so runner.environment
+    # cannot tell the two kinds apart.
+    - name: Classify runner
+      id: runner
+      shell: bash
+      run: |
+        fresh=$([[ "${PERSISTENT_RUNNER:-}" == true ]] && echo false || echo true)
+        persistent=$([[ "$fresh" == false || "$RUNNER_OS" == Linux ]] && echo true || echo false)
+        {
+          echo "fresh=$fresh"
+          echo "persistent-disk=$persistent"
+        } >> "$GITHUB_OUTPUT"
     # Runner images may select an older NDK. Empty values let mise apply the
     # repository default while preserving its local override policy.
     - name: Clear runner NDK defaults
@@ -70,8 +90,8 @@ runs:
       with:
         version: ${{ steps.mise.outputs.version }}
         sha256: ${{ steps.mise.outputs.sha256 }}
-        cache: true
-        cache_save_post: true
+        cache: ${{ steps.runner.outputs.fresh }}
+        cache_save_post: ${{ steps.runner.outputs.fresh }}
         cache_key_prefix: mise-${{ github.job }}
         # A plan job needs only hk and Python, not Bazelisk.
         install_args: ${{ inputs.bazel == 'false' && 'hk python' || '' }}
@@ -90,7 +110,7 @@ runs:
           xcrun --sdk iphonesimulator --show-sdk-version
         fi
     - name: Find missing Android SDK components
-      if: inputs.android-cache == 'true'
+      if: inputs.android-cache == 'true' && steps.runner.outputs.fresh == 'true'
       id: sdk-cache
       shell: bash
       run: |
@@ -102,14 +122,14 @@ runs:
           } >> "$GITHUB_OUTPUT"
         fi
     - name: Restore missing Android SDK components
-      if: inputs.android-cache == 'true' && steps.sdk-cache.outputs.paths != ''
+      if: steps.sdk-cache.outputs.paths != ''
       uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
       with:
         path: ${{ steps.sdk-cache.outputs.paths }}
         key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Keep normal progress output without collecting per-invocation trace profiles.
     - name: Configure Bazel output
-      if: inputs.bazel == 'true'
+      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
       shell: bash
       run: |
         {
@@ -119,21 +139,22 @@ runs:
     # Extracted repositories live under the repository cache and leave it
     # once no build used them for 14 days; a zero idle delay lets Bazel prune
     # them between the job's commands.
+    # A persistent runner's machine names its repository cache.
     - name: Locate cache
       if: inputs.bazel == 'true'
       id: cache
       shell: bash
       run: |
-        cache=$HOME/.cache/bazel-repository
+        cache=${BAZEL_REPOSITORY_CACHE:-$HOME/.cache/bazel-repository}
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
         echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
-    # macOS runners have no sticky disk: the cache service keeps a job's
+    # Hosted macOS runners have no sticky disk: the cache service keeps a job's
     # downloads, such as the export templates, without the extracted
     # repositories. A key ends in the digest of the entry's file list; the
     # newest entry is restored, and save-downloads saves at the job's end.
     - name: Restore downloads
-      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'false'
       id: downloads
       uses: actions/cache/restore@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
       with:
@@ -141,7 +162,7 @@ runs:
         key: ${{ steps.cache.outputs.downloads-key }}
         restore-keys: ${{ steps.cache.outputs.downloads-key }}
     - name: Record restored downloads
-      if: inputs.bazel == 'true' && runner.os == 'macOS'
+      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'false'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -156,14 +177,16 @@ runs:
     # One disk per job: jobs fetch different repositories, and each job
     # commits its own clone of the disk.
     - name: Mount cache from sticky disk
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: >-
+        inputs.bazel == 'true' && runner.os == 'Linux'
+        && steps.runner.outputs.fresh == 'true'
       uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
       with:
         key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}
         path: ${{ steps.cache.outputs.path }}
     # Bazel refreshes a download's modification time on every cache hit.
     - name: Prune unused downloads
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'true'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -173,7 +196,7 @@ runs:
           find "$DOWNLOADS" -mindepth 1 -type d -empty -delete
         fi
     - name: Configure repository cache
-      if: inputs.bazel == 'true'
+      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
       shell: bash
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}
@@ -181,7 +204,9 @@ runs:
     # Persistent workers run from extracted repositories on the disk. Steps
     # clean up in reverse order, so Bazel stops before the disk is unmounted.
     - name: Stop Bazel at job end
-      if: inputs.bazel == 'true' && runner.os == 'Linux'
+      if: >-
+        inputs.bazel == 'true' && runner.os == 'Linux'
+        && steps.runner.outputs.fresh == 'true'
       uses: ./.github/actions/setup/stop-bazel
       with:
         bazel-modules: ${{ inputs.bazel-modules }}

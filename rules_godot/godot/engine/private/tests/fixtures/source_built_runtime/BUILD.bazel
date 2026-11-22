@@ -42,6 +42,24 @@ godot_source_binary(
     deps = [":engine_binary"],
 )
 
+# The same engine as Godot builds it for Intel Macs, whose own target, 10.13, lies below
+# libc++'s floor.
+godot_source_binary(
+    name = "godot_x86_64",
+    build = "build.txt",
+    canonical_version = "4.7.2",
+    cpu = "x86_64",
+    customizations = {"custom_modules": ["bazel_probe"]},
+    hash = "hash.txt",
+    minimum_os = "10.13",
+    platform = "macos",
+    role = "runtime",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2.stable",
+    deps = [":engine_binary"],
+)
+
 godot_runtime_component(
     name = "runtime_macos_arm64_release",
     cpu = "arm64",

@@ -40,6 +40,19 @@ APPLE_PLAN = "apple_plan"
 HOST_ANDROID = "host_android"
 
 
+# Lanes that every run planning itself leaves to the Source engine workflow, which hands
+# the Apple workflow a fixed plan on a schedule and on its own dispatch: building engines
+# from source is the most expensive work and the least likely to change with a commit.
+SCHEDULED_LANES = ("source-engine",)
+
+
+def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Leave out the tasks of the lanes that only the Source engine workflow runs."""
+    return {
+        lane: [] if lane in SCHEDULED_LANES else tasks for lane, tasks in lanes.items()
+    }
+
+
 def runs_apple(lanes: dict[str, list[str]], event_name: str) -> bool:
     """Say whether a CI run calls the Apple workflow.
 
@@ -122,6 +135,9 @@ TASK_LANES = {
         "quality",
     ),
     **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
+    # Every source-engine case, the only source-engine task CI runs, in the Source engine
+    # workflow.
+    "source-engine:full": "source-engine",
     **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
 }
 
@@ -266,7 +282,8 @@ def write_plan(workflow: str) -> None:
     command.extend(["check", "--plan", "--json"])
     command.extend(selection_args(event_name, event))
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
-    outputs = workflow_outputs(workflow, lane_plan(json.loads(result.stdout)), event_name)
+    lanes = without_scheduled_lanes(lane_plan(json.loads(result.stdout)))
+    outputs = workflow_outputs(workflow, lanes, event_name)
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.writelines(
             f"{name}={value if isinstance(value, str) else json.dumps(value)}\n"

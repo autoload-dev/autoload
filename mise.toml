@@ -273,16 +273,28 @@ run = [
 
 # The ruleset's tests tagged source_engine build an engine from source, some for Android.
 # They are also manual, so `//...` in the host set never analyzes their source recipes.
+# This task runs a quicker subset; source-engine:full, which CI runs in the Source engine
+# workflow, runs every case (docs/internal/verification-platforms.md#source-engine-workflow).
 [tasks.source-engine]
 extends = "android"
-description = "Build and run apps with source-built engines headless; needs macOS"
+description = "Build and run the main cases of source-built engines headless; needs macOS"
+dir = "{{config_root}}/rules_godot/tests"
+run = [
+  "cd {{config_root}}/rules_godot && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...)) except attr(tags, \"\\bsource_engine_extended\\b\", tests(//godot/...))' | xargs bazel test",
+  # A fuller editor and a reduced runtime of one snapshot, each with the custom module.
+  "bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all",
+]
+
+[tasks."source-engine:full"]
+extends = "android"
+description = "Build and run every case of source-built engines headless, Petri's included; needs macOS"
 dir = "{{config_root}}/rules_godot/tests"
 run = [
   "cd {{config_root}}/rules_godot && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...))' | xargs bazel test",
   "bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/stable:all",
   "bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/beta:all",
-  # A fuller editor and a reduced runtime of one snapshot, each with the custom module.
   "bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all",
+  { task = "test:example:petri" },
 ]
 
 # The mobile tasks run the consumer module's configuration suites (tests/BUILD.bazel).

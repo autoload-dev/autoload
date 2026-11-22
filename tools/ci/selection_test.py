@@ -81,12 +81,15 @@ class SelectionTest(unittest.TestCase):
                 "HK_SKIP_STEPS": "",
                 "HK_SKIP_HOOKS": "",
             },
-            check=False,
             capture_output=True,
             text=True,
+            check=False,
         )
-        # hk's diagnostics name what failed, such as a Pkl evaluation error.
-        self.assertEqual(result.returncode, 0, result.stderr)
+        # hk's own message is the only clue when it fails, such as in a fresh add-on checkout.
+        if result.returncode != 0:
+            self.fail(
+                f"{' '.join(command)} exited with {result.returncode}:\n{result.stderr}"
+            )
         return json.loads(result.stdout)
 
     def test_shared_example_dependencies_select_all_example_suites(self) -> None:

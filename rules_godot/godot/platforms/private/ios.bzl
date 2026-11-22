@@ -29,6 +29,7 @@ load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
 load("//godot/private:shell_assets.bzl", "asset_catalog")
+load("//godot/private:versions.bzl", "IOS_MINIMUM_OS")
 load("//godot/private/config:native.bzl", "APPLICATION_OPTIONS")
 load("//godot/private/config:settings.bzl", "ENVIRONMENT", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
@@ -453,7 +454,7 @@ def godot_ios_application(
         pack,
         bundle_id,
         runtime = None,
-        minimum_os_version = "15.0",
+        minimum_os_version = IOS_MINIMUM_OS,
         families = ["iphone", "ipad"],
         deps = [],
         resources = [],

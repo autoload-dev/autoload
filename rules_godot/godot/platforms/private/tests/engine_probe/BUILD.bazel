@@ -176,6 +176,7 @@ beta_engine_test(
     tags = [
         "manual",
         "source_engine",
+        "source_engine_extended",
     ],
     target_compatible_with = _ANDROID_SDK,
 )
@@ -224,6 +225,7 @@ beta_engine_test(
     tags = [
         "manual",
         "source_engine",
+        "source_engine_extended",
     ],
     target_compatible_with = _MACOS,
 )

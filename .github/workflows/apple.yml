@@ -3,7 +3,8 @@ name: Apple
 # The lanes that need a macOS runner: the host tests on macOS, the apps with
 # source-built engines and the iOS apps. CI calls this workflow from the merge
 # queue and on dispatch, with its plan. On a pull request, the ci:macos label runs
-# it once, for the commit that is labelled, and it plans itself.
+# it once, for the commit that is labelled, and it plans itself. The macOS jobs run
+# on the self-hosted runners labelled macos-ci, which keep their caches between jobs.
 # Policy: docs/internal/verification-platforms.md#apple-lanes-on-pull-requests.
 on:
   pull_request:
@@ -67,7 +68,7 @@ jobs:
     needs: selection
     if: needs.selection.outputs.host != '[]'
     timeout-minutes: 30
-    runs-on: blacksmith-6vcpu-macos-26
+    runs-on: macos-ci
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,7 +87,7 @@ jobs:
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.source_engine }}
     timeout-minutes: 60
-    runs-on: blacksmith-6vcpu-macos-26
+    runs-on: macos-ci
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -114,7 +115,7 @@ jobs:
     env:
       VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
     timeout-minutes: 60
-    runs-on: blacksmith-6vcpu-macos-26
+    runs-on: macos-ci
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

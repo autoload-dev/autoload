@@ -1,0 +1,22 @@
+name: Source engine
+
+# The only CI run of the source-engine lane: the Apple workflow builds and runs every
+# source-engine case on main, on the schedule below and on manual dispatch. Pull requests
+# and merges leave the lane out. Policy:
+# docs/internal/verification-platforms.md#source-engine-workflow.
+on:
+  schedule:
+    # 03:00 in Berlin, summer and winter time alike: the macos-ci runners are idle then.
+    - cron: "0 3 * * *"
+      timezone: Europe/Berlin
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apple:
+    name: Apple
+    uses: ./.github/workflows/apple.yml
+    with:
+      plan: '{"host": [], "source-engine": ["source-engine:full"], "ios": [], "host_android": false}'

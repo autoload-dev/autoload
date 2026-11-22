@@ -2,7 +2,7 @@
 
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:resources.bzl", "unique_extensions", "unique_platform_libraries")
-load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS", "dotted_version")
+load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "dotted_version")
 load(":settings.bzl", "APPLICATION_CONTEXT", "MERGE_ANDROID_MANIFEST_PERMISSIONS", "OPERATING_SYSTEM")
 load(":transitions.bzl", "project_transition")
 
@@ -131,7 +131,7 @@ application_pack = rule(
         "deps": attr.label_list(mandatory = True, cfg = _application_transition, providers = [GodotPackInfo]),
         "application_id": attr.string(),
         "macos_minimum_os_version": attr.string(default = MACOS_MINIMUM_OS),
-        "ios_minimum_os_version": attr.string(default = "15.0"),
+        "ios_minimum_os_version": attr.string(default = IOS_MINIMUM_OS),
         "ios_families": attr.string_list(default = ["iphone", "ipad"]),
         "android_min_sdk_version": attr.int(),
         "android_target_sdk_version": attr.int(),

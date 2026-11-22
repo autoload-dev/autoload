@@ -1,9 +1,12 @@
 """Regression tests for fail-closed CI selection and the assignment of tasks to lanes."""
 
 import json
+import re
 import unittest
+from pathlib import Path
 
 from tools.ci.verification import (
+    HOST_ANDROID,
     LANES,
     WORKFLOW_JOBS,
     for_host,
@@ -12,8 +15,11 @@ from tools.ci.verification import (
     selection_args,
     task_command,
     verify_results,
+    without_scheduled_lanes,
     workflow_outputs,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def selection_outputs(workflow: str, **selected: str) -> dict[str, str]:
@@ -87,6 +93,28 @@ class VerificationTest(unittest.TestCase):
                     verify_results(workflow, needs)
                 needs[job]["result"] = "success"
                 verify_results(workflow, needs)
+
+    def test_runs_leave_the_scheduled_source_engine_lane_out(self) -> None:
+        lanes = {lane: [] for lane in LANES} | {
+            "host": ["test:bazel"],
+            "source-engine": ["source-engine", "test:example:petri"],
+        }
+        planned = without_scheduled_lanes(lanes)
+        self.assertEqual(planned["source-engine"], [])
+        self.assertEqual(planned["host"], ["test:bazel"])
+        only_engines = {lane: [] for lane in LANES} | {"source-engine": ["source-engine"]}
+        self.assertFalse(runs_apple(without_scheduled_lanes(only_engines), "merge_group"))
+
+    def test_source_engine_workflow_hands_the_apple_workflow_a_complete_plan(
+        self,
+    ) -> None:
+        # The Apple workflow reads every lane of its plan; a lane the literal lacks reads null.
+        workflow = (ROOT / ".github/workflows/source-engine.yml").read_text()
+        literal = re.search(r"plan: '(.*)'", workflow)
+        assert literal is not None, "source-engine.yml hands the Apple workflow no plan"
+        plan = json.loads(literal.group(1))
+        self.assertEqual(set(plan), set(WORKFLOW_JOBS["apple"]) | {HOST_ANDROID})
+        self.assertEqual(plan["source-engine"], ["source-engine:full"])
 
     def test_source_engine_workflow_output_requires_its_workflow_job(self) -> None:
         needs = needs_of("apple", source_engine='["source-engine"]') | {
