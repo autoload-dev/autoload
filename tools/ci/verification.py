@@ -121,6 +121,9 @@ TASK_LANES = {
         "quality",
     ),
     **{lane: lane for lane in ("docs", "source-engine", "android", "ios")},
+    # Every source-engine case, which the Extended verification workflow runs instead of the
+    # lane's main ones.
+    "source-engine:full": "source-engine",
     **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
 }
 

@@ -27,7 +27,8 @@ Godot features are covered from one passing cell.
 Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
 included, run in the host sets (`mise run test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
-are `manual`, so the host sets do not analyze their source recipes.
+are `manual`, so the host sets do not analyze their source recipes; those also tagged
+`source_engine_extended` run only in the [extended cases](#extended-source-engine-cases).
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -113,18 +114,31 @@ the module's `examples/`. The plan drops a host task from a workflow whose host 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.
 
+### Extended source-engine cases
+
+The source-engine lane is the most expensive one, so a merge runs only the cases users
+depend on most: the runtimes the official artifacts lack, built from the release's sources
+for the iOS arm64 Simulator and for Android, and the consumer's patched engine with its
+custom module, editor included (`mise run source-engine`). The extended cases, the tests
+tagged `source_engine_extended`, the stable and beta patched engines and the Petri example's
+source-built engine, run in `mise run source-engine:full`, which the
+[Extended verification](../../.github/workflows/extended.yml) workflow runs on main on its
+schedule and on manual dispatch. A change to Petri still selects its own example suite.
+
 ### Apple lanes on pull requests
 
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
 with source-built engines and the iOS apps. They run in the
-[Apple](../../.github/workflows/apple.yml) workflow, which CI calls. A pull request's CI run
-leaves them out, because macOS runners are expensive. The merge queue runs every selected
+[Apple](../../.github/workflows/apple.yml) workflow, which CI calls, on the self-hosted
+runners labeled `macos-ci`: four runners in one macOS VM, which keep their tools and Bazel
+caches on their own disk between jobs. A pull request's CI run leaves them out, so that the
+few macOS runners stay free for the merge queue. The merge queue runs every selected
 lane, the Apple lanes included, on the result of the merge, and CI's `Finalize` is its
 required check: a pull request whose Apple lanes fail there leaves the queue and does not
 reach main. The ruleset of main, which requires the merge queue and that check, is managed
 in the repository settings. Main receives the merge group's commit unchanged, so its checks
 show on the commit and a push to main runs no CI. The merge queue also saves the caches that
-later runs read, such as the macOS jobs' downloads: Blacksmith's branch protection for the
+later runs read, such as the Linux jobs' mise tools: Blacksmith's branch protection for the
 Actions cache and sticky disks is off, so every branch reads a merge group's entries. Pure
 Markdown changes select no Apple lane. A manual dispatch runs all lanes, the Apple lanes
 included.

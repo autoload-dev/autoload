@@ -126,6 +126,7 @@ repository_test(
     tags = [
         "manual",
         "source_engine",
+        "source_engine_extended",
     ],
     target = "@godot_source_build_fixture_macos_arm64_template_release//:godot",
     target_compatible_with = ["@platforms//os:macos"],
