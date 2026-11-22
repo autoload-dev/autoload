@@ -9,33 +9,38 @@ local function task(name: String): Step = new {
   check = "mise run \(name)"
 }
 
+// Paths of the ruleset's directory, written relative to it.
+local function ruleset(paths: List<String>): List<String> =
+  paths.map((it) -> "rules_godot/" + it)
+
 // What every build reads: the rules, the build tools that builds run, the root module
 // and the task commands. Add a build tool here when a build starts to run it.
-local core = List(
-  "rules_godot/godot/**",
-  "rules_godot/tools/BUILD.bazel",
-  "rules_godot/tools/*.tpl",
-  "rules_godot/tools/godot_*.py",
-  "rules_godot/tools/mapped_paths.py",
-  "rules_godot/tools/pck.py",
-  "rules_godot/tools/common_content.py",
-  "rules_godot/tools/digest.py",
-  "rules_godot/tools/resource_graph.py",
-  "rules_godot/tools/template.py",
-  "rules_godot/tools/engine/**",
-  "rules_godot/tools/extension/**",
-  "rules_godot/tools/action/**",
-  "rules_godot/tools/platforms/**",
-  "rules_godot/tools/run/**",
-  "rules_godot/MODULE.bazel",
-  "rules_godot/MODULE.bazel.lock",
-  "rules_godot/*_install.json",
-  "rules_godot/BUILD.bazel",
-  "rules_godot/.bazelrc",
+local core = ruleset(List(
+  "godot/**",
+  "tools/BUILD.bazel",
+  "tools/*.tpl",
+  "tools/godot_*.py",
+  "tools/mapped_paths.py",
+  "tools/pck.py",
+  "tools/common_content.py",
+  "tools/digest.py",
+  "tools/resource_graph.py",
+  "tools/template.py",
+  "tools/engine/**",
+  "tools/extension/**",
+  "tools/action/**",
+  "tools/platforms/**",
+  "tools/run/**",
+  "MODULE.bazel",
+  "MODULE.bazel.lock",
+  "*_install.json",
+  "BUILD.bazel",
+  ".bazelrc",
+  ".bazelversion",
+  ".bazelignore",
+)) + List(
   "shared.bazelrc",
   "tools/bazel",
-  "rules_godot/.bazelversion",
-  "rules_godot/.bazelignore",
   "mise.toml",
   "mise.lock",
 )
@@ -43,19 +48,19 @@ local core = List(
 // The ruleset's white-box test packages. A change to one selects test:bazel and the tasks
 // that run its scripts, not the consumer tasks that merely read the rules in core. A
 // package missing here only selects more work.
-local whiteBox = List(
-  "rules_godot/godot/tests/**",
-  "rules_godot/godot/private/tests/**",
-  "rules_godot/godot/private/config/tests/**",
-  "rules_godot/godot/private/engine/tests/**",
-  "rules_godot/godot/engine/private/tests/**",
-  "rules_godot/godot/extension/tests/**",
-  "rules_godot/godot/platforms/private/tests/**",
-  "rules_godot/godot/private/testing/tests/**",
-  "rules_godot/tools/tests/**",
-  "rules_godot/tools/engine/tests/**",
-  "rules_godot/tools/platforms/tests/**",
-)
+local whiteBox = ruleset(List(
+  "godot/tests/**",
+  "godot/private/tests/**",
+  "godot/private/config/tests/**",
+  "godot/private/engine/tests/**",
+  "godot/engine/private/tests/**",
+  "godot/extension/tests/**",
+  "godot/platforms/private/tests/**",
+  "godot/private/testing/tests/**",
+  "tools/tests/**",
+  "tools/engine/tests/**",
+  "tools/platforms/tests/**",
+))
 
 // What a step that reads core ignores: documentation and white-box tests it does not run.
 local function consumerExclude(kept: List<String>): List<String> =
@@ -64,20 +69,20 @@ local consumerExcludeAll = consumerExclude(List())
 
 // The white-box packages whose tests are tagged source_engine: the source-engine lane runs
 // them, test:bazel excludes them.
-local sourceEngineTests = List(
-  "rules_godot/godot/engine/private/tests/**",
-  "rules_godot/godot/extension/tests/**",
-  "rules_godot/godot/platforms/private/tests/**",
-)
+local sourceEngineTests = ruleset(List(
+  "godot/engine/private/tests/**",
+  "godot/extension/tests/**",
+  "godot/platforms/private/tests/**",
+))
 
 // The consumer module's own declarations: what every task that builds in tests/ reads.
-local regressionModule = List(
-  "rules_godot/tests/MODULE.bazel",
-  "rules_godot/tests/MODULE.bazel.lock",
-  "rules_godot/tests/.bazel*",
-  "rules_godot/tests/BUILD.bazel",
-  "rules_godot/tests/*.json",
-)
+local regressionModule = ruleset(List(
+  "tests/MODULE.bazel",
+  "tests/MODULE.bazel.lock",
+  "tests/.bazel*",
+  "tests/BUILD.bazel",
+  "tests/*.json",
+))
 
 // What every step that builds in tests/ reads before its own inputs.
 local regressionCore = core + regressionModule

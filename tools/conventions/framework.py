@@ -7,12 +7,18 @@ from typing import Literal, Protocol
 
 from tools.conventions.context import Context, Location
 
+# The catalogue that documents every rule, by its ID as anchor.
+CATALOGUE = "rules_godot/docs/public/conventions.md"
+
 
 @dataclass(frozen=True)
 class RuleInfo:
     id: str
     title: str
-    documentation: str
+
+    @property
+    def documentation(self) -> str:
+        return f"{CATALOGUE}#{self.id.lower()}"
 
 
 @dataclass(frozen=True)

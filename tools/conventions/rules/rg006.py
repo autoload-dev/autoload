@@ -4,7 +4,12 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import RULESET_MODULE, Context, Location
+from tools.conventions.context import (
+    NON_CONSUMER_MODULES,
+    RULESET_MODULE,
+    Context,
+    Location,
+)
 from tools.conventions.framework import Finding, RuleInfo
 
 # The apparent repository consumers write for the ruleset, as in @autoload_rules_godot//godot.
@@ -13,8 +18,6 @@ REPO = "@autoload_rules_godot"
 # URLs, query expressions or Godot resource paths.
 COMMAND = re.compile(r"\bbazel(?:isk)?\s+(?:build|run|test)\s+([^`\n]+)")
 LABEL = re.compile(rf"(?<![\w/@:])(?:{re.escape(REPO)})?//[\w./-]*(?::[\w.*+/-]+)?")
-# The modules whose documents describe the ruleset: its own and the repository's docs/.
-OWN_DOCUMENTS = frozenset({Path("."), RULESET_MODULE})
 # Wildcards that name every target of a package which exists.
 WILDCARDS = {"all", "*", "all-targets"}
 
@@ -53,7 +56,6 @@ class CommandLabels:
     info = RuleInfo(
         "RG006",
         "Documented commands name existing targets",
-        "rules_godot/docs/public/conventions.md#rg006",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
@@ -68,7 +70,7 @@ class CommandLabels:
         local = label.removeprefix(REPO)
         ruleset = local != label
         # Root-local labels in consumer templates have no package context.
-        if local.startswith("//:") and owner in OWN_DOCUMENTS and not ruleset:
+        if local.startswith("//:") and owner in NON_CONSUMER_MODULES and not ruleset:
             return None
         package, _, target = local[2:].partition(":")
         # A command names its document's module first; nested modules are explicit.
@@ -79,7 +81,7 @@ class CommandLabels:
             candidates = [
                 module for module in candidates if module.path == RULESET_MODULE
             ]
-        elif owner not in OWN_DOCUMENTS and owner in {
+        elif owner not in NON_CONSUMER_MODULES and owner in {
             module.path for module in candidates
         }:
             candidates = [module for module in candidates if module.path == owner]

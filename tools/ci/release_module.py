@@ -17,20 +17,19 @@ import re
 import sys
 from pathlib import Path
 
-from tools.addons.modules import ROOT, module_attributes, module_path
+from tools.addons.modules import ROOT, RULESET, module_attributes, module_path
 
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
-RULESET = "autoload_rules_godot"
-RULESET_ROOT = Path("rules_godot")
+RULESET_NAME = "autoload_rules_godot"
 # The ruleset's release test: the registry's test module, as its presubmit.yml runs it. Its
 # own //... builds engines and mobile packages.
-RULESET_TEST = "cd rules_godot/e2e/smoke && bazel test //..."
+RULESET_TEST = f"cd {RULESET}/e2e/smoke && bazel test //..."
 
 
 def module_root(name: str, root: Path = ROOT) -> Path:
     """The directory of the module the name declares, relative to the repository."""
     directory = (
-        RULESET_ROOT if name == RULESET else module_path(name.removeprefix("autoload_"))
+        RULESET if name == RULESET_NAME else module_path(name.removeprefix("autoload_"))
     )
     manifest = root / directory / "MODULE.bazel"
     if (
@@ -49,7 +48,7 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
     directory = module_root(name, root)
     test = (
         RULESET_TEST
-        if name == RULESET
+        if name == RULESET_NAME
         else f"python3 -m tools.addons.lanes host {directory.name}"
     )
     return {

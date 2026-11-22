@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.conventions.context import (
     BUILD_FILES,
-    RULESET_MODULE,
+    NON_CONSUMER_MODULES,
     Context,
     Location,
     nearest,
@@ -32,7 +32,6 @@ class EngineLayout:
     info = RuleInfo(
         "RG014",
         "Engine modules and patches live under engine/",
-        "rules_godot/docs/public/conventions.md#rg014",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
@@ -40,7 +39,7 @@ class EngineLayout:
         roots = sorted(
             config.parent
             for config in workspace.godot_configurations
-            if workspace.owner(config.as_posix()) not in (Path("."), RULESET_MODULE)
+            if workspace.owner(config.as_posix()) not in NON_CONSUMER_MODULES
         )
         members: dict[Path, list[Path]] = defaultdict(list)
         for name in workspace.files:

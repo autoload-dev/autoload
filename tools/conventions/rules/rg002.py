@@ -99,7 +99,6 @@ class TargetNames:
     info = RuleInfo(
         "RG002",
         "Ordinary target names use lower snake case",
-        "rules_godot/docs/public/conventions.md#rg002",
     )
 
     def __init__(

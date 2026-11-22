@@ -9,12 +9,12 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from tools.addons.modules import ROOT, module_name, module_path
+from tools.addons.modules import ROOT, RULESET, module_name, module_path
 
 METADATA = "metadata.template.json"
 SOURCE = "source.template.json"
 # The ruleset's metadata template, whose maintainers and repositories every module shares.
-RULESET_METADATA = Path(".bcr/rules_godot") / METADATA
+RULESET_METADATA = Path(".bcr") / RULESET / METADATA
 
 
 def templates_directory(directory: str) -> Path:

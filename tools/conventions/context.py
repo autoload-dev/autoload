@@ -18,8 +18,6 @@ from typing import Protocol
 from tools.conventions.environment import nested_tool_environment
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
-# The documentation directories: the repository's and the ruleset's.
-DOCS = ("docs/", "rules_godot/docs/")
 
 
 def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
@@ -30,8 +28,11 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
 
 # The typed roots of a consumer module, below its module root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
-# The ruleset's module, with no typed roots, and its regression module and smoke paths.
+# The ruleset's module and documentation; the root and the ruleset, which are no consumers
+# and have no typed roots; and the regression module with its smoke paths.
 RULESET_MODULE = Path("rules_godot")
+DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
+NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"
 ADDON_SCENARIO = "shared_addon"
@@ -212,7 +213,7 @@ class Workspace:
 
     @cached_property
     def documents(self) -> tuple[str, ...]:
-        """Markdown under DOCS and every README; AGENTS.md files instruct agents."""
+        """Markdown under docs/ of the root or the ruleset and every README, not AGENTS.md."""
         return tuple(
             name
             for name in self.files
@@ -239,7 +240,7 @@ class Workspace:
         typed roots, and the regression module's scenario packages are its projects.
         """
         module = self.owner(path.as_posix())
-        if module in (Path("."), RULESET_MODULE):
+        if module in NON_CONSUMER_MODULES:
             return None
         parts = path.relative_to(module).parts
         if module == REGRESSION_MODULE:

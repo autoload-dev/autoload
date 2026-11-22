@@ -5,7 +5,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.addons.modules import all_modules
+from tools.addons.modules import RULESET, all_modules
 from tools.setup.modules import (
     addon_modules,
     bazelrc_options,
@@ -17,7 +17,7 @@ from tools.setup.modules import (
 # module's development SDK and each consumer module's SDK.
 SDK = "android_sdk_repository_extension.configure"
 # Pins the Linux SDK and NDK of godot_android_toolchains for remote Linux executors.
-LINUX_TOOLCHAINS = "rules_godot/godot/platforms/private/android_toolchains.bzl"
+LINUX_TOOLCHAINS = f"{RULESET}/godot/platforms/private/android_toolchains.bzl"
 
 
 def sdk_requirements(source: str) -> dict[str, str | int]:
