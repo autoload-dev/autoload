@@ -26,6 +26,9 @@ JOBS = {
 }
 # The host jobs, which say in <output>_android whether their tasks need the Android SDK.
 HOST_JOBS = tuple(job for job, (lane, _) in JOBS.items() if lane == "host")
+# The host of the self-hosted runners. They keep caches and the BuildBuddy executor's key,
+# so they run no code from a fork's pull request; the merge queue runs its lanes there.
+SELF_HOSTED = "macos"
 
 
 # Lanes that CI leaves to the Source engine workflow, which runs them on a schedule and on
@@ -225,15 +228,28 @@ def needs_android(tasks: list[str], android: frozenset[str]) -> bool:
     return any(task_command(task)[2] in android for task in tasks)
 
 
-def plan_outputs(lanes: dict[str, list[str]]) -> dict[str, object]:
+def excluded_hosts(event_name: str, event: dict) -> frozenset[str]:
+    """The hosts that may not run this event's code: a fork's pull request stays off the
+    self-hosted runners."""
+    if event_name != "pull_request":
+        return frozenset()
+    head_repo = event["pull_request"]["head"].get("repo") or {}
+    if head_repo.get("full_name") == event["repository"]["full_name"]:
+        return frozenset()
+    return frozenset({SELF_HOSTED})
+
+
+def plan_outputs(
+    lanes: dict[str, list[str]], excluded: frozenset[str] = frozenset()
+) -> dict[str, object]:
     """
-    CI's selection outputs: each job's tasks, those of its lane on its host, and whether a
-    host job needs the Android SDK.
+    CI's selection outputs: each job's tasks, those of its lane on its host, none on an
+    excluded host, and whether a host job needs the Android SDK.
     """
     android = android_tasks()
     outputs: dict[str, object] = {}
     for job, (lane, host) in JOBS.items():
-        tasks = for_host(lanes, host)[lane]
+        tasks = [] if host in excluded else for_host(lanes, host)[lane]
         outputs[output_name(job)] = tasks
         if job in HOST_JOBS:
             outputs[f"{output_name(job)}_android"] = needs_android(tasks, android)
@@ -250,7 +266,8 @@ def write_plan() -> None:
     command.extend(["check", "--plan", "--json"])
     command.extend(selection_args(event_name, event))
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
-    outputs = plan_outputs(without_scheduled_lanes(lane_plan(json.loads(result.stdout))))
+    lanes = without_scheduled_lanes(lane_plan(json.loads(result.stdout)))
+    outputs = plan_outputs(lanes, excluded_hosts(event_name, event))
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.writelines(
             f"{name}={json.dumps(value)}\n" for name, value in outputs.items()

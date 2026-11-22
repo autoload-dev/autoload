@@ -8,6 +8,7 @@ from tools.ci.verification import (
     JOBS,
     LANES,
     SCHEDULED_LANES,
+    excluded_hosts,
     for_host,
     lane_plan,
     output_name,
@@ -198,6 +199,26 @@ class VerificationTest(unittest.TestCase):
         lanes["host"].append("test:bazel")
         self.assertTrue(plan_outputs(lanes)["tests_linux_android"])
         self.assertTrue(plan_outputs(lanes)["tests_macos_android"])
+
+    def test_a_fork_pull_request_stays_off_the_self_hosted_runners(self) -> None:
+        def event(head: dict | None) -> dict:
+            return {
+                "repository": {"full_name": "org/repo"},
+                "pull_request": {"head": {"repo": head}},
+            }
+
+        self.assertEqual(
+            excluded_hosts("pull_request", event({"full_name": "org/repo"})), set()
+        )
+        for head in ({"full_name": "fork/repo"}, None):
+            with self.subTest(head=head):
+                self.assertEqual(excluded_hosts("pull_request", event(head)), {"macos"})
+        self.assertEqual(excluded_hosts("merge_group", {}), set())
+        lanes = {lane: [] for lane in LANES} | {"host": ["test:bazel"], "ios": ["ios"]}
+        outputs = plan_outputs(lanes, frozenset({"macos"}))
+        self.assertEqual(outputs["tests_linux"], ["test:bazel"])
+        self.assertEqual(outputs["tests_macos"], [])
+        self.assertEqual(outputs["ios"], [])
 
     def test_the_plan_assigns_each_job_its_lane_on_its_host(self) -> None:
         lanes = {lane: [] for lane in LANES} | {

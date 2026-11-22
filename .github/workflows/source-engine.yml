@@ -14,6 +14,11 @@ on:
 permissions:
   contents: read
 
+# A newer run on the same branch replaces one still building engines.
+concurrency:
+  group: source-engine-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source-engine:
     name: Source engine

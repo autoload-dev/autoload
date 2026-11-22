@@ -134,7 +134,9 @@ The lanes that need a macOS runner are the Apple lanes: the host tests on macOS,
 with source-built engines and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
 their tools and Bazel caches on their own disk between jobs. CI runs every selected Apple
-lane like the other lanes, on pull requests and in the merge queue. CI's `Finalize` is the
+lane like the other lanes, on pull requests and in the merge queue. A pull request from a
+fork runs no Apple lane: the VM also holds caches and the BuildBuddy executor's key, so a
+fork's code reaches it only in the merge queue. CI's `Finalize` is the
 merge queue's required check: a pull request whose lanes fail there leaves the queue and
 does not reach main. The ruleset of main, which requires the merge queue and that check, is
 managed in the repository settings. Main receives the merge group's commit unchanged, so its
