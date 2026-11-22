@@ -202,7 +202,11 @@ class AddonModuleLayout:
     ) -> Iterable[Finding]:
         """Registry templates of a module that no longer exists are removed with it."""
         owned = {BCR / module for module in modules}
-        directories = {template_directory(name) for name in workspace.files} - {None}
+        directories = {
+            directory
+            for name in workspace.files
+            if (directory := template_directory(name)) is not None
+        }
         for directory in sorted(directories - owned):
             yield Finding(at(directory / SOURCE), f"no add-on module owns {directory}")
 
