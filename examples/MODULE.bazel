@@ -219,10 +219,10 @@ http_archive(
 # Dart for the Dart scripting add-on: rules_dart compiles scripts with the SDK release whose
 # sources build the add-on's embedded runtime; an AOT snapshot runs only on the runtime of
 # its own release.
-bazel_dep(name = "rules_dart", version = "0.9.1")
+bazel_dep(name = "rules_dart", version = "0.10.0")
 
 dart = use_extension("@rules_dart//dart:extensions.bzl", "dart")
-dart.toolchain(dart_version = "3.13.7")
+dart.toolchain(dart_version = "3.14.1")
 use_repo(dart, "dart_toolchains")
 
 register_toolchains("@dart_toolchains//:all")
@@ -250,9 +250,9 @@ http_archive(
     ],
     patch_strip = 1,
     patches = ["//deps:dart_sdk.patch"],
-    sha256 = "cd2a1450f33cfeb35f180d33b836ab92a663d1335ee7f953ae3ebcb20308c99d",
-    strip_prefix = "sdk-3.13.7",
-    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.13.7.tar.gz"],
+    sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
+    strip_prefix = "sdk-3.14.1",
+    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],
 )
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
