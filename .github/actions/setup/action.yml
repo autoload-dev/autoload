@@ -1,7 +1,7 @@
 name: Set up repository
 description: >-
   Install and cache mise tools, reuse SDK components, and configure Bazel
-  repository caching and cleanup. A self-hosted runner keeps its tools, SDK
+  repository caching and cleanup. A persistent runner keeps its tools, SDK
   components and Bazel caches on its own disk between jobs, and its machine
   configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
 
@@ -19,19 +19,22 @@ inputs:
 runs:
   using: composite
   steps:
-    # A hosted runner starts every job fresh: caches come from the cache service and
-    # Bazel settings go into ~/.bazelrc. A self-hosted runner keeps its disk between
-    # jobs and runs jobs side by side, and its machine sets Bazel's caches in
-    # /etc/bazel.bazelrc. Linux runners' sticky disk, like a self-hosted runner's
-    # disk, keeps the repository cache from job to job.
+    # GitHub's and Blacksmith's runners start every job fresh: caches come from the
+    # cache service and Bazel settings go into ~/.bazelrc. A persistent runner, such as
+    # the macos-ci runners, keeps its disk between jobs and runs jobs side by side; its
+    # machine sets PERSISTENT_RUNNER and BAZEL_REPOSITORY_CACHE in the runner's
+    # environment and configures Bazel in /etc/bazel.bazelrc. Linux runners' sticky
+    # disk, like a persistent runner's disk, keeps the repository cache between jobs.
+    # Blacksmith's runners count as self-hosted to GitHub, so runner.environment
+    # cannot tell the two kinds apart.
     - name: Classify runner
       id: runner
       shell: bash
       run: |
-        hosted=$([[ "$RUNNER_ENVIRONMENT" == self-hosted ]] && echo false || echo true)
-        persistent=$([[ "$hosted" == false || "$RUNNER_OS" == Linux ]] && echo true || echo false)
+        fresh=$([[ "${PERSISTENT_RUNNER:-}" == true ]] && echo false || echo true)
+        persistent=$([[ "$fresh" == false || "$RUNNER_OS" == Linux ]] && echo true || echo false)
         {
-          echo "hosted=$hosted"
+          echo "fresh=$fresh"
           echo "persistent-disk=$persistent"
         } >> "$GITHUB_OUTPUT"
     # Runner images may select an older NDK. Empty values let mise apply the
@@ -58,25 +61,22 @@ runs:
           macOS-ARM64) target=macos-arm64 archive_sha256=$MISE_SHA256_MACOS_ARM64 ;;
           *) echo "No pinned mise for $RUNNER_OS $RUNNER_ARCH" >&2; exit 1 ;;
         esac
+        asset="mise-v$MISE_VERSION-$target.tar.gz"
+        archive="$RUNNER_TEMP/$asset"
+        verified=false
+        for url in "https://mise.jdx.dev/v$MISE_VERSION/$asset" \
+          "https://github.com/jdx/mise/releases/download/v$MISE_VERSION/$asset"; do
+          curl -fsSL --retry 3 --connect-timeout 10 --max-time 120 -o "$archive" "$url" &&
+            echo "$archive_sha256  $archive" | shasum -a 256 -c --status &&
+            verified=true && echo "Downloaded $asset from $url" && break
+          echo "::warning::Could not download a verified $asset from $url"
+        done
+        [[ "$verified" == true ]] || exit 1
         # mise-action's default data directory; it restores its cache there.
         bin="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/bin"
-        # A self-hosted runner keeps the mise an earlier job placed.
-        if ! "$bin/mise" --version 2>/dev/null | grep -q "^$MISE_VERSION "; then
-          asset="mise-v$MISE_VERSION-$target.tar.gz"
-          archive="$RUNNER_TEMP/$asset"
-          verified=false
-          for url in "https://mise.jdx.dev/v$MISE_VERSION/$asset" \
-            "https://github.com/jdx/mise/releases/download/v$MISE_VERSION/$asset"; do
-            curl -fsSL --retry 3 --connect-timeout 10 --max-time 120 -o "$archive" "$url" &&
-              echo "$archive_sha256  $archive" | shasum -a 256 -c --status &&
-              verified=true && echo "Downloaded $asset from $url" && break
-            echo "::warning::Could not download a verified $asset from $url"
-          done
-          [[ "$verified" == true ]] || exit 1
-          mkdir -p "$bin"
-          tar -xzf "$archive" -C "$RUNNER_TEMP" mise/bin/mise
-          mv "$RUNNER_TEMP/mise/bin/mise" "$bin/mise"
-        fi
+        mkdir -p "$bin"
+        tar -xzf "$archive" -C "$RUNNER_TEMP" mise/bin/mise
+        mv "$RUNNER_TEMP/mise/bin/mise" "$bin/mise"
         # With the binary's checksum, mise-action verifies it without GitHub.
         {
           echo "version=$MISE_VERSION"
@@ -88,8 +88,8 @@ runs:
       with:
         version: ${{ steps.mise.outputs.version }}
         sha256: ${{ steps.mise.outputs.sha256 }}
-        cache: ${{ steps.runner.outputs.hosted }}
-        cache_save_post: ${{ steps.runner.outputs.hosted }}
+        cache: ${{ steps.runner.outputs.fresh }}
+        cache_save_post: ${{ steps.runner.outputs.fresh }}
         cache_key_prefix: mise-${{ github.job }}
         # A plan job needs only hk and Python, not Bazelisk.
         install_args: ${{ inputs.bazel == 'false' && 'hk python' || '' }}
@@ -108,7 +108,7 @@ runs:
           xcrun --sdk iphonesimulator --show-sdk-version
         fi
     - name: Find missing Android SDK components
-      if: inputs.android-cache == 'true' && steps.runner.outputs.hosted == 'true'
+      if: inputs.android-cache == 'true' && steps.runner.outputs.fresh == 'true'
       id: sdk-cache
       shell: bash
       run: |
@@ -127,7 +127,7 @@ runs:
         key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Keep normal progress output without collecting per-invocation trace profiles.
     - name: Configure Bazel output
-      if: inputs.bazel == 'true' && steps.runner.outputs.hosted == 'true'
+      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
       shell: bash
       run: |
         {
@@ -137,13 +137,13 @@ runs:
     # Extracted repositories live under the repository cache and leave it
     # once no build used them for 14 days; a zero idle delay lets Bazel prune
     # them between the job's commands.
-    # A self-hosted machine's /etc/bazel.bazelrc names the same repository cache.
+    # A persistent runner's machine names its repository cache.
     - name: Locate cache
       if: inputs.bazel == 'true'
       id: cache
       shell: bash
       run: |
-        cache=$HOME/.cache/bazel-repository
+        cache=${BAZEL_REPOSITORY_CACHE:-$HOME/.cache/bazel-repository}
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
         echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
@@ -177,7 +177,7 @@ runs:
     - name: Mount cache from sticky disk
       if: >-
         inputs.bazel == 'true' && runner.os == 'Linux'
-        && steps.runner.outputs.hosted == 'true'
+        && steps.runner.outputs.fresh == 'true'
       uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
       with:
         key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}
@@ -194,7 +194,7 @@ runs:
           find "$DOWNLOADS" -mindepth 1 -type d -empty -delete
         fi
     - name: Configure repository cache
-      if: inputs.bazel == 'true' && steps.runner.outputs.hosted == 'true'
+      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
       shell: bash
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}
@@ -204,7 +204,7 @@ runs:
     - name: Stop Bazel at job end
       if: >-
         inputs.bazel == 'true' && runner.os == 'Linux'
-        && steps.runner.outputs.hosted == 'true'
+        && steps.runner.outputs.fresh == 'true'
       uses: ./.github/actions/setup/stop-bazel
       with:
         bazel-modules: ${{ inputs.bazel-modules }}
