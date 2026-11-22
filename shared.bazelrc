@@ -13,10 +13,9 @@ common --module_mirrors=https://bcr.cloudflaremirrors.com
 common --experimental_output_paths=strip
 common --modify_execution_info=(?!DexBuilder$|Desugar$|Godot).*=-supports-path-mapping
 
-# Python binaries get no implicit __init__.py files, the coming default of rules_python. Each
-# module of this repository opts in through explicit_init_py in its MODULE.bazel; this
-# covers the tools of modules that do not, such as rules_apple's, rules_android's and
-# Bazel's own, which otherwise print a deprecation warning per tool in every build.
+# Python binaries get no implicit __init__.py files, the coming default of rules_python, also
+# in modules that do not opt in through explicit_init_py, such as rules_apple, rules_android
+# and Bazel's tools, which otherwise warn per tool in every build.
 common --incompatible_default_to_explicit_init_py
 
 # Actions run on this host unless a config such as --config=buildbuddy names remote execution

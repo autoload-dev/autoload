@@ -10,7 +10,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
-load("//godot/private:versions.bzl", "version_below")
+load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
 
 visibility("public")
@@ -268,12 +268,11 @@ _FLOOR_OPTIONS = {
     "ios": IOS_MINIMUM_OS_OPTION,
 }
 
-# The earliest versions the libc++ of current Xcode supports; below them every translation
-# unit warns that libc++ no longer supports the platform. Godot's own build targets iOS 14.0
-# and, on Intel Macs, macOS 10.13.
+# Below these floors every translation unit warns that libc++ no longer supports the
+# platform; Godot's own build targets iOS 14.0 and, on Intel Macs, macOS 10.13.
 _LIBCXX_MINIMUM_OS = {
-    "macos": "11.0",
-    "ios": "15.0",
+    "macos": MACOS_MINIMUM_OS,
+    "ios": IOS_MINIMUM_OS,
 }
 
 def _minimum_os(attr):
