@@ -1,8 +1,8 @@
 name: Extended verification
 
-# The Apple workflow runs every source-engine case on main: a merge runs only the lane's
-# main cases, and the others, tagged source_engine_extended, and the Petri example's
-# source-built engine run here, on the schedule below and on manual dispatch. Policy:
+# The only CI run of the source-engine lane: the Apple workflow builds and runs every
+# source-engine case on main, on the schedule below and on manual dispatch. Pull requests
+# and merges leave the lane out. Policy:
 # docs/internal/verification-platforms.md#extended-source-engine-cases.
 on:
   schedule:

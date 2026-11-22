@@ -116,19 +116,23 @@ useful immediate feedback, without duplicating the whole CI suite.
 
 ### Extended source-engine cases
 
-The source-engine lane is the most expensive one, so a merge runs only the cases users
-depend on most: the runtimes the official artifacts lack, built from the release's sources
-for the iOS arm64 Simulator and for Android, and the consumer's patched engine with its
-custom module, editor included (`mise run source-engine`). The extended cases, the tests
-tagged `source_engine_extended`, the stable and beta patched engines and the Petri example's
-source-built engine, run in `mise run source-engine:full`, which the
-[Extended verification](../../.github/workflows/extended.yml) workflow runs on main on its
-schedule and on manual dispatch. A change to Petri still selects its own example suite.
+The source-engine lane is the most expensive one and the least likely to change with a
+commit, so pull requests, the merge queue and CI's dispatch leave it out
+(`SCHEDULED_LANES` in `tools/ci/verification.py`), even when a change selects it. The
+[Extended verification](../../.github/workflows/extended.yml) workflow runs every case,
+`mise run source-engine:full`, on main on its schedule, and on manual dispatch whenever a
+change to source-built engines needs checking before then. `mise run source-engine` runs
+locally the cases users depend on most: the runtimes the official artifacts lack, built
+from the release's sources for the iOS arm64 Simulator and for Android, and the
+consumer's patched engine with its custom module, editor included; the tests tagged
+`source_engine_extended`, the stable and beta patched engines and the Petri example's
+source-built engine join them in `source-engine:full`.
 
 ### Apple lanes on pull requests
 
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
-with source-built engines and the iOS apps. They run in the
+with source-built engines and the iOS apps; the source-engine lane runs only in the
+[extended cases](#extended-source-engine-cases). They run in the
 [Apple](../../.github/workflows/apple.yml) workflow, which CI calls, on the self-hosted
 runners labeled `macos-ci`: four runners in one macOS VM, which keep their tools and Bazel
 caches on their own disk between jobs. A pull request's CI run leaves them out, so that the

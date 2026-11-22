@@ -9,6 +9,7 @@ from tools.ci.verification import (
     for_host,
     lane_plan,
     runs_apple,
+    without_scheduled_lanes,
     selection_args,
     task_command,
     verify_results,
@@ -87,6 +88,17 @@ class VerificationTest(unittest.TestCase):
                     verify_results(workflow, needs)
                 needs[job]["result"] = "success"
                 verify_results(workflow, needs)
+
+    def test_runs_leave_the_scheduled_source_engine_lane_out(self) -> None:
+        lanes = {lane: [] for lane in LANES} | {
+            "host": ["test:bazel"],
+            "source-engine": ["source-engine", "test:example:petri"],
+        }
+        planned = without_scheduled_lanes(lanes)
+        self.assertEqual(planned["source-engine"], [])
+        self.assertEqual(planned["host"], ["test:bazel"])
+        only_engines = {lane: [] for lane in LANES} | {"source-engine": ["source-engine"]}
+        self.assertFalse(runs_apple(without_scheduled_lanes(only_engines), "merge_group"))
 
     def test_source_engine_workflow_output_requires_its_workflow_job(self) -> None:
         needs = needs_of("apple", source_engine='["source-engine"]') | {
