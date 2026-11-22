@@ -15,7 +15,11 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
 
+from tools.conventions.environment import nested_tool_environment
+
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
+# The documentation directories: the repository's and the ruleset's.
+DOCS = ("docs/", "rules_godot/docs/")
 
 
 def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
@@ -26,9 +30,8 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
 
 # The typed roots of a consumer module, below its module root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
-# The ruleset's module, which, like the root module, has no typed roots.
+# The ruleset's module, with no typed roots, and its regression module and smoke paths.
 RULESET_MODULE = Path("rules_godot")
-# The regression module and its smoke paths, laid out by the verification architecture.
 REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"
 ADDON_SCENARIO = "shared_addon"
@@ -209,18 +212,12 @@ class Workspace:
 
     @cached_property
     def documents(self) -> tuple[str, ...]:
-        """
-        Markdown under docs/ and rules_godot/docs/ and every README; AGENTS.md files
-        instruct agents instead.
-        """
+        """Markdown under DOCS and every README; AGENTS.md files instruct agents."""
         return tuple(
             name
             for name in self.files
             if Path(name).suffix == ".md"
-            and (
-                name.startswith(("docs/", "rules_godot/docs/"))
-                or Path(name).name.lower().startswith("readme")
-            )
+            and (name.startswith(DOCS) or Path(name).name.lower().startswith("readme"))
             and Path(name).name != "AGENTS.md"
         )
 
@@ -392,16 +389,6 @@ def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
             StringLiteral(Location(name, token.start[0]), body[quotes:-quotes])
         )
     return tuple(literals)
-
-
-def nested_tool_environment(environment: Mapping[str, str]) -> dict[str, str]:
-    """
-    Copy caller variables for a nested Bazel. rules_python enables safe-path mode for its own
-    launcher; passing it through changes the imports of other repositories' Python scripts.
-    """
-    return {
-        name: value for name, value in environment.items() if name != "PYTHONSAFEPATH"
-    }
 
 
 def run_tool(command: list[str], cwd: Path) -> str:
