@@ -8,8 +8,7 @@
     }
   ],
   "repository": [
-    "github:autoload-dev/autoload",
-    "github:autoload-dev/rules_godot"
+    "github:autoload-dev/autoload"
   ],
   "versions": [],
   "yanked_versions": {}

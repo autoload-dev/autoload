@@ -96,7 +96,6 @@ local function consumedAddonFiles(consumer: String): List<String> =
 local consumedAddonOwnFiles = List(
   "examples/**",
   "addon.pkl",
-  "presubmit.yml",
   ".bazelrc",
   ".bazelversion",
   ".gitignore",
@@ -120,6 +119,9 @@ local conventionSources = List(
   "tests/smoke/**",
   "tools/conventions/**",
   "addons/*/addon.pkl",
+  // The add-on modules' registry templates and the generator's template that RG015 reads.
+  ".bcr/addons/**",
+  "tools/addons/template/**",
   "tools/addons/Addon.pkl",
   "hk.pkl",
   "mise.toml",
@@ -181,7 +183,6 @@ local exampleProfiles = new Mapping<String, String> {
 
 local checks = new Mapping<String, Step> {
   ["test:setup"] = (task("test:setup")) {
-    // The add-on modules' READMEs are inputs of the generated module table.
     exclude = List()
     glob = List(
       "mise.toml",
@@ -205,14 +206,10 @@ local checks = new Mapping<String, Step> {
       "addons/*/examples/MODULE.bazel",
       "addons/*/examples/.bazelrc",
       "addons/*/examples/.bazelversion",
-      // The files generated from the add-on modules, and what they are generated from.
-      "addons/README.md",
+      // The file generated from the modules' overrides, read above.
       "addons/consumers.pkl",
-      "addons/*/README.md",
-      "addons/*/presubmit.yml",
       // What the Android requirements and the lanes read of each module.
       "addons/*/addon.pkl",
-      ".bcr/**",
       "tools/addons/**",
       "tools/setup/**",
       "godot/platforms/private/android_toolchains.bzl",

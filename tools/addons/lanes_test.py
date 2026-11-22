@@ -8,7 +8,7 @@ from tools.addons.modules import AddonModule
 
 
 def module(*projects: str) -> AddonModule:
-    return AddonModule(Path("addons/widget"), "autoload_widget", "0.1.0", "", projects)
+    return AddonModule(Path("addons/widget"), "autoload_widget", projects)
 
 
 class LanesTest(unittest.TestCase):
@@ -32,8 +32,6 @@ class LanesTest(unittest.TestCase):
         widget = AddonModule(
             Path("addons/widget"),
             "autoload_widget",
-            "0.1.0",
-            "",
             ("demo",),
             lanes=("host",),
         )

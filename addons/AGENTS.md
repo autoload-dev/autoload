@@ -1,8 +1,7 @@
 # Add-ons
 
 Each directory here is a Bazel module of its own, `addons/<module>` named
-`autoload_<module>`, which applications consume like any other module; the
-[README](README.md) lists them. A module has its own `MODULE.bazel`, README, version and
+`autoload_<module>`, which applications consume like any other module. A module has its own `MODULE.bazel`, README, version and
 release tags `<module>-v<version>`.
 
 Create modules and add-ons with the generator, never by copying another module:
@@ -10,11 +9,11 @@ Create modules and add-ons with the generator, never by copying another module:
 ```sh
 mise run addon:new <module>                   # a module with one add-on, <module>
 mise run addon:new <module> --addon <addon>   # one more add-on in a module
-mise run addons:generate                      # then: README table and .bcr templates
 ```
 
 It writes [tools/addons/template](../tools/addons/template), which builds in every lane from
-the start. Improve the template, not one module, when a pattern should hold for all of them.
+the start, and a new module's registry templates in `.bcr/addons/<module>/`. From then on
+the module owns those files: nothing regenerates them. Improve the template, not one module, when a pattern should hold for all of them.
 A new add-on gets its own module, unless it must be versioned with others, such as products
 that share one SDK.
 
@@ -22,8 +21,7 @@ that share one SDK.
 
 The conventions check enforces it (RG015, `docs/public/conventions.md`):
 
-- `MODULE.bazel`, `README.md` (its first paragraph is the README table's description),
-  `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
+- `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and `examples/.bazelrc` imports
   [examples.bazelrc](examples.bazelrc); each adds only its BuildBuddy tag. Settings for all
   modules go in those two files.
@@ -33,9 +31,9 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   without the `android` and `ios` lanes builds no application: its examples have no `app`,
   no Android SDK and no Maven graph. hk.pkl, the lanes and the conventions read it; nothing
   outside the module lists the module.
-- `presubmit.yml`: the Bazel Central Registry's checks of a release.
-  `mise run addons:generate` copies it to `.bcr/addons/<module>/` beside the generated
-  templates. Never edit `.bcr/addons/`, `.bcr/config.yml` or the README table by hand.
+- `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
+  release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
+  registry's checks of a release. Edit them there like any other file of the module.
 - `examples/`: an independent root module with the module's example applications in
   `projects/<name>/`, each with the targets `edit`, `pack` and, for a module that builds
   applications, `app`. It consumes the module

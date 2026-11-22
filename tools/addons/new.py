@@ -2,11 +2,13 @@
 Create an add-on module in addons/ from the template, or add an add-on to a module.
 
 `python3 -m tools.addons.new <module> [--addon <addon>]` (`mise run addon:new`) writes
-tools/addons/template/module/ to addons/<module>/ for a new module, and
+tools/addons/template/module/ to addons/<module>/ for a new module, with
+tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases, and
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
 named like the module unless --addon names it. In both trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. A new
-module's examples then pin their Maven graph, which needs Bazel and the network.
+module's examples then pin their Maven graph, which needs Bazel and the network. The
+written files belong to the module from then on: nothing regenerates them.
 
 `addons/.selftest` (gitignored) is the self-test's module (`mise run addon:template`): it is
 regenerated from scratch each time.
@@ -113,6 +115,9 @@ def generate(directory: str, addon: str | None = None, root: Path = ROOT) -> lis
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
+        # The self-test module is never released.
+        if directory != SELFTEST:
+            written += copy_tree("bcr", root / ".bcr" / module_path(directory), tokens)
     return written + copy_tree("addon", module / names.addon, tokens)
 
 
@@ -147,8 +152,7 @@ def main() -> None:
         pin(args.module)
     if args.module != SELFTEST:
         print(
-            "\nNext: describe the module in the first paragraph of its README, run "
-            "`mise run addons:generate` and verify it with "
+            "\nNext: describe the module in its README and verify it with "
             f"`mise run addon:host {args.module}`."
         )
 
