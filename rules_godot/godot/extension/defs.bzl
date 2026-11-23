@@ -471,11 +471,17 @@ def _library_providers(ctx, library):
 
     # Godot loads a framework at run time, so an Apple application embeds and signs it
     # without linking it. rules_apple's framework aspect stops at a target with this
-    # provider, so it carries the frameworks of the platform libraries too.
+    # provider, so it carries the frameworks of the platform libraries too, and those the
+    # library links, which the application embeds once however many extensions link them.
     if library.link_kind == "framework":
+        sources = (
+            ctx.attr.library +
+            getattr(ctx.attr, "deps", []) +
+            getattr(ctx.attr, "implementation_deps", [])
+        )
         providers.append(apple_provider.merge_apple_framework_import_info([
             target[AppleFrameworkImportInfo]
-            for target in ctx.attr.library + getattr(ctx.attr, "deps", [])
+            for target in sources
             if AppleFrameworkImportInfo in target
         ]))
     return providers
@@ -658,7 +664,7 @@ _extension = rule(
 )
 
 # rules_apple's resource aspect follows implementation_deps and collects the resources it
-# finds there; the extension itself reads nothing from it.
+# finds there; the extension itself reads only the frameworks the library links from it.
 _source_extension = rule(
     doc = "A godot_extension whose library godot_cc_extension builds.",
     implementation = _extension_impl,
@@ -667,8 +673,11 @@ _source_extension = rule(
             doc = """
             The extension's cc_library on iOS, so that iOS applications bundle the Apple
             resources of its native dependencies, such as a Swift package's resource
-            bundle. The godot_cc_extension macro sets it; it adds nothing to linking.
+            bundle, and embed the dynamic frameworks it links, transitive ones included.
+            The godot_cc_extension macro sets it; it adds nothing to linking.
             """,
+            # The frameworks the extension's framework links, as deps collects them.
+            aspects = [framework_provider_aspect],
             cfg = keep_debug_info,
         ),
     } | TRANSITION_ATTRS,
@@ -818,7 +827,8 @@ def godot_cc_extension(
         srcs: C/C++ source labels.
         entry_symbol: Exported Godot entry function.
         deps: rules_cc dependencies; shared libraries among them are runtime
-            dependencies placed beside the extension library.
+            dependencies placed beside the extension library, and iOS applications embed
+            the dynamic frameworks they link, transitive ones included.
         hdrs: Private extension headers.
         data: Files the descriptor's [dependencies] lists beyond the libraries deps
             link, as godot_extension's data.

@@ -298,6 +298,13 @@ signs it in its `Frameworks` directory, as it does a vendor's
 Bazel modules, each with their own `godot_cpp_bindings`, never share godot-cpp symbols, and
 every extension keeps its own main loop callbacks.
 
+A dynamic framework the extension links through `deps`, an `apple_dynamic_framework_import`
+or `apple_dynamic_xcframework_import` without `bundle_only`, needs no further declaration:
+the application embeds and signs it beside the extension's framework, with the frameworks it
+links in turn. Several extensions that link one framework, such as the products of one
+vendor SDK that share its core framework, get one copy of it. Only a framework the extension
+loads without linking it belongs in [`platform_deps`](#dynamic-frameworks).
+
 `ios_bundle_id` sets the framework's `CFBundleIdentifier`; by default it derives from the
 target's label, such as `rules-godot.extension.addons.sentry.sentry`. Two extensions of one
 application need different target names, since the frameworks share one directory.

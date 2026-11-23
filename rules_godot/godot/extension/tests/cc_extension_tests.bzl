@@ -8,8 +8,8 @@ macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
 operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
 named after the target, whose binary combines the library of every CPU and gets the
-framework's install name, or with
-ios_linkage = "static" the archive the application links.
+framework's install name and which carries the dynamic frameworks its library links, or
+with ios_linkage = "static" the archive the application links.
 """
 
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
@@ -22,6 +22,7 @@ load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
+load(":extension_contracts.bzl", "dynamic_xcframework_fixture")
 
 _SMALL = {"size": "small"}
 _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
@@ -239,6 +240,35 @@ def _ios_extension_is_a_framework(env, target):
         expr = "the files an Apple application embeds",
     ).contains_exactly([target.label.name, "Info.plist"])
 
+def _test_ios_framework_carries_the_frameworks_it_links(name):
+    core = name + "_core"
+    analytics = name + "_analytics"
+    dynamic_xcframework_fixture(name = core, binary = "FixtureCore", linked = True)
+    dynamic_xcframework_fixture(
+        name = analytics,
+        binary = "FixtureAnalytics",
+        linked = True,
+        deps = [":" + core],
+    )
+    _ios_analysis_test(
+        name,
+        _ios_framework_carries_the_frameworks_it_links,
+        deps = [":" + analytics],
+    )
+
+def _ios_framework_carries_the_frameworks_it_links(env, target):
+    # rules_apple's framework aspect stops at the extension, so an application embeds the
+    # frameworks its library links, transitive ones included, only through its provider.
+    binaries = [
+        file.basename
+        for file in target[AppleFrameworkImportInfo].framework_imports.to_list()
+        if file.extension != "plist"
+    ]
+    env.expect.that_collection(
+        binaries,
+        expr = "the framework binaries an Apple application embeds",
+    ).contains_exactly(["FixtureAnalytics", "FixtureCore", target.label.name])
+
 def _test_ios_framework_binary_has_its_install_name(name):
     _ios_analysis_test(name, _ios_framework_binary_has_its_install_name, ".ios_framework_files")
 
@@ -325,6 +355,7 @@ def cc_extension_test_suite(name):
             _test_descriptor_attributes_reach_both_extensions,
             _test_minimum_os_versions_reach_extension_info,
             _test_ios_extension_is_a_framework,
+            _test_ios_framework_carries_the_frameworks_it_links,
             _test_ios_framework_binary_has_its_install_name,
             _test_ios_framework_binary_combines_every_cpu,
             _test_ios_framework_is_one_configuration_for_every_cpu,

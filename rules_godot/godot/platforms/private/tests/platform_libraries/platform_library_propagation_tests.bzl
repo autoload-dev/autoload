@@ -23,6 +23,7 @@ load("//godot/private/tests:configurations.bzl", "in_platform_slice")
 _ADDONS = "//godot/platforms/private/tests/platform_libraries/fixtures/addons_with_platform_libraries:"
 _UNMATCHED = "//godot/platforms/private/tests/platform_libraries/fixtures/extensions_without_matching_libraries:"
 _DECLARATIONS = "//godot/platforms/private/tests/platform_libraries/fixtures/extension_library_declarations:"
+_LINKED_FRAMEWORKS = "//godot/platforms/private/tests/platform_libraries/fixtures/linked_frameworks:"
 
 # The configuration settings and test attributes of each target platform.
 _HOST = struct(config_settings = {}, attr_values = {"size": "small"})
@@ -179,6 +180,52 @@ def _ios_app_links_no_extension_framework(env, target):
     env.expect.that_collection(flags, expr = "link flags").not_contains("-Wl,-u,_framework_ios_init")
     env.expect.that_collection(_linked(target), expr = "linked libraries").not_contains("framework")
 
+def _test_ios_app_embeds_linked_frameworks_once(name):
+    godot_ios_application(
+        name = name + "_app",
+        bundle_id = "org.example.game",
+        pack = _LINKED_FRAMEWORKS + "pack",
+        runtime = _LINKED_FRAMEWORKS + "runtime",
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_app",
+        impl = _ios_app_embeds_linked_frameworks_once,
+        # A whole application: the simulator needs no provisioning profile.
+        config_settings = {
+            "//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64")),
+        },
+        extra_target_under_test_aspects = [reached_actions],
+        attr_values = _IOS.attr_values,
+    )
+
+def _framework_names(action):
+    """The names of the .framework directories among an action's inputs."""
+    return sorted({
+        part: None
+        for file in action.inputs.to_list()
+        for part in file.path.split("/")
+        if part.endswith(".framework")
+    })
+
+def _ios_app_embeds_linked_frameworks_once(env, target):
+    # rules_apple embeds and signs each framework with one action.
+    embedded = [
+        _framework_names(entry.action)
+        for entry in reached(target)
+        if entry.action.mnemonic == "ImportedDynamicFrameworkProcessor"
+    ]
+    env.expect.that_collection(
+        embedded,
+        expr = "frameworks of each embedding action",
+    ).contains_exactly([
+        ["analytics_extension.framework"],
+        ["core_extension.framework"],
+        ["FixtureAnalytics.framework"],
+        ["FixtureCore.framework"],
+    ])
+
 def _test_ios_shell_merges_addon_infoplists(name):
     analysis_test(
         name = name,
@@ -264,6 +311,7 @@ def platform_library_propagation_test_suite(name):
             _test_android_app_collects_runtime_dependency_beside_library,
             _test_android_app_of_desktop_extension_analyzes,
             _test_android_libraries_with_one_file_name_fail,
+            _test_ios_app_embeds_linked_frameworks_once,
             _test_ios_app_links_no_extension_framework,
             _test_ios_app_links_addon_platform_libraries,
             _test_ios_app_links_extension_library_of_its_platform_slice,
