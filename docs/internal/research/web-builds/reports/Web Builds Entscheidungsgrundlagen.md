@@ -251,6 +251,52 @@ Die [Capability-Matrix](../../../../../rules_godot/docs/internal/capabilities.md
 
 **Vorschlag (keine Entscheidung):** Den Scope als Meilensteine festlegen. M1: prebuilt, nothreads, ohne Extensions, GDScript, mit Fallback-Toolchains, Texturfix, vollständiger Shell ohne PWA und `bazel run`. M2: Extensions über `dlink`-Ableitung und eine vom Consumer registrierte emsdk-Toolchain. M3, nur bei Bedarf: Threads mit PWA sowie Browser-Tests. C#-Projekte für `web` zur Analysezeit ablehnen. Für Forward+-/Mobile-Projekte eine Analysezeit-Notiz ausgeben, aber „web == Compatibility“ nicht fest verdrahten, weil ein künftiger WebGPU-Renderer die Template-Matrix ändern würde. Debug-Symbole bleiben leer, bis quellgebaute Web-Engines kommen. Dann ist `-gseparate-dwarf` das Gegenstück zu `.dSYM`.
 
+## Nachtrag: Engine-Größe und Playable Ads
+
+Für Playable Ads zählt jedes Megabyte. Das verschiebt die Prioritäten: Ein verkleinerter, aus dem Quellcode gebauter Engine-Build wird damit zum Kernfall. Bisher war er ein Nebenthema der Extensions. Zwei Ergänzungen in den Notizen belegen das. [minimal_engine_size.md](../research_notes/Web%20Builds%20Entscheidungsgrundlagen/minimal_engine_size.md) enthält eigene Messungen mit SCons und emsdk 4.0.20. [playable_ads.md](../research_notes/Web%20Builds%20Entscheidungsgrundlagen/playable_ads.md) sammelt die Vorgaben von zwölf Ad-Netzwerken.
+
+**Gemessen (Godot 4.7.2, `godot.wasm` ohne Threads):**
+
+| Build | roh | gzip | Brotli |
+| --- | ---: | ---: | ---: |
+| Offizielles Template | 39,5 MB | 10,1 MB | 7,1 MB |
+| Minimal-Module + `disable_*`, `-Os` (L) | 23,4 MB | 5,5 MB | 3,8 MB |
+| wie L, plus `disable_3d` (nur 2D) | 21,2 MB | 5,0 MB | 3,5 MB |
+| wie L, `-Oz` + volle LTO + `webp` (L2, läuft Lichtpost) | 17,7 MB | 5,2 MB | 3,6 MB |
+
+- **Die Modul-Auswahl halbiert die Engine.** Beides deckt die Source-Recipe von rules_godot heute schon ab: die Allowlist `enabled_modules` und die `disable_*`-Schalter über `build_options`.
+- **Feinschliff bringt komprimiert wenig.** `disable_3d` und `-Oz` mit voller LTO sparen nur noch einige Prozent. Was weiter schrumpfen soll, steckt im Szenen- und Renderer-Kern. Godots `build_profile` schaltet einzelne Klassen ab, und genau das lehnt rules_godot heute ab.
+- **Die Import-Einstellungen bestimmen, welche Engine-Module nötig sind.** Lichtpost lief mit L, aber ohne Hintergründe: Verlustfrei importierte Texturen werden als WebP gespeichert, und das Modul `webp` fehlte. Das fiel erst im Browser auf. Die Import-Ergebnisse sind zur Build-Zeit bekannt, also könnte das Ruleset die nötigen Decoder-Module prüfen.
+- **Bauzeit:** 1–2 Minuten pro Variante auf einem Apple-Silicon-Mac. Ein Minimal-Build ist billig.
+
+**Playable Ads (Kurzfassung der Recherche):**
+
+- **Limits:** Fast alle Netzwerke erlauben etwa 5 MB, zählen aber Unterschiedliches. Google, TikTok/Pangle, Mintegral, Snapchat und die ZIP-Variante von Meta messen das komprimierte ZIP. AppLovin, Unity und Moloco messen die rohe HTML-Datei. Meta erlaubt für eine einzelne HTML-Datei laut Entwicklerdoku nur 2 MB.
+- **Komprimierte Payload in der HTML ist etablierte Praxis.** Defold, PlayCanvas und Unity Luna machen es so. Nativ dekomprimieren Browser per `DecompressionStream` aber nur gzip und deflate. Für Brotli, xz oder zstd muss ein JS-Decoder mit in die HTML.
+- **Budget mit L2 und Lichtpost:**
+  - Die Engine allein kommt mit gzip auf 5,2 MB und mit Brotli auf etwa 3,6 MB.
+  - Das PCK von Lichtpost hat 3,6 MB, weil die Hintergründe verlustfrei gespeichert sind.
+  - Zusammen sind das etwa 7,2 MB mit Brotli. Das liegt über jedem Limit.
+  - Bei Netzwerken, die die rohe HTML zählen, kostet Base64 ein weiteres Drittel.
+- **Jedes Netzwerk braucht einen eigenen Adapter:**
+  - MRAID mit `mraid.open()` bei AppLovin, Unity, Liftoff und Digital Turbine.
+  - `FbPlayableAd.onCTAClick()` bei Meta und Moloco.
+  - `ExitApi.exit()` bei Google.
+  - `install()`, `gameReady()` und `gameEnd()` bei Mintegral.
+- **Godot-spezifische Hürden:**
+  - Der Loader holt `index.wasm` fest per `fetch`. Für eine Single-File-Ausgabe braucht er eine eigene Shell.
+  - Die Audio-Worklets brauchen Blob-URLs.
+  - `godot.js` enthält `XMLHttpRequest`, das der Prüfer von Moloco ablehnt, und IndexedDB, die Google untersagt.
+  - Für Godot-Playables gibt es keinen bekannten Präzedenzfall.
+
+**Folgen für die Entscheidungen:**
+
+- **Entscheidung 2:** Ein eigener Engine-Build braucht die Emscripten-Toolchain. Ein kleiner Build ist ein statischer Main Module ohne `dlink`, braucht also keinen PIC-Sysroot. LTO würde allerdings den LTO-Sysroot brauchen.
+- **Entscheidung 6:** „Single-File-HTML pro Netzwerk“ ist ein eigenes Ausgabeformat mit Adapter, Kompression und Größenprüfung. Es passt als Packaging-Schritt nach dem normalen Web-Build, so wie Needle Engine es mit Build-Profilen pro Netzwerk löst.
+- **Neue Frage:** Soll rules_godot `build_profile` erlauben oder aus den genutzten Klassen eines Projekts erzeugen? Dazu gehört die Prüfung der nötigen Module aus den Import-Ergebnissen. Die Design-Prinzipien sagen bisher: „Die App bestimmt die Allowlist, Inferenz ist unzuverlässig.“ Die Prüfung über die Importe wäre keine Inferenz, sondern eine Konsistenzprüfung.
+
+**Vorschlag (keine Entscheidung):** Playable Ads als eigener Meilenstein nach M1. Vorher zwei Messungen: Erstens, wie weit ein klassengenaues `build_profile` die Engine unter Brotli 3,5 MB drückt. Zweitens, ob eine Single-File-Shell mit Brotli-Decoder die Prüfer von AppLovin, Meta, Mintegral und Google besteht.
+
 ## Fazit
 
 Der Prototyp zeigt, dass Web-Builds technisch in das bestehende Modell passen: Exportplattform, Runtime-Slot, Pack-Export über den Shell-Probe, Bundle in Python. Die eigentliche Arbeit steckt nicht im Bundle, sondern an zwei Stellen, die das Ruleset bisher nicht berühren musste. Erstens hängt die native ABI an einer Hosting-Eigenschaft (Threads), und die Emscripten-Version ist pro Godot-Minor fixiert. Bazels einzige Emscripten-Toolchain kennt diese Version nur als Singleton und kann noch keine Shared Libraries. Wer Threads-Constraint, Runtime-Shape und Toolchain-Validierung zusammen entwirft, vermeidet einen späteren Umbau. Wer Extensions vorerst ausklammert, kann alles Übrige mit geringem Risiko liefern.
