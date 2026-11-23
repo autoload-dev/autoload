@@ -9,10 +9,6 @@ from tools.docs.ruleset import strip_repo
 EXPORT_CATEGORIES = {**CATEGORIES, "starlark_other_symbol_info": "name"}
 
 
-def normalize_label(label: str) -> str:
-    return strip_repo(label)
-
-
 @dataclass(frozen=True)
 class Export:
     module: str
@@ -27,7 +23,7 @@ def exports(module_label: str, metadata: ModuleInfo) -> dict[str, Export]:
             name = getattr(item, name_field)
             origin = getattr(item, "origin_key", None)
             origin_file = (
-                normalize_label(origin.file) if origin and origin.file else module_label
+                strip_repo(origin.file) if origin and origin.file else module_label
             )
             origin_name = origin.name if origin and origin.name else name
             result[name] = Export(

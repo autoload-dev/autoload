@@ -60,6 +60,7 @@ def api_reference(name, apis):
 
     pages = [reference_name(module) for module in apis]
     inventories = [":" + page + "_inventory.textproto" for page in pages]
+    sources = [ruleset_label(module) for module in apis]
     py_test(
         name = "coverage_test",
         size = "small",
@@ -67,16 +68,14 @@ def api_reference(name, apis):
         main = "//tools/docs:coverage_test.py",
         args = ["$(rootpath :modules.bzl)"] + [
             arg
-            for inventory, module in zip(inventories, apis)
-            for arg in [
-                "$(rootpath " + inventory + ")",
-                "$(rootpath " + ruleset_label(module) + ")",
-            ]
+            for inventory, source in zip(inventories, sources)
+            for arg in ["$(rootpath " + inventory + ")", "$(rootpath " + source + ")"]
         ],
-        data = [":modules.bzl"] + inventories + [ruleset_label(module) for module in apis],
+        data = [":modules.bzl"] + inventories + sources,
         deps = [
             "//tools/docs:coverage_lib",
             "//tools/docs:inventory_lib",
+            "//tools/docs:ruleset_lib",
             "//tools/docs:surface_lib",
         ],
     )

@@ -6,7 +6,8 @@ from pathlib import Path
 from stardoc.proto import stardoc_output_pb2
 
 from tools.docs.api_docs import read_inventory
-from tools.docs.surface import exports, normalize_label
+from tools.docs.ruleset import strip_repo
+from tools.docs.surface import exports
 
 if __name__ == "__main__":
     inventory = read_inventory(Path(sys.argv[1]))
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     modules = set()
     for filename in (path for argument in sys.argv[2:] for path in argument.split()):
         metadata = stardoc_output_pb2.ModuleInfo.FromString(Path(filename).read_bytes())
-        label = normalize_label(metadata.file)
+        label = strip_repo(metadata.file)
         assert label in inventory["PUBLIC_APIS"], (
             f"Non-public metadata in BCR artifact: {label}"
         )

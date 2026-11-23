@@ -10,7 +10,8 @@ from pathlib import Path
 
 from tools.docs.api_docs import read_inventory
 from tools.docs.coverage import documentation_errors, module_apis, parse_module
-from tools.docs.surface import assign_surface, normalize_label
+from tools.docs.ruleset import strip_repo
+from tools.docs.surface import assign_surface
 
 if __name__ == "__main__":
     manifest, *arguments = sys.argv[1:]
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     modules = {}
     for metadata, source in zip(map(Path, arguments[::2]), map(Path, arguments[1::2])):
         module = parse_module(metadata.read_text())
-        modules[normalize_label(module.file)] = module
+        modules[strip_repo(module.file)] = module
         errors = documentation_errors(module, source.read_text())
         errors.extend(module_apis(module)[1])
         if errors:

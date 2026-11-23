@@ -167,7 +167,7 @@ def main() -> None:
     if errors:
         sys.exit("\n".join(errors))
     print(
-        f"API inventory: {len(inventory['PUBLIC_APIS'])} primary entrypoints, "
+        f"API inventory: {len(inventory['PUBLIC_APIS'])} public entrypoints, "
         f"{len(inventory['CROSS_REPOSITORY_MODULES'])} cross-repository modules excluded from the registry's documentation; all Godot modules classified.",
         flush=True,
     )

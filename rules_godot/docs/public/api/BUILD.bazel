@@ -41,6 +41,7 @@ py_test(
     deps = [
         "//tools/docs:coverage_lib",
         "//tools/docs:inventory_lib",
+        "//tools/docs:ruleset_lib",
         "//tools/docs:surface_lib",
     ],
 )
