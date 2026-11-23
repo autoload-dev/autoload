@@ -31,16 +31,19 @@ specifiers = ["2.5.0"]
 checksum = "sha256:c800091c414e1c8e8628137275d88c257bcfe0c35dd31d2762923a71dae7df7f"
 url = "https://github.com/jdx/hk/releases/download/v2.5.0/hk-aarch64-unknown-linux-gnu.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/hk/.github/workflows/release.yml"
+repository_ids = { repository = "922514152" }
 
 [tools.hk."platforms.linux-x64"]
 checksum = "sha256:449b83c35ac3a460f80a4c9a41ad99430add8cf6caa6ceadc27e810feac3647d"
 url = "https://github.com/jdx/hk/releases/download/v2.5.0/hk-x86_64-unknown-linux-gnu.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/hk/.github/workflows/release.yml"
+repository_ids = { repository = "922514152" }
 
 [tools.hk."platforms.macos-arm64"]
 checksum = "sha256:fabbed3a44e72c601759fa81d56f3c9403ca466853bdf77e87cc69d986cb151a"
 url = "https://github.com/jdx/hk/releases/download/v2.5.0/hk-aarch64-apple-darwin.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/hk/.github/workflows/release.yml"
+repository_ids = { repository = "922514152" }
 
 [[tools."http:android-commandlinetools"]]
 version = "15859902"
@@ -61,6 +64,23 @@ url = "https://dl.google.com/android/repository/commandlinetools-linux-15859902_
 [tools."http:android-commandlinetools"."platforms.macos-arm64"]
 checksum = "sha256:835b62a26162b229b441d1f6d4680383815a270809eb33522c0d480fa5002c4e"
 url = "https://dl.google.com/android/repository/commandlinetools-mac_arm64-15859902_latest.zip"
+
+[[tools."http:cs"]]
+version = "1.0.58"
+backend = "http:cs"
+specifiers = ["1.0.58"]
+
+[tools."http:cs"."platforms.linux-arm64"]
+checksum = "sha256:675d3c7a9d97529c8b28c32e039f9e27a228f7f9e6495ce1afbc69765031d5a4"
+url = "https://downloads.codescene.io/enterprise/cli/cs-linux-aarch64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip"
+
+[tools."http:cs"."platforms.linux-x64"]
+checksum = "sha256:e358b332230f06ac81f9ca119c787860e25d86176d344fc06be1dffe2affb352"
+url = "https://downloads.codescene.io/enterprise/cli/cs-linux-amd64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip"
+
+[tools."http:cs"."platforms.macos-arm64"]
+checksum = "sha256:fb8129f971c32628177d7857af1d3096bd467ff8345a8e5ccae5d0bfc6891466"
+url = "https://downloads.codescene.io/enterprise/cli/cs-macos-aarch64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip"
 
 [[tools.jactionlint]]
 version = "2.4.0"

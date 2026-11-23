@@ -47,6 +47,21 @@ macos-arm64 = { url = "https://dl.google.com/android/repository/commandlinetools
 linux-x64 = { url = "https://dl.google.com/android/repository/commandlinetools-linux-{{ version }}_latest.zip" }
 linux-arm64 = { url = "https://dl.google.com/android/repository/commandlinetools-linux-{{ version }}_latest.zip" }
 
+# CodeScene's CLI, which tools/code_health scores files with. Its archives are named after the
+# build of a version, which https://devtools.codescene.io/api/cli/cs?version=<version> returns
+# as `sha`.
+[tools."http:cs"]
+version = "1.0.58"
+lazy = true
+lazy_bins = ["cs"]
+# The archive's binary is not marked executable.
+postinstall = 'chmod +x "$MISE_TOOL_INSTALL_PATH/cs"'
+
+[tools."http:cs".platforms]
+macos-arm64 = { url = "https://downloads.codescene.io/enterprise/cli/cs-macos-aarch64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip" }
+linux-x64 = { url = "https://downloads.codescene.io/enterprise/cli/cs-linux-amd64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip" }
+linux-arm64 = { url = "https://downloads.codescene.io/enterprise/cli/cs-linux-aarch64-b2580d71be8fbfd6a496d7a007062c0c81cd2b60.zip" }
+
 # These apply to activated shells, mise exec, tasks and all nested Bazel modules.
 # Keep the selected SDK root available even before its packages are installed.
 [env]
@@ -99,6 +114,10 @@ run = "bazel run //tools/docs"
 [tasks."code-health"]
 description = "Review the Code Health of the change since origin/main; fails when a file declines"
 run = "python3 -m tools.code_health.codescene"
+
+[tasks."code-health:survey"]
+description = "Report the Code Health of the whole checkout: hotspots and the lowest scores"
+run = "python3 -m tools.code_health.codescene --survey"
 
 [tasks.lint]
 description = "Check formatting, Buildifier lint, Ruff and ty, and the workflows"
