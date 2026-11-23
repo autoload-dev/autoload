@@ -20,6 +20,35 @@ PCK (4.01 vs 3.80 MB raw): each function carries its own constant and name table
 the source text compresses well. Not measured: load time, which should improve since no
 script is parsed or compiled at start.
 
+## Tree shaking the bindings (2026-11-24)
+
+The bytecode names everything a project calls in the engine. `bytecode_usage.py` lists it
+(`usage.json` for Lichtpost): 44 method binds, 16 built-in methods, 16 utility functions,
+43 operators and 172 names GDScript calls dynamically. `shake_bindings.py` then removes,
+before the build, every `ClassDB::bind_method` (and static and vararg variant) of the
+engine that is not kept. Kept are the bytecode's method binds, any method whose name is
+in a name table (dynamic calls such as `new()` on a native class), every property's setter
+and getter (scenes set properties through them; a class may use its parent's accessor),
+every method starting with `_` (engine callbacks bound to be called by name) and the
+GDScript module's own bindings. Of 15,081 bindings, 7,070 go.
+
+| Engine (Q2 settings, no GDScript compiler) | raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| A2, all bindings | 9.31 MB | 3.30 MB | 2.48 MB |
+| T3, unused bindings removed | 7.78 MB | 2.87 MB | 2.19 MB |
+
+Lichtpost's three replays (`replays.sh`: delivery, fall, pipe) give identical results on
+the stock engine with the source PCK and on the macOS build of T3 with the bytecode PCK
+(score, tick, position), and the web build plays in the browser. First attempts failed
+loudly, which is the point to keep: a missing binding shows as an error at load time
+(`Invalid getter`, `unknown method` in the bytecode loader) or as a null object where a
+dynamic call (`MeshInstance3D.new()`) lost its binding.
+
+Remaining start-up noise: `set_method_flags` for removed methods and one property whose
+`ADD_PROPERTY` the regex misses (`DPITexture.color_map`). Not removed yet: Variant's
+built-in methods and utility functions (`variant_call.cpp`, `variant_utility.cpp`), which
+the bytecode lists too, and the compatibility bindings `deprecated=no` drops.
+
 ## How it works
 
 `godot-4.8-beta1-gdscript-bytecode.patch` (modules/gdscript only):
