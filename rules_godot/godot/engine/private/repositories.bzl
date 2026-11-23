@@ -172,9 +172,8 @@ godot_engine_build = repository_rule(
         "renderers": attr.string_list(
             doc = """
             Godot's rendering methods the engine runs: gl_compatibility, mobile, forward_plus.
-            The recipe derives each platform's drivers from them (OpenGL; Metal on Apple
-            platforms, Vulkan on Android and Linux), and an application whose project asks
-            for another method fails. Empty keeps Godot's drivers and build_options'.
+            The recipe derives the drivers from them, and applications check their project's
+            method against them; see the engine guide. Empty keeps Godot's drivers.
             """,
         ),
         "build_profile": attr.label(

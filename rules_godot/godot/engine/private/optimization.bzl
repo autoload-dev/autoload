@@ -30,8 +30,16 @@ _LTO_OPTIONS = {
     "full": ["-flto"],
 }
 
-OPTIMIZATION_OUTPUTS = [COPT, LINKOPT]
-OPTIMIZATION_INPUTS = OPTIMIZATION_OUTPUTS + [COMPILATION_MODE, _ENGINE_OPTIMIZE, _ENGINE_LTO]
+# The settings' values, for their flags and godot_app's attributes.
+OPTIMIZE_VALUES = ["auto"] + _OPTIMIZE_OPTIONS.keys()
+LTO_VALUES = _LTO_OPTIONS.keys()
+
+# The engine's graph takes the settings' options and resets the settings, so engines that
+# compile alike share one configuration whatever values led there.
+_RESET = {_ENGINE_OPTIMIZE: "auto", _ENGINE_LTO: "none"}
+
+OPTIMIZATION_OUTPUTS = [COPT, LINKOPT] + _RESET.keys()
+OPTIMIZATION_INPUTS = OPTIMIZATION_OUTPUTS + [COMPILATION_MODE]
 
 def engine_optimization(settings, attr):
     """
@@ -44,31 +52,29 @@ def engine_optimization(settings, attr):
         attr: Attributes of the engine rule: role and variant.
 
     Returns:
-        The --copt and --linkopt values of the engine's native graph.
+        The --copt and --linkopt values of the engine's native graph, and the settings
+        reset to their defaults.
     """
     copts, linkopts = settings[COPT], settings[LINKOPT]
 
     # Bazel passes the compilation mode to transitions as an enum, not as a string.
     if str(settings[COMPILATION_MODE]) != "opt":
-        return {COPT: copts, LINKOPT: linkopts}
+        return {COPT: copts, LINKOPT: linkopts} | _RESET
     level = settings[_ENGINE_OPTIMIZE]
     if level == "auto":
         level = "speed" if attr.role == "runtime" and attr.variant == "release" else "speed_trace"
     lto = _LTO_OPTIONS[settings[_ENGINE_LTO]]
-    return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto, LINKOPT: linkopts + lto}
-
-_OPTIMIZE_VALUES = ["", "auto", "speed", "speed_trace", "size", "size_extra", "size_min"]
-_LTO_VALUES = ["", "none", "thin", "full"]
+    return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto, LINKOPT: linkopts + lto} | _RESET
 
 # The attributes of the rules that resolve an application's runtime component.
 ENGINE_SETTINGS_ATTRS = {
     "engine_optimize": attr.string(
         doc = "The engine_optimize of this application's source-built engine; empty keeps the build's.",
-        values = _OPTIMIZE_VALUES,
+        values = [""] + OPTIMIZE_VALUES,
     ),
     "engine_lto": attr.string(
         doc = "The engine_lto of this application's source-built engine; empty keeps the build's.",
-        values = _LTO_VALUES,
+        values = [""] + LTO_VALUES,
     ),
 }
 

@@ -103,6 +103,7 @@ def _provenance(ctx, role, version, kind, origin, producer = None, artifact_dige
         # an XCFramework or AAR import, takes the declared one.
         digest = producer.digest if producer else (artifact_digest or getattr(ctx.attr, "digest", "")),
         customizations = producer.customizations if producer else {},
+        renderers = producer.renderers if producer else None,
     )
 
 def _editor_component_impl(ctx):

@@ -19,6 +19,10 @@ LIBRARY = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 
+def _facts(settings: dict) -> dict:
+    return {"options": {}, "settings": settings, "versions": {}, "name_translations": {}}
+
+
 class CheckEngineVersionTest(unittest.TestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
@@ -50,7 +54,7 @@ class CheckEngineVersionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             facts = Path(directory) / "facts.json"
             method = "rendering/renderer/rendering_method"
-            facts.write_text(json.dumps({"settings": {method: "gl_compatibility"}}))
+            facts.write_text(json.dumps(_facts({method: "gl_compatibility"})))
             check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
             with self.assertRaisesRegex(
                 SystemExit,
@@ -58,7 +62,7 @@ class CheckEngineVersionTest(unittest.TestCase):
             ):
                 check_engine_version.require_rendering_method(facts, ["mobile"])
             # Godot's default is forward_plus when the project sets none.
-            facts.write_text('{"settings": {}}')
+            facts.write_text(json.dumps(_facts({})))
             with self.assertRaisesRegex(SystemExit, "renders with forward_plus"):
                 check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
 

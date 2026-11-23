@@ -7,6 +7,7 @@ Export content and Godot configuration belong to the declared pack/project.
 """
 
 load("//godot/engine/private:components.bzl", _resolved_runtime = "resolved_runtime")
+load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES")
 load(
     "//godot/platforms/private:android.bzl",
     _godot_android_application = "godot_android_application",
@@ -606,14 +607,14 @@ godot_app = macro(
         "exec_properties": attr.string_dict(doc = "Execution properties of the application backends."),
         "features": attr.string_list(doc = "rules_cc toolchain features, independent of Godot feature tags."),
         "engine_optimize": attr.string(
-            doc = "How this application's source-built engine compiles under -c opt, overriding --@autoload_rules_godot//godot:engine_optimize: auto, speed, speed_trace, size, size_extra or size_min; empty keeps the build's. See [optimization](../../engine.md#optimization).",
+            doc = "How this application's source-built engine compiles under -c opt, overriding --@autoload_rules_godot//godot:engine_optimize; empty keeps the build's. See [optimization](../../engine.md#optimization).",
             configurable = False,
-            values = ["", "auto", "speed", "speed_trace", "size", "size_extra", "size_min"],
+            values = [""] + OPTIMIZE_VALUES,
         ),
         "engine_lto": attr.string(
-            doc = "Link-time optimization of this application's source-built engine under -c opt, overriding --@autoload_rules_godot//godot:engine_lto: none, thin or full; empty keeps the build's.",
+            doc = "Link-time optimization of this application's source-built engine under -c opt, overriding --@autoload_rules_godot//godot:engine_lto; empty keeps the build's.",
             configurable = False,
-            values = ["", "none", "thin", "full"],
+            values = [""] + LTO_VALUES,
         ),
     },
 )

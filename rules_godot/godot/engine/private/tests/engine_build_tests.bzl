@@ -336,7 +336,7 @@ def _test_a_build_profile_reaches_configure_and_the_pin(env):
     env.expect.that_collection(errors).contains_exactly([])
     written = {call.path: call.content for call in mocks.calls(ctx, "file")}
     env.expect.that_str(written["_build_profile.gdbuild"]).equals(profile)
-    env.expect.that_collection(_configure(ctx).args).contains("--build-profile")
+    env.expect.that_str(_argument(_configure(ctx).args, "--build-profile")).equals("_build_profile.gdbuild")
 
     ctx, errors = _pinned(build_profile = "size.gdbuild", files = {"size.gdbuild": profile})
     env.expect.that_collection(errors).contains_exactly([])

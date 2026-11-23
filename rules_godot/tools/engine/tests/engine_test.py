@@ -361,8 +361,6 @@ class GraphTranslationTest(unittest.TestCase):
             modules = root / "_custom_modules"
             (modules / "probe").mkdir(parents=True)
             (modules / "probe/config.py").write_text("x = 1")
-            profile = root / "size.gdbuild"
-            profile.write_text('{"disabled_classes": ["Node3D"]}')
             configuration: dict[str, Any] = {
                 "platform": "android",
                 "build_target": "template_release",
@@ -377,7 +375,7 @@ class GraphTranslationTest(unittest.TestCase):
                         "source_sha256": "1" * 64,
                         "patch": [patch],
                         "patch_strip": 1,
-                        "build_profile": None,
+                        "build_profile_digest": "",
                         "custom_modules_root": modules,
                     }
                     | configuration
@@ -399,13 +397,10 @@ class GraphTranslationTest(unittest.TestCase):
                 {"default_modules": True},
                 {"build_target": "editor"},
                 {"platform": "ios"},
-                {"build_profile": profile},
+                {"build_profile_digest": "sha256:1"},
             ]:
                 with self.subTest(changes=changes):
                     self.assertNotEqual(hash_of(**changes), first)
-            profiled = hash_of(build_profile=profile)
-            profile.write_text('{"disabled_classes": ["Node2D"]}')
-            self.assertNotEqual(hash_of(build_profile=profile), profiled)
             patch.write_text("two")
             self.assertNotEqual(hash_of(), first)
             patch.write_text("one")
@@ -637,7 +632,7 @@ class GraphTranslationTest(unittest.TestCase):
             custom_module_names=["bazel_probe"],
             options=["vulkan=no", "disable_3d=yes"],
             default_modules=False,
-            build_profile=None,
+            build_profile_digest="",
             renderers=[],
         )
         self.assertEqual(
@@ -997,7 +992,7 @@ class PinTest(unittest.TestCase):
                     "source_sha256": "1" * 64,
                     "patch": [patch],
                     "patch_strip": 1,
-                    "build_profile": None,
+                    "build_profile_digest": "",
                     "custom_modules_root": module.parent,
                     "platform": "linuxbsd",
                     "cpu": "x86_64",
@@ -1021,7 +1016,7 @@ class PinTest(unittest.TestCase):
                 {"default_modules": True},
                 {"options": ["vulkan=yes"]},
                 {"build_name": "fork"},
-                {"build_profile": patch},
+                {"build_profile_digest": "sha256:1"},
             ]:
                 self.assertNotEqual(digest(**change), first, change)
             # Editing a module's code keeps the pin; its build scripts and file set do not.

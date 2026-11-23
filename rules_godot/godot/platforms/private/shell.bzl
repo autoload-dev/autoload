@@ -101,9 +101,8 @@ def _component_values(engine):
     if not component:
         return {}
     values = {"--assert-version": component.version} if component.kind == "prebuilt" else {}
-    renderers = component.customizations.get("renderers")
-    if renderers != None:
-        values["--renderers"] = ",".join(renderers)
+    if component.renderers != None:
+        values["--renderers"] = ",".join(component.renderers)
     return values
 
 def check_engine(ctx, files, engine = None, values = {}):
@@ -128,9 +127,13 @@ def check_engine(ctx, files, engine = None, values = {}):
     """
     stamp = ctx.actions.declare_file(ctx.label.name + ".engine_version")
     args = ctx.actions.args()
+    values = _component_values(engine) | values
+
+    # Only an engine with declared renderers needs the pack's facts.
+    files = {option: depset_ for option, depset_ in files.items() if option != "--facts" or "--renderers" in values}
     for option, option_files in files.items():
         args.add_all(option_files, before_each = option)
-    for option, value in (_component_values(engine) | values).items():
+    for option, value in values.items():
         args.add(option, value)
     args.add("--output", stamp)
     ctx.actions.run(

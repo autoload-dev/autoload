@@ -46,6 +46,14 @@ def _test_lto_compiles_and_links(env):
         expect.that_collection(result[COPT]).contains_exactly(["-g", "-Oz", "-DSIZE_EXTRA"] + options).in_order()
         expect.that_collection(result[LINKOPT]).contains_exactly(["-Wl,-v"] + options).in_order()
 
+# The engine's graph resets the settings, so engines that compile alike share a configuration.
+def _test_the_engine_graph_resets_the_settings(env):
+    for mode, optimize in [("opt", "speed"), ("dbg", "size_min")]:
+        options = engine_optimization(_settings(mode = mode, optimize = optimize, lto = "full"), _RELEASE)
+        expect = env.expect.where(mode = mode)
+        expect.that_str(options[str(Label("//godot:engine_optimize"))]).equals("auto")
+        expect.that_str(options[str(Label("//godot:engine_lto"))]).equals("none")
+
 # Other compilation modes keep Bazel's levels, so -c dbg debugs the engine unoptimized.
 def _test_other_compilation_modes_keep_bazels_levels(env):
     for mode in ["dbg", "fastbuild"]:
@@ -61,6 +69,7 @@ def optimization_test_suite(name):
             _test_auto_follows_godots_choice_per_build_target,
             _test_levels_keep_godots_meaning,
             _test_lto_compiles_and_links,
+            _test_the_engine_graph_resets_the_settings,
             _test_other_compilation_modes_keep_bazels_levels,
         ],
     )

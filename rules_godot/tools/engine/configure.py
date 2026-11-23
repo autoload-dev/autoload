@@ -133,15 +133,10 @@ def _module_selection(args: argparse.Namespace) -> dict[str, Any]:
     return selection
 
 
-# Where a recipe repository holds its build profile: in Godot's source root.
-BUILD_PROFILE = "_build_profile.gdbuild"
-
-
 def _profile_input(args: argparse.Namespace) -> dict[str, str]:
     """The build profile's digest; nothing without one, so earlier digests hold."""
-    return (
-        {"build_profile": file_digest(args.build_profile)} if args.build_profile else {}
-    )
+    digest = args.build_profile_digest
+    return {"build_profile": digest} if digest else {}
 
 
 _TRUE_VALUES = {"yes", "true", "1", "y", "on"}
@@ -1647,7 +1642,12 @@ def _source_rule(
         if args.platform in {"android", "ios"}
         else "godot_source_binary"
     )
-    return f"{rule}(name = {name!r}, deps = [{library!r}], version = {graph['version']!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', digest = {digest!r}, customizations = {args.customizations!r}, minimum_os = {graph['minimum_os']!r}, {metadata_arguments})"
+    renderers = (
+        f", renderers = {args.engine_renderers!r}, declares_renderers = True"
+        if args.renderers
+        else ""
+    )
+    return f"{rule}(name = {name!r}, deps = [{library!r}], version = {graph['version']!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', digest = {digest!r}, customizations = {args.customizations!r}, minimum_os = {graph['minimum_os']!r}, {metadata_arguments}{renderers})"
 
 
 def _engine_rules(
@@ -1809,10 +1809,10 @@ def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
     }
     if args.default_modules:
         requested["default_modules"] = ["yes"]
-    if args.build_profile:
-        requested["build_profile"] = [file_digest(args.build_profile)]
+    if args.build_profile_digest:
+        requested["build_profile"] = [args.build_profile_digest]
     if args.renderers:
-        requested["renderers"] = list(args.engine_renderers)
+        requested["renderers"] = list(args.renderers)
     return requested
 
 
@@ -1980,8 +1980,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--modules", default="")
     # Start from the modules upstream enables by default, as Godot's official builds do.
     parser.add_argument("--default-modules", action="store_true")
-    # Apply the build profile the recipe repository holds as BUILD_PROFILE.
-    parser.add_argument("--build-profile", action="store_true")
+    # The build profile's path below the source root, where the recipe repository holds it.
+    parser.add_argument("--build-profile", default="")
     # Comma-separated rendering methods; empty keeps Godot's drivers and build_options'.
     parser.add_argument("--renderers", default="")
     parser.add_argument("--custom-modules", action="append", default=[])
@@ -2064,9 +2064,10 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     require_one_text_server(args.selected_modules)
     check_options(args.options)
     _add_renderer_options(args, root)
-    args.build_profile = root / BUILD_PROFILE if args.build_profile else None
+    args.build_profile_digest = ""
     if args.build_profile:
-        require_consistent_profile(args.build_profile, args.options)
+        require_consistent_profile(root / args.build_profile, args.options)
+        args.build_profile_digest = file_digest(root / args.build_profile)
     args.customizations = customizations(args)
     _add_environment_option(args)
     args.inputs_hash = inputs_hash(args)
@@ -2142,7 +2143,7 @@ def _scons_arguments(args: argparse.Namespace) -> list[str]:
     if args.custom_modules:
         arguments.append("custom_modules=" + ",".join(args.custom_modules))
     if args.build_profile:
-        arguments.append(f"build_profile={BUILD_PROFILE}")
+        arguments.append(f"build_profile={args.build_profile}")
     return arguments
 
 
