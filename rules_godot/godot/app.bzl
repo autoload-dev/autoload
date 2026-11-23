@@ -18,6 +18,7 @@ load(
 )
 load("//godot/platforms/private:ios.bzl", _godot_ios_application = "godot_ios_application")
 load("//godot/platforms/private:macos_signing.bzl", _godot_macos_sign = "godot_macos_sign")
+load("//godot/platforms/private:web.bzl", _godot_web_application = "godot_web_application")
 load("//godot/private:run.bzl", _godot_source_application = "godot_source_application")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS")
 load(
@@ -38,6 +39,7 @@ _MACOS = Label("//godot/platforms:is_macos")
 _ANDROID = Label("//godot/platforms:is_android")
 _IOS_DEVICE = Label("//godot/platforms:is_ios_device")
 _IOS_SIMULATOR = Label("//godot/platforms:is_ios_simulator")
+_WEB = Label("//godot/platforms:is_web")
 
 _DISPATCH = {
     Label("//godot/private/config:" + name): condition.operating_system
@@ -240,6 +242,18 @@ def _android_backends(
         **hidden
     )
 
+def _web_backend(name, platform_deps, platform_resources, common):
+    """PROTOTYPE(web): declare the web backend of a godot_app."""
+    _godot_web_application(
+        name = name + ".web",
+        app_name = name,
+        pack = ":" + name + ".pack",
+        runtime = ":" + name + ".runtime",
+        platform_deps = platform_deps,
+        platform_resources = platform_resources,
+        **common
+    )
+
 def _editor_backend(name, common):
     """
     Declare the editor variant's backend of a godot_app and its empty debug symbols.
@@ -280,7 +294,7 @@ def _backend_debug_symbols(name, hidden):
         name: Name of the godot_app.
         hidden: Attributes of private targets.
     """
-    for backend in ["linux", "macos"]:
+    for backend in ["linux", "macos", "web"]:
         native.filegroup(
             name = name + "." + backend + ".debug_symbols",
             srcs = [_backend(name, backend)],
@@ -318,6 +332,7 @@ def _public_targets(name, visibility, target_compatible_with, deprecation, tags,
         _ANDROID: [],
         _IOS_DEVICE: [],
         _IOS_SIMULATOR: [],
+        _WEB: [],
         "//conditions:default": [Label("@platforms//:incompatible")],
     })
     native.alias(
@@ -432,6 +447,7 @@ def _app_impl(
         launch_storyboard = ios_launch_storyboard,
         **common
     )
+    _web_backend(name = name, platform_deps = platform_deps, platform_resources = platform_resources, common = common)
     _editor_backend(name = name, common = common)
     _public_targets(
         name = name,

@@ -193,7 +193,7 @@ def _runtime_component_impl(ctx):
                 "environment": runtime.environment,
                 "variant": runtime.variant,
             })
-        elif ctx.attr.platform in ["linux", "macos"]:
+        elif ctx.attr.platform in ["linux", "macos", "web"]:
             runtime = _declared_runtime(ctx, target)
         producer = _producer(target)
         kind = "source" if producer or (runtime and runtime.facts_source == "source") else "prebuilt"
@@ -491,10 +491,10 @@ godot_runtime_component = macro(
             mandatory = True,
         ),
         "platform": attr.string(
-            doc = "Operating system of the slot's target platform: linux, macos, android or ios.",
+            doc = "Operating system of the slot's target platform: linux, macos, android, ios or web.",
             mandatory = True,
             configurable = False,
-            values = ["linux", "macos", "android", "ios"],
+            values = ["linux", "macos", "android", "ios", "web"],
         ),
         "variant": attr.string(
             doc = "Godot template variant the payload implements: debug or release.",

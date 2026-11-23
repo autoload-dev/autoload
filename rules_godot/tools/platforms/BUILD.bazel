@@ -26,6 +26,12 @@ py_library(
     ],
 )
 
+# PROTOTYPE(web)
+py_binary(
+    name = "package_web",
+    srcs = ["package_web.py"],
+)
+
 py_binary(
     name = "sign_macos",
     srcs = ["sign_macos.py"],

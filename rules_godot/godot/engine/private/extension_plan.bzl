@@ -225,7 +225,7 @@ def _desktop_runtime_slots(tag, templates):
         targets = [("linux", cpu, template_target("linux", cpu, variant)) for cpu in templates.linux_cpus] + [
             ("macos", cpu, _macos_target(templates.macos_cpus, cpu, variant))
             for cpu in ["arm64", "x86_64"]
-        ]
+        ] + [("web", "wasm32", template_target("web", "wasm32", variant))]
         slots.extend([
             _runtime_slot(tag, platform, cpu, variant, _template_payload(tag, platform, target))
             for platform, cpu, target in targets
@@ -425,7 +425,7 @@ def _templates_declarations(tag, templates):
             platform = platform,
             cpus = cpus,
         )
-        for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
+        for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", []), ("web", ["wasm32"])]
     ]
 
 def plan_engines(modules, *, tag_attributes, _fail = fail):

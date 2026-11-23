@@ -89,6 +89,13 @@ godot_export_platform(
     operating_system = "ios",
 )
 
+# PROTOTYPE(web): the browser, through Emscripten's WebAssembly.
+godot_export_platform(
+    name = "web_wasm32",
+    cpus = ["@platforms//cpu:wasm32"],
+    operating_system = "web",
+)
+
 # Public operating system predicates are reusable for libraries, engines and compatibility.
 
 config_setting(
@@ -104,6 +111,11 @@ config_setting(
 config_setting(
     name = "is_android",
     constraint_values = ["@platforms//os:android"],
+)
+
+config_setting(
+    name = "is_web",
+    constraint_values = ["@platforms//os:emscripten"],
 )
 
 config_setting(

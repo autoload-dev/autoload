@@ -241,6 +241,15 @@ def _macos_cpus_error(cpus):
         return None
     return 'cpus of macOS templates must be ["universal"] or a subset of ["arm64", "x86_64"]'
 
+# PROTOTYPE(web): which of Godot's eight web templates a runtime packages is an open
+# decision: threads or not, and dlink (GDExtension side modules) or not. The prototype
+# takes the no-threads, no-dlink template, Godot's default since 4.3.
+def _web_binary(variant, _cpu):
+    return "templates/web_nothreads_%s.zip" % variant
+
+def _web_cpus_error(cpus):
+    return None if cpus == ["wasm32"] else 'cpus of web templates must be ["wasm32"]'
+
 def _ios_cpus_error(cpus):
     return "cpus must be empty for iOS templates" if cpus else None
 
@@ -267,6 +276,15 @@ _PLATFORMS = {
         binary = _macos_binary,
         missing_binary = "set cpus to match the archive layout",
         runtime_data = '\n    data = [":macos_files"],',
+    ),
+    "web": struct(
+        cpus_error = _web_cpus_error,
+        members = lambda _cpus: [_web_binary(variant, "wasm32") for variant in ["release", "debug"]],
+        loads = _runtime_loads,
+        targets = _binary_runtimes,
+        binary = _web_binary,
+        missing_binary = "the archive has no web templates",
+        runtime_data = "",
     ),
     "ios": struct(
         cpus_error = _ios_cpus_error,
@@ -328,7 +346,7 @@ TEMPLATES_ARCHIVE_ATTRS = {
     "platform": attr.string(
         doc = "Godot platform whose templates the repository extracts: linux, macos or ios.",
         mandatory = True,
-        values = ["linux", "macos", "ios"],
+        values = ["linux", "macos", "ios", "web"],
     ),
     "cpus": attr.string_list(
         doc = """

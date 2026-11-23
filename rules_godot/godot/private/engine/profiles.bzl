@@ -314,6 +314,26 @@ def _cpu_rows(suffixes):
         for cpu, suffix in suffixes.items()
     ]
 
+def _web_owned_options():
+    """
+    PROTOTYPE(web): the web export's owned options.
+
+    The template variant the runtime packages decides threads and GDExtension support;
+    the pack's export must agree with it.
+    """
+    return [
+        _owned(
+            "variant/" + option,
+            "web-variant",
+            derive = "constant",
+            placement = "prelude",
+            when = "always",
+            authored = "reject",
+            value = False,
+        )
+        for option in ["extensions_support", "thread_support"]
+    ]
+
 def _owned_options(profile):
     desktop = _owned(
         "binary_format/architecture",
@@ -341,6 +361,7 @@ def _owned_options(profile):
         authored = "match",
         source = "application_id",
     )
+
     return {
         "linux": [desktop, fixed],
         "macos": [
@@ -402,7 +423,7 @@ def _owned_options(profile):
         ],
     }
 
-_GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7)
+_GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7) | {"web": _web_owned_options()}
 
 # Export options a pack must not author, by exporter, with the owner ID of what
 # replaces them: option_owners names a Bazel equivalent; other owners have no
@@ -412,6 +433,14 @@ _GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7)
 # reviewed per-option inventory of a version and how to compare a new one are in
 # docs/internal/export-option-inventory.md.
 _REJECTED_OPTIONS_4_7 = {
+    # PROTOTYPE(web): options of files the prototype does not write yet.
+    "web": {
+        "custom_template/debug": "engine",
+        "custom_template/release": "engine",
+        "html/custom_html_shell": "web-shell",
+        "html/export_icon": "web-shell",
+        "progressive_web_app/enabled": "web-pwa",
+    },
     "linux": {
         "custom_template/debug": "engine",
         "custom_template/release": "engine",
@@ -546,6 +575,9 @@ _GODOT_4_7["option_owners"] = {
     "macos-signing": "the optional godot_app signing operation",
     "output-layout": "the godot_app target name and Bazel's output layout",
     "android-compression": "rules_android's packaging of JNI libraries",
+    "web-variant": "PROTOTYPE(web): the registered web runtime (threads, dlink)",
+    "web-shell": "PROTOTYPE(web): not supported yet",
+    "web-pwa": "PROTOTYPE(web): not supported yet",
 }
 
 def _hook(kind, disposition, operating_systems = [], counterpart = None, aliases = []):

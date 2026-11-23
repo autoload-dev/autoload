@@ -75,7 +75,7 @@ prebuilt_runtime = rule(
         "binary": attr.label(allow_single_file = True),
         "data": attr.label_list(allow_files = True),
         "bundle_files": attr.label_keyed_string_dict(allow_files = True),
-        "platform": attr.string(mandatory = True, values = ["linux", "macos", "ios", "android"]),
+        "platform": attr.string(mandatory = True, values = ["linux", "macos", "ios", "android", "web"]),
         "cpu": attr.string(mandatory = True),
         "environment": attr.string(values = ["", "device", "simulator"]),
         "version": attr.string(mandatory = True),
