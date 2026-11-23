@@ -4,17 +4,10 @@ The CodeScene CLI (shipped inside the CodeHealth MCP server) reviews one file pe
 call. This wrapper feeds every file through stdin under a *virtual* file name, so
 files CodeScene does not know are analysed as a language it does:
 
-* Starlark (.bzl, optionally BUILD/MODULE files) is fed as Python; Starlark is
-  a Python dialect. Bazel macros (top-level functions whose first parameter is
-  `name` and that declare a target with it, hand it to a function that does,
-  implement a symbolic macro, or document `name:` as an argument) get a virtual
-  `# @codescene(disable:"Excess Number of Function Arguments")` directive: a
-  macro's parameters mirror the attributes of the rules it declares, so their
-  count is no more a smell than a rule's attribute count. Line numbers in the
-  findings are mapped back to the original file.
-* GDScript (.gd) is rewritten line by line (`func` -> `def`, `static func` ->
-  `def`, `class X extends Y:` -> `class X(Y):`) and fed as Python. Line numbers
-  are preserved, so findings point at the original lines.
+Starlark (.bzl, optionally BUILD/MODULE files) is fed as Python without its
+documentation strings, with Bazel macros exempt from the argument count, and GDScript (.gd)
+as rewritten Python (translation.py). Line numbers in the findings are mapped back to the
+original file.
 
 Nothing in the repository is modified and no mirror is needed; results are
 reported under the original paths. With --compare REF the same scan runs on REF
@@ -52,59 +45,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-# File types the CodeScene CLI analyses natively (from its own error message).
-NATIVE = {
-    ".c",
-    ".cc",
-    ".cpp",
-    ".cxx",
-    ".h",
-    ".hh",
-    ".hpp",
-    ".hxx",
-    ".ipp",
-    ".cs",
-    ".java",
-    ".groovy",
-    ".js",
-    ".mjs",
-    ".cjs",
-    ".ts",
-    ".mts",
-    ".cts",
-    ".jsx",
-    ".tsx",
-    ".vue",
-    ".m",
-    ".mm",
-    ".scala",
-    ".py",
-    ".pyi",
-    ".swift",
-    ".go",
-    ".dart",
-    ".vb",
-    ".php",
-    ".rs",
-    ".rb",
-    ".kt",
-    ".kts",
-    ".pl",
-    ".pm",
-    ".erl",
-    ".hrl",
-    ".ex",
-    ".exs",
-    ".clj",
-    ".cljc",
-    ".cljs",
-    ".ps1",
-    ".psm1",
-    ".psd1",
-    ".tcl",
-    ".cls",
-    ".trigger",
-}
+from tools.code_health.translation import (
+    MAX_ARGUMENTS,
+    NATIVE,
+    original_title,
+    translate,
+)
+
 LANGUAGE = {
     ".py": "Python",
     ".pyi": "Python",
@@ -138,25 +85,6 @@ DEFAULT_EXCLUDES = [
     "*/vendor/*",
     "*/node_modules/*",
 ]
-
-GD_FUNC = re.compile(r"^(\s*)(?:static\s+)?func\s")
-GD_CLASS = re.compile(r"^(\s*)class\s+(\w+)\s+extends\s+([\w.]+)\s*:")
-TOP_LEVEL_DEF = re.compile(r"^def\s+(\w+)\s*\(")
-MACRO_DIRECTIVE = '# @codescene(disable:"Excess Number of Function Arguments")\n'
-TITLE_LINE = re.compile(r"^(.*):(\d+)$")
-
-
-@dataclass
-class Translation:
-    virtual_name: str
-    source: str
-    inserted: list[int] = field(default_factory=list)  # virtual 1-based lines added
-    macros: list[str] = field(default_factory=list)
-
-    def original_line(self, line: int | None) -> int | None:
-        if line is None:
-            return None
-        return line - sum(1 for added in self.inserted if added < line)
 
 
 @dataclass
@@ -275,167 +203,6 @@ def language_of(path: str) -> str:
     return LANGUAGE.get(Path(path).suffix, Path(path).suffix.lstrip(".") or "other")
 
 
-def first_parameter(lines: list[str], index: int) -> str:
-    """The first parameter of the function whose `def` is on lines[index]."""
-    text, parameter = lines[index].split("(", 1)[1], ""
-    for line in [text, *lines[index + 1 : index + 6]]:
-        for char in line:
-            if char in ",)":
-                return parameter.strip()
-            parameter += char
-    return parameter.strip()
-
-
-TARGET_NAME = re.compile(
-    r"\bname\s*=\s*(?:name\b|[^,\n]*%\s*name\b|[^,\n]*\bname\s*\+|[^,\n]*\+\s*name\b)"
-)
-CALL = re.compile(r"\b(\w+)\s*\(")
-SYMBOLIC_MACRO = re.compile(r"=\s*macro\(")
-IMPLEMENTATION = re.compile(r"\bimplementation\s*=\s*(\w+)")
-NAME_ARG_DOC = re.compile(r"^\s+name:\s", re.MULTILINE)
-RETURNS_VALUE = re.compile(r"^\s+return\s+\S", re.MULTILINE)
-# CodeScene's default function_max_arguments for Python; only macros above it
-# need the exemption, so only they are counted and annotated.
-MAX_ARGUMENTS = 4
-
-
-def parameter_count(lines: list[str], index: int) -> int:
-    """The number of parameters of the function whose `def` is on lines[index]."""
-    signature, depth = "", 1
-    for char in "".join(lines[index : index + 60]).split("(", 1)[1]:
-        depth += char in "([{"
-        depth -= char in ")]}"
-        if depth == 0:
-            break
-        signature += char if depth == 1 or char not in "," else ";"
-    signature = re.sub(r"#[^\n]*", "", signature)
-    return sum(1 for part in signature.split(",") if part.strip())
-
-
-def top_level_functions(lines: list[str]) -> dict[str, tuple[int, str]]:
-    """Each top-level function: (index of its def line, its source text)."""
-    functions: dict[str, tuple[int, str]] = {}
-    current, start = None, 0
-    for index, line in enumerate([*lines, "<end>"]):
-        is_top = (
-            line.strip() and not line[0].isspace() and not line.startswith(("#", ")"))
-        )
-        if is_top and current:
-            functions[current] = (start, "".join(lines[start:index]))
-            current = None
-        match = TOP_LEVEL_DEF.match(line)
-        if match:
-            current, start = match.group(1), index
-    return functions
-
-
-def symbolic_macro_implementations(lines: list[str]) -> set[str]:
-    names, inside = set(), False
-    for line in lines:
-        inside = inside or bool(SYMBOLIC_MACRO.search(line))
-        match = IMPLEMENTATION.search(line) if inside else None
-        if match:
-            names.add(match.group(1))
-        inside = inside and not match and not line.startswith(")")
-    return names
-
-
-Functions = dict[str, tuple[int, str]]  # name -> (index of the def line, source text)
-
-
-def calls_any(body: str, name: str, known: set[str]) -> bool:
-    """Whether a function body calls one of the known functions other than itself."""
-    return bool(known & (set(CALL.findall(body)) - {name}))
-
-
-def table_driven_macros(candidates: Functions) -> set[str]:
-    """Table-driven macros declare their targets indirectly; they document `name`
-    like a target and return nothing, unlike helpers that compute declarations."""
-    return {
-        name
-        for name, (_, body) in candidates.items()
-        if NAME_ARG_DOC.search(body) and not RETURNS_VALUE.search(body)
-    }
-
-
-def name_passing_macros(
-    candidates: Functions, declarers: set[str], macros: set[str]
-) -> set[str]:
-    """A function that hands its name to a declaring function is a macro too."""
-    macros = set(macros)
-    while True:
-        found = {
-            name
-            for name, (_, body) in candidates.items()
-            if name not in macros and calls_any(body, name, declarers | macros)
-        }
-        if not found:
-            return macros
-        macros |= found
-
-
-def macros_of(lines: list[str]) -> dict[str, int]:
-    """Bazel macros: functions whose first parameter is `name` and that declare
-    a target with it (`name = name...`), pass it on to another macro, or implement
-    a symbolic macro. Returns each macro's def line index."""
-    functions = top_level_functions(lines)
-    candidates = {
-        name: function
-        for name, function in functions.items()
-        if re.match(r"name\b", first_parameter(lines, function[0]))
-    }
-    # Functions of any signature that declare targets, e.g. _executable(rule_, name, ...).
-    declarers = {
-        name for name, (_, body) in functions.items() if TARGET_NAME.search(body)
-    }
-    declarers |= symbolic_macro_implementations(lines)
-    macros = (declarers & set(candidates)) | table_driven_macros(candidates)
-    macros = name_passing_macros(candidates, declarers, macros)
-    return {name: candidates[name][0] for name in macros}
-
-
-def starlark(path: str, source: str, macro_arguments: bool) -> Translation:
-    """Starlark as Python; macros exempt from the argument-count rule."""
-    if macro_arguments:
-        return Translation(path + ".py", source)
-    lines = source.splitlines(keepends=True)
-    macro_lines = {
-        index: name
-        for name, index in macros_of(lines).items()
-        if parameter_count(lines, index) > MAX_ARGUMENTS
-    }
-    out: list[str] = []
-    translation = Translation(path + ".py", "")
-    for index, line in enumerate(lines):
-        if index in macro_lines:
-            out.append(MACRO_DIRECTIVE)
-            translation.inserted.append(len(out))
-            translation.macros.append(macro_lines[index])
-        out.append(line)
-    translation.source = "".join(out)
-    return translation
-
-
-def gdscript(path: str, source: str) -> Translation:
-    """GDScript rewritten line by line into Python CodeScene can parse."""
-    lines = []
-    for line in source.splitlines(keepends=True):
-        line = GD_FUNC.sub(r"\1def ", line)
-        line = GD_CLASS.sub(r"\1class \2(\3):", line)
-        lines.append(line)
-    return Translation(path + ".py", "".join(lines))
-
-
-def translate(path: str, source: str, macro_arguments: bool) -> Translation:
-    """The virtual file name and the source CodeScene should analyse."""
-    suffix = Path(path).suffix
-    if suffix in NATIVE:
-        return Translation(path, source)
-    if suffix == ".gd":
-        return gdscript(path, source)
-    return starlark(path, source, macro_arguments)
-
-
 def loc(source: str) -> int:
     return sum(
         1
@@ -445,13 +212,6 @@ def loc(source: str) -> int:
 
 
 # --- scanning -------------------------------------------------------------------
-
-
-def original_title(title: str, translation: Translation) -> str:
-    match = TITLE_LINE.match(title)
-    if not match or not translation.inserted:
-        return title
-    return f"{match.group(1)}:{translation.original_line(int(match.group(2)))}"
 
 
 @dataclass
