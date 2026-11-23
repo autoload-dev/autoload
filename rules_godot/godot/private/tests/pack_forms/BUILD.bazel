@@ -22,20 +22,20 @@ pack_form(
 # Run tests: the main scene checks the translation, the texture and the global class.
 godot_test(
     name = "godot_pack_runtime_inputs_test",
-    size = "small",
+    size = "medium",
     pack = ":godot_pack",
 )
 
 godot_test(
     name = "none_pack_runtime_inputs_test",
-    size = "small",
+    size = "medium",
     pack = ":none_pack",
 )
 
 # Build-output test: what both forms pack for the runtime besides the files.
 py_test(
     name = "packs_carry_runtime_inputs_test",
-    size = "small",
+    size = "medium",
     srcs = ["runtime_inputs_test.py"],
     data = [
         ":godot_pack",

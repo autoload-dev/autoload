@@ -1,9 +1,8 @@
 amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
 
-// Local checks before a push. CI runs every lane on every run (tools/ci/work.py), so
-// no step selects paths: the pre-commit hook reviews the Code Health of the commit, the
-// pre-push hook runs the quick checks and the Code Health review of the branch, and
-// `hk check` adds the slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
+// Local checks; `mise run setup` installs the hooks. pre-commit works on the staged files,
+// pre-push is the safety net over the whole branch, `hk check` adds the slower checks. CI runs
+// every lane on every run (tools/ci/work.py). Policy: docs/internal/verification.md.
 
 // A piece of the lanes' work (tools/ci/work.py). Work that runs Bazel holds its module's
 // server, so it runs alone.
@@ -12,12 +11,16 @@ local function task(name: String): Step = new {
   check = "python3 -m tools.ci.work run \(name)"
 }
 
-// Formatting, lint, the workflows and the setup contracts: seconds with a warm Bazel. The
-// workflow and setup checks run no Bazel, so they run beside lint.
+// The Python, Starlark and Bazel sources the formatter handles.
+local sources = List("*.py", "*.bzl", "**/BUILD", "**/BUILD.bazel", "**/MODULE.bazel")
+
+// Formatting, lint, the setup contracts and the action tests: seconds with a warm Bazel. The
+// last two run no Bazel, so they run beside the others.
 local quick = new Mapping<String, Step> {
+  ["format"] = task("format")
   ["lint"] = task("lint")
-  ["lint:ci"] = (task("lint:ci")) { exclusive = false }
   ["test:setup"] = (task("test:setup")) { exclusive = false }
+  ["test:actions"] = (task("test:actions")) { exclusive = false }
 }
 
 // The conventions, the API reference and the repository tooling's tests.
@@ -26,6 +29,10 @@ local thorough = new Mapping<String, Step> {
   ["docs"] = task("docs")
   ["test:tools"] = task("test:tools")
 }
+
+// The Code Health review of a change (AGENTS.md, "Code Health"); it passes with a note
+// without the CodeScene CLI or a sign-in.
+local codeHealth = "python3 -m tools.code_health.codescene --if-available"
 
 hooks {
   ["check"] {
@@ -39,11 +46,26 @@ hooks {
     }
   }
   ["pre-commit"] {
+    fix = true
+    stash = "git"
     steps {
-      // The Code Health of what the commit changes, against HEAD (AGENTS.md, "Code
-      // Health"); skipped without the CodeScene CLI or a sign-in.
+      // Fix only: formatting is idempotent, so a check first would only add a Bazel run.
+      ["format"] {
+        glob = sources
+        exclusive = true
+        fix = "bazel run --config=host-execution //tools/format -- {{files}}"
+      }
+      // Every linter on the staged files it handles; skipped without any, which would lint
+      // the whole repository.
+      ["lint"] {
+        glob = List("**/*")
+        depends = "format"
+        exclusive = true
+        check = "bazel run --config=host-execution //tools/lint -- {{files}}"
+      }
       ["code-health"] {
-        check = "python3 -m tools.code_health.codescene --staged --if-available"
+        depends = "format"
+        check = "\(codeHealth) --staged"
       }
     }
   }
@@ -57,11 +79,10 @@ hooks {
       for (name, step in quick) {
         [name] = step
       }
-      // The Code Health of the branch against its merge base with origin/main, which also
-      // covers commits made without the pre-commit hook; skipped like it.
-      ["code-health"] {
-        check = "python3 -m tools.code_health.codescene --if-available"
-      }
+      ["test:fast"] = task("test:fast")
+      // The branch against its merge base, which also covers commits made without the
+      // pre-commit hook.
+      ["code-health"] { check = codeHealth }
     }
   }
 }

@@ -48,7 +48,7 @@ godot_ios_application(
 # pack follow the project settings and the export options, as Godot's exporter does.
 py_test(
     name = "android_bootstrap_follows_project_settings_and_export_options_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_bootstrap_test.py"],
     data = [
         ":android_app_from_project_settings.godot_bootstrap",
@@ -67,7 +67,7 @@ py_test(
 # follow the project settings and the export options, as Godot's exporter does.
 py_test(
     name = "ios_shell_follows_project_settings_and_export_options_test",
-    size = "small",
+    size = "medium",
     srcs = ["ios_shell_test.py"],
     data = [
         ":ios_app_from_project_settings.godot_shell",
@@ -100,7 +100,7 @@ pack_facts(
 # option of the exporter and the version of a project that sets none.
 py_test(
     name = "export_facts_list_exporter_options_and_default_version_test",
-    size = "small",
+    size = "medium",
     srcs = ["export_facts_test.py"],
     data = [
         ":android_facts",
@@ -136,7 +136,7 @@ py_test(
 [
     py_test(
         name = "android_launch_arguments_plugin_in_%s_builds_test" % mode,
-        size = "small",
+        size = "medium",
         srcs = ["android_launch_arguments_test.py"],
         args = [
             "--plugin" if mode == "fastbuild" else "--no-plugin",

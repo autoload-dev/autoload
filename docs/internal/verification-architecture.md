@@ -173,6 +173,27 @@ code.
   test in the repository has one place.
 - **Altitude**: Outside the altitude order.
 
+## Test size
+
+A test's `size` follows [Bazel's meaning](https://bazel.build/reference/test-encyclopedia):
+the resources and default timeout of running it, with unit tests `small`, integration tests
+`medium` and end-to-end tests `large` or `enormous`. It does not count the cost of building
+the test's dependencies. For the kinds above:
+
+| Kind | Size |
+|---|---|
+| Starlark unit test, analysis test | No effect: they run no action. Select them by rules_testing's `starlark_analysis_test` tag |
+| Build-tool unit test, repository-tooling test | `small` |
+| Build-output test, run test | `medium`: it builds or runs Godot |
+| Consumer scenario, example test | `medium` or `large`, as their run time needs |
+
+To check sizes against run times, run the tests in question with
+`--test_verbose_timeout_warnings`; it is not on by default, because it would flag every
+analysis test. The `smoke` tag marks the few integration tests that the pre-push hook
+runs beside the `small` and analysis tests, as Bazel's encyclopedia defines it: run before
+committing code changes. Keep it to an end-to-end path whose failure the other fast tests
+would miss.
+
 ## Ruleset and consumer modules
 
 A test belongs to a consumer module only if a user could write it with the public API. Every

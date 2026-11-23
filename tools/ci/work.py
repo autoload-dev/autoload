@@ -97,6 +97,20 @@ def contracts(lane: str) -> Work:
 
 
 SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
+# The fast tests of a module, which the pre-push hook runs: the unit tests by their size,
+# the analysis tests by rules_testing's tag, and the few smoke tests
+# (docs/internal/verification-architecture.md, "Test size").
+FAST_TESTS = (
+    "(attr(size, small, tests(//...))"
+    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests(//...)))'
+    ' except attr(tags, "\\b(manual|source_engine)\\b", tests(//...))'
+)
+# The query names its tests explicitly, so tests incompatible with this host, such as the
+# macOS-only analysis tests on Linux, are skipped rather than rejected.
+FAST_TEST_COMMAND = (
+    f"bazel query '{FAST_TESTS}' | xargs bazel test --build_tests_only"
+    " --skip_incompatible_explicit_targets"
+)
 PATCHED_ENGINE = (
     "bazel test //patched_engine/tests:app_runs_patched_engine_test"
     " --extra_toolchains=//patched_engine/engines/{engine}:all"
@@ -127,23 +141,18 @@ def apps(packages: Iterable[str], symbols: bool = False) -> str:
 # when named.
 WORK = (
     Work(
-        "lint",
+        "format",
         "quality",
         ".",
-        (
-            "bazel run --config=host-execution //tools/format:format.check",
-            "bazel run --config=host-execution //tools/lint",
-            "hk validate",
-        ),
+        ("bazel run --config=host-execution //tools/format:format.check",),
     ),
+    Work("lint", "quality", ".", ("bazel run --config=host-execution //tools/lint",)),
+    # The setup action's shutdown of Bazel, which runs no Bazel itself.
     Work(
-        "lint:ci",
+        "test:actions",
         "quality",
         ".",
-        (
-            "mise exec jactionlint -- jactionlint --shellcheck= --pyflakes=",
-            "mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",
-        ),
+        ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     Work(
@@ -161,6 +170,7 @@ WORK = (
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
+    Work("test:fast", None, ".", (FAST_TEST_COMMAND, In(RULESET_DIR, FAST_TEST_COMMAND))),
     Work(
         "docs",
         "docs",

@@ -44,7 +44,7 @@ godot_pack(
 
 py_test(
     name = "runtime_input_test",
-    size = "small",
+    size = "medium",
     srcs = ["tests/runtime_input_test.py"],
     args = [
         "$(rlocationpath :pack)",

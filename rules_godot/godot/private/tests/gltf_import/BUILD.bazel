@@ -7,14 +7,14 @@ _FIXTURE = "//godot/private/tests/gltf_import/fixtures/gltf_with_external_buffer
 # with its mesh from the exported pack.
 godot_test(
     name = "gltf_imported_with_buffer_input_instantiates_test",
-    size = "small",
+    size = "medium",
     pack = _FIXTURE + "pack",
 )
 
 # Build-output test: the import input's .bin is absent from the pack.
 py_test(
     name = "pack_excludes_gltf_buffer_input_test",
-    size = "small",
+    size = "medium",
     srcs = ["gltf_pack_test.py"],
     args = ["$(rootpath %spack)" % _FIXTURE],
     data = [_FIXTURE + "pack"],

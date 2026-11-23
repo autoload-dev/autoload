@@ -120,8 +120,8 @@ description = "Report the Code Health of the whole checkout: hotspots and the lo
 run = "python3 -m tools.code_health.codescene --survey"
 
 [tasks.lint]
-description = "Check formatting, Buildifier lint, Ruff and ty, and the workflows"
-run = "python3 -m tools.ci.work run lint lint:ci"
+description = "Lint everything: Ruff and ty, Buildifier's lint, the workflows and hk.pkl"
+run = "python3 -m tools.ci.work run lint"
 
 [tasks.check]
 description = "Run the checks before a push: lint, setup, conventions, API docs and tooling tests"

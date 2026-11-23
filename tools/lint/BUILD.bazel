@@ -1,15 +1,30 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
+# Every linter of the repository; `bazel run //tools/lint -- <path>...` lints just those paths.
 py_binary(
     name = "lint",
     srcs = ["lint.py"],
     args = [
         "$(rootpath @aspect_rules_lint//lint:ruff_bin)",
         "$(rootpath @aspect_rules_lint//lint:ty_bin)",
+        "$(rootpath @buildifier_prebuilt//:buildifier)",
     ],
     data = [
         "@aspect_rules_lint//lint:ruff_bin",
         "@aspect_rules_lint//lint:ty_bin",
+        "@buildifier_prebuilt//:buildifier",
     ],
     tags = ["manual"],
+)
+
+py_library(
+    name = "lint_lib",
+    srcs = ["lint.py"],
+)
+
+py_test(
+    name = "lint_test",
+    size = "small",
+    srcs = ["lint_test.py"],
+    deps = [":lint_lib"],
 )

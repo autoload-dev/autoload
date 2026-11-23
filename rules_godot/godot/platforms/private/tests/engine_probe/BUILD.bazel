@@ -103,7 +103,7 @@ configured_outputs(
 
 py_test(
     name = "source_built_android_bundle_packages_engine_and_symbols_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_source_bundle_test.py"],
     args = [
         "$(rlocationpath :source_built_android_bundle_packages_engine_and_symbols_test_bundle)",
@@ -140,7 +140,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "official_beta_android_app_packages_selected_engine_test",
-    size = "small",
+    size = "medium",
     aapt = "@android_toolchains//:aapt",
     apksigner = "@androidsdk//:apksigner",
     app = ":official_beta_android_app_packages_selected_engine_test_app",
@@ -164,7 +164,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "source_built_beta_android_app_packages_patched_engine_test",
-    size = "small",
+    size = "medium",
     aapt = "@android_toolchains//:aapt",
     apksigner = "@androidsdk//:apksigner",
     app = ":source_built_beta_android_app_packages_patched_engine_test_app",
@@ -197,7 +197,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "official_beta_ios_link_links_selected_engine_test",
-    size = "small",
+    size = "medium",
     app = ":official_beta_ios_link_links_selected_engine_test_link",
     inspector = ":validate_ios_beta",
     kind = "official",
@@ -216,7 +216,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "source_built_beta_ios_app_links_patched_engine_test",
-    size = "small",
+    size = "medium",
     app = ":source_built_beta_ios_app_links_patched_engine_test_app",
     engine_manifest = "@godot_beta_source_build_ios_ios_arm64_simulator_template_release//:engine_manifest.json",
     inspector = ":validate_ios_beta",
@@ -242,7 +242,7 @@ configured_outputs(
 
 py_test(
     name = "source_built_ios_app_defines_extension_entry_test",
-    size = "small",
+    size = "medium",
     srcs = ["ios_source_app_test.py"],
     args = ["$(rlocationpath :source_built_ios_app_defines_extension_entry_test_app)"],
     data = [":source_built_ios_app_defines_extension_entry_test_app"],

@@ -6,7 +6,7 @@ _FIXTURE = "//godot/private/tests/run_errors/fixtures/project_reporting_an_error
 # Run test: a test that only reports the error passes with Godot's exit status.
 godot_test(
     name = "reported_error_keeps_the_exit_status_test",
-    size = "small",
+    size = "medium",
     engine_errors = "report",
     project = _FIXTURE + ":project",
     deps = [_FIXTURE + ":main"],
@@ -15,7 +15,7 @@ godot_test(
 # The same test with the default engine_errors, which the next test runs and expects to fail.
 godot_test(
     name = "failing_test",
-    size = "small",
+    size = "medium",
     project = _FIXTURE + ":project",
     tags = ["manual"],
     deps = [_FIXTURE + ":main"],
@@ -24,7 +24,7 @@ godot_test(
 # Run test: by default, the error fails the test although Godot exits with 0.
 py_test(
     name = "reported_error_fails_the_test_test",
-    size = "small",
+    size = "medium",
     srcs = ["reported_error_test.py"],
     args = ["$(rootpath :failing_test)"],
     data = [":failing_test"],
