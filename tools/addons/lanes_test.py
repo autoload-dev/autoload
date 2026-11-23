@@ -61,7 +61,7 @@ class LanesTest(unittest.TestCase):
         )
         self.assertEqual(
             lane_tests_query("android")[-1],
-            'attr(tags, "\\bandroid\\b", tests(//projects/...))',
+            'attr(tags, "[\\[ ]android[,\\]]", tests(//projects/...))',
         )
 
     def test_a_module_without_example_projects_is_refused(self) -> None:

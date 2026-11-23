@@ -28,7 +28,8 @@ def lane_tests_query(lane: str) -> list[str]:
         "bazel",
         "query",
         "--output=label",
-        f'attr(tags, "\\b{lane}\\b", tests(//projects/...))',
+        # Query renders tags as "[a, b]": match a whole element, not a tag like no-ios.
+        f'attr(tags, "[\\[ ]{lane}[,\\]]", tests(//projects/...))',
     ]
 
 
