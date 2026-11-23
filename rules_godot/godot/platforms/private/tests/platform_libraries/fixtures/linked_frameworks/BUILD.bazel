@@ -1,0 +1,72 @@
+load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/extension/tests:extension_contracts.bzl", "dynamic_xcframework_fixture")
+
+# Extensions that link dynamic frameworks, as add-ons link a vendor's SDK: the first links
+# FixtureAnalytics, which links FixtureCore; the second links FixtureCore itself; the third,
+# which the application links statically, links FixtureAnalytics too.
+package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+
+dynamic_xcframework_fixture(
+    name = "core",
+    binary = "FixtureCore",
+    linked = True,
+)
+
+dynamic_xcframework_fixture(
+    name = "analytics",
+    binary = "FixtureAnalytics",
+    linked = True,
+    deps = [":core"],
+)
+
+[
+    godot_cc_extension(
+        name = name,
+        srcs = ["extension.cc"],
+        entry_symbol = "linked_frameworks_fixture_init",
+        tags = ["manual"],
+        deps = select({
+            "@platforms//os:ios": [framework],
+            "//conditions:default": [],
+        }),
+    )
+    for name, framework in {
+        "analytics_extension": ":analytics",
+        "core_extension": ":core",
+    }.items()
+]
+
+godot_cc_extension(
+    name = "static_extension",
+    srcs = ["extension.cc"],
+    entry_symbol = "linked_frameworks_fixture_init",
+    ios_linkage = "static",
+    tags = ["manual"],
+    deps = select({
+        "@platforms//os:ios": [":analytics"],
+        "//conditions:default": [],
+    }),
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":project",
+    tags = ["manual"],
+    deps = [
+        ":analytics_extension",
+        ":core_extension",
+        ":static_extension",
+    ],
+)
+
+filegroup(
+    name = "runtime",
+    tags = ["manual"],
+)
