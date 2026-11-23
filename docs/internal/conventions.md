@@ -105,7 +105,7 @@ The existing enforcement has several owners:
   [catalogued rules](../../rules_godot/docs/public/conventions.md): naming, public-doc fixture references,
   example API references and documentation command labels resolved in their owning
   Bazel modules. It is not a full layout-policy checker.
-- [API documentation checks](api-reference.md) use evaluated Bazel/Stardoc metadata and
+- [API documentation checks](../../rules_godot/docs/internal/api-reference.md) use evaluated Bazel/Stardoc metadata and
   source inspection for inventories, ownership and descriptions.
 - Bazel analysis, project/resource rules, sidecar checks and existing behavior/artifact
   tests already enforce parts of dependency, resource and runtime correctness.
@@ -270,7 +270,7 @@ Useful first audit cases:
 - [C ABI fixture](../../rules_godot/godot/extension/tests/fixtures/c_abi/BUILD.bazel) names its extension
   `hello`, which determines its library outputs: identify the tested identity before any fix.
 - [dSYM fixtures](../../rules_godot/godot/platforms/private/tests/desktop_package/fixtures/macos_apps_with_dsyms/BUILD.bazel) deliberately use nested output
-  target names; the [feature-selected libraries fixture](../../godot/extension/tests/fixtures/feature_selected_libraries/BUILD.bazel)
+  target names; the feature-selected libraries fixture
   includes shared library filename targets. Classify these precise cases rather than exempting every
   fixture target or banning every slash/dot in test data.
 

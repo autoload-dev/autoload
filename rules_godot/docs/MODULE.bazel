@@ -55,7 +55,7 @@ single_version_override(
 # bazel_worker_java, pinned as the ruleset pins them. Each module that roots a graph with the
 # ruleset names a lock file for them; this one reuses the ruleset's, since it adds no
 # artifacts. Nothing here fetches them: only their extension is evaluated.
-bazel_dep(name = "rules_jvm_external", version = "6.10")
+bazel_dep(name = "rules_jvm_external", version = "7.2")
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(

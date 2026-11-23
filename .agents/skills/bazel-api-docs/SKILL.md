@@ -9,7 +9,7 @@ Treat the Starlark definitions as the API documentation's source of truth: the
 Bazel Central Registry renders it from their extracted docstrings. Write English
 documentation using Bazel's `.bzl` style and Stardoc conventions. Read
 [upstream practices](references/upstream.md) when changing this standard or
-its enforcement; use [the maintenance guide](../../../docs/internal/api-reference.md)
+its enforcement; use [the maintenance guide](../../../rules_godot/docs/internal/api-reference.md)
 for API inventory and metadata details, and the
 [API documentation recipe](../../../docs/internal/verification-recipes.md#api-documentation)
 for its checks.

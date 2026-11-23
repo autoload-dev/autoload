@@ -1,6 +1,8 @@
 # Internal reference
 
-This area holds durable architecture, domain research and maintenance procedures. Use the
+This area, and the ruleset's own in [rules_godot/docs/internal/](../../rules_godot/docs/internal/README.md),
+hold durable architecture, domain research and maintenance procedures. A page that covers the
+whole repository lives here; a page about the ruleset alone lives with the ruleset. Use the
 [reference index](README.md) when locating an owning page; the scope, tasks and progress of a
 change belong in its pull request, and routine run evidence in review/completion reports.
 
@@ -11,7 +13,7 @@ Preserve necessary experiment recipes and conclusions; temporary log paths are o
 provenance, never the only evidence. Preserve snapshot dates rather than implying a new audit.
 
 When changing capability goals, scope or coverage, read
-[maintaining capability references](capabilities.md#maintaining-capability-references).
+[maintaining capability references](../../rules_godot/docs/internal/capabilities.md#maintaining-capability-references).
 That section owns the distinction between desired outcomes, observed workflows and open
 candidates; ordinary maintenance recipes do not require reading the full capability matrix.
 

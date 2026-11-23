@@ -64,7 +64,7 @@ the critical path and action timings. Keep these files only for the investigatio
 
 For API source changes, run the `docs` work, `mise run ci:work -- docs`: it checks the
 inventory, the docstrings and the contracts the registry's documentation relies on. See
-[API documentation maintenance](api-reference.md) for the metadata and its checks.
+[API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
 ## Remote execution with BuildBuddy
 
@@ -196,7 +196,7 @@ BUILD file per source directory.
 
 Focused tests such as `actions_test`, `execution_test`, `editor_view_test` and `versions_test`
 live in a `tests/` subpackage of the package they test, such as `tools/tests/`. `//godot/private/engine/tests:pinned_godot_sources_match_the_reviewed_android_shell_test` checks the pinned
-Godot sources against the [reviewed Android shell](android-shell.md#review-a-godot-version). They are not additional checked-in Godot
+Godot sources against the [reviewed Android shell](../../rules_godot/docs/internal/android-shell.md#review-a-godot-version). They are not additional checked-in Godot
 projects. Pack-membership assertions live in `//godot/private/tests/pack_membership`.
 
 ### Extension loading and engine compatibility

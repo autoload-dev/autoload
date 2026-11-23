@@ -13,10 +13,12 @@ class PublicDocumentationLinksTest(RepositoryTest):
             ("README.md", "docs/internal/architecture.md"),
             ("examples/addons/demo/README.md", "../../../docs/internal/verification.md"),
             ("docs/public/api/index.md", "../../internal/api-reference.md"),
+            ("rules_godot/docs/public/engine.md", "../internal/architecture.md"),
+            ("rules_godot/README.md", "docs/internal/android-shell.md"),
         ):
             self.write(name, f"Intro\n[Guide]({target})\n")
         findings = list(PublicDocumentationLinks().evaluate(self.context()))
-        self.assertEqual(len(findings), 4)
+        self.assertEqual(len(findings), 6)
         self.assertTrue(all(item.location.line == 2 for item in findings))
         self.assertEqual((self.tools.call_requests, self.tools.rule_requests), (0, 0))
 
@@ -83,6 +85,7 @@ class PublicDocumentationLinksTest(RepositoryTest):
     def test_audience_navigation_and_unrelated_links_remain_valid(self) -> None:
         for name in (
             "docs/internal/design.md",
+            "rules_godot/docs/internal/architecture.md",
             "docs/README.md",
             "docs/public/AGENTS.md",
         ):

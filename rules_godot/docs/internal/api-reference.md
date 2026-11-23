@@ -8,7 +8,7 @@ Platform setup, tutorials and architecture remain in the guides.
 ## The documentation module
 
 The extraction, the registry's metadata and their checks live in a Bazel module of their own,
-[`rules_godot/docs/`](../../rules_godot/docs/MODULE.bazel), beside `tests/` and `examples/`.
+[`rules_godot/docs/`](../MODULE.bazel), beside `tests/` and `examples/`.
 It depends on the ruleset through a `local_path_override`, extracts the ruleset's Starlark
 modules and holds every dependency and override that only the documentation needs: Stardoc's
 output schema, Protobuf and the [visibility patches](#third-party-documentation-dependencies).
@@ -18,7 +18,7 @@ checker. Commands below run in `rules_godot/docs/` unless they name another dire
 
 ## Public entrypoints and implementation modules
 
-[`modules.bzl`](../../rules_godot/docs/public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
+[`modules.bzl`](../public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
 
 | Role | Purpose | Registry documentation |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ Keep implementation notes in source comments and docstrings.
 Consumers configure `godot_cpp_bindings` in `MODULE.bazel`, then pass its
 generated C++ library as `deps = ["@godot_cpp//:godot_cpp"]` to
 `godot_cc_extension`. These are the public contracts documented in `godot_cpp_bindings`'
-docstring and the [C++ integration guide](../../rules_godot/docs/public/gdextension.md#c-bindings).
+docstring and the [C++ integration guide](../public/gdextension.md#c-bindings).
 
 Each public symbol identity (API kind plus its defining file and name) has
 exactly one public owner. A second public export fails CI even when it uses a
@@ -86,7 +86,7 @@ independently named repository datasets and toolchains separately from companion
 main target. Neither an output group per provider field nor a synthetic main target for an entire
 repository is required. Check actual visibility as well as documented support.
 
-Additional macro target names follow [RG002](../../rules_godot/docs/public/conventions.md#rg002): `<name>.<role>`.
+Additional macro target names follow [RG002](../public/conventions.md#rg002): `<name>.<role>`.
 The convention, including slash-suffixed rules_android basenames, is owned there. A dotted name does
 not grant public visibility, and output-group keys and artifact filenames do not inherit
 the target separator. Document only the supported public companion targets as consumer interfaces.
@@ -96,7 +96,7 @@ the API has them, `### Output groups` and `### Generated targets`; a section wit
 omitted. Private rules, macros and repository rules keep these sections too: they document
 the ruleset's internal use and are ready when a symbol becomes public, although only public
 ones are checked against Bazel. Each section is a list, which stays readable on narrow pages
-such as the BCR's, in the form the [output-contract parser](../../rules_godot/docs/tools/docs/output_contracts.py)
+such as the BCR's, in the form the [output-contract parser](../tools/docs/output_contracts.py)
 defines:
 
 ```markdown
@@ -125,7 +125,7 @@ its producers in its own documentation. Conditional availability must have repre
 configured evidence. Configuration-only targets have explicit metadata roles; they must not
 invent files.
 
-The [case registry](../../rules_godot/godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
+The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
 and configurations, not another copy of the public prose. It also names the behavior tests
 that show why an API's public companion targets are separate; the checker requires them to
 resolve. A case or behavior test names its `module` when its fixture lives in a consumer
@@ -155,15 +155,15 @@ Public guides link to the registry's documentation and show short build/run/grou
 ## Writing standard
 
 The repository skill
-[bazel-api-docs](../../.agents/skills/bazel-api-docs/SKILL.md) defines the writing
-and review standard. Its [upstream references](../../.agents/skills/bazel-api-docs/references/upstream.md)
+[bazel-api-docs](../../../.agents/skills/bazel-api-docs/SKILL.md) defines the writing
+and review standard. Its [upstream references](../../../.agents/skills/bazel-api-docs/references/upstream.md)
 explain which practices come from established rule sets and which checks are
 specific to this repository.
 
 ## Documentation contracts
 
-The [verification policy](verification.md) owns execution timing;
-[verification lanes](verification-platforms.md) own the lanes.
+The [verification policy](../../../docs/internal/verification.md) owns execution timing;
+[verification lanes](../../../docs/internal/verification-platforms.md) own the lanes.
 The documentation checker covers complete module and public target inventories, evaluated
 API descriptions, primary ownership and internal boundaries. New modules must be explicitly classified in `modules.bzl`, including
 private support files.
@@ -199,7 +199,7 @@ for the public primary symbols. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
 The release script (`.github/workflows/release_prep.sh`) packs exactly these files into
 `rules_godot-<tag>.docs.tar.gz`, which `docs_url` in `.bcr/rules_godot/source.template.json` names and
-the registry renders; see [Releasing](releasing.md).
+the registry renders; see [Releasing](../../../docs/internal/releasing.md).
 
 Do not collect every `starlark_doc_extract` output into an archive: unfiltered
 inventories and intentionally invalid test fixtures have different purposes.

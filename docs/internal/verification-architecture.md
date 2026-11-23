@@ -212,14 +212,14 @@ those tests in its own module.
 | `rules_godot_examples` at `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
 | `rules_godot_tests` at `tests/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
 
-This keeps [design principle V](principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
+This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
 
 ## Boundary rules
 
 | Rule | Statement | Enforcement | Exceptions |
 |---|---|---|---|
-| B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](api-reference.md) documents and its inventory lists. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
+| B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](../../rules_godot/docs/internal/api-reference.md) documents and its inventory lists. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
 | B3 | Consumer scenarios load no private module but the artifact test rules, which are classified as cross-repository modules. | The API inventory check | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
@@ -317,7 +317,7 @@ that export `*_test_suite` functions, and rules_oci names its consumer smoke mod
 ## Verifications without precedent
 
 **Rule P1**: A verification that no surveyed ruleset has is removed. It stays only if a MUST
-of the [design principles](principles.md) requires it and no kind on this page can satisfy that MUST. A removal
+of the [design principles](../../rules_godot/docs/internal/principles.md) requires it and no kind on this page can satisfy that MUST. A removal
 names the kind that carries its claim, or says that none does.
 
 | Verification | Decision | Replacement | Reason |

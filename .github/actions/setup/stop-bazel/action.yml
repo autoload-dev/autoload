@@ -1,15 +1,13 @@
 name: Stop Bazel at job end
 description: >-
-  Shut down Bazel servers and their persistent workers when the
-  job ends, before earlier steps clean up. Each module has a bounded best-effort shutdown.
+  Shut down every Bazel server under the job's output user root, and with it its
+  persistent workers, when the job ends, before earlier steps clean up. Each server
+  has a bounded best-effort shutdown, then SIGTERM and SIGKILL. Only for fresh Linux
+  runners: the step leaves a persistent runner's warm servers running.
 
 inputs:
-  bazel-modules:
-    description: Newline-separated Bazel module directories to shut down, besides the add-on modules in addons/ that a build ran in.
-    default: .
-
   shutdown-timeout-seconds:
-    description: Maximum seconds per module before killing the cleanup client and continuing.
+    description: Maximum seconds per server's bazel shutdown before killing the cleanup client and stopping the server.
     default: "30"
 
   repository-cache:

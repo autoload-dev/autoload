@@ -135,7 +135,7 @@ loading stop the audit with an error rather than silently passing.
 runnable examples, which users can copy, instead of named regression projects or add-ons from the
 test area. The check reports each line with a concrete path of a project or add-on in either area in Markdown under
 `docs/` and in every README, except
-`docs/internal/` and `AGENTS.md` files. Abstract layout placeholders remain usable in
+internal documentation, the repository's and the ruleset's `docs/internal/`, and `AGENTS.md` files. Abstract layout placeholders remain usable in
 structural guidance; they are not runnable fixture references. Maintainer fixture commands belong in internal contributor documentation.
 
 ## RG006

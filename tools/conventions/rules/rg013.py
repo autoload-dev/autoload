@@ -9,6 +9,7 @@ from string import punctuation
 from urllib.parse import unquote, urlsplit
 
 from tools.conventions.context import Context, Location
+from tools.conventions.documents import internal_document
 from tools.conventions.framework import Finding, RuleInfo
 
 # Static Markdown links/images and reference definitions. HTML attributes are
@@ -85,7 +86,7 @@ class PublicDocumentationLinks:
         for name in context.workspace.documents:
             # The shared index routes readers to both audiences. Internal reference
             # pages are not consumer documentation.
-            if name == "docs/README.md" or name.startswith("docs/internal/"):
+            if name == "docs/README.md" or internal_document(name):
                 continue
             text = context.workspace.text(name)
             seen: set[tuple[int, str]] = set()
@@ -99,9 +100,7 @@ class PublicDocumentationLinks:
                     if path.startswith("/")
                     else posixpath.join(posixpath.dirname(name), path)
                 )
-                if resolved != "docs/internal" and not resolved.startswith(
-                    "docs/internal/"
-                ):
+                if not internal_document(resolved):
                     continue
                 if (line, resolved) in seen:
                     continue

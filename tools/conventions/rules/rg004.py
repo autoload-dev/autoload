@@ -4,6 +4,7 @@ import re
 from collections.abc import Iterable
 
 from tools.conventions.context import Context, Location
+from tools.conventions.documents import internal_document
 from tools.conventions.framework import Finding, RuleInfo
 
 
@@ -16,7 +17,7 @@ class FixtureReferences:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         for name in context.workspace.documents:
             # Internal documentation may name the regression projects and add-ons it describes.
-            if name.startswith("docs/internal/"):
+            if internal_document(name):
                 continue
             for number, line in enumerate(context.workspace.text(name).splitlines(), 1):
                 # A concrete path into a consumer scenario, such as tests/smoke/linux; layout
