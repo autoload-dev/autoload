@@ -1,7 +1,8 @@
 """The Code Health of a change: the files it touches, before and after, and which got worse.
 
-A change is the working tree against its merge base with a base ref, untracked files
-included, so commits that landed on the base after the branch point are not part of it.
+A change is either the working tree against its merge base with a base ref, untracked
+files included, so that commits which landed on the base after the branch point are not
+part of it (changed_paths), or the index against HEAD (staged_paths).
 A file declines when its score falls, or, for a file without a score before, such as a new
 one, when it scores below NEW_FILE_MINIMUM. Deleted files never decline.
 """
@@ -83,6 +84,13 @@ def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
     untracked = git(repo, "ls-files", "-z", "--others", "--exclude-standard")
     paths += [ChangedPath(None, path) for path in untracked.split("\0") if path]
     return paths
+
+
+def staged_paths(repo: Path) -> list[ChangedPath]:
+    """The files the index changes against HEAD."""
+    return parse_name_status(
+        git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
+    )
 
 
 @dataclass
@@ -260,10 +268,10 @@ def report(
     return "\n".join(out)
 
 
-def write_json(path: Path, base: str, since: str, changes: list[FileChange]) -> None:
+def write_json(path: Path, against: str, before: str, changes: list[FileChange]) -> None:
     payload = {
-        "base": base,
-        "merge_base": since,
+        "against": against,
+        "before": before,
         "files": [
             {
                 "before_path": c.path.before,

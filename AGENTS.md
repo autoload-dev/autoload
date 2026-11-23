@@ -49,7 +49,8 @@ mise run setup                            # once per clone: install hooks
 hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
 mise run api-docs                         # after changing the ruleset's public API
-mise run code-health                      # Code Health of the change since origin/main; also run before each push
+mise run code-health                      # Code Health of the change since origin/main; the Git hooks run it too
+mise run code-health:survey               # Code Health of the whole checkout, to find refactoring targets
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>  # offload a large task to BuildBuddy
 ```
 
@@ -106,35 +107,36 @@ and constants in `godot/private/engine/profiles.bzl` and pass them to build tool
 
 # Code Health (CodeScene)
 
-The CodeHealth MCP server measures maintainability as Code Health, from 10.0 (optimal) down
-to 1.0. Treat it as the measure for maintainability and aim for 10.0; the glossary,
-conventions and design decisions above still decide naming, structure and package
-boundaries. Call the matching CodeHealth MCP tool instead of guessing.
+Code Health measures maintainability from 10.0 (optimal) down to 1.0; aim for 10.0. The
+glossary, conventions and design decisions above still decide naming, structure and package
+boundaries. In this repository `tools/code_health` is the one way to measure it: it scores
+every language here, Starlark and GDScript included, with the CodeScene CLI `cs` that mise
+pins. Do not use the CodeHealth MCP tools or the CodeScene plugin skills here; the Git hooks
+below replace them.
 
-- **Safeguard every change.** After changing a file, run `code_health_review` on it, or
-  `mise run code-health -- --only <path>...` for Starlark and GDScript. Before a pull request,
-  run `mise run code-health`: it reviews the files changed since the merge base with
-  `origin/main`, untracked ones included, prints each file's score before and after with
-  every new finding's function and lines, and fails when a file declines: its score falls,
-  or a new file scores below 9.0. It also fails when CodeScene cannot score a file, such as
-  with an expired token. The pre-push hook runs it too, and passes with a note on a machine
-  without the CodeScene CLI or token. If it reports a decline, refactor until it is resolved.
-- **Accept a decline only in the code.** When a finding is deliberate, put
-  `# @codescene(disable:"<rule>")` (`//` in C-like languages; one line per rule, or
-  `disable-all`) directly above the function's definition, with a comment that gives the
-  reason. A failing review prints the directive for each new finding. There is no other way
-  to acknowledge a decline.
-- **Refactor guided by Code Health.** Record a baseline with `code_health_review` and
-  `code_health_score`, fix the highest-leverage findings in 3–5 small structural steps, and
-  re-run the review after each step. Stop when the targeted findings are substantially
-  reduced and the score measurably improved; cosmetic edits are not progress.
-- **Starlark, GDScript and whole-repository scans.** The MCP tools reject Starlark (`.bzl`)
-  and GDScript (`.gd`); `mise run code-health` scores them through the same CodeScene CLI as
-  Python. Starlark documentation strings and `doc` values do not count, and Bazel macros are
-  exempt from the argument count, since their parameters mirror rule attributes.
-  `mise run code-health -- --survey` reports the whole checkout with its hotspots;
-  `--base <ref>` reviews a change against another ref. It needs the CodeHealth MCP server to
-  have run once and a configured CodeScene token; report the gap when either is missing.
+- **The hooks check; work freely in between.** The pre-commit hook reviews the staged
+  changes against `HEAD`, the pre-push hook the branch against its merge base with
+  `origin/main`. Each fails when a file declines (its score falls, or a new file scores
+  below 9.0) or when CodeScene cannot score a file, and prints every new finding with its
+  function and lines. Intermediate states need no review; run `mise run code-health`
+  whenever an early look helps, such as before committing a larger change.
+- **When a hook fails,** refactor the declined file until it no longer declines. Accept a
+  finding only deliberately, in the code: the failing output prints the directive for each
+  new finding, `# @codescene(disable:"<rule>")` (`//` in C-like languages, one line per
+  rule), to put above the function's definition with a comment that gives the reason. There
+  is no other way to acknowledge a decline.
+- **Find refactoring targets with the survey.** `mise run code-health:survey` reports the
+  whole checkout: languages, hotspots (commits × (10 − score)) and the lowest scores. It is
+  no gate; use it to choose what to improve, such as before working in an area. Refactor in
+  small structural steps and review the files again with
+  `mise run code-health -- --only <path>...` until the targeted findings are gone.
+- **Starlark and GDScript** are scored as translated Python: documentation strings and `doc`
+  values do not count, and Bazel macros are exempt from the argument count, since their
+  parameters mirror rule attributes.
+- **Setup:** set `CS_ACCESS_TOKEN` to a CodeScene personal access token kept outside the
+  repository, such as in the macOS keychain, read by your own mise configuration; with a
+  CodeScene account, `cs auth login` works instead. Without either, the hooks pass with a
+  note and `mise run code-health` reports the gap.
 
 <!-- entire-agent:begin -->
 Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.

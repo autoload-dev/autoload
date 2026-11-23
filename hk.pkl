@@ -1,8 +1,9 @@
 amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
 
 // Local checks before a push. CI runs every lane on every run (tools/ci/work.py), so
-// no step selects paths: the pre-push hook runs the quick checks and the Code Health review
-// of the change, and `hk check` adds the slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
+// no step selects paths: the pre-commit hook reviews the Code Health of the commit, the
+// pre-push hook runs the quick checks and the Code Health review of the branch, and
+// `hk check` adds the slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
 
 // A piece of the lanes' work (tools/ci/work.py). Work that runs Bazel holds its module's
 // server, so it runs alone.
@@ -37,6 +38,15 @@ hooks {
       }
     }
   }
+  ["pre-commit"] {
+    steps {
+      // The Code Health of what the commit changes, against HEAD (AGENTS.md, "Code
+      // Health"); skipped without the CodeScene CLI or a sign-in.
+      ["code-health"] {
+        check = "python3 -m tools.code_health.codescene --staged --if-available"
+      }
+    }
+  }
   ["pre-push"] {
     steps {
       ["pushed-checkout"] {
@@ -47,8 +57,8 @@ hooks {
       for (name, step in quick) {
         [name] = step
       }
-      // The Code Health of the change against its merge base with origin/main: fails when
-      // a file declines (AGENTS.md, "Code Health"); skipped without the CodeScene CLI.
+      // The Code Health of the branch against its merge base with origin/main, which also
+      // covers commits made without the pre-commit hook; skipped like it.
       ["code-health"] {
         check = "python3 -m tools.code_health.codescene --if-available"
       }
