@@ -10,7 +10,7 @@ export (`add_*` and `skip` in `editor_export_plugin.cpp`), and the two legacy pl
 descriptor kinds. Line numbers refer to `4.7.2-stable` unless a row names 4.8.
 
 The engine profile's `export_hooks` table in
-[profiles.bzl](../../rules_godot/godot/private/engine/profiles.bzl) holds these rows per Godot minor;
+[profiles.bzl](../../godot/private/engine/profiles.bzl) holds these rows per Godot minor;
 this document is their reviewed and cited form. The test `//godot/private/engine/tests:pinned_godot_sources_declare_the_reviewed_export_hooks_test`
 fails when a pinned source declares a hook the profile does not list, or lists one it no
 longer declares; such a pin needs a new review of the rows below.

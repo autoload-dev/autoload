@@ -8,7 +8,7 @@ description: Document and maintain rules_godot's Bazel APIs and CI documentation
 Treat the Starlark definitions as the API reference's source of truth. Write
 English documentation using Bazel's `.bzl` style and Stardoc conventions. Read
 [upstream practices](references/upstream.md) when changing this standard or
-its enforcement; use [the maintenance guide](../../../docs/internal/api-reference.md)
+its enforcement; use [the maintenance guide](../../../rules_godot/docs/internal/api-reference.md)
 for API inventory and generator details. For regeneration, use the
 [reference generation recipe](../../../docs/internal/verification-recipes.md#generated-api-reference).
 

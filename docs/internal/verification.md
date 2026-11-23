@@ -3,7 +3,7 @@
 This page owns the repository's general review, testing and verification policy. Read it
 when making or reviewing a change; the lanes and recipes are linked below.
 Agent instructions link here; public guides explain supported consumer workflows. The
-[design principles](principles.md) govern what a change must validate. A concrete acceptance requirement can
+[design principles](../../rules_godot/docs/internal/principles.md) govern what a change must validate. A concrete acceptance requirement can
 add a check; the existence of a capability, task or operating system does not require every combination.
 
 The objective is enough evidence to accept the change with the least repeated work. Select
@@ -106,7 +106,7 @@ expand which changes need new tests: pure documentation edits, mechanical rename
 behavior-preserving moves do not by themselves require them; run the checks affected by
 changed references.
 
-Examples retain their own meaningful behavior tests under [design principle V](principles.md#v-examples-demonstrate-test-projects-isolate). Follow
+Examples retain their own meaningful behavior tests under [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate). Follow
 [example scope](../../rules_godot/examples/AGENTS.md#scope-and-design) when changing them. Do not add a
 mobile automation framework merely to complete verification.
 For tests inside an example's or user's project, read [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).

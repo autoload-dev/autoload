@@ -14,8 +14,11 @@ tests in `tests/` subpackages. `rules_godot/examples/` and `rules_godot/tests/` 
 independent consumer modules: the examples and the ruleset regressions, run from their own
 directory. Where a test goes and which form it takes is owned by the
 [verification architecture](docs/internal/verification-architecture.md). Public guides are in
-`rules_godot/docs/public/`, and maintainer references and the
-[design principles](docs/internal/principles.md) in `docs/internal/`.
+`rules_godot/docs/public/`. Maintainer references that cover the whole repository, such as
+verification, conventions, releasing and the glossary, are in [docs/internal/](docs/internal/README.md);
+those of the ruleset alone, such as its architecture and the
+[design principles](rules_godot/docs/internal/principles.md), are in
+[rules_godot/docs/internal/](rules_godot/docs/internal/README.md).
 
 Keep ideas and follow-ups that are not yet planned in [ideas.md](docs/internal/ideas.md).
 Agents may propose an entry, with a short reason, but must wait for the user's approval
