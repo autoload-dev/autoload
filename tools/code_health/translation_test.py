@@ -5,10 +5,10 @@ import io
 import textwrap
 import unittest
 
+from tools.code_health.macros import parameter_count
 from tools.code_health.translation import (
     MACRO_DIRECTIVE,
     original_title,
-    parameter_count,
     translate,
 )
 
@@ -209,7 +209,9 @@ class DocumentationTest(unittest.TestCase):
                     doc = "",
                     attrs = {
                         "a": attr.string(doc = ""),
-                        "b": attr.string(doc = "", default = "x"),
+                        "b": attr.string(doc = (
+                            ""
+                        ), default = "x"),
                     },
                 )
                 """),
@@ -298,7 +300,7 @@ class DocumentationTest(unittest.TestCase):
         )
         self.assertEqual("big:1", original_title("big:2", translation))
 
-    def test_untokenizable_source_keeps_its_documentation(self) -> None:
+    def test_unparsable_source_keeps_its_documentation(self) -> None:
         text = 'def f():\n    """Unterminated.\n'
         with contextlib.redirect_stderr(io.StringIO()) as error:
             translated = translate("pkg/defs.bzl", text, macro_arguments=False)

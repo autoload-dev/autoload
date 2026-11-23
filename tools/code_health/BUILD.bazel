@@ -6,6 +6,8 @@ py_library(
     name = "codescene_lib",
     srcs = [
         "codescene.py",
+        "documentation.py",
+        "macros.py",
         "translation.py",
     ],
 )
