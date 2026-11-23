@@ -9,6 +9,7 @@ from unittest import mock
 
 from tools.ci.work import (
     DOCS,
+    DOCS_CHECK,
     FAST_TEST_COMMAND,
     ROOT,
     RULESET_DIR,
@@ -72,7 +73,7 @@ class WorkTest(unittest.TestCase):
             [".", RULESET_DIR, DOCS], [step.directory for step in fast.steps()]
         )
         self.assertEqual(
-            [FAST_TEST_COMMAND] * 3,
+            [FAST_TEST_COMMAND, FAST_TEST_COMMAND, DOCS_CHECK],
             [step.command for step in fast.steps()],
         )
 

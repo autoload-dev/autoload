@@ -77,6 +77,10 @@ def example(name: str, area: str = "addons") -> Work:
     return Work(f"test:example:{name}", "desktop", EXAMPLES, (example_tests(name, area),))
 
 
+# The documentation module's tests, all of them fast, with the API inventory's discovery
+# of new Starlark modules, which a test's sandbox cannot see.
+DOCS_CHECK = "bazel run //tools/docs:check"
+
 # Petri's suites run in an editor built from the engine sources with its module, so the
 # source-engine lane runs them; named on its own, it runs here too.
 PETRI_TESTS = example_tests("petri", "projects", config="petri")
@@ -181,7 +185,7 @@ WORK = (
         (
             FAST_TEST_COMMAND,
             In(RULESET_DIR, FAST_TEST_COMMAND),
-            In(DOCS, FAST_TEST_COMMAND),
+            In(DOCS, DOCS_CHECK),
         ),
     ),
     # The API inventory and the documentation of its public entrypoints, and the contract
@@ -191,7 +195,7 @@ WORK = (
         "docs",
         DOCS,
         (
-            "bazel run //tools/docs:check",
+            DOCS_CHECK,
             contracts_command("docs"),
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),

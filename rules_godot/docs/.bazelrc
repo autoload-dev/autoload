@@ -1,4 +1,6 @@
 # The documentation module's settings.
+common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
+
 build --incompatible_strict_action_env
 
 import %workspace%/../../shared.bazelrc
