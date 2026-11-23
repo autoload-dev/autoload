@@ -119,7 +119,6 @@ jobs:
         uses: ./.github/actions/setup/save-downloads
 
   # The merge queue's required check: one name, whichever jobs the workflow has.
-  # Only the macOS jobs of a fork's pull request may be skipped.
   verification:
     name: Finalize
     if: always()

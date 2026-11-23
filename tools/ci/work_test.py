@@ -10,6 +10,7 @@ from unittest import mock
 from tools.ci.work import (
     ROOT,
     WORK,
+    In,
     Work,
     addon_work,
     all_work,
@@ -23,8 +24,7 @@ WORK_RUN = "python3 -m tools.ci.work run "
 
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
-    """A checkout with mise.toml's pins and add-on modules naming their lanes."""
-    (root / "mise.toml").write_text('[vars]\nandroid_build_tools = "35.0.0"\n')
+    """A checkout with add-on modules naming their lanes."""
     for module, listed in modules.items():
         (root / "addons" / module).mkdir(parents=True)
         (root / "addons" / module / "MODULE.bazel").write_text(
@@ -81,7 +81,7 @@ class WorkTest(unittest.TestCase):
     def test_commands_run_in_mise_with_their_own_variables(self) -> None:
         plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))
         self.assertEqual(
-            argv(plain, "bazel test //...", self.root),
+            argv(plain, "bazel test //..."),
             [
                 "mise",
                 "exec",
@@ -94,10 +94,24 @@ class WorkTest(unittest.TestCase):
             ],
         )
         android = Work("y", "android", ".", ("true",), android=True)
-        process = argv(android, "bazel build //:app", self.root)
+        process = argv(android, "bazel build //:app")
         self.assertEqual(process[:4], ["mise", "exec", "java", "--"])
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
-        self.assertIn("export ANDROID_BUILD_TOOLS=35.0.0", process[-1])
+
+    def test_a_command_may_run_in_its_own_directory(self) -> None:
+        work = Work(
+            "x", "ios", "tests", ("bazel test //:a", In("examples", "bazel build //:b"))
+        )
+        self.assertEqual(
+            work.steps(),
+            [In("tests", "bazel test //:a"), In("examples", "bazel build //:b")],
+        )
+        with mock.patch("subprocess.run") as process:
+            run(["ios"], ROOT, {"ios": work})
+        self.assertEqual(
+            [call.kwargs["cwd"] for call in process.call_args_list],
+            [ROOT / "tests", ROOT / "examples"],
+        )
 
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):

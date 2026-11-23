@@ -67,6 +67,8 @@ ANDROID_HOME = """\
 """
 ANDROID_NDK_HOME = { default = "{{ env.ANDROID_SDK_ROOT }}/ndk/{{ vars.android_ndk_version }}" }
 ANDROID_NDK_ROOT = "{{ env.ANDROID_NDK_HOME }}"
+# The pinned build tools, which Android work such as inspect:mobile passes to its tools.
+ANDROID_BUILD_TOOLS = "{{ vars.android_build_tools }}"
 
 [tasks.bootstrap]
 description = "Prepare repository toolchains, Android SDK components and Git hooks"

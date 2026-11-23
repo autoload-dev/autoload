@@ -87,8 +87,8 @@ useful immediate feedback, without duplicating the whole CI suite.
 
 The source-engine lane is the most expensive one and the least likely to change with a
 commit, so CI has no job for it. The
-[Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
-`source-engine:full`, on main on its schedule, and on manual dispatch for any
+[Source engine](../../.github/workflows/source-engine.yml) workflow runs the whole lane,
+its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. `mise run ci:work -- source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built

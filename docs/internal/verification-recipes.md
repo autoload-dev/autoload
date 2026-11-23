@@ -288,7 +288,8 @@ bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 application, requiring both extensions to load and register their Godot class and the
 imported texture to load from the pack. On macOS, `app_is_adhoc_signed_test` verifies the
 archived bundle's ad hoc signature; it runs only in a build that selects ad hoc signing, as
-the second command does. `mise run ci:work -- test:gdextension` runs both commands.
+the second command does. The desktop lane runs the first as `test:gdextension` and, on macOS, the second as
+`test:gdextension:signed`.
 
 ### Mobile artifact checks
 

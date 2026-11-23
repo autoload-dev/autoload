@@ -1,27 +1,27 @@
 """
 The repository's verification work: what each lane runs, where and how.
 
-Each piece of work is a few shell commands in one module directory.
+Each piece of work is a few shell commands, each run in a module directory.
 `python3 -m tools.ci.work lane <lane>` (`mise run ci:lane -- <lane>`) runs a lane on this
-host, as each of CI's jobs does, and `python3 -m tools.ci.work run <name>...`
-(`mise run ci:work -- <name>...`) runs single pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
-for each module (tools/addons/lanes.py), and the add-on generator's self-test in every
-lane. The source-engine lane runs in its own scheduled workflow, the others in CI.
+host, as each of CI's jobs does; `python3 -m tools.ci.work run <name>...`
+(`mise run ci:work -- <name>...`) runs single pieces.
+
+The add-on modules' work comes from their addon.pkl: the same generic commands for each
+module (tools/addons/lanes.py), and the add-on generator's self-test in every lane. The
+source-engine lane runs in its own scheduled workflow, the others in CI.
 """
 
 import argparse
 import shlex
 import subprocess
-import tomllib
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
-from tools.addons.modules import DESKTOPS, all_modules, host
+from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
 from tools.setup.modules import RULESET
-
-ROOT = Path(__file__).resolve().parents[2]
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
@@ -33,20 +33,35 @@ REGRESSIONS = f"{RULESET_DIR}/tests"
 ANDROID_SETUP = "android:setup"
 
 
+class In(NamedTuple):
+    """A command that runs in another directory than the rest of its work."""
+
+    directory: str
+    command: str
+
+
 @dataclass(frozen=True)
 class Work:
     """
-    Shell commands that run in one directory, relative to the repository root. Android
-    work needs the pinned SDK, NDK and Java; host-limited work runs on those hosts only.
+    Shell commands that run in one directory, relative to the repository root, unless a
+    command names its own. Android work needs the pinned SDK, NDK and Java; host-limited
+    work runs on those hosts only.
     """
 
     name: str
     lane: str | None
     directory: str
-    commands: tuple[str, ...]
+    commands: tuple[str | In, ...]
     android: bool = False
     hosts: tuple[str, ...] = ()
     env: tuple[tuple[str, str], ...] = ()
+
+    def steps(self) -> list[In]:
+        """Each command with the directory it runs in."""
+        return [
+            command if isinstance(command, In) else In(self.directory, command)
+            for command in self.commands
+        ]
 
 
 def example_tests(name: str, area: str = "addons", config: str = "") -> str:
@@ -70,14 +85,14 @@ def contracts_command(lane: str) -> str:
     return f"bazel run //tools/docs:contracts -- --lane {lane}"
 
 
-def contracts(lane: str, android: bool = False) -> Work:
+def contracts(lane: str) -> Work:
     """The API output contract cases of a lane."""
     return Work(
         f"contracts:{lane}",
         lane,
         RULESET_DIR,
         (contracts_command(lane),),
-        android=android,
+        android=lane == "android",
     )
 
 
@@ -91,21 +106,22 @@ PATCHED_EDITOR = (
     " //patched_engine/tests:source_built_editor_test"
     " --extra_toolchains=//patched_engine/engines/source:all"
 )
-IOS_APPS = (
-    "//addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols"
-    " //projects/lichtpost:app //projects/lichtpost:app.debug_symbols"
-    " //addons/platform_paths/demo:app //addons/platform_paths/demo:app.debug_symbols"
-    " //addons/app_auth/demo:app //addons/app_auth/demo:app.debug_symbols"
+# The example packages with an `app`, which the mobile lanes build.
+APP_PACKAGES = (
+    "//addons/sqlite/demo",
+    "//projects/lichtpost",
+    "//addons/platform_paths/demo",
+    "//addons/app_auth/demo",
 )
-ANDROID_APPS = (
-    "//addons/sqlite/demo:app //projects/lichtpost:app"
-    " //addons/platform_paths/demo:app //addons/app_auth/demo:app"
-)
-ANDROID_RELEASE_APPS = (
-    "//addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols"
-    " //addons/platform_paths/demo:app //addons/platform_paths/demo:app.debug_symbols"
-    " //addons/app_auth/demo:app //addons/app_auth/demo:app.debug_symbols"
-)
+# The Android release bundles leave Lichtpost out.
+ANDROID_RELEASE_PACKAGES = tuple(p for p in APP_PACKAGES if p != "//projects/lichtpost")
+
+
+def apps(packages: Iterable[str], symbols: bool = False) -> str:
+    """The packages' apps as Bazel targets, with their debug symbols if asked."""
+    suffixes = (":app", ":app.debug_symbols") if symbols else (":app",)
+    return " ".join(package + suffix for package in packages for suffix in suffixes)
+
 
 # The repository's own work, in the order a lane runs it. A piece without a lane runs only
 # when named.
@@ -185,34 +201,41 @@ WORK = (
         "test:gdextension",
         "desktop",
         REGRESSIONS,
+        ("bazel test //smoke/linux/... //smoke/macos/...",),
+    ),
+    Work(
+        "test:gdextension:signed",
+        "desktop",
+        REGRESSIONS,
         (
-            "bazel test //smoke/linux/... //smoke/macos/...",
             (
-                'if [ "$(uname -s)" = Darwin ]; then bazel test //smoke/macos/...'
-                " --@autoload_rules_godot//godot:macos_signing=adhoc; fi"
+                "bazel test //smoke/macos/..."
+                " --@autoload_rules_godot//godot:macos_signing=adhoc"
             ),
         ),
+        hosts=("macos",),
     ),
     example("sqlite"),
     example("lichtpost", "projects"),
     example("platform_paths"),
     example("app_auth"),
     example("dart"),
-    contracts("android", android=True),
+    contracts("android"),
     Work(
         "android",
         "android",
         REGRESSIONS,
         (
             "bazel test //:android_aab --config=android --config=aab",
-            f"cd ../examples && bazel build {ANDROID_APPS} --config=android",
-            (
-                "cd ../examples && bazel build //addons/sqlite/demo:app"
-                " --config=multi_abi --config=aab"
+            In(EXAMPLES, f"bazel build {apps(APP_PACKAGES)} --config=android"),
+            In(
+                EXAMPLES,
+                "bazel build //addons/sqlite/demo:app --config=multi_abi --config=aab",
             ),
-            (
-                f"cd ../examples && bazel build {ANDROID_RELEASE_APPS}"
-                " --config=android-release --config=aab"
+            In(
+                EXAMPLES,
+                f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
+                " --config=android-release --config=aab",
             ),
         ),
         android=True,
@@ -224,7 +247,10 @@ WORK = (
         REGRESSIONS,
         (
             "bazel test //:ios_official --config=official",
-            f"cd ../examples && bazel build {IOS_APPS} --config=ios-release",
+            In(
+                EXAMPLES,
+                f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
+            ),
         ),
     ),
     contracts("source-engine"),
@@ -234,11 +260,11 @@ WORK = (
         "source-engine",
         REGRESSIONS,
         (
-            f"cd .. && bazel query '{SOURCE_ENGINE_TESTS}' | xargs bazel test",
+            In(RULESET_DIR, f"bazel query '{SOURCE_ENGINE_TESTS}' | xargs bazel test"),
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            f"cd ../examples && {PETRI_TESTS}",
+            In(EXAMPLES, PETRI_TESTS),
         ),
         android=True,
     ),
@@ -249,19 +275,18 @@ WORK = (
         None,
         REGRESSIONS,
         (
-            (
-                f"cd .. && bazel query '{SOURCE_ENGINE_TESTS} except"
+            In(
+                RULESET_DIR,
+                f"bazel query '{SOURCE_ENGINE_TESTS} except"
                 ' attr(tags, "\\bsource_engine_extended\\b", tests(//godot/...))\''
-                " | xargs bazel test"
+                " | xargs bazel test",
             ),
             PATCHED_EDITOR,
         ),
         android=True,
     ),
     Work("test:example:petri", None, EXAMPLES, (PETRI_TESTS,)),
-    # Android work runs with the pinned Java and the provisioned SDK as ANDROID_HOME, which
-    # mise's environment keeps empty while the SDK lacks the pinned platform. Running
-    # Android work provisions it first.
+    # Running Android work provisions the SDK first.
     Work(
         ANDROID_SETUP,
         None,
@@ -343,21 +368,18 @@ def runs_on(work: Work, host: str) -> bool:
     return not work.hosts or host in work.hosts
 
 
-def argv(work: Work, command: str, root: Path = ROOT) -> list[str]:
+def argv(work: Work, command: str) -> list[str]:
     """
     The process that runs one command of a piece of work: in mise's environment, with the
-    work's own variables, which mise's would otherwise override.
+    work's own variables, which mise's would otherwise override. Android work runs with the
+    pinned Java and the provisioned SDK as ANDROID_HOME, which mise's environment keeps empty
+    while the SDK lacks the pinned platform.
     """
     exports = [f"export {name}={shlex.quote(value)}" for name, value in work.env]
     tools = []
     if work.android:
         tools = ["java"]
-        pins = tomllib.loads((root / "mise.toml").read_text())["vars"]
-        build_tools = pins["android_build_tools"]
-        exports[:0] = [
-            'export ANDROID_HOME="$ANDROID_SDK_ROOT"',
-            f"export ANDROID_BUILD_TOOLS={shlex.quote(build_tools)}",
-        ]
+        exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
     script = "; ".join([*exports, command])
     return ["mise", "exec", *tools, "--", "bash", "-eo", "pipefail", "-c", script]
 
@@ -371,19 +393,27 @@ def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
     return names
 
 
-def run(names: Iterable[str], root: Path = ROOT) -> None:
+def run(
+    names: Iterable[str], root: Path = ROOT, known: dict[str, Work] | None = None
+) -> None:
     """
     Run pieces of work in order; unknown names fail before any work starts. Android work
     provisions the SDK first.
     """
-    known = all_work(root)
+    known = known or all_work(root)
     for name in with_setup(list(names), known):
         work = known[name]
-        for command in work.commands:
-            print(f"[{name}] $ {command}", flush=True)
-            subprocess.run(
-                argv(work, command, root), cwd=root / work.directory, check=True
-            )
+        for directory, command in work.steps():
+            print(f"[{name}] {directory}$ {command}", flush=True)
+            subprocess.run(argv(work, command), cwd=root / directory, check=True)
+
+
+def run_lane(lane: str, root: Path = ROOT) -> None:
+    """Run a lane's work that this host may run."""
+    known = all_work(root)
+    here = host()
+    names = [name for name in lanes(known)[lane] if runs_on(known[name], here)]
+    run(names, root, known)
 
 
 def main() -> None:
@@ -402,9 +432,7 @@ def main() -> None:
     elif args.command == "run":
         run(args.names)
     else:
-        known = all_work()
-        here = host()
-        run(name for name in lanes(known)[args.lane] if runs_on(known[name], here))
+        run_lane(args.lane)
 
 
 if __name__ == "__main__":
