@@ -11,16 +11,16 @@ local function task(name: String): Step = new {
   check = "python3 -m tools.ci.work run \(name)"
 }
 
-// The Python, Starlark and Bazel sources the formatter handles; Buildifier also lints the
-// Starlark ones, as .buildifier.json sets.
+// The Python, Starlark and Bazel sources the formatter handles.
 local sources = List("*.py", "*.bzl", "**/BUILD", "**/BUILD.bazel", "**/MODULE.bazel")
 
-// Formatting, lint, the workflows and the setup contracts: seconds with a warm Bazel. The
-// workflow and setup checks run no Bazel, so they run beside lint.
+// Formatting, lint, the setup contracts and the action tests: seconds with a warm Bazel. The
+// last two run no Bazel, so they run beside the others.
 local quick = new Mapping<String, Step> {
+  ["format"] = task("format")
   ["lint"] = task("lint")
-  ["lint:ci"] = (task("lint:ci")) { exclusive = false }
   ["test:setup"] = (task("test:setup")) { exclusive = false }
+  ["test:actions"] = (task("test:actions")) { exclusive = false }
 }
 
 // The conventions, the API reference and the repository tooling's tests.
@@ -55,8 +55,10 @@ hooks {
         exclusive = true
         fix = "bazel run --config=host-execution //tools/format -- {{files}}"
       }
-      ["ruff"] {
-        glob = List("*.py")
+      // Every linter on the staged files it handles; skipped without any, which would lint
+      // the whole repository.
+      ["lint"] {
+        glob = List("**/*")
         depends = "format"
         exclusive = true
         check = "bazel run --config=host-execution //tools/lint -- {{files}}"
