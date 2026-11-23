@@ -20,7 +20,7 @@ load("//godot/private:versions.bzl", "MACOS_MINIMUM_OS")
 load("//godot/private/config:native.bzl", "APPLICATION_SCOPED_OPTIONS", "macos_application_options")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
-load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "privacy_manifest", "release_values", "shell_file")
+load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "pack_facts", "privacy_manifest", "release_values", "shell_file")
 
 visibility(["//godot", "//godot/platforms", "//godot/platforms/private/tests"])
 
@@ -223,7 +223,7 @@ def _desktop_application_impl(ctx):
         copied_files.append(source)
         copies.append({"source": source.path, "destination": destination, "context": binary_contexts.get(destination)})
     args = ctx.actions.args()
-    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])}, engine = ctx.attr.runtime)
+    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])} | pack_facts(pack), engine = ctx.attr.runtime)
     inputs = [runtime_executable, pack_file, manifest]
     if operating_system == "macos":
         metadata = _macos_metadata(ctx, pack, name)

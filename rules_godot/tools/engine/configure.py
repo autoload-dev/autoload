@@ -190,6 +190,101 @@ def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
         )
 
 
+# Godot's rendering methods, as project settings name them, and the RenderingDevice ones.
+RENDERING_METHODS = ("gl_compatibility", "mobile", "forward_plus")
+_RD_METHODS = ("mobile", "forward_plus")
+
+# Each platform's RenderingDevice driver; Apple engines leave Vulkan off, since it needs
+# the MoltenVK SDK on the configuring host.
+_RD_DRIVERS = {
+    "ios": "metal",
+    "macos": "metal",
+    "android": "vulkan",
+    "linuxbsd": "vulkan",
+}
+
+# Godot 4.8's switches for RenderingDevice and each of its renderers.
+_RD_SWITCHES = {
+    "rendering_device": _RD_METHODS,
+    "forward_plus_renderer": ("forward_plus",),
+    "forward_mobile_renderer": ("mobile",),
+}
+
+
+_RD_SWITCH_OPTION = re.compile(r'BoolVariable\(\s*"rendering_device"')
+
+
+def has_renderer_switches(root: Path) -> bool:
+    """Return whether the source's SConstruct can leave out each RenderingDevice renderer."""
+    sconstruct = (root / "SConstruct").read_text(encoding="utf-8")
+    return _RD_SWITCH_OPTION.search(sconstruct) is not None
+
+
+def renderer_options(
+    renderers: Collection[str], platform: str, switches: bool
+) -> list[str]:
+    """
+    Return the upstream options that build exactly a recipe's rendering methods.
+
+    Without Godot 4.8's switches, RenderingDevice comes and goes with its driver, so the
+    mobile and forward_plus methods come together.
+    """
+    unknown = sorted(set(renderers) - set(RENDERING_METHODS))
+    if unknown:
+        raise ValueError(
+            "Unknown rendering methods: "
+            + ", ".join(unknown)
+            + "; use "
+            + ", ".join(RENDERING_METHODS)
+        )
+    rd = any(method in renderers for method in _RD_METHODS)
+    driver = _RD_DRIVERS[platform]
+    options = ["opengl3=" + _yes("gl_compatibility" in renderers), f"{driver}={_yes(rd)}"]
+    if driver == "metal":
+        options.append("vulkan=no")
+    if switches:
+        options.extend(
+            f"{switch}={_yes(any(method in renderers for method in methods))}"
+            for switch, methods in _RD_SWITCHES.items()
+        )
+    return options
+
+
+def engine_renderers(
+    renderers: Collection[str], platform: str, environment: str, switches: bool
+) -> list[str]:
+    """
+    Return the rendering methods an engine built for a recipe's renderers can run.
+
+    Godot's iOS Simulator build turns Metal and Vulkan off, and without Godot 4.8's
+    switches a RenderingDevice driver brings both of its renderers.
+    """
+    methods = set(renderers)
+    if platform == "ios" and environment == "simulator":
+        methods -= set(_RD_METHODS)
+    elif not switches and methods & set(_RD_METHODS):
+        methods |= set(_RD_METHODS)
+    return [method for method in RENDERING_METHODS if method in methods]
+
+
+def _yes(value: bool) -> str:
+    return "yes" if value else "no"
+
+
+def require_renderer_options_unset(
+    derived: Iterable[str], options: Iterable[str]
+) -> None:
+    """Fail for build_options that set what a recipe's renderers decide."""
+    keys = {option.partition("=")[0] for option in derived}
+    taken = sorted(
+        key for key in (option.partition("=")[0] for option in options) if key in keys
+    )
+    if taken:
+        raise ValueError(
+            "renderers decides " + ", ".join(taken) + "; remove them from build_options"
+        )
+
+
 def inputs_hash(args: argparse.Namespace) -> str:
     """
     Return the hash an unstamped source-built engine names in place of a Git commit.
@@ -1716,6 +1811,8 @@ def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
         requested["default_modules"] = ["yes"]
     if args.build_profile:
         requested["build_profile"] = [file_digest(args.build_profile)]
+    if args.renderers:
+        requested["renderers"] = list(args.engine_renderers)
     return requested
 
 
@@ -1885,6 +1982,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--default-modules", action="store_true")
     # Apply the build profile the recipe repository holds as BUILD_PROFILE.
     parser.add_argument("--build-profile", action="store_true")
+    # Comma-separated rendering methods; empty keeps Godot's drivers and build_options'.
+    parser.add_argument("--renderers", default="")
     parser.add_argument("--custom-modules", action="append", default=[])
     parser.add_argument("--custom-module-source", action="append", default=[])
     # A custom module already below _custom_modules, as in a pin action's source tree.
@@ -1964,12 +2063,28 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     # Before SCons for the modules a recipe names; Godot's defaults are checked after it.
     require_one_text_server(args.selected_modules)
     check_options(args.options)
+    _add_renderer_options(args, root)
     args.build_profile = root / BUILD_PROFILE if args.build_profile else None
     if args.build_profile:
         require_consistent_profile(args.build_profile, args.options)
     args.customizations = customizations(args)
     _add_environment_option(args)
     args.inputs_hash = inputs_hash(args)
+
+
+def _add_renderer_options(args: argparse.Namespace, root: Path) -> None:
+    """Add the upstream options of a recipe's renderers and the methods its engine runs."""
+    args.renderers = [method for method in args.renderers.split(",") if method]
+    args.engine_renderers = []
+    if not args.renderers:
+        return
+    switches = has_renderer_switches(root)
+    derived = renderer_options(args.renderers, args.platform, switches)
+    require_renderer_options_unset(derived, args.options)
+    args.options = [*args.options, *derived]
+    args.engine_renderers = engine_renderers(
+        args.renderers, args.platform, args.environment, switches
+    )
 
 
 def _install_capture(

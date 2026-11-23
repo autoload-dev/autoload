@@ -16,7 +16,9 @@ from tools.engine.configure import (
     customizations,
     deployment_target,
     engine_link_options,
+    engine_renderers,
     generated_include_directories,
+    has_renderer_switches,
     include_closure,
     included_sources,
     inputs_hash,
@@ -30,11 +32,13 @@ from tools.engine.configure import (
     platform_compile_options,
     prepare_custom_modules,
     render_unpinned,
+    renderer_options,
     requested_modules,
     require_consistent_profile,
     require_expected_version,
     require_host_platform,
     require_one_text_server,
+    require_renderer_options_unset,
     scalar_environment,
     source_build_facts,
     source_version,
@@ -126,6 +130,67 @@ class ModuleGraphTest(unittest.TestCase):
             profile.write_text("{")
             with self.assertRaisesRegex(ValueError, "not readable JSON"):
                 require_consistent_profile(profile, [])
+
+    def test_renderers_decide_the_drivers_of_each_platform(self) -> None:
+        self.assertEqual(
+            renderer_options(["gl_compatibility"], "ios", False),
+            ["opengl3=yes", "metal=no", "vulkan=no"],
+        )
+        self.assertEqual(
+            renderer_options(["mobile"], "android", False),
+            ["opengl3=no", "vulkan=yes"],
+        )
+        self.assertEqual(
+            renderer_options(["gl_compatibility", "forward_plus"], "linuxbsd", False),
+            ["opengl3=yes", "vulkan=yes"],
+        )
+        # Godot 4.8 leaves out RenderingDevice and each renderer on its own.
+        self.assertEqual(
+            renderer_options(["mobile"], "macos", True),
+            [
+                "opengl3=no",
+                "metal=yes",
+                "vulkan=no",
+                "rendering_device=yes",
+                "forward_plus_renderer=no",
+                "forward_mobile_renderer=yes",
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "Unknown rendering methods: vulkan"):
+            renderer_options(["vulkan"], "ios", False)
+
+    def test_an_engine_runs_the_methods_its_drivers_bring(self) -> None:
+        # Without 4.8's switches a RenderingDevice driver brings both of its renderers.
+        self.assertEqual(
+            engine_renderers(["mobile"], "android", "", False), ["mobile", "forward_plus"]
+        )
+        self.assertEqual(engine_renderers(["mobile"], "android", "", True), ["mobile"])
+        # Godot's iOS Simulator build turns Metal and Vulkan off.
+        self.assertEqual(
+            engine_renderers(["gl_compatibility", "mobile"], "ios", "simulator", False),
+            ["gl_compatibility"],
+        )
+        self.assertEqual(
+            engine_renderers(["gl_compatibility", "mobile"], "ios", "device", False),
+            ["gl_compatibility", "mobile", "forward_plus"],
+        )
+
+    def test_renderer_switches_are_detected_in_godots_sconstruct(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for text, expected in [
+                ('opts.Add(BoolVariable("vulkan", "Vulkan", True))', False),
+                # Godot 4.8 wraps the option's arguments over several lines.
+                ('opts.Add(\n    BoolVariable(\n        "rendering_device",\n', True),
+            ]:
+                (root / "SConstruct").write_text(text)
+                self.assertEqual(has_renderer_switches(root), expected, text)
+
+    def test_renderers_and_build_options_cannot_both_set_a_driver(self) -> None:
+        derived = renderer_options(["gl_compatibility"], "ios", False)
+        require_renderer_options_unset(derived, ["disable_3d=yes"])
+        with self.assertRaisesRegex(ValueError, "renderers decides metal, opengl3"):
+            require_renderer_options_unset(derived, ["opengl3=yes", "metal=no"])
 
     def test_unknown_or_cyclic_dependencies_fail(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown Godot module"):
@@ -573,6 +638,7 @@ class GraphTranslationTest(unittest.TestCase):
             options=["vulkan=no", "disable_3d=yes"],
             default_modules=False,
             build_profile=None,
+            renderers=[],
         )
         self.assertEqual(
             customizations(args),

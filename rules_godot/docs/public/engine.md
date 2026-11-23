@@ -178,7 +178,7 @@ godot_engines.source_build(
     enabled_modules = ["gdscript", "text_server_fb", "my_module"],
     custom_modules = {"//native/my_module:config.py": "my_module"},
     patches = ["//engine:fix.patch"],
-    build_options = {"metal": "no", "vulkan": "no", "opengl3": "yes"},
+    renderers = ["gl_compatibility"],
 )
 use_repo(godot_engines, "godot_sources", "my_engine")
 register_toolchains("@my_engine//toolchains:all")
@@ -206,10 +206,19 @@ Godot's bundled libraries, so options such as `builtin_freetype = "no"` fail, an
 Wayland, whose code generators are shell commands; Android recipes configure without the
 host's SDK, since Bazel's NDK toolchain compiles them.
 
-This configuration keeps the Compatibility renderer; set the project's
-rendering method to `gl_compatibility`. A headless engine can disable all
-renderers; keep a renderer enabled when configuring a graphical game. Some options apply
-to templates only, such as `disable_3d`; an editor recipe rejects them.
+`renderers` names Godot's rendering methods the engine runs: `gl_compatibility`, `mobile`
+and `forward_plus`. The recipe derives the drivers from them, OpenGL for Compatibility and
+for the other two the platform's RenderingDevice driver, Metal on Apple platforms and Vulkan
+on Android and Linux, so `build_options` may not set `opengl3`, `metal` or `vulkan` too.
+Godot 4.7 builds both RenderingDevice methods or neither; 4.8 builds each on its own and
+leaves RenderingDevice out without them. Godot's iOS Simulator build has no Metal, so a
+Simulator engine runs `gl_compatibility` only. An application checks the rendering method
+its project uses on its platform, `rendering/renderer/rendering_method` with its `.mobile`
+override, against its engine's: Godot has no fallback for a method an engine lacks, so the
+build fails instead of the application at start. Without `renderers`, a recipe keeps
+Godot's drivers and its `build_options`, and nothing is checked. The example keeps the
+Compatibility renderer; set the project's rendering method to `gl_compatibility`. Some
+options apply to templates only, such as `disable_3d`; an editor recipe rejects them.
 
 The module list is an allowlist: other modules start disabled, unless
 `default_modules = True` starts from the modules Godot enables by default for the platform,

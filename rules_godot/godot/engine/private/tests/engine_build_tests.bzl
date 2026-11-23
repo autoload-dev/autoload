@@ -36,6 +36,7 @@ _ATTRS = {
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,
+    "renderers": [],
     "build_profile": None,
     "build_options": {},
     "build_name": "custom",
@@ -344,6 +345,15 @@ def _test_a_build_profile_reaches_configure_and_the_pin(env):
     env.expect.that_str(_written_build(ctx)).contains('srcs = glob(["_custom_modules/**", "_scons/**"])')
     env.expect.that_collection(_configure(ctx).args).not_contains("--build-profile")
 
+# A recipe's rendering methods reach configure, which derives the drivers from them.
+def _test_renderers_reach_configure(env):
+    ctx, errors = _build(renderers = ["gl_compatibility", "mobile"])
+    env.expect.that_collection(errors).contains_exactly([])
+    arguments = _configure(ctx).args
+    env.expect.that_str(_argument(arguments, "--renderers")).equals("gl_compatibility,mobile")
+    ctx, _errors = _build()
+    env.expect.that_collection(_configure(ctx).args).not_contains("--renderers")
+
 def engine_build_test_suite(name):
     test_suite(
         name = name,
@@ -354,6 +364,7 @@ def engine_build_test_suite(name):
             _test_import_env_vars_are_read,
             _test_default_modules_reach_configure,
             _test_a_build_profile_reaches_configure_and_the_pin,
+            _test_renderers_reach_configure,
             _test_custom_module_sources_are_watched,
             _test_custom_module_key_not_config_py_fails,
             _test_ios_recipe_without_environment_fails,

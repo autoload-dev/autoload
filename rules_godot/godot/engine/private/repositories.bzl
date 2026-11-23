@@ -169,6 +169,14 @@ godot_engine_build = repository_rule(
             doc = "Number of leading path components removed from each patch filename.",
             default = 1,
         ),
+        "renderers": attr.string_list(
+            doc = """
+            Godot's rendering methods the engine runs: gl_compatibility, mobile, forward_plus.
+            The recipe derives each platform's drivers from them (OpenGL; Metal on Apple
+            platforms, Vulkan on Android and Linux), and an application whose project asks
+            for another method fails. Empty keeps Godot's drivers and build_options'.
+            """,
+        ),
         "build_profile": attr.label(
             doc = """
             A Godot build profile, such as the editor's Engine Compilation Configuration
@@ -305,6 +313,7 @@ def godot_engine_source_build(
         custom_modules = {},
         patches = [],
         patch_strip = 1,
+        renderers = [],
         build_profile = None,
         build_options = {},
         build_name = "custom",
@@ -380,6 +389,7 @@ def godot_engine_source_build(
         custom_modules: As for godot_engine_build.
         patches: As for godot_engine_build; Android shell libraries apply them too.
         patch_strip: As for godot_engine_build.
+        renderers: As for godot_engine_build.
         build_profile: As for godot_engine_build.
         build_options: As for godot_engine_build.
         build_name: As for godot_engine_build.
@@ -396,6 +406,7 @@ def godot_engine_source_build(
         "custom_modules": custom_modules,
         "patches": patches,
         "patch_strip": patch_strip,
+        "renderers": renderers,
         "build_profile": build_profile,
         "build_options": build_options,
         "build_name": build_name,

@@ -100,12 +100,14 @@ def _pin_sources(ctx):
 
 def _selection_arguments(ctx):
     """
-    Return the configure switches of Godot's default modules and the recipe's build profile.
+    Return the configure switches of Godot's default modules, renderers and build profile.
 
     A build profile goes to the source root, where SCons reads it and a pin action's
     declared tree copies it.
     """
     arguments = ["--default-modules"] if ctx.attr.default_modules else []
+    if ctx.attr.renderers:
+        arguments.extend(["--renderers", ",".join(ctx.attr.renderers)])
     if ctx.attr.build_profile:
         ctx.file(_BUILD_PROFILE, ctx.read(ctx.path(ctx.attr.build_profile)))
         arguments.append("--build-profile")

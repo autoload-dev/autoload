@@ -18,6 +18,7 @@ iOS engine objects of the CPU and SDK.
 """
 
 import argparse
+import json
 import mmap
 import re
 import zipfile
@@ -219,7 +220,29 @@ def require_ios_platform_slice(path: Path, cpu: str, sdk: str) -> None:
     )
 
 
-def main() -> None:
+_RENDERING_METHOD = "rendering/renderer/rendering_method"
+
+
+def require_rendering_method(facts: Path, renderers: list[str]) -> None:
+    """
+    Fail when the pack's project asks for a rendering method its engine was built without.
+
+    The facts hold the project setting with the export's feature overrides, such as the
+    .mobile value for iOS and Android. Godot has no fallback for a method an engine lacks:
+    the application fails at start.
+    """
+    settings = json.loads(facts.read_text(encoding="utf-8"))["settings"]
+    method = settings.get(_RENDERING_METHOD, "forward_plus")
+    if method not in renderers:
+        raise SystemExit(
+            f"The project renders with {method}, but its engine runs only "
+            + (", ".join(renderers) or "no renderer")
+            + f"; set {_RENDERING_METHOD} for this platform to one of them, or build the "
+            "engine with this method in its recipe's renderers"
+        )
+
+
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--android-manifest", type=Path, action="append", default=[])
     parser.add_argument(
@@ -259,8 +282,24 @@ def main() -> None:
             "facts."
         ),
     )
+    parser.add_argument(
+        "--facts", type=Path, help="The pack's export facts, with its project settings."
+    )
+    parser.add_argument(
+        "--renderers",
+        help="Comma-separated rendering methods a source-built engine runs.",
+    )
     parser.add_argument("--output", type=Path, required=True)
+    return parser
+
+
+def main() -> None:
+    parser = _parser()
     args = parser.parse_args()
+    if args.facts and args.renderers is not None:
+        require_rendering_method(
+            args.facts, [method for method in args.renderers.split(",") if method]
+        )
     manifests = set()
     for path in args.android_manifest:
         manifests |= manifest_versions(path)

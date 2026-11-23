@@ -81,12 +81,39 @@ def shell_file(ctx, command, output, pack, values, outputs = [], args = None, in
         progress_message = "Generating %%{label} (%s)" % output.basename,
     )
 
+def pack_facts(pack):
+    """
+    Return the check_engine files entry of a pack's export facts.
+
+    A text pack, which development builds ship, has no export and so no facts.
+
+    Args:
+        pack: GodotPackInfo of the shipped pack.
+
+    Returns:
+        A dict of --facts to a depset of the facts, empty without them.
+    """
+    return {"--facts": depset([pack.facts])} if pack.facts else {}
+
+def _component_values(engine):
+    """The check_engine_version.py options from an engine's component provenance."""
+    component = engine[GodotComponentInfo] if engine and GodotComponentInfo in engine else None
+    if not component:
+        return {}
+    values = {"--assert-version": component.version} if component.kind == "prebuilt" else {}
+    renderers = component.customizations.get("renderers")
+    if renderers != None:
+        values["--renderers"] = ",".join(renderers)
+    return values
+
 def check_engine(ctx, files, engine = None, values = {}):
     """
-    Check an engine's own facts: versions against assertions and platform slices.
+    Check an engine's own facts: versions against assertions, platform slices, renderers.
 
     The version of the editor that exported the pack is not compared; editor and runtime
-    are independent.
+    are independent. With a pack's export facts among files, see pack_facts, the
+    project's rendering method must be one a source-built engine with declared renderers
+    runs.
 
     Args:
         ctx: Rule context with ENGINE_CHECK_ATTRS.
@@ -101,11 +128,9 @@ def check_engine(ctx, files, engine = None, values = {}):
     """
     stamp = ctx.actions.declare_file(ctx.label.name + ".engine_version")
     args = ctx.actions.args()
-    if engine and GodotComponentInfo in engine and engine[GodotComponentInfo].kind == "prebuilt":
-        args.add("--assert-version", engine[GodotComponentInfo].version)
     for option, option_files in files.items():
         args.add_all(option_files, before_each = option)
-    for option, value in values.items():
+    for option, value in (_component_values(engine) | values).items():
         args.add(option, value)
     args.add("--output", stamp)
     ctx.actions.run(

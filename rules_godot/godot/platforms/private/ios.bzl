@@ -20,6 +20,7 @@ load(
     "ENGINE_CHECK_ATTRS",
     "SHELL_ATTRS",
     "check_engine",
+    "pack_facts",
     "privacy_manifest",
     "release_values",
     "shell_file",
@@ -234,7 +235,7 @@ def _ios_extension_libraries_impl(ctx):
         {
             "--library": depset([library for library in libraries if "godot" in library.basename]),
             "--ios-library": depset(libraries),
-        },
+        } | pack_facts(pack),
         engine = ctx.attr.runtime,
         values = {"--ios-platform-slice": platform.cpu + ":ios_" + platform.environment},
     )
