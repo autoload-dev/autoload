@@ -86,6 +86,15 @@ Against the ~5 MB limits in `playable_ads.md` (L2 engine plus Lichtpost):
   rules_godot's source recipes reject today) and an asset budget (Lichtpost's lossless
   backgrounds alone are 3.6 MB).
 
+## Follow-up measurements (Node 24 `zlib`, for the engine comparison report)
+
+On L2's `godot.wasm`: gzip -9 5.20 MB, brotli q11 (`lgwin` 24) 3.56 MB, zstd -19 3.84 MB
+(zstd -22 with long-distance matching 3.83 MB), xz -9e 3.47 MB; `godot.js` 54.7 KB
+brotli. Brotli beats zstd for Godot by about 280 KB. Emscripten's UTF-8 single-file
+encoding (`SINGLE_FILE_BINARY_ENCODE`, emsdk 4.0.20 `tools/link.py`) adds 51 % to a
+brotli payload, more than base64. Base64 inside a deflated ZIP adds only 0.26 %. See
+`reports/Playable Ads anderer Engines.md`.
+
 ## Not done
 
 - Per-class or per-module attribution of the remaining code.
