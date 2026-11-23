@@ -21,7 +21,7 @@ local_path_override(
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_android", version = "0.8.1")
 bazel_dep(name = "rules_apple", version = "5.4.0")
-bazel_dep(name = "rules_jvm_external", version = "6.10")
+bazel_dep(name = "rules_jvm_external", version = "7.2")
 
 # The application's Maven graph, which the module's Android libraries join; this module pins
 # the merged graph: `REPIN=1 bazel run @maven//:pin` after changing either. The generator
