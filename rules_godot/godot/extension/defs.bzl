@@ -474,9 +474,10 @@ def _library_providers(ctx, library):
     # provider, so it carries the frameworks of the platform libraries too, and those the
     # library links, which the application embeds once however many extensions link them.
     if library.link_kind == "framework":
+        sources = ctx.attr.library + getattr(ctx.attr, "deps", []) + getattr(ctx.attr, "implementation_deps", [])
         providers.append(apple_provider.merge_apple_framework_import_info([
             target[AppleFrameworkImportInfo]
-            for target in ctx.attr.library + getattr(ctx.attr, "deps", []) + getattr(ctx.attr, "implementation_deps", [])
+            for target in sources
             if AppleFrameworkImportInfo in target
         ]))
     return providers

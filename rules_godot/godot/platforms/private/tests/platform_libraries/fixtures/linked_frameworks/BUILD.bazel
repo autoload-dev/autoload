@@ -25,29 +25,19 @@ dynamic_xcframework_fixture(
         name = name,
         srcs = ["extension.cc"],
         entry_symbol = "linked_frameworks_fixture_init",
+        ios_linkage = linkage,
         tags = ["manual"],
         deps = select({
             "@platforms//os:ios": [framework],
             "//conditions:default": [],
         }),
     )
-    for name, framework in {
-        "analytics_extension": ":analytics",
-        "core_extension": ":core",
-    }.items()
+    for name, linkage, framework in [
+        ("analytics_extension", "framework", ":analytics"),
+        ("core_extension", "framework", ":core"),
+        ("static_extension", "static", ":analytics"),
+    ]
 ]
-
-godot_cc_extension(
-    name = "static_extension",
-    srcs = ["extension.cc"],
-    entry_symbol = "linked_frameworks_fixture_init",
-    ios_linkage = "static",
-    tags = ["manual"],
-    deps = select({
-        "@platforms//os:ios": [":analytics"],
-        "//conditions:default": [],
-    }),
-)
 
 godot_project(
     name = "project",

@@ -75,12 +75,6 @@ def _ios_app(name, fixture, pack, part = ""):
     )
     return ":%s_in_platform_slice" % name
 
-# A whole iOS application: the simulator needs no provisioning profile.
-_IOS_SIMULATOR = struct(
-    config_settings = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))},
-    attr_values = _IOS.attr_values,
-)
-
 def _ios_libraries(name, fixture, pack):
     """Arrange an iOS application of pack and return its extension libraries target."""
     return _ios_app(name, fixture, pack, ".extension_libraries")
@@ -198,20 +192,25 @@ def _test_ios_app_embeds_linked_frameworks_once(name):
         name = name,
         target = name + "_app",
         impl = _ios_app_embeds_linked_frameworks_once,
-        config_settings = _IOS_SIMULATOR.config_settings,
+        # A whole application: the simulator needs no provisioning profile.
+        config_settings = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))},
         extra_target_under_test_aspects = [reached_actions],
-        attr_values = _IOS_SIMULATOR.attr_values,
+        attr_values = _IOS.attr_values,
     )
+
+def _framework_names(action):
+    """The names of the .framework directories among an action's inputs."""
+    return sorted({
+        part: None
+        for file in action.inputs.to_list()
+        for part in file.path.split("/")
+        if part.endswith(".framework")
+    })
 
 def _ios_app_embeds_linked_frameworks_once(env, target):
     # rules_apple embeds and signs each framework with one action.
     embedded = [
-        {
-            part: None
-            for file in entry.action.inputs.to_list()
-            for part in file.path.split("/")
-            if part.endswith(".framework")
-        }.keys()
+        _framework_names(entry.action)
         for entry in reached(target)
         if entry.action.mnemonic == "ImportedDynamicFrameworkProcessor"
     ]
