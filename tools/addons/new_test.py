@@ -3,7 +3,14 @@
 import subprocess
 from unittest import mock
 
-from tools.addons.new import PIN_ATTEMPTS, TOKEN, Names, generate, pin
+from tools.addons.new import (
+    PIN_ATTEMPTS,
+    PIN_RETRY_SECONDS,
+    TOKEN,
+    Names,
+    generate,
+    pin,
+)
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
 
@@ -118,7 +125,7 @@ class PinTest(RepositoryTestCase):
     def test_a_failed_pin_runs_again_after_a_growing_wait(self) -> None:
         run, waits = self.pin_with([1, 1, 0])
         self.assertEqual(run.call_count, 3)
-        self.assertEqual(waits, [20, 40])
+        self.assertEqual(waits, [PIN_RETRY_SECONDS, 2 * PIN_RETRY_SECONDS])
 
     def test_a_pin_that_keeps_failing_fails_after_its_last_attempt(self) -> None:
         with self.assertRaises(subprocess.CalledProcessError) as raised:
