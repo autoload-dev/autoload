@@ -1,11 +1,25 @@
 """The lanes' work: the repository's own, the add-on modules' from their addon.pkl."""
 
+import re
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.ci.work import WORK, Work, addon_work, argv, lanes, run, runs_on
+from tools.ci.work import (
+    ROOT,
+    WORK,
+    Work,
+    addon_work,
+    all_work,
+    argv,
+    lanes,
+    run,
+    runs_on,
+)
+
+WORK_RUN = "python3 -m tools.ci.work run "
 
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
@@ -68,7 +82,7 @@ class WorkTest(unittest.TestCase):
                 "exec",
                 "--",
                 "bash",
-                "-euo",
+                "-eo",
                 "pipefail",
                 "-c",
                 "export ANDROID_HOME=''; bazel test //...",
@@ -78,7 +92,7 @@ class WorkTest(unittest.TestCase):
         process = argv(android, "bazel build //:app", self.root)
         self.assertEqual(process[:4], ["mise", "exec", "java", "--"])
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
-        self.assertIn("export ANDROID_BUILD_TOOLS='35.0.0'", process[-1])
+        self.assertIn("export ANDROID_BUILD_TOOLS=35.0.0", process[-1])
 
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):
@@ -91,6 +105,20 @@ class WorkTest(unittest.TestCase):
         self.assertTrue(
             commands[2].endswith("python3 -m tools.addons.lanes android gadget")
         )
+
+
+class CallersTest(unittest.TestCase):
+    def test_hk_and_mise_run_work_that_exists(self) -> None:
+        """hk.pkl's steps and mise.toml's tasks name work; a renamed piece fails here."""
+        hk = (ROOT / "hk.pkl").read_text()
+        names = set(re.findall(r'task\("([^"]+)"\)', hk))
+        tasks = tomllib.loads((ROOT / "mise.toml").read_text())["tasks"]
+        for task in tasks.values():
+            run = task.get("run")
+            if isinstance(run, str) and run.startswith(WORK_RUN):
+                names.update(run.removeprefix(WORK_RUN).split())
+        self.assertLessEqual({"lint", "test:setup", "test:bazel"}, names)
+        self.assertLessEqual(names, set(all_work(ROOT)))
 
 
 if __name__ == "__main__":

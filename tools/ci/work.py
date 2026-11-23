@@ -11,6 +11,7 @@ work comes from their addon.pkl: the same generic commands for each module
 
 import argparse
 import platform
+import shlex
 import subprocess
 import tomllib
 from collections.abc import Iterable, Iterator
@@ -49,14 +50,22 @@ class Work:
     env: tuple[tuple[str, str], ...] = ()
 
 
-def example(name: str, area: str = "addons") -> Work:
+def example(
+    name: str, area: str = "addons", lane: str | None = "host", config: str = ""
+) -> Work:
     """One example's own tests, below its directory in the examples module."""
+    flags = f" --config={config}" if config else ""
     return Work(
         f"test:example:{name}",
-        "host",
+        lane,
         EXAMPLES,
-        (f"bazel test --build_tests_only //{area}/{name}/...",),
+        (f"bazel test --build_tests_only{flags} //{area}/{name}/...",),
     )
+
+
+# Petri's suites run in an editor built from the engine sources with its module, so the
+# source-engine lane runs them; named on its own, it runs here too.
+PETRI = example("petri", "projects", lane=None, config="petri")
 
 
 def contracts(lane: str, android: bool = False) -> Work:
@@ -227,10 +236,7 @@ WORK = (
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            (
-                "cd ../examples && bazel test --build_tests_only --config=petri"
-                " //projects/petri/..."
-            ),
+            f"cd ../examples && {PETRI.commands[0]}",
         ),
         android=True,
     ),
@@ -250,6 +256,7 @@ WORK = (
         ),
         android=True,
     ),
+    PETRI,
     # Already built Android and iOS artifacts, inspected on macOS.
     Work(
         "inspect:mobile",
@@ -340,17 +347,17 @@ def argv(work: Work, command: str, root: Path = ROOT) -> list[str]:
     The process that runs one command of a piece of work: in mise's environment, with the
     work's own variables, which mise's would otherwise override.
     """
-    exports = [f"export {name}={value!r}" for name, value in work.env]
+    exports = [f"export {name}={shlex.quote(value)}" for name, value in work.env]
     tools = []
     if work.android:
         tools = ["java"]
         build_tools = mise_vars(root)["android_build_tools"]
         exports[:0] = [
             'export ANDROID_HOME="$ANDROID_SDK_ROOT"',
-            f"export ANDROID_BUILD_TOOLS={build_tools!r}",
+            f"export ANDROID_BUILD_TOOLS={shlex.quote(build_tools)}",
         ]
     script = "; ".join([*exports, command])
-    return ["mise", "exec", *tools, "--", "bash", "-euo", "pipefail", "-c", script]
+    return ["mise", "exec", *tools, "--", "bash", "-eo", "pipefail", "-c", script]
 
 
 def run(names: Iterable[str], root: Path = ROOT) -> None:

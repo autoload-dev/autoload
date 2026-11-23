@@ -137,10 +137,16 @@ def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> li
 
 def pin(directory: str, root: Path = ROOT) -> None:
     """Pin the examples' Maven graph, which starts from the template's empty lock file."""
+    # Under `bazel run //tools/addons:new`, the generator's own runfiles variables would
+    # point the pin's launcher at the wrong runfiles tree.
+    runfiles = {"RUNFILES_DIR", "RUNFILES_MANIFEST_FILE", "JAVA_RUNFILES"}
+    environment = {
+        name: value for name, value in os.environ.items() if name not in runfiles
+    }
     subprocess.run(
         ["bazel", "run", "@maven//:pin"],
         cwd=root / module_path(directory) / "examples",
-        env={**os.environ, "REPIN": "1"},
+        env={**environment, "REPIN": "1"},
         check=True,
     )
 

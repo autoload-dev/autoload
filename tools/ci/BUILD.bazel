@@ -41,5 +41,7 @@ py_test(
     name = "work_test",
     size = "small",
     srcs = ["work_test.py"],
+    # The hooks and tasks that name work.
+    data = ["//:hk.pkl"],
     deps = [":work_lib"],
 )

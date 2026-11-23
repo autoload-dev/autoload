@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 # Code Health of the whole repository through the CodeScene CLI, Starlark and GDScript
-# included; `python3 -m tools.code_health.codescene ` runs codescene.py on the checkout.
+# included; `python3 -m tools.code_health.codescene` runs codescene.py on the checkout.
 py_library(
     name = "codescene_lib",
     srcs = ["codescene.py"],
