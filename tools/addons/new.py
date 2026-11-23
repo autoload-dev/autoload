@@ -145,7 +145,8 @@ def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> li
 def pin(
     directory: str, root: Path = ROOT, wait: Callable[[float], None] = time.sleep
 ) -> None:
-    """Pin the examples' Maven graph, which starts from the template's empty lock file.
+    """
+    Pin the examples' Maven graph, which starts from the template's empty lock file.
 
     Gradle, which resolves the graph, tries a failing repository request three times in
     quick succession and then disables that repository for the rest of the resolution, so
