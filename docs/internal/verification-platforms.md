@@ -25,11 +25,11 @@ Godot features are covered from one passing cell.
 | Signing/distribution | Appropriate identity, provisioning and environment | Configuration explicitly selected for the task | Only the signing/distribution operation in scope; never infer Store acceptance |
 
 Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
-included, run in the host sets (`python3 -m tools.ci.work run test:bazel` provisions the Android SDK); the
+included, run in the host sets (the work `test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
 are `manual`, so the host sets do not analyze their source recipes. CI runs the lane only in
 the [Source engine](#source-engine-workflow) workflow; locally,
-`python3 -m tools.ci.work run source-engine` leaves out the tests also tagged `source_engine_extended`.
+`mise run work -- source-engine` leaves out the tests also tagged `source_engine_extended`.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -64,8 +64,9 @@ self-test in every lane. Each [CI](../../.github/workflows/ci.yml) job runs one 
 host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work whose
 `addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
 
-Locally, `mise run lane -- <lane>` runs a whole lane on this host, `python3 -m tools.ci.work
-run <name>...` single pieces, and `python3 -m tools.ci.work list` lists them. `hk check`
+Locally, `mise run lane -- <lane>` runs a whole lane on this host, `mise run work --
+<name>...` single pieces, and `mise run work` lists them. Where a piece is one Bazel command,
+the documentation shows that command instead. `hk check`
 runs the checks that need no lane machine: source quality, setup contracts, the conventions,
 the API reference and the repository tooling's tests. The pre-push hook runs the quick ones.
 
@@ -87,9 +88,9 @@ useful immediate feedback, without duplicating the whole CI suite.
 The source-engine lane is the most expensive one and the least likely to change with a
 commit, so CI has no job for it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
-`python3 -m tools.ci.work run source-engine:full`, on main on its schedule, and on manual dispatch for any
+`source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges. `python3 -m tools.ci.work run source-engine` runs
+before it merges. `mise run work -- source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged

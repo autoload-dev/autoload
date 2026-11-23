@@ -53,7 +53,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 
 ### Analysis size of the host tests
 
-- `python3 -m tools.ci.work run test:bazel` configures 1.54 million targets on macOS (0.96 million on Linux).
+- The ruleset's host set, the work `test:bazel`, configures 1.54 million targets on macOS (0.96 million on Linux).
   1.11 million are `toolchain` targets: every configuration evaluates all 1,295 registered
   toolchains, 696 of them Go toolchains (12 Go SDKs for 58 platforms each, from rules_go and
   rules_android).

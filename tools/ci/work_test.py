@@ -119,7 +119,11 @@ class CallersTest(unittest.TestCase):
         for task in tasks.values():
             run = task.get("run")
             if isinstance(run, str) and run.startswith(WORK_RUN):
-                names.update(run.removeprefix(WORK_RUN).split())
+                names.update(
+                    name
+                    for name in run.removeprefix(WORK_RUN).split()
+                    if not name.startswith("$")
+                )
         self.assertLessEqual({"lint", "test:setup", "test:bazel"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 

@@ -105,7 +105,6 @@ archive without fetching any AppAuth artifact.
    bazel test --build_tests_only //addons/app_auth/...
    ```
 
-   From the repository root, `python3 -m tools.ci.work run test:example:app_auth` runs the same targets.
 
 ## Use the add-on
 

@@ -3,8 +3,8 @@ The repository's verification work: what each lane runs, where and how.
 
 Each piece of work is a few shell commands in one module directory.
 `python3 -m tools.ci.work lane <lane>` (`mise run lane -- <lane>`) runs a lane on this
-host, as each of CI's jobs does, and `python3 -m tools.ci.work run <name>...` runs single
-pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
+host, as each of CI's jobs does, and `python3 -m tools.ci.work run <name>...`
+(`mise run work -- <name>...`) runs single pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
 for each module (tools/addons/lanes.py), and the add-on generator's self-test in every
 lane. The source-engine lane runs in its own scheduled workflow, the others in CI.
 """
@@ -394,11 +394,12 @@ def main() -> None:
     lane.add_argument(
         "--skip", action="append", default=[], help="Leave out this work, by name"
     )
-    pieces = commands.add_parser("run", help="Run pieces of work by name")
-    pieces.add_argument("names", nargs="+")
-    commands.add_parser("list", help="List every piece of work by lane")
+    pieces = commands.add_parser(
+        "run", help="Run pieces of work by name; without names, list them by lane"
+    )
+    pieces.add_argument("names", nargs="*")
     args = parser.parse_args()
-    if args.command == "list":
+    if args.command == "run" and not args.names:
         for name, work in all_work().items():
             print(f"{work.lane or '-':14} {name}")
     elif args.command == "run":

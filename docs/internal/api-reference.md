@@ -128,10 +128,10 @@ independent entrypoint checks instead of a fictitious repository-wide main targe
 interfaces the ruleset promises are compared: underscore-prefixed groups and, for roots that forward an upstream target, its groups are not. New public APIs or
 unsupported API kinds cannot silently escape required coverage.
 
-`python3 -m tools.ci.work run docs` checks source schema, inventory, reference freshness, registry coverage, the
-ruleset module's behavior tests and the cases of the docs lane. `python3 -m tools.ci.work run contracts:host`, `contracts:source-engine`,
-`contracts:android` and `contracts:ios` check the cases of each profile lane
-(`bazel run //tools/docs:contracts -- --lane <lane>`); the verification selector runs
+`mise run work -- docs` checks source schema, inventory, reference freshness, registry coverage, the
+ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
+in `rules_godot/` checks the cases of each profile lane, `host`, `source-engine`, `android` or `ios`, as the
+lane's work `contracts:<lane>`; the verification selector runs
 them in their lane when rules, contract sources, fixtures or the checker change.
 Missing evidence of a selected lane remains pending; a host documentation pass cannot replace it.
 

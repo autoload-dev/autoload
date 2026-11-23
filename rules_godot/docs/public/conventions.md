@@ -421,10 +421,10 @@ and their text without loading Bazel; it reports a stray `backends/` directory o
 
 ## Run and maintain the checks
 
-From the rules_godot repository root:
+From the repository root:
 
 ```sh
-python3 -m tools.ci.work run conventions
+bazel run //tools/conventions
 ```
 
 The command runs the registered convention rules across all owned modules. Violations include the stable rule ID, file, line and a link to

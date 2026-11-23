@@ -101,6 +101,11 @@ run = "hk check"
 description = "Run the repository tooling's tests and the ruleset's host tests"
 run = "python3 -m tools.ci.work run test:tools test:bazel"
 
+[tasks.work]
+description = "Run pieces of the lanes' work by name, such as test:setup; none lists them"
+usage = 'arg "[name]" var=#true help="the work to run, in order"'
+run = "python3 -m tools.ci.work run $usage_name"
+
 [tasks.lane]
 description = "Run one CI lane's work on this host, as CI runs it"
 usage = 'arg "<lane>" help="quality, docs, host, source-engine, android or ios"'
