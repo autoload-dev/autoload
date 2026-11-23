@@ -49,7 +49,7 @@ mise run setup                            # once per clone: install hooks
 hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
 mise run api-docs                         # after changing the ruleset's public API
-mise run code-health                      # before a pull request: Code Health against origin/main
+mise run code-health                      # Code Health of the change since origin/main; also run before each push
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>  # offload a large task to BuildBuddy
 ```
 
@@ -111,21 +111,30 @@ to 1.0. Treat it as the measure for maintainability and aim for 10.0; the glossa
 conventions and design decisions above still decide naming, structure and package
 boundaries. Call the matching CodeHealth MCP tool instead of guessing.
 
-- **Safeguard every change.** After changing a file, run `code_health_review` on it. Before
-  suggesting a commit, run `pre_commit_code_health_safeguard`; before a pull request,
-  `analyze_change_set` against `origin/main`. If either reports a regression, inspect the
-  file with `code_health_review` and refactor until it is resolved, or name the accepted risk.
+- **Safeguard every change.** After changing a file, run `code_health_review` on it, or
+  `mise run code-health -- --only <path>...` for Starlark and GDScript. Before a pull request,
+  run `mise run code-health`: it reviews the files changed since the merge base with
+  `origin/main`, untracked ones included, prints each file's score before and after with
+  every new finding's function and lines, and fails when a file declines: its score falls,
+  or a new file scores below 9.0. It also fails when CodeScene cannot score a file, such as
+  with an expired token. The pre-push hook runs it too, and passes with a note on a machine
+  without the CodeScene CLI or token. If it reports a decline, refactor until it is resolved.
+- **Accept a decline only in the code.** When a finding is deliberate, put
+  `# @codescene(disable:"<rule>")` (`//` in C-like languages; one line per rule, or
+  `disable-all`) directly above the function's definition, with a comment that gives the
+  reason. A failing review prints the directive for each new finding. There is no other way
+  to acknowledge a decline.
 - **Refactor guided by Code Health.** Record a baseline with `code_health_review` and
   `code_health_score`, fix the highest-leverage findings in 3–5 small structural steps, and
   re-run the review after each step. Stop when the targeted findings are substantially
   reduced and the score measurably improved; cosmetic edits are not progress.
 - **Starlark, GDScript and whole-repository scans.** The MCP tools reject Starlark (`.bzl`)
-  and GDScript (`.gd`). `mise run code-health -- --only <path>...` reviews any files like
-  `code_health_review`, those included: it feeds them to the same CodeScene CLI as Python
-  and exempts Bazel macros from the argument count, since their parameters mirror rule
-  attributes. Without `--only` it reports the whole checkout with hotspots and the per-file deltas
-  against `origin/main` (`python3 -m tools.code_health.codescene` takes other refs). It needs the CodeHealth MCP server to have
-  run once and a configured CodeScene token; report the gap when either is missing.
+  and GDScript (`.gd`); `mise run code-health` scores them through the same CodeScene CLI as
+  Python. Starlark documentation strings and `doc` values do not count, and Bazel macros are
+  exempt from the argument count, since their parameters mirror rule attributes.
+  `mise run code-health -- --survey` reports the whole checkout with its hotspots;
+  `--base <ref>` reviews a change against another ref. It needs the CodeHealth MCP server to
+  have run once and a configured CodeScene token; report the gap when either is missing.
 
 <!-- entire-agent:begin -->
 Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.

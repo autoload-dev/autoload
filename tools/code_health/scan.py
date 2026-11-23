@@ -82,6 +82,10 @@ class FileResult:
 # --- environment --------------------------------------------------------------
 
 
+class Unavailable(Exception):
+    """The CodeScene CLI or its token is missing, so nothing can be scored."""
+
+
 def find_cli() -> str:
     if os.environ.get("CODESCENE_CLI"):
         return os.environ["CODESCENE_CLI"]
@@ -93,7 +97,7 @@ def find_cli() -> str:
     )
     candidates = sorted(glob.glob(str(cache / "MCP-*" / "cs")), key=os.path.getmtime)
     if not candidates:
-        sys.exit(
+        raise Unavailable(
             f"CodeScene CLI not found under {cache}; run the CodeHealth MCP server "
             "once or set CODESCENE_CLI"
         )
@@ -113,7 +117,7 @@ def cli_environment() -> dict[str, str]:
         except OSError, ValueError:
             token = None
         if not token:
-            sys.exit(
+            raise Unavailable(
                 "No CodeScene token: set CS_ACCESS_TOKEN or configure the MCP server"
             )
         env["CS_ACCESS_TOKEN"] = token
