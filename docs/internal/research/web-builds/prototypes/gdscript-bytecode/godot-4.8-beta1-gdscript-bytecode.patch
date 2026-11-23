@@ -1,0 +1,1270 @@
+diff --git a/modules/gdscript/SCsub b/modules/gdscript/SCsub
+index f39b1a0..f2eb9cc 100644
+--- a/modules/gdscript/SCsub
++++ b/modules/gdscript/SCsub
+@@ -6,7 +6,28 @@ Import("env_modules")
+ 
+ env_gdscript = env_modules.Clone()
+ 
+-env_gdscript.add_source_files(env.modules_sources, "*.cpp")
++# PROTOTYPE: a runtime that only loads precompiled bytecode leaves out the compiler.
++import os
++
++if os.environ.get("GDSCRIPT_NO_COMPILER") == "1" and not env.editor_build:
++    compiler_sources = [
++        "gdscript_analyzer.cpp",
++        "gdscript_byte_codegen.cpp",
++        "gdscript_compiler.cpp",
++        "gdscript_disassembler.cpp",
++        "gdscript_linter.cpp",
++        "gdscript_parser.cpp",
++        "gdscript_tokenizer.cpp",
++        "gdscript_tokenizer_buffer.cpp",
++        "gdscript_warning.cpp",
++    ]
++    env_gdscript.Append(CPPDEFINES=["GDSCRIPT_NO_COMPILER"])
++    env.Append(CPPDEFINES=["GDSCRIPT_NO_COMPILER"])
++    env_gdscript.add_source_files(
++        env.modules_sources, [f for f in Glob("*.cpp", strings=True) if f not in compiler_sources]
++    )
++else:
++    env_gdscript.add_source_files(env.modules_sources, "*.cpp")
+ 
+ if env.editor_build:
+     env_gdscript.add_source_files(env.modules_sources, "./editor/*.cpp")
+diff --git a/modules/gdscript/gdscript.cpp b/modules/gdscript/gdscript.cpp
+index f8b3f09..b553061 100644
+--- a/modules/gdscript/gdscript.cpp
++++ b/modules/gdscript/gdscript.cpp
+@@ -31,6 +31,7 @@
+ #include "gdscript.h"
+ 
+ #include "gdscript_analyzer.h"
++#include "gdscript_bytecode.h"
+ #include "gdscript_cache.h"
+ #include "gdscript_compiler.h"
+ #include "gdscript_helper.h"
+@@ -816,6 +817,27 @@ Error GDScript::reload(bool p_keep_state) {
+ 	}
+ #endif
+ 
++	if (GDScriptBytecode::is_bytecode(binary_tokens)) {
++		valid = false;
++		Error bytecode_err = GDScriptBytecode::load(this, binary_tokens);
++		if (bytecode_err == OK) {
++			bytecode_err = GDScriptCache::finish_compiling(path);
++		}
++		if (bytecode_err) {
++			_err_print_error("GDScript::reload", path.utf8().get_data(), 0, "Cannot load the compiled script.", false, ERR_HANDLER_SCRIPT);
++			reloading = false;
++			return bytecode_err;
++		}
++		if (static_initializer) {
++			GDScriptCache::add_static_script(Ref<GDScript>(this));
++		}
++		if (can_run) {
++			bytecode_err = _static_init();
++		}
++		reloading = false;
++		return bytecode_err;
++	}
++
+ 	valid = false;
+ 	GDScriptParser parser;
+ 	Error err;
+diff --git a/modules/gdscript/gdscript.h b/modules/gdscript/gdscript.h
+index 330120b..12a3bbb 100644
+--- a/modules/gdscript/gdscript.h
++++ b/modules/gdscript/gdscript.h
+@@ -73,6 +73,9 @@ class GDScript : public Script {
+ 	friend class GDScriptFunction;
+ 	friend class GDScriptAnalyzer;
+ 	friend class GDScriptCompiler;
++	friend class GDScriptBytecode;
++	friend class GDScriptBytecodeSaver;
++	friend class GDScriptBytecodeLoader;
+ 	friend class GDScriptDocGen;
+ 	friend class GDScriptLambdaCallable;
+ 	friend class GDScriptLambdaSelfCallable;
+diff --git a/modules/gdscript/gdscript_byte_codegen.cpp b/modules/gdscript/gdscript_byte_codegen.cpp
+index 12891df..0def98f 100644
+--- a/modules/gdscript/gdscript_byte_codegen.cpp
++++ b/modules/gdscript/gdscript_byte_codegen.cpp
+@@ -578,7 +578,7 @@ void GDScriptByteCodeGenerator::write_unary_operator(const Address &p_target, Va
+ 	append(p_operator);
+ 	append(0); // Signature storage.
+ 	append(0); // Return type storage.
+-	constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*(opcodes.ptr()));
++	constexpr int _pointer_size = 2; // PROTOTYPE: room for a 64-bit pointer on every platform, so bytecode is portable.
+ 	for (int i = 0; i < _pointer_size; i++) {
+ 		append(0); // Space for function pointer.
+ 	}
+@@ -635,7 +635,7 @@ void GDScriptByteCodeGenerator::write_binary_operator(const Address &p_target, V
+ 	append(p_operator);
+ 	append(0); // Signature storage.
+ 	append(0); // Return type storage.
+-	constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*(opcodes.ptr()));
++	constexpr int _pointer_size = 2; // PROTOTYPE: room for a 64-bit pointer on every platform, so bytecode is portable.
+ 	for (int i = 0; i < _pointer_size; i++) {
+ 		append(0); // Space for function pointer.
+ 	}
+@@ -1027,6 +1027,13 @@ void GDScriptByteCodeGenerator::write_assign_default_parameter(const Address &p_
+ }
+ 
+ void GDScriptByteCodeGenerator::write_store_global(const Address &p_dst, int p_global_index) {
++	// PROTOTYPE: store globals by name; the global array's order differs between builds.
++	for (const KeyValue<StringName, int> &E : GDScriptLanguage::get_singleton()->get_global_map()) {
++		if (E.value == p_global_index) {
++			write_store_named_global(p_dst, E.key);
++			return;
++		}
++	}
+ 	append_opcode(GDScriptFunction::OPCODE_STORE_GLOBAL);
+ 	append(p_dst);
+ 	append(p_global_index);
+diff --git a/modules/gdscript/gdscript_bytecode.cpp b/modules/gdscript/gdscript_bytecode.cpp
+new file mode 100644
+index 0000000..c3414a1
+--- /dev/null
++++ b/modules/gdscript/gdscript_bytecode.cpp
+@@ -0,0 +1,907 @@
++/**************************************************************************/
++/*  gdscript_bytecode.cpp                                                 */
++/**************************************************************************/
++/* PROTOTYPE: serialized GDScript bytecode, compiled ahead of time.       */
++/**************************************************************************/
++
++#include "gdscript_bytecode.h"
++
++#include "gdscript.h"
++#include "gdscript_cache.h"
++#include "gdscript_function.h"
++#include "gdscript_utility_functions.h"
++
++#include "core/io/marshalls.h"
++#include "core/io/resource_loader.h"
++#include "core/config/engine.h"
++#include "core/object/class_db.h"
++
++// Buffer layout, all integers little-endian:
++//   u32 MAGIC, u32 VERSION
++//   u32 class count, then per class in tree pre-order: str fqcn, str local name, str owner fqcn
++//   u32 class count again, then per class in base-first order: the class body (_save_class)
++
++namespace {
++
++struct Writer {
++	Vector<uint8_t> data;
++	Error error = OK;
++
++	void u8(uint8_t p_v) { data.push_back(p_v); }
++	void u32(uint32_t p_v) {
++		for (int i = 0; i < 4; i++) {
++			data.push_back((p_v >> (8 * i)) & 0xff);
++		}
++	}
++	void i32(int32_t p_v) { u32((uint32_t)p_v); }
++	void str(const String &p_s) {
++		CharString c = p_s.utf8();
++		u32(c.length());
++		for (int i = 0; i < c.length(); i++) {
++			data.push_back((uint8_t)c[i]);
++		}
++	}
++	void raw_variant(const Variant &p_v) {
++		int len = 0;
++		Error err = encode_variant(p_v, nullptr, len, false);
++		if (err != OK) {
++			error = err;
++			return;
++		}
++		u32(len);
++		int offset = data.size();
++		data.resize(offset + len);
++		encode_variant(p_v, data.ptrw() + offset, len, false);
++	}
++};
++
++struct Reader {
++	const uint8_t *p = nullptr;
++	int size = 0;
++	int pos = 0;
++	Error error = OK;
++
++	bool need(int p_n) {
++		if (pos + p_n > size) {
++			error = ERR_FILE_CORRUPT;
++			return false;
++		}
++		return true;
++	}
++	uint8_t u8() { return need(1) ? p[pos++] : 0; }
++	uint32_t u32() {
++		if (!need(4)) {
++			return 0;
++		}
++		uint32_t v = (uint32_t)p[pos] | ((uint32_t)p[pos + 1] << 8) | ((uint32_t)p[pos + 2] << 16) | ((uint32_t)p[pos + 3] << 24);
++		pos += 4;
++		return v;
++	}
++	int32_t i32() { return (int32_t)u32(); }
++	String str() {
++		uint32_t len = u32();
++		if (!need(len)) {
++			return String();
++		}
++		String s = String::utf8((const char *)p + pos, len);
++		pos += len;
++		return s;
++	}
++	Variant raw_variant() {
++		uint32_t len = u32();
++		if (!need(len)) {
++			return Variant();
++		}
++		Variant v;
++		Error err = decode_variant(v, p + pos, len, nullptr, false);
++		if (err != OK) {
++			error = err;
++		}
++		pos += len;
++		return v;
++	}
++};
++
++// The descriptor of every function pointer a compiled function can hold, keyed by the pointer.
++struct PointerNames {
++	HashMap<const void *, Vector<int>> operators; // op, type a, type b
++	HashMap<const void *, Pair<int, StringName>> setters, getters, builtin_methods; // type, name
++	HashMap<const void *, int> keyed_setters, keyed_getters, indexed_setters, indexed_getters; // type
++	HashMap<const void *, Pair<int, int>> constructors; // type, index
++	HashMap<const void *, StringName> utilities, gds_utilities;
++
++	PointerNames() {
++		for (int op = 0; op < Variant::OP_MAX; op++) {
++			for (int a = 0; a < Variant::VARIANT_MAX; a++) {
++				for (int b = 0; b < Variant::VARIANT_MAX; b++) {
++					const void *f = (const void *)Variant::get_validated_operator_evaluator((Variant::Operator)op, (Variant::Type)a, (Variant::Type)b);
++					if (f && !operators.has(f)) {
++						operators[f] = Vector<int>({ op, a, b });
++					}
++				}
++			}
++		}
++		for (int t = 0; t < Variant::VARIANT_MAX; t++) {
++			Variant::Type type = (Variant::Type)t;
++			List<StringName> members;
++			Variant::get_member_list(type, &members);
++			for (const StringName &m : members) {
++				setters.insert((const void *)Variant::get_member_validated_setter(type, m), Pair<int, StringName>(t, m));
++				getters.insert((const void *)Variant::get_member_validated_getter(type, m), Pair<int, StringName>(t, m));
++			}
++			List<StringName> methods;
++			Variant::get_builtin_method_list(type, &methods);
++			for (const StringName &m : methods) {
++				builtin_methods.insert((const void *)Variant::get_validated_builtin_method(type, m), Pair<int, StringName>(t, m));
++			}
++			keyed_setters.insert((const void *)Variant::get_member_validated_keyed_setter(type), t);
++			keyed_getters.insert((const void *)Variant::get_member_validated_keyed_getter(type), t);
++			indexed_setters.insert((const void *)Variant::get_member_validated_indexed_setter(type), t);
++			indexed_getters.insert((const void *)Variant::get_member_validated_indexed_getter(type), t);
++			for (int i = 0; i < Variant::get_constructor_count(type); i++) {
++				constructors.insert((const void *)Variant::get_validated_constructor(type, i), Pair<int, int>(t, i));
++			}
++		}
++		List<StringName> functions;
++		Variant::get_utility_function_list(&functions);
++		for (const StringName &f : functions) {
++			utilities.insert((const void *)Variant::get_validated_utility_function(f), f);
++		}
++		List<StringName> gds_functions;
++		GDScriptUtilityFunctions::get_function_list(&gds_functions);
++		for (const StringName &f : gds_functions) {
++			gds_utilities.insert((const void *)GDScriptUtilityFunctions::get_function(f), f);
++		}
++	}
++};
++
++String _script_name(const Script *p_script) {
++	const GDScript *gds = Object::cast_to<GDScript>(p_script);
++	if (gds) {
++		return gds->get_fully_qualified_name();
++	}
++	return p_script ? p_script->get_path() : String();
++}
++
++} // namespace
++
++class GDScriptBytecodeSaver {
++	Writer &w;
++	PointerNames &names;
++
++public:
++	GDScriptBytecodeSaver(Writer &p_w, PointerNames &p_names) :
++			w(p_w), names(p_names) {}
++
++	static void collect_tree(GDScript *p_script, Vector<GDScript *> &r_classes);
++	static void base_first(GDScript *p_script, const Vector<GDScript *> &p_classes, HashSet<GDScript *> &r_seen, Vector<GDScript *> &r_order);
++
++	void script_ref(const Script *p_script) { w.str(_script_name(p_script)); }
++
++	void variant(const Variant &p_v) {
++		switch (p_v.get_type()) {
++			case Variant::OBJECT: {
++				w.u8(1);
++				Object *obj = p_v;
++				if (!obj) {
++					w.u8(0);
++				} else if (GDScriptNativeClass *nc = Object::cast_to<GDScriptNativeClass>(obj)) {
++					w.u8(1);
++					w.str(nc->get_name());
++				} else if (Script *s = Object::cast_to<Script>(obj)) {
++					w.u8(2);
++					script_ref(s);
++				} else if (Engine::get_singleton()->has_singleton(obj->get_class_name()) && Engine::get_singleton()->get_singleton_object(obj->get_class_name()) == obj) {
++					w.u8(4);
++					w.str(obj->get_class_name());
++				} else if (Resource *r = Object::cast_to<Resource>(obj); r && !r->get_path().is_empty()) {
++					w.u8(3);
++					w.str(r->get_path());
++				} else {
++					ERR_PRINT(vformat("GDScript bytecode: cannot save constant object of class %s.", obj->get_class()));
++					w.error = ERR_UNAVAILABLE;
++					w.u8(0);
++				}
++			} break;
++			case Variant::ARRAY: {
++				w.u8(2);
++				Array a = p_v;
++				w.u32(a.get_typed_builtin());
++				w.str(a.get_typed_class_name());
++				variant(a.get_typed_script());
++				w.u8(a.is_read_only());
++				w.u32(a.size());
++				for (int i = 0; i < a.size(); i++) {
++					variant(a[i]);
++				}
++			} break;
++			case Variant::DICTIONARY: {
++				w.u8(3);
++				Dictionary d = p_v;
++				w.u32(d.get_typed_key_builtin());
++				w.str(d.get_typed_key_class_name());
++				variant(d.get_typed_key_script());
++				w.u32(d.get_typed_value_builtin());
++				w.str(d.get_typed_value_class_name());
++				variant(d.get_typed_value_script());
++				w.u8(d.is_read_only());
++				w.u32(d.size());
++				for (const KeyValue<Variant, Variant> &kv : d) {
++					variant(kv.key);
++					variant(kv.value);
++				}
++			} break;
++			default: {
++				w.u8(0);
++				w.raw_variant(p_v);
++			}
++		}
++	}
++
++	void data_type(const GDScriptDataType &p_t) {
++		w.u8(p_t.kind);
++		w.u32(p_t.builtin_type);
++		w.str(p_t.native_type);
++		script_ref(p_t.script_type);
++		w.u8(p_t.script_type_ref.is_valid() ? 1 : 0);
++		w.u32(p_t.container_element_types.size());
++		for (const GDScriptDataType &e : p_t.container_element_types) {
++			data_type(e);
++		}
++	}
++
++	template <typename T, typename V>
++	void pointer_table(const Vector<T> &p_table, const HashMap<const void *, V> &p_map, void (GDScriptBytecodeSaver::*p_write)(const V &)) {
++		w.u32(p_table.size());
++		for (const T &f : p_table) {
++			const V *v = p_map.getptr((const void *)f);
++			if (!v) {
++				ERR_PRINT("GDScript bytecode: unknown function pointer.");
++				w.error = ERR_BUG;
++				return;
++			}
++			(this->*p_write)(*v);
++		}
++	}
++
++	void write_int(const int &p_v) { w.u32(p_v); }
++	void write_name(const StringName &p_v) { w.str(p_v); }
++	void write_type_name(const Pair<int, StringName> &p_v) {
++		w.u32(p_v.first);
++		w.str(p_v.second);
++	}
++	void write_type_index(const Pair<int, int> &p_v) {
++		w.u32(p_v.first);
++		w.u32(p_v.second);
++	}
++	void write_ints(const Vector<int> &p_v) {
++		for (int v : p_v) {
++			w.u32(v);
++		}
++	}
++
++	void function(GDScriptFunction *p_f, GDScript *p_script) {
++		w.str(p_f->name);
++		w.str(p_f->source);
++		w.u8(p_f->_static);
++		w.u32(p_f->argument_types.size());
++		for (const GDScriptDataType &t : p_f->argument_types) {
++			data_type(t);
++		}
++		data_type(p_f->return_type);
++		variant(Dictionary(p_f->method_info));
++		variant(p_f->rpc_config);
++		w.i32(p_f->_initial_line);
++		w.i32(p_f->_argument_count);
++		w.i32(p_f->_vararg_index);
++		w.i32(p_f->_stack_size);
++		w.i32(p_f->_instruction_args_size);
++		w.u32(p_f->code.size());
++		for (int c : p_f->code) {
++			w.i32(c);
++		}
++		w.u32(p_f->default_arguments.size());
++		for (int a : p_f->default_arguments) {
++			w.i32(a);
++		}
++		w.u32(p_f->constants.size());
++		for (const Variant &c : p_f->constants) {
++			variant(c);
++		}
++		w.u32(p_f->constant_map.size());
++		for (const KeyValue<StringName, Variant> &kv : p_f->constant_map) {
++			w.str(kv.key);
++			variant(kv.value);
++		}
++		w.u32(p_f->global_names.size());
++		for (const StringName &n : p_f->global_names) {
++			w.str(n);
++		}
++		pointer_table(p_f->operator_funcs, names.operators, &GDScriptBytecodeSaver::write_ints);
++		pointer_table(p_f->setters, names.setters, &GDScriptBytecodeSaver::write_type_name);
++		pointer_table(p_f->getters, names.getters, &GDScriptBytecodeSaver::write_type_name);
++		pointer_table(p_f->keyed_setters, names.keyed_setters, &GDScriptBytecodeSaver::write_int);
++		pointer_table(p_f->keyed_getters, names.keyed_getters, &GDScriptBytecodeSaver::write_int);
++		pointer_table(p_f->indexed_setters, names.indexed_setters, &GDScriptBytecodeSaver::write_int);
++		pointer_table(p_f->indexed_getters, names.indexed_getters, &GDScriptBytecodeSaver::write_int);
++		pointer_table(p_f->builtin_methods, names.builtin_methods, &GDScriptBytecodeSaver::write_type_name);
++		pointer_table(p_f->constructors, names.constructors, &GDScriptBytecodeSaver::write_type_index);
++		pointer_table(p_f->utilities, names.utilities, &GDScriptBytecodeSaver::write_name);
++		pointer_table(p_f->gds_utilities, names.gds_utilities, &GDScriptBytecodeSaver::write_name);
++		w.u32(p_f->methods.size());
++		for (const MethodBind *m : p_f->methods) {
++			w.str(m->get_instance_class());
++			w.str(m->get_name());
++		}
++		w.u32(p_f->temporary_slots.size());
++		for (const Pair<int, Variant::Type> &slot : p_f->temporary_slots) {
++			w.i32(slot.first);
++			w.u32(slot.second);
++		}
++		w.u32(p_f->lambdas.size());
++		for (GDScriptFunction *lambda : p_f->lambdas) {
++			const GDScript::LambdaInfo *info = p_script->lambda_info.getptr(lambda);
++			w.i32(info ? info->capture_count : 0);
++			w.u8(info ? info->use_self : 0);
++			function(lambda, lambda->get_script() ? lambda->get_script() : p_script);
++		}
++	}
++
++	void member_info(const GDScript::MemberInfo &p_m) {
++		w.i32(p_m.index);
++		w.str(p_m.setter);
++		w.str(p_m.getter);
++		data_type(p_m.data_type);
++		variant(Dictionary(p_m.property_info));
++	}
++
++	void optional_function(GDScriptFunction *p_f, GDScript *p_script) {
++		w.u8(p_f ? 1 : 0);
++		if (p_f) {
++			function(p_f, p_script);
++		}
++	}
++
++	void klass(GDScript *p_s) {
++		w.str(p_s->fully_qualified_name);
++		w.str(p_s->global_name);
++		w.str(p_s->simplified_icon_path);
++		w.u8(p_s->tool);
++		w.u8(p_s->_is_abstract);
++		w.str(p_s->native.is_valid() ? String(p_s->native->get_name()) : String());
++		script_ref(p_s->base.ptr());
++		w.u32(p_s->member_indices.size());
++		for (const KeyValue<StringName, GDScript::MemberInfo> &kv : p_s->member_indices) {
++			w.str(kv.key);
++			member_info(kv.value);
++		}
++		w.u32(p_s->members.size());
++		for (const StringName &m : p_s->members) {
++			w.str(m);
++		}
++		w.u32(p_s->static_variables_indices.size());
++		for (const KeyValue<StringName, GDScript::MemberInfo> &kv : p_s->static_variables_indices) {
++			w.str(kv.key);
++			member_info(kv.value);
++		}
++		w.u32(p_s->constants.size());
++		for (const KeyValue<StringName, Variant> &kv : p_s->constants) {
++			w.str(kv.key);
++			variant(kv.value);
++		}
++		w.u32(p_s->_signals.size());
++		for (const KeyValue<StringName, MethodInfo> &kv : p_s->_signals) {
++			w.str(kv.key);
++			variant(Dictionary(kv.value));
++		}
++		variant(p_s->rpc_config);
++		w.u32(p_s->member_functions.size());
++		for (const KeyValue<StringName, GDScriptFunction *> &kv : p_s->member_functions) {
++			w.str(kv.key);
++			function(kv.value, p_s);
++			w.u8(kv.value == p_s->initializer ? 1 : 0);
++		}
++		optional_function(p_s->implicit_initializer, p_s);
++		optional_function(p_s->implicit_ready, p_s);
++		optional_function(p_s->static_initializer, p_s);
++	}
++};
++
++void GDScriptBytecodeSaver::collect_tree(GDScript *p_script, Vector<GDScript *> &r_classes) {
++	r_classes.push_back(p_script);
++	for (const KeyValue<StringName, Ref<GDScript>> &kv : p_script->subclasses) {
++		collect_tree(kv.value.ptr(), r_classes);
++	}
++}
++
++void GDScriptBytecodeSaver::base_first(GDScript *p_script, const Vector<GDScript *> &p_classes, HashSet<GDScript *> &r_seen, Vector<GDScript *> &r_order) {
++	if (r_seen.has(p_script)) {
++		return;
++	}
++	r_seen.insert(p_script);
++	GDScript *base = p_script->base.ptr();
++	if (base && p_classes.has(base)) {
++		base_first(base, p_classes, r_seen, r_order);
++	}
++	r_order.push_back(p_script);
++}
++
++bool GDScriptBytecode::is_bytecode(const Vector<uint8_t> &p_buffer) {
++	return p_buffer.size() >= 8 && decode_uint32(p_buffer.ptr()) == MAGIC;
++}
++
++Error GDScriptBytecode::save(GDScript *p_script, Vector<uint8_t> &r_buffer) {
++	ERR_FAIL_COND_V(!p_script->valid, ERR_INVALID_DATA);
++	static PointerNames *names = memnew(PointerNames);
++	Writer w;
++	w.u32(MAGIC);
++	w.u32(VERSION);
++	Vector<GDScript *> classes;
++	GDScriptBytecodeSaver::collect_tree(p_script, classes);
++	w.u32(classes.size());
++	for (GDScript *c : classes) {
++		w.str(c->fully_qualified_name);
++		w.str(c->local_name);
++		w.str(c->_owner ? c->_owner->fully_qualified_name : String());
++	}
++	HashSet<GDScript *> seen;
++	Vector<GDScript *> order;
++	for (GDScript *c : classes) {
++		GDScriptBytecodeSaver::base_first(c, classes, seen, order);
++	}
++	GDScriptBytecodeSaver saver(w, *names);
++	w.u32(order.size());
++	for (GDScript *c : order) {
++		saver.klass(c);
++	}
++	r_buffer = w.data;
++	return w.error;
++}
++
++class GDScriptBytecodeLoader {
++	Reader &r;
++	GDScript *root;
++	String root_path;
++
++public:
++	GDScriptBytecodeLoader(Reader &p_r, GDScript *p_root) :
++			r(p_r), root(p_root) {
++		root_path = p_root->get_script_path();
++	}
++
++	// A script by fully qualified name; a shallow one when it is in another file.
++	Ref<Script> script(const String &p_name, bool p_full = false) {
++		if (p_name.is_empty()) {
++			return Ref<Script>();
++		}
++		String file = p_name.get_slice("::", 0);
++		if (!file.ends_with(".gd")) {
++			// Another kind of script, or a script whose class path has "::" in its path.
++			if (!p_name.contains("::")) {
++				return ResourceLoader::load(p_name);
++			}
++		}
++		Ref<GDScript> owner;
++		if (file == root_path) {
++			owner = Ref<GDScript>(root);
++		} else {
++			Error err = OK;
++			owner = p_full ? GDScriptCache::get_full_script(file, err, root_path) : GDScriptCache::get_shallow_script(file, err, root_path);
++			if (err != OK || owner.is_null()) {
++				ERR_PRINT(vformat("GDScript bytecode: cannot load script \"%s\".", file));
++				r.error = ERR_CANT_RESOLVE;
++				return Ref<Script>();
++			}
++		}
++		GDScript *found = owner->find_class(p_name);
++		if (!found) {
++			ERR_PRINT(vformat("GDScript bytecode: cannot find class \"%s\".", p_name));
++			r.error = ERR_CANT_RESOLVE;
++		}
++		return Ref<Script>(found);
++	}
++
++	Variant variant() {
++		uint8_t tag = r.u8();
++		switch (tag) {
++			case 0:
++				return r.raw_variant();
++			case 1: {
++				uint8_t kind = r.u8();
++				switch (kind) {
++					case 0:
++						return Variant((Object *)nullptr);
++					case 1: {
++						StringName name = r.str();
++						const HashMap<StringName, int> &globals = GDScriptLanguage::get_singleton()->get_global_map();
++						if (!globals.has(name)) {
++							ERR_PRINT(vformat("GDScript bytecode: unknown native class \"%s\".", name));
++							r.error = ERR_CANT_RESOLVE;
++							return Variant();
++						}
++						return GDScriptLanguage::get_singleton()->get_global_array()[globals[name]];
++					}
++					case 2:
++						return script(r.str());
++					case 3:
++						return ResourceLoader::load(r.str());
++					case 4:
++						return Engine::get_singleton()->get_singleton_object(r.str());
++				}
++				r.error = ERR_FILE_CORRUPT;
++				return Variant();
++			}
++			case 2: {
++				uint32_t builtin = r.u32();
++				StringName class_name = r.str();
++				Variant typed_script = variant();
++				bool read_only = r.u8();
++				uint32_t size = r.u32();
++				Array a;
++				if (builtin != Variant::NIL) {
++					a.set_typed(builtin, class_name, typed_script);
++				}
++				for (uint32_t i = 0; i < size && r.error == OK; i++) {
++					a.push_back(variant());
++				}
++				if (read_only) {
++					a.make_read_only();
++				}
++				return a;
++			}
++			case 3: {
++				uint32_t key_builtin = r.u32();
++				StringName key_class = r.str();
++				Variant key_script = variant();
++				uint32_t value_builtin = r.u32();
++				StringName value_class = r.str();
++				Variant value_script = variant();
++				bool read_only = r.u8();
++				uint32_t size = r.u32();
++				Dictionary d;
++				if (key_builtin != Variant::NIL || value_builtin != Variant::NIL) {
++					d.set_typed(key_builtin, key_class, key_script, value_builtin, value_class, value_script);
++				}
++				for (uint32_t i = 0; i < size && r.error == OK; i++) {
++					Variant k = variant();
++					d[k] = variant();
++				}
++				if (read_only) {
++					d.make_read_only();
++				}
++				return d;
++			}
++		}
++		r.error = ERR_FILE_CORRUPT;
++		return Variant();
++	}
++
++	GDScriptDataType data_type() {
++		GDScriptDataType t;
++		t.kind = (GDScriptDataType::Kind)r.u8();
++		t.builtin_type = (Variant::Type)r.u32();
++		t.native_type = r.str();
++		String script_name = r.str();
++		bool strong = r.u8();
++		if (!script_name.is_empty()) {
++			Ref<Script> s = script(script_name);
++			t.script_type = s.ptr();
++			if (strong) {
++				t.script_type_ref = s;
++			}
++		}
++		uint32_t count = r.u32();
++		for (uint32_t i = 0; i < count && r.error == OK; i++) {
++			t.container_element_types.push_back(data_type());
++		}
++		return t;
++	}
++
++	template <typename T>
++	void finish_table(Vector<T> &p_table, const T *&r_ptr, int &r_count) {
++		r_count = p_table.size();
++		r_ptr = p_table.is_empty() ? nullptr : p_table.ptr();
++	}
++
++	GDScriptFunction *function(GDScript *p_script) {
++		GDScriptFunction *f = memnew(GDScriptFunction);
++		f->_script = p_script;
++		f->name = r.str();
++		f->source = r.str();
++		f->_static = r.u8();
++#ifdef DEBUG_ENABLED
++		f->func_cname = (String(f->source) + " - " + String(f->name)).utf8();
++		f->_func_cname = f->func_cname.get_data();
++#endif
++		uint32_t argc = r.u32();
++		for (uint32_t i = 0; i < argc && r.error == OK; i++) {
++			f->argument_types.push_back(data_type());
++		}
++		f->return_type = data_type();
++		f->method_info = MethodInfo::from_dict(variant());
++		f->rpc_config = variant();
++		f->_initial_line = r.i32();
++		f->_argument_count = r.i32();
++		f->_vararg_index = r.i32();
++		f->_stack_size = r.i32();
++		f->_instruction_args_size = r.i32();
++
++		uint32_t code_size = r.u32();
++		f->code.resize(code_size);
++		for (uint32_t i = 0; i < code_size; i++) {
++			f->code.write[i] = r.i32();
++		}
++		f->_code_size = code_size;
++		f->_code_ptr = code_size ? f->code.ptrw() : nullptr;
++
++		uint32_t defaults = r.u32();
++		for (uint32_t i = 0; i < defaults; i++) {
++			f->default_arguments.push_back(r.i32());
++		}
++		f->_default_arg_count = defaults ? defaults - 1 : 0;
++		f->_default_arg_ptr = defaults ? f->default_arguments.ptr() : nullptr;
++
++		uint32_t constants = r.u32();
++		for (uint32_t i = 0; i < constants && r.error == OK; i++) {
++			f->constants.push_back(variant());
++		}
++		f->_constant_count = constants;
++		f->_constants_ptr = constants ? f->constants.ptrw() : nullptr;
++		uint32_t local_constants = r.u32();
++		for (uint32_t i = 0; i < local_constants && r.error == OK; i++) {
++			StringName name = r.str();
++			f->constant_map.insert(name, variant());
++		}
++
++		uint32_t names = r.u32();
++		for (uint32_t i = 0; i < names; i++) {
++			f->global_names.push_back(r.str());
++		}
++		f->_global_names_count = names;
++		f->_global_names_ptr = names ? f->global_names.ptr() : nullptr;
++
++		uint32_t n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			Variant::Operator op = (Variant::Operator)r.u32();
++			Variant::Type a = (Variant::Type)r.u32();
++			Variant::Type b = (Variant::Type)r.u32();
++			f->operator_funcs.push_back(Variant::get_validated_operator_evaluator(op, a, b));
++		}
++		finish_table(f->operator_funcs, f->_operator_funcs_ptr, f->_operator_funcs_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			Variant::Type t = (Variant::Type)r.u32();
++			f->setters.push_back(Variant::get_member_validated_setter(t, r.str()));
++		}
++		finish_table(f->setters, f->_setters_ptr, f->_setters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			Variant::Type t = (Variant::Type)r.u32();
++			f->getters.push_back(Variant::get_member_validated_getter(t, r.str()));
++		}
++		finish_table(f->getters, f->_getters_ptr, f->_getters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->keyed_setters.push_back(Variant::get_member_validated_keyed_setter((Variant::Type)r.u32()));
++		}
++		finish_table(f->keyed_setters, f->_keyed_setters_ptr, f->_keyed_setters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->keyed_getters.push_back(Variant::get_member_validated_keyed_getter((Variant::Type)r.u32()));
++		}
++		finish_table(f->keyed_getters, f->_keyed_getters_ptr, f->_keyed_getters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->indexed_setters.push_back(Variant::get_member_validated_indexed_setter((Variant::Type)r.u32()));
++		}
++		finish_table(f->indexed_setters, f->_indexed_setters_ptr, f->_indexed_setters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->indexed_getters.push_back(Variant::get_member_validated_indexed_getter((Variant::Type)r.u32()));
++		}
++		finish_table(f->indexed_getters, f->_indexed_getters_ptr, f->_indexed_getters_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			Variant::Type t = (Variant::Type)r.u32();
++			f->builtin_methods.push_back(Variant::get_validated_builtin_method(t, r.str()));
++		}
++		finish_table(f->builtin_methods, f->_builtin_methods_ptr, f->_builtin_methods_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			Variant::Type t = (Variant::Type)r.u32();
++			f->constructors.push_back(Variant::get_validated_constructor(t, r.u32()));
++		}
++		finish_table(f->constructors, f->_constructors_ptr, f->_constructors_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->utilities.push_back(Variant::get_validated_utility_function(r.str()));
++		}
++		finish_table(f->utilities, f->_utilities_ptr, f->_utilities_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			f->gds_utilities.push_back(GDScriptUtilityFunctions::get_function(r.str()));
++		}
++		finish_table(f->gds_utilities, f->_gds_utilities_ptr, f->_gds_utilities_count);
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			StringName cls = r.str();
++			StringName method = r.str();
++			const MethodBind *m = ClassDB::get_method(cls, method);
++			if (!m) {
++				ERR_PRINT(vformat("GDScript bytecode: unknown method %s.%s.", cls, method));
++				r.error = ERR_CANT_RESOLVE;
++			}
++			f->methods.push_back(m);
++		}
++		f->_methods_count = f->methods.size();
++		f->_methods_ptr = f->methods.is_empty() ? nullptr : f->methods.ptr();
++
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			int slot = r.i32();
++			f->temporary_slots.push_back(Pair<int, Variant::Type>(slot, (Variant::Type)r.u32()));
++		}
++		n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			GDScript::LambdaInfo info;
++			info.capture_count = r.i32();
++			info.use_self = r.u8();
++			GDScriptFunction *lambda = function(p_script);
++			p_script->lambda_info.insert(lambda, info);
++			f->lambdas.push_back(lambda);
++		}
++		f->_lambdas_count = f->lambdas.size();
++		f->_lambdas_ptr = f->lambdas.is_empty() ? nullptr : f->lambdas.ptrw();
++		return f;
++	}
++
++	GDScript::MemberInfo member_info() {
++		GDScript::MemberInfo m;
++		m.index = r.i32();
++		m.setter = r.str();
++		m.getter = r.str();
++		m.data_type = data_type();
++		m.property_info = PropertyInfo::from_dict(variant());
++		return m;
++	}
++
++	GDScriptFunction *optional_function(GDScript *p_script) {
++		return r.u8() ? function(p_script) : nullptr;
++	}
++
++	Error klass() {
++		String fqcn = r.str();
++		GDScript *s = root->find_class(fqcn);
++		ERR_FAIL_NULL_V_MSG(s, ERR_FILE_CORRUPT, vformat("GDScript bytecode: class \"%s\" missing from the shell.", fqcn));
++		s->global_name = r.str();
++		s->simplified_icon_path = r.str();
++		s->tool = r.u8();
++		s->_is_abstract = r.u8();
++		StringName native = r.str();
++		const HashMap<StringName, int> &globals = GDScriptLanguage::get_singleton()->get_global_map();
++		ERR_FAIL_COND_V_MSG(!globals.has(native), ERR_CANT_RESOLVE, vformat("GDScript bytecode: unknown native base \"%s\".", native));
++		s->native = GDScriptLanguage::get_singleton()->get_global_array()[globals[native]];
++		String base = r.str();
++		if (!base.is_empty()) {
++			s->base = script(base, true);
++#ifdef TOOLS_ENABLED
++			s->base_cache = s->base;
++#endif
++		}
++		uint32_t n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			StringName name = r.str();
++			s->member_indices[name] = member_info();
++		}
++		n = r.u32();
++		for (uint32_t i = 0; i < n; i++) {
++			s->members.insert(r.str());
++		}
++		n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			StringName name = r.str();
++			s->static_variables_indices[name] = member_info();
++		}
++		s->static_variables.resize(s->static_variables_indices.size());
++		n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			StringName name = r.str();
++			s->constants.insert(name, variant());
++		}
++		n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			StringName name = r.str();
++			s->_signals[name] = MethodInfo::from_dict(variant());
++		}
++		s->rpc_config = variant();
++		n = r.u32();
++		for (uint32_t i = 0; i < n && r.error == OK; i++) {
++			StringName name = r.str();
++			GDScriptFunction *f = function(s);
++			s->member_functions[name] = f;
++			if (r.u8()) {
++				s->initializer = f;
++			}
++		}
++		s->implicit_initializer = optional_function(s);
++		s->implicit_ready = optional_function(s);
++		s->static_initializer = optional_function(s);
++		s->_static_default_init();
++		s->valid = r.error == OK;
++		return r.error;
++	}
++};
++
++Error GDScriptBytecode::make_shell(GDScript *p_script, const Vector<uint8_t> &p_buffer) {
++	ERR_FAIL_COND_V(!is_bytecode(p_buffer), ERR_FILE_UNRECOGNIZED);
++	Reader r;
++	r.p = p_buffer.ptr();
++	r.size = p_buffer.size();
++	r.pos = 4;
++	ERR_FAIL_COND_V_MSG(r.u32() != VERSION, ERR_FILE_UNRECOGNIZED, "GDScript bytecode: unsupported version.");
++	uint32_t count = r.u32();
++	for (uint32_t i = 0; i < count && r.error == OK; i++) {
++		String fqcn = r.str();
++		StringName local_name = r.str();
++		String owner = r.str();
++		if (owner.is_empty()) {
++			p_script->fully_qualified_name = fqcn;
++			p_script->local_name = local_name;
++			continue;
++		}
++		GDScript *parent = p_script->find_class(owner);
++		ERR_FAIL_NULL_V(parent, ERR_FILE_CORRUPT);
++		if (parent->subclasses.has(local_name)) {
++			continue;
++		}
++		Ref<GDScript> sub = GDScriptLanguage::get_singleton()->get_orphan_subclass(fqcn);
++		if (sub.is_null()) {
++			sub.instantiate();
++		}
++		sub->_owner = parent;
++		sub->path = p_script->path;
++		sub->fully_qualified_name = fqcn;
++		sub->local_name = local_name;
++		parent->subclasses.insert(local_name, sub);
++	}
++	return r.error;
++}
++
++Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer) {
++	Error err = make_shell(p_script, p_buffer);
++	ERR_FAIL_COND_V(err != OK, err);
++	Reader r;
++	r.p = p_buffer.ptr();
++	r.size = p_buffer.size();
++	r.pos = 8;
++	uint32_t count = r.u32();
++	for (uint32_t i = 0; i < count; i++) {
++		r.str();
++		r.str();
++		r.str();
++	}
++	GDScriptBytecodeLoader loader(r, p_script);
++	count = r.u32();
++	for (uint32_t i = 0; i < count && r.error == OK; i++) {
++		loader.klass();
++	}
++	return r.error;
++}
++
++void GDScriptBytecodeWriter::_bind_methods() {
++	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("compile", "path"), &GDScriptBytecodeWriter::compile);
++}
++
++PackedByteArray GDScriptBytecodeWriter::compile(const String &p_path) {
++	Error err = OK;
++	// Compile without running static initializers: the VM caches pointers in the bytecode.
++	bool scripting = ScriptServer::is_scripting_enabled();
++	ScriptServer::set_scripting_enabled(false);
++	Ref<GDScript> script = GDScriptCache::get_full_script(p_path, err);
++	ScriptServer::set_scripting_enabled(scripting);
++	ERR_FAIL_COND_V_MSG(err != OK || script.is_null() || !script->is_script_valid(), PackedByteArray(), vformat("Cannot compile \"%s\".", p_path));
++	Vector<uint8_t> buffer;
++	err = GDScriptBytecode::save(script.ptr(), buffer);
++	ERR_FAIL_COND_V_MSG(err != OK, PackedByteArray(), vformat("Cannot save the bytecode of \"%s\".", p_path));
++	return buffer;
++}
+diff --git a/modules/gdscript/gdscript_bytecode.h b/modules/gdscript/gdscript_bytecode.h
+new file mode 100644
+index 0000000..04582b2
+--- /dev/null
++++ b/modules/gdscript/gdscript_bytecode.h
+@@ -0,0 +1,44 @@
++/**************************************************************************/
++/*  gdscript_bytecode.h                                                   */
++/**************************************************************************/
++/* PROTOTYPE: serialized GDScript bytecode, compiled ahead of time.       */
++/**************************************************************************/
++
++#pragma once
++
++#include "core/object/ref_counted.h"
++#include "core/templates/vector.h"
++
++class GDScript;
++
++// Saves a compiled GDScript (its classes, members, constants and the bytecode of every
++// function) into a portable buffer, and restores it without parsing or compiling. The
++// buffer replaces the binary tokens in an exported `.gdc` file. Function pointers into the
++// engine are stored by name and resolved again when loading, so the build that compiles
++// and the build that loads need the same classes and methods, not the same binary.
++class GDScriptBytecode {
++public:
++	static constexpr uint32_t MAGIC = 0x43424447; // "GDBC"
++	static constexpr uint32_t VERSION = 1;
++
++	static bool is_bytecode(const Vector<uint8_t> &p_buffer);
++
++	// Creates the inner class objects of a script, as GDScriptCompiler::make_scripts() does.
++	static Error make_shell(GDScript *p_script, const Vector<uint8_t> &p_buffer);
++	// Restores a compiled script whose shell make_shell() created.
++	static Error load(GDScript *p_script, const Vector<uint8_t> &p_buffer);
++	// Serializes a valid, compiled script.
++	static Error save(GDScript *p_script, Vector<uint8_t> &r_buffer);
++};
++
++// Exposes GDScriptBytecode::save() to scripts, so a build-time tool can compile a project's
++// scripts and write their bytecode.
++class GDScriptBytecodeWriter : public RefCounted {
++	GDCLASS(GDScriptBytecodeWriter, RefCounted);
++
++protected:
++	static void _bind_methods();
++
++public:
++	static PackedByteArray compile(const String &p_path);
++};
+diff --git a/modules/gdscript/gdscript_cache.cpp b/modules/gdscript/gdscript_cache.cpp
+index 9d8d650..f0274f8 100644
+--- a/modules/gdscript/gdscript_cache.cpp
++++ b/modules/gdscript/gdscript_cache.cpp
+@@ -31,6 +31,7 @@
+ #include "gdscript_cache.h"
+ 
+ #include "gdscript.h"
++#include "gdscript_bytecode.h"
+ #include "gdscript_analyzer.h"
+ #include "gdscript_compiler.h"
+ #include "gdscript_parser.h"
+@@ -321,6 +322,14 @@ Ref<GDScript> GDScriptCache::get_shallow_script(const String &p_path, Error &r_e
+ 			r_error = ERR_FILE_CANT_READ;
+ 		}
+ 		script->set_binary_tokens_source(buffer);
++		if (r_error == OK && GDScriptBytecode::is_bytecode(buffer)) {
++			r_error = GDScriptBytecode::make_shell(script.ptr(), buffer);
++			if (r_error) {
++				return Ref<GDScript>();
++			}
++			singleton->shallow_gdscript_cache[p_path] = script;
++			return script;
++		}
+ 	} else {
+ 		r_error = script->load_source_code(remapped_path);
+ 	}
+diff --git a/modules/gdscript/gdscript_disassembler.cpp b/modules/gdscript/gdscript_disassembler.cpp
+index 7b9e84a..a74d73e 100644
+--- a/modules/gdscript/gdscript_disassembler.cpp
++++ b/modules/gdscript/gdscript_disassembler.cpp
+@@ -114,7 +114,7 @@ void GDScriptFunction::disassemble(const Vector<String> &p_code_lines) const {
+ 
+ 		switch (opcode) {
+ 			case OPCODE_OPERATOR: {
+-				constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*_code_ptr);
++				constexpr int _pointer_size = 2; // PROTOTYPE: room for a 64-bit pointer on every platform, so bytecode is portable.
+ 				int operation = _code_ptr[ip + 4];
+ 
+ 				text += "operator ";
+diff --git a/modules/gdscript/gdscript_function.h b/modules/gdscript/gdscript_function.h
+index 4864112..06daba4 100644
+--- a/modules/gdscript/gdscript_function.h
++++ b/modules/gdscript/gdscript_function.h
+@@ -342,6 +342,8 @@ private:
+ 	friend class GDScript;
+ 	friend class GDScriptCompiler;
+ 	friend class GDScriptByteCodeGenerator;
++	friend class GDScriptBytecodeSaver;
++	friend class GDScriptBytecodeLoader;
+ 	friend class GDScriptLanguage;
+ 
+ 	StringName name;
+diff --git a/modules/gdscript/gdscript_no_compiler.cpp b/modules/gdscript/gdscript_no_compiler.cpp
+new file mode 100644
+index 0000000..0801f6c
+--- /dev/null
++++ b/modules/gdscript/gdscript_no_compiler.cpp
+@@ -0,0 +1,75 @@
++/**************************************************************************/
++/*  gdscript_no_compiler.cpp                                              */
++/**************************************************************************/
++/* PROTOTYPE: the entry points of the parser, analyzer and compiler in a  */
++/* runtime that only loads precompiled bytecode (GDSCRIPT_NO_COMPILER).   */
++/* Every one fails, so a script without bytecode reports an error.        */
++/**************************************************************************/
++
++#ifdef GDSCRIPT_NO_COMPILER
++
++#include "gdscript_analyzer.h"
++#include "gdscript_compiler.h"
++#include "gdscript_parser.h"
++
++#include "core/object/class_db.h"
++
++GDScriptParser::GDScriptParser() {}
++
++GDScriptParser::~GDScriptParser() {}
++
++Error GDScriptParser::parse(const String &p_source_code, const String &p_script_path, bool p_for_completion, bool p_parse_body) {
++	ERR_FAIL_V_MSG(ERR_UNAVAILABLE, vformat("Cannot parse \"%s\": this build only runs precompiled GDScript.", p_script_path));
++}
++
++Error GDScriptParser::parse_binary(const Vector<uint8_t> &p_binary, const String &p_script_path) {
++	ERR_FAIL_V_MSG(ERR_UNAVAILABLE, vformat("Cannot parse \"%s\": this build only runs precompiled GDScript.", p_script_path));
++}
++
++void GDScriptParser::clear() {}
++
++void GDScriptParser::cleanup() {}
++
++void GDScriptParser::get_annotation_list(List<MethodInfo> *r_annotations) const {}
++
++GDScriptAnalyzer::GDScriptAnalyzer(GDScriptParser *p_parser) {
++	parser = p_parser;
++}
++
++Error GDScriptAnalyzer::resolve_inheritance() {
++	return ERR_UNAVAILABLE;
++}
++
++Error GDScriptAnalyzer::resolve_interface() {
++	return ERR_UNAVAILABLE;
++}
++
++Error GDScriptAnalyzer::resolve_body() {
++	return ERR_UNAVAILABLE;
++}
++
++Error GDScriptAnalyzer::analyze() {
++	return ERR_UNAVAILABLE;
++}
++
++bool GDScriptAnalyzer::class_exists(const StringName &p_class) {
++	return ClassDB::class_exists(p_class) && ClassDB::is_class_exposed(p_class);
++}
++
++GDScriptCompiler::GDScriptCompiler() {}
++
++Error GDScriptCompiler::compile(const GDScriptParser *p_parser, GDScript *p_script, bool p_keep_state) {
++	return ERR_UNAVAILABLE;
++}
++
++String GDScriptCompiler::get_error() const {
++	return "This build only runs precompiled GDScript.";
++}
++
++int GDScriptCompiler::get_error_line() const {
++	return -1;
++}
++
++void GDScriptCompiler::make_scripts(GDScript *p_script, const GDScriptParser::ClassNode *p_class, bool p_keep_state) {}
++
++#endif // GDSCRIPT_NO_COMPILER
+diff --git a/modules/gdscript/gdscript_vm.cpp b/modules/gdscript/gdscript_vm.cpp
+index da78d9a..9e5f7b4 100644
+--- a/modules/gdscript/gdscript_vm.cpp
++++ b/modules/gdscript/gdscript_vm.cpp
+@@ -722,7 +722,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
+ 
+ 		OPCODE_SWITCH(_code_ptr[ip]) {
+ 			OPCODE(OPCODE_OPERATOR) {
+-				constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*_code_ptr);
++				constexpr int _pointer_size = 2; // PROTOTYPE: room for a 64-bit pointer on every platform, so bytecode is portable.
+ 				CHECK_SPACE(7 + _pointer_size);
+ 
+ 				bool valid;
+@@ -3804,6 +3804,15 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
+ 				int globalname_idx = _code_ptr[ip + 2];
+ 				GD_ERR_BREAK(globalname_idx < 0 || globalname_idx >= _global_names_count);
+ 				const StringName *globalname = &_global_names_ptr[globalname_idx];
++				// PROTOTYPE: fall back to the global array, by name.
++				if (const int *global_idx = GDScriptLanguage::get_singleton()->get_global_map().getptr(*globalname)) {
++					{
++						GET_VARIANT_PTR(global_dst, 0);
++						*global_dst = GDScriptLanguage::get_singleton()->get_global_array()[*global_idx];
++					}
++					ip += 3;
++					DISPATCH_OPCODE;
++				}
+ 				if (unlikely(!GDScriptLanguage::get_singleton()->get_named_globals_map().has(*globalname))) {
+ #ifdef DEBUG_ENABLED
+ 					err_text = vformat(R"(Trying to access non-existent autoload singleton "%s".)", *globalname);
+diff --git a/modules/gdscript/register_types.cpp b/modules/gdscript/register_types.cpp
+index d1ed8f9..3f49ba6 100644
+--- a/modules/gdscript/register_types.cpp
++++ b/modules/gdscript/register_types.cpp
+@@ -31,6 +31,7 @@
+ #include "register_types.h"
+ 
+ #include "gdscript.h"
++#include "gdscript_bytecode.h"
+ #include "gdscript_cache.h"
+ #include "gdscript_parser.h"
+ #include "gdscript_resource_format.h"
+@@ -138,6 +139,7 @@ static void _editor_init() {
+ void initialize_gdscript_module(ModuleInitializationLevel p_level) {
+ 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
+ 		GDREGISTER_CLASS(GDScript);
++		GDREGISTER_CLASS(GDScriptBytecodeWriter);
+ 		GDREGISTER_INTERNAL_CLASS(GDScriptFunctionState);
+ 
+ 		script_language_gd = memnew(GDScriptLanguage);
