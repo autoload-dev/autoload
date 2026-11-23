@@ -30,8 +30,10 @@ from tools.engine.configure import (
     platform_compile_options,
     prepare_custom_modules,
     render_unpinned,
+    requested_modules,
     require_expected_version,
     require_host_platform,
+    require_one_text_server,
     scalar_environment,
     source_build_facts,
     source_version,
@@ -82,6 +84,22 @@ class ModuleGraphTest(unittest.TestCase):
             graph = module_dependencies(root)
             self.assertEqual(module_closure(["movie"], graph), ["movie", "ogg", "vorbis"])
             self.assertEqual(module_closure(["gltf"], graph), ["gltf"])
+
+    def test_recipes_without_a_module_list_take_the_default_of_their_start(
+        self,
+    ) -> None:
+        self.assertEqual(requested_modules("", False), ["gdscript", "text_server_fb"])
+        # Godot's defaults already hold GDScript and text_server_adv.
+        self.assertEqual(requested_modules("", True), [])
+        self.assertEqual(requested_modules("gdscript,,svg", True), ["gdscript", "svg"])
+
+    def test_an_engine_with_both_text_servers_fails(self) -> None:
+        require_one_text_server(["gdscript", "text_server_adv", "freetype"])
+        require_one_text_server(["gdscript"])
+        with self.assertRaisesRegex(
+            ValueError, "one text server.*text_server_adv and text_server_fb"
+        ):
+            require_one_text_server(["text_server_fb", "gdscript", "text_server_adv"])
 
     def test_unknown_or_cyclic_dependencies_fail(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown Godot module"):

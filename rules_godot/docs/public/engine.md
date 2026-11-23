@@ -213,7 +213,10 @@ to templates only, such as `disable_3d`; an editor recipe rejects them.
 
 The module list is an allowlist: other modules start disabled, unless
 `default_modules = True` starts from the modules Godot enables by default for the platform,
-as its official builds do. Required
+as its official builds do. Without a list, a recipe enables `gdscript` and `text_server_fb`,
+or, with `default_modules = True`, only Godot's defaults, which include `text_server_adv`.
+An engine takes one text server: `text_server_adv` and `text_server_fb` define the same
+symbols, so a recipe that enables both fails. Required
 upstream dependencies are added transitively (`theora`, for example, needs
 `vorbis` and `ogg`); optional dependencies remain disabled. Editor builds also
 include upstream's required `freetype`, `regex` and `svg` modules. Misspelled

@@ -107,8 +107,7 @@ _SOURCE_BUILD_ATTRS = {
     "build_targets": attr.string_list(doc = "Optional editor/template_debug/template_release filter; empty selects all."),
     "ios_environments": attr.string_list(doc = "Optional device/simulator filter for iOS rows; empty selects both."),
     "enabled_modules": attr.string_list(
-        doc = "Enabled Godot modules; dependencies come from the source's module graph.",
-        default = ["gdscript", "text_server_fb"],
+        doc = "Enabled Godot modules and their default, as for godot_engine_build.",
     ),
     "default_modules": attr.bool(
         doc = "Also enable every module Godot enables by default for the platform, as its official builds do.",
