@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,12 +11,11 @@ from tools.setup.modules import (
     addon_modules,
     declarations,
     literals,
-    module_paths,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-# The schema every addons/<module>/addon.pkl amends. hk's Pkl evaluator applies its defaults
-# but not its types, so RG015 checks the values against it.
+# The schema every addons/<module>/addon.pkl amends. This module applies its defaults but
+# not its types, so RG015 checks the values against it.
 SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
 # The line an addon.pkl starts with, after comments, relative to its module directory.
 AMENDS = 'amends "../../tools/addons/Addon.pkl"'
@@ -46,7 +44,7 @@ def _schema_aliases(text: str) -> dict[str, tuple[str, ...]]:
 
 _SCHEMA_TEXT = SCHEMA.read_text()
 _ALIASES = _schema_aliases(_SCHEMA_TEXT)
-# The lanes hk.pkl runs and the hosts of the host lane, as the schema names them.
+# The lanes CI runs and the hosts of the host lane, as the schema names them.
 LANES = _ALIASES["Lane"]
 HOSTS = _ALIASES["Host"]
 # What an addon.pkl may set, and the defaults of what it may leave out.
@@ -134,22 +132,3 @@ def module_name(directory: str) -> str:
 def all_modules(root: Path = ROOT) -> tuple[AddonModule, ...]:
     """Every add-on module of the checkout, by directory."""
     return tuple(AddonModule.load(Path(path), root) for path in addon_modules(root))
-
-
-def consumers(root: Path = ROOT) -> dict[str, tuple[str, ...]]:
-    """
-    The modules of the checkout that use each add-on module through `local_path_override`,
-    by the add-on module's directory: what Bazel builds of an add-on beyond its own lanes.
-    A module's own examples are none.
-    """
-    users: dict[str, set[str]] = {}
-    for consumer in module_paths(root):
-        source = (root / consumer / "MODULE.bazel").read_text()
-        for declaration in declarations(source):
-            path = literals(declaration.keywords).get("path")
-            if declaration.kind != "local_path_override" or not isinstance(path, str):
-                continue
-            target = Path(os.path.normpath(Path(consumer) / path))
-            if target.parent == Path(ADDONS) and Path(consumer).parent != target:
-                users.setdefault(target.name, set()).add(consumer)
-    return {name: tuple(sorted(users[name])) for name in sorted(users)}

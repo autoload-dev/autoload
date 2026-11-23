@@ -158,7 +158,7 @@ specific to this repository.
 ## Documentation contracts
 
 The [verification policy](verification.md) owns execution timing;
-[selection and lanes](verification-platforms.md) owns check selection.
+[verification lanes](verification-platforms.md) own the lanes.
 The documentation checker covers complete module and public target inventories, evaluated
 API descriptions, primary ownership, rendered symbols, internal boundaries and committed
 reference freshness. New modules must be explicitly classified in `modules.bzl`, including

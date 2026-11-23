@@ -29,8 +29,8 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   documents what a module declares: the lanes that verify it, the hosts of its host lane and
   its test operations, such as `lanes = List("host")` and `hosts = List("macos")`. A module
   without the `android` and `ios` lanes builds no application: its examples have no `app`,
-  no Android SDK and no Maven graph. hk.pkl, the lanes and the conventions read it; nothing
-  outside the module lists the module.
+  no Android SDK and no Maven graph. CI's plan, the lanes and the conventions read it;
+  nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
@@ -40,10 +40,6 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   like an external application (`local_path_override` to `..`) and the rules of this
   repository (`local_path_override` to `../../../rules_godot`), so an add-on always builds
   against the rules it is changed with.
-- A module of this checkout that uses an add-on module through `local_path_override`, such
-  as `rules_godot/examples/` and `rules_godot/tests/` with autoload_gdunit, is its consumer:
-  `mise run addons:generate` writes them to `addons/consumers.pkl`, and hk.pkl selects the
-  consumer's tasks for changes to the add-on module but its `examples/`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -75,9 +71,8 @@ mise run addon:ios <module>       # each example project's app for the iOS Simul
 `host` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
-what they use; the release archive leaves them out with the examples. CI selects a module's
-lanes for changes in its directory or the shared `addons/*.bazelrc`; `mise run
-addon:template <lane>` checks the template the same way.
+what they use; the release archive leaves them out with the examples. CI runs every module's
+lanes on every run; `mise run addon:template <lane>` checks the template the same way.
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
 `examples/signing/`, install with `xcrun devicectl` and check the log for crashes.

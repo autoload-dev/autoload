@@ -4,7 +4,7 @@ This repository is the Autoload monorepo: tooling and support for the Godot ecos
 component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module holds only the repository's own
-tooling in `tools/`: CI selection, add-on scaffolding, setup checks, formatting, linting and
+tooling in `tools/`: CI planning, add-on scaffolding, setup checks, formatting, linting and
 the conventions check. A component's builds never load files from the root's `tools/`; only
 the ruleset's own maintenance tools may use them, through a development dependency on the root
 module (`rules_godot/MODULE.bazel`).
@@ -46,16 +46,14 @@ From the repository root:
 
 ```sh
 mise run setup                            # once per clone: install hooks
-hk check                                  # selected checks for uncommitted changes
-hk check --plan --from-ref origin/main     # preview selection for the whole branch
-hk check --from-ref origin/main            # check branch changes, including committed work
+hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>  # offload a large task to BuildBuddy
 ```
 
 `mise tasks` lists available workflows. Use `mise exec --` before direct commands if mise is
 not active in your shell. For missing prerequisites, read [toolchain setup](docs/internal/verification-recipes.md#toolchains).
-For affected lanes or review readiness, read [selection and lanes](docs/internal/verification-platforms.md).
+For the lanes and review readiness, read [lanes](docs/internal/verification-platforms.md).
 BuildBuddy is a regular option for builds and tests; choose between local and remote runs
 with [when remote execution pays off](docs/internal/verification-recipes.md#when-remote-execution-pays-off).
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read

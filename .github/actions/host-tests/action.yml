@@ -1,14 +1,14 @@
 name: Run host tests
 description: >-
-  Set up the repository and run the host lane's selected tasks on this
+  Set up the repository and run the host lane's planned tasks on this
   runner's host. Run it after the checkout.
 
 inputs:
   tasks:
-    description: JSON array of the host lane's selected mise tasks.
+    description: JSON array of the host lane's planned mise tasks.
     required: true
   android:
-    description: Whether a selected task needs the Android SDK, as the plan says for its job.
+    description: Whether a planned task needs the Android SDK, as the plan says for its job.
     default: "true"
 
 runs:
@@ -25,7 +25,7 @@ runs:
     - name: Run the regression module's host set
       if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
-      run: python3 tools/ci/verification.py run '["test:regressions"]'
+      run: python3 -m tools.ci.verification run '["test:regressions"]'
     - name: Require a regression host set without Android tools
       if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
@@ -42,7 +42,7 @@ runs:
       shell: bash
       env:
         TASKS: ${{ inputs.tasks }}
-      run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
+      run: python3 -m tools.ci.verification run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
     - name: Save Bazel downloads
       if: ${{ !cancelled() }}
       uses: ./.github/actions/setup/save-downloads

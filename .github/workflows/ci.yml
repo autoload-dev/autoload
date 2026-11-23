@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # The merge queue runs every selected lane on the result of the merge. Main
+  # The merge queue runs every lane on the result of the merge. Main
   # then receives that commit unchanged, so a push to main runs nothing again.
   merge_group:
   workflow_dispatch:
@@ -10,8 +10,9 @@ on:
 permissions:
   contents: read
 
-# hk.pkl selects tasks for both local verification and CI. The selection job
-# avoids provisioning runners for unrelated changes. The jobs that need a macOS
+# Every run runs every lane; Bazel's caches keep unchanged work cheap. The plan
+# job (tools/ci/verification.py) assigns the lanes' tasks to the jobs and their
+# hosts, and leaves the source engines to their schedule. The jobs that need a macOS
 # runner run on the self-hosted macos-ci runners, which keep their caches
 # between jobs. Policy: docs/internal/verification-platforms.md#apple-lanes.
 
@@ -26,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  selection:
+  plan:
     name: Plan
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
@@ -46,21 +47,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
-      - name: Set up selection tools
+      - name: Set up planning tools
         uses: ./.github/actions/setup
         with:
           bazel: "false"
-      - name: Select verification tasks
+      - name: Plan verification tasks
         id: plan
-        run: python3 tools/ci/verification.py plan
+        run: python3 -m tools.ci.verification plan
 
   formatting:
     name: Source quality
-    needs: selection
-    if: needs.selection.outputs.formatting != '[]'
+    needs: plan
+    if: needs.plan.outputs.formatting != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.formatting }}
+      VERIFICATION_TASKS: ${{ needs.plan.outputs.formatting }}
     timeout-minutes: 10
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -71,14 +71,14 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Check source quality and setup contracts
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
 
   api-docs:
     name: API documentation
-    needs: selection
-    if: needs.selection.outputs.api_docs != '[]'
+    needs: plan
+    if: needs.plan.outputs.api_docs != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.api_docs }}
+      VERIFICATION_TASKS: ${{ needs.plan.outputs.api_docs }}
     timeout-minutes: 15
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -89,12 +89,12 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Check API docs
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
 
   tests-linux:
     name: Tests (Linux)
-    needs: selection
-    if: needs.selection.outputs.tests_linux != '[]'
+    needs: plan
+    if: needs.plan.outputs.tests_linux != '[]'
     timeout-minutes: 30
     # Uncached Godot imports and exports are CPU-bound; 4 vCPUs ran 4 at a time.
     runs-on: blacksmith-8vcpu-ubuntu-2404
@@ -106,13 +106,13 @@ jobs:
       - name: Run host tests
         uses: ./.github/actions/host-tests
         with:
-          tasks: ${{ needs.selection.outputs.tests_linux }}
-          android: ${{ needs.selection.outputs.tests_linux_android }}
+          tasks: ${{ needs.plan.outputs.tests_linux }}
+          android: ${{ needs.plan.outputs.tests_linux_android }}
 
   tests-macos:
     name: Tests (macOS)
-    needs: selection
-    if: needs.selection.outputs.tests_macos != '[]'
+    needs: plan
+    if: needs.plan.outputs.tests_macos != '[]'
     timeout-minutes: 30
     runs-on: macos-ci
     steps:
@@ -123,15 +123,15 @@ jobs:
       - name: Run host tests
         uses: ./.github/actions/host-tests
         with:
-          tasks: ${{ needs.selection.outputs.tests_macos }}
-          android: ${{ needs.selection.outputs.tests_macos_android }}
+          tasks: ${{ needs.plan.outputs.tests_macos }}
+          android: ${{ needs.plan.outputs.tests_macos_android }}
 
   android:
     name: Android
-    needs: selection
-    if: needs.selection.outputs.android != '[]'
+    needs: plan
+    if: needs.plan.outputs.android != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.android }}
+      VERIFICATION_TASKS: ${{ needs.plan.outputs.android }}
     timeout-minutes: 60
     # Uncached Godot, Java and dex actions are CPU-bound, as in Tests (Linux).
     runs-on: blacksmith-8vcpu-ubuntu-2404
@@ -145,14 +145,14 @@ jobs:
         with:
           android-cache: "true"
       - name: Build and inspect apps
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
 
   ios:
     name: iOS
-    needs: selection
-    if: needs.selection.outputs.ios != '[]'
+    needs: plan
+    if: needs.plan.outputs.ios != '[]'
     env:
-      VERIFICATION_TASKS: ${{ needs.selection.outputs.ios }}
+      VERIFICATION_TASKS: ${{ needs.plan.outputs.ios }}
     timeout-minutes: 60
     runs-on: macos-ci
     steps:
@@ -163,7 +163,7 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Build and inspect apps
-        run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
@@ -171,12 +171,12 @@ jobs:
   verification:
     name: Finalize
     if: always()
-    needs: [selection, formatting, api-docs, tests-linux, tests-macos, android, ios]
+    needs: [plan, formatting, api-docs, tests-linux, tests-macos, android, ios]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require selected jobs to succeed
+      - name: Require the planned jobs to succeed
         env:
           VERIFICATION_NEEDS: ${{ toJSON(needs) }}
-        run: python3 tools/ci/verification.py verify
+        run: python3 -m tools.ci.verification verify

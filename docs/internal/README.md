@@ -18,7 +18,7 @@ Use the [public guides](../../rules_godot/docs/public/README.md) for supported c
 | [Architecture](architecture.md) | Ruleset layers and reuse boundaries | Implementation architecture changes |
 | [Verification policy](verification.md) | TDD, execution timing, evidence reuse and completion | Making or reviewing a change |
 | [Verification architecture](verification-architecture.md) | Test kinds, placement, boundaries, coverage and altitude | Adding a test or reviewing a change's tests |
-| [Verification selection and lanes](verification-platforms.md) | Representative matrix, changed-path selection and the Apple lanes | Operating-system, build or toolchain behavior changes or review readiness |
+| [Verification lanes](verification-platforms.md) | Representative matrix, the lanes CI runs and the Apple lanes | Operating-system, build or toolchain behavior changes or review readiness |
 | [Verification recipes and fixtures](verification-recipes.md) | Environment setup, API regeneration, runtime acceptance and fixture commands | The specific operation or fixture is needed |
 | [Repository development](development.md) | BUILD and resource-graph maintenance | Contributor workflows change |
 | [Convention inventory and enforcement design](conventions.md) | Existing policy sources, automation limits, framework research and catalogue candidates | Convention meanings or checker architecture changes |

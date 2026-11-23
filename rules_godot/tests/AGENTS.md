@@ -29,11 +29,7 @@ are `manual` and run in configuration suites: `test_suite` targets in `BUILD.baz
 `.bazelrc` configuration, run with that `--config`. The `android:apps` and `ios:apps`
 tasks run them; the
 [fixture catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks)
-lists the suites. To preview the work a branch selects:
-
-```sh
-hk --profile host check --plan --from-ref origin/main
-```
+lists the suites.
 
 For a reproducer or existing fixture, use the relevant entry in the
 [fixture catalogue](../../docs/internal/verification-recipes.md#regression-fixtures) and run

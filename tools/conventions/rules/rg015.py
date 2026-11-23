@@ -38,8 +38,8 @@ IMPORTS = {
     ".bazelrc": "import %workspace%/../module.bazelrc",
     "examples/.bazelrc": "import %workspace%/../../examples.bazelrc",
 }
-# The values addon.pkl may name, by property; hk's Pkl evaluator does not check the schema's
-# types.
+# The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
+# Pkl, so nothing else checks the schema's types.
 ADDON_VALUES = {"lanes": set(LANES), "hosts": set(HOSTS)}
 # What only a module with an application lane owns: its examples' Maven graph and their
 # provisioning profile.

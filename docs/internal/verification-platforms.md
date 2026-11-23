@@ -1,6 +1,6 @@
-# Verification selection and lanes
+# Verification lanes
 
-Read this page when selecting the lanes a change needs, preparing a change for review, or changing
+Read this page when deciding which lanes a change needs locally, preparing a change for review, or changing
 verification tooling. The [verification policy](verification.md) owns timing, TDD and reuse;
 [recipes](verification-recipes.md) describe setup and individual fixtures.
 
@@ -53,62 +53,33 @@ archive, generator and build contracts; changing an extension API baseline requi
 compatibility checks. Package/symbol cases cover their specific contracts without replaying
 all source suites in every release configuration.
 
-## Change selection and execution
+## Lanes and execution
 
-[`hk.pkl`](../../hk.pkl) owns changed-path selection, [`mise.toml`](../../mise.toml) owns the
-commands, and [CI](../../.github/workflows/ci.yml) assigns execution environments. The CI planner
-reads hk's JSON plan; it has no separate path policy. It fails on unknown selected steps or
-statuses. A selection failure fails the Finalize job rather than appearing as
-an empty successful plan. The plan decides as much as it can before any job sets up: it
-leaves out a host lane's add-on tasks on a host their `addon.pkl` excludes, so no runner
-starts for them, and says whether a host job needs the Android SDK restored. A plan job
-installs only hk and Python. Local hooks and CI use complementary code and documentation
-convention tasks, selected from one rule list in mise. Mixed changes run each rule once;
-documentation-only changes do not load the code rules.
+CI runs every lane on every run: pull requests, the merge queue and a manual dispatch. Bazel's
+caches keep unchanged work cheap; a run in which every lane found its work cached took 2.5
+minutes with the Android job as its longest (November 2026), which no path selection would
+save. [`mise.toml`](../../mise.toml) owns the commands, and the
+[CI planner](../../tools/ci/verification.py) assigns them to jobs and hosts: mise's lane tasks,
+each add-on module's lanes as its `addon.pkl` names them and the add-on generator's self-test
+in every lane. The plan decides as much as it can before any job sets up: it leaves out a
+host lane's add-on tasks on a host their `addon.pkl` excludes, so no runner starts for them,
+and says whether a host job needs the Android SDK restored. A plan job installs only Python.
+A planning failure fails the Finalize job rather than appearing as an empty successful plan.
 
-| Changed scope | Normal selection | Additional scope only with a concrete reason |
-|---|---|---|
-| Markdown/instructions | Documentation conventions; API-reference edits also select API freshness | Behavior tests only if the described behavior itself is in question |
-| Python/Starlark/BUILD/configuration | Applicable source quality; host tests when selected | Lanes whose packaging, build or runtime contract is affected |
-| One example | That example's host suite; selected mobile package builds at the delivery boundary | Other examples only for shared dependencies; runtime acceptance for changed operating-system behavior |
-| Shared rules, engine/build inputs | Selected host, package, compatibility and cache checks | Extra CPUs or clean builds only for the changed contract |
-| One add-on module in `addons/<module>/` | Its own tasks in the lanes its `addon.pkl` names: `host:addon:<module>` (host, limited to its hosts, such as `host:addon:<module>@macos`), `android:addon:<module>` and `ios:addon:<module>` | None: rule changes alone do not select add-on lanes; a break shows in the module's next change |
-| The add-on generator, `tools/addons/` | Its self-test in every lane: `<lane>:addon-template` generates a module and runs that lane | The add-on modules' own lanes |
-| CI/toolchain configuration | Setup/selector tests, workflow/action validation, cleanup tests and affected non-host lanes | CI runner evidence when local tools cannot reproduce its setup |
-
-Path selection is conservative for shared rules and build inputs: the `core` list can select
-several lanes. It is a lane filter, not a second Bazel dependency graph. Within a lane,
-Bazel handles declared inputs and result reuse. When adding an example dependency across
-examples, update their selection together. Keep configuration-driven broadening at the
-review boundary, not in every edit/check invocation.
-
-The default `hk check` and pre-push run source quality, setup validation and the small
-selection regression suite where applicable. They do not enable lane profiles. To execute or preview an
-additional lane locally, enable its profile explicitly; use the same base for a branch-wide check:
-
-```sh
-hk --profile host check --plan --from-ref origin/main
-hk --profile host check --from-ref origin/main
-hk --profile source-engine check --step source-engine --from-ref origin/main
-hk --profile ios check --step ios --from-ref origin/main
-hk --profile android check --step android --from-ref origin/main
-```
-
-An explicit lane profile needs its lane's prerequisites; it must not silently succeed
-because it was invoked on an unsuitable host. `mise run test:full`, `mise run android` and
-`mise run ios` remain explicit full-lane commands. They are useful for broad investigations,
-not extra mandatory steps after a selected check. `mise run test:examples` runs all examples;
-`test:example:sqlite`, `test:example:platform_paths`, `test:example:app_auth`,
-`test:example:dart` and `test:example:lichtpost` select one.
+`hk check` runs the checks that need no lane machine: source quality, setup contracts, the
+conventions, the API reference and the repository tooling's tests. The pre-push hook runs the
+quick ones. To run a lane locally, run its task; it needs its lane's prerequisites and must
+not silently succeed because it was invoked on an unsuitable host. `mise run test:full`,
+`mise run android` and `mise run ios` run whole lanes. `mise run test:examples` runs all
+examples; `test:example:sqlite`, `test:example:platform_paths`, `test:example:app_auth`,
+`test:example:dart` and `test:example:lichtpost` run one.
 Each uses `--build_tests_only` over its example subtree, so new test targets are discovered
-automatically without building unrelated app targets. The full examples task discovers all
-example subtrees. Bazel still respects manual tags and platform compatibility.
+automatically without building unrelated app targets. Bazel still respects manual tags and
+platform compatibility.
 
-Add-on modules are selected only by their own directory and the settings all modules share
-(`addons/*.bazelrc`): `hk.pkl` finds them by their `addon.pkl` and runs the same generic
-tasks for each, `addon:host`, `addon:android` and `addon:ios` (`tools/addons/lanes.py`), from
-the module's `examples/`. The plan drops a host task from a workflow whose host the module's
-`addon.pkl` leaves out. Their iOS task follows the Apple-lane policy below.
+Each add-on module runs the same generic tasks, `addon:host`, `addon:android` and `addon:ios`
+(`tools/addons/lanes.py`), from the module's `examples/`, in the lanes its `addon.pkl` names.
+Their iOS task follows the Apple-lane policy below.
 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.
@@ -117,7 +88,7 @@ useful immediate feedback, without duplicating the whole CI suite.
 
 The source-engine lane is the most expensive one and the least likely to change with a
 commit, so pull requests, the merge queue and CI's dispatch leave it out
-(`SCHEDULED_LANES` in `tools/ci/verification.py`), even when a change selects it. The
+(`SCHEDULED_LANES` in `tools/ci/verification.py`). The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
 `mise run source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
@@ -133,8 +104,8 @@ source-built engine join them in `source-engine:full`.
 The lanes that need a macOS runner are the Apple lanes: the host tests on macOS, the apps
 with source-built engines and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
-their tools and Bazel caches on their own disk between jobs. CI runs every selected Apple
-lane like the other lanes, on pull requests and in the merge queue. A pull request from a
+their tools and Bazel caches on their own disk between jobs. CI runs the Apple lanes like the
+other lanes, on pull requests and in the merge queue. A pull request from a
 fork runs no Apple lane: the VM also holds caches and the BuildBuddy executor's key, so a
 fork's code reaches it only in the merge queue. CI's `Finalize` is the
 merge queue's required check: a pull request whose lanes fail there leaves the queue and
@@ -143,8 +114,6 @@ managed in the repository settings. Main receives the merge group's commit uncha
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
 caches that later runs read, such as the Linux jobs' mise tools: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
-group's entries. Pure Markdown changes select no Apple lane. A manual dispatch runs all
-lanes, the Apple lanes included.
-`hk check --plan --from-ref origin/main` shows the selection, as does the Plan job.
+group's entries. The Plan job shows each job's tasks.
 
 Each workflow keeps job identities and a final result even when unrelated lanes are skipped.
