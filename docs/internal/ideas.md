@@ -42,7 +42,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 
 ### Avoid cache-mount holders instead of killing them
 
-- `.github/actions/setup/stop-bazel/post.js:55-96` kills every holder of the sticky-disk
+- `.github/actions/setup/stop-bazel/post.js:125-166` kills every holder of the sticky-disk
   mount with `sudo fuser -k`.
 - Idea: keep the repository contents cache off the mount and bound nested Bazel servers with
   `--max_idle_secs`.

@@ -1,127 +1,121 @@
-const { spawn } = require("node:child_process");
+const { execFile } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
+const { promisify } = require("node:util");
+const { releaseCache } = require("./cache");
+const { tool } = require("./tool");
 
-const listed = (process.env["INPUT_BAZEL-MODULES"] || ".")
-  .split(/\r?\n/)
-  .map((moduleRoot) => moduleRoot.trim())
-  .filter(Boolean);
+const shutdownSeconds = Number(process.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"]) || 30;
 
-// The modules this job built in, up to the depth of an add-on's examples: a build leaves the
-// bazel-out symlink in its module. The workflows need not list them, so a new or nested
-// module needs no workflow change. Bazel's own symlinks and hidden directories are no modules.
-const SEARCH_DEPTH = 3;
+// Bazel's default output user root on Linux: <cache>/bazel/_bazel_<user>, with the cache
+// directory and the user name resolved as the Bazel client resolves them.
+function outputUserRoot() {
+  const cache = process.env.XDG_CACHE_HOME || path.join(process.env.HOME || os.homedir(), ".cache");
+  return path.join(cache, "bazel", `_bazel_${process.env.USER || os.userInfo().username}`);
+}
 
-function builtModules(directory = ".", depth = 0) {
-  const absolute = path.join(process.env.GITHUB_WORKSPACE, directory);
+// Every output base under the output user root with a server PID file, whichever workspace
+// or job step started it: no workflow lists the modules it ran Bazel in. Bazel records the
+// workspace of an output base in its DO_NOT_BUILD_HERE file.
+function servers(root) {
   let entries;
   try {
-    entries = fs.readdirSync(absolute, { withFileTypes: true });
+    entries = fs.readdirSync(root, { withFileTypes: true });
   } catch {
     return [];
   }
-  const built = entries.some((entry) => entry.name === "bazel-out" && entry.isSymbolicLink());
-  const nested = depth < SEARCH_DEPTH
-    ? entries
-      .filter((entry) => entry.isDirectory() && !/^(bazel-|\.git$|node_modules$)/.test(entry.name))
-      .flatMap((entry) => builtModules(path.join(directory, entry.name), depth + 1))
-    : [];
-  return [...(built ? [directory] : []), ...nested];
-}
-
-const modules = [...new Set([...listed, ...builtModules()].map((moduleRoot) => path.normalize(moduleRoot)))];
-const shutdownSeconds = Number(process.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"]) || 30;
-
-// Resolves to the exit status, the terminating signal or "timeout". A SIGTERM-only
-// deadline can itself hang when the program ignores the signal. Kill only this
-// child, never unrelated processes on the machine.
-function tool(program, args, { visible = false, cwd, seconds = 3 } = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd, stdio: visible ? "inherit" : "ignore" });
-    let timedOut = false;
-    const deadline = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
-    }, seconds * 1000);
-    child.once("error", (error) => { clearTimeout(deadline); reject(error); });
-    child.once("close", (status, signal) => {
-      clearTimeout(deadline);
-      resolve(timedOut ? "timeout" : status ?? signal);
-    });
+  return entries.filter((entry) => entry.isDirectory()).flatMap((entry) => {
+    const outputBase = path.join(root, entry.name);
+    const read = (file) => {
+      try { return fs.readFileSync(path.join(outputBase, file), "utf8").trim(); }
+      catch { return ""; }
+    };
+    const pid = Number(read("server/server.pid.txt"));
+    if (!Number.isInteger(pid) || pid <= 0) return [];
+    return [{ outputBase, pid, workspace: read("DO_NOT_BUILD_HERE") }];
   });
 }
 
-async function shutdown(moduleRoot) {
-  console.log(`Stopping Bazel in ${moduleRoot} (limit ${shutdownSeconds}s)`);
+// The server still runs while its PID belongs to a process started for its output base:
+// Bazel passes --output_base to the server. A recycled PID never matches.
+async function running({ pid, outputBase }) {
+  let args;
+  try {
+    ({ stdout: args } = await promisify(execFile)("ps", ["-ww", "-o", "args=", "-p", String(pid)], {
+      timeout: 3000, killSignal: "SIGKILL",
+    }));
+  } catch {
+    return false;
+  }
+  return args.trim().split(/\s+/).includes(`--output_base=${outputBase}`);
+}
+
+async function exited(server, seconds) {
+  const deadline = Date.now() + seconds * 1000;
+  do {
+    if (!await running(server)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } while (Date.now() < deadline);
+  return false;
+}
+
+async function bazelShutdown({ outputBase, workspace }) {
+  const name = path.basename(outputBase);
+  if (!workspace || !fs.existsSync(workspace)) {
+    console.log(`::warning::workspace of Bazel server ${name} is gone; stopping its process`);
+    return false;
+  }
+  console.log(`Stopping Bazel server ${name} of ${workspace} (limit ${shutdownSeconds}s)`);
   let result;
   try {
-    result = await tool("bazel", ["--noblock_for_lock", "shutdown"], {
+    result = await tool("bazel", [`--output_base=${outputBase}`, "--noblock_for_lock", "shutdown"], {
       visible: true,
-      cwd: path.resolve(process.env.GITHUB_WORKSPACE, moduleRoot),
+      cwd: workspace,
       seconds: shutdownSeconds,
     });
   } catch (error) {
-    console.log(`::warning::bazel shutdown in ${moduleRoot} failed: ${error}`);
-    return;
+    result = error;
   }
   if (result === "timeout") {
-    console.log(`::warning::bazel shutdown in ${moduleRoot} timed out after ${shutdownSeconds}s; server may still be running; continuing cleanup`);
+    console.log(`::warning::bazel shutdown of ${workspace} timed out after ${shutdownSeconds}s; continuing cleanup`);
   } else if (result !== 0) {
-    console.log(`::warning::bazel shutdown in ${moduleRoot} failed: ${result}`);
-  } else {
-    console.log(`Bazel stopped in ${moduleRoot}`);
+    console.log(`::warning::bazel shutdown of ${workspace} failed: ${result}`);
   }
+  return result === 0;
 }
 
-// A successful module shutdown does not cover servers from isolated proof output
-// bases or orphaned workers after cancellation. Release the dedicated job mount,
-// including mapped executables/libraries, before Sticky Disk's post action runs.
-async function releaseCache(cachePath) {
-  let cache = path.resolve(cachePath);
-  if (cache === path.parse(cache).root) throw new Error("Refusing to clean filesystem root");
-  if (await tool("mountpoint", ["-q", "--", cache]) !== 0) {
-    console.log(`Repository cache ${cache} is not a mountpoint; skipping holder cleanup`);
-    return;
+// A graceful shutdown first, so the server stops its persistent workers. A server that
+// survives it, or whose workspace is gone, gets SIGTERM and then SIGKILL.
+async function shutdown(server) {
+  if (!await running(server)) return;
+  const stopped = (await bazelShutdown(server) && await exited(server, 3)) || await terminate(server);
+  console.log(stopped
+    ? `Bazel stopped: ${server.outputBase}`
+    : `::warning::Bazel server ${server.pid} of ${server.outputBase} is still running`);
+}
+
+async function terminate(server) {
+  for (const signal of ["SIGTERM", "SIGKILL"]) {
+    console.log(`Sending ${signal} to Bazel server ${server.pid} of ${server.outputBase}`);
+    try { process.kill(server.pid, signal); } catch (error) { if (error.code !== "ESRCH") throw error; }
+    if (await exited(server, 3)) return true;
   }
-  cache = fs.realpathSync(cache);
-  if (cache === path.parse(cache).root) throw new Error("Refusing to clean filesystem root");
-  if (await tool("sudo", ["-n", "fuser", "-V"], { visible: true }) !== 0) {
-    throw new Error("Cache cleanup requires noninteractive sudo and fuser");
-  }
-  // -M is a second, mandatory mountpoint guard on every filesystem-wide call.
-  // No lazy unmount: real holders must exit before the cache can be committed.
-  // PSmisc stops parsing entirely at -- instead of processing following paths.
-  // cache is canonical and absolute, so it cannot be interpreted as an option.
-  const fuser = (options, visible = false) => tool("sudo", ["-n", "fuser", "-m", "-M", ...options, cache], { visible });
-  const occupied = async () => {
-    const status = await fuser([]);
-    if (status !== 0 && status !== 1) throw new Error(`Cannot inspect cache holders: ${status}`);
-    return status === 0;
-  };
-  const waitForRelease = async () => {
-    const deadline = Date.now() + 2000;
-    do {
-      if (!await occupied()) return true;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } while (Date.now() < deadline);
-    return false;
-  };
-  if (await occupied()) {
-    console.log(`Processes still holding repository cache ${cache}:`);
-    await fuser(["-v"], true);
-    await fuser(["-k", "-TERM"], true);
-    if (!await waitForRelease()) {
-      console.log(`Force-stopping remaining repository cache holders in ${cache}`);
-      await fuser(["-k", "-KILL"], true);
-      if (!await waitForRelease()) throw new Error(`Repository cache remains busy: ${cache}`);
-    }
-  }
-  console.log(`Repository cache released: ${cache}`);
+  return false;
 }
 
 async function main() {
-  // Modules have independent servers, so one slow shutdown does not delay the others.
-  await Promise.all(modules.map(shutdown));
+  // A persistent runner keeps its Bazel servers warm between jobs on purpose; the
+  // workflow runs this step only on fresh Linux runners, and the step checks again.
+  if (process.env.RUNNER_OS !== "Linux" || process.env.PERSISTENT_RUNNER === "true") {
+    console.log("Not a fresh Linux runner; leaving Bazel servers running");
+    return;
+  }
+  const root = outputUserRoot();
+  const found = servers(root);
+  console.log(`Found ${found.length} Bazel server(s) under ${root}`);
+  // Servers are independent, so one slow shutdown does not delay the others.
+  await Promise.all(found.map(shutdown));
   const cache = process.env["INPUT_REPOSITORY-CACHE"];
   if (cache) await releaseCache(cache);
 }
