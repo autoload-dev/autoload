@@ -1340,11 +1340,12 @@ def _generator_rules(
 
 
 def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:
-    # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm.
+    # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm,
+    # and glslang includes SPIR-V's C++11 header spirv.hpp11, which hdrs does not accept.
     return (
         'cc_library(\n    name = "_headers",\n    visibility = ["//visibility:private"],\n    hdrs = glob(["**/*.h", "**/*.hh", "**/*.hpp", "**/*.hxx"], exclude = ["_scons/**"], allow_empty = True) + '
         f"{list(generated_headers)!r},\n"
-        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm"], exclude = ["_scons/**"], allow_empty = True) + '
+        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm", "**/*.hpp11"], exclude = ["_scons/**"], allow_empty = True) + '
         f"{list(included)!r},\n"
         '    includes = ["."],\n)'
     )
