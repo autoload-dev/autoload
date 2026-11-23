@@ -89,6 +89,15 @@ description = "Format Python, Starlark and Bazel files in place"
 # The formatters run here, so their binaries are resolved for this host (see shared.bazelrc).
 run = "bazel run --config=host-execution //tools/format"
 
+[tasks."api-docs"]
+description = "Regenerate the ruleset's API reference after changing its public API"
+dir = "rules_godot"
+run = "bazel run //tools/docs"
+
+[tasks."code-health"]
+description = "Report Code Health changes against origin/main; --only <path>... reviews files"
+run = "python3 -m tools.code_health.codescene --compare origin/main"
+
 [tasks.lint]
 description = "Check formatting, Buildifier lint, Ruff and ty, and the workflows"
 run = "python3 -m tools.ci.work run lint lint:ci"

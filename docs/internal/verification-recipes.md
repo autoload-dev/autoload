@@ -63,7 +63,7 @@ the critical path and action timings. Keep these files only for the investigatio
 ## Generated API reference
 
 For API source changes, regenerate with
-`bazel run //tools/docs`, inspect the generated diff and use the `docs` task for
+`mise run api-docs` (`bazel run //tools/docs` in `rules_godot/`), inspect the generated diff and use the `docs` work for
 freshness and contract enforcement. See [API reference maintenance](api-reference.md) for
 metadata and generation details. Do not hand-edit generated reference pages.
 

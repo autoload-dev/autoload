@@ -48,6 +48,8 @@ From the repository root:
 mise run setup                            # once per clone: install hooks
 hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
+mise run api-docs                         # after changing the ruleset's public API
+mise run code-health                      # before a pull request: Code Health against origin/main
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>  # offload a large task to BuildBuddy
 ```
 
@@ -118,11 +120,11 @@ boundaries. Call the matching CodeHealth MCP tool instead of guessing.
   re-run the review after each step. Stop when the targeted findings are substantially
   reduced and the score measurably improved; cosmetic edits are not progress.
 - **Starlark, GDScript and whole-repository scans.** The MCP tools reject Starlark (`.bzl`)
-  and GDScript (`.gd`). `python3 -m tools.code_health.codescene --only <path>...` reviews any files like
+  and GDScript (`.gd`). `mise run code-health -- --only <path>...` reviews any files like
   `code_health_review`, those included: it feeds them to the same CodeScene CLI as Python
   and exempts Bazel macros from the argument count, since their parameters mirror rule
-  attributes. Without `--only` it reports the whole checkout with hotspots; add
-  `--compare origin/main` for per-file deltas. It needs the CodeHealth MCP server to have
+  attributes. Without `--only` it reports the whole checkout with hotspots and the per-file deltas
+  against `origin/main` (`python3 -m tools.code_health.codescene` takes other refs). It needs the CodeHealth MCP server to have
   run once and a configured CodeScene token; report the gap when either is missing.
 
 <!-- entire-agent:begin -->
