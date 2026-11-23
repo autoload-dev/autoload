@@ -10,8 +10,9 @@ on:
 permissions:
   contents: read
 
-# hk.pkl selects tasks for both local verification and CI. The selection job
-# avoids provisioning runners for unrelated changes. The jobs that need a macOS
+# Every run runs every lane; Bazel's caches keep unchanged work cheap. The plan
+# job (tools/ci/verification.py) assigns the lanes' tasks to the jobs and their
+# hosts, and leaves the source engines to their schedule. The jobs that need a macOS
 # runner run on the self-hosted macos-ci runners, which keep their caches
 # between jobs. Policy: docs/internal/verification-platforms.md#apple-lanes.
 
@@ -46,12 +47,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
-      - name: Set up selection tools
+      - name: Set up planning tools
         uses: ./.github/actions/setup
         with:
           bazel: "false"
-      - name: Select verification tasks
+      - name: Plan verification tasks
         id: plan
         run: python3 tools/ci/verification.py plan
 

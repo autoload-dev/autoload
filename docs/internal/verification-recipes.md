@@ -2,7 +2,7 @@
 
 Use the section needed for the task at hand; this page is not a checklist to execute in full.
 The [verification policy](verification.md) determines when evidence is needed, and
-[selection and lanes](verification-platforms.md) determines the representative scope.
+[verification lanes](verification-platforms.md) determines the representative scope.
 
 - New environment or missing SDKs: [toolchains](#toolchains).
 - API source changes: [reference generation](#generated-api-reference).

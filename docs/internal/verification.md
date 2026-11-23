@@ -28,10 +28,11 @@ A local completion report can say CI/lane verification is pending. It is not a m
 claim. Do not wait for unrelated checks before asking a question. If no code or configuration
 changed, a read-only review does not require test execution.
 
-Use `hk check` for selected source-quality and setup-contract checks on uncommitted changes. After committing, use
-`hk check --from-ref origin/main` for the branch; a plain check on a clean checkout is not
-branch evidence. Inspect selection with `hk check --plan --from-ref origin/main` when useful.
-Do not repeat a successful branch check merely because its changes were committed.
+Use `hk check` for source quality, setup contracts, conventions, the API reference and the
+repository tooling's tests; the pre-push hook runs the quick part of it. It checks the working
+tree, so run it before a push. CI runs every lane on every run; to verify a lane's work
+locally, run its mise task. Do not repeat a successful check merely because its changes were
+committed.
 
 A result remains usable when its relevant source, dependencies, configuration and execution
 environment are unchanged. Bazel's normal cache is valid evidence; a cached test is not a
@@ -124,7 +125,7 @@ it does not need a new checked-in report or a checklist of every matrix cell.
 
 Default local checks are lightweight. Lane suites normally run in CI. When preparing a change for review or changing
 build/runtime/toolchain behavior, read only the relevant rows and fallback conditions in
-[selection and lanes](verification-platforms.md). Do not expand a test across a Cartesian
+[verification lanes](verification-platforms.md). Do not expand a test across a Cartesian
 product of hosts, targets, CPUs, engines or build modes.
 
 For setup, API regeneration or a particular regression fixture, use the corresponding

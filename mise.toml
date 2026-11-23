@@ -128,7 +128,7 @@ run = "bazel run //tools/docs:contracts -- --lane ios"
 description = "Check the repository conventions catalogue"
 run = "bazel run //tools/conventions"
 
-# Complementary rule sets for changed-path selection; `conventions` runs both.
+# Complementary rule sets; `conventions` runs both.
 [tasks."conventions:code"]
 description = "Check the conventions that apply to code and project structure"
 run = "bazel run //tools/conventions -- {% for rule in vars.documentation_conventions | split(pat=' ') %}--exclude-rule {{ rule }} {% endfor %}"
@@ -163,12 +163,11 @@ description = "Report Code Health of the checkout with the CodeScene CLI, Starla
 run = "python3 -m tools.code_health.codescene"
 
 [tasks."test:setup"]
-description = "Check Android provisioning, the modules' shared pins, the add-on consumers file and the mise environment"
+description = "Check Android provisioning, the modules' shared pins and the mise environment"
 run = [
   "python3 -m tools.android.requirements",
   "python3 -m tools.setup.pins",
-  "python3 -m tools.addons.generated --check",
-  "python3 -m unittest tools.android.mise_test tools.android.requirements_test tools.setup.modules_test tools.setup.pins_test tools.addons.new_test tools.addons.generated_test tools.addons.lanes_test",
+  "python3 -m unittest tools.android.mise_test tools.android.requirements_test tools.setup.modules_test tools.setup.pins_test tools.addons.new_test tools.addons.lanes_test",
 ]
 
 [tasks."test:gdextension"]
@@ -179,10 +178,6 @@ run = [
   "bazel test //smoke/linux/... //smoke/macos/...",
   "if [ \"$(uname -s)\" = Darwin ]; then bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc; fi",
 ]
-
-[tasks."test:selection"]
-description = "Test local and CI verification selection without building apps"
-run = "python3 -m unittest discover -s tools/ci -p '*_test.py'"
 
 [tasks."test:example:sqlite"]
 description = "Check and run the SQLite example's own tests"
@@ -216,7 +211,7 @@ run = "bazel test --build_tests_only //addons/dart/..."
 
 # The add-on modules' lanes, the same for every module in addons/ (tools/addons/lanes.py):
 # each runs from the module's examples/, which consumes the module and the rules of this
-# checkout. hk.pkl selects them per module from its addon.pkl.
+# checkout. CI runs them per module from its addon.pkl (tools/ci/verification.py).
 [tasks."addon:host"]
 description = "Run an add-on module's tests and build its example projects for the editor and desktop"
 usage = 'arg "<module>" help="The module directory below addons/"'
@@ -250,10 +245,6 @@ run = [
   "python3 -m tools.addons.new .selftest {% if usage.lane != 'android' %}--no-pin{% endif %}",
   "mise run addon:{{usage.lane}} .selftest",
 ]
-
-[tasks."addons:generate"]
-description = "Regenerate addons/consumers.pkl from the modules' local_path_overrides"
-run = "python3 -m tools.addons.generated"
 
 [tasks."test:examples"]
 description = "Check and run all examples through their own public test targets"

@@ -1,4 +1,8 @@
-"""Select CI work from hk's plan; path policy remains in hk.pkl."""
+"""
+Plan CI's work: every task of every lane, on every run. Bazel's caches make unchanged work
+cheap, so CI selects no paths; the lanes come from mise.toml's tasks and the add-on modules'
+manifests (addon.pkl).
+"""
 
 import argparse
 import json
@@ -7,10 +11,14 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+from tools.addons.modules import HOSTS as ADDON_HOSTS
+from tools.addons.modules import LANES as ADDON_LANES
+from tools.addons.modules import all_modules
+
 ROOT = Path(__file__).resolve().parents[2]
 
-# Every lane; the profile lanes are opt-in through the hk profile of the same name.
 LANES = ("quality", "docs", "host", "source-engine", "android", "ios")
+# The lanes of the tasks named for one: contracts:<lane> and an add-on module's tasks.
 PROFILE_LANES = ("host", "source-engine", "android", "ios")
 
 # CI's jobs, each with the lane whose tasks it runs and the host it runs them on: Linux
@@ -89,8 +97,8 @@ def verify_results(needs: dict) -> None:
             )
 
 
-# Examples whose suites need a lane other than host, as hk.pkl's exampleProfiles says:
-# Petri's editor and runtime are built from the engine sources.
+# Examples whose suites need a lane other than host: Petri's editor and runtime are built
+# from the engine sources.
 EXAMPLE_LANES = {"petri": "source-engine"}
 
 
@@ -102,7 +110,6 @@ TASK_LANES = {
             "lint:ci",
             "conventions:code",
             "conventions:docs",
-            "test:selection",
             "test:setup",
             "test:tools",
         ),
@@ -132,8 +139,8 @@ def _family_lane(task: str) -> str | None:
 def addon_task(task: str) -> tuple[str, str | None, tuple[str, ...]] | None:
     """
     Split an add-on task into its lane, its module and the hosts it is limited to, which
-    hk.pkl appends to the name: `host:addon:<module>@macos`. The self-test,
-    `<lane>:addon-template`, has no module.
+    its name ends in: `host:addon:<module>@macos`. The self-test, `<lane>:addon-template`,
+    has no module.
     """
     lane, separator, rest = task.partition(":addon")
     if not separator or lane not in PROFILE_LANES:
@@ -148,7 +155,7 @@ def addon_task(task: str) -> tuple[str, str | None, tuple[str, ...]] | None:
 
 
 def task_command(task: str) -> list[str]:
-    """The command of a selected task, as hk.pkl's step for it runs it."""
+    """The command of a planned task."""
     addon = addon_task(task)
     if addon is None:
         return ["mise", "run", task]
@@ -178,30 +185,43 @@ def lane_for(task: str) -> str:
     return lane
 
 
-def lane_plan(plan: dict) -> dict[str, list[str]]:
-    """Retain hk's order and fail closed on unfamiliar plan statuses or steps."""
+def addon_task_name(lane: str, module: str | None, hosts: tuple[str, ...]) -> str:
+    """
+    The task of an add-on module's lane, `<lane>:addon:<module>`, or of the generator's
+    self-test, `<lane>:addon-template`. A host lane limited to some hosts names them, so that
+    the plan leaves it out of other hosts' runners.
+    """
+    target = f":{module}" if module else "-template"
+    limited = lane == "host" and set(hosts) != set(ADDON_HOSTS)
+    return f"{lane}:addon{target}" + (f"@{','.join(hosts)}" if limited else "")
+
+
+def addon_tasks() -> list[str]:
+    """
+    Each add-on module's lanes, as its addon.pkl names them, and the generator's self-test
+    in every lane. The self-test's desktop build does the same on every host, so its host
+    lane runs on Linux only.
+    """
+    tasks = [
+        addon_task_name(lane, module.directory, module.hosts)
+        for module in all_modules(ROOT)
+        for lane in module.lanes
+    ]
+    return tasks + [
+        addon_task_name(lane, None, ("linux",) if lane == "host" else ADDON_HOSTS)
+        for lane in ADDON_LANES
+    ]
+
+
+def all_lanes(root: Path = ROOT) -> dict[str, list[str]]:
+    """Every task CI runs, by lane: mise.toml's lane tasks and the add-on modules' lanes."""
     lanes: dict[str, list[str]] = {name: [] for name in LANES}
-    for step in plan["steps"]:
-        status = step["status"]
-        if status == "skipped":
-            continue
-        if status != "included":
-            raise ValueError(f"Unexpected hk plan status: {status}")
-        task = step["name"]
+    for task in tomllib.loads((root / "mise.toml").read_text())["tasks"]:
+        if lane := TASK_LANES.get(task) or _family_lane(task):
+            lanes[lane].append(task)
+    for task in addon_tasks():
         lanes[lane_for(task)].append(task)
     return lanes
-
-
-def selection_args(event_name: str, event: dict) -> list[str]:
-    """Compare PR merge contents or a merge group; dispatch checks all."""
-    if event_name == "workflow_dispatch":
-        return ["--all"]
-    if event_name == "pull_request":
-        return ["--from-ref", event["pull_request"]["base"]["sha"], "--to-ref", "HEAD"]
-    if event_name == "merge_group":
-        # The group's parent: the base branch, or the group queued before this one.
-        return ["--from-ref", event["merge_group"]["base_sha"], "--to-ref", "HEAD"]
-    raise ValueError(f"Unsupported verification event: {event_name}")
 
 
 def run_tasks(tasks: object) -> None:
@@ -258,16 +278,10 @@ def plan_outputs(
 
 
 def write_plan() -> None:
-    """Write CI's selection for this run to GITHUB_OUTPUT."""
+    """Write CI's plan for this run to GITHUB_OUTPUT."""
     event_name = os.environ["GITHUB_EVENT_NAME"]
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
-    command = ["hk"]
-    for lane in PROFILE_LANES:
-        command.extend(["--profile", lane])
-    command.extend(["check", "--plan", "--json"])
-    command.extend(selection_args(event_name, event))
-    result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
-    lanes = without_scheduled_lanes(lane_plan(json.loads(result.stdout)))
+    lanes = without_scheduled_lanes(all_lanes())
     outputs = plan_outputs(lanes, excluded_hosts(event_name, event))
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.writelines(
@@ -279,7 +293,7 @@ def write_plan() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("plan", help="Write CI's selected tasks to GITHUB_OUTPUT")
+    commands.add_parser("plan", help="Write CI's planned tasks to GITHUB_OUTPUT")
     commands.add_parser("verify", help="Require CI's selected jobs to succeed")
     run = commands.add_parser("run", help="Run one selected JSON task array")
     run.add_argument("tasks")

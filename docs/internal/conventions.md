@@ -110,7 +110,7 @@ The existing enforcement has several owners:
 - Bazel analysis, project/resource rules, sidecar checks and existing behavior/artifact
   tests already enforce parts of dependency, resource and runtime correctness.
 - The [verification guideline](verification.md) owns when and where these checks run;
-  [mise tasks](../../mise.toml) and [hk selection](../../hk.pkl) implement that policy.
+  [mise tasks](../../mise.toml), [hk's hooks](../../hk.pkl) and the [CI planner](../../tools/ci/verification.py) implement that policy.
 
 A passing existing check does not imply that all layout or naming conventions are enforced.
 

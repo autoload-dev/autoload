@@ -7,7 +7,7 @@ description: >-
 
 inputs:
   bazel:
-    description: Set up runner tools (Bazelisk, Python, compilers), Bazel caching and cleanup; disable for selection-only jobs.
+    description: Set up runner tools (Bazelisk, Python, compilers), Bazel caching and cleanup; disable for the plan job.
     default: "true"
   bazel-modules:
     description: Newline-separated Bazel module directories to shut down at job end; every module a build ran in is shut down as well.
@@ -91,8 +91,8 @@ runs:
         cache: ${{ steps.runner.outputs.fresh }}
         cache_save_post: ${{ steps.runner.outputs.fresh }}
         cache_key_prefix: mise-${{ github.job }}
-        # A plan job needs only hk and Python, not Bazelisk.
-        install_args: ${{ inputs.bazel == 'false' && 'hk python' || '' }}
+        # A plan job needs only Python, not Bazelisk.
+        install_args: ${{ inputs.bazel == 'false' && 'python' || '' }}
         reshim: true
     - name: Record runner tool versions
       if: inputs.bazel == 'true'

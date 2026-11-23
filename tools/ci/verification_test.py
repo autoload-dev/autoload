@@ -1,4 +1,4 @@
-"""Regression tests for fail-closed CI selection and the assignment of tasks to lanes."""
+"""Regression tests for CI's plan of every lane and the assignment of tasks to jobs."""
 
 import unittest
 from pathlib import Path
@@ -8,13 +8,14 @@ from tools.ci.verification import (
     JOBS,
     LANES,
     SCHEDULED_LANES,
+    addon_task_name,
+    all_lanes,
     excluded_hosts,
     for_host,
-    lane_plan,
+    lane_for,
     output_name,
     plan_outputs,
     run_tasks,
-    selection_args,
     task_command,
     verify_results,
     without_scheduled_lanes,
@@ -96,73 +97,52 @@ class VerificationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failure"):
             verify_results(needs_of() | {"ios": {"result": "failure"}})
 
-    def test_documentation_does_not_request_lane_work(self) -> None:
-        lanes = lane_plan(
-            {
-                "steps": [
-                    {"name": "conventions:docs", "status": "included"},
-                    {"name": "android", "status": "skipped"},
-                    {"name": "ios", "status": "skipped"},
-                ]
-            }
-        )
-        self.assertEqual(lanes["quality"], ["conventions:docs"])
-        self.assertFalse(any(tasks for name, tasks in lanes.items() if name != "quality"))
-
-    def test_setup_validation_does_not_become_an_app_build(self) -> None:
-        lanes = lane_plan(
-            {
-                "steps": [
-                    {"name": "test:setup", "status": "included"},
-                    {"name": "lint:ci", "status": "included"},
-                ]
-            }
-        )
-        self.assertEqual(lanes["quality"], ["test:setup", "lint:ci"])
-        self.assertFalse(any(tasks for name, tasks in lanes.items() if name != "quality"))
-
-    def test_complementary_conventions_retain_local_selection(self) -> None:
-        lanes = lane_plan(
-            {
-                "steps": [
-                    {"name": "conventions:code", "status": "included"},
-                    {"name": "conventions:docs", "status": "included"},
-                    {"name": "test:example:sqlite", "status": "included"},
-                ]
-            }
-        )
-        self.assertEqual(lanes["quality"], ["conventions:code", "conventions:docs"])
-        self.assertEqual(lanes["host"], ["test:example:sqlite"])
-
-    def test_unknown_step_or_status_cannot_silently_drop_required_work(self) -> None:
-        for step in (
-            {"name": "new-check", "status": "included"},
-            {"name": "contracts:desktop", "status": "included"},
-            {"name": "desktop:addon:widget", "status": "included"},
-            {"name": "host:addon:", "status": "included"},
-            {"name": "host:addon-other", "status": "included"},
-            {"name": "ios", "status": "error"},
+    def test_every_run_plans_every_lane_but_the_scheduled_ones(self) -> None:
+        lanes = without_scheduled_lanes(all_lanes(ROOT))
+        self.assertEqual(lanes["source-engine"], [])
+        self.assertIn("lint", lanes["quality"])
+        self.assertEqual(lanes["docs"], ["docs"])
+        for task in (
+            "test:bazel",
+            "test:regressions",
+            "contracts:host",
+            "host:addon:gdunit",
         ):
-            with self.subTest(step=step), self.assertRaises(ValueError):
-                lane_plan({"steps": [step]})
+            self.assertIn(task, lanes["host"])
+        self.assertIn("host:addon-template@linux", lanes["host"])
+        self.assertIn("android", lanes["android"])
+        self.assertIn("ios:addon-template", lanes["ios"])
+        self.assertNotIn("test:example:petri", lanes["host"])
+        # A module without mobile lanes, such as autoload_gdunit, plans none.
+        self.assertNotIn("android:addon:gdunit", lanes["android"])
+
+    def test_unknown_tasks_have_no_lane(self) -> None:
+        for task in (
+            "new-check",
+            "contracts:desktop",
+            "desktop:addon:widget",
+            "host:addon:",
+        ):
+            with self.subTest(task=task), self.assertRaises(ValueError):
+                lane_for(task)
+
+    def test_a_host_lane_limited_to_some_hosts_names_them(self) -> None:
+        self.assertEqual(
+            addon_task_name("host", "widget", ("linux", "macos")), "host:addon:widget"
+        )
+        self.assertEqual(
+            addon_task_name("host", "widget", ("macos",)), "host:addon:widget@macos"
+        )
+        self.assertEqual(addon_task_name("ios", "widget", ("macos",)), "ios:addon:widget")
 
     def test_add_on_tasks_run_the_generic_add_on_tasks(self) -> None:
-        lanes = lane_plan(
-            {
-                "steps": [
-                    {"name": name, "status": "included"}
-                    for name in (
-                        "host:addon:widget",
-                        "android:addon:widget",
-                        "host:addon:gadget@macos",
-                        "ios:addon-template",
-                    )
-                ]
-            }
-        )
-        self.assertEqual(lanes["host"], ["host:addon:widget", "host:addon:gadget@macos"])
-        self.assertEqual(lanes["android"], ["android:addon:widget"])
-        self.assertEqual(lanes["ios"], ["ios:addon-template"])
+        for task, lane in (
+            ("host:addon:widget", "host"),
+            ("android:addon:widget", "android"),
+            ("host:addon:gadget@macos", "host"),
+            ("ios:addon-template", "ios"),
+        ):
+            self.assertEqual(lane_for(task), lane)
         self.assertEqual(
             task_command("android:addon:widget"),
             ["mise", "run", "addon:android", "widget"],
@@ -238,23 +218,6 @@ class VerificationTest(unittest.TestCase):
                 "ios": ["ios:addon:widget"],
             },
         )
-
-    def test_pr_uses_base_and_checked_out_merge(self) -> None:
-        self.assertEqual(
-            selection_args("pull_request", {"pull_request": {"base": {"sha": "base"}}}),
-            ["--from-ref", "base", "--to-ref", "HEAD"],
-        )
-
-    def test_merge_group_uses_its_parent_and_checked_out_head(self) -> None:
-        self.assertEqual(
-            selection_args("merge_group", {"merge_group": {"base_sha": "parent"}}),
-            ["--from-ref", "parent", "--to-ref", "HEAD"],
-        )
-
-    def test_dispatch_checks_all(self) -> None:
-        self.assertEqual(selection_args("workflow_dispatch", {}), ["--all"])
-        with self.assertRaises(ValueError):
-            selection_args("unrecognized", {})
 
 
 if __name__ == "__main__":
