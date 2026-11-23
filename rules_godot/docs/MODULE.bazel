@@ -51,10 +51,9 @@ single_version_override(
     patches = ["//tools/docs:rules_android_ndk_doc_visibility.patch"],
 )
 
-# The ruleset's Maven installation and the tool repositories of rules_android and
-# bazel_worker_java, pinned as the ruleset pins them. Each module that roots a graph with the
-# ruleset names a lock file for them; this one reuses the ruleset's, since it adds no
-# artifacts. Nothing here fetches them: only their extension is evaluated.
+# The ruleset's Maven installation. Protobuf contributes to it with a lock file of its own,
+# so the root module names the one lock file; this one reuses the ruleset's, since it adds no
+# artifacts. Nothing here fetches it: only its extension is evaluated.
 bazel_dep(name = "rules_jvm_external", version = "7.2")
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
@@ -72,39 +71,6 @@ maven.install(
     ],
     resolver = "gradle",
     use_starlark_android_rules = True,
-)
-maven.install(
-    name = "rules_android_maven",
-    known_contributing_modules = ["rules_android"],
-    lock_file = "@autoload_rules_godot//:rules_android_maven_install.json",
-    repositories = [
-        "https://maven-central.storage-download.googleapis.com/maven2",
-        "https://maven.google.com",
-        "https://repo1.maven.org/maven2",
-    ],
-    resolver = "maven",
-)
-maven.install(
-    name = "android_ide_common_30_1_3",
-    known_contributing_modules = ["rules_android"],
-    lock_file = "@autoload_rules_godot//:android_ide_common_30_1_3_install.json",
-    repositories = [
-        "https://maven-central.storage-download.googleapis.com/maven2",
-        "https://maven.google.com",
-        "https://repo1.maven.org/maven2",
-    ],
-    resolver = "maven",
-)
-maven.install(
-    name = "bazel_worker_maven",
-    known_contributing_modules = ["bazel_worker_java"],
-    lock_file = "@autoload_rules_godot//:bazel_worker_maven_install.json",
-    repositories = [
-        "https://maven-central.storage-download.googleapis.com/maven2",
-        "https://maven.google.com",
-        "https://repo1.maven.org/maven2",
-    ],
-    resolver = "maven",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
