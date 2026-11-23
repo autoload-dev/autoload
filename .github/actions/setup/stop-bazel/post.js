@@ -55,8 +55,8 @@ function alive(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (error) {
-    return error.code !== "ESRCH";
+  } catch {
+    return false;
   }
 }
 
@@ -90,7 +90,12 @@ async function bazelShutdown({ outputBase, workspace }) {
 // A graceful shutdown first, so the server stops its persistent workers. A server that
 // survives it, or whose workspace is gone, gets SIGTERM and then SIGKILL.
 async function shutdown(server) {
-  if (!await serves(server)) return;
+  if (!await serves(server)) {
+    if (alive(server.pid)) {
+      console.log(`::warning::PID ${server.pid} of ${server.outputBase} is no Bazel server of that output base; leaving it alone`);
+    }
+    return;
+  }
   // Only a successful shutdown is worth waiting for before the signals.
   const graceful = await bazelShutdown(server);
   const stopped = (graceful && await exited(server, 3)) || await terminate(server);
@@ -99,10 +104,13 @@ async function shutdown(server) {
     : `::warning::Bazel server ${server.pid} of ${server.outputBase} is still running`);
 }
 
+// The server may have exited during its shutdown and its PID been reused, so each signal
+// first checks again that the PID is still the server's.
 async function terminate(server) {
   for (const signal of ["SIGTERM", "SIGKILL"]) {
+    if (!await serves(server)) return true;
     console.log(`Sending ${signal} to Bazel server ${server.pid} of ${server.outputBase}`);
-    try { process.kill(server.pid, signal); } catch (error) { if (error.code !== "ESRCH") throw error; }
+    try { process.kill(server.pid, signal); } catch { /* exited meanwhile */ }
     if (await exited(server, 3)) return true;
   }
   return false;

@@ -135,6 +135,7 @@ test("leaves a stale PID alone when its process is no server of that output base
   fs.writeFileSync(path.join(f.userRoot, "recycled/DO_NOT_BUILD_HERE"), f.workspace("one"));
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /::warning::PID \d+ of .*recycled is no Bazel server/);
   assert.deepEqual(f.calls(), []);
   assert.equal(alive(pid), true);
 });
