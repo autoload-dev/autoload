@@ -1210,7 +1210,43 @@ def _enabled_modules(
             "Godot disabled requested modules for this configuration: "
             + ", ".join(missing)
         )
+    require_one_text_server(enabled)
     return enabled
+
+
+# The modules a recipe names when it names none and does not start from Godot's defaults.
+DEFAULT_MODULES = ("gdscript", "text_server_fb")
+
+# Godot's text servers, which each define the same SVG-in-OpenType symbols.
+TEXT_SERVERS = ("text_server_adv", "text_server_fb")
+
+
+def requested_modules(modules: str, default_modules: bool) -> list[str]:
+    """
+    Return the modules a recipe asks for: those it names, or else the ruleset's default.
+
+    A recipe that starts from Godot's defaults takes no default of the ruleset's: those
+    already include GDScript and a text server, and a second text server cannot link.
+    """
+    named = [module for module in modules.split(",") if module]
+    return named or ([] if default_modules else list(DEFAULT_MODULES))
+
+
+def require_one_text_server(modules: Iterable[str]) -> None:
+    """
+    Fail for an engine with more than one of Godot's text servers.
+
+    Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
+    object, so the application's link would fail on them.
+    """
+    servers = sorted(set(modules) & set(TEXT_SERVERS))
+    if len(servers) > 1:
+        raise ValueError(
+            "An engine links one text server, but this configuration enables "
+            + " and ".join(servers)
+            + ": name one in enabled_modules, or leave text_server_fb out when "
+            + "default_modules starts from Godot's defaults"
+        )
 
 
 def _library_option(library: object) -> str | None:
@@ -1781,7 +1817,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--environment", choices=("", "device", "simulator"), default="")
     parser.add_argument("--expected-version", default="")
-    parser.add_argument("--modules", default="gdscript,text_server_fb")
+    # Empty: the ruleset's default, see requested_modules.
+    parser.add_argument("--modules", default="")
     # Start from the modules upstream enables by default, as Godot's official builds do.
     parser.add_argument("--default-modules", action="store_true")
     parser.add_argument("--custom-modules", action="append", default=[])
@@ -1820,7 +1857,7 @@ def _parse_arguments(argv: Sequence[str] | None) -> argparse.Namespace:
         raise ValueError(
             f"build_name must be letters, digits and underscores: {args.build_name!r}"
         )
-    args.modules = [module for module in args.modules.split(",") if module]
+    args.modules = requested_modules(args.modules, args.default_modules)
     return args
 
 

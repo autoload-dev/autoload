@@ -141,8 +141,12 @@ godot_engine_build = repository_rule(
             values = ["", "device", "simulator"],
         ),
         "enabled_modules": attr.string_list(
-            doc = "Enabled Godot modules; their dependencies come from the source's module graph.",
-            default = ["gdscript", "text_server_fb"],
+            doc = """
+            Enabled Godot modules; their dependencies come from the source's module graph.
+            Empty selects `gdscript` and `text_server_fb`, or nothing beyond Godot's defaults
+            with `default_modules`. An engine takes one of `text_server_adv` and
+            `text_server_fb`.
+            """,
         ),
         "default_modules": attr.bool(
             doc = """
@@ -287,7 +291,7 @@ def godot_engine_source_build(
         cpus = [],
         build_targets = [],
         ios_environments = [],
-        enabled_modules = ["gdscript", "text_server_fb"],
+        enabled_modules = [],
         default_modules = False,
         custom_modules = {},
         patches = [],
