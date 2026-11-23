@@ -741,7 +741,8 @@ each states a different fact:
 
 A library the extension's code links, such as a Swift backend or an Objective-C SDK, is
 none of these: it belongs in the C++ `deps` of the library, and applications link and
-bundle it from there. A dynamic framework the extension library loads, which a vendor's
+bundle it from there; on iOS they embed a dynamic framework among them once, however many
+extensions link it. A dynamic framework the extension library loads, which a vendor's
 descriptor lists under `[dependencies]`, is a `bundle_only` import in the extension's
 `platform_deps`: applications embed it without linking it, see
 [dynamic frameworks](gdextension.md#dynamic-frameworks).
