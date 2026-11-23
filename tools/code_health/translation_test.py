@@ -125,6 +125,20 @@ class StarlarkTranslationTest(unittest.TestCase):
         self.assertEqual(text, translation.source)
         self.assertEqual([], translation.macros)
 
+    def test_macro_naming_targets_after_a_variable_derived_from_its_name_is_exempt(
+        self,
+    ) -> None:
+        self.assertEqual(
+            ["inputs"],
+            self.macros("""
+                def inputs(name, a, b, c, d):
+                    prefix = name.replace("/", "_") + ".inputs"
+                    native.filegroup(name = prefix, srcs = [a, b, c, d])
+                    native.filegroup(name = "%s.more" % prefix)
+                    return struct(prefix = prefix)
+                """),
+        )
+
     def test_symbolic_macro_implementation_with_inherited_attributes_is_exempt(
         self,
     ) -> None:

@@ -123,9 +123,18 @@ def first_parameter(lines: list[str], index: int) -> str:
     return parameter.strip()
 
 
-TARGET_NAME = re.compile(
-    r"\bname\s*=\s*(?:name\b|[^,\n]*%\s*name\b|[^,\n]*\bname\s*\+|[^,\n]*\+\s*name\b)"
-)
+def target_named_after(variable: str) -> re.Pattern[str]:
+    """A `name = ...` argument whose value is the variable or a string built from it."""
+    v = re.escape(variable)
+    return re.compile(
+        rf"\bname\s*=\s*(?:{v}\b|[^,\n]*%\s*{v}\b|[^,\n]*\b{v}\s*\+|[^,\n]*\+\s*{v}\b)"
+    )
+
+
+TARGET_NAME = target_named_after("name")
+# A local variable assigned from an expression that uses `name`, such as
+# `prefix = name.replace("/", "_")`.
+DERIVED_NAME = re.compile(r"^\s+(\w+)\s*=\s*[^=\n]*\bname\b", re.MULTILINE)
 CALL = re.compile(r"\b(\w+)\s*\(")
 SYMBOLIC_MACRO = re.compile(r"=\s*macro\(")
 IMPLEMENTATION = re.compile(r"\bimplementation\s*=\s*(\w+)")
@@ -211,6 +220,16 @@ def name_passing_macros(
         macros |= found
 
 
+def declares_target(body: str) -> bool:
+    """Whether a function body declares a target named after `name`, directly or through
+    a local variable derived from it."""
+    derived = set(DERIVED_NAME.findall(body)) - {"name"}
+    return any(
+        pattern.search(body)
+        for pattern in [TARGET_NAME, *map(target_named_after, sorted(derived))]
+    )
+
+
 def macros_of(lines: list[str]) -> dict[str, int]:
     """Bazel macros: functions whose first parameter is `name` and that declare
     a target with it (`name = name...`), pass it on to another macro, or implement
@@ -222,9 +241,7 @@ def macros_of(lines: list[str]) -> dict[str, int]:
         if re.match(r"name\b", first_parameter(lines, function[0]))
     }
     # Functions of any signature that declare targets, e.g. _executable(rule_, name, ...).
-    declarers = {
-        name for name, (_, body) in functions.items() if TARGET_NAME.search(body)
-    }
+    declarers = {name for name, (_, body) in functions.items() if declares_target(body)}
     declarers |= symbolic_macro_implementations(lines)
     macros = (declarers & set(candidates)) | table_driven_macros(candidates)
     macros = name_passing_macros(candidates, declarers, macros)
