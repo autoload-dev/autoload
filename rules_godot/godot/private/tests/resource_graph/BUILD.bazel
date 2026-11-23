@@ -7,7 +7,7 @@ _FIXTURE = "//godot/private/tests/resource_graph/fixtures/project_with_generated
 # project's edges and finds each of them declared.
 py_test(
     name = "resource_graph_infers_declared_edges_test",
-    size = "small",
+    size = "medium",
     srcs = ["resource_graph_test.py"],
     args = ["$(rootpath %sgraph)" % _FIXTURE],
     data = [_FIXTURE + "graph"],

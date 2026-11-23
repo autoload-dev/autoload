@@ -7,7 +7,7 @@ load(":engines.bzl", "engine_test")
 
 godot_test(
     name = "godot_cpp_extension_loads_in_stable_engine_test_run",
-    size = "small",
+    size = "medium",
     env = {"EXPECTED_ENGINE_VERSION": "4.7.2"},
     pack = "//godot/extension/tests/compatibility/fixtures/godot_cpp_extension_project:pack",
     tags = ["manual"],
@@ -15,14 +15,14 @@ godot_test(
 
 engine_test(
     name = "godot_cpp_extension_loads_in_stable_engine_test",
-    size = "small",
+    size = "medium",
     engine = "stable",
     test = ":godot_cpp_extension_loads_in_stable_engine_test_run",
 )
 
 godot_test(
     name = "godot_cpp_extension_loads_in_beta_engine_test_run",
-    size = "small",
+    size = "medium",
     env = {"EXPECTED_ENGINE_VERSION": "4.8.0-beta1"},
     pack = "//godot/extension/tests/compatibility/fixtures/godot_cpp_extension_project:pack",
     tags = ["manual"],
@@ -30,7 +30,7 @@ godot_test(
 
 engine_test(
     name = "godot_cpp_extension_loads_in_beta_engine_test",
-    size = "small",
+    size = "medium",
     engine = "beta",
     test = ":godot_cpp_extension_loads_in_beta_engine_test_run",
 )

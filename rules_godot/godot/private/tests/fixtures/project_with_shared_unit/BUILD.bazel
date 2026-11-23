@@ -101,7 +101,7 @@ godot_pack(
 
 godot_test(
     name = "test",
-    size = "small",
+    size = "medium",
     project = ":project",
     tags = ["manual"],
     deps = [":main"],
@@ -109,7 +109,7 @@ godot_test(
 
 godot_test(
     name = "home_test",
-    size = "small",
+    size = "medium",
     project = ":project",
     tags = ["manual"],
     deps = [":home"],
@@ -117,7 +117,7 @@ godot_test(
 
 godot_test(
     name = "other_home_test",
-    size = "small",
+    size = "medium",
     project = ":other_project",
     tags = ["manual"],
     deps = [":home"],

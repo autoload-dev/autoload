@@ -38,7 +38,7 @@ write_file(
 # hints one it does, or registers a section the sections do not list, or no longer one they do.
 godot_test(
     name = "setting_kinds_match_godot_test",
-    size = "small",
+    size = "medium",
     args = [
         "--",
         "$(rlocationpath :tables)",

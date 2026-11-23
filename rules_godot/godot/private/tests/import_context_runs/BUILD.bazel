@@ -8,7 +8,7 @@ _FIXTURE = "//godot/private/tests/import_context_runs/fixtures/composed_configur
 # The test applies its resources' autoload and its project's setting override.
 godot_test(
     name = "composed_settings_and_autoloads_apply_test",
-    size = "small",
+    size = "medium",
     main = "main/configured_test.gd",
     project = _FIXTURE + ":configured_project",
     deps = [
@@ -21,7 +21,7 @@ godot_test(
 # import input's own setting and autoload do not.
 godot_test(
     name = "import_input_configuration_stays_private_test",
-    size = "small",
+    size = "medium",
     args = [
         "--",
         "Resources",
@@ -37,7 +37,7 @@ godot_test(
 # The project overrides a setting and an autoload a dependency declares.
 godot_test(
     name = "project_overrides_dependency_configuration_test",
-    size = "small",
+    size = "medium",
     main = "main/configured_test.gd",
     project = _FIXTURE + ":overriding_project",
     deps = [

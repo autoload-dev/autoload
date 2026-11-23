@@ -68,7 +68,7 @@ godot_editor(
 # No sidecar is declared, so metadata.test fails; the editor view test runs it.
 godot_metadata_sync(
     name = "metadata",
-    size = "small",
+    size = "medium",
     project = ":project",
     tags = ["manual"],
     deps = [

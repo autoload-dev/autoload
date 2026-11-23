@@ -45,18 +45,20 @@ app_outputs_test_suite(name = "app_outputs_test_suite")
 # Run test: the start pack runs its main scene, which checks the project and the CPU.
 godot_test(
     name = "start_pack_runs_main_scene_test",
-    size = "small",
+    size = "medium",
     pack = _DESKTOP + "start_pack",
 )
 
-# Run test: the host's exported application runs its start pack's main scene.
+# Run test: the host's exported application runs its start pack's main scene. Its smoke tag
+# puts this end-to-end path among the tests the pre-push hook runs.
 py_test(
     name = "host_app_runs_start_pack_test",
-    size = "small",
+    size = "medium",
     srcs = ["host_app_test.py"],
     args = ["$(rootpath %sbundle)" % _DESKTOP],
     data = [_DESKTOP + "bundle"],
     main = "host_app_test.py",
+    tags = ["smoke"],
     target_compatible_with = _HOST_DESKTOP,
 )
 
@@ -73,7 +75,7 @@ configured_outputs(
 
 py_test(
     name = "editor_app_runs_project_from_sources_test",
-    size = "small",
+    size = "medium",
     srcs = ["editor_app_test.py"],
     args = ["$(rootpaths :editor_app)"],
     data = [":editor_app"],
@@ -108,7 +110,7 @@ py_test(
 
 py_test(
     name = "ios_simulator_feature_follows_environment_test",
-    size = "small",
+    size = "medium",
     srcs = ["ios_environment_test.py"],
     args = [
         "$(rootpath :ios_start_pack_ios_arm64)",
@@ -149,7 +151,7 @@ _DESKTOP_APPS = [
 [
     py_test(
         name = "%s_app_contains_selected_platform_libraries_test" % operating_system,
-        size = "small",
+        size = "medium",
         srcs = ["selected_app_test.py"],
         args = [
             "--operating-system=" + operating_system,
@@ -194,7 +196,7 @@ _DESKTOP_APPS = [
 [
     py_test(
         name = "%s_contains_selected_platform_libraries_test" % name,
-        size = "small",
+        size = "medium",
         srcs = ["selected_app_test.py"],
         args = [
             "--operating-system=android",
@@ -256,7 +258,7 @@ configured_outputs(
 [
     py_test(
         name = "%s_app_contains_selected_platform_libraries_test" % name,
-        size = "small",
+        size = "medium",
         srcs = ["selected_app_test.py"],
         args = [
             "--operating-system=ios",
@@ -316,7 +318,7 @@ configured_outputs(
 
 android_bundle_test(
     name = "android_dual_abi_bundle_declares_sdk_versions_test",
-    size = "small",
+    size = "medium",
     application_id = "org.example.contract",
     bundle = ":android_dual_abi_bundle_sdk_app",
     bundletool = "@bundletool//file",
@@ -352,7 +354,7 @@ android_bundle_test(
 
 ios_app_test(
     name = "ios_release_dsym_matches_executable_test",
-    size = "small",
+    size = "medium",
     app = ":ios_release_symbols_app",
     debug_symbols = ":ios_release_symbols_app_debug_symbols",
     target_compatible_with = _MACOS,
