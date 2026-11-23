@@ -25,13 +25,12 @@ CodeScene CLI or a sign-in, instead of blocking every commit and push there.
 from __future__ import annotations
 
 import argparse
-import os
-import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from tools.code_health import change, survey
+from tools.code_health.batch import Reviewer, cache_directory, cli_identity
 from tools.code_health.change import ChangedPath, FileChange
 from tools.code_health.scan import (
     DEFAULT_EXCLUDES,
@@ -43,7 +42,7 @@ from tools.code_health.scan import (
     git,
     in_commit,
     is_selected,
-    rules_workspace,
+    rules_of,
     scan_notes,
     worktree_files,
 )
@@ -85,7 +84,6 @@ def parse_args() -> argparse.Namespace:
         "--since", help="survey: history window for hotspots, e.g. 6.months"
     )
     parser.add_argument("--top", type=int, default=20, help="survey: rows per table")
-    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
     parser.add_argument("--json", type=Path, help="write all results as JSON")
     parser.add_argument("--rules", type=Path, help="code-health-rules.json to apply")
     parser.add_argument(
@@ -112,17 +110,12 @@ def main() -> None:
             sys.exit(str(missing))
         print(f"code-health: skipped: {missing}", file=sys.stderr)
         sys.exit(0)
-    workspace, rules_source = rules_workspace(repo, args.rules)
-    scanner = Scanner(
-        cli, environment, workspace, args.keep_macro_arguments, repo, args.jobs
-    )
-    try:
-        run = survey_checkout if args.survey else review_change
-        status = run(args, scanner, rules_source)
-    finally:
-        if workspace != repo:
-            shutil.rmtree(workspace, ignore_errors=True)
-    sys.exit(status)
+    rules, rules_source = rules_of(repo, args.rules)
+    identity = cli_identity(cli, environment)
+    reviewer = Reviewer(cli, environment, identity, rules, cache_directory())
+    scanner = Scanner(reviewer, args.keep_macro_arguments, repo)
+    run = survey_checkout if args.survey else review_change
+    sys.exit(run(args, scanner, rules_source))
 
 
 # --- a change ---------------------------------------------------------------------------
