@@ -1,6 +1,9 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
-from tools.addons.new import TOKEN, Names, generate
+import subprocess
+from unittest import mock
+
+from tools.addons.new import PIN_ATTEMPTS, TOKEN, Names, generate, pin
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
 
@@ -87,3 +90,26 @@ class GenerateTest(RepositoryTestCase):
         for module, addon in (("Widget", None), ("widget", "core-api"), ("_w", None)):
             with self.subTest(module=module, addon=addon), self.assertRaises(ValueError):
                 generate(module, addon, root=self.root)
+
+
+class PinTest(RepositoryTestCase):
+    def pin_with(self, returncodes: list[int]) -> tuple[mock.Mock, list[float]]:
+        waits: list[float] = []
+        runs = [subprocess.CompletedProcess([], code) for code in returncodes]
+        with mock.patch("tools.addons.new.subprocess.run", side_effect=runs) as run:
+            pin("widget", root=self.root, wait=waits.append)
+        return run, waits
+
+    def test_a_failed_pin_runs_again_after_a_growing_wait(self) -> None:
+        run, waits = self.pin_with([1, 1, 0])
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual(waits, [20, 40])
+        self.assertEqual(run.call_args.kwargs["env"]["REPIN"], "1")
+        self.assertEqual(
+            run.call_args.kwargs["cwd"], self.root / "addons/widget/examples"
+        )
+
+    def test_a_pin_that_keeps_failing_fails_after_its_last_attempt(self) -> None:
+        with self.assertRaises(subprocess.CalledProcessError) as raised:
+            self.pin_with([3] * PIN_ATTEMPTS)
+        self.assertEqual(raised.exception.returncode, 3)

@@ -20,6 +20,9 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +36,10 @@ SUFFIX = ".tmpl"
 NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
 SELFTEST = ".selftest"
+# How often pin() runs the examples' pin, and the wait before the second run; later
+# waits grow linearly.
+PIN_ATTEMPTS = 3
+PIN_RETRY_SECONDS = 20
 
 
 def words(name: str) -> list[str]:
@@ -135,20 +142,43 @@ def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> li
     return [*written, metadata]
 
 
-def pin(directory: str, root: Path = ROOT) -> None:
-    """Pin the examples' Maven graph, which starts from the template's empty lock file."""
+def pin(
+    directory: str, root: Path = ROOT, wait: Callable[[float], None] = time.sleep
+) -> None:
+    """Pin the examples' Maven graph, which starts from the template's empty lock file.
+
+    Gradle, which resolves the graph, tries a failing repository request three times in
+    quick succession and then disables that repository for the rest of the resolution, so
+    one burst of 429 or 5xx responses from Maven Central fails every module still to be
+    resolved there as `(INTERNAL)`. A new pin resolves afresh: a failed pin is run again,
+    after a growing wait, up to PIN_ATTEMPTS times in all.
+    """
     # Under `bazel run //tools/addons:new`, the generator's own runfiles variables would
     # point the pin's launcher at the wrong runfiles tree.
     runfiles = {"RUNFILES_DIR", "RUNFILES_MANIFEST_FILE", "JAVA_RUNFILES"}
     environment = {
         name: value for name, value in os.environ.items() if name not in runfiles
     }
-    subprocess.run(
-        ["bazel", "run", "@maven//:pin"],
-        cwd=root / module_path(directory) / "examples",
-        env={**environment, "REPIN": "1"},
-        check=True,
-    )
+    command = ["bazel", "run", "@maven//:pin"]
+    for attempt in range(1, PIN_ATTEMPTS + 1):
+        returncode = subprocess.run(
+            command,
+            cwd=root / module_path(directory) / "examples",
+            env={**environment, "REPIN": "1"},
+            check=False,
+        ).returncode
+        if returncode == 0:
+            return
+        if attempt == PIN_ATTEMPTS:
+            raise subprocess.CalledProcessError(returncode, command)
+        delay = PIN_RETRY_SECONDS * attempt
+        print(
+            f"Pinning failed (attempt {attempt} of {PIN_ATTEMPTS}); "
+            f"pinning again in {delay} s.",
+            file=sys.stderr,
+            flush=True,
+        )
+        wait(delay)
 
 
 def main() -> None:
