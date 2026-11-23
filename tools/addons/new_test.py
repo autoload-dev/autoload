@@ -95,19 +95,30 @@ class GenerateTest(RepositoryTestCase):
 class PinTest(RepositoryTestCase):
     def pin_with(self, returncodes: list[int]) -> tuple[mock.Mock, list[float]]:
         waits: list[float] = []
-        runs = [subprocess.CompletedProcess([], code) for code in returncodes]
-        with mock.patch("tools.addons.new.subprocess.run", side_effect=runs) as run:
+        codes = iter(returncodes)
+
+        def fake_run(
+            command: list[str], check: bool, **_: object
+        ) -> subprocess.CompletedProcess[bytes]:
+            result = subprocess.CompletedProcess(command, next(codes))
+            if check:
+                result.check_returncode()
+            return result
+
+        with mock.patch("tools.addons.new.subprocess.run", side_effect=fake_run) as run:
             pin("widget", root=self.root, wait=waits.append)
         return run, waits
+
+    def test_the_examples_repin(self) -> None:
+        run, waits = self.pin_with([0])
+        self.assertEqual(waits, [])
+        self.assertEqual(run.call_args.kwargs["env"]["REPIN"], "1")
+        self.assertEqual(run.call_args.kwargs["cwd"].name, "examples")
 
     def test_a_failed_pin_runs_again_after_a_growing_wait(self) -> None:
         run, waits = self.pin_with([1, 1, 0])
         self.assertEqual(run.call_count, 3)
         self.assertEqual(waits, [20, 40])
-        self.assertEqual(run.call_args.kwargs["env"]["REPIN"], "1")
-        self.assertEqual(
-            run.call_args.kwargs["cwd"], self.root / "addons/widget/examples"
-        )
 
     def test_a_pin_that_keeps_failing_fails_after_its_last_attempt(self) -> None:
         with self.assertRaises(subprocess.CalledProcessError) as raised:

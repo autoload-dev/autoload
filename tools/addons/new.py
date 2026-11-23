@@ -159,18 +159,18 @@ def pin(
     environment = {
         name: value for name, value in os.environ.items() if name not in runfiles
     }
-    command = ["bazel", "run", "@maven//:pin"]
-    for attempt in range(1, PIN_ATTEMPTS + 1):
-        returncode = subprocess.run(
-            command,
+
+    def run(check: bool) -> int:
+        return subprocess.run(
+            ["bazel", "run", "@maven//:pin"],
             cwd=root / module_path(directory) / "examples",
             env={**environment, "REPIN": "1"},
-            check=False,
+            check=check,
         ).returncode
-        if returncode == 0:
+
+    for attempt in range(1, PIN_ATTEMPTS):
+        if run(check=False) == 0:
             return
-        if attempt == PIN_ATTEMPTS:
-            raise subprocess.CalledProcessError(returncode, command)
         delay = PIN_RETRY_SECONDS * attempt
         print(
             f"Pinning failed (attempt {attempt} of {PIN_ATTEMPTS}); "
@@ -179,6 +179,7 @@ def pin(
             flush=True,
         )
         wait(delay)
+    run(check=True)
 
 
 def main() -> None:
