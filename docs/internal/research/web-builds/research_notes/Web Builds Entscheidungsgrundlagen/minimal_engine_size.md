@@ -45,7 +45,7 @@ Observations:
 - Module selection and the `disable_*` switches halve the engine: brotli 7.10 → 3.79 MB.
 - `disable_3d` saves little compressed (−0.3 MB brotli); the Compatibility renderer and
   the scene core dominate.
-- `-Oz` with full LTO shrinks the raw wasm by a quarter (23.4 → 17.5 MB) but the
+- `optimize=size_extra` (Godot: `-Os` plus `SIZE_EXTRA`, not `-Oz`) with full LTO shrinks the raw wasm by a quarter (23.4 → 17.5 MB) but the
   compressed size by only ~7 %. Raw size matters for parse/compile time and for limits
   that count raw bytes.
 - L2's sections: code 14.87 MB, data 2.65 MB. Printable runs of at least 40 bytes in the

@@ -262,10 +262,10 @@ Für Playable Ads zählt jedes Megabyte. Das verschiebt die Prioritäten: Ein ve
 | Offizielles Template | 39,5 MB | 10,1 MB | 7,1 MB |
 | Minimal-Module + `disable_*`, `-Os` (L) | 23,4 MB | 5,5 MB | 3,8 MB |
 | wie L, plus `disable_3d` (nur 2D) | 21,2 MB | 5,0 MB | 3,5 MB |
-| wie L, `-Oz` + volle LTO + `webp` (L2, läuft Lichtpost) | 17,7 MB | 5,2 MB | 3,6 MB |
+| wie L, `size_extra` (`-Os` + `SIZE_EXTRA`) + volle LTO + `webp` (L2, läuft Lichtpost) | 17,7 MB | 5,2 MB | 3,6 MB |
 
 - **Die Modul-Auswahl halbiert die Engine.** Beides deckt die Source-Recipe von rules_godot heute schon ab: die Allowlist `enabled_modules` und die `disable_*`-Schalter über `build_options`.
-- **Feinschliff bringt komprimiert wenig.** `disable_3d` und `-Oz` mit voller LTO sparen nur noch einige Prozent. Was weiter schrumpfen soll, steckt im Szenen- und Renderer-Kern. Godots `build_profile` schaltet einzelne Klassen ab, und genau das lehnt rules_godot heute ab.
+- **Feinschliff bringt komprimiert wenig.** `disable_3d` und `size_extra` (`-Os` + `SIZE_EXTRA`) mit voller LTO sparen nur noch einige Prozent. `-Oz` (rules_godots `size_min`) wurde für Web nicht gemessen. Was weiter schrumpfen soll, steckt im Szenen- und Renderer-Kern. Godots `build_profile` schaltet einzelne Klassen ab; seit [autoload-dev/autoload#79](https://github.com/autoload-dev/autoload/pull/79) nimmt ein Source-Recipe es als Attribut an.
 - **Die Import-Einstellungen bestimmen, welche Engine-Module nötig sind.** Lichtpost lief mit L, aber ohne Hintergründe: Verlustfrei importierte Texturen werden als WebP gespeichert, und das Modul `webp` fehlte. Das fiel erst im Browser auf. Die Import-Ergebnisse sind zur Build-Zeit bekannt, also könnte das Ruleset die nötigen Decoder-Module prüfen.
 - **Bauzeit:** 1–2 Minuten pro Variante auf einem Apple-Silicon-Mac. Ein Minimal-Build ist billig.
 
