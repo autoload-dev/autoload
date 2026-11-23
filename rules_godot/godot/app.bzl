@@ -7,6 +7,7 @@ Export content and Godot configuration belong to the declared pack/project.
 """
 
 load("//godot/engine/private:components.bzl", _resolved_runtime = "resolved_runtime")
+load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES")
 load(
     "//godot/platforms/private:android.bzl",
     _godot_android_application = "godot_android_application",
@@ -102,9 +103,9 @@ def _hidden_of(common):
     """The attributes of a godot_app's private targets among those of its backends."""
     return {key: common[key] for key in ["tags", "testonly"]}
 
-def _pack_and_runtime(name, pack, loadable_packs, hidden, **context):
+def _application_packs(name, pack, loadable_packs, hidden, **context):
     """
-    Declare the application pack and the resolved runtime that every backend of a godot_app uses.
+    Declare the application pack that every backend of a godot_app uses.
 
     Args:
         name: Name of the godot_app.
@@ -118,11 +119,6 @@ def _pack_and_runtime(name, pack, loadable_packs, hidden, **context):
     for index, loadable_pack in enumerate(loadable_packs or []):
         _loadable_pack(name = "%s.loadable_pack_input_%d" % (name, index), deps = [loadable_pack], **hidden)
         loadable.append(":%s.loadable_pack_input_%d" % (name, index))
-
-    # Desktop application backends package the runtime component the runtime toolchain
-    # resolves in their platform slice; Android and iOS application backends resolve it
-    # inside their Android or Apple split.
-    _resolved_runtime(name = name + ".runtime", **hidden)
     _application_pack(
         name = name + ".pack",
         deps = [":" + name + ".pack_input"] + loadable,
@@ -213,7 +209,8 @@ def _android_backends(
         debug_key: The application's debug signing key, or None.
         platform_deps: The application's platform libraries.
         platform_resources: The application's resource files.
-        common: Attributes of every backend, the private targets' among them.
+        common: Attributes of every backend, the private targets' among them, and the
+            application's engine_settings.
     """
     hidden = _hidden_of(common)
     _application_id(name = name + ".application_id", application_id = application_id, **hidden)
@@ -344,6 +341,9 @@ def _public_targets(name, visibility, target_compatible_with, deprecation, tags,
         deprecation = deprecation or None,
     )
 
+# A symbolic macro's implementation takes each of godot_app's attributes by name and hands
+# them to the backends; splitting it would only move that parameter list.
+# @codescene(disable:"Large Method")
 def _app_impl(
         name,
         visibility,
@@ -373,12 +373,20 @@ def _app_impl(
         deprecation,
         exec_properties,
         features,
+        engine_optimize,
+        engine_lto,
         **kwargs):
     # The inherited testonly is None unless set, which applies the package default.
     testonly = kwargs.pop("testonly")
 
     hidden = _hidden(tags, testonly)
-    _pack_and_runtime(
+    engine = dict(engine_optimize = engine_optimize, engine_lto = engine_lto)
+
+    # Desktop application backends package the runtime component the runtime toolchain
+    # resolves in their platform slice; Android and iOS application backends resolve it
+    # inside their Android or Apple split.
+    _resolved_runtime(name = name + ".runtime", **(engine | hidden))
+    _application_packs(
         name = name,
         pack = pack,
         loadable_packs = loadable_packs,
@@ -413,7 +421,7 @@ def _app_impl(
         debug_key = android_debug_key,
         platform_deps = platform_deps,
         platform_resources = platform_resources,
-        common = common,
+        common = common | {"engine_settings": engine},
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -430,7 +438,7 @@ def _app_impl(
         infoplists = ios_infoplists,
         app_icons = ios_app_icons,
         launch_storyboard = ios_launch_storyboard,
-        **common
+        **(common | {"engine_settings": engine})
     )
     _editor_backend(name = name, common = common)
     _public_targets(
@@ -598,5 +606,15 @@ godot_app = macro(
         "deprecation": attr.string(doc = "Optional conventional Bazel deprecation message.", configurable = False),
         "exec_properties": attr.string_dict(doc = "Execution properties of the application backends."),
         "features": attr.string_list(doc = "rules_cc toolchain features, independent of Godot feature tags."),
+        "engine_optimize": attr.string(
+            doc = "How this application's source-built engine compiles under -c opt, overriding --@autoload_rules_godot//godot:engine_optimize; empty keeps the build's. See [optimization](../../engine.md#optimization).",
+            configurable = False,
+            values = [""] + OPTIMIZE_VALUES,
+        ),
+        "engine_lto": attr.string(
+            doc = "Link-time optimization of this application's source-built engine under -c opt, overriding --@autoload_rules_godot//godot:engine_lto; empty keeps the build's.",
+            configurable = False,
+            values = [""] + LTO_VALUES,
+        ),
     },
 )

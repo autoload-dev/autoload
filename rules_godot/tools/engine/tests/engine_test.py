@@ -16,7 +16,9 @@ from tools.engine.configure import (
     customizations,
     deployment_target,
     engine_link_options,
+    engine_renderers,
     generated_include_directories,
+    has_renderer_switches,
     include_closure,
     included_sources,
     inputs_hash,
@@ -30,10 +32,13 @@ from tools.engine.configure import (
     platform_compile_options,
     prepare_custom_modules,
     render_unpinned,
+    renderer_options,
     requested_modules,
+    require_consistent_profile,
     require_expected_version,
     require_host_platform,
     require_one_text_server,
+    require_renderer_options_unset,
     scalar_environment,
     source_build_facts,
     source_version,
@@ -41,6 +46,7 @@ from tools.engine.configure import (
     swift_module_options,
     target_constraints,
     version_name,
+    with_renderer_modules,
     write_json,
 )
 from tools.engine.generator import File, run, safe_relative
@@ -100,6 +106,110 @@ class ModuleGraphTest(unittest.TestCase):
             ValueError, "one text server.*text_server_adv and text_server_fb"
         ):
             require_one_text_server(["text_server_fb", "gdscript", "text_server_adv"])
+
+    def test_a_build_profile_must_agree_with_the_recipes_options(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "size.gdbuild"
+            profile.write_text(
+                json.dumps(
+                    {
+                        "type": "build_profile",
+                        "disabled_classes": ["Node3D"],
+                        "disabled_build_options": {"disable_3d": True, "vulkan": False},
+                    }
+                )
+            )
+            require_consistent_profile(profile, ["disable_3d=yes", "opengl3=yes"])
+            require_consistent_profile(profile, [])
+            with self.assertRaisesRegex(
+                ValueError, r"contradicts.*vulkan=no \(build_options: yes\)"
+            ):
+                require_consistent_profile(profile, ["vulkan=yes"])
+            profile.write_text("[]")
+            with self.assertRaisesRegex(TypeError, "JSON object"):
+                require_consistent_profile(profile, [])
+            profile.write_text("{")
+            with self.assertRaisesRegex(ValueError, "not readable JSON"):
+                require_consistent_profile(profile, [])
+
+    def test_renderers_decide_the_drivers_of_each_platform(self) -> None:
+        self.assertEqual(
+            renderer_options(["gl_compatibility"], "ios", False),
+            ["opengl3=yes", "metal=no", "vulkan=no"],
+        )
+        self.assertEqual(
+            renderer_options(["mobile"], "android", False),
+            ["opengl3=no", "vulkan=yes"],
+        )
+        self.assertEqual(
+            renderer_options(["gl_compatibility", "forward_plus"], "linuxbsd", False),
+            ["opengl3=yes", "vulkan=yes"],
+        )
+        # Godot 4.8 leaves out RenderingDevice and each renderer on its own.
+        self.assertEqual(
+            renderer_options(["mobile"], "macos", True),
+            [
+                "opengl3=no",
+                "metal=yes",
+                "vulkan=no",
+                "rendering_device=yes",
+                "forward_plus_renderer=no",
+                "forward_mobile_renderer=yes",
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "Unknown rendering methods: vulkan"):
+            renderer_options(["vulkan"], "ios", False)
+
+    def test_an_engine_runs_the_methods_its_drivers_bring(self) -> None:
+        # Without 4.8's switches a RenderingDevice driver brings both of its renderers.
+        self.assertEqual(
+            engine_renderers(["mobile"], "android", "", False), ["mobile", "forward_plus"]
+        )
+        self.assertEqual(engine_renderers(["mobile"], "android", "", True), ["mobile"])
+        # Godot's iOS Simulator build turns Metal and Vulkan off.
+        self.assertEqual(
+            engine_renderers(["gl_compatibility", "mobile"], "ios", "simulator", False),
+            ["gl_compatibility"],
+        )
+        self.assertEqual(
+            engine_renderers(["gl_compatibility", "mobile"], "ios", "device", False),
+            ["gl_compatibility", "mobile", "forward_plus"],
+        )
+
+    def test_renderer_switches_are_detected_in_godots_sconstruct(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for text, expected in [
+                ('opts.Add(BoolVariable("vulkan", "Vulkan", True))', False),
+                # Godot 4.8 wraps the option's arguments over several lines.
+                ('opts.Add(\n    BoolVariable(\n        "rendering_device",\n', True),
+            ]:
+                (root / "SConstruct").write_text(text)
+                self.assertEqual(has_renderer_switches(root), expected, text)
+
+    def test_renderingdevice_methods_bring_the_shader_compiler(self) -> None:
+        graph = {"gdscript": [], "glslang": []}
+
+        def modules(renderers: str, environment: str = "device") -> list[str]:
+            args = argparse.Namespace(
+                modules=["gdscript"],
+                renderers=renderers,
+                platform="ios",
+                environment=environment,
+            )
+            return with_renderer_modules(args, graph)
+
+        self.assertEqual(modules("gl_compatibility,mobile"), ["gdscript", "glslang"])
+        self.assertEqual(modules("gl_compatibility"), ["gdscript"])
+        self.assertEqual(modules(""), ["gdscript"])
+        # Godot's iOS Simulator build has no RenderingDevice driver and rejects glslang.
+        self.assertEqual(modules("mobile", "simulator"), ["gdscript"])
+
+    def test_renderers_and_build_options_cannot_both_set_a_driver(self) -> None:
+        derived = renderer_options(["gl_compatibility"], "ios", False)
+        require_renderer_options_unset(derived, ["disable_3d=yes"])
+        with self.assertRaisesRegex(ValueError, "renderers decides metal, opengl3"):
+            require_renderer_options_unset(derived, ["opengl3=yes", "metal=no"])
 
     def test_unknown_or_cyclic_dependencies_fail(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown Godot module"):
@@ -284,6 +394,7 @@ class GraphTranslationTest(unittest.TestCase):
                         "source_sha256": "1" * 64,
                         "patch": [patch],
                         "patch_strip": 1,
+                        "build_profile_digest": "",
                         "custom_modules_root": modules,
                     }
                     | configuration
@@ -305,6 +416,7 @@ class GraphTranslationTest(unittest.TestCase):
                 {"default_modules": True},
                 {"build_target": "editor"},
                 {"platform": "ios"},
+                {"build_profile_digest": "sha256:1"},
             ]:
                 with self.subTest(changes=changes):
                     self.assertNotEqual(hash_of(**changes), first)
@@ -488,10 +600,10 @@ class GraphTranslationTest(unittest.TestCase):
 
     def test_symbol_options_bazel_does_not_replay_are_rejected(self) -> None:
         check_options(["vulkan=no", "dev_build=yes"])
-        for option in ["debug_symbols=yes", "optimize=speed"]:
+        for option in ["debug_symbols=yes", "optimize=speed", "lto=thin"]:
             with (
                 self.subTest(option=option),
-                self.assertRaisesRegex(ValueError, "follows Bazel's flags"),
+                self.assertRaisesRegex(ValueError, "follows the build's settings"),
             ):
                 check_options([option])
         for option in [
@@ -539,6 +651,8 @@ class GraphTranslationTest(unittest.TestCase):
             custom_module_names=["bazel_probe"],
             options=["vulkan=no", "disable_3d=yes"],
             default_modules=False,
+            build_profile_digest="",
+            renderers=[],
         )
         self.assertEqual(
             customizations(args),
@@ -897,6 +1011,7 @@ class PinTest(unittest.TestCase):
                     "source_sha256": "1" * 64,
                     "patch": [patch],
                     "patch_strip": 1,
+                    "build_profile_digest": "",
                     "custom_modules_root": module.parent,
                     "platform": "linuxbsd",
                     "cpu": "x86_64",
@@ -920,6 +1035,7 @@ class PinTest(unittest.TestCase):
                 {"default_modules": True},
                 {"options": ["vulkan=yes"]},
                 {"build_name": "fork"},
+                {"build_profile_digest": "sha256:1"},
             ]:
                 self.assertNotEqual(digest(**change), first, change)
             # Editing a module's code keeps the pin; its build scripts and file set do not.

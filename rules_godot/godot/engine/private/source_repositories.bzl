@@ -90,6 +90,29 @@ def _unpinned_message(ctx):
         "can execute actions for %s recipes, such as one with remote execution"
     ) % (ctx.attr.name, ctx.attr.lock_file, ctx.attr.lock_key, ctx.attr.repin, ctx.attr.platform)
 
+# Where a recipe's build profile lies in its repository, which is also Godot's source root.
+_BUILD_PROFILE = "_build_profile.gdbuild"
+
+def _pin_sources(ctx):
+    """The globs of the recipe repository's files a pin action copies into its source tree."""
+    sources = ["_custom_modules/**", "_scons/**"]
+    return sources + [_BUILD_PROFILE] if ctx.attr.build_profile else sources
+
+def _selection_arguments(ctx):
+    """
+    Return the configure arguments of Godot's default modules, renderers and build profile.
+
+    It also writes the build profile to the source root, where SCons reads it and a pin
+    action's declared tree copies it.
+    """
+    arguments = ["--default-modules"] if ctx.attr.default_modules else []
+    if ctx.attr.renderers:
+        arguments.extend(["--renderers", ",".join(ctx.attr.renderers)])
+    if ctx.attr.build_profile:
+        ctx.file(_BUILD_PROFILE, ctx.read(ctx.path(ctx.attr.build_profile)))
+        arguments.extend(["--build-profile", _BUILD_PROFILE])
+    return arguments
+
 def _repository(label):
     """The canonical repository of a label, such as @@platforms, for generated BUILD files."""
     return str(label).split("//")[0]
@@ -106,7 +129,7 @@ godot_recipe_pin(
     archive = %r,
     strip_prefix = %r,
     patches = %r,
-    srcs = glob(["_custom_modules/**", "_scons/**"]),
+    srcs = glob(%r),
     arguments = %r,
     exec_compatible_with = %r,
     tags = ["manual"],
@@ -117,6 +140,7 @@ godot_recipe_pin(
         str(archive),
         strip_prefix,
         [str(patch) for patch in ctx.attr.patches],
+        _pin_sources(ctx),
         arguments,
         constraints,
     )
@@ -192,8 +216,7 @@ def engine_build_impl(ctx, *, _fail = fail):
         "--patch-strip",
         str(ctx.attr.patch_strip),
     ]
-    if ctx.attr.default_modules:
-        arguments.append("--default-modules")
+    arguments.extend(_selection_arguments(ctx))
     for option in sorted(ctx.attr.build_options):
         arguments.extend(["--option", option + "=" + ctx.attr.build_options[option]])
     command = [

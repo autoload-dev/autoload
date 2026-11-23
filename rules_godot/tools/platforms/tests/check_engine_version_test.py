@@ -1,5 +1,6 @@
 """The engine versions check_engine_version reads from engine artifacts and checks."""
 
+import json
 import tempfile
 import unittest
 import zipfile
@@ -16,6 +17,10 @@ LIBRARY = """<?xml version="1.0" encoding="utf-8"?>
   <application />
 </manifest>
 """
+
+
+def _facts(settings: dict) -> dict:
+    return {"options": {}, "settings": settings, "versions": {}, "name_translations": {}}
 
 
 class CheckEngineVersionTest(unittest.TestCase):
@@ -44,6 +49,23 @@ class CheckEngineVersionTest(unittest.TestCase):
         # An engine older than the pack's editor is accepted; no pack version exists here.
         self.check_engine("--android-manifest", str(manifest))
         self.check_engine("--library", str(library))
+
+    def test_the_projects_rendering_method_must_be_one_its_engine_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            facts = Path(directory) / "facts.json"
+            method = "rendering/renderer/rendering_method"
+            facts.write_text(json.dumps(_facts({method: "gl_compatibility"})))
+            check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
+            with self.assertRaisesRegex(
+                SystemExit,
+                "renders with gl_compatibility, but its engine runs only mobile",
+            ):
+                check_engine_version.require_rendering_method(facts, ["mobile"])
+            # Godot's default is forward_plus when the project sets none.
+            facts.write_text(json.dumps(_facts({})))
+            with self.assertRaisesRegex(SystemExit, "renders with forward_plus"):
+                check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
+            check_engine_version.require_rendering_method(facts, ["mobile"], "mobile")
 
     def test_opaque_engine_version_assertion_is_checked(self) -> None:
         library = self.root / "libgodot.a"

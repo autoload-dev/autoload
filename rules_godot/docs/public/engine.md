@@ -178,7 +178,7 @@ godot_engines.source_build(
     enabled_modules = ["gdscript", "text_server_fb", "my_module"],
     custom_modules = {"//native/my_module:config.py": "my_module"},
     patches = ["//engine:fix.patch"],
-    build_options = {"metal": "no", "vulkan": "no", "opengl3": "yes"},
+    renderers = ["gl_compatibility"],
 )
 use_repo(godot_engines, "godot_sources", "my_engine")
 register_toolchains("@my_engine//toolchains:all")
@@ -206,10 +206,19 @@ Godot's bundled libraries, so options such as `builtin_freetype = "no"` fail, an
 Wayland, whose code generators are shell commands; Android recipes configure without the
 host's SDK, since Bazel's NDK toolchain compiles them.
 
-This configuration keeps the Compatibility renderer; set the project's
-rendering method to `gl_compatibility`. A headless engine can disable all
-renderers; keep a renderer enabled when configuring a graphical game. Some options apply
-to templates only, such as `disable_3d`; an editor recipe rejects them.
+`renderers` names Godot's rendering methods the engine runs: `gl_compatibility`, `mobile`
+and `forward_plus`. The recipe derives the drivers from them, OpenGL for Compatibility and
+for the other two the platform's RenderingDevice driver, Metal on Apple platforms and Vulkan
+on Android and Linux, so `build_options` may not set `opengl3`, `metal` or `vulkan` too.
+Godot 4.7 builds both RenderingDevice methods or neither; 4.8 builds each on its own and
+leaves RenderingDevice out without them. Godot's iOS Simulator build has no Metal, so a
+Simulator engine runs `gl_compatibility` only. An application checks the rendering method
+its project uses on its platform, `rendering/renderer/rendering_method` with its `.mobile`
+override, against its engine's: Godot has no fallback for a method an engine lacks, so the
+build fails instead of the application at start. Without `renderers`, a recipe keeps
+Godot's drivers and its `build_options`, and nothing is checked. The example keeps the
+Compatibility renderer; set the project's rendering method to `gl_compatibility`. Some
+options apply to templates only, such as `disable_3d`; an editor recipe rejects them.
 
 The module list is an allowlist: other modules start disabled, unless
 `default_modules = True` starts from the modules Godot enables by default for the platform,
@@ -227,12 +236,29 @@ The app owner chooses the allowlist. Reflection, dynamic resource paths,
 extensions and external PCKs prevent reliable inference of every engine module
 from a project scan.
 
+`build_profile` takes a Godot build profile, a `.gdbuild` file such as the editor's
+Engine Compilation Configuration writes. Its `disabled_classes` leave those classes out of
+the engine, so linking drops their code; an application whose scenes, resources or scripts
+need a disabled class fails when it loads them. Its `disabled_build_options` must agree with
+`build_options`: a profile that sets an option the recipe sets differently fails
+configuration. The profile is part of the recipe's inputs and of a lock file's pins.
+
+```starlark
+godot_engines.source_build(
+    name = "my_engine",
+    source = "@godot_sources//:source.json",
+    platforms = ["ios"],
+    build_profile = "//engines:game.gdbuild",
+)
+```
+
 Patches use the host `patch` executable with fuzz disabled and strip level 1
 (`patch_strip`); every hunk must apply. `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
-simulator switch, module selection, raw `profile` and `build_profile` paths, and
-`optimize` and `debug_symbols`, which follow Bazel's flags as in
-[debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
+simulator switch, module selection, raw `profile` and `build_profile` paths (use the
+`build_profile` attribute),
+`optimize` and `lto`, which follow the [optimization](#optimization) settings, and
+`debug_symbols`, which follows Bazel's flags as in [debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
 Builders must read literal keys from `env` or pass it directly to named Python
 helpers with an `env` parameter. Dynamic callbacks, environment aliases and
 unsupported forwarding fail configuration instead of silently omitting inputs.
@@ -421,14 +447,60 @@ and `build_options`, so an unchanged engine keeps its hash and its cached action
 CPU is not part of it, so the engines of one configuration for several
 Android ABIs name the same version. Neither are compiler and toolchain flags.
 
+## Optimization
+
+Under `-c opt`, a source-built engine compiles at the level of
+`--@autoload_rules_godot//godot:engine_optimize`, with Godot's values and meaning plus
+one of the ruleset's own:
+
+| Value | Compiles with |
+| --- | --- |
+| `auto` (default) | Godot's own choice: `speed` for release runtimes, `speed_trace` for debug runtimes and editors |
+| `speed` | `-O3` |
+| `speed_trace` | `-O2` |
+| `size` | `-Os` |
+| `size_extra` | `-Os` and Godot's `SIZE_EXTRA`, which stops forced inlining |
+| `size_min` | `-Oz` and `SIZE_EXTRA`, the smallest engine |
+
+`--@autoload_rules_godot//godot:engine_lto` adds link-time optimization: `none` (default),
+`thin` or `full`. Apple engines carry it in their objects into the application's link;
+Android and desktop engines also link with it. `thin` needs Clang, and `-Oz` needs Clang or
+GCC 12; `full` takes the longest to link.
+
+Both apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
+their level wins over the toolchain's and the command line's there, while extensions and
+application code keep the build's flags. Other compilation modes keep Bazel's levels: `-c dbg`
+debugs the engine unoptimized whatever the settings say. Prebuilt engines are unaffected.
+
+For the smallest release engine of an application:
+
+```sh
+bazel build //path/to:app -c opt \
+  --@autoload_rules_godot//godot:engine_optimize=size_min \
+  --@autoload_rules_godot//godot:engine_lto=full
+```
+
+An application can set both for its own engine with `godot_app`'s `engine_optimize` and
+`engine_lto`, which override the build's settings; one recipe then serves a small release
+application beside a fast debug one, each with an engine built for it:
+
+```starlark
+godot_app(
+    name = "game",
+    pack = ":pack",
+    application_id = "com.example.game",
+    engine_optimize = "size_min",
+    engine_lto = "full",
+)
+```
+
 ## Debug symbols
 
-A source-built engine compiles like any C++ library of the build: Bazel's `-c`,
-`--copt`, `--per_file_copt` and `--apple_generate_dsym` decide its optimization
-and debug information, for `template_release` and `template_debug` engines
-alike. `fastbuild`, the default, compiles it unoptimized; `-c opt` optimizes it
-as the C/C++ toolchain does. Godot's `optimize` and `debug_symbols` options are
-rejected.
+A source-built engine's debug information follows Bazel's `-c`, `--copt`,
+`--per_file_copt` and `--apple_generate_dsym`, for `template_release` and
+`template_debug` engines alike; its optimization follows the
+[optimization](#optimization) settings under `-c opt`. `fastbuild`, the default,
+compiles it unoptimized.
 
 `-c dbg` debugs an application together with its engine. A store build whose
 crash reports name engine frames compiles with `-c opt --copt=-g`, the

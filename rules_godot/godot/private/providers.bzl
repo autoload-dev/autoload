@@ -103,6 +103,7 @@ GodotComponentInfo = provider(
         "origin": "string: producer or payload label",
         "digest": "string: source or artifact content digest where the producer supplies one; empty when unknown",
         "customizations": "dict of requested build customization (patches, modules, options) where the producer supplies it; empty otherwise",
+        "renderers": "list of the rendering methods a source-built runtime runs where its recipe declares renderers, or None: the one fact applications check, their project's rendering method against it, since Godot has no fallback for a missing renderer",
     },
 )
 

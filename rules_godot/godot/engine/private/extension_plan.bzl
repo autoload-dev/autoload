@@ -264,6 +264,8 @@ _MISSING_RUNTIME_POLICY = {
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,
+    "renderers": [],
+    "build_profile": None,
     "build_options": {},
     "build_name": "custom",
     "python": None,

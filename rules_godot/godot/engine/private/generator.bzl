@@ -12,6 +12,7 @@ load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
+load(":optimization.bzl", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "engine_optimization")
 
 visibility("public")
 
@@ -176,6 +177,7 @@ GodotEngineVersionInfo = provider(
         "variant": "Configured variant: release or debug for runtimes; empty for editors.",
         "digest": "Source archive digest, such as sha256:<hex>.",
         "customizations": "Requested patches, modules, custom_modules and options, by name.",
+        "renderers": "Rendering methods the engine runs, or None where its recipe declares no renderers.",
     },
 )
 
@@ -192,6 +194,7 @@ def _library_impl(ctx):
             version = ctx.attr.version,
             build = ctx.file.build,
             hash = ctx.file.hash,
+            renderers = ctx.attr.renderers if ctx.attr.declares_renderers else None,
             **metadata
         ),
     ]
@@ -259,6 +262,8 @@ _SOURCE_ATTRS = {
     ),
     "digest": attr.string(doc = "Source archive digest, such as sha256:<hex>."),
     "customizations": attr.string_list_dict(doc = "Requested patches, modules, custom_modules and options."),
+    "renderers": attr.string_list(doc = "Rendering methods the engine runs, where declares_renderers is set."),
+    "declares_renderers": attr.bool(doc = "Whether the recipe declares its renderers, so applications check their projects against them."),
     "minimum_os": attr.string(doc = "Deployment target Godot's SCons platform sets, such as 11.0 for macOS arm64; empty where it sets none. Apple engines compile for at least libc++'s floor, iOS 15.0 and macOS 11.0."),
 }
 
@@ -300,21 +305,27 @@ def _floor(settings, attr):
         values[option] = _minimum_os(attr)
     return values
 
+_ENGINE_INPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS
+_ENGINE_OUTPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS
+
+def _engine_library_impl(settings, attr):
+    return _floor(settings, attr) | engine_optimization(settings, attr)
+
+_engine_library = transition(
+    implementation = _engine_library_impl,
+    inputs = _ENGINE_INPUTS,
+    outputs = _ENGINE_OUTPUTS,
+)
+
 def _desktop_native_impl(settings, attr):
     # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
     # explains; a transition cannot compose two, so this one repeats that setting.
-    return _floor(settings, attr) | UNSTRIPPED
+    return _engine_library_impl(settings, attr) | UNSTRIPPED
 
 _desktop_native = transition(
     implementation = _desktop_native_impl,
-    inputs = _FLOOR_OPTIONS.values(),
-    outputs = _FLOOR_OPTIONS.values() + UNSTRIPPED.keys(),
-)
-
-_engine_library = transition(
-    implementation = _floor,
-    inputs = _FLOOR_OPTIONS.values(),
-    outputs = _FLOOR_OPTIONS.values(),
+    inputs = _ENGINE_INPUTS,
+    outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys(),
 )
 
 _BINARY_ATTRS = _SOURCE_ATTRS | {

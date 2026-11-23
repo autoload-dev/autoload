@@ -9,6 +9,7 @@ exports_files(
         "extension_plan.bzl",
         "generator.bzl",
         "hub.bzl",
+        "optimization.bzl",
         "pin.bzl",
         "prebuilt.bzl",
         "repositories.bzl",

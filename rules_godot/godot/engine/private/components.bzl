@@ -3,6 +3,7 @@
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
 load("//godot/engine/private:prebuilt.bzl", "PrebuiltArtifactInfo")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "ANDROID_PAYLOAD_ASPECTS")
@@ -102,6 +103,7 @@ def _provenance(ctx, role, version, kind, origin, producer = None, artifact_dige
         # an XCFramework or AAR import, takes the declared one.
         digest = producer.digest if producer else (artifact_digest or getattr(ctx.attr, "digest", "")),
         customizations = producer.customizations if producer else {},
+        renderers = producer.renderers if producer else None,
     )
 
 def _editor_component_impl(ctx):
@@ -358,6 +360,8 @@ resolved_runtime = rule(
     doc = "Forward the GodotRuntimeInfo of the runtime component resolved in this configuration.",
     implementation = _resolved_runtime_impl,
     toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
+    attrs = ENGINE_SETTINGS_ATTRS,
+    cfg = engine_settings,
 )
 
 _COMMON = {

@@ -23,6 +23,7 @@ load("@rules_android//rules:dex_desugar_aspect.bzl", "dex_desugar_aspect")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("@rules_java//java/common:proguard_spec_info.bzl", "ProguardSpecInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
 load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load(":manifest_graph.bzl", "ManifestGraphInfo", "manifest_graph_aspect")
 
@@ -98,5 +99,6 @@ runtime_bridge_android = rule(
     doc = "Expose the Android runtime component resolved in this platform slice to rules_android packaging.",
     implementation = _bridge_impl,
     toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
-    attrs = {"incremental_dexing": attr.int(default = 0, values = [0])},
+    attrs = ENGINE_SETTINGS_ATTRS | {"incremental_dexing": attr.int(default = 0, values = [0])},
+    cfg = engine_settings,
 )

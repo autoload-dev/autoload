@@ -36,6 +36,8 @@ _ATTRS = {
     "custom_modules": {},
     "patches": [],
     "patch_strip": 1,
+    "renderers": [],
+    "build_profile": None,
     "build_options": {},
     "build_name": "custom",
     "python": None,
@@ -275,13 +277,13 @@ def _test_rejected_patch_stops_the_recipe(env):
 
 _LOCK = "engines/godot.lock.json"
 
-def _pinned(**overrides):
+def _pinned(files = {}, **overrides):
     return _build(
         lock_file = _LOCK,
         lock_key = "linux_x86_64_template_release",
         repin = "@godot//:pin",
         # configure.py writes the BUILD file: the rendered graph or failing engine targets.
-        files = {"BUILD.bazel": "# BUILD from the lock file\n"},
+        files = {"BUILD.bazel": "# BUILD from the lock file\n"} | files,
         **overrides
     )
 
@@ -326,6 +328,32 @@ def _test_pins_configure_where_godot_accepts_the_recipe(env):
         build = _written_build(ctx)
         env.expect.where(platform = platform).that_str(build).contains("exec_compatible_with = " + constraints)
 
+# A recipe's build profile lies in the source root, where SCons reads it, and a pin action
+# declares it, so the remote configuration reads the same profile.
+def _test_a_build_profile_reaches_configure_and_the_pin(env):
+    profile = '{"disabled_classes": ["Node3D"]}'
+    ctx, errors = _build(build_profile = "size.gdbuild", files = {"size.gdbuild": profile})
+    env.expect.that_collection(errors).contains_exactly([])
+    written = {call.path: call.content for call in mocks.calls(ctx, "file")}
+    env.expect.that_str(written["_build_profile.gdbuild"]).equals(profile)
+    env.expect.that_str(_argument(_configure(ctx).args, "--build-profile")).equals("_build_profile.gdbuild")
+
+    ctx, errors = _pinned(build_profile = "size.gdbuild", files = {"size.gdbuild": profile})
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_str(_written_build(ctx)).contains('srcs = glob(["_custom_modules/**", "_scons/**", "_build_profile.gdbuild"])')
+    ctx, _errors = _pinned()
+    env.expect.that_str(_written_build(ctx)).contains('srcs = glob(["_custom_modules/**", "_scons/**"])')
+    env.expect.that_collection(_configure(ctx).args).not_contains("--build-profile")
+
+# A recipe's rendering methods reach configure, which derives the drivers from them.
+def _test_renderers_reach_configure(env):
+    ctx, errors = _build(renderers = ["gl_compatibility", "mobile"])
+    env.expect.that_collection(errors).contains_exactly([])
+    arguments = _configure(ctx).args
+    env.expect.that_str(_argument(arguments, "--renderers")).equals("gl_compatibility,mobile")
+    ctx, _errors = _build()
+    env.expect.that_collection(_configure(ctx).args).not_contains("--renderers")
+
 def engine_build_test_suite(name):
     test_suite(
         name = name,
@@ -335,6 +363,8 @@ def engine_build_test_suite(name):
             _test_scons_platform_follows_the_recipe_platform,
             _test_import_env_vars_are_read,
             _test_default_modules_reach_configure,
+            _test_a_build_profile_reaches_configure_and_the_pin,
+            _test_renderers_reach_configure,
             _test_custom_module_sources_are_watched,
             _test_custom_module_key_not_config_py_fails,
             _test_ios_recipe_without_environment_fails,

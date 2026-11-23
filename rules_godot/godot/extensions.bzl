@@ -121,6 +121,13 @@ _SOURCE_BUILD_ATTRS = {
         allow_files = [".patch", ".diff"],
     ),
     "patch_strip": attr.int(doc = "Leading path components removed from patch filenames.", default = 1),
+    "renderers": attr.string_list(
+        doc = "Godot's rendering methods every recipe's engine runs, as for godot_engine_build.",
+    ),
+    "build_profile": attr.label(
+        doc = "A Godot build profile (.gdbuild) every recipe applies, as for godot_engine_build.",
+        allow_single_file = [".gdbuild"],
+    ),
     "build_options": attr.string_dict(doc = "Upstream configure options, as for godot_engine_build."),
     "build_name": attr.string(doc = "Build name the engines report in their version.", default = "custom"),
     "python": attr.label(doc = "Optional declared Python for configure-only graph capture.", allow_single_file = True),

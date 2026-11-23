@@ -80,6 +80,7 @@ def godot_android_application(
         manifest_values = {},
         manifest = None,
         bundle = False,
+        engine_settings = {},
         visibility = None,
         **kwargs):
     """
@@ -167,11 +168,13 @@ def godot_android_application(
             owner. The applicationId override is added here.
         bundle: Build an unsigned Android App Bundle instead of an APK; it keeps the
             PCK uncompressed in the APKs Google Play generates from the bundle.
+        engine_settings: The application's engine_optimize and engine_lto, for the
+            runtime component it resolves.
         visibility: Visibility of the APK or bundle target.
         **kwargs: Remaining android_binary attributes, including signing options.
     """
     common = common_kwargs(kwargs)
-    runtime = _application_runtime(name, runtime, common)
+    runtime = _application_runtime(name, runtime, common | engine_settings)
     libraries = _application_libraries(name, pack, runtime, deps, common)
     resource_files = kwargs.pop("resource_files", [])
     bootstrap = _application_bootstrap(

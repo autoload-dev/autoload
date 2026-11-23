@@ -1,3 +1,4 @@
+load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES")
 load("//godot/private:flags.bzl", "bool_flag", "int_flag", "string_flag")
 
 package(default_visibility = ["//visibility:public"])
@@ -20,6 +21,20 @@ string_flag(
 config_setting(
     name = "default_engine",
     flag_values = {":engine": ""},
+)
+
+# The optimization level of source-built engines under -c opt; see docs/public/engine.md.
+string_flag(
+    name = "engine_optimize",
+    build_setting_default = "auto",
+    values = OPTIMIZE_VALUES,
+)
+
+# Link-time optimization of source-built engines under -c opt; see docs/public/engine.md.
+string_flag(
+    name = "engine_lto",
+    build_setting_default = "none",
+    values = LTO_VALUES,
 )
 
 # Whether godot_run and godot_test targets that leave headless unset run headless.

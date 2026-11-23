@@ -5,7 +5,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
-load("//godot/platforms/private:shell.bzl", "ENGINE_CHECK_ATTRS", "check_engine")
+load("//godot/platforms/private:shell.bzl", "ENGINE_CHECK_ATTRS", "check_engine", "pack_facts")
 load("//godot/private:symbols.bzl", "STRIP_ATTRS", "keep_debug_info", "packaged")
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "PLATFORM_ATTRS", "target_platform")
 load(":android_runtime_bridge.bzl", _AndroidSymbolsInfo = "AndroidSymbolsInfo")
@@ -203,7 +203,7 @@ def _jni_libraries_impl(ctx):
             AndroidNativeLibsInfo,
             "native_libs",
         ),
-    }, engine = ctx.attr.runtime, values = {"--android-abi": abi})
+    } | pack_facts(pack), engine = ctx.attr.runtime, values = {"--android-abi": abi})
     _android_zip(ctx, libraries, output)
     return [
         DefaultInfo(files = depset([output])),
