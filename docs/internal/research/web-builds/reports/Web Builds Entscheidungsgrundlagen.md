@@ -263,6 +263,9 @@ Für Playable Ads zählt jedes Megabyte. Das verschiebt die Prioritäten: Ein ve
 | Minimal-Module + `disable_*`, `-Os` (L) | 23,4 MB | 5,5 MB | 3,8 MB |
 | wie L, plus `disable_3d` (nur 2D) | 21,2 MB | 5,0 MB | 3,5 MB |
 | wie L, `size_extra` (`-Os` + `SIZE_EXTRA`) + volle LTO + `webp` (L2, läuft Lichtpost) | 17,7 MB | 5,2 MB | 3,6 MB |
+| wie L2, aber `-Oz` (O1) | 12,8 MB | 4,3 MB | 3,2 MB |
+| wie L2, plus Build-Profil für Lichtpost, 233 Klassen aus (P1) | 14,2 MB | 4,2 MB | 3,0 MB |
+| **Profil und `-Oz` (P2, läuft Lichtpost)** | **10,4 MB** | **3,5 MB** | **2,6 MB** |
 
 - **Die Modul-Auswahl halbiert die Engine.** Beides deckt die Source-Recipe von rules_godot heute schon ab: die Allowlist `enabled_modules` und die `disable_*`-Schalter über `build_options`.
 - **Feinschliff bringt komprimiert wenig.** `disable_3d` und `size_extra` (`-Os` + `SIZE_EXTRA`) mit voller LTO sparen nur noch einige Prozent. `-Oz` (rules_godots `size_min`) wurde für Web nicht gemessen. Was weiter schrumpfen soll, steckt im Szenen- und Renderer-Kern. Godots `build_profile` schaltet einzelne Klassen ab; seit [autoload-dev/autoload#79](https://github.com/autoload-dev/autoload/pull/79) nimmt ein Source-Recipe es als Attribut an.
@@ -295,7 +298,9 @@ Für Playable Ads zählt jedes Megabyte. Das verschiebt die Prioritäten: Ein ve
 - **Entscheidung 6:** „Single-File-HTML pro Netzwerk“ ist ein eigenes Ausgabeformat mit Adapter, Kompression und Größenprüfung. Es passt als Packaging-Schritt nach dem normalen Web-Build, so wie Needle Engine es mit Build-Profilen pro Netzwerk löst.
 - **Neue Frage:** Soll rules_godot `build_profile` erlauben oder aus den genutzten Klassen eines Projekts erzeugen? Dazu gehört die Prüfung der nötigen Module aus den Import-Ergebnissen. Die Design-Prinzipien sagen bisher: „Die App bestimmt die Allowlist, Inferenz ist unzuverlässig.“ Die Prüfung über die Importe wäre keine Inferenz, sondern eine Konsistenzprüfung.
 
-**Vorschlag (keine Entscheidung):** Playable Ads als eigener Meilenstein nach M1. Vorher zwei Messungen: Erstens, wie weit ein klassengenaues `build_profile` die Engine unter Brotli 3,5 MB drückt. Zweitens, ob eine Single-File-Shell mit Brotli-Decoder die Prüfer von AppLovin, Meta, Mintegral und Google besteht.
+**Messung nachgeholt:** Mit dem Build-Profil aus dem iOS-Prototyp von #76 (233 Klassen aus) und `-Oz` (rules_godots `size_min`) sinkt die Engine auf 2,6 MB Brotli, 63 % unter dem offiziellen Template. Lichtpost läuft darauf. Für das Spiel bleiben damit etwa 2,3 MB bei ZIP-gezählten Netzwerken, 1,9 MB bei AppLovin mit base122 und 1,4 MB bei Unity Ads und Moloco, jeweils vor Decoder, Shell und Adapter. Details in [minimal_engine_size.md](../research_notes/Web%20Builds%20Entscheidungsgrundlagen/minimal_engine_size.md).
+
+**Vorschlag (keine Entscheidung):** Playable Ads als eigener Meilenstein nach M1. Vorher noch eine Messung: ob eine Single-File-Shell mit Brotli-Decoder die Prüfer von AppLovin, Meta, Mintegral und Google besteht.
 
 ## Fazit
 

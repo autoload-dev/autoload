@@ -113,7 +113,7 @@ Die Reihenfolge folgt dem Risiko. Die ersten beiden Experimente entscheiden, ob 
 
 | # | Experiment | Frage, die es beantwortet | Erfolgskriterium |
 | --- | --- | --- | --- |
-| E1 | Klassengenaues `build_profile` für einen Lichtpost-artigen Playable (außerhalb von Bazel, wie die L-Varianten) | Wie weit fällt die Engine unter L2? | ≤ 3,25 MB Brotli für Engine + Glue |
+| E1 | Klassengenaues `build_profile` für einen Lichtpost-artigen Playable (außerhalb von Bazel, wie die L-Varianten) | Wie weit fällt die Engine unter L2? | ≤ 3,25 MB Brotli für Engine + Glue. **Erledigt:** P2 (Profil + `-Oz`) erreicht 2,63 MB Brotli, Lichtpost läuft ([minimal_engine_size.md](../research_notes/Web%20Builds%20Entscheidungsgrundlagen/minimal_engine_size.md)) |
 | E2 | Brotli ohne Static Dictionary: L2 mit einem Encoder komprimieren, der das Dictionary nicht nutzt; Decoder-Größe als JS und als wasm messen | Trägt Lunas Trick bei wasm-Payloads, und wie klein wird der Decoder? | Größenverlust < Dictionary-Ersparnis im Decoder |
 | E3 | Single-File-Shell-Prototyp: Brotli+base64-Payload, schmaler Loader-Hook für die wasm, PCK als `ArrayBuffer`, Worklets als Blob-URLs, `window.Playable`-Adapter; durch AppLovin Preview, Meta Playable Preview, Mindworks Test Tool und Google HTML5 Validator | Akzeptieren die Prüfwerkzeuge wasm, CSP und den Glue? | Alle vier Prüfer grün, CSP-Report ohne Verstoß |
 | E4 | Startzeit auf einem schwachen Android-Gerät: base64-Decode, Brotli-Decode, `WebAssembly.instantiate` von 17,7 MB | Ist die Ladezeit für Ads tragbar? | Ladezeit < 5 s, das Ziel aus Unitys Leitfaden |

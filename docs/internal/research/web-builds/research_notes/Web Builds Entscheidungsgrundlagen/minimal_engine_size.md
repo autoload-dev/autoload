@@ -95,6 +95,41 @@ encoding (`SINGLE_FILE_BINARY_ENCODE`, emsdk 4.0.20 `tools/link.py`) adds 51 % t
 brotli payload, more than base64. Base64 inside a deflated ZIP adds only 0.26 %. See
 `reports/Playable Ads anderer Engines.md`.
 
+## Build profile and `-Oz` (2026-11-23)
+
+The levers of the iOS size prototype (autoload-dev/autoload#76, merged as #79) applied
+to the web. The build profile `lichtpost.gdbuild` (beside these notes) comes from that
+prototype's `make_build_profile.py`, which mirrors the editor's "Detect from Project":
+it disables 233 core Node and Resource classes Lichtpost does not use (Animation,
+`Node2D`, GLTF, navigation, particles, `RichTextLabel`, …), keeping `Image`,
+`ImageTexture`, `World2D`, `World3D`, `Theme`, `Material`, `Shader`, `ShaderMaterial`,
+`CanvasItemMaterial`, `Translation`, `CameraAttributesPractical` and `ORMMaterial3D`
+explicitly. All variants: the module set and switches above, `module_webp_enabled=yes`,
+`lto=full`.
+
+| Variant | Optimization | Profile | raw | gzip -9 | brotli 11 | xz -9e |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| L2 | `size_extra` (`-Os`, `SIZE_EXTRA`) | – | 17.71 MB | 5.15 MB | 3.62 MB | 3.47 MB |
+| O1 | `-Oz`, `SIZE_EXTRA` (`optimize=custom`) | – | 12.83 MB | 4.31 MB | 3.18 MB | – |
+| P1 | `size_extra` | Lichtpost | 14.20 MB | 4.17 MB | 2.97 MB | – |
+| **P2** | `-Oz`, `SIZE_EXTRA` | Lichtpost | **10.36 MB** | **3.53 MB** | **2.63 MB** | 2.56 MB |
+
+- `-Oz` saves 12 % brotli and 28 % raw over `-Os` on the web, contrary to the comment in
+  Godot's `platform/web/detect.py` ("-Oz only saves about 100 KiB over -Os"), which
+  predates `SIZE_EXTRA` and LTO in this combination. Run-time speed was not measured.
+- The build profile saves 18 % brotli on its own; both together 27 % (3.62 → 2.63 MB),
+  63 % below the official template (7.10 MB).
+- Lichtpost runs on P2: the menu, the 3D world with its WebP backgrounds and a started
+  run render, and the console shows no errors (checked in the browser; P1 and O1 load
+  the same way). The game was not played to the end, so a class needed only later in a
+  run could still be missing.
+- Each build took 58–80 s.
+
+Playable budget with P2 (engine 2.63 MB brotli plus `godot.js` 0.05 MB), before the
+decoder, shell and adapter: about 2.3 MB left for the game where the ZIP counts, about
+1.9 MB for AppLovin with base122, and about 1.4 MB for Unity Ads and Moloco, which count
+the raw HTML (3.51 MB base64 for the engine). Meta's 2 MB single HTML stays out of reach.
+
 ## Not done
 
 - Per-class or per-module attribution of the remaining code.
