@@ -119,6 +119,10 @@ run = "python3 -m tools.code_health.codescene"
 description = "Report the Code Health of the whole checkout: hotspots and the lowest scores"
 run = "python3 -m tools.code_health.codescene --survey"
 
+[tasks.generate]
+description = "Regenerate the lock files and the ruleset's API reference"
+run = "python3 -m tools.generate.generate"
+
 [tasks.lint]
 description = "Lint everything: Ruff and ty, Buildifier's lint, the workflows and hk.pkl"
 run = "python3 -m tools.ci.work run lint"

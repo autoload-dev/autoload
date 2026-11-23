@@ -155,6 +155,8 @@ WORK = (
         ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
+    # The generated files: lock files, the API reference and the source-built engines' pins.
+    Work("generated", "quality", ".", ("python3 -m tools.generate.generate --check",)),
     Work(
         "test:setup",
         "quality",
@@ -176,7 +178,6 @@ WORK = (
         "docs",
         RULESET_DIR,
         (
-            "bazel run //tools/docs:check",
             contracts_command("docs"),
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),
