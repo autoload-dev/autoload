@@ -25,6 +25,7 @@ load("@rules_apple//apple/internal/aspects:resource_aspect.bzl", "apple_resource
 load("@rules_apple//apple/internal/aspects:swift_usage_aspect.bzl", "SwiftUsageInfo", "swift_usage_aspect")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_swift//swift:swift.bzl", "SwiftInfo")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
 load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
@@ -59,4 +60,6 @@ runtime_bridge_ios = rule(
     doc = "Expose the iOS runtime component resolved in this platform slice to rules_apple's linking and bundling.",
     implementation = _bridge_impl,
     toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
+    attrs = ENGINE_SETTINGS_ATTRS,
+    cfg = engine_settings,
 )

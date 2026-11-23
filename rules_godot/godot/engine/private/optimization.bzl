@@ -7,7 +7,7 @@ extensions and application code keep the build's own levels.
 
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
-visibility(["//godot/engine/private/..."])
+visibility(["//godot/..."])
 
 _ENGINE_OPTIMIZE = str(Label("//godot:engine_optimize"))
 _ENGINE_LTO = str(Label("//godot:engine_lto"))
@@ -56,3 +56,32 @@ def engine_optimization(settings, attr):
         level = "speed" if attr.role == "runtime" and attr.variant == "release" else "speed_trace"
     lto = _LTO_OPTIONS[settings[_ENGINE_LTO]]
     return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto, LINKOPT: linkopts + lto}
+
+_OPTIMIZE_VALUES = ["", "auto", "speed", "speed_trace", "size", "size_extra", "size_min"]
+_LTO_VALUES = ["", "none", "thin", "full"]
+
+# The attributes of the rules that resolve an application's runtime component.
+ENGINE_SETTINGS_ATTRS = {
+    "engine_optimize": attr.string(
+        doc = "The engine_optimize of this application's source-built engine; empty keeps the build's.",
+        values = _OPTIMIZE_VALUES,
+    ),
+    "engine_lto": attr.string(
+        doc = "The engine_lto of this application's source-built engine; empty keeps the build's.",
+        values = _LTO_VALUES,
+    ),
+}
+
+def _engine_settings_impl(settings, attr):
+    return {
+        _ENGINE_OPTIMIZE: attr.engine_optimize or settings[_ENGINE_OPTIMIZE],
+        _ENGINE_LTO: attr.engine_lto or settings[_ENGINE_LTO],
+    }
+
+# Sets an application's engine settings where its runtime component is resolved, so the
+# engine compiles with them and the rest of the application keeps the build's.
+engine_settings = transition(
+    implementation = _engine_settings_impl,
+    inputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO],
+    outputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO],
+)

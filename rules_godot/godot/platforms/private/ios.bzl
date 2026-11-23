@@ -462,6 +462,7 @@ def godot_ios_application(
         infoplists = [],
         app_icons = [],
         launch_storyboard = None,
+        engine_settings = {},
         visibility = None,
         **kwargs):
     """
@@ -543,6 +544,8 @@ def godot_ios_application(
         app_icons: The application's own app icons, which replace those Godot renders.
         launch_storyboard: The application's own launch storyboard, which replaces the
             generated launch screen.
+        engine_settings: The application's engine_optimize and engine_lto, for the
+            runtime component it resolves.
         visibility: Visibility of the application target.
         **kwargs: Remaining ios_application attributes, including signing options.
     """
@@ -553,7 +556,7 @@ def godot_ios_application(
         runtime_bridge_ios(
             name = name + ".godot_runtime",
             visibility = ["//visibility:private"],
-            **common
+            **(common | engine_settings)
         )
     inputs = ios_application_inputs(
         name = name,

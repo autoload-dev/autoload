@@ -480,6 +480,20 @@ bazel build //path/to:app -c opt \
   --@autoload_rules_godot//godot:engine_lto=full
 ```
 
+An application can set both for its own engine with `godot_app`'s `engine_optimize` and
+`engine_lto`, which override the build's settings; one recipe then serves a small release
+application beside a fast debug one, each with an engine built for it:
+
+```starlark
+godot_app(
+    name = "game",
+    pack = ":pack",
+    application_id = "com.example.game",
+    engine_optimize = "size_min",
+    engine_lto = "full",
+)
+```
+
 ## Debug symbols
 
 A source-built engine's debug information follows Bazel's `-c`, `--copt`,
