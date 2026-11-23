@@ -7,7 +7,7 @@ surveyed Bazel rulesets do not have. Read it when you add a test or review the t
 change. The [verification policy](verification.md) owns when to verify, the test-driven
 cycle and evidence reuse. [Selection and lanes](verification-platforms.md) owns which lane
 runs what. Tests inside a user's own project follow
-[test ownership](../public/project-layout.md#test-ownership).
+[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
 ## Choosing a test kind
 
@@ -152,11 +152,11 @@ code.
 
 - **Location**: `examples/`, in the example that owns the behavior.
 - **Form**: The example's own tests, placed by
-  [test ownership](../public/project-layout.md#test-ownership).
+  [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 - **Allowed dependencies**: The public API only.
 - **May prove**: The example's own behavior.
 - **May not claim**: Ruleset coverage. Examples demonstrate the ruleset and are not a
-  coverage matrix ([example scope](../../examples/AGENTS.md#scope-and-design)).
+  coverage matrix ([example scope](../../rules_godot/examples/AGENTS.md#scope-and-design)).
 - **Evidence**: rules_python, rules_rust and rules_jvm_external keep their examples as
   consumer modules with their own tests.
 - **Altitude**: Outside the altitude order.

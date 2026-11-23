@@ -101,6 +101,7 @@ run = [
 
 [tasks.docs]
 description = "Check API source contracts, host evidence and generated reference"
+dir = "{{config_root}}/rules_godot"
 run = [
   "bazel run //tools/docs:check",
   "bazel run //tools/docs:contracts -- --lane docs",
@@ -110,14 +111,17 @@ run = [
 # Configured API output contracts per lane; `docs` runs the docs lane's cases.
 [tasks."contracts:host"]
 description = "Check the host lane's API output contracts"
+dir = "{{config_root}}/rules_godot"
 run = "bazel run //tools/docs:contracts -- --lane host"
 
 [tasks."contracts:source-engine"]
 description = "Check the source-engine lane's API output contracts; needs macOS"
+dir = "{{config_root}}/rules_godot"
 run = "bazel run //tools/docs:contracts -- --lane source-engine"
 
 [tasks."contracts:ios"]
 description = "Check the iOS API output contracts; needs macOS with Xcode"
+dir = "{{config_root}}/rules_godot"
 run = "bazel run //tools/docs:contracts -- --lane ios"
 
 [tasks.conventions]
@@ -133,20 +137,25 @@ run = "bazel run //tools/conventions -- {% for rule in vars.documentation_conven
 description = "Check the conventions that apply to documentation"
 run = "bazel run //tools/conventions -- {% for rule in vars.documentation_conventions | split(pat=' ') %}--rule {{ rule }} {% endfor %}"
 
-# The docs task runs the //docs and //tools/docs tests.
+# The docs task runs the ruleset's //docs and //tools/docs tests.
 # The ruleset's host set, including its Android packaging tests (L1); tests that build an
 # engine from source run in the source-engine lane.
 [tasks."test:bazel"]
 extends = "android"
-description = "Run the Bazel tests outside the documentation checks"
+description = "Run the ruleset's Bazel tests outside the documentation checks"
+dir = "{{config_root}}/rules_godot"
 run = "bazel test --build_tests_only --test_tag_filters=-source_engine -- //... -//docs/... -//tools/docs/..."
 
 # The regression module's host set; its mobile tests are manual and run in their lanes.
 [tasks."test:regressions"]
 description = "Run the regression module's host tests as a consumer of the ruleset"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 # The host set needs no Android SDK or NDK; an accidental dependency fails here.
 env = { ANDROID_HOME = "", ANDROID_NDK_HOME = "" }
+run = "bazel test //..."
+
+[tasks."test:tools"]
+description = "Run the Python tests of the repository's own tooling in the root module"
 run = "bazel test //..."
 
 [tasks."code-health"]
@@ -164,7 +173,7 @@ run = [
 
 [tasks."test:gdextension"]
 description = "Run the desktop smoke scenario of this host, on macOS also ad hoc signed"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 run = [
   # Each desktop smoke scenario is compatible with its own host only; the other is skipped.
   "bazel test //smoke/linux/... //smoke/macos/...",
@@ -177,32 +186,32 @@ run = "python3 -m unittest discover -s tools/ci -p '*_test.py'"
 
 [tasks."test:example:sqlite"]
 description = "Check and run the SQLite example's own tests"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //addons/sqlite/..."
 
 [tasks."test:example:lichtpost"]
 description = "Check and run Lichtpost's own tests"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //projects/lichtpost/..."
 
 [tasks."test:example:petri"]
 description = "Check and run Petri's own tests with its source-built engine"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only --config=petri //projects/petri/..."
 
 [tasks."test:example:platform_paths"]
 description = "Check and run the Platform Paths example's own tests"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //addons/platform_paths/..."
 
 [tasks."test:example:app_auth"]
 description = "Check and run the AppAuth example's own tests"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //addons/app_auth/..."
 
 [tasks."test:example:dart"]
 description = "Check and run the Dart scripts example's own tests"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //addons/dart/..."
 
 # The add-on modules' lanes, the same for every module in addons/ (tools/addons/lanes.py):
@@ -248,13 +257,14 @@ run = "python3 -m tools.addons.generated"
 
 [tasks."test:examples"]
 description = "Check and run all examples through their own public test targets"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //..."
 
 [tasks."test:full"]
 description = "Run the full host suite explicitly; routine selection uses the host lane's profile"
 run = [
   { task = "test:setup" },
+  { task = "test:tools" },
   { task = "test:bazel" },
   { task = "test:regressions" },
   { task = "test:gdextension" },
@@ -268,9 +278,9 @@ run = [
 [tasks.source-engine]
 extends = "android"
 description = "Build and run the main cases of source-built engines headless; needs macOS"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 run = [
-  "cd {{config_root}} && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...)) except attr(tags, \"\\bsource_engine_extended\\b\", tests(//godot/...))' | xargs bazel test",
+  "cd {{config_root}}/rules_godot && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...)) except attr(tags, \"\\bsource_engine_extended\\b\", tests(//godot/...))' | xargs bazel test",
   # A fuller editor and a reduced runtime of one snapshot, each with the custom module.
   "bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all",
 ]
@@ -278,9 +288,9 @@ run = [
 [tasks."source-engine:full"]
 extends = "android"
 description = "Build and run every case of source-built engines headless, Petri's included; needs macOS"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 run = [
-  "cd {{config_root}} && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...))' | xargs bazel test",
+  "cd {{config_root}}/rules_godot && bazel query 'attr(tags, \"\\bsource_engine\\b\", tests(//godot/...))' | xargs bazel test",
   "bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/stable:all",
   "bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/beta:all",
   "bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all",
@@ -290,12 +300,12 @@ run = [
 # The mobile tasks run the consumer module's configuration suites (tests/BUILD.bazel).
 [tasks."ios:apps"]
 description = "Build the iOS smoke app and inspect its linked extension"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 run = "bazel test //:ios_official --config=official"
 
 [tasks."ios:examples"]
 description = "Build the example iOS apps and their release symbols"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = [
   "bazel build //addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols //projects/lichtpost:app //projects/lichtpost:app.debug_symbols //addons/platform_paths/demo:app //addons/platform_paths/demo:app.debug_symbols //addons/app_auth/demo:app //addons/app_auth/demo:app.debug_symbols --config=ios-release",
 ]
@@ -324,17 +334,19 @@ depends = ["android:setup"]
 [tasks."contracts:android"]
 extends = "android"
 description = "Check the Android API output contracts"
+dir = "{{config_root}}/rules_godot"
 run = "bazel run //tools/docs:contracts -- --lane android"
 
 [tasks."android:apps"]
 extends = "android"
 description = "Build the Android smoke App Bundle and inspect its packaged extension and pack"
-dir = "{{config_root}}/tests"
+dir = "{{config_root}}/rules_godot/tests"
 run = "bazel test //:android_aab --config=android --config=aab"
 
 [tasks."inspect:mobile"]
 extends = "android"
 description = "Inspect already built Android and iOS artifacts; needs macOS"
+dir = "{{config_root}}/rules_godot"
 run = """
 bazel run //tools/platforms:validate_artifacts -- \
   --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME" \
@@ -345,7 +357,7 @@ bazel run //tools/platforms:validate_artifacts -- \
 [tasks."android:examples"]
 extends = "android"
 description = "Build the examples' Android APKs, bundles and symbols"
-dir = "{{config_root}}/examples"
+dir = "{{config_root}}/rules_godot/examples"
 run = [
   "bazel build //addons/sqlite/demo:app //projects/lichtpost:app //addons/platform_paths/demo:app //addons/app_auth/demo:app --config=android",
   "bazel build //addons/sqlite/demo:app --config=multi_abi --config=aab",

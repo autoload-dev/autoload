@@ -2,7 +2,7 @@
 # addons/<module>: each module's .bazelrc imports this file and adds its BuildBuddy tag.
 
 # Builds of a module use the rules beside it in this repository rather than a release.
-common --override_module=autoload_rules_godot=../..
+common --override_module=autoload_rules_godot=../../rules_godot
 
 import %workspace%/../../shared.bazelrc
 

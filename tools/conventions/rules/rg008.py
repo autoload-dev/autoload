@@ -21,7 +21,6 @@ class ApplicationContent:
     info = RuleInfo(
         "RG008",
         "Application content lives under main",
-        "docs/public/conventions.md#rg008",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

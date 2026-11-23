@@ -4,13 +4,13 @@ This guide covers BUILD and resource-graph maintenance. For repository checks an
 read the [verification policy](verification.md); for a fixture or environment setup, use the
 relevant [verification recipe](verification-recipes.md).
 For application execution, content validation, GdUnit, editor views and sidecars, see
-[development and testing](../public/development.md).
+[development and testing](../../rules_godot/docs/public/development.md).
 
 ## Analysis and BUILD maintenance
 
 `godot_resource_graph` in `godot/private/analysis.bzl` writes a project's resource graph
 for the ruleset's own tests; the scanner scope is described in
-[detected references](../public/resources.md#detected-references).
+[detected references](../../rules_godot/docs/public/resources.md#detected-references).
 Maintainers can query a test fixture's graph with the repository tool:
 
 ```sh

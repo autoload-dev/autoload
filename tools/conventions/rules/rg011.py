@@ -17,7 +17,6 @@ class AddonIndependence:
     info = RuleInfo(
         "RG011",
         "Reusable add-on implementation is independent of its demo",
-        "docs/public/conventions.md#rg011",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

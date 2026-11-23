@@ -2,7 +2,7 @@
 
 from tools.addons.new import TOKEN, Names, generate
 from tools.addons.test_support import RepositoryTestCase
-from tools.resource_uids import is_uid
+from tools.addons.uids import is_uid
 
 
 class NamesTest(RepositoryTestCase):

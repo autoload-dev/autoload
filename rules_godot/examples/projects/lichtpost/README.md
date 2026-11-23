@@ -58,7 +58,7 @@ Levels must finish within 7,200 ticks (120 seconds) to fit the replay input budg
 
 ## Credits
 
-Game code, geometry and UI use the repository [license](../../../LICENSE).
+Game code, geometry and UI use the repository [license](../../../../LICENSE).
 [Atkinson Hyperlegible](https://fonts.google.com/specimen/Atkinson+Hyperlegible)
 by Braille Institute is included under the [SIL Open Font License](main/shared/ui/OFL.txt).
 The six sound cues are original synthesized tones, included with the game code.

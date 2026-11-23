@@ -12,7 +12,7 @@ from tools.conventions.test_support import RepositoryTest
 
 
 class AdditionalRule:
-    info = RuleInfo("RG999", "An independent rule", "example.md#rg999")
+    info = RuleInfo("RG999", "An independent rule")
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         yield Finding(Location("BUILD.bazel", 3), "requires review", "not_checked")
@@ -34,7 +34,7 @@ class FrameworkTest(RepositoryTest):
         self.assertEqual(1, len(report.not_checked))
         self.assertEqual("RG999", report.violations[0].rule.id)
         self.assertEqual(
-            "BUILD.bazel:2: RG999: a violation (example.md#rg999)",
+            "BUILD.bazel:2: RG999: a violation (rules_godot/docs/public/conventions.md#rg999)",
             str(report.violations[0]),
         )
         self.assertIn("RG999 not checked", str(report.not_checked[0]))

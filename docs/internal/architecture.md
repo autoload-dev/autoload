@@ -33,7 +33,7 @@ contributions with the project's configuration, stages their editor parts for th
 processes of their roles, and initializes the members for the operation. A pack reaches
 the extensions and platform libraries of those add-ons through an internal per-pack
 native target, whose `deps` the aspects of rules_android and rules_apple follow. Import inputs remain available to the
-final Godot scan without becoming export members. See [projects and resources](../public/resources.md) for configuration conflict rules
+final Godot scan without becoming export members. See [projects and resources](../../rules_godot/docs/public/resources.md) for configuration conflict rules
 and cache boundaries.
 
 ```mermaid

@@ -261,21 +261,28 @@ custom(name = "computed" + "_name")
         self.assertEqual(source, (self.root / "BUILD.bazel").read_text())
 
     def test_workspace_resolves_existing_files_to_their_nearest_module(self) -> None:
-        for name in ("examples/MODULE.bazel", "examples/demo/BUILD", "README.md"):
+        for name in (
+            "rules_godot/examples/MODULE.bazel",
+            "rules_godot/examples/demo/BUILD",
+            "README.md",
+        ):
             self.write(name, "")
         workspace = Workspace(
             self.root,
             (
                 "MODULE.bazel",
                 "BUILD.bazel",
-                "examples/MODULE.bazel",
-                "examples/demo/BUILD",
+                "rules_godot/examples/MODULE.bazel",
+                "rules_godot/examples/demo/BUILD",
                 "README.md",
                 "deleted/BUILD.bazel",
             ),
         )
         self.assertNotIn("deleted/BUILD.bazel", workspace.files)
-        self.assertEqual(Path("examples"), workspace.owner("examples/demo/README.md"))
+        self.assertEqual(
+            Path("rules_godot/examples"),
+            workspace.owner("rules_godot/examples/demo/README.md"),
+        )
         self.assertEqual(Path("."), workspace.owner("README.md"))
         self.assertEqual(
             [("",), ("demo",)], [module.packages for module in workspace.modules]
@@ -359,27 +366,33 @@ escaped = "a\\"b"
 
     def test_typed_directories_are_measured_from_the_owning_module(self) -> None:
         for name in (
-            "examples/MODULE.bazel",
-            "tests/MODULE.bazel",
+            "rules_godot/examples/MODULE.bazel",
+            "rules_godot/tests/MODULE.bazel",
             "consumers/demo/MODULE.bazel",
         ):
             self.write(name, "")
         workspace = self.workspace()
         self.assertEqual(
-            ("projects", Path("examples/projects/x")),
-            workspace.typed_directory(Path("examples/projects/x/BUILD.bazel")),
+            ("projects", Path("rules_godot/examples/projects/x")),
+            workspace.typed_directory(
+                Path("rules_godot/examples/projects/x/BUILD.bazel")
+            ),
         )
         self.assertEqual(
-            ("projects", Path("tests/y")),
-            workspace.typed_directory(Path("tests/y/tests/android/BUILD.bazel")),
+            ("projects", Path("rules_godot/tests/y")),
+            workspace.typed_directory(
+                Path("rules_godot/tests/y/tests/android/BUILD.bazel")
+            ),
         )
         self.assertEqual(
-            ("projects", Path("tests/smoke/linux")),
-            workspace.typed_directory(Path("tests/smoke/linux/main/main.gd")),
+            ("projects", Path("rules_godot/tests/smoke/linux")),
+            workspace.typed_directory(Path("rules_godot/tests/smoke/linux/main/main.gd")),
         )
         self.assertEqual(
-            ("addons", Path("tests/shared_addon")),
-            workspace.typed_directory(Path("tests/shared_addon/demo/BUILD.bazel")),
+            ("addons", Path("rules_godot/tests/shared_addon")),
+            workspace.typed_directory(
+                Path("rules_godot/tests/shared_addon/demo/BUILD.bazel")
+            ),
         )
         self.assertEqual(
             ("addons", Path("consumers/demo/addons/z")),
@@ -387,9 +400,9 @@ escaped = "a\\"b"
         )
         for name in (
             "godot/private/tests/BUILD.bazel",
-            "tests/tools/x/BUILD.bazel",
-            "tests/smoke/BUILD.bazel",
-            "tests/BUILD.bazel",
+            "rules_godot/tests/tools/x/BUILD.bazel",
+            "rules_godot/tests/smoke/BUILD.bazel",
+            "rules_godot/tests/BUILD.bazel",
             "projects/root/BUILD.bazel",
         ):
             with self.subTest(name=name):
@@ -399,10 +412,10 @@ escaped = "a\\"b"
         files = (
             "MODULE.bazel",
             "BUILD.bazel",
-            "examples/MODULE.bazel",
-            "examples/BUILD.bazel",
-            "tests/MODULE.bazel",
-            "tests/BUILD.bazel",
+            "rules_godot/examples/MODULE.bazel",
+            "rules_godot/examples/BUILD.bazel",
+            "rules_godot/tests/MODULE.bazel",
+            "rules_godot/tests/BUILD.bazel",
         )
         for name in files:
             self.write(
@@ -452,7 +465,10 @@ escaped = "a\\"b"
                 context.declarations(module)
                 context.starlark.calls(module)
                 context.bazel.rules(module)
-        self.assertEqual({Path("."), Path("examples"), Path("tests")}, set(queries))
+        self.assertEqual(
+            {Path("."), Path("rules_godot/examples"), Path("rules_godot/tests")},
+            set(queries),
+        )
         self.assertEqual(3, len(queries))
         self.assertEqual(3, len(parses))
 

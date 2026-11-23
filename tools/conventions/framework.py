@@ -5,14 +5,20 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import RULESET_MODULE, Context, Location
+
+# The catalogue that documents every rule, by its ID as anchor.
+CATALOGUE = (RULESET_MODULE / "docs/public/conventions.md").as_posix()
 
 
 @dataclass(frozen=True)
 class RuleInfo:
     id: str
     title: str
-    documentation: str
+
+    @property
+    def documentation(self) -> str:
+        return f"{CATALOGUE}#{self.id.lower()}"
 
 
 @dataclass(frozen=True)

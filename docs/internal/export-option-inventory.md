@@ -11,7 +11,7 @@ compilation, device, signing or Store validation was involved.
 [export-options-4.7.2.json](export-options-4.7.2.json) enumerates 701 platform/key pairs
 with their runtime Godot types and their reviewed disposition. It is the dated per-key
 record, not runtime policy: the rules act on the engine profile's rejected-keys table in
-[profiles.bzl](../../godot/private/engine/profiles.bzl) and on the live probe's
+[profiles.bzl](../../rules_godot/godot/private/engine/profiles.bzl) and on the live probe's
 registration and types. A row records an option, not a public attribute. The file stores
 no option values, credentials or copied default schema. Its owner IDs resolve to the
 evidence and limitations below.
@@ -41,7 +41,7 @@ The configured 4.8-beta1 comparison below records the observed minor-version dif
 
 `EditorExportPreset.get_property_list()` applies exporter visibility predicates. Advanced
 mode and the union of an actual preset and `create_preset()` still omit conditionally hidden
-options. The existing [probe](../../tools/action/shell.gd) uses that union, so this is
+options. The existing [probe](../../rules_godot/tools/action/shell.gd) uses that union, so this is
 also an implementation correction, not just a documentation issue.
 
 The experiment collected visible names/types from both presets, then supplemented them with
@@ -120,7 +120,7 @@ and actual export experiment own omitted-field behavior, not an option-family he
 
 This index explains the JSON's owner IDs as reviewed on the snapshot date. Current
 configuration ownership is documented in the public
-[configuration guide](../public/configuration.md). All `consumed` rows have
+[configuration guide](../../rules_godot/docs/public/configuration.md). All `consumed` rows have
 execution-time consumers. Some asset decisions also inspect
 explicit pack option declarations during analysis; declared resource membership is still
 required. This inventory does not solve early native configuration by reading an action
@@ -128,10 +128,10 @@ output during analysis.
 
 | Owner ID | Evidence and intended effect |
 | --- | --- |
-| `android-host` | [shell_android.py](../../tools/platforms/shell_android.py) and finite [profile](../../godot/private/engine/profiles.bzl): manifest, command line, theme, version and permission generation. `splash_screen/*` behavior additionally needs the internally provisioned AndroidX dependency below. |
-| `apple-host` | [shell_apple.py](../../tools/platforms/shell_apple.py) and finite profile: plist/localization/privacy metadata and launch background. Includes all exact observed privacy members matched to that profile, not future `privacy/*` keys. |
-| `host-assets` | [shell_assets.bzl](../../godot/private/shell_assets.bzl) and [probe](../../tools/action/shell.gd): declared image selection/rendering. iOS dark and tinted icons have existing consumers; all 51 observed iOS icon keys are included. |
-| `icon-composer` | [desktop backend](../../godot/platforms/private/desktop.bzl): existing conditional native Icon Composer route, with its host/tool requirements. |
+| `android-host` | [shell_android.py](../../rules_godot/tools/platforms/shell_android.py) and finite [profile](../../rules_godot/godot/private/engine/profiles.bzl): manifest, command line, theme, version and permission generation. `splash_screen/*` behavior additionally needs the internally provisioned AndroidX dependency below. |
+| `apple-host` | [shell_apple.py](../../rules_godot/tools/platforms/shell_apple.py) and finite profile: plist/localization/privacy metadata and launch background. Includes all exact observed privacy members matched to that profile, not future `privacy/*` keys. |
+| `host-assets` | [shell_assets.bzl](../../rules_godot/godot/private/shell_assets.bzl) and [probe](../../rules_godot/tools/action/shell.gd): declared image selection/rendering. iOS dark and tinted icons have existing consumers; all 51 observed iOS icon keys are included. |
+| `icon-composer` | [desktop backend](../../rules_godot/godot/platforms/private/desktop.bzl): existing conditional native Icon Composer route, with its host/tool requirements. |
 | `godot-pck` | The PC exporter's `get_preset_features()` maps the two texture-format controls to actual import/export features used for the PCK. |
 | `engine` | Declared app/engine inputs and selected templates own runtime binaries. No filesystem-valued custom-template option. |
 | `destination` | Bazel OS/CPU/environment scenario and slice transitions; selected Godot architecture options are internal derived values. Supported CPU sets remain the app contract's sets. |
@@ -169,8 +169,8 @@ assertion of support for a prefix or for every Godot version.
 
 Decision: contribute `androidx.core:core-splashscreen:1.0.1` from the ruleset's non-development
 `rules_jvm_external` extension use to the shared `maven` installation. This is the version
-already used by [examples](../../examples/MODULE.bazel) and the
-[regression module](../../tests/MODULE.bazel). Add a
+already used by [examples](../../rules_godot/examples/MODULE.bazel) and the
+[regression module](../../rules_godot/tests/MODULE.bazel). Add a
 checked-in ruleset lock generated from the complete selected contribution graph, including
 this dependency and its resolved transitive closure; keep splashscreen the only new direct
 app-library declaration. Use
@@ -229,7 +229,7 @@ effects. Hidden previously inventoried keys were checked with `has/get`; newly r
 names were obtained from both live preset property lists. Dynamically hidden new plugin
 names still need an explicit declaration/authored-name candidate as described above.
 
-Reproduce from the repository root by building
+Reproduce from `rules_godot/` by building
 `//godot/platforms/private/tests/app_platform_selection:linux_export_options_match_facts_observations_facts`
 and its `macos_`, `android_` and `ios_` counterparts with
 `--//godot:engine=beta`. Inspect each facts JSON by `editor_version`

@@ -130,7 +130,7 @@ py_library(
     srcs = ["output_contracts.py"],
     deps = [
         "//tools:ruleset_lib",
-        "//tools/ci:verification_lib",
+        "@autoload_dev//tools/ci:verification_lib",
     ],
 )
 
@@ -147,7 +147,7 @@ py_library(
     deps = [
         ":coverage_lib",
         ":output_contracts_lib",
-        "//tools/conventions:context_lib",
+        "@autoload_dev//tools/conventions:context_lib",
     ],
 )
 
@@ -169,7 +169,7 @@ py_library(
         ":evidence_lib",
         ":inventory_lib",
         ":output_contracts_lib",
-        "//tools/conventions:context_lib",
+        "@autoload_dev//tools/conventions:context_lib",
     ],
 )
 

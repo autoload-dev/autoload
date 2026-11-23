@@ -4,10 +4,16 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import (
+    NON_CONSUMER_MODULES,
+    RULESET_MODULE,
+    Context,
+    Location,
+)
 from tools.conventions.framework import Finding, RuleInfo
-from tools.ruleset import REPO
 
+# The apparent repository consumers write for the ruleset, as in @autoload_rules_godot//godot.
+REPO = "@autoload_rules_godot"
 # Only Bazel build/run/test command arguments are labels here, not source snippets,
 # URLs, query expressions or Godot resource paths.
 COMMAND = re.compile(r"\bbazel(?:isk)?\s+(?:build|run|test)\s+([^`\n]+)")
@@ -50,7 +56,6 @@ class CommandLabels:
     info = RuleInfo(
         "RG006",
         "Documented commands name existing targets",
-        "docs/public/conventions.md#rg006",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
@@ -65,7 +70,7 @@ class CommandLabels:
         local = label.removeprefix(REPO)
         ruleset = local != label
         # Root-local labels in consumer templates have no package context.
-        if local.startswith("//:") and owner == Path(".") and not ruleset:
+        if local.startswith("//:") and owner in NON_CONSUMER_MODULES and not ruleset:
             return None
         package, _, target = local[2:].partition(":")
         # A command names its document's module first; nested modules are explicit.
@@ -73,8 +78,12 @@ class CommandLabels:
             module for module in context.workspace.modules if package in module.packages
         ]
         if ruleset:
-            candidates = [module for module in candidates if module.path == Path(".")]
-        elif owner != Path(".") and owner in {module.path for module in candidates}:
+            candidates = [
+                module for module in candidates if module.path == RULESET_MODULE
+            ]
+        elif owner not in NON_CONSUMER_MODULES and owner in {
+            module.path for module in candidates
+        }:
             candidates = [module for module in candidates if module.path == owner]
         if len(candidates) != 1:
             return (

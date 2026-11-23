@@ -79,7 +79,6 @@ class PublicDocumentationLinks:
     info = RuleInfo(
         "RG013",
         "Public documentation does not link to internal documentation",
-        "docs/public/conventions.md#rg013",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

@@ -9,7 +9,8 @@ py_library(
 py_library(
     name = "requirements_lib",
     srcs = ["requirements.py"],
-    visibility = ["//tools/platforms:__pkg__"],
+    # The ruleset's artifact inspection checks the provisioned SDK (rules_godot/).
+    visibility = ["//visibility:public"],
     deps = [
         "//tools/addons:new_lib",
         "//tools/setup:modules_lib",

@@ -13,8 +13,8 @@ class AddonModuleLayoutTest(RepositoryTest):
         super().setUp()
         self.write(".bazelversion", "9.3.0\n")
         self.write(
-            ".bcr/metadata.template.json",
-            (ROOT / ".bcr/metadata.template.json").read_text(),
+            ".bcr/rules_godot/metadata.template.json",
+            (ROOT / ".bcr/rules_godot/metadata.template.json").read_text(),
         )
 
     def module(self, directory: str, addon: str | None = None) -> None:
@@ -44,7 +44,7 @@ class AddonModuleLayoutTest(RepositoryTest):
             [
                 "add-on module must be named autoload_widget",
                 "add-on module must own .bcr/addons/widget/presubmit.yml",
-                "must be .bcr/metadata.template.json with the module's homepage",
+                "must be .bcr/rules_godot/metadata.template.json with the module's homepage",
                 "must import the shared settings: import %workspace%/../module.bazelrc",
                 "must release the archive autoload_widget-{VERSION}",
             ],

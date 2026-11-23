@@ -2,7 +2,7 @@
 
 These are long-lived resources for contributors and agents. They describe user outcomes,
 architecture and source-backed domain mechanisms independently of any single change.
-Use the [public guides](../public/README.md) for supported consumer workflows.
+Use the [public guides](../../rules_godot/docs/public/README.md) for supported consumer workflows.
 
 | Resource | Purpose | Review when |
 |---|---|---|

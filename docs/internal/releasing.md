@@ -14,7 +14,7 @@ decide. No list names the modules. Pushing a tag runs
 1. **Release:** bazel-contrib's
    [release_ruleset](https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml)
    workflow runs the module's release test (for the ruleset, the
-   [registry test module](../../e2e/smoke)), runs
+   [registry test module](../../rules_godot/e2e/smoke)), runs
    [release_prep.sh](../../.github/workflows/release_prep.sh) to build
    `<module>-X.Y.Z.tar.gz` with `git archive` of the module's directory and, for the
    ruleset, the API documentation archive `autoload_rules_godot-X.Y.Z.docs.tar.gz`, attests
@@ -53,12 +53,12 @@ first when an add-on needs rules that are not released yet.
 
 ## What the archive contains
 
-The archive holds the module's directory at its root, under `<module>-X.Y.Z/`.
-[.gitattributes](../../.gitattributes) keeps development-only directories out of the
-ruleset's archive: `examples/`, `tests/`, `addons/`, `.github/` and the agent tool
-directories. `e2e/` stays in, because the registry's presubmit builds `e2e/smoke` from the
-archive. An add-on's archive leaves its `examples/` out through the module's own
-`.gitattributes` and adds the repository's `LICENSE`.
+Every archive holds its module's directory at its root, under `<module>-X.Y.Z/`, with the
+repository's `LICENSE`. The ruleset's [.gitattributes](../../rules_godot/.gitattributes)
+keeps its development-only directories, `examples/` and `tests/`, and the link to the
+repository's Bazelisk wrapper out of it. `e2e/` stays in, because the registry's presubmit
+builds `e2e/smoke` from the archive. An add-on's archive leaves its `examples/` out through
+the module's own `.gitattributes`.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
 module by `mise run addon:new` and checked by the conventions (RG015), so a module is ready to
@@ -66,7 +66,7 @@ publish from its first commit; it is published when its tag is pushed. `.bcr/con
 lists only the ruleset: every release names its module root itself (`publish.yaml`).
 
 The registry runs the test module on Linux and macOS with Bazel 9
-([presubmit.yml](../../.bcr/presubmit.yml)). A first submission and any later change to
+([presubmit.yml](../../.bcr/rules_godot/presubmit.yml)). A first submission and any later change to
 `presubmit.yml` beyond platforms and Bazel versions wait for a registry maintainer to start
 the presubmit.
 

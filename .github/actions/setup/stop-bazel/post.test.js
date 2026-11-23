@@ -84,6 +84,23 @@ test("also shuts down the add-on modules a build ran in", (t) => {
   ].sort());
 });
 
+test("also shuts down nested modules a build ran in, but not Bazel's own links", (t) => {
+  const f = fixture(t);
+  for (const built of ["rules_godot", "rules_godot/tests"]) {
+    fs.mkdirSync(path.join(f.root, built), { recursive: true });
+    fs.symlinkSync(f.root, path.join(f.root, built, "bazel-out"));
+  }
+  fs.mkdirSync(path.join(f.root, "rules_godot/bazel-bin/nested"), { recursive: true });
+  fs.symlinkSync(f.root, path.join(f.root, "rules_godot/bazel-bin/nested/bazel-out"));
+  fs.mkdirSync(path.join(f.root, "rules_godot/examples"));
+  assert.equal(f.run().status, 0);
+  assert.deepEqual(f.calls(), [
+    f.root,
+    path.join(f.root, "rules_godot"),
+    path.join(f.root, "rules_godot/tests"),
+  ].sort());
+});
+
 test("defaults to the root module", (t) => {
   const f = fixture(t);
   assert.equal(f.run().status, 0);

@@ -2,10 +2,11 @@
 Print the module that a release tag `<module>-v<version>` releases, one `key=value` per line.
 
 - name and version: from the tag;
-- root: the module's directory, `.` for autoload_rules_godot and `addons/<directory>` for
+- root: the module's directory, `rules_godot` for autoload_rules_godot and
+  `addons/<directory>` for
   the add-on module `autoload_<directory>` (RG015);
-- bcr: whether the Bazel Central Registry gets the release, which its templates in .bcr/
-  (.bcr/addons/<directory>/ for an add-on) decide;
+- bcr: whether the Bazel Central Registry gets the release, which its templates in
+  .bcr/<root>/ decide;
 - test: the command that tests the release in a checkout of the tag.
 
 No table lists the modules: a new add-on module is releasable as soon as it exists.
@@ -16,19 +17,20 @@ import re
 import sys
 from pathlib import Path
 
-from tools.addons.modules import ROOT, module_attributes, module_path
+from tools.addons.modules import ROOT, module_attributes, module_name, module_path
+from tools.setup.modules import RULESET
 
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
-RULESET = "autoload_rules_godot"
+RULESET_NAME = module_name(RULESET.name)
 # The ruleset's release test: the registry's test module, as its presubmit.yml runs it. Its
 # own //... builds engines and mobile packages.
-RULESET_TEST = "cd e2e/smoke && bazel test //..."
+RULESET_TEST = f"cd {RULESET}/e2e/smoke && bazel test //..."
 
 
 def module_root(name: str, root: Path = ROOT) -> Path:
     """The directory of the module the name declares, relative to the repository."""
     directory = (
-        Path(".") if name == RULESET else module_path(name.removeprefix("autoload_"))
+        RULESET if name == RULESET_NAME else module_path(name.removeprefix("autoload_"))
     )
     manifest = root / directory / "MODULE.bazel"
     if (
@@ -47,7 +49,7 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
     directory = module_root(name, root)
     test = (
         RULESET_TEST
-        if name == RULESET
+        if name == RULESET_NAME
         else f"python3 -m tools.addons.lanes host {directory.name}"
     )
     return {

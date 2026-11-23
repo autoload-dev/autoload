@@ -16,9 +16,12 @@ class ReleaseModuleTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        (self.root / "MODULE.bazel").write_text(module("autoload_rules_godot"))
-        (self.root / ".bcr").mkdir()
-        (self.root / ".bcr/metadata.template.json").write_text("{}")
+        (self.root / "rules_godot").mkdir()
+        (self.root / "rules_godot/MODULE.bazel").write_text(
+            module("autoload_rules_godot")
+        )
+        (self.root / ".bcr/rules_godot").mkdir(parents=True)
+        (self.root / ".bcr/rules_godot/metadata.template.json").write_text("{}")
         for directory, name in (
             ("widget", "autoload_widget"),
             ("gadget", "autoload_gadget"),
@@ -28,7 +31,7 @@ class ReleaseModuleTest(unittest.TestCase):
         (self.root / ".bcr/addons/widget").mkdir(parents=True)
         (self.root / ".bcr/addons/widget/metadata.template.json").write_text("{}")
 
-    def test_the_ruleset_releases_from_the_root_with_its_registry_test_module(
+    def test_the_ruleset_releases_from_its_directory_with_its_registry_test_module(
         self,
     ) -> None:
         self.assertEqual(
@@ -36,9 +39,9 @@ class ReleaseModuleTest(unittest.TestCase):
             {
                 "name": "autoload_rules_godot",
                 "version": "0.2.0",
-                "root": ".",
+                "root": "rules_godot",
                 "bcr": "true",
-                "test": "cd e2e/smoke && bazel test //...",
+                "test": "cd rules_godot/e2e/smoke && bazel test //...",
             },
         )
 

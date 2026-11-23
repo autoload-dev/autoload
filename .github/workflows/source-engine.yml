@@ -34,9 +34,6 @@ jobs:
         with:
           # The ruleset's source_engine tests include Android source builds.
           android-cache: "true"
-          bazel-modules: |
-            .
-            tests
       - name: Run apps with source-built engines
         run: python3 tools/ci/verification.py run '["source-engine:full"]'
       - name: Save Bazel downloads

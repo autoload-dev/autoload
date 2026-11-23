@@ -9,9 +9,28 @@ local function task(name: String): Step = new {
   check = "mise run \(name)"
 }
 
-// What every build reads: the rules, the build tools that builds run, the root module
-// and the task commands. Add a build tool here when a build starts to run it.
-local core = List(
+// Paths of the ruleset's directory, written relative to it.
+local function ruleset(paths: List<String>): List<String> =
+  paths.map((it) -> "rules_godot/" + it)
+
+// What the ruleset's own tests read of the root: the shared settings and tasks, the root
+// module, which the ruleset uses for development, and the root tooling its documentation
+// checks and artifact inspection depend on.
+local rootForRuleset = List(
+  "shared.bazelrc",
+  "mise.toml",
+  "mise.lock",
+  "MODULE.bazel",
+  "MODULE.bazel.lock",
+  "tools/android/**",
+  "tools/ci/verification.py",
+  "tools/conventions/context.py",
+  "tools/conventions/environment.py",
+)
+
+// What every build reads: the rules, the build tools that builds run, the ruleset's module,
+// the shared Bazel settings and the task commands. Add a build tool here when a build starts to run it.
+local core = ruleset(List(
   "godot/**",
   "tools/BUILD.bazel",
   "tools/*.tpl",
@@ -32,10 +51,11 @@ local core = List(
   "*_install.json",
   "BUILD.bazel",
   ".bazelrc",
-  "shared.bazelrc",
-  "tools/bazel",
   ".bazelversion",
   ".bazelignore",
+)) + List(
+  "shared.bazelrc",
+  "tools/bazel",
   "mise.toml",
   "mise.lock",
 )
@@ -43,7 +63,7 @@ local core = List(
 // The ruleset's white-box test packages. A change to one selects test:bazel and the tasks
 // that run its scripts, not the consumer tasks that merely read the rules in core. A
 // package missing here only selects more work.
-local whiteBox = List(
+local whiteBox = ruleset(List(
   "godot/tests/**",
   "godot/private/tests/**",
   "godot/private/config/tests/**",
@@ -55,7 +75,7 @@ local whiteBox = List(
   "tools/tests/**",
   "tools/engine/tests/**",
   "tools/platforms/tests/**",
-)
+))
 
 // What a step that reads core ignores: documentation and white-box tests it does not run.
 local function consumerExclude(kept: List<String>): List<String> =
@@ -64,20 +84,20 @@ local consumerExcludeAll = consumerExclude(List())
 
 // The white-box packages whose tests are tagged source_engine: the source-engine lane runs
 // them, test:bazel excludes them.
-local sourceEngineTests = List(
+local sourceEngineTests = ruleset(List(
   "godot/engine/private/tests/**",
   "godot/extension/tests/**",
   "godot/platforms/private/tests/**",
-)
+))
 
 // The consumer module's own declarations: what every task that builds in tests/ reads.
-local regressionModule = List(
+local regressionModule = ruleset(List(
   "tests/MODULE.bazel",
   "tests/MODULE.bazel.lock",
   "tests/.bazel*",
   "tests/BUILD.bazel",
   "tests/*.json",
-)
+))
 
 // What every step that builds in tests/ reads before its own inputs.
 local regressionCore = core + regressionModule
@@ -111,12 +131,12 @@ local conventionSources = List(
   "**/*.bzl",
   "**/MODULE.bazel",
   "**/project.godot",
-  "examples/addons/**",
-  "examples/projects/**",
-  "tests/patched_engine/**",
-  "tests/script_run/**",
-  "tests/shared_addon/**",
-  "tests/smoke/**",
+  "rules_godot/examples/addons/**",
+  "rules_godot/examples/projects/**",
+  "rules_godot/tests/patched_engine/**",
+  "rules_godot/tests/script_run/**",
+  "rules_godot/tests/shared_addon/**",
+  "rules_godot/tests/smoke/**",
   "tools/conventions/**",
   "addons/*/addon.pkl",
   // The add-on modules' registry templates and the generator's template that RG015 reads.
@@ -131,24 +151,26 @@ local conventionSources = List(
 // task checks registration and the docs lane's cases; the contracts:* tasks check the
 // configured cases of their lane.
 local apiContracts = List(
-  "tools/BUILD.bazel",
-  "tools/tool_environment*",
-  "tools/docs/**",
+  "rules_godot/tools/BUILD.bazel",
+  "rules_godot/tools/tool_environment*",
+  "rules_godot/tools/docs/**",
   "tools/conventions/context.py",
-  "godot/tests/api_contracts/**",
+  "tools/conventions/environment.py",
+  "tools/ci/verification.py",
+  "rules_godot/godot/tests/api_contracts/**",
 )
 
 // Inputs of one example's host suite beyond its own directories: declarations the example
 // alone consumes. Maven pins are not listed: the host suite never builds an Android plugin.
 local exampleInputs = new Mapping<String, List<String>> {
-  ["sqlite"] = List("examples/deps/sqlite.BUILD.bazel")
+  ["sqlite"] = List("rules_godot/examples/deps/sqlite.BUILD.bazel")
   ["platform_paths"] = List()
   ["lichtpost"] = List()
   // A macOS host builds the Apple backend from the Swift package.
-  ["app_auth"] = List("examples/Package.swift", "examples/Package.resolved")
+  ["app_auth"] = List("rules_godot/examples/Package.swift", "rules_godot/examples/Package.resolved")
   // The lock file that pins the recipes of its source-built engine.
-  ["petri"] = List("examples/engines/BUILD.bazel", "examples/engines/godot_petri.lock.json")
-  ["dart"] = List("examples/deps/dart_sdk.BUILD.bazel", "examples/deps/dart_sdk.patch")
+  ["petri"] = List("rules_godot/examples/engines/BUILD.bazel", "rules_godot/examples/engines/godot_petri.lock.json")
+  ["dart"] = List("rules_godot/examples/deps/dart_sdk.BUILD.bazel", "rules_godot/examples/deps/dart_sdk.patch")
 }
 
 // The add-on modules in addons/: each addons/<module>/addon.pkl names the lanes that verify
@@ -197,9 +219,13 @@ local checks = new Mapping<String, Step> {
       ".bazelversion",
       "*.bazelrc",
       ".bazelrc",
-      "*/MODULE.bazel",
-      "*/.bazelrc",
-      "*/.bazelversion",
+      "rules_godot/.bazelignore",
+      "rules_godot/MODULE.bazel",
+      "rules_godot/.bazelversion",
+      "rules_godot/.bazelrc",
+      "rules_godot/*/MODULE.bazel",
+      "rules_godot/*/.bazelrc",
+      "rules_godot/*/.bazelversion",
       "addons/*/MODULE.bazel",
       "addons/*/.bazelrc",
       "addons/*/.bazelversion",
@@ -212,7 +238,7 @@ local checks = new Mapping<String, Step> {
       "addons/*/addon.pkl",
       "tools/addons/**",
       "tools/setup/**",
-      "godot/platforms/private/android_toolchains.bzl",
+      "rules_godot/godot/platforms/private/android_toolchains.bzl",
     )
   }
   ["lint:ci"] = (task("lint:ci")) {
@@ -257,47 +283,72 @@ local checks = new Mapping<String, Step> {
   }
   ["docs"] = (task("docs")) {
     glob = apiContracts + List(
-      "godot/**",
-      "docs/public/api/**",
-      "tools/docs/**",
-      "MODULE.bazel",
-      "MODULE.bazel.lock",
-      ".bazelversion",
+      "rules_godot/godot/**",
+      "rules_godot/docs/public/api/**",
+      "rules_godot/tools/docs/**",
+      "rules_godot/MODULE.bazel",
+      "rules_godot/MODULE.bazel.lock",
+      "rules_godot/.bazelversion",
       "mise.toml",
     )
     exclude = List()
   }
   ["test:bazel"] = (task("test:bazel")) {
     profiles = List("host")
-    glob = List("**")
+    glob = List("rules_godot/**") + rootForRuleset
     exclude = List(
       "**/*.md",
-      ".agents/**",
-      "docs/**",
-      "examples/**",
-      "tests/**",
-      "addons/**",
+      "rules_godot/docs/**",
+      "rules_godot/e2e/**",
+      "rules_godot/examples/**",
+      "rules_godot/tests/**",
+    )
+  }
+  // The repository's own tooling in the root module: its Python tests, which read the
+  // checkout's module declarations, registry templates and add-on manifests.
+  ["test:tools"] = (task("test:tools")) {
+    glob = List(
+      "tools/**",
+      "hk.pkl",
+      ".bazelignore",
+      ".bcr/**",
+      "addons/*/MODULE.bazel",
+      "addons/*/addon.pkl",
+      "addons/*/examples/MODULE.bazel",
+      "addons/consumers.pkl",
+      "rules_godot/MODULE.bazel",
+      "rules_godot/.bazelignore",
+      "rules_godot/*/MODULE.bazel",
+      "rules_godot/*/.bazelrc",
+      "MODULE.bazel",
+      "MODULE.bazel.lock",
+      "BUILD.bazel",
+      ".bazelrc",
+      "shared.bazelrc",
+      "pyproject.toml",
+      "mise.toml",
+      "mise.lock",
     )
   }
   ["test:regressions"] = (task("test:regressions")) {
     profiles = List("host")
-    exclude = consumerExcludeAll + consumedAddonExcludes("tests")
-    glob = core + List("tests/**") + consumedAddonFiles("tests")
+    exclude = consumerExcludeAll + consumedAddonExcludes("rules_godot/tests")
+    glob = core + List("rules_godot/tests/**") + consumedAddonFiles("rules_godot/tests")
   }
   for (example, inputs in exampleInputs) {
     ["test:example:" + example] = (task("test:example:" + example)) {
       profiles = List(if (exampleProfiles.containsKey(example)) exampleProfiles[example] else "host")
-      exclude = consumerExcludeAll + consumedAddonExcludes("examples")
+      exclude = consumerExcludeAll + consumedAddonExcludes("rules_godot/examples")
       glob = core + List(
-        "examples/MODULE.bazel",
-        "examples/MODULE.bazel.lock",
-        "examples/.bazel*",
-        "examples/*.bzl",
-        "examples/BUILD.bazel",
-        "examples/deps/BUILD.bazel",
-        "examples/addons/" + example + "/**",
-        "examples/projects/" + example + "/**",
-      ) + consumedAddonFiles("examples") + inputs
+        "rules_godot/examples/MODULE.bazel",
+        "rules_godot/examples/MODULE.bazel.lock",
+        "rules_godot/examples/.bazel*",
+        "rules_godot/examples/*.bzl",
+        "rules_godot/examples/BUILD.bazel",
+        "rules_godot/examples/deps/BUILD.bazel",
+        "rules_godot/examples/addons/" + example + "/**",
+        "rules_godot/examples/projects/" + example + "/**",
+      ) + consumedAddonFiles("rules_godot/examples") + inputs
     }
   }
   for (module, addon in addonModules) {
@@ -321,7 +372,7 @@ local checks = new Mapping<String, Step> {
           "tools/addons/lanes.py",
           "tools/addons/modules.py",
           "tools/setup/modules.py",
-          "tools/resource_uids.py",
+          "tools/addons/uids.py",
         ) + addonShared
       }
   }
@@ -329,15 +380,15 @@ local checks = new Mapping<String, Step> {
     profiles = List("host")
     exclude = consumerExcludeAll
     glob = regressionCore + List(
-      "tests/smoke/linux/**",
-      "tests/smoke/macos/**",
-      "tools/tool_environment.py",
+      "rules_godot/tests/smoke/linux/**",
+      "rules_godot/tests/smoke/macos/**",
+      "rules_godot/tools/tool_environment.py",
     )
   }
   for (lane in List("host", "source-engine", "android", "ios")) {
     ["contracts:" + lane] = (task("contracts:" + lane)) {
       profiles = List(lane)
-      exclude = consumerExclude(List("godot/tests/**"))
+      exclude = consumerExclude(List("rules_godot/godot/tests/**"))
       // The consumer scenarios that host cases or behavior tests of a lane.
       // tools/ci/selection_test.py checks the packages that
       // godot/tests/api_contracts/cases.bzl names against this list.
@@ -349,9 +400,9 @@ local checks = new Mapping<String, Step> {
     profiles = List("source-engine")
     exclude = consumerExclude(sourceEngineTests)
     glob = regressionCore + sourceEngineTests + List(
-      "tests/patched_engine/**",
+      "rules_godot/tests/patched_engine/**",
       "tools/android/**",
-      "tools/tool_environment.py",
+      "rules_godot/tools/tool_environment.py",
       ".github/**",
       "tools/ci/**",
     )
@@ -360,9 +411,9 @@ local checks = new Mapping<String, Step> {
     profiles = List("ios")
     exclude = consumerExcludeAll
     glob = regressionCore + List(
-      "examples/**",
-      "tests/smoke/ios/**",
-      "tools/tool_environment.py",
+      "rules_godot/examples/**",
+      "rules_godot/tests/smoke/ios/**",
+      "rules_godot/tools/tool_environment.py",
       ".github/**",
       "tools/ci/**",
     )
@@ -372,9 +423,9 @@ local checks = new Mapping<String, Step> {
     exclude = consumerExcludeAll
     glob = regressionCore + List(
       "tools/android/**",
-      "examples/**",
-      "tools/tool_environment.py",
-      "tests/smoke/android/**",
+      "rules_godot/examples/**",
+      "rules_godot/tools/tool_environment.py",
+      "rules_godot/tests/smoke/android/**",
       ".github/**",
       "tools/ci/**",
     )

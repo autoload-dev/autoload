@@ -20,8 +20,9 @@ from tools.addons.modules import (
 from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
+from tools.setup.modules import ADDONS as ADDON_DIRECTORY
 
-ADDONS = Path("addons")
+ADDONS = Path(ADDON_DIRECTORY)
 # The files every module addons/<directory> owns: those of the generator's template, but
 # its example project, which a module may name and shape as it likes.
 REQUIRED = tuple(
@@ -111,7 +112,6 @@ class AddonModuleLayout:
     info = RuleInfo(
         "RG015",
         "Add-on modules share one layout",
-        "docs/public/conventions.md#rg015",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

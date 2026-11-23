@@ -4,7 +4,13 @@ from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import BUILD_FILES, Context, Location, nearest
+from tools.conventions.context import (
+    BUILD_FILES,
+    NON_CONSUMER_MODULES,
+    Context,
+    Location,
+    nearest,
+)
 from tools.conventions.framework import Finding, RuleInfo
 
 PATCH_SUFFIXES = frozenset({".patch", ".diff"})
@@ -26,7 +32,6 @@ class EngineLayout:
     info = RuleInfo(
         "RG014",
         "Engine modules and patches live under engine/",
-        "docs/public/conventions.md#rg014",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
@@ -34,7 +39,7 @@ class EngineLayout:
         roots = sorted(
             config.parent
             for config in workspace.godot_configurations
-            if workspace.owner(config.as_posix()) != Path(".")
+            if workspace.owner(config.as_posix()) not in NON_CONSUMER_MODULES
         )
         members: dict[Path, list[Path]] = defaultdict(list)
         for name in workspace.files:

@@ -13,7 +13,7 @@ from pathlib import Path
 from tools.ci.verification import PROFILE_LANES, lane_plan
 
 ROOT = Path(__file__).resolve().parents[2]
-CASES = ROOT / "godot/tests/api_contracts/cases.bzl"
+CASES = ROOT / "rules_godot/godot/tests/api_contracts/cases.bzl"
 # hk itself rather than mise's shim, which finds no hk outside this checkout's mise.toml,
 # such as in the temporary checkouts of the add-on cases.
 HK = (
@@ -53,7 +53,7 @@ def regression_contract_packages() -> Iterator[tuple[str, str]]:
             continue
         package = target.removeprefix("//").partition(":")[0]
         lane = fields.get("lane", "host")
-        yield f"tests/{package}/BUILD.bazel", f"contracts:{lane}"
+        yield f"rules_godot/tests/{package}/BUILD.bazel", f"contracts:{lane}"
 
 
 # The examples whose suites run on the host.
@@ -93,7 +93,9 @@ class SelectionTest(unittest.TestCase):
         return json.loads(result.stdout)
 
     def test_shared_example_dependencies_select_all_example_suites(self) -> None:
-        lanes = lane_plan(self.plan("examples/deps/BUILD.bazel", profiles=PROFILE_LANES))
+        lanes = lane_plan(
+            self.plan("rules_godot/examples/deps/BUILD.bazel", profiles=PROFILE_LANES)
+        )
         self.assertEqual(set(lanes["host"]), HOST_EXAMPLES)
 
     def test_gdunit_test_changes_select_its_consumers(self) -> None:
@@ -115,9 +117,9 @@ class SelectionTest(unittest.TestCase):
 
     def test_petri_selects_its_source_engine_suite_and_no_host_example(self) -> None:
         for path in (
-            "examples/projects/petri/engine/modules/reaction_diffusion/gray_scott_field.cpp",
-            "examples/projects/petri/main/dish/dish.gd",
-            "examples/engines/godot_petri.lock.json",
+            "rules_godot/examples/projects/petri/engine/modules/reaction_diffusion/gray_scott_field.cpp",
+            "rules_godot/examples/projects/petri/main/dish/dish.gd",
+            "rules_godot/examples/engines/godot_petri.lock.json",
         ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
@@ -126,14 +128,16 @@ class SelectionTest(unittest.TestCase):
 
     def test_sqlite_dependency_selects_only_its_host_example(self) -> None:
         lanes = lane_plan(
-            self.plan("examples/deps/sqlite.BUILD.bazel", profiles=PROFILE_LANES)
+            self.plan(
+                "rules_godot/examples/deps/sqlite.BUILD.bazel", profiles=PROFILE_LANES
+            )
         )
         self.assertEqual(lanes["host"], ["test:example:sqlite"])
 
     def test_dart_sdk_build_selects_only_its_host_example(self) -> None:
         for path in (
-            "examples/deps/dart_sdk.BUILD.bazel",
-            "examples/deps/dart_sdk.patch",
+            "rules_godot/examples/deps/dart_sdk.BUILD.bazel",
+            "rules_godot/examples/deps/dart_sdk.patch",
         ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
@@ -141,9 +145,9 @@ class SelectionTest(unittest.TestCase):
 
     def test_documentation_only_changes_do_not_select_code_or_lane_work(self) -> None:
         for path in (
-            "docs/public/versions.md",
-            "docs/public/engine.md",
-            "examples/addons/platform_paths/README.md",
+            "rules_godot/docs/public/versions.md",
+            "rules_godot/docs/public/engine.md",
+            "rules_godot/examples/addons/platform_paths/README.md",
         ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
@@ -173,7 +177,9 @@ class SelectionTest(unittest.TestCase):
                 )
 
     def test_common_content_tool_selects_the_acceptance_of_every_lane(self) -> None:
-        lanes = lane_plan(self.plan("tools/common_content.py", profiles=PROFILE_LANES))
+        lanes = lane_plan(
+            self.plan("rules_godot/tools/common_content.py", profiles=PROFILE_LANES)
+        )
         self.assertIn("test:bazel", lanes["host"])
         self.assertIn("contracts:host", lanes["host"])
         self.assertEqual(set(lanes["android"]), {"android", "contracts:android"})
@@ -181,7 +187,9 @@ class SelectionTest(unittest.TestCase):
 
     def test_mobile_smoke_scenario_selects_its_lane(self) -> None:
         lanes = lane_plan(
-            self.plan("tests/smoke/android/main/main.gd", profiles=PROFILE_LANES)
+            self.plan(
+                "rules_godot/tests/smoke/android/main/main.gd", profiles=PROFILE_LANES
+            )
         )
         self.assertIn("test:regressions", lanes["host"])
         # The scenario hosts no contract case.
@@ -190,7 +198,10 @@ class SelectionTest(unittest.TestCase):
 
     def test_private_test_rules_select_the_consumers_and_contracts(self) -> None:
         lanes = lane_plan(
-            self.plan("godot/private/testing/ios_app_test.bzl", profiles=PROFILE_LANES)
+            self.plan(
+                "rules_godot/godot/private/testing/ios_app_test.bzl",
+                profiles=PROFILE_LANES,
+            )
         )
         # The ruleset's own artifact test rules are ruleset code: they select the
         # consumers and every lane's contracts.
@@ -203,7 +214,7 @@ class SelectionTest(unittest.TestCase):
     ) -> None:
         lanes = lane_plan(
             self.plan(
-                "godot/platforms/private/tests/engine_probe/BUILD.bazel",
+                "rules_godot/godot/platforms/private/tests/engine_probe/BUILD.bazel",
                 profiles=PROFILE_LANES,
             )
         )
@@ -211,14 +222,14 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(lanes["source-engine"], ["source-engine"])
 
     def test_rule_changes_select_white_box_tests_and_the_regression_module(self) -> None:
-        lanes = lane_plan(self.plan("godot/defs.bzl", profiles=PROFILE_LANES))
+        lanes = lane_plan(self.plan("rules_godot/godot/defs.bzl", profiles=PROFILE_LANES))
         self.assertIn("test:bazel", lanes["host"])
         self.assertIn("test:regressions", lanes["host"])
 
     def test_regression_project_changes_select_only_the_regression_module(self) -> None:
         lanes = lane_plan(
             self.plan(
-                "tests/script_run/BUILD.bazel",
+                "rules_godot/tests/script_run/BUILD.bazel",
                 profiles=PROFILE_LANES,
             )
         )
@@ -227,7 +238,10 @@ class SelectionTest(unittest.TestCase):
 
     def test_white_box_tests_select_only_the_ruleset_tests(self) -> None:
         lanes = lane_plan(
-            self.plan("godot/private/tests/versions_tests.bzl", profiles=PROFILE_LANES)
+            self.plan(
+                "rules_godot/godot/private/tests/versions_tests.bzl",
+                profiles=PROFILE_LANES,
+            )
         )
         self.assertIn("test:bazel", lanes["host"])
         self.assertNotIn("test:regressions", lanes["host"])
@@ -270,7 +284,7 @@ class SelectionTest(unittest.TestCase):
         )
 
     def test_rule_changes_do_not_select_the_add_on_modules(self) -> None:
-        lanes = self.addon_plan("godot/defs.bzl")
+        lanes = self.addon_plan("rules_godot/godot/defs.bzl")
         self.assertFalse(
             any(":addon" in task for tasks in lanes.values() for task in tasks)
         )
@@ -290,7 +304,7 @@ class SelectionTest(unittest.TestCase):
         )
 
     def test_default_check_does_not_build_examples(self) -> None:
-        lanes = lane_plan(self.plan("examples/deps/BUILD.bazel"))
+        lanes = lane_plan(self.plan("rules_godot/examples/deps/BUILD.bazel"))
         self.assertFalse(
             any(lanes[name] for name in ("host", "source-engine", "android", "ios"))
         )
@@ -299,10 +313,10 @@ class SelectionTest(unittest.TestCase):
         self,
     ) -> None:
         for path in (
-            "tools/docs/output_contracts.py",
+            "rules_godot/tools/docs/output_contracts.py",
             "tools/conventions/context.py",
-            "godot/tests/api_contracts/cases.bzl",
-            "godot/tests/api_contracts/repositories/templates_fixture.py",
+            "rules_godot/godot/tests/api_contracts/cases.bzl",
+            "rules_godot/godot/tests/api_contracts/repositories/templates_fixture.py",
         ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
@@ -325,13 +339,18 @@ class SelectionTest(unittest.TestCase):
     def test_build_tool_environment_selects_contracts_and_the_tools_using_it(
         self,
     ) -> None:
-        lanes = lane_plan(self.plan("tools/tool_environment.py", profiles=PROFILE_LANES))
+        lanes = lane_plan(
+            self.plan("rules_godot/tools/tool_environment.py", profiles=PROFILE_LANES)
+        )
         self.assertIn("contracts:host", lanes["host"])
         self.assertIn("test:gdextension", lanes["host"])
         self.assertEqual(lanes["android"], ["contracts:android", "android"])
 
     def test_contract_sources_also_select_the_non_host_lanes(self) -> None:
-        for path in ("godot/app.bzl", "godot/extension/godot_cpp.BUILD.tpl"):
+        for path in (
+            "rules_godot/godot/app.bzl",
+            "rules_godot/godot/extension/godot_cpp.BUILD.tpl",
+        ):
             with self.subTest(path=path):
                 lanes = lane_plan(self.plan(path, profiles=PROFILE_LANES))
                 self.assertEqual(lanes["docs"], ["docs"])
@@ -341,7 +360,7 @@ class SelectionTest(unittest.TestCase):
                 self.assertIn("contracts:ios", lanes["ios"])
 
     def test_local_api_docs_selection_does_not_request_lane_work(self) -> None:
-        lanes = lane_plan(self.plan("tools/docs/output_contracts.py"))
+        lanes = lane_plan(self.plan("rules_godot/tools/docs/output_contracts.py"))
         self.assertEqual(lanes["docs"], ["docs"])
         self.assertFalse(any(lanes[name] for name in ("host", "android", "ios")))
 

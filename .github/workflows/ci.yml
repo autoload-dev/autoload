@@ -70,11 +70,6 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          bazel-modules: |
-            .
-            examples
-            tests
       - name: Check source quality and setup contracts
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
@@ -149,10 +144,6 @@ jobs:
         uses: ./.github/actions/setup
         with:
           android-cache: "true"
-          bazel-modules: |
-            .
-            tests
-            examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
@@ -171,11 +162,6 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          bazel-modules: |
-            .
-            tests
-            examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads

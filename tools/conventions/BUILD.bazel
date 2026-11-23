@@ -4,9 +4,13 @@ package(default_visibility = ["//visibility:private"])
 
 py_library(
     name = "context_lib",
-    srcs = ["context.py"],
-    visibility = ["//tools/docs:__pkg__"],
-    deps = ["//tools:tool_environment_lib"],
+    srcs = [
+        "context.py",
+        "environment.py",
+    ],
+    # The ruleset's documentation checks read Bazel evidence through it (rules_godot/).
+    visibility = ["//visibility:public"],
+    deps = ["//tools/setup:modules_lib"],
 )
 
 py_library(
@@ -38,7 +42,6 @@ py_library(
     deps = [
         ":context_lib",
         ":framework_lib",
-        "//tools:ruleset_lib",
         "//tools/addons:new_lib",
     ],
 )

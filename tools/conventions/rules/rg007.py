@@ -28,7 +28,6 @@ class TestOnlyOperations:
     info = RuleInfo(
         "RG007",
         "Godot test operations and their helpers are test-only",
-        "docs/public/conventions.md#rg007",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

@@ -108,7 +108,7 @@ gdunit_test(
 )
 ```
 
-The [module's README](../../addons/gdunit/README.md) describes how to depend on it, what a
+The [module's README](../../../addons/gdunit/README.md) describes how to depend on it, what a
 suite is, how the test passes and fails and how to split suites across test environments.
 
 Bazel owns test-result caching and selected configuration matrices. Declare

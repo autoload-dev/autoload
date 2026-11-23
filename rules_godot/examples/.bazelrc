@@ -49,15 +49,15 @@ build:aab --@autoload_rules_godot//godot:android_format=aab
 build:petri --extra_toolchains=@godot_petri//toolchains:all
 build:petri --@autoload_rules_godot//godot:engine=petri
 
-import %workspace%/../shared.bazelrc
+import %workspace%/../../shared.bazelrc
 
 # Opt in to BuildBuddy with --config=buildbuddy, or --config=buildbuddy-linux to test remotely.
-import %workspace%/../buildbuddy.bazelrc
+import %workspace%/../../buildbuddy.bazelrc
 # Bazel normalizes the command as a path; run the executable script by its relative path.
-build:buildbuddy --workspace_status_command=../buildbuddy_status.sh
+build:buildbuddy --workspace_status_command=../../buildbuddy_status.sh
 # Tell this module's invocations apart in BuildBuddy's history and trends.
 build:buildbuddy --build_metadata=TAGS=examples
 
 # Personal settings for every module of this repository, such as `common --config=buildbuddy`,
 # go in user.bazelrc at the repository root; git ignores it.
-try-import %workspace%/../user.bazelrc
+try-import %workspace%/../../user.bazelrc

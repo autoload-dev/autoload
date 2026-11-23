@@ -10,9 +10,9 @@ This is research evidence, not completed feature acceptance.
 
 ### S01
 
-Repository [MODULE.bazel](../../../MODULE.bazel), [.bazelversion](../../../.bazelversion),
-[examples/MODULE.bazel](../../../examples/MODULE.bazel), [engine profiles](../../../godot/private/engine/profiles.bzl)
-and [strict source patching](../../../godot/private/patches.bzl). Pins:
+Repository [MODULE.bazel](../../../rules_godot/MODULE.bazel), [.bazelversion](../../../.bazelversion),
+[examples/MODULE.bazel](../../../rules_godot/examples/MODULE.bazel), [engine profiles](../../../rules_godot/godot/private/engine/profiles.bzl)
+and [strict source patching](../../../rules_godot/godot/private/patches.bzl). Pins:
 Godot 4.7.2, Bazel 9.3.0, rules_android 0.8.0, rules_apple 5.3.1.
 The Godot tag resolves to ed1daf0bf001b61586d9930840f2f1394092c079 (git ls-remote);
 E01 independently reports the same official binary revision. Source-built engine fixture
@@ -124,53 +124,53 @@ Candidate resource roots, dependency availability and recognized suites are dist
 
 ### R01
 
-[Project/resources](../../../godot/private/project.bzl): resource paths/deps/import inputs/
+[Project/resources](../../../rules_godot/godot/private/project.bzl): resource paths/deps/import inputs/
 import unit metadata 253–329; per-import-unit action declaration 750–822; full project
 imports/init/provider 839–1061; pack selection/export/shell input registration 1199–1412.
-[Providers](../../../godot/providers.bzl) describe current contracts.
+[Providers](../../../rules_godot/godot/providers.bzl) describe current contracts.
 Whole-project memberships here are implementation facts, not desired minimum dependencies.
 
 ### R02
 
-[Per-purpose configuration](../../../godot/private/project_config.py#L179), especially 227–250:
+[Per-purpose configuration](../../../rules_godot/godot/private/project_config.py#L179), especially 227–250:
 drops import autoload/editor-plugin section, main scene, resource-reference-valued settings
 and inactive feature overrides, then reconstructs per-purpose plugin lists.
-[Godot staging](../../../tools/godot_staging.py): staging/extensions 194–258; child environment
-272–294. [Godot project actions](../../../tools/godot_actions.py): scan/conversion/output
-capture 31–106; importer/feature probes 109–176. [Godot exports](../../../tools/godot_export.py):
+[Godot staging](../../../rules_godot/tools/godot_staging.py): staging/extensions 194–258; child environment
+272–294. [Godot project actions](../../../rules_godot/tools/godot_actions.py): scan/conversion/output
+capture 31–106; importer/feature probes 109–176. [Godot exports](../../../rules_godot/tools/godot_export.py):
 generated presets 231–279; export lock/workspace 332–357; pack staging/rescan/export/report 393–433.
 Per-import-unit output retention is .godot/imported changes + own sidecars; initialization captures
 changed staged-project files. Custom output paths/alternative project-data layout need review.
 
 ### R03
 
-[Editor and sidecar rules](../../../godot/private/editor.bzl),
-[editor tool](../../../tools/godot_editor.py) and
-[sidecar extraction/write/check](../../../tools/godot_metadata_sync.py).
+[Editor and sidecar rules](../../../rules_godot/godot/private/editor.bzl),
+[editor tool](../../../rules_godot/tools/godot_editor.py) and
+[sidecar extraction/write/check](../../../rules_godot/tools/godot_metadata_sync.py).
 Editor uses checkout links/copies and inherited environment; generated/source files have
 different writeback ownership. Missing-sidecar writer does not overwrite existing files.
 
 ### R04
 
-[Run rules and launcher](../../../godot/private/run.bzl) 21–148 and
-[runner](../../../tools/godot_run.py) 245–365:
+[Run rules and launcher](../../../rules_godot/godot/private/run.bzl) 21–148 and
+[runner](../../../rules_godot/tools/godot_run.py) 245–365:
 source full project imports/init/runfiles, main-pack-only extension library staging, extra PCK
 delivery, explicit env plus test variables, report publishing.
-[Test adapter](../../../godot/private/adapter.bzl),
+[Test adapter](../../../rules_godot/godot/private/adapter.bzl),
 [GdUnit adapter](../../../addons/gdunit/private/gdunit_test.bzl) and
 [GdUnit test adapter script](../../../addons/gdunit/private/run.gd) show case selection/framework/report policy.
 
 ### R05
 
-[Extension construction](../../../godot/extension/defs.bzl),
-[desktop backend](../../../godot/platforms/private/desktop.bzl),
-[Android](../../../godot/platforms/private/android.bzl),
-[iOS](../../../godot/platforms/private/ios.bzl),
-[macOS signing](../../../godot/platforms/private/macos_signing.bzl),
-[shell file writers](../../../godot/platforms/private/shell.bzl),
-[symbol rules](../../../godot/private/symbols.bzl),
-[native symbol tool](../../../tools/platforms/native_symbols.py) and
-[signing tool](../../../tools/platforms/sign_macos.py).
+[Extension construction](../../../rules_godot/godot/extension/defs.bzl),
+[desktop backend](../../../rules_godot/godot/platforms/private/desktop.bzl),
+[Android](../../../rules_godot/godot/platforms/private/android.bzl),
+[iOS](../../../rules_godot/godot/platforms/private/ios.bzl),
+[macOS signing](../../../rules_godot/godot/platforms/private/macos_signing.bzl),
+[shell file writers](../../../rules_godot/godot/platforms/private/shell.bzl),
+[symbol rules](../../../rules_godot/godot/private/symbols.bzl),
+[native symbol tool](../../../rules_godot/tools/platforms/native_symbols.py) and
+[signing tool](../../../rules_godot/tools/platforms/sign_macos.py).
 Editor and runtime extension providers, transitive native code/resources/manifests/plists,
 ABI/Swift/framework aspects, strip/dSYM/UUID preservation and signing locality are distinct
 edges.
@@ -178,29 +178,29 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 
 ### R06
 
-[Graph declaration](../../../godot/private/graph.bzl),
-[graph inspection rule](../../../godot/private/analysis.bzl),
-[scanner/selector](../../../tools/resource_graph.py):
+[Graph declaration](../../../rules_godot/godot/private/graph.bzl),
+[graph inspection rule](../../../rules_godot/godot/private/analysis.bzl),
+[scanner/selector](../../../rules_godot/tools/resource_graph.py):
 analyzed/opaque/leaf classes 1–75, runtime/import input validation and unknown dynamic refs,
 selection 1091 onward. Static scanning does not dynamically declare new Bazel inputs.
-[Pack format inspection](../../../tools/pck.py) validates the current PCK structure.
+[Pack format inspection](../../../rules_godot/tools/pck.py) validates the current PCK structure.
 
 ### R07
 
-[Engine components](../../../godot/engine/private/components.bzl),
+[Engine components](../../../rules_godot/godot/engine/private/components.bzl),
 [engine source repositories](../../../godot/engine/repositories.bzl),
-[engine generators](../../../godot/engine/private/generator.bzl) and
-[patch handling](../../../godot/private/patches.bzl).
+[engine generators](../../../rules_godot/godot/engine/private/generator.bzl) and
+[patch handling](../../../rules_godot/godot/private/patches.bzl).
 Archive/checksum, module trees, ordered patches, host configure tools/imported env,
 generator source/stamp and native compilation/link inputs feed actual executable identity.
 
 ### R08
 
-[Shell assets](../../../godot/private/shell_assets.bzl),
-[probe export script](../../../tools/action/shell.gd),
-[action plugin](../../../tools/action/plugin.gd),
-[engine profiles](../../../godot/private/engine/profiles.bzl) and
-[export shell mode](../../../tools/godot_export.py#L120).
+[Shell assets](../../../rules_godot/godot/private/shell_assets.bzl),
+[probe export script](../../../rules_godot/tools/action/shell.gd),
+[action plugin](../../../rules_godot/tools/action/plugin.gd),
+[engine profiles](../../../rules_godot/godot/private/engine/profiles.bzl) and
+[export shell mode](../../../rules_godot/tools/godot_export.py#L120).
 Probe reports actual defaults/settings/feature tags; engine profiles supply remaining versioned
 tables.
 The shell-assets action does not parse the already generated main PCK as its input.

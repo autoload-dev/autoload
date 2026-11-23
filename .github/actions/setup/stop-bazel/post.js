@@ -7,24 +7,29 @@ const listed = (process.env["INPUT_BAZEL-MODULES"] || ".")
   .map((moduleRoot) => moduleRoot.trim())
   .filter(Boolean);
 
-// The add-on modules and their examples that this job built in: a build leaves the bazel-out
-// symlink. The workflows need not list them, so a new add-on module needs no workflow change.
-function builtAddonModules() {
-  const addons = path.join(process.env.GITHUB_WORKSPACE, "addons");
-  if (!fs.existsSync(addons)) return [];
-  return fs.readdirSync(addons, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => [`addons/${entry.name}`, `addons/${entry.name}/examples`])
-    .filter((moduleRoot) => {
-      try {
-        return fs.lstatSync(path.join(process.env.GITHUB_WORKSPACE, moduleRoot, "bazel-out")).isSymbolicLink();
-      } catch {
-        return false;
-      }
-    });
+// The modules this job built in, up to the depth of an add-on's examples: a build leaves the
+// bazel-out symlink in its module. The workflows need not list them, so a new or nested
+// module needs no workflow change. Bazel's own symlinks and hidden directories are no modules.
+const SEARCH_DEPTH = 3;
+
+function builtModules(directory = ".", depth = 0) {
+  const absolute = path.join(process.env.GITHUB_WORKSPACE, directory);
+  let entries;
+  try {
+    entries = fs.readdirSync(absolute, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const built = entries.some((entry) => entry.name === "bazel-out" && entry.isSymbolicLink());
+  const nested = depth < SEARCH_DEPTH
+    ? entries
+      .filter((entry) => entry.isDirectory() && !/^(bazel-|\.git$|node_modules$)/.test(entry.name))
+      .flatMap((entry) => builtModules(path.join(directory, entry.name), depth + 1))
+    : [];
+  return [...(built ? [directory] : []), ...nested];
 }
 
-const modules = [...new Set([...listed, ...builtAddonModules()])];
+const modules = [...new Set([...listed, ...builtModules()].map((moduleRoot) => path.normalize(moduleRoot)))];
 const shutdownSeconds = Number(process.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"]) || 30;
 
 // Resolves to the exit status, the terminating signal or "timeout". A SIGTERM-only
