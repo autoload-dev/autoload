@@ -93,7 +93,10 @@ commit, so CI has no job for it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs the whole lane,
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges. `mise run ci:work -- source-engine` runs
+before it merges. Stale recipe pins need no dispatch to show: the quality lane's
+`generated` work, which the pre-push hook runs too, analyses each pinned source build's
+toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
+`mise run ci:work -- source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged
