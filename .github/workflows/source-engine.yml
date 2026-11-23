@@ -1,8 +1,8 @@
 name: Source engine
 
-# The only CI run of the source-engine lane: the Apple workflow builds and runs every
-# source-engine case on main, on the schedule below and on manual dispatch. Pull requests
-# and merges leave the lane out. Policy:
+# The only CI run of the source-engine lane: it builds and runs every source-engine case
+# on main, on the schedule below, and on any branch on manual dispatch. Pull requests and
+# merges leave the lane out. Policy:
 # docs/internal/verification-platforms.md#source-engine-workflow.
 on:
   schedule:
@@ -14,9 +14,31 @@ on:
 permissions:
   contents: read
 
+# A newer run on the same branch replaces one still building engines.
+concurrency:
+  group: source-engine-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  apple:
-    name: Apple
-    uses: ./.github/workflows/apple.yml
-    with:
-      plan: '{"host": [], "source-engine": ["source-engine:full"], "ios": [], "host_android": false}'
+  source-engine:
+    name: Source engine
+    timeout-minutes: 60
+    runs-on: macos-ci
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+        with:
+          # The ruleset's source_engine tests include Android source builds.
+          android-cache: "true"
+          bazel-modules: |
+            .
+            tests
+      - name: Run apps with source-built engines
+        run: python3 tools/ci/verification.py run '["source-engine:full"]'
+      - name: Save Bazel downloads
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup/save-downloads

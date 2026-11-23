@@ -45,7 +45,7 @@ before the selected lightweight checks. CI uses the same tasks through the share
 pinned base tools without mounting Bazel caches or starting the Bazel server inventory/cleanup;
 selected build workflow jobs enable those steps and declare the modules they use. Android
 workflow jobs reuse cached missing SDK components; host-only ones do not install Java or
-Android SDKs. CI logs Xcode/SDK versions on Apple workflow jobs; compare with `xcodebuild -version` locally when CI runner
+Android SDKs. CI logs Xcode/SDK versions on its macOS jobs; compare with `xcodebuild -version` locally when CI runner
 equivalence matters. GitHub's runner images can change.
 
 CI does not collect or upload Bazel diagnostic artifacts. For a specific local

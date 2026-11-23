@@ -13,36 +13,27 @@ ROOT = Path(__file__).resolve().parents[2]
 LANES = ("quality", "docs", "host", "source-engine", "android", "ios")
 PROFILE_LANES = ("host", "source-engine", "android", "ios")
 
-# The workflow job that runs each lane's tasks, by workflow: CI runs the lanes that Linux
-# runners can run, the Apple workflow those that need a macOS runner. The host lane runs on
-# both hosts. A workflow's selection job has an output for each of its lanes.
-WORKFLOW_JOBS = {
-    "ci": {
-        "quality": "formatting",
-        "docs": "api-docs",
-        "host": "tests-linux",
-        "android": "android",
-    },
-    "apple": {
-        "host": "tests-macos",
-        "source-engine": "source-engine",
-        "ios": "ios",
-    },
+# CI's jobs, each with the lane whose tasks it runs and the host it runs them on: Linux
+# runners or the macos-ci runners. The host lane runs on both hosts. CI's selection job has
+# an output for each job, named like it with underscores.
+JOBS = {
+    "formatting": ("quality", "linux"),
+    "api-docs": ("docs", "linux"),
+    "tests-linux": ("host", "linux"),
+    "tests-macos": ("host", "macos"),
+    "android": ("android", "linux"),
+    "ios": ("ios", "macos"),
 }
-# The host each workflow's runners run on: its host lane runs the tasks of that host.
-WORKFLOW_HOSTS = {"ci": "linux", "apple": "macos"}
-# The job with which CI calls the Apple workflow, and CI's selection output that says
-# whether this run calls it.
-APPLE_JOB = "apple"
-# CI's selection output with the Apple workflow's outputs, as JSON, which it hands the
-# Apple workflow; and each workflow's output that says whether its host job needs Android.
-APPLE_PLAN = "apple_plan"
-HOST_ANDROID = "host_android"
+# The host jobs, which say in <output>_android whether their tasks need the Android SDK.
+HOST_JOBS = tuple(job for job, (lane, _) in JOBS.items() if lane == "host")
+# The host of the self-hosted runners. They keep caches and the BuildBuddy executor's key,
+# so they run no code from a fork's pull request; the merge queue runs its lanes there.
+SELF_HOSTED = "macos"
 
 
-# Lanes that every run planning itself leaves to the Source engine workflow, which hands
-# the Apple workflow a fixed plan on a schedule and on its own dispatch: building engines
-# from source is the most expensive work and the least likely to change with a commit.
+# Lanes that CI leaves to the Source engine workflow, which runs them on a schedule and on
+# its own dispatch: building engines from source is the most expensive work and the least
+# likely to change with a commit.
 SCHEDULED_LANES = ("source-engine",)
 
 
@@ -53,42 +44,25 @@ def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]
     }
 
 
-def runs_apple(lanes: dict[str, list[str]], event_name: str) -> bool:
-    """Say whether a CI run calls the Apple workflow.
-
-    A pull request's run leaves it out: the merge queue runs it, and the ci:macos label
-    starts it for a pull request. Every other event calls it when an Apple lane is selected.
-    """
-    apple = for_host(lanes, WORKFLOW_HOSTS["apple"])
-    return event_name != "pull_request" and any(
-        apple[lane] for lane in WORKFLOW_JOBS["apple"]
-    )
+def output_name(job: str) -> str:
+    """The selection output of a job."""
+    return job.replace("-", "_")
 
 
-def selected_tasks(outputs: dict, lane: str) -> list[str]:
+def selected_tasks(outputs: dict, job: str) -> list[str]:
     """Read one selection output; a missing or malformed one is not an empty selection."""
-    output_name = lane.replace("-", "_")
-    if output_name not in outputs:
-        raise ValueError(f"missing selection output: {output_name}")
-    tasks = json.loads(outputs[output_name])
+    name = output_name(job)
+    if name not in outputs:
+        raise ValueError(f"missing selection output: {name}")
+    tasks = json.loads(outputs[name])
     if not isinstance(tasks, list) or not all(isinstance(task, str) for task in tasks):
-        raise ValueError(f"{lane}: invalid selected task list")
+        raise ValueError(f"{job}: invalid selected task list")
     return tasks
 
 
-def required_jobs(workflow: str, outputs: dict) -> list[str]:
-    """Name the jobs a workflow's selection requires: those of its lanes with tasks."""
-    jobs = [
-        workflow_job
-        for lane, workflow_job in WORKFLOW_JOBS[workflow].items()
-        if selected_tasks(outputs, lane)
-    ]
-    if workflow == "ci":
-        if outputs.get(APPLE_JOB) not in {"true", "false"}:
-            raise ValueError(f"missing selection output: {APPLE_JOB}")
-        if outputs[APPLE_JOB] == "true":
-            jobs.append(APPLE_JOB)
-    return jobs
+def required_jobs(outputs: dict) -> list[str]:
+    """Name the jobs the selection requires: those with tasks."""
+    return [job for job in JOBS if selected_tasks(outputs, job)]
 
 
 def failed_jobs(needs: dict) -> list[str]:
@@ -100,14 +74,14 @@ def failed_jobs(needs: dict) -> list[str]:
     ]
 
 
-def verify_results(workflow: str, needs: dict) -> None:
-    """Require every job that a workflow's selection requires to succeed."""
+def verify_results(needs: dict) -> None:
+    """Require every job that CI's selection requires to succeed."""
     selection = needs.get("selection", {})
     if selection.get("result") != "success":
         raise ValueError("selection did not succeed")
     if failures := failed_jobs(needs):
         raise ValueError(f"{failures[0]} verification result")
-    for workflow_job in required_jobs(workflow, selection.get("outputs", {})):
+    for workflow_job in required_jobs(selection.get("outputs", {})):
         result = needs.get(workflow_job, {}).get("result", "missing")
         if result != "success":
             raise ValueError(
@@ -254,25 +228,36 @@ def needs_android(tasks: list[str], android: frozenset[str]) -> bool:
     return any(task_command(task)[2] in android for task in tasks)
 
 
-def workflow_outputs(
-    workflow: str, lanes: dict[str, list[str]], event_name: str
+def excluded_hosts(event_name: str, event: dict) -> frozenset[str]:
+    """The hosts that may not run this event's code: a fork's pull request stays off the
+    self-hosted runners."""
+    if event_name != "pull_request":
+        return frozenset()
+    head_repo = event["pull_request"]["head"].get("repo") or {}
+    if head_repo.get("full_name") == event["repository"]["full_name"]:
+        return frozenset()
+    return frozenset({SELF_HOSTED})
+
+
+def plan_outputs(
+    lanes: dict[str, list[str]], excluded: frozenset[str] = frozenset()
 ) -> dict[str, object]:
     """
-    A workflow's selection outputs: each lane's tasks on the workflow's host, and whether its
-    host job needs the Android SDK. CI also says whether it calls the Apple workflow, and
-    hands it the Apple plan, so that the Apple workflow does not plan the run again.
+    CI's selection outputs: each job's tasks, those of its lane on its host, none on an
+    excluded host, and whether a host job needs the Android SDK.
     """
-    here = for_host(lanes, WORKFLOW_HOSTS[workflow])
-    outputs: dict[str, object] = {lane: here[lane] for lane in WORKFLOW_JOBS[workflow]}
-    outputs[HOST_ANDROID] = needs_android(here["host"], android_tasks())
-    if workflow == "ci":
-        outputs[APPLE_JOB] = runs_apple(lanes, event_name)
-        outputs[APPLE_PLAN] = json.dumps(workflow_outputs("apple", lanes, event_name))
+    android = android_tasks()
+    outputs: dict[str, object] = {}
+    for job, (lane, host) in JOBS.items():
+        tasks = [] if host in excluded else for_host(lanes, host)[lane]
+        outputs[output_name(job)] = tasks
+        if job in HOST_JOBS:
+            outputs[f"{output_name(job)}_android"] = needs_android(tasks, android)
     return outputs
 
 
-def write_plan(workflow: str) -> None:
-    """Write the tasks of each of a workflow's lanes for this run to GITHUB_OUTPUT."""
+def write_plan() -> None:
+    """Write CI's selection for this run to GITHUB_OUTPUT."""
     event_name = os.environ["GITHUB_EVENT_NAME"]
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     command = ["hk"]
@@ -282,11 +267,10 @@ def write_plan(workflow: str) -> None:
     command.extend(selection_args(event_name, event))
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, text=True)
     lanes = without_scheduled_lanes(lane_plan(json.loads(result.stdout)))
-    outputs = workflow_outputs(workflow, lanes, event_name)
+    outputs = plan_outputs(lanes, excluded_hosts(event_name, event))
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.writelines(
-            f"{name}={value if isinstance(value, str) else json.dumps(value)}\n"
-            for name, value in outputs.items()
+            f"{name}={json.dumps(value)}\n" for name, value in outputs.items()
         )
     print(json.dumps(outputs, indent=2))
 
@@ -294,23 +278,17 @@ def write_plan(workflow: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    plan = commands.add_parser(
-        "plan", help="Write the selected tasks of a workflow's lanes to GITHUB_OUTPUT"
-    )
-    verify = commands.add_parser(
-        "verify", help="Require a workflow's selected jobs to succeed"
-    )
-    for command in (plan, verify):
-        command.add_argument("workflow", choices=sorted(WORKFLOW_JOBS))
+    commands.add_parser("plan", help="Write CI's selected tasks to GITHUB_OUTPUT")
+    commands.add_parser("verify", help="Require CI's selected jobs to succeed")
     run = commands.add_parser("run", help="Run one selected JSON task array")
     run.add_argument("tasks")
     args = parser.parse_args()
     if args.command == "verify":
-        verify_results(args.workflow, json.loads(os.environ["VERIFICATION_NEEDS"]))
+        verify_results(json.loads(os.environ["VERIFICATION_NEEDS"]))
     elif args.command == "run":
         run_tasks(json.loads(args.tasks))
     else:
-        write_plan(args.workflow)
+        write_plan()
 
 
 if __name__ == "__main__":
