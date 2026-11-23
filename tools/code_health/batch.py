@@ -61,6 +61,17 @@ def batches(translations: dict[str, Translation]) -> list[dict[str, Translation]
     return split
 
 
+def outside_repository(env: dict[str, str]) -> dict[str, str]:
+    """
+    The environment without Git's GIT_* variables, for work in the scratch repository.
+
+    A Git hook exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE; under them `git init`
+    re-initializes the hook's repository, writing its worktree into the shared config's
+    core.worktree, and `cs` reads that repository instead of the scratch one.
+    """
+    return {name: value for name, value in env.items() if not name.startswith("GIT_")}
+
+
 def parse_row(line: str) -> dict | None:
     """A JSON object the CLI printed for a file, or None for any other output line."""
     try:
@@ -131,7 +142,11 @@ class Reviewer:
 
     def prepare(self, workspace: Path, batch: dict[str, Translation]) -> None:
         """Write the rules and each translation, at its virtual path, into the workspace."""
-        subprocess.run(["git", "init", "-q", str(workspace)], check=True)
+        subprocess.run(
+            ["git", "init", "-q", str(workspace)],
+            env=outside_repository(dict(os.environ)),
+            check=True,
+        )
         if self.rules is not None:
             (workspace / ".codescene").mkdir()
             (workspace / ".codescene" / "code-health-rules.json").write_text(self.rules)
@@ -155,7 +170,7 @@ class Reviewer:
         result = subprocess.run(
             command,
             cwd=workspace,
-            env=self.env,
+            env=outside_repository(self.env),
             capture_output=True,
             text=True,
             check=False,
