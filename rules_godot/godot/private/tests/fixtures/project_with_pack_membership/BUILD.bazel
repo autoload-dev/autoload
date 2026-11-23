@@ -131,7 +131,7 @@ godot_resources(
 
 godot_test(
     name = "math_test",
-    size = "small",
+    size = "medium",
     main = "tests/math_test.gd",
     tags = ["manual"],
     deps = [

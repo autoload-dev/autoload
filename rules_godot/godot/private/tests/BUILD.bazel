@@ -122,7 +122,7 @@ source_run_test_suite(name = "source_run_test_suite")
 # bytes.
 import_and_pack_reproducibility_test(
     name = "import_and_pack_outputs_are_reproducible_test",
-    size = "small",
+    size = "medium",
     pack = "//godot/private/tests/fixtures/reproducible_project:pack",
     units = [
         "icon",

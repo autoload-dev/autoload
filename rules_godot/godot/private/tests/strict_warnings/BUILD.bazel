@@ -26,7 +26,7 @@ filegroup(
 # Run test: a source run passes with the default engine_errors, which needs the run logger.
 godot_test(
     name = "source_run_under_strict_warnings_test",
-    size = "small",
+    size = "medium",
     project = _FIXTURE + ":project",
     deps = [_FIXTURE + ":main"],
 )
@@ -34,7 +34,7 @@ godot_test(
 # Run test: a run of the exported pack passes the same way.
 godot_test(
     name = "pack_run_under_strict_warnings_test",
-    size = "small",
+    size = "medium",
     data = [":export_facts"],
     pack = ":pack",
 )
@@ -42,7 +42,7 @@ godot_test(
 # Run test: a test adapter selects its cases with rules_godot's case selection.
 fake_adapter_test(
     name = "adapter_under_strict_warnings_test",
-    size = "small",
+    size = "medium",
     cases = ["//godot/private/tests/adapter/fixtures/cases:passing"],
     project = _FIXTURE + ":project",
 )

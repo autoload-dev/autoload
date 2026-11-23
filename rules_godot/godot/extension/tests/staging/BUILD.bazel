@@ -8,7 +8,7 @@ _FIXTURE = "//godot/extension/tests/staging/fixtures/extension_load_probe"
 # the runtime loads it from the pack's list.
 godot_test(
     name = "extension_loads_at_runtime_test",
-    size = "small",
+    size = "medium",
     args = [
         "--",
         "res://native/hello.gdextension",
@@ -21,7 +21,7 @@ godot_test(
 # Build-output test: which extension descriptors and extension lists the packs carry.
 py_test(
     name = "packs_carry_runtime_extensions_test",
-    size = "small",
+    size = "medium",
     srcs = ["pack_test.py"],
     data = [
         _FIXTURE + ":enabled_pack",

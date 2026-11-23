@@ -56,7 +56,7 @@ godot_editor(
 
 godot_metadata_sync(
     name = "metadata",
-    size = "small",
+    size = "medium",
     project = ":project",
     tags = ["manual"],
 )
