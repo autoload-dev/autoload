@@ -10,6 +10,9 @@ load(
     "godot_test",
 )
 
+# buildifier: disable=bzl-visibility
+load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_test")
+
 package(default_visibility = ["//visibility:public"])
 
 _APPLICATION_ID = "dev.autoload.examples.firebase"
@@ -82,6 +85,29 @@ godot_app(
         "@platforms//os:ios": [":firebase"],
         "//conditions:default": [],
     }),
+)
+
+# The iOS lane tests it: the application embeds each extension's framework and the Firebase
+# frameworks they link, which their extensions do not list.
+ios_app_test(
+    name = "app_embeds_firebase_frameworks_test",
+    size = "small",
+    app = ":app",
+    files = [
+        "Frameworks/%s.framework/%s" % (framework, framework)
+        for framework in [
+            "FirebaseAnalytics",
+            "FirebaseCore",
+            "FirebaseFirestore",
+            "firebase_analytics",
+            "firebase_core",
+            "firebase_firestore",
+        ]
+    ],
+    tags = [
+        "ios",
+        "manual",
+    ],
 )
 
 config_setting(

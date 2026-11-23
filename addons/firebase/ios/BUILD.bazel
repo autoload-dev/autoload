@@ -3,9 +3,8 @@ load(":framework.bzl", "firebase_framework")
 package(default_visibility = ["//:__subpackages__"])
 
 # The Firebase Apple SDK as one dynamic framework per product (README.md, "Design"). An
-# Apple backend links its product's framework; its extension lists the framework's
-# `.bundle` import in platform_deps, through which the application embeds it with the
-# frameworks it links.
+# Apple backend links its product's framework, which the application embeds with the
+# frameworks it links, once for all extensions.
 
 _VERSION = "13.2.0"
 

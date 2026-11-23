@@ -22,8 +22,6 @@ godot_cc_extension(
     entry_symbol = "firebase_analytics_init",
     platform_deps = select({
         "@platforms//os:android": ["//analytics/native/backends/android:plugin"],
-        # The Firebase framework the iOS backend links, which the application embeds.
-        "@platforms//os:ios": ["//ios:analytics.bundle"],
         "//conditions:default": [],
     }),
     resource_path = "addons/firebase_analytics/firebase_analytics.gdextension",

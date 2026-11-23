@@ -115,9 +115,9 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
   dynamic frameworks, so `ios/` links them from the static XCFrameworks and copies their
   headers, modules and privacy bundles into them.
   The add-ons' extensions are rules_godot's default dynamic frameworks, each with its own
-  godot-cpp: an Apple backend links its product's framework, and the extension lists the
-  framework's `.bundle` import in `platform_deps`, through which the application embeds and
-  signs it with the frameworks it links. Linked statically into each extension instead,
+  godot-cpp: an Apple backend links its product's framework, which rules_godot embeds and
+  signs in the application with the frameworks it links, once however many extensions link
+  them. Linked statically into each extension instead,
   every extension would hold its own copy of the SDK: duplicate Objective-C classes, and
   add-ons would not see the app Firebase Core configured.
 - `firebase_config` (`config/`) replaces the google-services Gradle plugin: it turns
@@ -132,7 +132,9 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
 
 `bazel test //...` in this directory runs the `firebase_config` tests. The example
 application in [`examples/`](examples) builds the add-ons for every platform; its headless
-test checks that they load and do nothing on desktop. Its Firestore part talks to the
+test checks that they load and do nothing on desktop, and its iOS lane test
+(`app_embeds_firebase_frameworks_test`) that the iOS application embeds the extensions'
+frameworks and the Firebase frameworks they link. Its Firestore part talks to the
 Firebase project of the placeholder configuration unless the project setting
 `examples/firestore_emulator` names a Firestore emulator as `host:port`, such as
 `10.0.2.2:8080` from the Android emulator.
@@ -140,14 +142,11 @@ Firebase project of the placeholder configuration unless the project setting
 ## Open questions
 
 - **Simulator runs.** The x86_64 Simulator build of the prebuilt 4.7 engine does not run on
-  the iOS 27 Simulator, so the iOS lane only builds the app. On a device, the example
+  the iOS 27 Simulator, so the iOS lane only builds the app and checks that it embeds each
+  Firebase framework. On a device, the example
   configures the default app once and starts Analytics; Firebase products register with
   FirebaseCore when their framework loads, which Godot does for all extensions before the
   `Firebase` autoload configures the app.
-- **Embedding the frameworks an extension links.** rules_godot embeds only the frameworks of
-  an extension's library and platform_deps, so each Firebase extension lists its product's
-  `.bundle` import besides linking the framework. rules_godot could collect the frameworks
-  of the extension's linked deps instead.
 - **Maven resolution for Android.** The gradle resolver of rules_jvm_external resolves for
   the JVM, so `MODULE.bazel` selects the Android modules of androidx.datastore and pins
   Guava's JRE flavor by hand. Both go once the resolver resolves for Android.
