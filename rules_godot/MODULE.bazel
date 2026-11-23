@@ -21,37 +21,18 @@ bazel_dep(name = "apple_support", version = "2.12.0")
 bazel_dep(name = "rules_java", version = "9.9.0")
 bazel_dep(name = "rules_jvm_external", version = "6.10")
 
-# bzl_library targets of the API reference.
+# Build settings and file helpers of the ruleset's rules.
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 
 # The Starlark unit and analysis tests of the ruleset's tests packages.
 bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
-bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
-bazel_dep(name = "protobuf", version = "36.2", dev_dependency = True)
 
-# The repository's own tooling at its root, which the ruleset's documentation checks and
-# artifact inspection share; consumers never see it.
+# The repository's own tooling at its root, which the ruleset's artifact inspection uses;
+# consumers never see it.
 bazel_dep(name = "autoload_dev", dev_dependency = True)
 local_path_override(
     module_name = "autoload_dev",
     path = "..",
-)
-
-# rules_android 0.8.0 exports its API files but keeps the transitive Starlark
-# library private. Expose only its documentation source library for Stardoc.
-# Root-module overrides are ignored when this ruleset is consumed as a dependency.
-single_version_override(
-    module_name = "rules_android",
-    patch_strip = 1,
-    patches = ["//tools/docs:rules_android_doc_visibility.patch"],
-)
-
-# rules_android_ndk 0.1.5 exports no files; expose rules.bzl, which godot_android_toolchains
-# loads, for Stardoc. Root-module overrides are ignored when this ruleset is consumed.
-single_version_override(
-    module_name = "rules_android_ndk",
-    patch_strip = 1,
-    patches = ["//tools/docs:rules_android_ndk_doc_visibility.patch"],
 )
 
 # Repositories that godot_android_toolchains' generated SDK and toolchain repositories

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from tools.docs.coverage import CATEGORIES, ModuleInfo
-from tools.ruleset import strip_repo
+from tools.docs.ruleset import strip_repo
 
 EXPORT_CATEGORIES = {**CATEGORIES, "starlark_other_symbol_info": "name"}
 

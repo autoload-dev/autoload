@@ -3,3 +3,4 @@ tests
 .godot-editor
 e2e
 godot/private/tests/fixtures/external_release
+docs

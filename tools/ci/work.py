@@ -30,6 +30,8 @@ CONTRACT_LANES = ("desktop", "source-engine", "android", "ios")
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
 REGRESSIONS = f"{RULESET_DIR}/tests"
+# The documentation module: the API documentation metadata, its checks and the contract checker.
+DOCS = f"{RULESET_DIR}/docs"
 ANDROID_SETUP = "android:setup"
 
 
@@ -90,7 +92,7 @@ def contracts(lane: str) -> Work:
     return Work(
         f"contracts:{lane}",
         lane,
-        RULESET_DIR,
+        DOCS,
         (contracts_command(lane),),
         android=lane == "android",
     )
@@ -172,13 +174,22 @@ WORK = (
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
-    Work("test:fast", None, ".", (FAST_TEST_COMMAND, In(RULESET_DIR, FAST_TEST_COMMAND))),
+    Work(
+        "test:fast",
+        None,
+        ".",
+        (
+            FAST_TEST_COMMAND,
+            In(RULESET_DIR, FAST_TEST_COMMAND),
+            In(DOCS, FAST_TEST_COMMAND),
+        ),
+    ),
     # The API inventory and the documentation of its public entrypoints, and the contract
     # cases that need no SDK.
     Work(
         "docs",
         "docs",
-        RULESET_DIR,
+        DOCS,
         (
             "bazel run //tools/docs:check",
             contracts_command("docs"),
@@ -192,12 +203,7 @@ WORK = (
         "test:bazel",
         "desktop",
         RULESET_DIR,
-        (
-            (
-                "bazel test --build_tests_only --test_tag_filters=-source_engine"
-                " -- //... -//docs/... -//tools/docs/..."
-            ),
-        ),
+        ("bazel test --build_tests_only --test_tag_filters=-source_engine //...",),
         android=True,
     ),
     # The regression module's desktop set needs no Android SDK or NDK; an accidental dependency

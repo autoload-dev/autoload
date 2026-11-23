@@ -7,13 +7,16 @@ load(
     "PUBLIC_APIS",
     "SUPPORT_MODULES",
 )
-load(":rules.bzl", "api_reference")
+load(":rules.bzl", "api_reference", "ruleset_label")
 
 package(default_visibility = ["//visibility:private"])
 
 bzl_library(
     name = "sources",
-    srcs = PUBLIC_APIS.keys() + CROSS_REPOSITORY_MODULES.keys() + SUPPORT_MODULES,
+    srcs = [
+        ruleset_label(module)
+        for module in PUBLIC_APIS.keys() + CROSS_REPOSITORY_MODULES.keys() + SUPPORT_MODULES
+    ],
     deps = EXTERNAL_LOADS,
 )
 

@@ -1,8 +1,6 @@
-"""The ruleset's Bazel module name, for tools that read or write its labels."""
+"""The ruleset's Bazel module name, for the checks that read its labels."""
 
 MODULE = "autoload_rules_godot"
-# The apparent repository a consumer module writes, as in @autoload_rules_godot//godot.
-REPO = "@" + MODULE
 
 
 def strip_repo(label: str) -> str:

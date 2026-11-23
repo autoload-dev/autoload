@@ -2,8 +2,9 @@
 target-version = "py314"
 line-length = 90
 force-exclude = true
-# First-party code: the tools packages of the root module and of the ruleset.
-src = [".", "rules_godot"]
+# First-party code: the tools packages of the root module, the ruleset and its documentation
+# module.
+src = [".", "rules_godot", "rules_godot/docs"]
 
 [tool.ruff.lint]
 # Ruff's default rules plus required annotations.
@@ -13,9 +14,9 @@ ignore = ["ANN401"]
 [tool.ty.environment]
 # Bazel runs these tools with the registered Python toolchain.
 python-version = "3.14"
-# The ruleset's tools package, and the launcher, which imports its sibling modules as the
-# host's python3 runs it.
-extra-paths = ["rules_godot", "rules_godot/tools/platforms/launch"]
+# The tools packages of the ruleset and of its documentation module, and the launcher, which
+# imports its sibling modules as the host's python3 runs it.
+extra-paths = ["rules_godot", "rules_godot/docs", "rules_godot/tools/platforms/launch"]
 
 [tool.ty.analysis]
 # Available only inside Bazel runfiles or Godot's SCons environment.

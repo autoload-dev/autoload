@@ -5,6 +5,17 @@ metadata carries them to the [Bazel Central Registry](https://registry.bazel.bui
 repository keeps no generated reference of its own. Each symbol has one public load path.
 Platform setup, tutorials and architecture remain in the guides.
 
+## The documentation module
+
+The extraction, the registry's metadata and their checks live in a Bazel module of their own,
+[`rules_godot/docs/`](../../rules_godot/docs/MODULE.bazel), beside `tests/` and `examples/`.
+It depends on the ruleset through a `local_path_override`, extracts the ruleset's Starlark
+modules and holds every dependency and override that only the documentation needs: Stardoc's
+output schema, Protobuf and the [visibility patches](#third-party-documentation-dependencies).
+The ruleset's published `MODULE.bazel` thereby carries none of them. Its `//public/api`
+package holds the inventory and the extraction, `//tools/docs` the checks and the contract
+checker. Commands below run in `rules_godot/docs/` unless they name another directory.
+
 ## Public entrypoints and implementation modules
 
 [`modules.bzl`](../../rules_godot/docs/public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
@@ -85,7 +96,7 @@ the API has them, `### Output groups` and `### Generated targets`; a section wit
 omitted. Private rules, macros and repository rules keep these sections too: they document
 the ruleset's internal use and are ready when a symbol becomes public, although only public
 ones are checked against Bazel. Each section is a list, which stays readable on narrow pages
-such as the BCR's, in the form the [output-contract parser](../../rules_godot/tools/docs/output_contracts.py)
+such as the BCR's, in the form the [output-contract parser](../../rules_godot/docs/tools/docs/output_contracts.py)
 defines:
 
 ```markdown
@@ -129,8 +140,10 @@ unsupported API kinds cannot silently escape required coverage.
 
 `mise run ci:work -- docs` checks source schema, inventory, registry coverage, the
 ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
-in `rules_godot/` checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
-lane's work `contracts:<lane>`; the verification selector runs
+checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
+lane's work `contracts:<lane>`. It builds the extraction in the documentation module and
+evaluates the fixtures in the ruleset's module or in the consumer module a case names; the
+verification selector runs
 them in their lane when rules, contract sources, fixtures or the checker change.
 Missing evidence of a selected lane remains pending; a host documentation pass cannot replace it.
 
@@ -176,12 +189,12 @@ nonempty text alone cannot establish those qualities.
 The workspace-level discovery lives in the Python command
 because a Bazel sandbox only sees declared inputs and cannot discover an
 undeclared new source file. `bazel run //tools/docs:check` runs it; it runs Bazel again
-from the workspace root, so pass `-- --bazel /path/to/bazelisk` or set `BAZEL` when Bazel is
+in the documentation and ruleset modules, so pass `-- --bazel /path/to/bazelisk` or set `BAZEL` when Bazel is
 not on PATH.
 
 ## Metadata for the BCR documentation archive
 
-`bazel build //docs/public/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
+`bazel build //public/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
 for the public primary symbols. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
 The release script (`.github/workflows/release_prep.sh`) packs exactly these files into
@@ -195,11 +208,12 @@ The curated BCR metadata contains public contracts only.
 ## Third-party documentation dependencies
 
 `rules_android` 0.8.0 exports its API `.bzl` files, but its transitive
-`//rules:bzl` documentation library has restricted visibility. The root module
+`//rules:bzl` documentation library has restricted visibility. The documentation module
 applies `tools/docs/rules_android_doc_visibility.patch` to expose that single
-library for `starlark_doc_extract`. `rules_android_ndk` 0.1.5 exports no files; the root module
-applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export `rules.bzl`,
-which `godot_android_toolchains` loads. Both change BUILD visibility only.
-Root-module overrides do not apply when another project depends on `autoload_rules_godot`.
+library for `starlark_doc_extract`. `rules_android_ndk` 0.1.5 exports no files; the
+documentation module applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export
+`rules.bzl`, which `godot_android_toolchains` loads. Both change BUILD visibility only.
+Rulesets that build on rules_android publish no registry documentation or document no
+Android rules; `godot_app` loads rules_android, so its extraction needs the patches.
 Remove each patch once its upstream file is publicly accessible; do not disable
 Bazel's visibility checking.

@@ -94,7 +94,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 - No rule checks visibility. Of 117 example/test `BUILD` files, 17 have a public default and
   77 have none.
 - The API contracts already check the visibility of public companion targets
-  (`tools/docs/output_contracts.py`).
+  (`rules_godot/docs/tools/docs/output_contracts.py`).
 - Open: are public example entry targets intentional? Check broad package defaults, broad
   target visibility, or both? Cross-module consumers must stay allowed.
 

@@ -7,7 +7,12 @@ from unittest import mock
 
 from tools.generate import generate
 
-RULESET_MODULES = ("rules_godot", "rules_godot/examples", "rules_godot/tests")
+RULESET_MODULES = (
+    "rules_godot",
+    "rules_godot/examples",
+    "rules_godot/tests",
+    "rules_godot/docs",
+)
 
 
 class GenerateTest(unittest.TestCase):

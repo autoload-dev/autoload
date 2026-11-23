@@ -24,10 +24,11 @@ if [ "$NAME" = autoload_rules_godot ]; then
     # The API documentation the registry renders: the curated Stardoc metadata of the public
     # entrypoints (docs/internal/api-reference.md), not every starlark_doc_extract output.
     # See https://github.com/bazelbuild/bazel-central-registry/blob/main/docs/stardoc.md
-    DOCS_TARGET=//docs/public/api:bcr_docs
-    # The ruleset builds from its own directory; the release files stay at the root.
+    DOCS_TARGET=//public/api:bcr_docs
+    # The ruleset's documentation module builds it from its own directory; the release files
+    # stay at the root.
     OUTPUT="$PWD"
-    pushd "$ROOT" > /dev/null
+    pushd "$ROOT/docs" > /dev/null
     bazel build "$DOCS_TARGET" >&2
     BAZEL_BIN="$(bazel info bazel-bin 2>/dev/null)"
     bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \

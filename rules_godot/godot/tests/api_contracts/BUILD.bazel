@@ -68,7 +68,6 @@ write_file(
         "behavior": BEHAVIOR_TESTS,
         "cases": API_CASES,
     })],
-    visibility = ["//tools/docs:__pkg__"],
 )
 
 genrule(
@@ -197,12 +196,12 @@ missing_group(name = "evaluated_missing_group")
 
 executable_claim(name = "evaluated_not_a_test")
 
-exports_files(
-    [
-        "mismatch.bzl",
-        "visibility_fixture.bzl",
-    ],
-    visibility = ["//tools/docs:__pkg__"],
+# The evaluated documentation of the mismatch fixtures, which the documentation module's
+# evaluated_mismatch_test compares with their configured targets.
+starlark_doc_extract(
+    name = "evaluated_mismatch_inventory",
+    src = "mismatch.bzl",
+    deps = ["visibility_fixture.bzl"],
 )
 
 restricted_companion(

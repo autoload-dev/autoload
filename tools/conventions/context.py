@@ -29,11 +29,12 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
 
 # The typed roots of a consumer module, below its module root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
-# The ruleset's module and documentation; the root and the ruleset, which are no consumers
-# and have no typed roots; and the regression module with its smoke paths.
+# The ruleset's module and documentation; the root, the ruleset and the ruleset's
+# documentation module, which holds the ruleset's guides, are no consumers and have no typed
+# roots; and the regression module with its smoke paths.
 RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
-NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
+NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE, RULESET_MODULE / "docs"})
 REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"
 ADDON_SCENARIO = "shared_addon"

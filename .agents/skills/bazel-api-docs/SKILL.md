@@ -158,7 +158,8 @@ small tables/examples; use diagrams only for relationships that need them.
    including second public exports, unrestricted private support modules and
    generated-repository modules losing external load access.
    Unsupported new API kinds must fail until extraction and checking are extended.
-6. For a BCR documentation archive, use only `//docs/public/api:bcr_docs`, the curated
+6. For a BCR documentation archive, use only `//public/api:bcr_docs` of the documentation
+   module `rules_godot/docs`, the curated
    evaluated metadata for public primary contracts. Never archive all extractor
    outputs: those also contain unfiltered inventories and test fixtures. Archive
    publication is a separate release integration.

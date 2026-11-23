@@ -2,6 +2,18 @@
 
 load("@rules_python//python:defs.bzl", "py_test")
 
+def ruleset_label(label):
+    """
+    Qualify a label of the ruleset, as modules.bzl writes them, with its repository.
+
+    Args:
+        label: Label relative to the ruleset's repository, such as `//godot:app.bzl`.
+
+    Returns:
+        The label in the ruleset's repository.
+    """
+    return "@autoload_rules_godot" + label
+
 def reference_name(module):
     """
     Derive the target name prefix of a module's extractions.
@@ -34,13 +46,13 @@ def api_reference(name, apis):
         # Complete extraction without a symbol selection; the coverage test checks it.
         native.starlark_doc_extract(
             name = page + "_inventory",
-            src = module,
+            src = ruleset_label(module),
             deps = [":sources"],
             render_main_repo_name = True,
         )
         native.starlark_doc_extract(
             name = page + "_primary",
-            src = module,
+            src = ruleset_label(module),
             deps = [":sources"],
             symbol_names = symbols,
             render_main_repo_name = True,
@@ -56,9 +68,12 @@ def api_reference(name, apis):
         args = ["$(rootpath :modules.bzl)"] + [
             arg
             for inventory, module in zip(inventories, apis)
-            for arg in ["$(rootpath " + inventory + ")", "$(rootpath " + module + ")"]
+            for arg in [
+                "$(rootpath " + inventory + ")",
+                "$(rootpath " + ruleset_label(module) + ")",
+            ]
         ],
-        data = [":modules.bzl"] + inventories + list(apis),
+        data = [":modules.bzl"] + inventories + [ruleset_label(module) for module in apis],
         deps = [
             "//tools/docs:coverage_lib",
             "//tools/docs:inventory_lib",

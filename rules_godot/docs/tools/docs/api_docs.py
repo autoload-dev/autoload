@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tools.tool_environment import nested_tool_environment
+from tools.conventions.environment import nested_tool_environment
 
 ROLES = (
     "PUBLIC_APIS",
@@ -161,8 +161,9 @@ def main() -> None:
     parser.add_argument("--bazel", default=os.environ.get("BAZEL", "bazel"))
     args = parser.parse_args()
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    inventory = read_inventory(root / "docs/public/api/modules.bzl")
-    errors = inventory_errors(root, inventory)
+    ruleset = root.parent
+    inventory = read_inventory(root / "public/api/modules.bzl")
+    errors = inventory_errors(ruleset, inventory)
     if errors:
         sys.exit("\n".join(errors))
     print(
@@ -174,7 +175,7 @@ def main() -> None:
         label
         for label in run_bazel(
             args.bazel,
-            root,
+            ruleset,
             "query",
             'attr(visibility, "//visibility:public", kind("rule", //godot/...))',
             "--output=label",
@@ -189,7 +190,7 @@ def main() -> None:
         )
     if any(not description.strip() for description in targets.values()):
         sys.exit("PUBLIC_TARGETS descriptions must be nonempty.")
-    run_bazel(args.bazel, root, "test", "//docs/...", "//tools/docs/...")
+    run_bazel(args.bazel, root, "test", "//...")
     print("API entrypoints, ownership, internal separation and descriptions passed.")
 
 

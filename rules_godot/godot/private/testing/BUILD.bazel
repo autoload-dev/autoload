@@ -5,12 +5,14 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 # module loads the rules across repositories; they are not supported API.
 package(default_visibility = ["//visibility:private"])
 
+# The documentation module (docs/) lists these files in the Starlark library it extracts
+# the API documentation with. Their load visibility still restricts who loads them.
 exports_files(
     [
         "android_bundle_test.bzl",
         "ios_app_test.bzl",
     ],
-    visibility = ["//docs/public/api:__pkg__"],
+    visibility = ["//visibility:public"],
 )
 
 # The launch templates the rules of this package expand.

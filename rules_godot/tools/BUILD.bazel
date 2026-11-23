@@ -344,15 +344,3 @@ py_binary(
     srcs = ["common_content.py"],
     deps = ["//godot/private:project_config_lib"],
 )
-
-py_library(
-    name = "ruleset_lib",
-    srcs = ["ruleset.py"],
-    visibility = ["//tools:__subpackages__"],
-)
-
-py_library(
-    name = "tool_environment_lib",
-    srcs = ["tool_environment.py"],
-    visibility = ["//tools:__subpackages__"],
-)
