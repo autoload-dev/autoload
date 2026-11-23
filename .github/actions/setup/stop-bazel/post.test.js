@@ -5,21 +5,28 @@ const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
 
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error.code === "ESRCH") return false;
+    throw error;
+  }
+}
+
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "bazel-cleanup-")));
+  const pids = [];
   t.after(() => {
     const pidFile = path.join(root, "hanging.pid");
-    if (fs.existsSync(pidFile)) {
-      try { process.kill(Number(fs.readFileSync(pidFile, "utf8")), "SIGKILL"); }
-      catch (error) { if (error.code !== "ESRCH") throw error; }
-    }
+    if (fs.existsSync(pidFile)) pids.push(Number(fs.readFileSync(pidFile, "utf8")));
+    for (const pid of pids) if (alive(pid)) process.kill(pid, "SIGKILL");
     fs.rmSync(root, { recursive: true, force: true });
   });
   const bin = path.join(root, "bin");
   fs.mkdirSync(bin);
-  fs.copyFileSync(path.join(__dirname, "fixtures/bazel.sh"), path.join(bin, "bazel"));
-  fs.chmodSync(path.join(bin, "bazel"), 0o755);
-  for (const [tool, source] of [["mountpoint", "mountpoint.sh"], ["fuser", "fuser.js"], ["sudo", "sudo.sh"]]) {
+  for (const [tool, source] of [["bazel", "bazel.sh"], ["mountpoint", "mountpoint.sh"], ["fuser", "fuser.js"], ["sudo", "sudo.sh"]]) {
     fs.copyFileSync(path.join(__dirname, "fixtures", source), path.join(bin, tool));
     fs.chmodSync(path.join(bin, tool), 0o755);
   }
@@ -27,6 +34,9 @@ function fixture(t) {
   const env = {
     ...process.env,
     GITHUB_WORKSPACE: root,
+    XDG_CACHE_HOME: path.join(root, "cache"),
+    USER: "tester",
+    RUNNER_OS: "Linux",
     BAZEL_SHUTDOWN_LOG: log,
     NODE_BINARY: process.execPath,
     HANGING_PID: path.join(root, "hanging.pid"),
@@ -34,121 +44,162 @@ function fixture(t) {
     CACHE_HOLDER: path.join(root, "holder"),
     PATH: `${bin}:${process.env.PATH}`,
   };
-  delete env["INPUT_BAZEL-MODULES"];
+  delete env.PERSISTENT_RUNNER;
+  const userRoot = path.join(root, "cache/bazel/_bazel_tester");
   return {
     root,
     env,
-    run(modules) {
-      if (modules !== undefined) env["INPUT_BAZEL-MODULES"] = modules;
+    userRoot,
+    // Starts a fake server for an output base, detached so that it outlives its starter like
+    // a real one. Bazel records the workspace in the output base's DO_NOT_BUILD_HERE file.
+    server(outputBase, { workspace, mode = "graceful" } = {}) {
+      if (workspace) {
+        fs.mkdirSync(path.dirname(path.join(outputBase, "DO_NOT_BUILD_HERE")), { recursive: true });
+        fs.writeFileSync(path.join(outputBase, "DO_NOT_BUILD_HERE"), workspace);
+      }
+      spawnSync("sh", ["-c", '"$@" >/dev/null 2>&1 &', "sh",
+        process.execPath, path.join(__dirname, "fixtures/server.js"), `--output_base=${outputBase}`, mode]);
+      const pidFile = path.join(outputBase, "server/server.pid.txt");
+      const deadline = Date.now() + 5000;
+      while (!fs.existsSync(pidFile) || !fs.readFileSync(pidFile, "utf8")) {
+        if (Date.now() > deadline) throw new Error(`Fake server did not start: ${outputBase}`);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+      }
+      const pid = Number(fs.readFileSync(pidFile, "utf8"));
+      pids.push(pid);
+      return pid;
+    },
+    workspace(name) {
+      const workspace = path.join(root, name);
+      fs.mkdirSync(workspace, { recursive: true });
+      return workspace;
+    },
+    run(overrides = {}) {
       return spawnSync(process.execPath, [path.join(__dirname, "post.js")], {
-        env,
+        env: { ...env, ...overrides },
         encoding: "utf8",
-        timeout: 10000,
+        timeout: 20000,
         killSignal: "SIGKILL",
       });
     },
-    // Modules shut down concurrently, so their order is unspecified.
+    // Servers shut down concurrently, so their order is unspecified.
     calls() {
+      if (!fs.existsSync(log)) return [];
       return fs.readFileSync(log, "utf8").trim().split("\n").sort();
     },
   };
 }
 
-test("shuts down every module and ignores blank lines and surrounding whitespace", (t) => {
+test("shuts down every server under the output user root, in its workspace", (t) => {
   const f = fixture(t);
-  fs.mkdirSync(path.join(f.root, "examples"));
-  fs.mkdirSync(path.join(f.root, "tests"));
-  const result = f.run(" .\r\n\n examples \r\ntests\n");
+  const one = f.workspace("one");
+  const two = f.workspace("nested/two");
+  const first = f.server(path.join(f.userRoot, "aaa"), { workspace: one });
+  const second = f.server(path.join(f.userRoot, "bbb"), { workspace: two });
+  fs.mkdirSync(path.join(f.userRoot, "install/0123"), { recursive: true });
+  fs.writeFileSync(path.join(f.userRoot, "install/0123/DO_NOT_BUILD_HERE"), one);
+  fs.mkdirSync(path.join(f.userRoot, "unstarted"));
+  const result = f.run();
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Found 2 Bazel server\(s\)/);
   assert.deepEqual(f.calls(), [
-    f.root,
-    path.join(f.root, "examples"),
-    path.join(f.root, "tests"),
+    `${one} ${path.join(f.userRoot, "aaa")}`,
+    `${two} ${path.join(f.userRoot, "bbb")}`,
   ].sort());
+  assert.equal(alive(first), false);
+  assert.equal(alive(second), false);
 });
 
-test("also shuts down the add-on modules a build ran in", (t) => {
+test("leaves every server and the cache alone on a persistent or non-Linux runner", (t) => {
   const f = fixture(t);
-  for (const built of ["addons/widget/examples", "addons/.selftest/examples", "addons/gadget"]) {
-    fs.mkdirSync(path.join(f.root, built), { recursive: true });
-    fs.symlinkSync(f.root, path.join(f.root, built, "bazel-out"));
+  const pid = f.server(path.join(f.userRoot, "aaa"), { workspace: f.workspace("one") });
+  f.env["INPUT_REPOSITORY-CACHE"] = path.join(f.root, "cache_mount");
+  fs.mkdirSync(f.env["INPUT_REPOSITORY-CACHE"]);
+  fs.writeFileSync(f.env.CACHE_HOLDER, "open repository cache file");
+  for (const runner of [{ PERSISTENT_RUNNER: "true" }, { RUNNER_OS: "macOS" }, { RUNNER_OS: "" }]) {
+    const result = f.run(runner);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /leaving Bazel servers running/);
   }
-  fs.mkdirSync(path.join(f.root, "addons/unbuilt/examples"), { recursive: true });
-  fs.writeFileSync(path.join(f.root, "addons/README.md"), "");
-  assert.equal(f.run(".\naddons/gadget\n").status, 0);
-  assert.deepEqual(f.calls(), [
-    f.root,
-    path.join(f.root, "addons/.selftest/examples"),
-    path.join(f.root, "addons/gadget"),
-    path.join(f.root, "addons/widget/examples"),
-  ].sort());
+  assert.deepEqual(f.calls(), []);
+  assert.equal(alive(pid), true);
+  assert.equal(fs.existsSync(f.env.FUSER_LOG), false);
 });
 
-test("also shuts down nested modules a build ran in, but not Bazel's own links", (t) => {
+test("leaves a stale PID alone when its process is no server of that output base", (t) => {
   const f = fixture(t);
-  for (const built of ["rules_godot", "rules_godot/tests"]) {
-    fs.mkdirSync(path.join(f.root, built), { recursive: true });
-    fs.symlinkSync(f.root, path.join(f.root, built, "bazel-out"));
-  }
-  fs.mkdirSync(path.join(f.root, "rules_godot/bazel-bin/nested"), { recursive: true });
-  fs.symlinkSync(f.root, path.join(f.root, "rules_godot/bazel-bin/nested/bazel-out"));
-  fs.mkdirSync(path.join(f.root, "rules_godot/examples"));
-  assert.equal(f.run().status, 0);
-  assert.deepEqual(f.calls(), [
-    f.root,
-    path.join(f.root, "rules_godot"),
-    path.join(f.root, "rules_godot/tests"),
-  ].sort());
-});
-
-test("defaults to the root module", (t) => {
-  const f = fixture(t);
-  assert.equal(f.run().status, 0);
-  assert.deepEqual(f.calls(), [f.root]);
-});
-
-test("warns on failure and still shuts down other modules", (t) => {
-  const f = fixture(t);
-  fs.mkdirSync(path.join(f.root, "failing"));
-  const result = f.run("failing\n.");
+  const pid = f.server(path.join(f.root, "elsewhere"));
+  const recycled = path.join(f.userRoot, "recycled/server");
+  fs.mkdirSync(recycled, { recursive: true });
+  fs.writeFileSync(path.join(recycled, "server.pid.txt"), String(pid));
+  fs.writeFileSync(path.join(f.userRoot, "recycled/DO_NOT_BUILD_HERE"), f.workspace("one"));
+  const result = f.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /::warning::bazel shutdown in failing failed: 23/);
-  assert.deepEqual(f.calls(), [path.join(f.root, "failing"), f.root].sort());
+  assert.match(result.stdout, /::warning::PID \d+ of .*recycled is no Bazel server/);
+  assert.deepEqual(f.calls(), []);
+  assert.equal(alive(pid), true);
 });
 
-test("warns about a missing module without preventing other cleanup", (t) => {
+test("stops a server whose shutdown fails and still shuts down other servers", (t) => {
   const f = fixture(t);
-  const result = f.run("missing\n.");
+  const failing = f.workspace("failing");
+  const one = f.workspace("one");
+  const pids = [
+    f.server(path.join(f.userRoot, "aaa"), { workspace: failing }),
+    f.server(path.join(f.userRoot, "bbb"), { workspace: one }),
+  ];
+  const result = f.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /::warning::bazel shutdown in missing failed:/);
-  assert.deepEqual(f.calls(), [f.root]);
+  assert.match(result.stdout, /::warning::bazel shutdown of .*failing failed: 23/);
+  assert.match(result.stdout, /Sending SIGTERM to Bazel server/);
+  assert.deepEqual(f.calls(), [
+    `${failing} ${path.join(f.userRoot, "aaa")}`,
+    `${one} ${path.join(f.userRoot, "bbb")}`,
+  ].sort());
+  for (const pid of pids) assert.equal(alive(pid), false);
 });
 
-test("bounds a hung shutdown even when SIGTERM is ignored and continues other modules", (t) => {
+test("kills a server that ignores SIGTERM and whose workspace is gone", (t) => {
   const f = fixture(t);
-  fs.mkdirSync(path.join(f.root, "hanging"));
+  const pid = f.server(path.join(f.userRoot, "aaa"), { workspace: path.join(f.root, "deleted"), mode: "stubborn" });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /::warning::workspace of Bazel server aaa is gone/);
+  assert.match(result.stdout, /Sending SIGKILL to Bazel server/);
+  assert.deepEqual(f.calls(), []);
+  assert.equal(alive(pid), false);
+});
+
+test("bounds a hung shutdown even when SIGTERM is ignored and continues other servers", (t) => {
+  const f = fixture(t);
+  const hanging = f.workspace("hanging");
+  const one = f.workspace("one");
+  const pids = [
+    f.server(path.join(f.userRoot, "aaa"), { workspace: hanging }),
+    f.server(path.join(f.userRoot, "bbb"), { workspace: one }),
+  ];
   f.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"] = "1";
-  const result = f.run("hanging\n.");
+  const result = f.run();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /::warning::.*hanging.*timed out/);
-  assert.match(result.stdout, /Bazel stopped in \.\n/);
-  assert.deepEqual(f.calls(), [path.join(f.root, "hanging"), f.root].sort());
-  const pid = Number(fs.readFileSync(f.env.HANGING_PID, "utf8"));
-  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+  assert.match(result.stdout, new RegExp(`Bazel stopped: ${path.join(f.userRoot, "bbb")}\n`));
+  assert.equal(f.calls().length, 2);
+  for (const pid of pids) assert.equal(alive(pid), false);
+  assert.equal(alive(Number(fs.readFileSync(f.env.HANGING_PID, "utf8"))), false);
 });
 
 test("does not wait for a busy Bazel lock", (t) => {
   const f = fixture(t);
-  fs.mkdirSync(path.join(f.root, "locked"));
+  const pid = f.server(path.join(f.userRoot, "aaa"), { workspace: f.workspace("locked") });
   f.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"] = "1";
-  const result = f.run("locked\n.");
+  const result = f.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /::warning::bazel shutdown in locked failed: 9/);
+  assert.match(result.stdout, /::warning::bazel shutdown of .*locked failed: 9/);
   assert.doesNotMatch(result.stdout, /timed out/);
-  assert.deepEqual(f.calls(), [path.join(f.root, "locked"), f.root].sort());
+  assert.equal(alive(pid), false);
 });
 
-test("releases stubborn sticky-disk holders after module shutdown", (t) => {
+test("releases stubborn sticky-disk holders after server shutdown", (t) => {
   const f = fixture(t);
   f.env["INPUT_REPOSITORY-CACHE"] = path.join(f.root, "cache_mount");
   fs.mkdirSync(f.env["INPUT_REPOSITORY-CACHE"]);
@@ -224,9 +275,9 @@ test("Linux CI releases a real mounted filesystem held by a stubborn worker", {
     env: {
       ...process.env,
       GITHUB_WORKSPACE: root,
-      // An intentionally blank module list leaves real checkout daemons alone;
+      // An empty output user root leaves the runner's real Bazel servers alone;
       // this test owns only the mounted worker.
-      "INPUT_BAZEL-MODULES": " ",
+      XDG_CACHE_HOME: root,
       "INPUT_REPOSITORY-CACHE": cache,
     },
     encoding: "utf8", timeout: 15000, killSignal: "SIGKILL",

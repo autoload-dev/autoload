@@ -6,9 +6,6 @@ description: >-
   configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
 
 inputs:
-  bazel-modules:
-    description: Newline-separated Bazel module directories to shut down at job end; every module a build ran in is shut down as well.
-    default: .
   android-cache:
     description: Cache Android SDK components missing from the runner.
     default: "false"
@@ -201,11 +198,12 @@ runs:
       run: printf '%s\n' "$REPOSITORY_BAZELRC" >> "$HOME/.bazelrc"
     # Persistent workers run from extracted repositories on the disk. Steps
     # clean up in reverse order, so Bazel stops before the disk is unmounted.
+    # Only on fresh Linux runners: a persistent runner keeps its Bazel servers
+    # warm between jobs, and the step checks the runner again before it acts.
     - name: Stop Bazel at job end
       if: >-
         runner.os == 'Linux'
         && steps.runner.outputs.fresh == 'true'
       uses: ./.github/actions/setup/stop-bazel
       with:
-        bazel-modules: ${{ inputs.bazel-modules }}
         repository-cache: ${{ steps.cache.outputs.path }}

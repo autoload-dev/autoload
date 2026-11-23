@@ -33,7 +33,7 @@ contributions with the project's configuration, stages their editor parts for th
 processes of their roles, and initializes the members for the operation. A pack reaches
 the extensions and platform libraries of those add-ons through an internal per-pack
 native target, whose `deps` the aspects of rules_android and rules_apple follow. Import inputs remain available to the
-final Godot scan without becoming export members. See [projects and resources](../../rules_godot/docs/public/resources.md) for configuration conflict rules
+final Godot scan without becoming export members. See [projects and resources](../public/resources.md) for configuration conflict rules
 and cache boundaries.
 
 ```mermaid
@@ -105,7 +105,7 @@ White-box tests beside the implementation packages cover build contracts and
 diagnostics; the regression module `tests/` exports and runs real projects as a consumer,
 through the public module boundary and the artifact test rules of `godot/private/testing/`. Cache checks compare selected Bazel actions and output bytes.
 Repository commands and controlled fixture inputs are documented in the
-[fixture catalogue](verification-recipes.md#regression-fixtures).
+[fixture catalogue](../../../docs/internal/verification-recipes.md#regression-fixtures).
 
 ## Primary references
 

@@ -37,7 +37,7 @@ class FixtureReferencesTest(RepositoryTest):
         )
         other = (
             "docs/internal/development.md",
-            "docs/internal/godot-pipeline/README.md",
+            "rules_godot/docs/internal/godot-pipeline/README.md",
             "docs/AGENTS.md",
             "tests/notes.md",
         )

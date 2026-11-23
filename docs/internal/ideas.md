@@ -42,7 +42,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 
 ### Avoid cache-mount holders instead of killing them
 
-- `.github/actions/setup/stop-bazel/post.js:55-96` kills every holder of the sticky-disk
+- `.github/actions/setup/stop-bazel/cache.js` kills every holder of the sticky-disk
   mount with `sudo fuser -k`.
 - Idea: keep the repository contents cache off the mount and bound nested Bazel servers with
   `--max_idle_secs`.
@@ -137,7 +137,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
   in `examples/.bazelrc`, plus a `bool_flag` whose only job is to let `target_compatible_with`
   skip Petri's checks and tests without the config (`examples/projects/petri/BUILD.bazel`).
 - The documented alternative, a component per slot whose payload is a `select()` on a
-  build setting ([engine guide](../docs/public/engine.md#choose-between-prepared-recipes)),
+  build setting ([engine guide](../../rules_godot/docs/public/engine.md#choose-between-prepared-recipes)),
   needs one declaration per host slot and the same flag.
 - Candidate first step: `target_settings` on the hub's toolchains, as the components
   already use for the variant (`godot/engine/private/components.bzl`, `toolchain(...,
@@ -176,7 +176,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 ## Android shell
 
 Gaps to Godot's Gradle export, recorded in
-[the Android shell reference](../docs/internal/android-shell.md#remaining-differences).
+[the Android shell reference](../../rules_godot/docs/internal/android-shell.md#remaining-differences).
 
 ### Project files in an install-time asset pack
 
@@ -248,12 +248,12 @@ manifest placeholders; the rest is open.
   must find out themselves that `.mm` sources need `@import` with `-fmodules -fcxx-modules`,
   that frameworks SwiftPM autolinks (AppAuth's `Security`) must be declared, and that
   `swift package` leaves a `.build/` scratch directory beside `Package.swift`. Open: which of
-  this belongs in the [extension guide](../docs/public/gdextension.md#platform-libraries).
+  this belongs in the [extension guide](../../rules_godot/docs/public/gdextension.md#platform-libraries).
 - **Go toolchain of transitive rulesets:** `rules_swift_package_manager` raises Gazelle to a
   version whose tools need Go 1.24.12 or newer, while rules_android's `deploy_info` has Gazelle
   build them with rules_android's Go 1.22.4, the first registered SDK. The examples module pins
   `rules_go` and a root `go_sdk.download` (`examples/MODULE.bazel`). Open: whether the
-  [platform guide](../docs/public/platforms.md#add-on-platform-libraries) should name this
+  [platform guide](../../rules_godot/docs/public/platforms.md#add-on-platform-libraries) should name this
   for consumers that combine Android with Swift packages.
 - **Android plugin bridge:** an extension reaching Java needs a `GodotPlugin`, manifest
   meta-data, a C++ call through `Variant::callp` on the Engine singleton, plugin signals for
@@ -269,7 +269,7 @@ manifest placeholders; the rest is open.
   for every extension; an add-on cannot declare the classes it needs, and adding one rebuilds
   the bindings for all.
 - **Add-ons from another module:** an add-on published as its own Bazel module declares every
-  repository its targets name ([module ownership](../docs/public/project-layout.md#module-ownership)).
+  repository its targets name ([module ownership](../../rules_godot/docs/public/project-layout.md#module-ownership)).
   Maven works: `maven.install` tags merge across modules; the consumer lists the module in
   `known_contributing_modules` and owns the pin. The engine hub (`@godot//android:plugin_api`)
   couples the add-on to the consumer's engine request. Each module generates its own
@@ -286,7 +286,7 @@ manifest placeholders; the rest is open.
 
 ## Documentation to-dos
 
-- `docs/internal/capabilities.md` is a 2026-11-01 snapshot from before features 003–007;
+- `rules_godot/docs/internal/capabilities.md` is a 2026-11-01 snapshot from before features 003–007;
   EDT-06 is stale.
 - `docs/internal/conventions-rules-draft.md` maps only N1–N3 to rules; L1–L4 are
   RG009/RG011/RG010/RG008, I1 is partly RG012 and I2 partly RG007.

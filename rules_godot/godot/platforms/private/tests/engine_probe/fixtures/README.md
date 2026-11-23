@@ -12,6 +12,6 @@ engine patch of `godot/engine/private/tests/fixtures/source_build`, or the sourc
 engines.
 
 Its `main/main.gd` is the fixture of mobile runtime acceptance in the verification policy
-(`docs/internal/verification.md`, verification kinds):
+(the repository's `docs/internal/verification.md`, verification kinds):
 on a device or Simulator it checks the engine version, `BazelNode` and, when started with
 `--expect-source`, `BazelProbe` and the patched engine name. No test runs it.

@@ -521,7 +521,7 @@ a second status list. Specs own selected requirements/design/tasks; support guid
 current supported use. Generated API reference remains sourced from actual Starlark
 definitions, not this capability register.
 
-[ROOT]: ../../README.md
+[ROOT]: ../../../README.md
 [API]: ../public/api/modules.bzl
 [RES]: ../public/resources.md
 [DEV]: ../public/development.md
