@@ -46,7 +46,7 @@ class WorkTest(unittest.TestCase):
         )
 
     def test_every_lane_plans_its_work_and_the_add_on_modules_lanes(self) -> None:
-        planned = lanes(self.root)
+        planned = lanes(all_work(self.root))
         self.assertEqual(planned["docs"], ["docs"])
         self.assertIn("test:bazel", planned["host"])
         self.assertEqual(
@@ -70,8 +70,11 @@ class WorkTest(unittest.TestCase):
         )
         self.assertTrue(runs_on(template, "linux"))
         self.assertFalse(runs_on(template, "macos"))
-        both = Work("x", "host", ".", ("true",), hosts=("linux", "macos"))
-        self.assertTrue(runs_on(both, "macos"))
+        # A module whose host lane runs on every host has no host-limited work.
+        (self.root / "other").mkdir()
+        checkout(self.root / "other", {"anywhere": '"host"'})
+        anywhere = next(addon_work(self.root / "other"))
+        self.assertEqual((anywhere.name, anywhere.hosts), ("host:addon:anywhere", ()))
 
     def test_commands_run_in_mise_with_their_own_variables(self) -> None:
         plain = Work("x", "host", ".", ("true",), env=(("ANDROID_HOME", ""),))

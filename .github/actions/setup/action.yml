@@ -6,9 +6,6 @@ description: >-
   configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
 
 inputs:
-  bazel:
-    description: Set up runner tools (Bazelisk, Python, compilers), Bazel caching and cleanup; disable for the plan job.
-    default: "true"
   bazel-modules:
     description: Newline-separated Bazel module directories to shut down at job end; every module a build ran in is shut down as well.
     default: .
@@ -91,11 +88,8 @@ runs:
         cache: ${{ steps.runner.outputs.fresh }}
         cache_save_post: ${{ steps.runner.outputs.fresh }}
         cache_key_prefix: mise-${{ github.job }}
-        # A plan job needs only Python, not Bazelisk.
-        install_args: ${{ inputs.bazel == 'false' && 'python' || '' }}
         reshim: true
     - name: Record runner tool versions
-      if: inputs.bazel == 'true'
       shell: bash
       run: |
         bazelisk --version
@@ -127,7 +121,7 @@ runs:
         key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Keep normal progress output without collecting per-invocation trace profiles.
     - name: Configure Bazel output
-      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
+      if: steps.runner.outputs.fresh == 'true'
       shell: bash
       run: |
         {
@@ -139,7 +133,6 @@ runs:
     # them between the job's commands.
     # A persistent runner's machine names its repository cache.
     - name: Locate cache
-      if: inputs.bazel == 'true'
       id: cache
       shell: bash
       run: |
@@ -152,7 +145,7 @@ runs:
     # repositories. A key ends in the digest of the entry's file list; the
     # newest entry is restored, and save-downloads saves at the job's end.
     - name: Restore downloads
-      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'false'
+      if: steps.runner.outputs.persistent-disk == 'false'
       id: downloads
       uses: actions/cache/restore@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
       with:
@@ -160,7 +153,7 @@ runs:
         key: ${{ steps.cache.outputs.downloads-key }}
         restore-keys: ${{ steps.cache.outputs.downloads-key }}
     - name: Record restored downloads
-      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'false'
+      if: steps.runner.outputs.persistent-disk == 'false'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -176,7 +169,7 @@ runs:
     # commits its own clone of the disk.
     - name: Mount cache from sticky disk
       if: >-
-        inputs.bazel == 'true' && runner.os == 'Linux'
+        runner.os == 'Linux'
         && steps.runner.outputs.fresh == 'true'
       uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
       with:
@@ -184,7 +177,7 @@ runs:
         path: ${{ steps.cache.outputs.path }}
     # Bazel refreshes a download's modification time on every cache hit.
     - name: Prune unused downloads
-      if: inputs.bazel == 'true' && steps.runner.outputs.persistent-disk == 'true'
+      if: steps.runner.outputs.persistent-disk == 'true'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -194,7 +187,7 @@ runs:
           find "$DOWNLOADS" -mindepth 1 -type d -empty -delete
         fi
     - name: Configure repository cache
-      if: inputs.bazel == 'true' && steps.runner.outputs.fresh == 'true'
+      if: steps.runner.outputs.fresh == 'true'
       shell: bash
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}
@@ -203,7 +196,7 @@ runs:
     # clean up in reverse order, so Bazel stops before the disk is unmounted.
     - name: Stop Bazel at job end
       if: >-
-        inputs.bazel == 'true' && runner.os == 'Linux'
+        runner.os == 'Linux'
         && steps.runner.outputs.fresh == 'true'
       uses: ./.github/actions/setup/stop-bazel
       with:

@@ -1,16 +1,15 @@
 """
 The repository's verification work: what each lane runs, where and how.
 
-Each piece of work is a few shell commands in one module directory. CI's plan
-(tools/ci/verification.py) assigns every lane's work to its jobs; locally,
+Each piece of work is a few shell commands in one module directory.
 `python3 -m tools.ci.work lane <lane>` (`mise run lane -- <lane>`) runs a lane on this
-host and `python3 -m tools.ci.work run <name>...` runs single pieces. The add-on modules'
-work comes from their addon.pkl: the same generic commands for each module
-(tools/addons/lanes.py), and the add-on generator's self-test in every lane.
+host, as each of CI's jobs does, and `python3 -m tools.ci.work run <name>...` runs single
+pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
+for each module (tools/addons/lanes.py), and the add-on generator's self-test in every
+lane. The source-engine lane runs in its own scheduled workflow, the others in CI.
 """
 
 import argparse
-import platform
 import shlex
 import subprocess
 import tomllib
@@ -20,7 +19,7 @@ from pathlib import Path
 
 from tools.addons.modules import HOSTS as ADDON_HOSTS
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.addons.modules import all_modules
+from tools.addons.modules import all_modules, host
 from tools.setup.modules import RULESET
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +31,7 @@ CONTRACT_LANES = ("host", "source-engine", "android", "ios")
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
 REGRESSIONS = f"{RULESET_DIR}/tests"
+ANDROID_SETUP = "android:setup"
 
 
 @dataclass(frozen=True)
@@ -50,22 +50,25 @@ class Work:
     env: tuple[tuple[str, str], ...] = ()
 
 
-def example(
-    name: str, area: str = "addons", lane: str | None = "host", config: str = ""
-) -> Work:
-    """One example's own tests, below its directory in the examples module."""
+def example_tests(name: str, area: str = "addons", config: str = "") -> str:
+    """The command that runs one example's own tests, below its directory in examples/."""
     flags = f" --config={config}" if config else ""
-    return Work(
-        f"test:example:{name}",
-        lane,
-        EXAMPLES,
-        (f"bazel test --build_tests_only{flags} //{area}/{name}/...",),
-    )
+    return f"bazel test --build_tests_only{flags} //{area}/{name}/..."
+
+
+def example(name: str, area: str = "addons") -> Work:
+    """One example's own tests, in the host lane."""
+    return Work(f"test:example:{name}", "host", EXAMPLES, (example_tests(name, area),))
 
 
 # Petri's suites run in an editor built from the engine sources with its module, so the
 # source-engine lane runs them; named on its own, it runs here too.
-PETRI = example("petri", "projects", lane=None, config="petri")
+PETRI_TESTS = example_tests("petri", "projects", config="petri")
+
+
+def contracts_command(lane: str) -> str:
+    """The command that checks the API output contract cases of a lane."""
+    return f"bazel run //tools/docs:contracts -- --lane {lane}"
 
 
 def contracts(lane: str, android: bool = False) -> Work:
@@ -74,7 +77,7 @@ def contracts(lane: str, android: bool = False) -> Work:
         f"contracts:{lane}",
         lane,
         RULESET_DIR,
-        (f"bazel run //tools/docs:contracts -- --lane {lane}",),
+        (contracts_command(lane),),
         android=android,
     )
 
@@ -149,7 +152,7 @@ WORK = (
         RULESET_DIR,
         (
             "bazel run //tools/docs:check",
-            "bazel run //tools/docs:contracts -- --lane docs",
+            contracts_command("docs"),
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),
     ),
@@ -236,7 +239,7 @@ WORK = (
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            f"cd ../examples && {PETRI.commands[0]}",
+            f"cd ../examples && {PETRI_TESTS}",
         ),
         android=True,
     ),
@@ -256,7 +259,17 @@ WORK = (
         ),
         android=True,
     ),
-    PETRI,
+    Work("test:example:petri", None, EXAMPLES, (PETRI_TESTS,)),
+    # Android work runs with the pinned Java and the provisioned SDK as ANDROID_HOME, which
+    # mise's environment keeps empty while the SDK lacks the pinned platform. Running
+    # Android work provisions it first.
+    Work(
+        ANDROID_SETUP,
+        None,
+        ".",
+        ("python3 -m tools.android.requirements", "python3 tools/android/sdk.py"),
+        android=True,
+    ),
     # Already built Android and iOS artifacts, inspected on macOS.
     Work(
         "inspect:mobile",
@@ -281,6 +294,8 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
     lane runs on Linux only.
     """
     for module in all_modules(root):
+        # A host lane on every host is no host-limited work.
+        hosts = () if set(module.hosts) == set(ADDON_HOSTS) else module.hosts
         for lane in module.lanes:
             yield Work(
                 f"{lane}:addon:{module.directory}",
@@ -288,21 +303,25 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
                 ".",
                 (f"python3 -m tools.addons.lanes {lane} {module.directory}",),
                 android=lane == "android",
-                hosts=module.hosts if lane == "host" else (),
+                hosts=hosts if lane == "host" else (),
             )
-    for lane in ADDON_LANES:
-        pin = "" if lane == "android" else " --no-pin"
-        yield Work(
-            f"{lane}:addon-template",
-            lane,
-            ".",
-            (
-                f"python3 -m tools.addons.new .selftest{pin}",
-                f"python3 -m tools.addons.lanes {lane} .selftest",
-            ),
-            android=lane == "android",
-            hosts=("linux",) if lane == "host" else (),
-        )
+    yield from map(template_work, ADDON_LANES)
+
+
+def template_work(lane: str) -> Work:
+    """The add-on generator's self-test in one lane: a fresh module, then its lane."""
+    pin = "" if lane == "android" else " --no-pin"
+    return Work(
+        f"{lane}:addon-template",
+        lane,
+        ".",
+        (
+            f"python3 -m tools.addons.new .selftest{pin}",
+            f"python3 -m tools.addons.lanes {lane} .selftest",
+        ),
+        android=lane == "android",
+        hosts=("linux",) if lane == "host" else (),
+    )
 
 
 def all_work(root: Path = ROOT) -> dict[str, Work]:
@@ -310,10 +329,10 @@ def all_work(root: Path = ROOT) -> dict[str, Work]:
     return {work.name: work for work in (*WORK, *addon_work(root))}
 
 
-def lanes(root: Path = ROOT) -> dict[str, list[str]]:
+def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
     """The names of each lane's work, in order."""
     planned: dict[str, list[str]] = {lane: [] for lane in LANES}
-    for work in all_work(root).values():
+    for work in known.values():
         if work.lane is not None:
             planned[work.lane].append(work.name)
     return planned
@@ -321,25 +340,7 @@ def lanes(root: Path = ROOT) -> dict[str, list[str]]:
 
 def runs_on(work: Work, host: str) -> bool:
     """Whether a host may run this work: host-limited work runs on its hosts only."""
-    return not work.hosts or set(work.hosts) == set(ADDON_HOSTS) or host in work.hosts
-
-
-def this_host() -> str:
-    """This machine, as the lanes name hosts."""
-    return {"Darwin": "macos", "Linux": "linux"}.get(platform.system(), platform.system())
-
-
-def mise_vars(root: Path = ROOT) -> dict[str, str]:
-    """The pins of mise.toml's [vars]."""
-    return tomllib.loads((root / "mise.toml").read_text())["vars"]
-
-
-# Android work runs with the pinned Java and the provisioned SDK as ANDROID_HOME, which
-# mise's environment keeps empty while the SDK lacks the pinned platform.
-ANDROID_SETUP = (
-    "python3 -m tools.android.requirements",
-    "python3 tools/android/sdk.py",
-)
+    return not work.hosts or host in work.hosts
 
 
 def argv(work: Work, command: str, root: Path = ROOT) -> list[str]:
@@ -351,7 +352,8 @@ def argv(work: Work, command: str, root: Path = ROOT) -> list[str]:
     tools = []
     if work.android:
         tools = ["java"]
-        build_tools = mise_vars(root)["android_build_tools"]
+        pins = tomllib.loads((root / "mise.toml").read_text())["vars"]
+        build_tools = pins["android_build_tools"]
         exports[:0] = [
             'export ANDROID_HOME="$ANDROID_SDK_ROOT"',
             f"export ANDROID_BUILD_TOOLS={shlex.quote(build_tools)}",
@@ -360,20 +362,22 @@ def argv(work: Work, command: str, root: Path = ROOT) -> list[str]:
     return ["mise", "exec", *tools, "--", "bash", "-eo", "pipefail", "-c", script]
 
 
-def run(names: Iterable[str], root: Path = ROOT) -> None:
-    """
-    Run pieces of work in order; unknown names fail before any work starts. The first
-    Android work provisions the SDK first.
-    """
-    names = list(names)
-    known = all_work(root)
+def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
+    """The work to run, the Android SDK's setup first where Android work needs it."""
     if unknown := [name for name in names if name not in known]:
         raise ValueError(f"No such work: {', '.join(unknown)}")
-    if any(known[name].android for name in names):
-        setup = Work("android:setup", None, ".", ANDROID_SETUP, android=True)
-        names = [setup.name, *names]
-        known[setup.name] = setup
-    for name in names:
+    if ANDROID_SETUP not in names and any(known[name].android for name in names):
+        return [ANDROID_SETUP, *names]
+    return names
+
+
+def run(names: Iterable[str], root: Path = ROOT) -> None:
+    """
+    Run pieces of work in order; unknown names fail before any work starts. Android work
+    provisions the SDK first.
+    """
+    known = all_work(root)
+    for name in with_setup(list(names), known):
         work = known[name]
         for command in work.commands:
             print(f"[{name}] $ {command}", flush=True)
@@ -387,6 +391,9 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     lane = commands.add_parser("lane", help="Run one lane's work for this host")
     lane.add_argument("lane", choices=LANES)
+    lane.add_argument(
+        "--skip", action="append", default=[], help="Leave out this work, by name"
+    )
     pieces = commands.add_parser("run", help="Run pieces of work by name")
     pieces.add_argument("names", nargs="+")
     commands.add_parser("list", help="List every piece of work by lane")
@@ -398,8 +405,12 @@ def main() -> None:
         run(args.names)
     else:
         known = all_work()
-        host = this_host()
-        run([name for name in lanes()[args.lane] if runs_on(known[name], host)])
+        here = host()
+        run(
+            name
+            for name in lanes(known)[args.lane]
+            if runs_on(known[name], here) and name not in args.skip
+        )
 
 
 if __name__ == "__main__":

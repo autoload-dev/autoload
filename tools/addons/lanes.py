@@ -9,21 +9,15 @@ Each lane runs in the module's examples/, which consumes the module like an appl
 """
 
 import argparse
-import platform
 import subprocess
 import sys
 
-from tools.addons.modules import LANES, ROOT, AddonModule, module_path
+from tools.addons.modules import LANES, ROOT, AddonModule, host, module_path
 
 # The Bazel configuration of each mobile lane, from addons/examples.bazelrc.
 APP_CONFIGS = {"android": "--config=android", "ios": "--config=ios_sim"}
 # `bazel test` with no test among the targets exits with 4 after a successful build.
 NO_TESTS = 4
-
-
-def host() -> str:
-    """This machine as addon.pkl names hosts."""
-    return {"Darwin": "macos", "Linux": "linux"}.get(platform.system(), platform.system())
 
 
 def command(lane: str, module: AddonModule) -> list[str]:

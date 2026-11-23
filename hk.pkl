@@ -1,6 +1,6 @@
 amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
 
-// Local checks before a push. CI runs every lane on every run (tools/ci/verification.py), so
+// Local checks before a push. CI runs every lane on every run (tools/ci/work.py), so
 // no step selects paths: the pre-push hook runs the quick checks, and `hk check` adds the
 // slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
 

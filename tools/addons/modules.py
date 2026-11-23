@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,6 +55,13 @@ PROPERTIES = tuple(
     if (match := _PROPERTY.match(line)) is not None
 )
 DEFAULTS = addon_values(_SCHEMA_TEXT)
+
+
+def host() -> str:
+    """This machine as addon.pkl names hosts."""
+    return {"Darwin": "macos", "Linux": "linux"}.get(platform.system(), platform.system())
+
+
 # The lanes that build applications: a module without them has no app and no Android SDK.
 APP_LANES = ("android", "ios")
 

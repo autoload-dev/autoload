@@ -58,19 +58,17 @@ all source suites in every release configuration.
 CI runs every lane on every run: pull requests, the merge queue and a manual dispatch. Bazel's
 caches keep unchanged work cheap; a run in which every lane found its work cached took 2.5
 minutes with the Android job as its longest (November 2026), which no path selection would
-save. [`mise.toml`](../../mise.toml) owns the commands, and the
-[CI planner](../../tools/ci/verification.py) assigns them to jobs and hosts: mise's lane tasks,
-each add-on module's lanes as its `addon.pkl` names them and the add-on generator's self-test
-in every lane. The plan decides as much as it can before any job sets up: it leaves out a
-host lane's add-on tasks on a host their `addon.pkl` excludes, so no runner starts for them,
-and says whether a host job needs the Android SDK restored. A plan job installs only Python.
-A planning failure fails the Finalize job rather than appearing as an empty successful plan.
+save. The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's
+own, each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
+self-test in every lane. Each [CI](../../.github/workflows/ci.yml) job runs one lane on its
+host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work whose
+`addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
 
-`hk check` runs the checks that need no lane machine: source quality, setup contracts, the
-conventions, the API reference and the repository tooling's tests. The pre-push hook runs the
-quick ones. The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py), and CI runs
-exactly that: `mise run lane -- <lane>` runs a whole lane on this host, `python3 -m
-tools.ci.work run <name>...` single pieces, and `python3 -m tools.ci.work list` lists them.
+Locally, `mise run lane -- <lane>` runs a whole lane on this host, `python3 -m tools.ci.work
+run <name>...` single pieces, and `python3 -m tools.ci.work list` lists them. `hk check`
+runs the checks that need no lane machine: source quality, setup contracts, the conventions,
+the API reference and the repository tooling's tests. The pre-push hook runs the quick ones.
+
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
 as `test:example:sqlite`, uses `--build_tests_only` over its example subtree, so new test
@@ -87,8 +85,7 @@ useful immediate feedback, without duplicating the whole CI suite.
 ### Source engine workflow
 
 The source-engine lane is the most expensive one and the least likely to change with a
-commit, so pull requests, the merge queue and CI's dispatch leave it out
-(`SCHEDULED_LANES` in `tools/ci/verification.py`). The
+commit, so CI has no job for it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
 `python3 -m tools.ci.work run source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
@@ -114,6 +111,6 @@ managed in the repository settings. Main receives the merge group's commit uncha
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
 caches that later runs read, such as the Linux jobs' mise tools: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
-group's entries. The Plan job shows each job's tasks.
+group's entries.
 
 Each workflow keeps job identities and a final result even when unrelated lanes are skipped.

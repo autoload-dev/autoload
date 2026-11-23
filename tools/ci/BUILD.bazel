@@ -14,19 +14,6 @@ py_library(
     ],
 )
 
-py_library(
-    name = "verification_lib",
-    srcs = ["verification.py"],
-    deps = [":work_lib"],
-)
-
-py_test(
-    name = "verification_test",
-    size = "small",
-    srcs = ["verification_test.py"],
-    deps = [":verification_lib"],
-)
-
 py_test(
     name = "release_module_test",
     size = "small",

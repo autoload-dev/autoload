@@ -29,7 +29,7 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   documents what a module declares: the lanes that verify it, the hosts of its host lane and
   its test operations, such as `lanes = List("host")` and `hosts = List("macos")`. A module
   without the `android` and `ios` lanes builds no application: its examples have no `app`,
-  no Android SDK and no Maven graph. CI's plan, the lanes and the conventions read it;
+  no Android SDK and no Maven graph. The lanes' work, the lanes and the conventions read it;
   nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the

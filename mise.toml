@@ -82,12 +82,7 @@ run = "hk install --mise"
 
 [tasks."android:setup"]
 description = "Install or repair the pinned Android SDK/NDK components"
-tools.java = { version = "{{ vars.java_version }}", lazy = false }
-env.ANDROID_HOME = "{{ env.ANDROID_SDK_ROOT }}"
-run = [
-  "python3 -m tools.android.requirements",
-  "python3 tools/android/sdk.py",
-]
+run = "python3 -m tools.ci.work run android:setup"
 
 [tasks.format]
 description = "Format Python, Starlark and Bazel files in place"

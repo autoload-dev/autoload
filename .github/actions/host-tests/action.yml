@@ -1,15 +1,7 @@
 name: Run host tests
 description: >-
-  Set up the repository and run the host lane's planned work on this
-  runner's host. Run it after the checkout.
-
-inputs:
-  tasks:
-    description: JSON array of the host lane's planned work (tools/ci/work.py).
-    required: true
-  android:
-    description: Whether planned work needs the Android SDK, as the plan says for its job.
-    default: "true"
+  Set up the repository and run the host lane's work (tools/ci/work.py) on
+  this runner's host. Run it after the checkout.
 
 runs:
   using: composite
@@ -17,17 +9,14 @@ runs:
     - name: Set up repository
       uses: ./.github/actions/setup
       with:
-        # The ruleset's host set includes its Android packaging tests; add-on modules'
-        # host lanes need no Android SDK.
-        android-cache: ${{ inputs.android }}
+        # The ruleset's host set includes its Android packaging tests.
+        android-cache: "true"
     # The regression module's host set runs first, so that the output base check sees
     # only its repositories: later host tasks may configure Android targets.
     - name: Run the regression module's host set
-      if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
-      run: python3 -m tools.ci.verification run '["test:regressions"]'
+      run: python3 -m tools.ci.work run test:regressions
     - name: Require a regression host set without Android tools
-      if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
       working-directory: rules_godot/tests
       run: |
@@ -40,9 +29,7 @@ runs:
         fi
     - name: Run tests
       shell: bash
-      env:
-        TASKS: ${{ inputs.tasks }}
-      run: python3 -m tools.ci.verification run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
+      run: python3 -m tools.ci.work lane host --skip test:regressions
     - name: Save Bazel downloads
       if: ${{ !cancelled() }}
       uses: ./.github/actions/setup/save-downloads
