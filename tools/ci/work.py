@@ -397,23 +397,25 @@ def run(
     names: Iterable[str], root: Path = ROOT, known: dict[str, Work] | None = None
 ) -> None:
     """
-    Run pieces of work in order; unknown names fail before any work starts. Android work
-    provisions the SDK first.
+    Run pieces of work in order; unknown names fail before any work starts, and work
+    limited to other hosts is skipped. Android work provisions the SDK first.
     """
     known = known or all_work(root)
+    here = host()
     for name in with_setup(list(names), known):
         work = known[name]
+        if not runs_on(work, here):
+            print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)
+            continue
         for directory, command in work.steps():
             print(f"[{name}] {directory}$ {command}", flush=True)
             subprocess.run(argv(work, command), cwd=root / directory, check=True)
 
 
 def run_lane(lane: str, root: Path = ROOT) -> None:
-    """Run a lane's work that this host may run."""
+    """Run a lane's work: on this host, all but the work limited to other hosts."""
     known = all_work(root)
-    here = host()
-    names = [name for name in lanes(known)[lane] if runs_on(known[name], here)]
-    run(names, root, known)
+    run(lanes(known)[lane], root, known)
 
 
 def main() -> None:
@@ -426,13 +428,21 @@ def main() -> None:
     )
     pieces.add_argument("names", nargs="*")
     args = parser.parse_args()
-    if args.command == "run" and not args.names:
-        for name, work in all_work().items():
-            print(f"{work.lane or '-':14} {name}")
-    elif args.command == "run":
-        run(args.names)
-    else:
-        run_lane(args.lane)
+    try:
+        if args.command == "lane":
+            run_lane(args.lane)
+        elif args.names:
+            run(args.names)
+        else:
+            print_work()
+    except ValueError as error:
+        parser.error(str(error))
+
+
+def print_work() -> None:
+    """List every piece of work with its lane."""
+    for name, work in all_work().items():
+        print(f"{work.lane or '-':14} {name}")
 
 
 if __name__ == "__main__":

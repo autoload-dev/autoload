@@ -113,6 +113,15 @@ class WorkTest(unittest.TestCase):
             [ROOT / "tests", ROOT / "examples"],
         )
 
+    def test_work_limited_to_other_hosts_is_skipped_even_when_named(self) -> None:
+        signed = Work("signed", "desktop", ".", ("true",), hosts=("macos",))
+        with (
+            mock.patch("tools.ci.work.host", return_value="linux"),
+            mock.patch("subprocess.run") as process,
+        ):
+            run(["signed"], ROOT, {"signed": signed})
+        process.assert_not_called()
+
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):
             run(["lint", "nothing"], self.root)

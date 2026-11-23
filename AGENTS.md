@@ -4,7 +4,7 @@ This repository is the Autoload monorepo: tooling and support for the Godot ecos
 component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module holds only the repository's own
-tooling in `tools/`: CI planning, add-on scaffolding, setup checks, formatting, linting and
+tooling in `tools/`: the lanes' work, add-on scaffolding, setup checks, formatting, linting and
 the conventions check. A component's builds never load files from the root's `tools/`; only
 the ruleset's own maintenance tools may use them, through a development dependency on the root
 module (`rules_godot/MODULE.bazel`).
