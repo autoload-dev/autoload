@@ -154,9 +154,9 @@ def firebase_framework(
     """
     Declare the dynamic framework framework_name of a Firebase product.
 
-    Creates `<name>`, the framework import that native code links and compiles against,
-    and `<name>.bundle`, a bundle_only import of the same framework and of those it links,
-    for an extension's platform_deps: through it, iOS applications embed and sign them.
+    Creates `<name>`, the framework import that native code links and compiles against.
+    iOS applications embed and sign the framework and those it links, once however many
+    extensions link it.
 
     Args:
         name: Name of the framework import.
@@ -212,12 +212,10 @@ def firebase_framework(
             target_compatible_with = compatible,
             visibility = ["//visibility:private"],
         )
-    for suffix, bundle_only in [("", False), (".bundle", True)]:
-        apple_dynamic_framework_import(
-            name = name + suffix,
-            bundle_only = bundle_only,
-            framework_imports = [":" + files],
-            deps = [framework + suffix for framework in frameworks] + ([] if bundle_only else headers),
-            target_compatible_with = compatible,
-            visibility = visibility,
-        )
+    apple_dynamic_framework_import(
+        name = name,
+        framework_imports = [":" + files],
+        deps = frameworks + headers,
+        target_compatible_with = compatible,
+        visibility = visibility,
+    )

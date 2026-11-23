@@ -22,8 +22,6 @@ godot_cc_extension(
     entry_symbol = "firebase_firestore_init",
     platform_deps = select({
         "@platforms//os:android": ["//firestore/native/backends/android:plugin"],
-        # The Firebase framework the iOS backend links, which the application embeds.
-        "@platforms//os:ios": ["//ios:firestore.bundle"],
         "//conditions:default": [],
     }),
     resource_path = "addons/firebase_firestore/firebase_firestore.gdextension",

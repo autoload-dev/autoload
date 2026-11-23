@@ -5,7 +5,9 @@ Each lane runs in the module's examples/, which consumes the module like an appl
 
 - desktop: the module's tests and every target of its examples but the projects' apps, for
   the editor and this machine's desktop system, on the desktop systems its addon.pkl names;
-- android and ios: each example project's `app`, for Android and the iOS Simulator.
+- android and ios: each example project's `app`, for Android and the iOS Simulator, and the
+  tests of the example projects tagged with the lane's name, such as an `ios_app_test` of
+  the app; `manual` keeps them out of the desktop lane.
 """
 
 import argparse
@@ -20,8 +22,19 @@ APP_CONFIGS = {"android": "--config=android", "ios": "--config=ios_sim"}
 NO_TESTS = 4
 
 
-def command(lane: str, module: AddonModule) -> list[str]:
-    """The Bazel command of one lane, run in the module's examples/."""
+def lane_tests_query(lane: str) -> list[str]:
+    """The Bazel query for the example projects' tests that a mobile lane runs."""
+    return [
+        "bazel",
+        "query",
+        "--output=label",
+        # Query renders tags as "[a, b]": match a whole element, not a tag like no-ios.
+        f'attr(tags, "[\\[ ]{lane}[,\\]]", tests(//projects/...))',
+    ]
+
+
+def command(lane: str, module: AddonModule, tests: list[str] | None = None) -> list[str]:
+    """The Bazel command of one lane, run in the module's examples/, with a mobile lane's tests."""
     if not module.projects:
         raise ValueError(f"{module.path}: no example project in examples/projects/")
     if lane == "desktop":
@@ -32,7 +45,9 @@ def command(lane: str, module: AddonModule) -> list[str]:
         )
         return ["bazel", "test", "--", f"@{module.name}//...", "//...", *apps]
     apps = [f"//projects/{project}:app" for project in module.projects]
-    return ["bazel", "build", APP_CONFIGS[lane], *apps]
+    if not tests:
+        return ["bazel", "build", APP_CONFIGS[lane], *apps]
+    return ["bazel", "test", APP_CONFIGS[lane], "--", *apps, *tests]
 
 
 def run(lane: str, module: AddonModule) -> None:
@@ -44,9 +59,17 @@ def run(lane: str, module: AddonModule) -> None:
             f" not {host()}"
         )
         return
-    argv = command(lane, module)
-    print("+", " ".join(argv), flush=True)
     examples = ROOT / module.path / "examples"
+    tests = None
+    if lane != "desktop":
+        query = lane_tests_query(lane)
+        print("+", " ".join(query), flush=True)
+        found = subprocess.run(
+            query, cwd=examples, check=True, capture_output=True, text=True
+        )
+        tests = found.stdout.split()
+    argv = command(lane, module, tests)
+    print("+", " ".join(argv), flush=True)
     status = subprocess.run(argv, cwd=examples, check=False).returncode
     if status not in ({0, NO_TESTS} if lane == "desktop" else {0}):
         sys.exit(status)

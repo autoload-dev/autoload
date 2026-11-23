@@ -69,6 +69,10 @@ mise run ci:work -- android:addon:<module>   # each example project's app for An
 mise run ci:work -- ios:addon:<module>       # each example project's app for the iOS Simulator
 ```
 
+`android` and `ios` also run the example projects' tests tagged with the lane's name, such as
+an `ios_app_test` of the app (`rules_godot/tests/AGENTS.md`, "Artifact test rules"); the tag
+`manual` keeps them out of `desktop`.
+
 `desktop` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
