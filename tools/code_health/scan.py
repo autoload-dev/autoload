@@ -1,6 +1,6 @@
 """Scanning files with the CodeScene CLI, including languages it lacks.
 
-The CodeScene CLI (shipped inside the CodeHealth MCP server) reviews one file per call.
+The CodeScene CLI `cs`, which mise pins (mise.toml), reviews one file per call.
 The scanner feeds every file through stdin under a *virtual* file name, so files CodeScene
 does not know are analysed as a language it does (translation.py). Nothing in the
 repository is modified; results are reported under the original paths and lines.
@@ -9,18 +9,16 @@ Code Health rules: a code-health-rules.json passed with --rules, else the reposi
 .codescene/code-health-rules.json. Its matching_content_path globs see the virtual names,
 e.g. "**/*.bzl.py" for Starlark and "**/*.gd.py" for GDScript.
 
-Requirements: the CodeHealth MCP server has run once (it extracts the `cs` CLI to its
-cache), and a CodeScene token is configured (CS_ACCESS_TOKEN, or the access_token the MCP
-server stores in its config.json). The token is never printed.
+Requirements: `cs` on PATH, as mise provides it, or named by CODESCENE_CLI, and either a
+personal access token in CS_ACCESS_TOKEN or a `cs auth login` session. The token is never
+printed.
 """
 
 from __future__ import annotations
 
 import fnmatch
-import glob
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -87,40 +85,29 @@ class Unavailable(Exception):
 
 
 def find_cli() -> str:
-    if os.environ.get("CODESCENE_CLI"):
-        return os.environ["CODESCENE_CLI"]
-    cache = (
-        Path.home() / "Library/Caches/codehealth-mcp"
-        if platform.system() == "Darwin"
-        else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-        / "codehealth-mcp"
-    )
-    candidates = sorted(glob.glob(str(cache / "MCP-*" / "cs")), key=os.path.getmtime)
-    if not candidates:
+    """The CodeScene CLI: CODESCENE_CLI, else the `cs` on PATH, which mise pins."""
+    cli = os.environ.get("CODESCENE_CLI") or shutil.which("cs")
+    if not cli:
         raise Unavailable(
-            f"CodeScene CLI not found under {cache}; run the CodeHealth MCP server "
-            "once or set CODESCENE_CLI"
+            "CodeScene CLI `cs` not found: run through mise, as `mise run code-health` "
+            "does, or set CODESCENE_CLI"
         )
-    return candidates[-1]
+    return cli
 
 
-def cli_environment() -> dict[str, str]:
+def cli_environment(cli: str) -> dict[str, str]:
+    """The CLI's environment, once it can sign in: with CS_ACCESS_TOKEN or `cs auth`."""
     env = dict(os.environ, CS_DISABLE_VERSION_CHECK="1")
-    if not env.get("CS_ACCESS_TOKEN"):
-        config = (
-            Path.home() / "Library/Application Support/codehealth-mcp/config.json"
-            if platform.system() == "Darwin"
-            else Path.home() / ".config/codehealth-mcp/config.json"
+    if env.get("CS_ACCESS_TOKEN"):
+        return env
+    status = subprocess.run(
+        [cli, "auth", "status"], capture_output=True, env=env, check=False
+    )
+    if status.returncode != 0:
+        raise Unavailable(
+            "CodeScene is not signed in: set CS_ACCESS_TOKEN to a personal access token, "
+            "or run `cs auth login` once"
         )
-        try:
-            token = json.loads(config.read_text()).get("access_token")
-        except OSError, ValueError:
-            token = None
-        if not token:
-            raise Unavailable(
-                "No CodeScene token: set CS_ACCESS_TOKEN or configure the MCP server"
-            )
-        env["CS_ACCESS_TOKEN"] = token
     return env
 
 
@@ -201,9 +188,10 @@ class Scanner:
     jobs: int
 
     def source_of(self, ref: str | None, path: str) -> str:
-        if ref:
-            return git(self.repo, "show", f"{ref}:{path}")
-        return (self.repo / path).read_text(errors="replace")
+        """The file at the ref, in the index for "", or in the working tree for None."""
+        if ref is None:
+            return (self.repo / path).read_text(errors="replace")
+        return git(self.repo, "show", f"{ref}:{path}")
 
     def scan(self, files: list[tuple[str | None, str]]) -> list[FileResult]:
         """Score each (ref, path), at the ref or, without one, in the working tree."""

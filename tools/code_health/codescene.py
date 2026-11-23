@@ -3,7 +3,8 @@
 By default it reviews the change: the files changed since the merge base with --base
 (origin/main), untracked ones included, scored at both ends. Per file it prints the score
 before and after and each new finding with its function and lines, and it exits with 1
-when a file declines (change.py). --only reviews just the given files the same way and also
+when a file declines (change.py). --staged reviews only what is staged against HEAD, as the
+pre-commit hook does. --only reviews just the given files against the merge base and also
 lists the findings they had before. --survey reports the whole checkout instead: languages,
 hotspots and the lowest scores (survey.py).
 
@@ -11,13 +12,14 @@ Starlark and GDScript are scored as translated Python (translation.py); the scan
 rules and its requirements are described in scan.py.
 
 Usage (from the repository root):
-    python3 -m tools.code_health.codescene [REPO] [--base origin/main] [--only PATH ...]
+    python3 -m tools.code_health.codescene [REPO] [--base origin/main] [--staged]
+        [--only PATH ...]
         [--survey [--top 20] [--since 6.months]] [--json out.json]
         [--include-build-files] [--exclude GLOB ...] [--rules code-health-rules.json]
         [--keep-macro-arguments] [--if-available]
 
---if-available lets the pre-push hook (hk.pkl) pass with a note on a machine without the
-CodeScene CLI or token, instead of blocking every push there.
+--if-available lets the Git hooks (hk.pkl) pass with a note on a machine without the
+CodeScene CLI or a sign-in, instead of blocking every commit and push there.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ import argparse
 import os
 import shutil
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from tools.code_health import change, survey
@@ -55,6 +58,11 @@ def parse_args() -> argparse.Namespace:
         help="review the change since the merge base with this ref (default: origin/main)",
     )
     mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--staged",
+        action="store_true",
+        help="review only the staged changes against HEAD, as before a commit; ignores --base",
+    )
     mode.add_argument(
         "--only",
         nargs="+",
@@ -97,7 +105,8 @@ def main() -> None:
     args = parse_args()
     repo = Path(git(args.repo, "rev-parse", "--show-toplevel").strip())
     try:
-        cli, environment = find_cli(), cli_environment()
+        cli = find_cli()
+        environment = cli_environment(cli)
     except Unavailable as missing:
         if not args.if_available:
             sys.exit(str(missing))
@@ -148,18 +157,56 @@ def only_paths(repo: Path, since: str, paths: list[str]) -> list[ChangedPath]:
     return sides
 
 
+@dataclass(frozen=True)
+class Comparison:
+    """
+    The two sides of a change: refs for `git show`, "" for the index, None for the
+    working tree; `against` describes the before side for the report.
+    """
+
+    before: str
+    after: str | None
+    against: str
+
+
+def branch_change(
+    args: argparse.Namespace, repo: Path
+) -> tuple[Comparison, list[ChangedPath]]:
+    """The working tree against its merge base with --base, or just the --only files."""
+    since = change.merge_base(repo, args.base)
+    paths = (
+        only_paths(repo, since, args.only)
+        if args.only
+        else selected_paths(args, change.changed_paths(repo, since))
+    )
+    return Comparison(since, None, f"`{args.base}` (merge base {since[:12]})"), paths
+
+
+def staged_change(
+    args: argparse.Namespace, repo: Path
+) -> tuple[Comparison, list[ChangedPath]]:
+    """The index against HEAD: what the next commit changes."""
+    head = git(repo, "rev-parse", "HEAD").strip()
+    paths = selected_paths(args, change.staged_paths(repo))
+    return Comparison(head, "", f"`HEAD` ({head[:12]}), staged changes only"), paths
+
+
 def score_changes(
-    scanner: Scanner, since: str, paths: list[ChangedPath]
+    scanner: Scanner, sides: Comparison, paths: list[ChangedPath]
 ) -> tuple[list[FileChange], list[FileResult]]:
     """
     Each file's change, and every result, both sides scored in one scan so that neither
     waits for the other's slowest file.
     """
-    sides: list[tuple[str | None, str]] = [(since, p.before) for p in paths if p.before]
-    sides += [(None, p.after) for p in paths if p.after]
-    results = dict(zip(sides, scanner.scan(sides), strict=True))
+    files: list[tuple[str | None, str]] = [
+        (sides.before, p.before) for p in paths if p.before
+    ]
+    files += [(sides.after, p.after) for p in paths if p.after]
+    results = dict(zip(files, scanner.scan(files), strict=True))
     changes = [
-        FileChange(p, results.get((since, p.before)), results.get((None, p.after)))
+        FileChange(
+            p, results.get((sides.before, p.before)), results.get((sides.after, p.after))
+        )
         for p in paths
     ]
     return changes, list(results.values())
@@ -174,19 +221,14 @@ def review_status(changes: list[FileChange], results: list[FileResult]) -> int:
 
 
 def review_change(args: argparse.Namespace, scanner: Scanner, rules_source: str) -> int:
-    since = change.merge_base(scanner.repo, args.base)
-    paths = (
-        only_paths(scanner.repo, since, args.only)
-        if args.only
-        else selected_paths(args, change.changed_paths(scanner.repo, since))
-    )
-    changes, results = score_changes(scanner, since, paths)
+    find = staged_change if args.staged else branch_change
+    sides, paths = find(args, scanner.repo)
+    changes, results = score_changes(scanner, sides, paths)
     if args.json:
-        change.write_json(args.json, args.base, since, changes)
+        change.write_json(args.json, sides.against, sides.before, changes)
     after = [c.after for c in changes if c.after]
     notes = scan_notes(after, args.keep_macro_arguments, rules_source)
-    against = f"`{args.base}` (merge base {since[:12]})"
-    print(change.report(changes, against, notes, all_findings=bool(args.only)))
+    print(change.report(changes, sides.against, notes, all_findings=bool(args.only)))
     return review_status(changes, results)
 
 

@@ -15,6 +15,7 @@ from tools.code_health.change import (
     merge_base,
     parse_name_status,
     report,
+    staged_paths,
 )
 from tools.code_health.scan import FileResult
 
@@ -109,6 +110,19 @@ class ChangedPathsTest(unittest.TestCase):
                 ChangedPath(None, "untracked.py"),
             ],
             changed_paths(self.repo, since),
+        )
+
+    def test_staged_changes_are_the_index_against_head(self) -> None:
+        body = "".join(f"line {n}\n" for n in range(20))
+        self.commit({"stays.py": "x = 1\n", "moves.py": body}, "base")
+        self.git("mv", "moves.py", "moved.py")
+        (self.repo / "stays.py").write_text("x = 2\n")
+        self.git("add", "stays.py")
+        (self.repo / "unstaged.py").write_text("y = 1\n")
+
+        self.assertCountEqual(
+            [ChangedPath("moves.py", "moved.py"), ChangedPath("stays.py", "stays.py")],
+            staged_paths(self.repo),
         )
 
 
