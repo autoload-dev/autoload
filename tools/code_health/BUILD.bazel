@@ -5,11 +5,21 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 py_library(
     name = "codescene_lib",
     srcs = [
+        "change.py",
         "codescene.py",
         "documentation.py",
         "macros.py",
+        "scan.py",
+        "survey.py",
         "translation.py",
     ],
+)
+
+py_test(
+    name = "change_test",
+    size = "small",
+    srcs = ["change_test.py"],
+    deps = [":codescene_lib"],
 )
 
 py_test(
