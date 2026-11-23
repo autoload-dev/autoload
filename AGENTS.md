@@ -45,7 +45,7 @@ including TDD and evidence reuse. Commands below are entry points, not a checkli
 From the repository root:
 
 ```sh
-mise run setup                            # once per clone: install hooks
+mise run setup                            # once per clone: install the Git hooks (hk.pkl)
 hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
 mise run api-docs                         # after changing the ruleset's public API
