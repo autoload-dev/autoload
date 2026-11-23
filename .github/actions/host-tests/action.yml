@@ -8,7 +8,7 @@ inputs:
     description: JSON array of the host lane's selected mise tasks.
     required: true
   android:
-    description: Whether a selected task needs the Android SDK, as the plan's host_android says.
+    description: Whether a selected task needs the Android SDK, as the plan says for its job.
     default: "true"
 
 runs:
