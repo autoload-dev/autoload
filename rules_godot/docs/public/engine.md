@@ -460,8 +460,7 @@ A source-built engine's debug information follows Bazel's `-c`, `--copt`,
 `--per_file_copt` and `--apple_generate_dsym`, for `template_release` and
 `template_debug` engines alike; its optimization follows the
 [optimization](#optimization) settings under `-c opt`. `fastbuild`, the default,
-compiles it unoptimized. Godot's `optimize`, `lto` and `debug_symbols` options are
-rejected.
+compiles it unoptimized.
 
 `-c dbg` debugs an application together with its engine. A store build whose
 crash reports name engine frames compiles with `-c opt --copt=-g`, the

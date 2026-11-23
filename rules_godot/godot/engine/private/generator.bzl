@@ -301,24 +301,27 @@ def _floor(settings, attr):
         values[option] = _minimum_os(attr)
     return values
 
-def _desktop_native_impl(settings, attr):
-    # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
-    # explains; a transition cannot compose two, so this one repeats that setting.
-    return _floor(settings, attr) | engine_optimization(settings, attr) | UNSTRIPPED
-
-_desktop_native = transition(
-    implementation = _desktop_native_impl,
-    inputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS,
-    outputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS + UNSTRIPPED.keys(),
-)
+_ENGINE_INPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS
+_ENGINE_OUTPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS
 
 def _engine_library_impl(settings, attr):
     return _floor(settings, attr) | engine_optimization(settings, attr)
 
 _engine_library = transition(
     implementation = _engine_library_impl,
-    inputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS,
-    outputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS,
+    inputs = _ENGINE_INPUTS,
+    outputs = _ENGINE_OUTPUTS,
+)
+
+def _desktop_native_impl(settings, attr):
+    # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
+    # explains; a transition cannot compose two, so this one repeats that setting.
+    return _engine_library_impl(settings, attr) | UNSTRIPPED
+
+_desktop_native = transition(
+    implementation = _desktop_native_impl,
+    inputs = _ENGINE_INPUTS,
+    outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys(),
 )
 
 _BINARY_ATTRS = _SOURCE_ATTRS | {

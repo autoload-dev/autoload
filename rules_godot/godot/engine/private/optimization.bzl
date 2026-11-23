@@ -5,11 +5,10 @@ The engine rules' transitions apply these options to the engine's native graph o
 extensions and application code keep the build's own levels.
 """
 
+load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
+
 visibility(["//godot/engine/private/..."])
 
-_COMPILATION_MODE = "//command_line_option:compilation_mode"
-_COPT = "//command_line_option:copt"
-_LINKOPT = "//command_line_option:linkopt"
 _ENGINE_OPTIMIZE = str(Label("//godot:engine_optimize"))
 _ENGINE_LTO = str(Label("//godot:engine_lto"))
 
@@ -31,16 +30,14 @@ _LTO_OPTIONS = {
     "full": ["-flto"],
 }
 
-OPTIMIZATION_INPUTS = [_COMPILATION_MODE, _COPT, _LINKOPT, _ENGINE_OPTIMIZE, _ENGINE_LTO]
-OPTIMIZATION_OUTPUTS = [_COPT, _LINKOPT]
+OPTIMIZATION_OUTPUTS = [COPT, LINKOPT]
+OPTIMIZATION_INPUTS = OPTIMIZATION_OUTPUTS + [COMPILATION_MODE, _ENGINE_OPTIMIZE, _ENGINE_LTO]
 
 def engine_optimization(settings, attr):
     """
-    Return the engine's compiler and linker options: engine_optimize and engine_lto under -c opt.
+    Return the engine's --copt and --linkopt: under -c opt, engine_optimize's and engine_lto's.
 
-    They follow the build's own --copt and --linkopt, so their level overrides the
-    toolchain's and the command line's for engine code only. auto is Godot's own choice:
-    speed for release runtimes, speed_trace for debug runtimes and editors.
+    They follow the build's own options, so the engine's level wins over the toolchain's.
 
     Args:
         settings: Transition inputs, OPTIMIZATION_INPUTS among them.
@@ -49,13 +46,13 @@ def engine_optimization(settings, attr):
     Returns:
         The --copt and --linkopt values of the engine's native graph.
     """
-    copts, linkopts = settings[_COPT], settings[_LINKOPT]
+    copts, linkopts = settings[COPT], settings[LINKOPT]
 
     # Bazel passes the compilation mode to transitions as an enum, not as a string.
-    if str(settings[_COMPILATION_MODE]) != "opt":
-        return {_COPT: copts, _LINKOPT: linkopts}
+    if str(settings[COMPILATION_MODE]) != "opt":
+        return {COPT: copts, LINKOPT: linkopts}
     level = settings[_ENGINE_OPTIMIZE]
     if level == "auto":
         level = "speed" if attr.role == "runtime" and attr.variant == "release" else "speed_trace"
     lto = _LTO_OPTIONS[settings[_ENGINE_LTO]]
-    return {_COPT: copts + _OPTIMIZE_OPTIONS[level] + lto, _LINKOPT: linkopts + lto}
+    return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto, LINKOPT: linkopts + lto}
