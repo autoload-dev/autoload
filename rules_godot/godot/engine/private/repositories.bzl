@@ -174,7 +174,8 @@ godot_engine_build = repository_rule(
             Upstream configure options as string values; import_env_vars lists
             comma-separated environment dependencies. Options rules_godot controls, such as
             platform, arch, target, the iOS simulator switch and module selection, are
-            rejected; optimize and debug_symbols follow Bazel's -c, --copt and --per_file_copt.
+            rejected; optimize and lto follow //godot:engine_optimize and //godot:engine_lto,
+            debug_symbols Bazel's -c, --copt and --per_file_copt.
             """,
         ),
         "build_name": attr.string(
