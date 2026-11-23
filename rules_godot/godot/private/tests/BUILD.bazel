@@ -68,6 +68,13 @@ py_test(
     deps = ["//godot/private:project_config_lib"],
 )
 
+py_test(
+    name = "pinned_settings_test",
+    size = "small",
+    srcs = ["pinned_settings_test.py"],
+    deps = ["//godot/private:project_config_lib"],
+)
+
 mocks_test_suite(name = "mocks_test_suite")
 
 patches_test_suite(name = "patches_test_suite")

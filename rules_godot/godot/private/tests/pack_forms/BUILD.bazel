@@ -1,6 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/private/tests:pack_forms.bzl", "pack_form")
+load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
 _FIXTURE = "//godot/private/tests/pack_forms/fixtures/project_with_runtime_inputs"
 
@@ -16,6 +17,29 @@ pack_form(
     name = "none_pack",
     form = "none",
     pack = _FIXTURE + ":pack",
+    tags = ["manual"],
+)
+
+# The fixture's pack for Android, whose export needs the ETC2/ASTC variants of the VRAM
+# texture that the host's own export does not.
+in_export_platform(
+    name = "android_pack",
+    export_platform = "//godot/platforms:android_arm64",
+    tags = ["manual"],
+    deps = [_FIXTURE + ":pack"],
+)
+
+pack_form(
+    name = "android_godot_pack",
+    form = "godot",
+    pack = ":android_pack",
+    tags = ["manual"],
+)
+
+pack_form(
+    name = "android_none_pack",
+    form = "none",
+    pack = ":android_pack",
     tags = ["manual"],
 )
 
@@ -38,6 +62,8 @@ py_test(
     size = "medium",
     srcs = ["runtime_inputs_test.py"],
     data = [
+        ":android_godot_pack",
+        ":android_none_pack",
         ":godot_pack",
         ":none_pack",
     ],

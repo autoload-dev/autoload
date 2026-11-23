@@ -53,6 +53,46 @@ def _settings_reach_every_configuration(env, targets):
             "display/window/size/viewport_width": "640",
         })
 
+# Imports and exports read the VRAM texture formats the ruleset fixes, so every execution
+# platform imports the same variants and every export platform finds its own; the runtime
+# and the editor views keep the project's.
+def _test_imports_and_exports_pin_the_vram_formats(name):
+    analysis_test(
+        name = name,
+        targets = {
+            "project": _FIXTURE + ":configured_project",
+            "view": run_view(name + "_run", _FIXTURE + ":configured_project", _CONFIGURED),
+        },
+        impl = _imports_and_exports_pin_the_vram_formats,
+    )
+
+def _imports_and_exports_pin_the_vram_formats(env, targets):
+    for subject, suffix, purpose in _CONFIGURATIONS:
+        pinned = manifest_content(getattr(targets, subject), suffix).get("pinned_settings", {})
+        env.expect.where(manifest = suffix).that_dict(pinned).contains_exactly({
+            "rendering/textures/vram_compression/import_etc2_astc": "true",
+            "rendering/textures/vram_compression/import_s3tc_bptc": "true",
+        } if purpose in ["import", "export"] else {})
+
+def _pinned_setting_failure_test(name, attr, setting):
+    godot_project(
+        name = name + "_project",
+        project_file = _PROJECT_FILE,
+        tags = ["manual"],
+        **{attr: {setting: "false"}}
+    )
+    failure_test(
+        name,
+        name + "_project",
+        "*rules_godot imports every VRAM-compressed texture in both S3TC/BPTC and ETC2/ASTC*remove the setting %s" % setting,
+    )
+
+def _test_project_setting_against_a_pinned_format_fails(name):
+    _pinned_setting_failure_test(name, "settings", "rendering/textures/vram_compression/import_s3tc_bptc")
+
+def _test_override_against_a_pinned_format_fails(name):
+    _pinned_setting_failure_test(name, "setting_overrides", "rendering/textures/vram_compression/import_etc2_astc.mobile")
+
 # The main scene takes its res:// form; imports never start it.
 def _test_main_scene_reaches_runtime_but_not_import_configuration(name):
     analysis_test(
@@ -565,6 +605,9 @@ def project_configuration_test_suite(name):
         tests = [
             _test_main_scene_reaches_runtime_but_not_import_configuration,
             _test_settings_reach_every_configuration,
+            _test_imports_and_exports_pin_the_vram_formats,
+            _test_project_setting_against_a_pinned_format_fails,
+            _test_override_against_a_pinned_format_fails,
             _test_undeclared_main_scene_fails,
             _test_main_scene_naming_a_directory_fails,
             _test_pack_without_required_packs_needs_main_scene,

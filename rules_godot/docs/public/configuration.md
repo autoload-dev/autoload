@@ -197,6 +197,15 @@ The following families also affect the shell files and shell assets:
 | `internationalization/locale/translations` | Declared translations and the localized strings of the shell files; Apple applications have localized strings only when the project has translations |
 | Application runtime, input, audio and game/plugin settings | Preserved and interpreted by Godot; resource references remain declared inputs |
 
+The rules fix `rendering/textures/vram_compression/import_s3tc_bptc` and `import_etc2_astc`
+to `true` for imports and exports, replacing the authored values and their feature
+overrides. Godot imports a VRAM-compressed texture in every format family whose setting is
+true and, whatever the settings, in the family the importing machine's CPU prefers. With
+both true, imports produce the same variants on every execution platform, whether a macOS
+host, an x86_64 executor or an arm64 Linux executor runs them, and every export finds the
+variants its platform needs. A pack contains only the variants of its feature tags.
+Setting either to `false` in `settings`, `setting_overrides` or a contribution fails.
+
 Export-only changes reuse imports when import inputs stay equal. Resource membership,
 reachable packing and prerequisites are described in [resources](resources.md#export-membership).
 
