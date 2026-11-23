@@ -1215,10 +1215,9 @@ def _enabled_modules(
 
 
 # The modules a recipe names when it names none and does not start from Godot's defaults.
-DEFAULT_MODULES = ("gdscript", "text_server_fb")
+_DEFAULT_MODULES = ("gdscript", "text_server_fb")
 
-# Godot's text servers, which each define the same SVG-in-OpenType symbols.
-TEXT_SERVERS = ("text_server_adv", "text_server_fb")
+_TEXT_SERVERS = ("text_server_adv", "text_server_fb")
 
 
 def requested_modules(modules: str, default_modules: bool) -> list[str]:
@@ -1229,7 +1228,7 @@ def requested_modules(modules: str, default_modules: bool) -> list[str]:
     already include GDScript and a text server, and a second text server cannot link.
     """
     named = [module for module in modules.split(",") if module]
-    return named or ([] if default_modules else list(DEFAULT_MODULES))
+    return named or ([] if default_modules else list(_DEFAULT_MODULES))
 
 
 def require_one_text_server(modules: Iterable[str]) -> None:
@@ -1239,7 +1238,7 @@ def require_one_text_server(modules: Iterable[str]) -> None:
     Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
     object, so the application's link would fail on them.
     """
-    servers = sorted(set(modules) & set(TEXT_SERVERS))
+    servers = sorted(set(modules) & set(_TEXT_SERVERS))
     if len(servers) > 1:
         raise ValueError(
             "An engine links one text server, but this configuration enables "
@@ -1897,6 +1896,8 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     args.selected_modules = module_closure(
         args.modules, graph, editor=args.build_target == "editor"
     )
+    # Before SCons for the modules a recipe names; Godot's defaults are checked after it.
+    require_one_text_server(args.selected_modules)
     check_options(args.options)
     args.customizations = customizations(args)
     _add_environment_option(args)
