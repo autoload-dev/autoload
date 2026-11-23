@@ -19,4 +19,14 @@ function tool(program, args, { visible = false, cwd, seconds = 3 } = {}) {
   });
 }
 
-module.exports = { tool };
+// Resolves to true once the predicate holds, checking every 100 ms, or to false at the deadline.
+async function waitUntil(predicate, seconds) {
+  const deadline = Date.now() + seconds * 1000;
+  do {
+    if (await predicate()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } while (Date.now() < deadline);
+  return false;
+}
+
+module.exports = { tool, waitUntil };

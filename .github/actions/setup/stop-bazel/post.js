@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const { promisify } = require("node:util");
 const { releaseCache } = require("./cache");
-const { tool } = require("./tool");
+const { tool, waitUntil } = require("./tool");
 
 const shutdownSeconds = Number(process.env["INPUT_SHUTDOWN-TIMEOUT-SECONDS"]) || 30;
 
@@ -37,9 +37,9 @@ function servers(root) {
   });
 }
 
-// The server still runs while its PID belongs to a process started for its output base:
-// Bazel passes --output_base to the server. A recycled PID never matches.
-async function running({ pid, outputBase }) {
+// Whether the PID belongs to a process started for the output base: Bazel passes
+// --output_base to the server, so a stale PID file whose PID was recycled never matches.
+async function serves({ pid, outputBase }) {
   let args;
   try {
     ({ stdout: args } = await promisify(execFile)("ps", ["-ww", "-o", "args=", "-p", String(pid)], {
@@ -51,14 +51,16 @@ async function running({ pid, outputBase }) {
   return args.trim().split(/\s+/).includes(`--output_base=${outputBase}`);
 }
 
-async function exited(server, seconds) {
-  const deadline = Date.now() + seconds * 1000;
-  do {
-    if (!await running(server)) return true;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  } while (Date.now() < deadline);
-  return false;
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
 }
+
+const exited = ({ pid }, seconds) => waitUntil(() => !alive(pid), seconds);
 
 async function bazelShutdown({ outputBase, workspace }) {
   const name = path.basename(outputBase);
@@ -88,8 +90,10 @@ async function bazelShutdown({ outputBase, workspace }) {
 // A graceful shutdown first, so the server stops its persistent workers. A server that
 // survives it, or whose workspace is gone, gets SIGTERM and then SIGKILL.
 async function shutdown(server) {
-  if (!await running(server)) return;
-  const stopped = (await bazelShutdown(server) && await exited(server, 3)) || await terminate(server);
+  if (!await serves(server)) return;
+  // Only a successful shutdown is worth waiting for before the signals.
+  const graceful = await bazelShutdown(server);
+  const stopped = (graceful && await exited(server, 3)) || await terminate(server);
   console.log(stopped
     ? `Bazel stopped: ${server.outputBase}`
     : `::warning::Bazel server ${server.pid} of ${server.outputBase} is still running`);

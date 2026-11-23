@@ -33,8 +33,6 @@ TYPED_ROOTS = frozenset({"projects", "addons"})
 # and have no typed roots; and the regression module with its smoke paths.
 RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
-
-
 NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"

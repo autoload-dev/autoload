@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { tool } = require("./tool");
+const { tool, waitUntil } = require("./tool");
 
 // A server shutdown does not cover servers from isolated output user roots or orphaned
 // workers after cancellation. Release the dedicated job mount, including mapped
@@ -27,14 +27,7 @@ async function releaseCache(cachePath) {
     if (status !== 0 && status !== 1) throw new Error(`Cannot inspect cache holders: ${status}`);
     return status === 0;
   };
-  const waitForRelease = async () => {
-    const deadline = Date.now() + 2000;
-    do {
-      if (!await occupied()) return true;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } while (Date.now() < deadline);
-    return false;
-  };
+  const waitForRelease = () => waitUntil(async () => !await occupied(), 2);
   if (await occupied()) {
     console.log(`Processes still holding repository cache ${cache}:`);
     await fuser(["-v"], true);
