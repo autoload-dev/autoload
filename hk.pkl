@@ -14,11 +14,12 @@ local function task(name: String): Step = new {
 // The Python, Starlark and Bazel sources the formatter handles.
 local sources = List("*.py", "*.bzl", "**/BUILD", "**/BUILD.bazel", "**/MODULE.bazel")
 
-// Formatting, lint, the setup contracts and the action tests: seconds with a warm Bazel. The
-// last two run no Bazel, so they run beside the others.
+// Formatting, lint, the generated files, the setup contracts and the action tests: seconds
+// with a warm Bazel. The last two run no Bazel, so they run beside the others.
 local quick = new Mapping<String, Step> {
   ["format"] = task("format")
   ["lint"] = task("lint")
+  ["generated"] = task("generated")
   ["test:setup"] = (task("test:setup")) { exclusive = false }
   ["test:actions"] = (task("test:actions")) { exclusive = false }
 }
@@ -54,6 +55,14 @@ hooks {
         glob = sources
         exclusive = true
         fix = "bazel run --config=host-execution //tools/format -- {{files}}"
+      }
+      // The generated files that depend on the staged ones, staged in turn. The globs keep
+      // a commit without such files from regenerating everything, as no paths would.
+      ["generate"] {
+        glob = List("**/MODULE.bazel", "*.bzl")
+        exclusive = true
+        fix = "python3 -m tools.generate.generate {{files}}"
+        stage = List("**/MODULE.bazel.lock", "rules_godot/docs/public/api/**")
       }
       // Every linter on the staged files it handles; skipped without any, which would lint
       // the whole repository.
