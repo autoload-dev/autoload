@@ -1,0 +1,19 @@
+name: Stop the run
+description: >-
+  Cancel the workflow run this job belongs to, so that the other jobs free
+  their runners and Finalize fails at once. Run it as a job's last step with
+  `if: failure()`; the job's token needs `actions: write`. A fork's pull
+  request has a read-only token, so its run goes on to the end.
+
+runs:
+  using: composite
+  steps:
+    - name: Cancel the run
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        curl --fail-with-body --silent --show-error --request POST \
+          --header "Authorization: Bearer $GH_TOKEN" \
+          --header "Accept: application/vnd.github+json" \
+          "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"

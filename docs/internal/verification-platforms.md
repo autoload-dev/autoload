@@ -63,6 +63,10 @@ own, each add-on module's lanes as its `addon.pkl` names them and the add-on gen
 self-test in every lane. Each [CI](../../.github/workflows/ci.yml) job runs one lane on its
 host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work whose
 `addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
+The first job to fail cancels the run ([`stop-run`](../../.github/actions/stop-run/action.yml)),
+so the other jobs free their runners and `Finalize` fails at once, which in the merge queue
+removes the entry without waiting for the slowest lane; the work they finished stays in
+Bazel's caches. A fork's pull request has a read-only token and runs to the end.
 
 Locally, `mise run ci:lane -- <lane>` runs a whole lane on this host, `mise run ci:work --
 <name>...` single pieces, and `mise run ci:work` lists them. Where a piece is one Bazel command,
