@@ -25,7 +25,7 @@ runs:
     - name: Run the regression module's host set
       if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
-      run: python3 tools/ci/verification.py run '["test:regressions"]'
+      run: python3 -m tools.ci.verification run '["test:regressions"]'
     - name: Require a regression host set without Android tools
       if: contains(inputs.tasks, '"test:regressions"')
       shell: bash
@@ -42,7 +42,7 @@ runs:
       shell: bash
       env:
         TASKS: ${{ inputs.tasks }}
-      run: python3 tools/ci/verification.py run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
+      run: python3 -m tools.ci.verification run "$(jq -c 'map(select(. != "test:regressions"))' <<< "$TASKS")"
     - name: Save Bazel downloads
       if: ${{ !cancelled() }}
       uses: ./.github/actions/setup/save-downloads

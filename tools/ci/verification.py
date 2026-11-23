@@ -1,6 +1,6 @@
 """
 Plan CI's work: every task of every lane, on every run. Bazel's caches make unchanged work
-cheap, so CI selects no paths; the lanes come from mise.toml's tasks and the add-on modules'
+cheap, so CI selects no paths by changes; the lanes come from mise.toml's tasks and the add-on modules'
 manifests (addon.pkl).
 """
 
@@ -22,7 +22,7 @@ LANES = ("quality", "docs", "host", "source-engine", "android", "ios")
 PROFILE_LANES = ("host", "source-engine", "android", "ios")
 
 # CI's jobs, each with the lane whose tasks it runs and the host it runs them on: Linux
-# runners or the macos-ci runners. The host lane runs on both hosts. CI's selection job has
+# runners or the macos-ci runners. The host lane runs on both hosts. CI's plan job has
 # an output for each job, named like it with underscores.
 JOBS = {
     "formatting": ("quality", "linux"),
@@ -53,24 +53,24 @@ def without_scheduled_lanes(lanes: dict[str, list[str]]) -> dict[str, list[str]]
 
 
 def output_name(job: str) -> str:
-    """The selection output of a job."""
+    """The plan output of a job."""
     return job.replace("-", "_")
 
 
-def selected_tasks(outputs: dict, job: str) -> list[str]:
-    """Read one selection output; a missing or malformed one is not an empty selection."""
+def planned_tasks(outputs: dict, job: str) -> list[str]:
+    """Read one plan output; a missing or malformed one is not an empty plan."""
     name = output_name(job)
     if name not in outputs:
-        raise ValueError(f"missing selection output: {name}")
+        raise ValueError(f"missing plan output: {name}")
     tasks = json.loads(outputs[name])
     if not isinstance(tasks, list) or not all(isinstance(task, str) for task in tasks):
-        raise ValueError(f"{job}: invalid selected task list")
+        raise ValueError(f"{job}: invalid planned task list")
     return tasks
 
 
 def required_jobs(outputs: dict) -> list[str]:
-    """Name the jobs the selection requires: those with tasks."""
-    return [job for job in JOBS if selected_tasks(outputs, job)]
+    """Name the jobs the plan requires: those with tasks."""
+    return [job for job in JOBS if planned_tasks(outputs, job)]
 
 
 def failed_jobs(needs: dict) -> list[str]:
@@ -83,17 +83,17 @@ def failed_jobs(needs: dict) -> list[str]:
 
 
 def verify_results(needs: dict) -> None:
-    """Require every job that CI's selection requires to succeed."""
-    selection = needs.get("selection", {})
-    if selection.get("result") != "success":
-        raise ValueError("selection did not succeed")
+    """Require every job that CI's plan requires to succeed."""
+    plan = needs.get("plan", {})
+    if plan.get("result") != "success":
+        raise ValueError("the plan did not succeed")
     if failures := failed_jobs(needs):
         raise ValueError(f"{failures[0]} verification result")
-    for workflow_job in required_jobs(selection.get("outputs", {})):
+    for workflow_job in required_jobs(plan.get("outputs", {})):
         result = needs.get(workflow_job, {}).get("result", "missing")
         if result != "success":
             raise ValueError(
-                f"{workflow_job}: {result}; selected verification must succeed"
+                f"{workflow_job}: {result}; planned verification must succeed"
             )
 
 
@@ -121,6 +121,34 @@ TASK_LANES = {
     "source-engine:full": "source-engine",
     **dict.fromkeys(("test:bazel", "test:regressions", "test:gdextension"), "host"),
 }
+
+
+# mise.toml's tasks that no lane plans: setup and tools, the parts and aggregates of lane
+# tasks, the generic add-on tasks that the add-on modules' lane tasks run, and inspections
+# of artifacts a lane already built. Every other task needs a lane, so a new one cannot
+# silently stay out of CI.
+OTHER_TASKS = frozenset(
+    {
+        "bootstrap",
+        "setup",
+        "format",
+        "code-health",
+        "android:setup",
+        "addon:new",
+        "conventions",
+        "test:examples",
+        "test:full",
+        "ios:apps",
+        "ios:examples",
+        "android:apps",
+        "android:examples",
+        "inspect:mobile",
+        "addon:host",
+        "addon:android",
+        "addon:ios",
+        "addon:template",
+    }
+)
 
 
 def _family_lane(task: str) -> str | None:
@@ -178,10 +206,10 @@ def for_host(lanes: dict[str, list[str]], host: str) -> dict[str, list[str]]:
 
 
 def lane_for(task: str) -> str:
-    """Assign a selected mise task to its lane."""
+    """Assign a planned mise task to its lane."""
     lane = TASK_LANES.get(task) or _family_lane(task)
     if lane is None:
-        raise ValueError(f"No lane for selected task: {task}")
+        raise ValueError(f"No lane for task: {task}")
     return lane
 
 
@@ -196,7 +224,7 @@ def addon_task_name(lane: str, module: str | None, hosts: tuple[str, ...]) -> st
     return f"{lane}:addon{target}" + (f"@{','.join(hosts)}" if limited else "")
 
 
-def addon_tasks() -> list[str]:
+def addon_tasks(root: Path = ROOT) -> list[str]:
     """
     Each add-on module's lanes, as its addon.pkl names them, and the generator's self-test
     in every lane. The self-test's desktop build does the same on every host, so its host
@@ -204,7 +232,7 @@ def addon_tasks() -> list[str]:
     """
     tasks = [
         addon_task_name(lane, module.directory, module.hosts)
-        for module in all_modules(ROOT)
+        for module in all_modules(root)
         for lane in module.lanes
     ]
     return tasks + [
@@ -214,18 +242,22 @@ def addon_tasks() -> list[str]:
 
 
 def all_lanes(root: Path = ROOT) -> dict[str, list[str]]:
-    """Every task CI runs, by lane: mise.toml's lane tasks and the add-on modules' lanes."""
+    """
+    Every task CI runs, by lane: mise.toml's tasks but OTHER_TASKS, and the add-on modules'
+    lanes. A task with no lane fails the plan.
+    """
+    tasks = tomllib.loads((root / "mise.toml").read_text())["tasks"]
     lanes: dict[str, list[str]] = {name: [] for name in LANES}
-    for task in tomllib.loads((root / "mise.toml").read_text())["tasks"]:
-        if lane := TASK_LANES.get(task) or _family_lane(task):
-            lanes[lane].append(task)
-    for task in addon_tasks():
+    for task in [
+        *(name for name in tasks if name not in OTHER_TASKS),
+        *addon_tasks(root),
+    ]:
         lanes[lane_for(task)].append(task)
     return lanes
 
 
 def run_tasks(tasks: object) -> None:
-    """Run the mise tasks of one selection output in order."""
+    """Run the mise tasks of one plan output in order."""
     if not isinstance(tasks, list) or not all(isinstance(task, str) for task in tasks):
         raise ValueError("Expected a JSON array of mise task names")
     for task in tasks:
@@ -264,7 +296,7 @@ def plan_outputs(
     lanes: dict[str, list[str]], excluded: frozenset[str] = frozenset()
 ) -> dict[str, object]:
     """
-    CI's selection outputs: each job's tasks, those of its lane on its host, none on an
+    CI's plan outputs: each job's tasks, those of its lane on its host, none on an
     excluded host, and whether a host job needs the Android SDK.
     """
     android = android_tasks()
@@ -294,8 +326,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("plan", help="Write CI's planned tasks to GITHUB_OUTPUT")
-    commands.add_parser("verify", help="Require CI's selected jobs to succeed")
-    run = commands.add_parser("run", help="Run one selected JSON task array")
+    commands.add_parser("verify", help="Require CI's planned jobs to succeed")
+    run = commands.add_parser("run", help="Run one planned JSON task array")
     run.add_argument("tasks")
     args = parser.parse_args()
     if args.command == "verify":
