@@ -19,7 +19,7 @@ silently claim success or build a new test framework.
 | During editing | Follow the test-first cycle below for behavior changes; use focused checks when their feedback helps the next decision | A suite after every file edit; rerunning successful checks with unchanged relevant inputs |
 | Before claiming a local change complete | Review the diff; run `hk check` and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
 | Before committing | Format changed Python/Starlark/Bazel sources if needed; retain relevant evidence | A second suite just because a commit is about to happen |
-| Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality and setup contracts | App builds, non-host lane suites and cache experiments in the hook |
+| Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality and setup contracts | App builds, non-desktop lane suites and cache experiments in the hook |
 | PR/review readiness | Require CI's results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the execution environment |
 | Merging | The merge queue runs every lane, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | A second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
@@ -50,7 +50,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run work -- test:setup`, cleanup tests in `mise run lint` |
 | API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run work -- docs` |
-| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run work -- test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's host set); individual owning Bazel test targets |
+| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run work -- test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | Build steps in `android:*`, `ios:*` and desktop targets |
 | Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in the work `test:bazel`; the consumer module's configuration suites in the `android`/`ios` work |

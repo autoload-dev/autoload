@@ -90,7 +90,7 @@ archive without fetching any AppAuth artifact.
    user, the granted scopes, the access token's expiry and the first eight characters of the
    access token; the demo never shows or logs a whole token.
 3. Check the other outcomes the same way. Each is a manual check, because it needs a login the
-   provider holds open; the host tests never start one:
+   provider holds open; the desktop tests never start one:
 
    | Action | Shown |
    |---|---|

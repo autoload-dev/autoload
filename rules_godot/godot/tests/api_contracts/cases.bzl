@@ -3,7 +3,7 @@ Representative configurations of each public API, keyed by API identity.
 
 A key may append `#variant` for further configurations of the same API. Fields:
 target, the fixture root; lane, the CI lane whose contract check runs the case
-(default `host`); module, the Bazel module to run in (default the root module);
+(default `docs`); module, the Bazel module to run in (default the root module);
 options; conditions, the contract availabilities the configuration activates;
 forwarded_groups, when the root forwards an upstream target's output groups;
 host_replacements, string substitutions per host operating system. Repository APIs
@@ -97,14 +97,14 @@ API_CASES = {
     },
     "//godot/platforms:defs.bzl%godot_export_platform": {"target": "//godot/platforms:linux_x86_64"},
     "//godot:app.bzl%godot_app": {
-        "lane": "host",
+        "lane": "desktop",
         "target": _SELECTED_APP,
         "conditions": ["desktop"],
         "options": [_EXPORT_PLATFORM + "macos_arm64"],
         "host_replacements": {"linux": {"macos_arm64": "linux_x86_64"}},
     },
     "//godot:app.bzl%godot_app#editor": {
-        "lane": "host",
+        "lane": "desktop",
         "target": _SELECTED_APP,
         "conditions": ["editor"],
         "options": ["--@autoload_rules_godot//godot:variant=editor"],
@@ -137,7 +137,7 @@ API_CASES = {
         },
     },
     "//godot:extensions.bzl%godot_engines": {
-        "lane": "host",
+        "lane": "desktop",
         "conditions": ["desktop"],
         "entrypoints": _hub_entrypoints({
             "linux_{cpu}_{variant}": ["linux_" + cpu + "_" + v for cpu in _TEMPLATE_CPUS for v in _VARIANTS],

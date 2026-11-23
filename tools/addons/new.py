@@ -174,7 +174,7 @@ def main() -> None:
     if args.module != SELFTEST:
         print(
             "\nNext: describe the module in its README and verify it with "
-            f"`mise run work -- host:addon:{args.module}`."
+            f"`mise run work -- desktop:addon:{args.module}`."
         )
 
 

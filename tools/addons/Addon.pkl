@@ -4,16 +4,17 @@
 /// defaults below but not the types, so the conventions check (RG015) checks the values.
 module Addon
 
-typealias Lane = "host" | "android" | "ios"
-typealias Host = "linux" | "macos"
+typealias Lane = "desktop" | "android" | "ios"
+typealias Desktop = "linux" | "macos"
 
 /// The lanes that verify the module when it changes. A module without the android and ios
 /// lanes builds no application: its examples need no `app` target and no Android SDK or
 /// Maven graph.
 lanes: List<Lane>(!isEmpty, isDistinct)
 
-/// The hosts of the module's host lane.
-hosts: List<Host>(!isEmpty, isDistinct) = List("linux", "macos")
+/// The desktop systems the module's desktop lane builds and tests for, each on a CI runner of
+/// that system.
+desktops: List<Desktop>(!isEmpty, isDistinct) = List("linux", "macos")
 
 /// The macros of the module that create Godot tests, such as `gdunit_test`. RG007 requires
 /// their targets to be test-only, as for rules_godot's `godot_test`.

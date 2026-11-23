@@ -12,9 +12,9 @@ def module(*projects: str) -> AddonModule:
 
 
 class LanesTest(unittest.TestCase):
-    def test_host_tests_the_module_and_every_example_target_but_the_apps(self) -> None:
+    def test_desktop_tests_the_module_and_every_example_target_but_the_apps(self) -> None:
         self.assertEqual(
-            command("host", module("demo", "store")),
+            command("desktop", module("demo", "store")),
             [
                 "bazel",
                 "test",
@@ -26,17 +26,17 @@ class LanesTest(unittest.TestCase):
             ],
         )
 
-    def test_host_of_a_module_without_application_lanes_tests_all_its_examples(
+    def test_desktop_lane_of_a_module_without_application_lanes_tests_all_its_examples(
         self,
     ) -> None:
         widget = AddonModule(
             Path("addons/widget"),
             "autoload_widget",
             ("demo",),
-            lanes=("host",),
+            lanes=("desktop",),
         )
         self.assertEqual(
-            command("host", widget),
+            command("desktop", widget),
             ["bazel", "test", "--", "@autoload_widget//...", "//..."],
         )
 
@@ -49,7 +49,7 @@ class LanesTest(unittest.TestCase):
 
     def test_a_module_without_example_projects_is_refused(self) -> None:
         with self.assertRaises(ValueError):
-            command("host", module())
+            command("desktop", module())
 
 
 if __name__ == "__main__":

@@ -17,16 +17,15 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.addons.modules import HOSTS as ADDON_HOSTS
+from tools.addons.modules import DESKTOPS, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.addons.modules import all_modules, host
 from tools.setup.modules import RULESET
 
 ROOT = Path(__file__).resolve().parents[2]
 
-LANES = ("quality", "docs", "host", "source-engine", "android", "ios")
+LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
-CONTRACT_LANES = ("host", "source-engine", "android", "ios")
+CONTRACT_LANES = ("desktop", "source-engine", "android", "ios")
 
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
@@ -57,8 +56,8 @@ def example_tests(name: str, area: str = "addons", config: str = "") -> str:
 
 
 def example(name: str, area: str = "addons") -> Work:
-    """One example's own tests, in the host lane."""
-    return Work(f"test:example:{name}", "host", EXAMPLES, (example_tests(name, area),))
+    """One example's own tests, in the desktop lane."""
+    return Work(f"test:example:{name}", "desktop", EXAMPLES, (example_tests(name, area),))
 
 
 # Petri's suites run in an editor built from the engine sources with its module, so the
@@ -156,12 +155,12 @@ WORK = (
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),
     ),
-    contracts("host"),
-    # The ruleset's host set, including its Android packaging tests; tests that build an
+    contracts("desktop"),
+    # The ruleset's desktop set, including its Android packaging tests; tests that build an
     # engine from source run in the source-engine lane.
     Work(
         "test:bazel",
-        "host",
+        "desktop",
         RULESET_DIR,
         (
             (
@@ -171,11 +170,11 @@ WORK = (
         ),
         android=True,
     ),
-    # The regression module's host set needs no Android SDK or NDK; an accidental dependency
+    # The regression module's desktop set needs no Android SDK or NDK; an accidental dependency
     # fails here.
     Work(
         "test:regressions",
-        "host",
+        "desktop",
         REGRESSIONS,
         ("bazel test //...",),
         env=(("ANDROID_HOME", ""), ("ANDROID_NDK_HOME", "")),
@@ -184,7 +183,7 @@ WORK = (
     # skipped. On macOS the scenario also runs ad hoc signed.
     Work(
         "test:gdextension",
-        "host",
+        "desktop",
         REGRESSIONS,
         (
             "bazel test //smoke/linux/... //smoke/macos/...",
@@ -290,12 +289,13 @@ WORK = (
 def addon_work(root: Path = ROOT) -> Iterator[Work]:
     """
     Each add-on module's lanes, as its addon.pkl names them, then the generator's self-test
-    in every lane. The self-test's desktop build does the same on every host, so its host
-    lane runs on Linux only.
+    in every lane. The self-test's desktop build checks the template the same way on every
+    host, so its desktop lane runs on Linux only.
     """
     for module in all_modules(root):
-        # A host lane on every host is no host-limited work.
-        hosts = () if set(module.hosts) == set(ADDON_HOSTS) else module.hosts
+        # The desktop lane builds for this machine, so it runs on the module's desktop
+        # systems; on all of them, it is no host-limited work.
+        hosts = () if set(module.desktops) == set(DESKTOPS) else module.desktops
         for lane in module.lanes:
             yield Work(
                 f"{lane}:addon:{module.directory}",
@@ -303,7 +303,7 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
                 ".",
                 (f"python3 -m tools.addons.lanes {lane} {module.directory}",),
                 android=lane == "android",
-                hosts=hosts if lane == "host" else (),
+                hosts=hosts if lane == "desktop" else (),
             )
     yield from map(template_work, ADDON_LANES)
 
@@ -320,7 +320,7 @@ def template_work(lane: str) -> Work:
             f"python3 -m tools.addons.lanes {lane} .selftest",
         ),
         android=lane == "android",
-        hosts=("linux",) if lane == "host" else (),
+        hosts=("linux",) if lane == "desktop" else (),
     )
 
 
@@ -391,9 +391,6 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     lane = commands.add_parser("lane", help="Run one lane's work for this host")
     lane.add_argument("lane", choices=LANES)
-    lane.add_argument(
-        "--skip", action="append", default=[], help="Leave out this work, by name"
-    )
     pieces = commands.add_parser(
         "run", help="Run pieces of work by name; without names, list them by lane"
     )
@@ -407,11 +404,7 @@ def main() -> None:
     else:
         known = all_work()
         here = host()
-        run(
-            name
-            for name in lanes(known)[args.lane]
-            if runs_on(known[name], here) and name not in args.skip
-        )
+        run(name for name in lanes(known)[args.lane] if runs_on(known[name], here))
 
 
 if __name__ == "__main__":

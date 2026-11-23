@@ -59,23 +59,26 @@ class AddonModuleLayoutTest(RepositoryTest):
         amends = 'amends "../../tools/addons/Addon.pkl"\n'
         for text, message in (
             (
-                amends + 'lanes = List("desktop")\nhosts = List("macos")\n',
+                amends + 'lanes = List("host")\ndesktops = List("macos")\n',
                 "lanes names some",
             ),
-            (amends + 'lanes = List("host")\nhosts = List()\n', "hosts names some"),
-            (amends + 'hosts = List("macos")\n', "sets lanes"),
             (
-                amends + 'lanes = List("host")\nplatforms = List("ios")\n',
+                amends + 'lanes = List("desktop")\ndesktops = List()\n',
+                "desktops names some",
+            ),
+            (amends + 'desktops = List("macos")\n', "sets lanes"),
+            (
+                amends + 'lanes = List("desktop")\nplatforms = List("ios")\n',
                 "sets no platforms",
             ),
-            ('lanes = List("host")\n', "starts with amends"),
+            ('lanes = List("desktop")\n', "starts with amends"),
             (
-                amends + 'lanes = List("host")\nhosts = "macos"\n',
-                "hosts is a List(...) on one line",
+                amends + 'lanes = List("desktop")\ndesktops = "macos"\n',
+                "desktops is a List(...) on one line",
             ),
             (
                 amends
-                + 'lanes = List("host")\ntestOperations = List(\n  "gdunit_test"\n)\n',
+                + 'lanes = List("desktop")\ntestOperations = List(\n  "gdunit_test"\n)\n',
                 "testOperations is a List(...) on one line",
             ),
         ):
@@ -97,7 +100,7 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.module("widget")
         self.write(
             "addons/widget/addon.pkl",
-            'amends "../../tools/addons/Addon.pkl"\nlanes = List("host")\n',
+            'amends "../../tools/addons/Addon.pkl"\nlanes = List("desktop")\n',
         )
         build = "addons/widget/examples/projects/demo/BUILD.bazel"
         self.write(

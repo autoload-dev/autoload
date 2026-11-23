@@ -26,8 +26,8 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   [examples.bazelrc](examples.bazelrc); each adds only its BuildBuddy tag. Settings for all
   modules go in those two files.
 - `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
-  documents what a module declares: the lanes that verify it, the hosts of its host lane and
-  its test operations, such as `lanes = List("host")` and `hosts = List("macos")`. A module
+  documents what a module declares: the lanes that verify it, the desktop systems of its desktop lane
+  and its test operations, such as `lanes = List("desktop")` and `desktops = List("macos")`. A module
   without the `android` and `ios` lanes builds no application: its examples have no `app`,
   no Android SDK and no Maven graph. The lanes' work, the lanes and the conventions read it;
   nothing outside the module lists the module.
@@ -64,12 +64,12 @@ The same commands verify every module, from its `examples/` (`tools/addons/lanes
 the lanes' work (`tools/ci/work.py`), which provisions the Android SDK first:
 
 ```sh
-mise run work -- host:addon:<module>      # module tests and example targets but apps
+mise run work -- desktop:addon:<module>      # module tests and example targets but apps
 mise run work -- android:addon:<module>   # each example project's app for Android
 mise run work -- ios:addon:<module>       # each example project's app for the iOS Simulator
 ```
 
-`host` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
+`desktop` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
 what they use; the release archive leaves them out with the examples. CI runs every module's

@@ -17,7 +17,7 @@ goes, and what this module will contain, is owned by the
 
 ## Common workflows
 
-From this directory, the host set runs every regression that needs no Android or Apple
+From this directory, the desktop set runs every regression that needs no Android or Apple
 device toolchain:
 
 ```sh

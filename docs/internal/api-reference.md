@@ -120,7 +120,7 @@ and configurations, not another copy of the public prose. It also names the beha
 that show why an API's public companion targets are separate; the checker requires them to
 resolve. A case or behavior test names its `module` when its fixture lives in a consumer
 module, such as the regression module `tests`; the checker evaluates it there, and
-resolves a consumer module's behavior tests in the host lane, whose cases evaluate that module
+resolves a consumer module's behavior tests in the desktop lane, whose cases evaluate that module
 anyway. The checker compares actual default files, executability, groups and public companion
 targets against the source in both directions. Bazel's loading facts
 establish target kinds, visibility, testonly and test behavior. Generated repositories have
@@ -130,7 +130,7 @@ unsupported API kinds cannot silently escape required coverage.
 
 `mise run work -- docs` checks source schema, inventory, reference freshness, registry coverage, the
 ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
-in `rules_godot/` checks the cases of each profile lane, `host`, `source-engine`, `android` or `ios`, as the
+in `rules_godot/` checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
 lane's work `contracts:<lane>`; the verification selector runs
 them in their lane when rules, contract sources, fixtures or the checker change.
 Missing evidence of a selected lane remains pending; a host documentation pass cannot replace it.

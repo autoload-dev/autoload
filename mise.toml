@@ -98,7 +98,7 @@ description = "Run the checks before a push: lint, setup, conventions, API docs 
 run = "hk check"
 
 [tasks.test]
-description = "Run the repository tooling's tests and the ruleset's host tests"
+description = "Run the repository tooling's tests and the ruleset's desktop tests"
 run = "python3 -m tools.ci.work run test:tools test:bazel"
 
 [tasks.work]
@@ -108,5 +108,5 @@ run = "python3 -m tools.ci.work run $usage_name"
 
 [tasks.lane]
 description = "Run one CI lane's work on this host, as CI runs it"
-usage = 'arg "<lane>" help="quality, docs, host, source-engine, android or ios"'
+usage = 'arg "<lane>" help="quality, docs, desktop, source-engine, android or ios"'
 run = "python3 -m tools.ci.work lane {{usage.lane}}"

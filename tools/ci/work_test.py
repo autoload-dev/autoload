@@ -42,16 +42,16 @@ class WorkTest(unittest.TestCase):
         self.root = Path(directory.name)
         checkout(
             self.root,
-            {"widget": '"host", "ios"', "gadget": '"host", "android"'},
+            {"widget": '"desktop", "ios"', "gadget": '"desktop", "android"'},
         )
 
     def test_every_lane_plans_its_work_and_the_add_on_modules_lanes(self) -> None:
         planned = lanes(all_work(self.root))
         self.assertEqual(planned["docs"], ["docs"])
-        self.assertIn("test:bazel", planned["host"])
+        self.assertIn("test:bazel", planned["desktop"])
         self.assertEqual(
-            planned["host"][-3:],
-            ["host:addon:gadget", "host:addon:widget", "host:addon-template"],
+            planned["desktop"][-3:],
+            ["desktop:addon:gadget", "desktop:addon:widget", "desktop:addon-template"],
         )
         self.assertEqual(
             planned["android"][-2:], ["android:addon:gadget", "android:addon-template"]
@@ -66,18 +66,20 @@ class WorkTest(unittest.TestCase):
 
     def test_host_limited_work_runs_on_its_hosts(self) -> None:
         template = next(
-            work for work in addon_work(self.root) if work.name == "host:addon-template"
+            work
+            for work in addon_work(self.root)
+            if work.name == "desktop:addon-template"
         )
         self.assertTrue(runs_on(template, "linux"))
         self.assertFalse(runs_on(template, "macos"))
-        # A module whose host lane runs on every host has no host-limited work.
+        # A module whose desktop lane covers every desktop system has no host-limited work.
         (self.root / "other").mkdir()
-        checkout(self.root / "other", {"anywhere": '"host"'})
+        checkout(self.root / "other", {"anywhere": '"desktop"'})
         anywhere = next(addon_work(self.root / "other"))
-        self.assertEqual((anywhere.name, anywhere.hosts), ("host:addon:anywhere", ()))
+        self.assertEqual((anywhere.name, anywhere.hosts), ("desktop:addon:anywhere", ()))
 
     def test_commands_run_in_mise_with_their_own_variables(self) -> None:
-        plain = Work("x", "host", ".", ("true",), env=(("ANDROID_HOME", ""),))
+        plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))
         self.assertEqual(
             argv(plain, "bazel test //...", self.root),
             [

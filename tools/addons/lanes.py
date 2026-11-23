@@ -3,8 +3,8 @@ Run one lane of an add-on module, with the same commands for every module in add
 
 Each lane runs in the module's examples/, which consumes the module like an application:
 
-- host: the module's tests and every target of its examples but the projects' apps, for
-  the editor and this desktop host, on the hosts its addon.pkl names;
+- desktop: the module's tests and every target of its examples but the projects' apps, for
+  the editor and this machine's desktop system, on the desktop systems its addon.pkl names;
 - android and ios: each example project's `app`, for Android and the iOS Simulator.
 """
 
@@ -24,7 +24,7 @@ def command(lane: str, module: AddonModule) -> list[str]:
     """The Bazel command of one lane, run in the module's examples/."""
     if not module.projects:
         raise ValueError(f"{module.path}: no example project in examples/projects/")
-    if lane == "host":
+    if lane == "desktop":
         apps = (
             [f"-//projects/{project}:app" for project in module.projects]
             if module.builds_apps
@@ -38,16 +38,17 @@ def command(lane: str, module: AddonModule) -> list[str]:
 def run(lane: str, module: AddonModule) -> None:
     if lane not in module.lanes:
         sys.exit(f"{module.path}: its addon.pkl names no {lane} lane")
-    if lane == "host" and host() not in module.hosts:
+    if lane == "desktop" and host() not in module.desktops:
         print(
-            f"{module.path}: its host lane runs on {', '.join(module.hosts)}, not {host()}"
+            f"{module.path}: its desktop lane covers {', '.join(module.desktops)},"
+            f" not {host()}"
         )
         return
     argv = command(lane, module)
     print("+", " ".join(argv), flush=True)
     examples = ROOT / module.path / "examples"
     status = subprocess.run(argv, cwd=examples, check=False).returncode
-    if status not in ({0, NO_TESTS} if lane == "host" else {0}):
+    if status not in ({0, NO_TESTS} if lane == "desktop" else {0}):
         sys.exit(status)
 
 

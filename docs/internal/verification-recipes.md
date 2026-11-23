@@ -297,7 +297,7 @@ code they test, such as `//godot/platforms/private/tests/library_composition`,
 `//godot/platforms/private/tests/app_platform_selection` and
 `//godot/platforms/private/tests/engine_probe`. Each builds its fixture application through a
 test-only transition that selects the platform, CPUs, format, variant or release settings it
-needs, so they run without `--config` in the work `test:bazel`, the host set, which
+needs, so they run without `--config` in the work `test:bazel`, the desktop set, which
 provisions the Android SDK and NDK. Android tests are skipped where rules_android finds no
 SDK; iOS tests need macOS with Xcode. Release tests compare Android Build IDs and DWARF and
 iOS executable/dSYM UUIDs. The platform-library cases check delivered classes, resources,
@@ -306,7 +306,7 @@ declared application, engine and tool inputs; `official_beta_ios_link_links_sele
 checks an unsigned device executable, which is not a signed device IPA.
 
 The consumer module's mobile smoke scenarios are `manual`, so `bazel test //...` in `tests/`
-stays the host set. The module root's configuration suites list them per `.bazelrc`
+stays the desktop set. The module root's configuration suites list them per `.bazelrc`
 configuration; from `tests/`, test a suite with `--config` set to its configuration:
 
 ```sh

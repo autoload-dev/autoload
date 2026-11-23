@@ -17,7 +17,7 @@ bazel test --build_tests_only //projects/lichtpost/...
 bazel test --build_tests_only --config=petri //projects/petri/...
 ```
 
-These run the chosen example's host tests, as the host lane's `test:example:<name>` work does;
+These run the chosen example's desktop tests, as the desktop lane's `test:example:<name>` work does;
 Petri's builds its engine from source with `--config=petri` and belongs to the source-engine
 lane. For a more focused test, editor or sidecar command,
 read that example's README. Required timing and the evidence of each lane come from the root

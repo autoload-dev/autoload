@@ -66,8 +66,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Run host tests
-        uses: ./.github/actions/host-tests
+      - name: Run desktop tests
+        uses: ./.github/actions/desktop-tests
 
   tests-macos:
     name: Tests (macOS)
@@ -80,8 +80,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Run host tests
-        uses: ./.github/actions/host-tests
+      - name: Run desktop tests
+        uses: ./.github/actions/desktop-tests
 
   android:
     name: Android
