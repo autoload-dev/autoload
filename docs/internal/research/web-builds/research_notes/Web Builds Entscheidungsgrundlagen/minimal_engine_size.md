@@ -130,6 +130,75 @@ decoder, shell and adapter: about 2.3 MB left for the game where the ZIP counts,
 1.9 MB for AppLovin with base122, and about 1.4 MB for Unity Ads and Moloco, which count
 the raw HTML (3.51 MB base64 for the engine). Meta's 2 MB single HTML stays out of reach.
 
+## Godot 4.8-beta1 and where the bytes go (2026-11-24)
+
+Same module set and switches on upstream 4.8-beta1 (commit `4d10419`), Emscripten
+6.0.12 as 4.8 requires, `rendering_device=no`, full LTO, `-Oz` with `SIZE_EXTRA`, and a
+4.8 build profile (`lichtpost48.gdbuild`, 237 classes off, generated the same way):
+
+| Variant | raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| P2 (4.7.2) | 10.36 MB | 3.53 MB | 2.63 MB |
+| Q1 (4.8) | 9.60 MB | 3.41 MB | 2.57 MB |
+| Q2 (4.8, plus the new `disable_2d`) | 9.59 MB | 3.40 MB | 2.56 MB |
+
+4.8 gains little on the web: its new `rendering_device` switch matters for Metal and
+Vulkan platforms, and the web platform already builds without RenderingDevice
+(`platform/web/detect.py` sets `rendering_device` to false). `disable_2d` saves nothing
+beyond the profile, which already disables the 2D node classes. Lichtpost runs on Q2 with
+its PCK exported by the 4.7.2 editor (menu and a started run, no console errors).
+
+**Breakdown.** Q2 relinked without LTO and with `-Wl,--Map` (`wasm_breakdown.py`
+attributes the wasm-ld map's CODE and DATA bytes to source files; per-file numbers in
+`web48_breakdown.json`; areas as in the iOS analysis of autoload-dev/autoload#76). Sizes
+are bytes before `wasm-opt`, so they add up to the linked module, not to the shipped
+9.6 MB: 12.9 MiB, 11.4 code and 1.4 data.
+
+| Area | KiB | Share | Largest files |
+| --- | ---: | ---: | --- |
+| Core/variant | 1,399 | 10.6 % | `variant_call.cpp` 849, `variant_op.cpp` 161, `variant_utility.cpp` 94 |
+| Rendering server | 1,402 | 10.6 % | `rendering_server.cpp` 421, `rendering_server_default.cpp` 285, `shader_language.cpp` 219, `renderer_scene_cull.cpp` 113 |
+| Scene/resources | 1,336 | 10.2 % | `font.cpp` 241, `material.cpp` 140, `mesh.cpp` 103, `theme.cpp` 82 |
+| Emscripten runtime, libc, merged constants | 796 | 6.0 % | |
+| Scene/main | 773 | 5.9 % | `window.cpp` 169, `canvas_item.cpp` 147, `viewport.cpp` 144, `node.cpp` 137 |
+| Scene/gui | 746 | 5.7 % | `control.cpp` 150, `popup_menu.cpp` 138, `line_edit.cpp` 86 |
+| drivers/gles3 | 726 | 5.5 % | `rasterizer_scene_gles3.cpp` 233 (half of it shader sources), `material_storage.cpp` 147 |
+| Core/io | 725 | 5.5 % | `image.cpp` 146, `file_access.cpp` 64, `json.cpp` 50 |
+| GDScript | 599 | 4.6 % | analyzer 115, parser 104, byte codegen 85, compiler 73 |
+| Text server | 427 + 127 | 4.2 % | `text_server.cpp` 225, `text_server_extension.cpp` 202, `text_server_fb.cpp` 127 |
+| FreeType | 393 | 3.0 % | |
+| Core root | 342 | 2.6 % | `core_bind.cpp` 226 |
+| Display server | 279 | 2.1 % | `display_server.cpp` 174, `native_menu.cpp` 58, `accessibility_server.cpp` 46 |
+| zstd | 274 | 2.1 % | `zstd_lazy.c` 115 and the rest of the compressor |
+| Core/math | 235 | 1.8 % | `a_star.cpp` 54, `a_star_grid_2d.cpp` 36, `expression.cpp` 21 |
+| libwebp | 198 | 1.5 % | encoder and decoder |
+| Scene/theme | 187 | 1.4 % | `default_theme.cpp` 155 |
+| pcre2 | 128 | 1.0 % | |
+
+What the rendering share is made of, and what could still go (assessment, not measured):
+
+- `rendering_server.cpp` (421 KiB): the `RenderingServer` class with its `_bind_methods`,
+  the reflection every script call to the server goes through. A build profile cannot
+  remove a singleton's methods; trimming it needs method-level stripping, which Godot does
+  not offer.
+- `rendering_server_default.cpp` (285 KiB): the wrapper that queues every server call for
+  the render thread (`FUNC*` macros). A single-threaded web build never needs the queue,
+  so a patch that calls straight through could drop most of it.
+- The shader pipeline (`shader_language`, `shader_types`, `shader_compiler`,
+  `shader_preprocessor`, about 350 KiB): translates Godot shaders to GLSL at run time;
+  only pre-translated shaders would remove it.
+- `drivers/gles3` (726 KiB): the Compatibility renderer itself; about 130 KiB are its
+  embedded GLSL sources. Particles (30 KiB), parts of light and sky storage could go with
+  further `#ifdef`s in a 2D- or unlit-only build.
+- `renderer_rd/storage_rd/*` (about 30 KiB) still links although the web build has no
+  RenderingDevice.
+
+Elsewhere: Variant's call tables (849 KiB in `variant_call.cpp`) and the reflection
+bindings (`core_bind.cpp`, `text_server*.cpp`, `display_server.cpp`) are the same kind of
+cost: method tables for scripting that a class-level profile cannot trim. zstd's
+compressor, `a_star`, `expression`, `native_menu`, `accessibility_server`, `popup_menu`
+and pcre2 (only `RegEx`-free projects) are small patch candidates.
+
 ## Not done
 
 - Per-class or per-module attribution of the remaining code.
