@@ -1,9 +1,9 @@
 """Scanning files with the CodeScene CLI, including languages it lacks.
 
-The CodeScene CLI `cs`, which mise pins (mise.toml), reviews one file per call.
-The scanner feeds every file through stdin under a *virtual* file name, so files CodeScene
-does not know are analysed as a language it does (translation.py). Nothing in the
-repository is modified; results are reported under the original paths and lines.
+The CodeScene CLI `cs`, which mise pins (mise.toml), reviews every file under a *virtual*
+file name, so files CodeScene does not know are analysed as a language it does
+(translation.py), in one run with each result cached (batch.py). Nothing in the repository
+is modified; results are reported under the original paths and lines.
 
 Code Health rules: a code-health-rules.json passed with --rules, else the repository's own
 .codescene/code-health-rules.json. Its matching_content_path globs see the virtual names,
@@ -17,19 +17,23 @@ printed.
 from __future__ import annotations
 
 import fnmatch
-import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from tools.code_health.batch import Reviewer
 from tools.code_health.macros import MAX_ARGUMENTS
-from tools.code_health.translation import NATIVE, original_title, translate
+from tools.code_health.translation import (
+    NATIVE,
+    Translation,
+    original_title,
+    translate,
+)
 
 LANGUAGE = {
     ".py": "Python",
@@ -180,12 +184,9 @@ def loc(source: str) -> int:
 
 @dataclass
 class Scanner:
-    cli: str
-    env: dict[str, str]
-    cwd: Path  # a git repository whose .codescene/code-health-rules.json applies
+    reviewer: Reviewer
     macro_arguments: bool
     repo: Path
-    jobs: int
 
     def source_of(self, ref: str | None, path: str) -> str:
         """The file at the ref, in the index for "", or in the working tree for None."""
@@ -195,79 +196,67 @@ class Scanner:
 
     def scan(self, files: list[tuple[str | None, str]]) -> list[FileResult]:
         """Score each (ref, path), at the ref or, without one, in the working tree."""
+        with ThreadPoolExecutor() as pool:
+            sources = list(pool.map(lambda file: self.source_of(*file), files))
+        translations = [
+            translate(path, source, self.macro_arguments)
+            for (_, path), source in zip(files, sources, strict=True)
+        ]
+        results = self.reviewer.review(translations)
+        return [
+            file_result(path, source, translation, result)
+            for (_, path), source, translation, result in zip(
+                files, sources, translations, results, strict=True
+            )
+        ]
 
-        def one(file: tuple[str | None, str]) -> FileResult:
-            ref, path = file
-            return self.review(path, self.source_of(ref, path))
 
-        with ThreadPoolExecutor(max_workers=self.jobs) as pool:
-            return list(pool.map(one, files))
-
-    def review(self, path: str, source: str) -> FileResult:
-        translation = translate(path, source, self.macro_arguments)
-        result = subprocess.run(
-            [
-                self.cli,
-                "review",
-                "--file-name",
-                translation.virtual_name,
-                "--output-format",
-                "json",
+def smells_of(data: dict, translation: Translation) -> list[dict]:
+    """The CLI's findings, with the functions and lines of the original file."""
+    return [
+        {
+            "category": item["category"],
+            "functions": [
+                {
+                    "name": original_title(f.get("title", ""), translation),
+                    "start": translation.original_line(f.get("start-line")),
+                    "end": translation.original_line(f.get("end-line")),
+                    "details": f.get("details", ""),
+                }
+                for f in item.get("functions", [])
             ],
-            input=translation.source,
-            capture_output=True,
-            text=True,
-            cwd=self.cwd,
-            env=self.env,
-            check=False,
-        )
-        score, smells, error = None, [], None
-        if result.returncode == 0 and result.stdout.strip():
-            data = json.loads(result.stdout)
-            score = data.get("score")
-            for item in data.get("review", []):
-                smells.append(
-                    {
-                        "category": item["category"],
-                        "functions": [
-                            {
-                                "name": original_title(f.get("title", ""), translation),
-                                "start": translation.original_line(f.get("start-line")),
-                                "end": translation.original_line(f.get("end-line")),
-                                "details": f.get("details", ""),
-                            }
-                            for f in item.get("functions", [])
-                        ],
-                    }
-                )
-        elif result.returncode != 0:
-            error = result.stderr.strip()[:200]
-            print(f"warning: {path}: {error}", file=sys.stderr)
-        return FileResult(
-            path,
-            language_of(path),
-            loc(source),
-            score,
-            smells,
-            macros=translation.macros,
-            error=error,
-        )
+        }
+        for item in data.get("review", [])
+    ]
 
 
-def rules_workspace(repo: Path, rules: Path | None) -> tuple[Path, str]:
-    """The directory to run the CLI in, so that the chosen rules apply."""
-    if rules is None:
-        own = repo / ".codescene" / "code-health-rules.json"
-        return repo, (
-            f"repository's {own.relative_to(repo)}"
-            if own.is_file()
-            else "CodeScene defaults"
-        )
-    workspace = Path(tempfile.mkdtemp(prefix="codescene-rules-"))
-    subprocess.run(["git", "init", "-q", str(workspace)], check=True)
-    (workspace / ".codescene").mkdir()
-    shutil.copy(rules, workspace / ".codescene" / "code-health-rules.json")
-    return workspace, str(rules)
+def file_result(
+    path: str, source: str, translation: Translation, result: dict
+) -> FileResult:
+    """A file's result from what the CLI answered for its translation."""
+    error = result.get("error")
+    if error:
+        print(f"warning: {path}: {error}", file=sys.stderr)
+    return FileResult(
+        path,
+        language_of(path),
+        loc(source),
+        result.get("score"),
+        smells_of(result, translation),
+        macros=translation.macros,
+        error=error,
+    )
+
+
+def rules_of(repo: Path, rules: Path | None) -> tuple[str | None, str]:
+    """The Code Health rules to apply, the repository's own unless given, and their source."""
+    if rules is not None and not rules.is_file():
+        sys.exit(f"--rules: no such file: {rules}")
+    path = rules or repo / ".codescene" / "code-health-rules.json"
+    if not path.is_file():
+        return None, "CodeScene defaults"
+    source = str(rules) if rules else f"repository's {path.relative_to(repo)}"
+    return path.read_text(), source
 
 
 def scan_notes(

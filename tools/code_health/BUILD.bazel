@@ -5,6 +5,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 py_library(
     name = "codescene_lib",
     srcs = [
+        "batch.py",
         "change.py",
         "codescene.py",
         "documentation.py",
@@ -13,6 +14,13 @@ py_library(
         "survey.py",
         "translation.py",
     ],
+)
+
+py_test(
+    name = "batch_test",
+    size = "small",
+    srcs = ["batch_test.py"],
+    deps = [":codescene_lib"],
 )
 
 py_test(
