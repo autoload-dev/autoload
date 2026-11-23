@@ -28,10 +28,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  formatting:
-    name: Source quality
-    timeout-minutes: 10
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+  lanes:
+    name: ${{ matrix.lane.name }}
+    runs-on: ${{ matrix.lane.runner }}
+    timeout-minutes: ${{ matrix.lane.timeout }}
+    strategy:
+      # The first lane to fail cancels the others, which frees their runners and
+      # lets Finalize fail at once; the work they finished stays in the caches.
+      fail-fast: true
+      # Each lane keeps the caches of the job it was before the matrix (job).
+      # Uncached Godot imports and exports, Java and dex actions are CPU-bound;
+      # 4 vCPUs ran 4 at a time, so the lanes that build them take 8.
+      matrix:
+        lane:
+          - job: formatting
+            name: Source quality
+            work: quality
+            runner: blacksmith-2vcpu-ubuntu-2404
+            timeout: 10
+          - job: api-docs
+            name: API documentation
+            work: docs
+            runner: blacksmith-2vcpu-ubuntu-2404
+            timeout: 15
+          - job: tests-linux
+            name: Tests (Linux)
+            work: desktop
+            runner: blacksmith-8vcpu-ubuntu-2404
+            timeout: 30
+            # The ruleset's desktop set includes its Android packaging tests.
+            android-cache: "true"
+          - job: tests-macos
+            name: Tests (macOS)
+            work: desktop
+            runner: macos-ci
+            timeout: 30
+            android-cache: "true"
+          - job: android
+            name: Android
+            work: android
+            runner: blacksmith-8vcpu-ubuntu-2404
+            timeout: 60
+            android-cache: "true"
+          - job: ios
+            name: iOS
+            work: ios
+            runner: macos-ci
+            timeout: 60
+        # A fork's pull request reaches the self-hosted runners only in the merge
+        # queue. An entry matches an exclusion on the fields the exclusion names.
+        exclude:
+          - lane:
+              runner: >-
+                ${{ github.event_name == 'pull_request'
+                && github.event.pull_request.head.repo.full_name != github.repository
+                && 'macos-ci' || 'none' }}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,81 +90,11 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-      - name: Check source quality and setup contracts
-        run: python3 -m tools.ci.work lane quality
-
-  api-docs:
-    name: API documentation
-    timeout-minutes: 15
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
-      - name: Check API docs
-        run: python3 -m tools.ci.work lane docs
-
-  tests-linux:
-    name: Tests (Linux)
-    timeout-minutes: 30
-    # Uncached Godot imports and exports are CPU-bound; 4 vCPUs ran 4 at a time.
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Run desktop tests
-        uses: ./.github/actions/desktop-tests
-
-  tests-macos:
-    name: Tests (macOS)
-    # A fork's pull request reaches the self-hosted runners only in the merge queue.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 30
-    runs-on: macos-ci
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Run desktop tests
-        uses: ./.github/actions/desktop-tests
-
-  android:
-    name: Android
-    timeout-minutes: 60
-    # Uncached Godot, Java and dex actions are CPU-bound, as in Tests (Linux).
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
-        with:
-          android-cache: "true"
-      - name: Build and inspect apps
-        run: python3 -m tools.ci.work lane android
-
-  ios:
-    name: iOS
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 60
-    runs-on: macos-ci
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up repository
-        uses: ./.github/actions/setup
-      - name: Build and inspect apps
-        run: python3 -m tools.ci.work lane ios
+          android-cache: ${{ matrix.lane.android-cache || 'false' }}
+          cache-name: ${{ matrix.lane.job }}
+      - name: Run the lane's work
+        run: python3 -m tools.ci.work lane ${{ matrix.lane.work }}
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
@@ -122,7 +103,7 @@ jobs:
   verification:
     name: Finalize
     if: always()
-    needs: [formatting, api-docs, tests-linux, tests-macos, android, ios]
+    needs: [lanes]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
