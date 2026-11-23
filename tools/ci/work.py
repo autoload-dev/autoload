@@ -141,23 +141,18 @@ def apps(packages: Iterable[str], symbols: bool = False) -> str:
 # when named.
 WORK = (
     Work(
-        "lint",
+        "format",
         "quality",
         ".",
-        (
-            "bazel run --config=host-execution //tools/format:format.check",
-            "bazel run --config=host-execution //tools/lint",
-            "hk validate",
-        ),
+        ("bazel run --config=host-execution //tools/format:format.check",),
     ),
+    Work("lint", "quality", ".", ("bazel run --config=host-execution //tools/lint",)),
+    # The setup action's shutdown of Bazel, which runs no Bazel itself.
     Work(
-        "lint:ci",
+        "test:actions",
         "quality",
         ".",
-        (
-            "mise exec jactionlint -- jactionlint --shellcheck= --pyflakes=",
-            "mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",
-        ),
+        ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     Work(

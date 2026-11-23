@@ -97,9 +97,10 @@ and their coverage limits.
 The existing enforcement has several owners:
 
 - [Formatting](../../tools/format/BUILD.bazel) uses `rules_lint`'s `format_multirun`, Ruff
-  and Buildifier. [Buildifier configuration](../../.buildifier.json) enables documentation
-  warnings as well as its ordinary checks.
-- [Language checks](../../tools/lint/lint.py) run pinned Ruff and ty tools over the workspace.
+  and Buildifier, and only formats. [Buildifier configuration](../../.buildifier.json)
+  selects the lint warnings the language checks report, documentation warnings included.
+- [Language checks](../../tools/lint/lint.py) run every linter: pinned Ruff and ty, Buildifier's lint,
+  jactionlint for the workflows and `hk validate`.
 - The [convention checker](../../tools/conventions/check.py) runs the
   [catalogued rules](../../rules_godot/docs/public/conventions.md): naming, public-doc fixture references,
   example API references and documentation command labels resolved in their owning
