@@ -44,7 +44,9 @@ def command(lane: str, module: AddonModule, tests: list[str] | None = None) -> l
         )
         return ["bazel", "test", "--", f"@{module.name}//...", "//...", *apps]
     apps = [f"//projects/{project}:app" for project in module.projects]
-    return ["bazel", "test", APP_CONFIGS[lane], "--", *apps, *(tests or [])]
+    if not tests:
+        return ["bazel", "build", APP_CONFIGS[lane], *apps]
+    return ["bazel", "test", APP_CONFIGS[lane], "--", *apps, *tests]
 
 
 def run(lane: str, module: AddonModule) -> None:
@@ -68,7 +70,7 @@ def run(lane: str, module: AddonModule) -> None:
     argv = command(lane, module, tests)
     print("+", " ".join(argv), flush=True)
     status = subprocess.run(argv, cwd=examples, check=False).returncode
-    if status not in {0, NO_TESTS}:
+    if status not in ({0, NO_TESTS} if lane == "desktop" else {0}):
         sys.exit(status)
 
 

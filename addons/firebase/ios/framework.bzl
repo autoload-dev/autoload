@@ -155,8 +155,8 @@ def firebase_framework(
     Declare the dynamic framework framework_name of a Firebase product.
 
     Creates `<name>`, the framework import that native code links and compiles against.
-    iOS applications embed and sign the framework, and those it links, for each extension
-    whose library links it.
+    iOS applications embed and sign the framework and those it links, once however many
+    extensions link it.
 
     Args:
         name: Name of the framework import.
