@@ -24,7 +24,7 @@ device toolchain:
 bazel test //...
 ```
 
-`mise run work -- test:regressions` runs the same from the repository root without the Android SDK, as CI does. Android and iOS tests
+`mise run ci:work -- test:regressions` runs the same from the repository root without the Android SDK, as CI does. Android and iOS tests
 are `manual` and run in configuration suites: `test_suite` targets in `BUILD.bazel`, one per
 `.bazelrc` configuration, run with that `--config`. The `android` and `ios` work of
 their lanes runs them; the

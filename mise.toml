@@ -1,5 +1,5 @@
 # The repository's tools and environment, and the everyday tasks. The lanes' work lives in
-# tools/ci/work.py; `mise run lane -- <lane>` runs one. Policy: docs/internal/verification.md.
+# tools/ci/work.py; `mise run ci:lane -- <lane>` runs one. Policy: docs/internal/verification.md.
 min_version = "2026.10.15"
 
 # mise.lock pins each tool's download URL and checksum per platform, and mise
@@ -101,12 +101,12 @@ run = "hk check"
 description = "Run the repository tooling's tests and the ruleset's desktop tests"
 run = "python3 -m tools.ci.work run test:tools test:bazel"
 
-[tasks.work]
+[tasks."ci:work"]
 description = "Run pieces of the lanes' work by name, such as test:setup; none lists them"
 usage = 'arg "[name]" var=#true help="the work to run, in order"'
 run = "python3 -m tools.ci.work run $usage_name"
 
-[tasks.lane]
+[tasks."ci:lane"]
 description = "Run one CI lane's work on this host, as CI runs it"
 usage = 'arg "<lane>" help="quality, docs, desktop, source-engine, android or ios"'
 run = "python3 -m tools.ci.work lane {{usage.lane}}"

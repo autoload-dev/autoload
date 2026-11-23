@@ -19,7 +19,7 @@ py_test(
     deps = [":modules_lib"],
 )
 
-# The shared-pin check of the root module and its consumer modules; `mise run work -- test:setup`
+# The shared-pin check of the root module and its consumer modules; `mise run ci:work -- test:setup`
 # runs pins.py on the checkout.
 py_test(
     name = "pins_test",

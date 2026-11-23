@@ -118,7 +118,7 @@ under `tools/`; the command's own flags win. A Bazel binary started without Baze
 the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run work -- test:bazel
+RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run ci:work -- test:bazel
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux mise exec -- bazel test //...
 ```
 
@@ -267,8 +267,8 @@ From `rules_godot/`, with the Android SDK and NDK installed:
 bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel test
 ```
 
-`mise run work -- source-engine:full` runs this command, the `patched_engine` tests above and
-Petri's suite; `mise run work -- source-engine` runs a quicker subset
+`mise run ci:work -- source-engine:full` runs this command, the `patched_engine` tests above and
+Petri's suite; `mise run ci:work -- source-engine` runs a quicker subset
 ([which cases, and where CI runs them](verification-platforms.md#source-engine-workflow)).
 
 
@@ -288,7 +288,7 @@ bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 application, requiring both extensions to load and register their Godot class and the
 imported texture to load from the pack. On macOS, `app_is_adhoc_signed_test` verifies the
 archived bundle's ad hoc signature; it runs only in a build that selects ad hoc signing, as
-the second command does. `mise run work -- test:gdextension` runs both commands.
+the second command does. `mise run ci:work -- test:gdextension` runs both commands.
 
 ### Mobile artifact checks
 
@@ -328,7 +328,7 @@ cd rules_godot/tests
 bazel build //smoke/android:app --config=android
 bazel build //smoke/ios:app --config=official
 cd ../..
-mise run work -- inspect:mobile
+mise run ci:work -- inspect:mobile
 ```
 
 The inspector resolves each artifact with its own Bazel configuration through
@@ -341,7 +341,7 @@ input of the action that must rerun, an unrelated one is not, and a configuratio
 not matter leaves actions unchanged. They are the `*_inputs_tests.bzl` and
 `configuration_invariance_tests.bzl` suites of `godot/private/tests`,
 `godot/platforms/private/tests`, `godot/extension/tests` and `godot/engine/private/tests`,
-and run with `mise run work -- test:bazel`. `//godot/private/tests:import_and_pack_outputs_are_reproducible_test`
+and run with `mise run ci:work -- test:bazel`. `//godot/private/tests:import_and_pack_outputs_are_reproducible_test`
 imports and exports a project twice and compares the bytes. For the actions one change
 actually ran, compare the execution logs of two invocations as the
 [verification policy](verification.md#selecting-tests-and-reviewing-changes) describes.

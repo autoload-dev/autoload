@@ -2,9 +2,9 @@
 The repository's verification work: what each lane runs, where and how.
 
 Each piece of work is a few shell commands in one module directory.
-`python3 -m tools.ci.work lane <lane>` (`mise run lane -- <lane>`) runs a lane on this
+`python3 -m tools.ci.work lane <lane>` (`mise run ci:lane -- <lane>`) runs a lane on this
 host, as each of CI's jobs does, and `python3 -m tools.ci.work run <name>...`
-(`mise run work -- <name>...`) runs single pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
+(`mise run ci:work -- <name>...`) runs single pieces. The add-on modules' work comes from their addon.pkl: the same generic commands
 for each module (tools/addons/lanes.py), and the add-on generator's self-test in every
 lane. The source-engine lane runs in its own scheduled workflow, the others in CI.
 """

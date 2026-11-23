@@ -48,13 +48,13 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Kind | Evidence | Existing entry points |
 |---|---|---|
 | Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `bazel run //tools/conventions` |
-| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run work -- test:setup`, cleanup tests in `mise run lint` |
-| API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run work -- docs` |
-| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run work -- test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
+| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run ci:work -- test:setup`, cleanup tests in `mise run lint` |
+| API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run ci:work -- docs` |
+| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run ci:work -- test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | Build steps in `android:*`, `ios:*` and desktop targets |
 | Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in the work `test:bazel`; the consumer module's configuration suites in the `android`/`ios` work |
-| Exported application execution | The actual desktop application starts and produces meaningful assertions | The run tests in the work `test:bazel`; the desktop smoke scenarios in `test:gdextension`; `mise run work -- source-engine` |
+| Exported application execution | The actual desktop application starts and produces meaningful assertions | The run tests in the work `test:bazel`; the desktop smoke scenarios in `test:gdextension`; `mise run ci:work -- source-engine` |
 | Action inputs and determinism | Required invalidation, unaffected reuse, deterministic imports/PCKs | The action-input and reproducibility tests in the work `test:bazel`; execution-log comparison as per-change review evidence |
 | Mobile runtime acceptance | Target operating-system behavior on a matching device/emulator/simulator | Focused manual acceptance when changed behavior needs it |
 | Distribution acceptance | Signing/provisioning, installation policy or Store acceptance | Explicit feature/release scope; no default Store verification |
