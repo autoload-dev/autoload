@@ -31,6 +31,17 @@ def merge_configuration(destination, additions, origins, owner, overrides = {}):
 # Characters that would end a key in project.godot or export_presets.cfg.
 _KEY_DELIMITERS = ["\n", "\r", "=", "[", "]", '"']
 
+# The settings the ruleset fixes in the configuration of imports and exports, replacing the
+# authored ones and their feature overrides. Godot imports a VRAM-compressed texture in each
+# format family whose setting is true and, whatever the settings, in the family the
+# editor's CPU prefers: S3TC/BPTC on macOS and x86_64, ETC2/ASTC on arm64 Linux. With both
+# true, every execution platform imports the same variants and every export platform finds
+# its own; a pack keeps only the variants of its feature tags.
+PINNED_SETTINGS = {
+    "rendering/textures/vram_compression/import_etc2_astc": "true",
+    "rendering/textures/vram_compression/import_s3tc_bptc": "true",
+}
+
 def validate_settings(settings, main_scene_overrides = True):
     """
     Validate the keys of explicitly encoded Godot literal settings.
@@ -42,25 +53,42 @@ def validate_settings(settings, main_scene_overrides = True):
             the scene they name against its members, which a pack's own settings bypass.
     """
     for key, value in settings.items():
-        if (
-            "/" not in key or
-            key.startswith("/") or
-            key.endswith("/") or
-            any([c in key for c in _KEY_DELIMITERS])
-        ):
+        if not _is_setting_key(key):
             fail("Expected section/property Godot setting key, got %r" % key)
-        if (
-            key.startswith("autoload/") or
-            key.startswith("editor_plugins/") or
-            key == "application/run/main_scene" or
-            (not main_scene_overrides and key.split(".")[0] == "application/run/main_scene")
-        ):
+        if _names_a_relationship(key, main_scene_overrides):
             fail((
                 "Use autoloads, main_scene and the editor parts of add-ons instead of " +
                 "the setting %s"
             ) % key)
         if not value.strip():
             fail("Expected an explicit Godot literal string for setting %s" % key)
+        _check_pinned(key, value)
+
+def _is_setting_key(key):
+    """Whether key has the section/property form and no character that would end it."""
+    if key.strip("/") != key or "/" not in key:
+        return False
+    return not any([c in key for c in _KEY_DELIMITERS])
+
+_MAIN_SCENE = "application/run/main_scene"
+
+def _names_a_relationship(key, main_scene_overrides):
+    """Whether key sets an autoload, an editor plugin or the main scene; see validate_settings."""
+    if key.startswith(("autoload/", "editor_plugins/")):
+        return True
+    if key.split(".")[0] != _MAIN_SCENE:
+        return False
+    return key == _MAIN_SCENE or not main_scene_overrides
+
+def _check_pinned(key, value):
+    """Fail for a setting, or a feature override of one, against PINNED_SETTINGS."""
+    pinned = PINNED_SETTINGS.get(key.split(".")[0])
+    if pinned != None and value.strip() != pinned:
+        fail((
+            "rules_godot imports every VRAM-compressed texture in both S3TC/BPTC and " +
+            "ETC2/ASTC, so imports agree on every execution platform and each export " +
+            "keeps the formats its platform needs; remove the setting %s"
+        ) % key)
 
 def validate_export_options(options):
     """

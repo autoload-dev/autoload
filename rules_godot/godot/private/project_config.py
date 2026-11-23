@@ -524,6 +524,7 @@ def compose_project(
     sections: Iterable[str] | None = None,
     excluded: Iterable[str] = (),
     context_only: bool = False,
+    pinned: dict[str, str] | None = None,
 ) -> str:
     """
     Construct a purpose's project.godot from the authored base and explicit contributions.
@@ -552,6 +553,9 @@ def compose_project(
         context_only: Whether the configuration carries no setting that names a file of
             the game, as the shell-assets probe's, which stages no game: no content-bound
             setting of Godot and no unknown key whose value names a res:// path.
+        pinned: Settings the ruleset fixes, to Godot literals: each replaces the authored
+            setting and every feature override of it, which Starlark's validation keeps
+            the contributions from contradicting.
 
     An authored root _custom_features key never stays: custom features come only from
     the project's build settings, and only exports and source runs have them.
@@ -564,8 +568,9 @@ def compose_project(
     if editor_plugins and purpose in ("runtime", "import"):
         raise ValueError(f"Editor plugins are not enabled for the {purpose} purpose")
     carrier = _Purpose(purpose, kinds or {}, sections, active_features, context_only)
-    replacements = _replacements(settings, autoloads, main_scene)
-    dropped = {"_custom_features", *excluded, *replacements}
+    pinned = pinned or {}
+    replacements = _replacements(settings | pinned, autoloads, main_scene)
+    dropped = {"_custom_features", *excluded, *replacements, *_overrides_of(base, pinned)}
     text = _authored_settings(base, carrier, dropped) + _added_settings(
         replacements, carrier
     )
@@ -614,6 +619,17 @@ def _replacements(
             main_scene, ensure_ascii=False
         )
     return replacements
+
+
+def _overrides_of(base: str, settings: Collection[str]) -> list[str]:
+    """The feature overrides of settings that base authors, such as ``key.mobile``."""
+    return [
+        setting
+        for _, section, key in statement_groups(base)
+        if key is not None
+        and feature_tags(key)
+        and (setting := setting_key(section, key)).partition(".")[0] in settings
+    ]
 
 
 def _authored_settings(base: str, purpose: _Purpose, dropped: set[str]) -> str:
@@ -830,6 +846,7 @@ def _compose(arguments: list[str]) -> None:
         sections=data.get("sections"),
         excluded=excluded,
         context_only=data.get("context_only", False),
+        pinned=data.get("pinned_settings"),
     )
     args.output.write_text(result, encoding="utf-8")
 

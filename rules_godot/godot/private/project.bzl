@@ -2,7 +2,7 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
-load("//godot/private:configuration.bzl", "validate_autoloads", "validate_custom_feature", "validate_settings")
+load("//godot/private:configuration.bzl", "PINNED_SETTINGS", "validate_autoloads", "validate_custom_feature", "validate_settings")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:flags.bzl", "FlagInfo")
@@ -21,6 +21,11 @@ _PURPOSE_MNEMONICS = {
     "export": "GodotExportConfig",
     "import": "GodotImportConfig",
 }
+
+# The purposes whose configuration carries PINNED_SETTINGS: imports, initialization, which
+# reads the import configuration, and exports, whose Godot checks the formats its platform
+# needs and whether the imports are current against these settings.
+_PINNED_PURPOSES = ["import", "export"]
 
 def _sets_nothing(settings, autoloads, main_scene, kinds):
     """Whether a configuration sets no value over its base and applies no setting kinds."""
@@ -75,6 +80,8 @@ def configuration_file(
         "editor_plugins": editor_plugins,
         "context_only": context_only,
     }
+    if purpose in _PINNED_PURPOSES:
+        data["pinned_settings"] = PINNED_SETTINGS
     if kinds:
         data["kinds"] = kinds.kinds
         data["sections"] = kinds.sections
