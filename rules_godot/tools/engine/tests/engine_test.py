@@ -46,6 +46,7 @@ from tools.engine.configure import (
     swift_module_options,
     target_constraints,
     version_name,
+    with_renderer_modules,
     write_json,
 )
 from tools.engine.generator import File, run, safe_relative
@@ -185,6 +186,24 @@ class ModuleGraphTest(unittest.TestCase):
             ]:
                 (root / "SConstruct").write_text(text)
                 self.assertEqual(has_renderer_switches(root), expected, text)
+
+    def test_renderingdevice_methods_bring_the_shader_compiler(self) -> None:
+        graph = {"gdscript": [], "glslang": []}
+
+        def modules(renderers: str, environment: str = "device") -> list[str]:
+            args = argparse.Namespace(
+                modules=["gdscript"],
+                renderers=renderers,
+                platform="ios",
+                environment=environment,
+            )
+            return with_renderer_modules(args, graph)
+
+        self.assertEqual(modules("gl_compatibility,mobile"), ["gdscript", "glslang"])
+        self.assertEqual(modules("gl_compatibility"), ["gdscript"])
+        self.assertEqual(modules(""), ["gdscript"])
+        # Godot's iOS Simulator build has no RenderingDevice driver and rejects glslang.
+        self.assertEqual(modules("mobile", "simulator"), ["gdscript"])
 
     def test_renderers_and_build_options_cannot_both_set_a_driver(self) -> None:
         derived = renderer_options(["gl_compatibility"], "ios", False)

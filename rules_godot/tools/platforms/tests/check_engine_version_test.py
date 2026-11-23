@@ -65,6 +65,7 @@ class CheckEngineVersionTest(unittest.TestCase):
             facts.write_text(json.dumps(_facts({})))
             with self.assertRaisesRegex(SystemExit, "renders with forward_plus"):
                 check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
+            check_engine_version.require_rendering_method(facts, ["mobile"], "mobile")
 
     def test_opaque_engine_version_assertion_is_checked(self) -> None:
         library = self.root / "libgodot.a"

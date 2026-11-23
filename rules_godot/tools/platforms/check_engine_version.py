@@ -223,7 +223,9 @@ def require_ios_platform_slice(path: Path, cpu: str, sdk: str) -> None:
 _RENDERING_METHOD = "rendering/renderer/rendering_method"
 
 
-def require_rendering_method(facts: Path, renderers: list[str]) -> None:
+def require_rendering_method(
+    facts: Path, renderers: list[str], default: str = "forward_plus"
+) -> None:
     """
     Fail when the pack's project asks for a rendering method its engine was built without.
 
@@ -232,7 +234,7 @@ def require_rendering_method(facts: Path, renderers: list[str]) -> None:
     the application fails at start.
     """
     settings = json.loads(facts.read_text(encoding="utf-8"))["settings"]
-    method = settings.get(_RENDERING_METHOD, "forward_plus")
+    method = settings.get(_RENDERING_METHOD, default)
     if method not in renderers:
         raise SystemExit(
             f"The project renders with {method}, but its engine runs only "
@@ -240,6 +242,19 @@ def require_rendering_method(facts: Path, renderers: list[str]) -> None:
             + f"; set {_RENDERING_METHOD} for this platform to one of them, or build the "
             "engine with this method in its recipe's renderers"
         )
+
+
+def _check_rendering_method(args: argparse.Namespace) -> None:
+    """Check the project's rendering method where the engine declares its renderers."""
+    if not args.facts or args.renderers is None:
+        return
+    # Godot's default for iOS and Android is the setting's .mobile override, mobile.
+    mobile = args.ios_platform_slice or args.android_abi
+    require_rendering_method(
+        args.facts,
+        [method for method in args.renderers.split(",") if method],
+        "mobile" if mobile else "forward_plus",
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -296,10 +311,7 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _parser()
     args = parser.parse_args()
-    if args.facts and args.renderers is not None:
-        require_rendering_method(
-            args.facts, [method for method in args.renderers.split(",") if method]
-        )
+    _check_rendering_method(args)
     manifests = set()
     for path in args.android_manifest:
         manifests |= manifest_versions(path)

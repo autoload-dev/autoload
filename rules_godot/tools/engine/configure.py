@@ -266,6 +266,29 @@ def _yes(value: bool) -> str:
     return "yes" if value else "no"
 
 
+def with_renderer_modules(
+    args: argparse.Namespace, graph: Mapping[str, Any]
+) -> list[str]:
+    """
+    Return the requested modules with glslang where a RenderingDevice method is requested.
+
+    RenderingDevice compiles its shaders at run time with glslang, which Godot builds only
+    as a module, so an engine with Metal or Vulkan and without it could not render. Godot's
+    iOS Simulator build has neither driver and rejects glslang.
+    """
+    modules = list(args.modules)
+    if not _needs_shader_compiler(args) or "glslang" not in graph:
+        return modules
+    return modules if "glslang" in modules else [*modules, "glslang"]
+
+
+def _needs_shader_compiler(args: argparse.Namespace) -> bool:
+    """Return whether a recipe's renderers need RenderingDevice's shader compiler."""
+    if args.platform == "ios" and args.environment == "simulator":
+        return False
+    return any(method in args.renderers.split(",") for method in _RD_METHODS)
+
+
 def require_renderer_options_unset(
     derived: Iterable[str], options: Iterable[str]
 ) -> None:
@@ -2057,6 +2080,7 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     (root / "engine_manifest.json").unlink(missing_ok=True)
     _add_custom_modules(args, root)
     graph = module_dependencies(root, [root / path for path in args.custom_modules])
+    args.modules = with_renderer_modules(args, graph)
     args.selected_modules = module_closure(
         args.modules, graph, editor=args.build_target == "editor"
     )
