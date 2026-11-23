@@ -1,16 +1,11 @@
-"""Check independent module discovery and safe maintenance of generated pages."""
+"""Check independent module discovery and the module roles of the API inventory."""
 
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
 
-from tools.docs.api_docs import (
-    documented_target,
-    inventory_errors,
-    reference_errors,
-    update_reference,
-)
+from tools.docs.api_docs import documented_target, inventory_errors
 
 
 def inventory() -> dict[str, Any]:
@@ -63,11 +58,7 @@ class InventoryTest(unittest.TestCase):
             (root / "godot").mkdir()
             (root / "godot/helper.bzl").write_text('"""Helper."""\n')
             config = inventory()
-            config["PUBLIC_APIS"]["//godot:helper.bzl"] = {
-                "group": "Core",
-                "purpose": "Build.",
-                "symbols": ["helper"],
-            }
+            config["PUBLIC_APIS"]["//godot:helper.bzl"] = ["helper"]
             config["CROSS_REPOSITORY_MODULES"]["//godot:helper.bzl"] = "Internal helper."
             self.assertTrue(
                 any(
@@ -114,11 +105,7 @@ class InventoryTest(unittest.TestCase):
             (root / "godot").mkdir()
             (root / "godot/defs.bzl").write_text("def small(value):\n    return value\n")
             config = inventory()
-            config["PUBLIC_APIS"]["//godot:defs.bzl"] = {
-                "group": "Core",
-                "purpose": "Build.",
-                "symbols": ["small"],
-            }
+            config["PUBLIC_APIS"]["//godot:defs.bzl"] = ["small"]
             errors = inventory_errors(root, config)
             self.assertTrue(any("docstring" in error for error in errors))
             self.assertTrue(any("Returns:" in error for error in errors))
@@ -141,36 +128,6 @@ class InventoryTest(unittest.TestCase):
             )
             path.write_text('"""Implementation."""\nvisibility("public")\n')
             self.assertEqual(inventory_errors(root, config), [])
-
-    def test_diff_finds_missing_and_obsolete_pages(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            for side in ("old", "new"):
-                (root / side / "reference").mkdir(parents=True)
-            (root / "old/reference/removed.md").write_text("old")
-            (root / "new/reference/added.md").write_text("new")
-            errors = reference_errors(root / "old", root / "new")
-            self.assertTrue(any("Missing" in error for error in errors))
-            self.assertTrue(any("Obsolete" in error for error in errors))
-
-    def test_update_removes_owned_pages_but_preserves_unmarked_content(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            for side in ("old", "new"):
-                (root / side / "reference").mkdir(parents=True)
-            stale = root / "old/reference/stale.md"
-            stale.write_text("User-authored content")
-            (root / "new/reference/current.md").write_text("New generated content")
-            with self.assertRaisesRegex(ValueError, "Refusing to remove"):
-                update_reference(root / "old", root / "new")
-            self.assertEqual(stale.read_text(), "User-authored content")
-            self.assertFalse((root / "old/reference/current.md").exists())
-            stale.write_text("<!-- Generated with Stardoc: tool -->\nold")
-            update_reference(root / "old", root / "new")
-            self.assertFalse(stale.exists())
-            self.assertEqual(
-                (root / "old/reference/current.md").read_text(), "New generated content"
-            )
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ from typing import Any
 ADDONS = "addons"
 # The ruleset's directory: its module, and below .bcr/ its registry templates.
 RULESET = Path("rules_godot")
+# The ruleset's documentation module, nested in it, which builds no applications.
+RULESET_DOCS = RULESET / "docs"
 
 
 def addon_modules(root: Path) -> tuple[str, ...]:

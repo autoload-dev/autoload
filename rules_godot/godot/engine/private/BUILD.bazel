@@ -1,3 +1,5 @@
+# The documentation module (docs/) lists these files in the Starlark library it extracts
+# the API documentation with. Their load visibility still restricts who loads them.
 exports_files(
     [
         "archives.bzl",
@@ -13,5 +15,5 @@ exports_files(
         "resolution.bzl",
         "source_repositories.bzl",
     ],
-    visibility = ["//docs/public/api:__pkg__"],
+    visibility = ["//visibility:public"],
 )

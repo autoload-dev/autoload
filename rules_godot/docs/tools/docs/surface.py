@@ -1,18 +1,12 @@
 """Assign evaluated Starlark identities to public reference entrypoints."""
 
-import re
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
 from tools.docs.coverage import CATEGORIES, ModuleInfo
-from tools.ruleset import strip_repo
+from tools.docs.ruleset import strip_repo
 
 EXPORT_CATEGORIES = {**CATEGORIES, "starlark_other_symbol_info": "name"}
-
-
-def normalize_label(label: str) -> str:
-    return strip_repo(label)
 
 
 @dataclass(frozen=True)
@@ -29,7 +23,7 @@ def exports(module_label: str, metadata: ModuleInfo) -> dict[str, Export]:
             name = getattr(item, name_field)
             origin = getattr(item, "origin_key", None)
             origin_file = (
-                normalize_label(origin.file) if origin and origin.file else module_label
+                strip_repo(origin.file) if origin and origin.file else module_label
             )
             origin_name = origin.name if origin and origin.name else name
             result[name] = Export(
@@ -53,8 +47,7 @@ def assign_surface(
         all_exports[label] = exports(label, module)
 
     owners: dict[tuple[str, str, str], Export] = {}
-    for label, entry in inventory["PUBLIC_APIS"].items():
-        selected = entry["symbols"]
+    for label, selected in inventory["PUBLIC_APIS"].items():
         if len(selected) != len(set(selected)):
             errors.append(f"{label}: duplicate primary symbol selection")
         for name in selected:
@@ -70,13 +63,13 @@ def assign_surface(
             else:
                 owners[export.identity] = export
 
-    for label, entry in inventory["PUBLIC_APIS"].items():
+    for label, selected in inventory["PUBLIC_APIS"].items():
         for export in all_exports[label].values():
             if export.identity[1] in inventory["CROSS_REPOSITORY_MODULES"]:
                 errors.append(
                     f"{label}%{export.name}: cross-repository module leaked through a public entrypoint; remove the export"
                 )
-            elif export.name not in entry["symbols"]:
+            elif export.name not in selected:
                 owner = owners.get(export.identity)
                 if owner:
                     errors.append(
@@ -89,22 +82,3 @@ def assign_surface(
     if errors:
         raise ValueError("\n".join(errors))
     return owners
-
-
-def validate_rendered(markdown: str, expected: Iterable[str], location: str) -> None:
-    """Require exactly the selected API anchors, not just a successful renderer."""
-    anchors = re.findall(r'<a id="([^"\n]+)"></a>', markdown)
-    expected = set(expected)
-    for name in sorted(expected):
-        if anchors.count(name) != 1:
-            raise ValueError(
-                f"{location}%{name}: primary API must appear exactly once in rendered reference"
-            )
-    # Recognize Stardoc API anchors paired with their headings. Ordinary
-    # Markdown sections in module descriptions are not additional API entries.
-    pairs = re.findall(r'<a id="([^"\n]+)"></a>\s*\n## ([^\n]+)', markdown)
-    headings = [anchor for anchor, heading in pairs if anchor == heading]
-    if set(headings) != expected or len(headings) != len(expected):
-        raise ValueError(
-            f"{location}: rendered API set differs from the assigned primary symbols"
-        )

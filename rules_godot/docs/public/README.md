@@ -14,4 +14,4 @@ Build, edit, check, test and package Godot projects with Bazel. Start with the r
 | Build or consume extensions | [GDExtensions](gdextension.md) |
 | Select prebuilt engines or build them from source | [Engines](engine.md) |
 | Pin compatible engine and extension API versions | [Versions](versions.md) |
-| Look up public rules, providers and configuration APIs | [Generated API reference](api/index.md) |
+| Look up public rules, providers and module extensions | [API documentation on the Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) |

@@ -10,7 +10,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from tools.ci.work import CONTRACT_LANES as MACHINE_LANES
-from tools.ruleset import MODULE
+from tools.docs.ruleset import MODULE
 
 SECTIONS = {
     "Default outputs": ("kind", "cardinality", "availability", "behavior"),

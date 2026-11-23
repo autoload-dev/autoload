@@ -2,8 +2,8 @@
 The repository's own tooling: formatting, linting, conventions, the lanes' work, add-on
 scaffolding and setup checks across every component. It is never published; the components
 live in their own modules, such as rules_godot/ and addons/<module>/, which this module
-ignores (.bazelignore). The ruleset's documentation checks and artifact inspection use it as a
-development dependency.
+ignores (.bazelignore). The ruleset's artifact inspection uses it as a development dependency;
+the ruleset's documentation module (rules_godot/docs) depends on it.
 """
 
 module(name = "autoload_dev")

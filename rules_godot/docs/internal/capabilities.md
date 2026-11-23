@@ -518,7 +518,7 @@ Run/device evidence requires an actual matching receipt, not inference from a so
 The matrix owns recorded coverage and planning classifications; it is not the authority for
 mandatory product scope. The overview summarizes families and links here instead of keeping
 a second status list. Specs own selected requirements/design/tasks; support guides describe
-current supported use. Generated API reference remains sourced from actual Starlark
+current supported use. The API documentation remains sourced from actual Starlark
 definitions, not this capability register.
 
 [ROOT]: ../../../README.md

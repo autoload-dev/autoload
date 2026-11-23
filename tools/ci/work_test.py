@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest import mock
 
 from tools.ci.work import (
+    DOCS,
+    DOCS_CHECK,
     FAST_TEST_COMMAND,
     ROOT,
     RULESET_DIR,
@@ -62,12 +64,16 @@ class WorkTest(unittest.TestCase):
         # Work without a lane runs only when named.
         self.assertFalse(any("inspect:mobile" in names for names in planned.values()))
 
-    def test_fast_tests_run_in_the_root_and_the_ruleset_only_when_named(self) -> None:
+    def test_fast_tests_run_in_the_root_and_the_ruleset_modules_only_when_named(
+        self,
+    ) -> None:
         fast = all_work(self.root)["test:fast"]
         self.assertIsNone(fast.lane)
-        self.assertEqual([".", RULESET_DIR], [step.directory for step in fast.steps()])
         self.assertEqual(
-            [FAST_TEST_COMMAND, FAST_TEST_COMMAND],
+            [".", RULESET_DIR, DOCS], [step.directory for step in fast.steps()]
+        )
+        self.assertEqual(
+            [FAST_TEST_COMMAND, FAST_TEST_COMMAND, DOCS_CHECK],
             [step.command for step in fast.steps()],
         )
 

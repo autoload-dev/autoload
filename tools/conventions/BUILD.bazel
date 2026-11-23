@@ -8,7 +8,7 @@ py_library(
         "context.py",
         "environment.py",
     ],
-    # The ruleset's documentation checks read Bazel evidence through it (rules_godot/).
+    # The ruleset's documentation checks read Bazel evidence through it (rules_godot/docs/).
     visibility = ["//visibility:public"],
     deps = ["//tools/setup:modules_lib"],
 )

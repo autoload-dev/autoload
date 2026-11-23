@@ -1,6 +1,9 @@
 # Configuration for `git archive`, which builds the ruleset's release archive from this
 # directory (.github/workflows/release_prep.sh). Development-only directories stay out of it;
 # e2e/ stays in, because the Bazel Central Registry runs its test module.
+# docs/ is the documentation module, whose dependencies and overrides only extract and check
+# the API documentation; the registry renders it from the release's documentation archive.
+docs export-ignore
 examples export-ignore
 tests export-ignore
 # A link to the repository's Bazelisk wrapper, outside this directory.

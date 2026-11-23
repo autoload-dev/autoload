@@ -106,7 +106,7 @@ The existing enforcement has several owners:
   example API references and documentation command labels resolved in their owning
   Bazel modules. It is not a full layout-policy checker.
 - [API documentation checks](../../rules_godot/docs/internal/api-reference.md) use evaluated Bazel/Stardoc metadata and
-  source inspection for inventories, ownership, descriptions and reference freshness.
+  source inspection for inventories, ownership and descriptions.
 - Bazel analysis, project/resource rules, sidecar checks and existing behavior/artifact
   tests already enforce parts of dependency, resource and runtime correctness.
 - The [verification guideline](verification.md) owns when and where these checks run;

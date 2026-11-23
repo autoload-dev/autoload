@@ -62,22 +62,30 @@ def decode_configured(output: str) -> dict[str, ConfiguredTarget]:
 
 # The ruleset module, where behavior tests resolve unless they name another module.
 ROOT_MODULE = Module(Path("."), ())
+# This documentation module, which extracts the ruleset's Starlark modules.
+DOCS_MODULE = Module(Path("docs"), ())
 
 
 class EvaluatedBazel(Bazel):
-    """Bazel facts for contract fixtures; one instance serves a whole checker run."""
+    """
+    Bazel facts for contract fixtures; one instance serves a whole checker run.
+
+    Its root is the ruleset's directory, against which module paths resolve.
+    """
 
     def run(self, module: Module, *arguments: str) -> str:
         return run_tool(
             ["bazel", *arguments, "--noshow_progress"], self.root / module.path
         )
 
-    def outputs(self, targets: Iterable[str]) -> dict[str, Path]:
-        """Build file targets of the root module and return their output paths."""
+    def outputs(
+        self, targets: Iterable[str], module: Module = ROOT_MODULE
+    ) -> dict[str, Path]:
+        """Build file targets of a module and return their output paths."""
         targets = sorted(targets)
-        self.run(ROOT_MODULE, "build", *targets)
+        self.run(module, "build", *targets)
         paths = self.run(
-            ROOT_MODULE, "cquery", "set(" + " ".join(targets) + ")", "--output=files"
+            module, "cquery", "set(" + " ".join(targets) + ")", "--output=files"
         ).split()
         result = {}
         for target in targets:
@@ -85,14 +93,16 @@ class EvaluatedBazel(Bazel):
             matches = [path for path in paths if path.endswith(suffix)]
             if len(matches) != 1:
                 raise EvidenceError(target + ": unresolved build output")
-            result[target] = self.root / matches[0]
+            result[target] = self.root / module.path / matches[0]
         return result
 
-    def extracted(self, targets: Iterable[str]) -> dict[str, ModuleInfo]:
-        """Build evaluated starlark_doc_extract outputs and parse their Stardoc schema."""
+    def extracted(
+        self, targets: Iterable[str], module: Module = DOCS_MODULE
+    ) -> dict[str, ModuleInfo]:
+        """Build starlark_doc_extract outputs, by default this module's, and parse them."""
         return {
             target: parse_module(path.read_text())
-            for target, path in self.outputs(targets).items()
+            for target, path in self.outputs(targets, module).items()
         }
 
     def expansion(self, module: Module, label: str) -> tuple[Target, ...]:

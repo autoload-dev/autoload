@@ -1,3 +1,5 @@
+# The documentation module (docs/) lists these files in the Starlark library it extracts
+# the API documentation with. Their load visibility still restricts who loads them.
 exports_files(
     [
         "android.bzl",
@@ -16,7 +18,7 @@ exports_files(
         "manifest_graph.bzl",
         "maven.bzl",
     ],
-    visibility = ["//docs/public/api:__pkg__"],
+    visibility = ["//visibility:public"],
 )
 
 # Text templates the rules of this package expand.

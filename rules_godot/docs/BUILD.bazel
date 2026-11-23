@@ -1,0 +1,2 @@
+# The documentation module's root package, which the crate extension of autoload_dev resolves
+# //:MODULE.bazel against. The API metadata is in //public/api, its checks in //tools/docs.

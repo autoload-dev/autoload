@@ -112,13 +112,6 @@ py_test(
 )
 
 py_test(
-    name = "tool_environment_test",
-    size = "small",
-    srcs = ["tool_environment_test.py"],
-    deps = ["//tools:tool_environment_lib"],
-)
-
-py_test(
     name = "template_test",
     size = "small",
     srcs = ["template_test.py"],

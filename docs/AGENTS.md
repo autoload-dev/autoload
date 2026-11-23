@@ -12,6 +12,6 @@ use explicit placeholders such as `//path/to:target` when a user must supply a l
 When moving documentation, update links, generator inputs and owning instructions together.
 Preserve a concrete setup and usage path for each supported operating system and feature.
 
-For ordinary prose changes, `hk check` runs the documentation conventions. API source/reference
-changes use the [generation recipe](internal/verification-recipes.md#generated-api-reference)
-and the API skill required by the root guidance. Do not hand-edit generated reference pages.
+For ordinary prose changes, `hk check` runs the documentation conventions. API source changes
+use the [API documentation recipe](internal/verification-recipes.md#api-documentation)
+and the API skill required by the root guidance.

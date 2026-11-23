@@ -106,11 +106,6 @@ description = "Format Python, Starlark and Bazel files in place"
 # The formatters run here, so their binaries are resolved for this host (see shared.bazelrc).
 run = "bazel run --config=host-execution //tools/format"
 
-[tasks."api-docs"]
-description = "Regenerate the ruleset's API reference after changing its public API"
-dir = "rules_godot"
-run = "bazel run //tools/docs"
-
 [tasks."code-health"]
 description = "Review the Code Health of the change since origin/main; fails when a file declines"
 run = "python3 -m tools.code_health.codescene"
@@ -120,7 +115,7 @@ description = "Report the Code Health of the whole checkout: hotspots and the lo
 run = "python3 -m tools.code_health.codescene --survey"
 
 [tasks.generate]
-description = "Regenerate the lock files and the ruleset's API reference"
+description = "Regenerate the lock files"
 run = "python3 -m tools.generate.generate"
 
 [tasks.lint]

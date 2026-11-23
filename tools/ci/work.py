@@ -21,7 +21,7 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.setup.modules import RULESET
+from tools.setup.modules import RULESET, RULESET_DOCS
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
@@ -30,6 +30,8 @@ CONTRACT_LANES = ("desktop", "source-engine", "android", "ios")
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
 REGRESSIONS = f"{RULESET_DIR}/tests"
+# The documentation module: the API documentation metadata, its checks and the contract checker.
+DOCS = RULESET_DOCS.as_posix()
 ANDROID_SETUP = "android:setup"
 
 
@@ -75,6 +77,10 @@ def example(name: str, area: str = "addons") -> Work:
     return Work(f"test:example:{name}", "desktop", EXAMPLES, (example_tests(name, area),))
 
 
+# The documentation module's tests, all of them fast, with the API inventory's discovery
+# of new Starlark modules, which a test's sandbox cannot see.
+DOCS_CHECK = "bazel run //tools/docs:check"
+
 # Petri's suites run in an editor built from the engine sources with its module, so the
 # source-engine lane runs them; named on its own, it runs here too.
 PETRI_TESTS = example_tests("petri", "projects", config="petri")
@@ -90,7 +96,7 @@ def contracts(lane: str) -> Work:
     return Work(
         f"contracts:{lane}",
         lane,
-        RULESET_DIR,
+        DOCS,
         (contracts_command(lane),),
         android=lane == "android",
     )
@@ -155,7 +161,7 @@ WORK = (
         ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
-    # The generated files: lock files, the API reference and the source-built engines' pins.
+    # The generated files: lock files and the source-built engines' pins.
     Work("generated", "quality", ".", ("python3 -m tools.generate.generate --check",)),
     Work(
         "test:setup",
@@ -172,12 +178,24 @@ WORK = (
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
-    Work("test:fast", None, ".", (FAST_TEST_COMMAND, In(RULESET_DIR, FAST_TEST_COMMAND))),
+    Work(
+        "test:fast",
+        None,
+        ".",
+        (
+            FAST_TEST_COMMAND,
+            In(RULESET_DIR, FAST_TEST_COMMAND),
+            In(DOCS, DOCS_CHECK),
+        ),
+    ),
+    # The API inventory and the documentation of its public entrypoints, and the contract
+    # cases that need no SDK.
     Work(
         "docs",
         "docs",
-        RULESET_DIR,
+        DOCS,
         (
+            DOCS_CHECK,
             contracts_command("docs"),
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),
@@ -189,12 +207,7 @@ WORK = (
         "test:bazel",
         "desktop",
         RULESET_DIR,
-        (
-            (
-                "bazel test --build_tests_only --test_tag_filters=-source_engine"
-                " -- //... -//docs/... -//tools/docs/..."
-            ),
-        ),
+        ("bazel test --build_tests_only --test_tag_filters=-source_engine //...",),
         android=True,
     ),
     # The regression module's desktop set needs no Android SDK or NDK; an accidental dependency

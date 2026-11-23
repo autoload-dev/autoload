@@ -4,7 +4,6 @@ Regenerate the repository's generated files, or check that they are current.
 | Generated files | Regenerated here | Checked here |
 |---|---|---|
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | `--lockfile_mode=error` |
-| The ruleset's API reference, rules_godot/docs/public/api | `bazel run //tools/docs` | `bazel run //tools/docs:check` |
 | The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
 `python3 -m tools.generate.generate [PATH...]` regenerates what depends on the paths, as the
@@ -71,10 +70,6 @@ def check_lock_files() -> int:
     return status
 
 
-def api_reference(target: str) -> int:
-    return bazel(RULESET_DIR, "run", target)
-
-
 def pins() -> int:
     status = 0
     for module, hub in PINNED_ENGINES:
@@ -95,15 +90,12 @@ def regenerate(paths: list[str]) -> int:
     """Regenerate what depends on the paths, or everything without paths."""
     everything = not paths
     modules = list(LOCKED_MODULES) if everything else locked_modules_shaped_by(paths)
-    status = lock_files(modules, "update")
-    if everything or any(map(is_ruleset_code, paths)):
-        status |= api_reference("//tools/docs")
-    return status
+    return lock_files(modules, "update")
 
 
 def check() -> int:
     """Check every generated file."""
-    return check_lock_files() | api_reference("//tools/docs:check") | pins()
+    return check_lock_files() | pins()
 
 
 def main() -> int:
