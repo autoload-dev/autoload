@@ -20,7 +20,6 @@ java_version = "temurin-21.0.13+9.0.LTS"
 android_api_levels = "35,36"
 android_build_tools = "35.0.0"
 android_ndk_version = "29.0.14206865"
-documentation_conventions = "RG004 RG006 RG013"
 
 [tools]
 bazelisk = "1.29.0"
@@ -128,18 +127,6 @@ run = "bazel run //tools/docs:contracts -- --lane ios"
 description = "Check the repository conventions catalogue"
 run = "bazel run //tools/conventions"
 
-# Complementary rule sets; `conventions` runs both.
-[tasks."conventions:code"]
-description = "Check the conventions that apply to code and project structure"
-run = "bazel run //tools/conventions -- {% for rule in vars.documentation_conventions | split(pat=' ') %}--exclude-rule {{ rule }} {% endfor %}"
-
-[tasks."conventions:docs"]
-description = "Check the conventions that apply to documentation"
-run = "bazel run //tools/conventions -- {% for rule in vars.documentation_conventions | split(pat=' ') %}--rule {{ rule }} {% endfor %}"
-
-# The docs task runs the ruleset's //docs and //tools/docs tests.
-# The ruleset's host set, including its Android packaging tests (L1); tests that build an
-# engine from source run in the source-engine lane.
 [tasks."test:bazel"]
 extends = "android"
 description = "Run the ruleset's Bazel tests outside the documentation checks"
@@ -252,7 +239,7 @@ dir = "{{config_root}}/rules_godot/examples"
 run = "bazel test --build_tests_only //..."
 
 [tasks."test:full"]
-description = "Run the full host suite explicitly; routine selection uses the host lane's profile"
+description = "Run the full host suite explicitly; CI runs it in its host jobs"
 run = [
   { task = "test:setup" },
   { task = "test:tools" },

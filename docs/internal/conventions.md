@@ -70,8 +70,7 @@ runs twice. Missing/ambiguous source evidence and failed tools raise
 successful result.
 
 To add a rule, create its module and adjacent regression tests, register its object, and
-declare those sources in the existing Bazel package. A rule that reads Markdown also joins
-`documentation_conventions` in `mise.toml`, which partitions documentation and code checks. A rule consumes available tools and
+declare those sources in the existing Bazel package. A rule consumes available tools and
 returns findings; it does not require a branch in the checker or a new report field. Add a tool
 capability only when a rule needs a new kind of evidence, keeping retrieval independent
 of the policy which consumes it. Tool protocols allow rule tests to use deterministic facts

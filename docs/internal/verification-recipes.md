@@ -40,10 +40,10 @@ workflow-lint tools are installed when their owning tasks require them. `test:se
 provisioning declarations and mise environment behavior without installing SDK components.
 
 The pre-push hook verifies the working tree matches the pushed commit
-before the selected lightweight checks. CI uses the same tasks through the shared
-[setup action](../../.github/actions/setup/action.yml). Its selection-only mode installs the
+before its quick checks. CI uses the same tasks through the shared
+[setup action](../../.github/actions/setup/action.yml). Its plan-only mode installs the
 pinned base tools without mounting Bazel caches or starting the Bazel server inventory/cleanup;
-selected build workflow jobs enable those steps and declare the modules they use. Android
+the build workflow jobs enable those steps, and the cleanup finds the modules they built in. Android
 workflow jobs reuse cached missing SDK components; host-only ones do not install Java or
 Android SDKs. CI logs Xcode/SDK versions on its macOS jobs; compare with `xcodebuild -version` locally when CI runner
 equivalence matters. GitHub's runner images can change.
@@ -63,7 +63,7 @@ the critical path and action timings. Keep these files only for the investigatio
 ## Generated API reference
 
 For API source changes, regenerate with
-`bazel run //tools/docs`, inspect the generated diff and use the selected `docs` check for
+`bazel run //tools/docs`, inspect the generated diff and use the `docs` task for
 freshness and contract enforcement. See [API reference maintenance](api-reference.md) for
 metadata and generation details. Do not hand-edit generated reference pages.
 

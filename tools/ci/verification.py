@@ -1,7 +1,7 @@
 """
-Plan CI's work: every task of every lane, on every run. Bazel's caches make unchanged work
-cheap, so CI selects no paths by changes; the lanes come from mise.toml's tasks and the add-on modules'
-manifests (addon.pkl).
+Plan CI's work: every task of every lane, on every run, as Bazel's caches make unchanged
+work cheap. The lanes come from mise.toml's tasks and the add-on modules' manifests
+(addon.pkl).
 """
 
 import argparse
@@ -18,8 +18,10 @@ from tools.addons.modules import all_modules
 ROOT = Path(__file__).resolve().parents[2]
 
 LANES = ("quality", "docs", "host", "source-engine", "android", "ios")
-# The lanes of the tasks named for one: contracts:<lane> and an add-on module's tasks.
-PROFILE_LANES = ("host", "source-engine", "android", "ios")
+# The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
+CONTRACT_LANES = ("host", "source-engine", "android", "ios")
+# The target of the add-on generator's self-test in a task name: <lane>:addon-template.
+TEMPLATE = "-template"
 
 # CI's jobs, each with the lane whose tasks it runs and the host it runs them on: Linux
 # runners or the macos-ci runners. The host lane runs on both hosts. CI's plan job has
@@ -108,8 +110,7 @@ TASK_LANES = {
         (
             "lint",
             "lint:ci",
-            "conventions:code",
-            "conventions:docs",
+            "conventions",
             "test:setup",
             "test:tools",
         ),
@@ -135,7 +136,6 @@ OTHER_TASKS = frozenset(
         "code-health",
         "android:setup",
         "addon:new",
-        "conventions",
         "test:examples",
         "test:full",
         "ios:apps",
@@ -153,7 +153,10 @@ OTHER_TASKS = frozenset(
 
 def _family_lane(task: str) -> str | None:
     """The lane of a task of a family: contracts, examples and add-on modules."""
-    if task.startswith("contracts:") and task.removeprefix("contracts:") in PROFILE_LANES:
+    if (
+        task.startswith("contracts:")
+        and task.removeprefix("contracts:") in CONTRACT_LANES
+    ):
         return task.removeprefix("contracts:")
     if task.startswith("test:example:"):
         return EXAMPLE_LANES.get(task.removeprefix("test:example:"), "host")
@@ -171,11 +174,11 @@ def addon_task(task: str) -> tuple[str, str | None, tuple[str, ...]] | None:
     has no module.
     """
     lane, separator, rest = task.partition(":addon")
-    if not separator or lane not in PROFILE_LANES:
+    if not separator or lane not in ADDON_LANES:
         return None
     target, _, listed = rest.partition("@")
     hosts = tuple(listed.split(",")) if listed else ()
-    if target == "-template":
+    if target == TEMPLATE:
         return lane, None, hosts
     if not target.startswith(":") or not target[1:]:
         return None
@@ -193,16 +196,14 @@ def task_command(task: str) -> list[str]:
     return ["mise", "run", f"addon:{lane}", module]
 
 
-def for_host(lanes: dict[str, list[str]], host: str) -> dict[str, list[str]]:
-    """The lanes without the add-on tasks whose host lane excludes this host."""
+def for_host(tasks: list[str], host: str) -> list[str]:
+    """The tasks but the add-on tasks whose host lane excludes this host."""
 
     def runs_here(task: str) -> bool:
         addon = addon_task(task)
         return addon is None or not addon[2] or host in addon[2]
 
-    return {
-        lane: [task for task in tasks if runs_here(task)] for lane, tasks in lanes.items()
-    }
+    return [task for task in tasks if runs_here(task)]
 
 
 def lane_for(task: str) -> str:
@@ -219,7 +220,7 @@ def addon_task_name(lane: str, module: str | None, hosts: tuple[str, ...]) -> st
     self-test, `<lane>:addon-template`. A host lane limited to some hosts names them, so that
     the plan leaves it out of other hosts' runners.
     """
-    target = f":{module}" if module else "-template"
+    target = f":{module}" if module else TEMPLATE
     limited = lane == "host" and set(hosts) != set(ADDON_HOSTS)
     return f"{lane}:addon{target}" + (f"@{','.join(hosts)}" if limited else "")
 
@@ -246,7 +247,7 @@ def all_lanes(root: Path = ROOT) -> dict[str, list[str]]:
     Every task CI runs, by lane: mise.toml's tasks but OTHER_TASKS, and the add-on modules'
     lanes. A task with no lane fails the plan.
     """
-    tasks = tomllib.loads((root / "mise.toml").read_text())["tasks"]
+    tasks = mise_tasks(root)
     lanes: dict[str, list[str]] = {name: [] for name in LANES}
     for task in [
         *(name for name in tasks if name not in OTHER_TASKS),
@@ -266,9 +267,14 @@ def run_tasks(tasks: object) -> None:
         subprocess.run(task_command(task), check=True)
 
 
+def mise_tasks(root: Path = ROOT) -> dict[str, dict]:
+    """mise.toml's tasks, by name."""
+    return tomllib.loads((root / "mise.toml").read_text())["tasks"]
+
+
 def android_tasks(root: Path = ROOT) -> frozenset[str]:
     """The mise tasks that provision the Android SDK first: those of mise.toml's android template."""
-    tasks = tomllib.loads((root / "mise.toml").read_text())["tasks"]
+    tasks = mise_tasks(root)
     return frozenset(
         name
         for name, task in tasks.items()
@@ -302,7 +308,7 @@ def plan_outputs(
     android = android_tasks()
     outputs: dict[str, object] = {}
     for job, (lane, host) in JOBS.items():
-        tasks = [] if host in excluded else for_host(lanes, host)[lane]
+        tasks = [] if host in excluded else for_host(lanes[lane], host)
         outputs[output_name(job)] = tasks
         if job in HOST_JOBS:
             outputs[f"{output_name(job)}_android"] = needs_android(tasks, android)

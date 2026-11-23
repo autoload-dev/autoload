@@ -1,7 +1,7 @@
 # Repository Verification
 
 This page owns the repository's general review, testing and verification policy. Read it
-when making or reviewing a change; detailed lane selection and recipes are linked below.
+when making or reviewing a change; the lanes and recipes are linked below.
 Agent instructions link here; public guides explain supported consumer workflows. The
 [design principles](principles.md) govern what a change must validate. A concrete acceptance requirement can
 add a check; the existence of a capability, task or operating system does not require every combination.
@@ -17,11 +17,11 @@ silently claim success or build a new test framework.
 |---|---|---|
 | Before editing | Read the applicable instructions and identify the affected behavior | Baseline builds or tests, unless needed to reproduce a defect or distinguish an existing failure |
 | During editing | Follow the test-first cycle below for behavior changes; use focused checks when their feedback helps the next decision | A suite after every file edit; rerunning successful checks with unchanged relevant inputs |
-| Before claiming a local change complete | Review the diff; run selected source-quality checks and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
+| Before claiming a local change complete | Review the diff; run `hk check` and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
 | Before committing | Format changed Python/Starlark/Bazel sources if needed; retain relevant evidence | A second suite just because a commit is about to happen |
 | Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality and setup contracts | App builds, non-host lane suites and cache experiments in the hook |
-| PR/review readiness | Require the selected CI results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the selected execution environment |
-| Merging | The merge queue runs the selected lanes, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | An unconditional full matrix for documentation-only changes; a second run on main |
+| PR/review readiness | Require CI's results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the execution environment |
+| Merging | The merge queue runs every lane, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | A second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
 
 A local completion report can say CI/lane verification is pending. It is not a merge-ready
@@ -47,7 +47,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 
 | Kind | Evidence | Existing entry points |
 |---|---|---|
-| Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `mise run lint:ci`, `mise run conventions:code`, `mise run conventions:docs`; `mise run conventions` explicitly runs all convention rules |
+| Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `mise run lint:ci`, `mise run conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run test:setup`, cleanup tests in `mise run lint:ci` |
 | API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run docs` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run test:bazel` (the ruleset's white-box tests), `mise run test:regressions` (the regression module's host set); individual owning Bazel test targets |
@@ -97,7 +97,7 @@ An existing test that already exposes the defect supplies the failing step; do n
 duplicate. Preserve that regression coverage. Before replacing a test, check that the
 replacement retains the relevant behavior and failure coverage. If prerequisites prevent
 observing the failing step, report the gap rather than claiming the TDD cycle was verified.
-The lane selection policy still applies; TDD does not require repeating the verification matrix.
+TDD does not require repeating the verification matrix.
 
 New behavior needs focused coverage where existing checks do not establish it. TDD does not
 expand which changes need new tests: pure documentation edits, mechanical renames and

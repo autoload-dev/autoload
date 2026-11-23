@@ -3,16 +3,19 @@ amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pk
 // Local checks before a push. CI runs every lane on every run (tools/ci/verification.py), so
 // no step selects paths: the pre-push hook runs the quick checks, and `hk check` adds the
 // slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
+
+// A task that runs Bazel holds its module's server, so it runs alone.
 local function task(name: String): Step = new {
   exclusive = true
   check = "mise run \(name)"
 }
 
-// Formatting, lint, the workflows and the setup contracts: seconds with a warm Bazel.
+// Formatting, lint, the workflows and the setup contracts: seconds with a warm Bazel. The
+// workflow and setup checks run no Bazel, so they run beside lint.
 local quick = new Mapping<String, Step> {
   ["lint"] = task("lint")
-  ["lint:ci"] = task("lint:ci")
-  ["test:setup"] = task("test:setup")
+  ["lint:ci"] = (task("lint:ci")) { exclusive = false }
+  ["test:setup"] = (task("test:setup")) { exclusive = false }
 }
 
 // The conventions, the API reference and the repository tooling's tests.

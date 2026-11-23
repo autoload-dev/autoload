@@ -195,9 +195,9 @@ class VerificationTest(unittest.TestCase):
         lanes = {lane: [] for lane in LANES} | {
             "host": ["test:bazel", "host:addon:gadget@macos"]
         }
-        self.assertEqual(for_host(lanes, "linux")["host"], ["test:bazel"])
+        self.assertEqual(for_host(lanes["host"], "linux"), ["test:bazel"])
         self.assertEqual(
-            for_host(lanes, "macos")["host"], ["test:bazel", "host:addon:gadget@macos"]
+            for_host(lanes["host"], "macos"), ["test:bazel", "host:addon:gadget@macos"]
         )
         only_linux = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@linux"]}
         outputs = plan_outputs(only_linux)

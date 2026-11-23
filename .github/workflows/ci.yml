@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # The merge queue runs every selected lane on the result of the merge. Main
+  # The merge queue runs every lane on the result of the merge. Main
   # then receives that commit unchanged, so a push to main runs nothing again.
   merge_group:
   workflow_dispatch:
@@ -176,7 +176,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require selected jobs to succeed
+      - name: Require the planned jobs to succeed
         env:
           VERIFICATION_NEEDS: ${{ toJSON(needs) }}
         run: python3 -m tools.ci.verification verify

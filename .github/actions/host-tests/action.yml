@@ -1,14 +1,14 @@
 name: Run host tests
 description: >-
-  Set up the repository and run the host lane's selected tasks on this
+  Set up the repository and run the host lane's planned tasks on this
   runner's host. Run it after the checkout.
 
 inputs:
   tasks:
-    description: JSON array of the host lane's selected mise tasks.
+    description: JSON array of the host lane's planned mise tasks.
     required: true
   android:
-    description: Whether a selected task needs the Android SDK, as the plan says for its job.
+    description: Whether a planned task needs the Android SDK, as the plan says for its job.
     default: "true"
 
 runs:
