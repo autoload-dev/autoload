@@ -12,6 +12,11 @@ inputs:
   android-cache:
     description: Cache Android SDK components missing from the runner.
     default: "false"
+  cache-name:
+    description: >-
+      The name that keeps this job's caches apart from other jobs'. A matrix's
+      jobs share one job id, so each passes a name of its own.
+    default: ${{ github.job }}
 
 runs:
   using: composite
@@ -87,7 +92,7 @@ runs:
         sha256: ${{ steps.mise.outputs.sha256 }}
         cache: ${{ steps.runner.outputs.fresh }}
         cache_save_post: ${{ steps.runner.outputs.fresh }}
-        cache_key_prefix: mise-${{ github.job }}
+        cache_key_prefix: mise-${{ inputs.cache-name }}
         reshim: true
     - name: Record runner tool versions
       shell: bash
@@ -135,11 +140,13 @@ runs:
     - name: Locate cache
       id: cache
       shell: bash
+      env:
+        CACHE_NAME: ${{ inputs.cache-name }}
       run: |
         cache=${BAZEL_REPOSITORY_CACHE:-$HOME/.cache/bazel-repository}
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
-        echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$GITHUB_JOB-" >> "$GITHUB_OUTPUT"
+        echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$CACHE_NAME-" >> "$GITHUB_OUTPUT"
     # Hosted macOS runners have no sticky disk: the cache service keeps a job's
     # downloads, such as the export templates, without the extracted
     # repositories. A key ends in the digest of the entry's file list; the
@@ -173,7 +180,7 @@ runs:
         && steps.runner.outputs.fresh == 'true'
       uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
       with:
-        key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}
+        key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-name }}
         path: ${{ steps.cache.outputs.path }}
     # Bazel refreshes a download's modification time on every cache hit.
     - name: Prune unused downloads

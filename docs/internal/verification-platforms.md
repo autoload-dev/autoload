@@ -60,13 +60,12 @@ caches keep unchanged work cheap; a run in which every lane found its work cache
 minutes with the Android job as its longest (November 2026), which no path selection would
 save. The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's
 own, each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
-self-test in every lane. Each [CI](../../.github/workflows/ci.yml) job runs one lane on its
-host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work whose
-`addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
-The first job to fail cancels the run ([`stop-run`](../../.github/actions/stop-run/action.yml)),
-so the other jobs free their runners and `Finalize` fails at once, which in the merge queue
-removes the entry without waiting for the slowest lane; the work they finished stays in
-Bazel's caches. A fork's pull request has a read-only token and runs to the end.
+self-test in every lane. Each job of [CI](../../.github/workflows/ci.yml)'s lane matrix runs
+one lane on its host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work
+whose `addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
+The matrix fails fast: the first job to fail cancels the others, so they free their runners
+and `Finalize` fails at once, which in the merge queue removes the entry without waiting for
+the slowest lane; the work they finished stays in Bazel's caches.
 
 Locally, `mise run ci:lane -- <lane>` runs a whole lane on this host, `mise run ci:work --
 <name>...` single pieces, and `mise run ci:work` lists them. Where a piece is one Bazel command,
