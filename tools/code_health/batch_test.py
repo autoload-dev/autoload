@@ -1,10 +1,13 @@
 """Tests of reviewing many files in one CLI run, and of the result cache."""
 
+import os
 import stat
+import subprocess
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools.code_health.batch import Reviewer, batches, cli_identity
 from tools.code_health.translation import Translation
@@ -13,7 +16,7 @@ from tools.code_health.translation import Translation
 # file by its line count, reports the rules it saw, counts its runs and fails on "fail.py".
 FAKE_CLI = textwrap.dedent("""\
     #!/usr/bin/env python3
-    import json, pathlib, sys
+    import json, os, pathlib, sys
     runs = pathlib.Path(__file__).with_name("runs")
     runs.write_text(str(int(runs.read_text()) + 1) if runs.exists() else "1")
     rules = pathlib.Path(".codescene/code-health-rules.json")
@@ -24,7 +27,8 @@ FAKE_CLI = textwrap.dedent("""\
             continue
         lines = len(pathlib.Path(name).read_text().splitlines())
         row = {"path": name, "score": float(lines), "review": [],
-               "rules": rules.read_text() if rules.exists() else None}
+               "rules": rules.read_text() if rules.exists() else None,
+               "git_dir": os.environ.get("GIT_DIR")}
         print(json.dumps(row))
     """)
 
@@ -91,6 +95,28 @@ class ReviewerTest(unittest.TestCase):
         self.assertEqual({"error": "license check failed"}, results[1])
         self.reviewer().review(files)
         self.assertEqual(2, self.runs())
+
+    def test_a_git_hooks_repository_is_left_alone(self) -> None:
+        repository = self.root / "repository"
+        subprocess.run(["git", "init", "-q", str(repository)], check=True)
+        hook = {"GIT_DIR": str(repository / ".git"), "GIT_WORK_TREE": str(repository)}
+        with mock.patch.dict(os.environ, hook):
+            reviewer = Reviewer(str(self.cli), hook, "1.0", None, self.root / "cache")
+            results = reviewer.review([Translation("a.py", "x = 1\n")])
+        self.assertEqual(1.0, results[0]["score"])
+        self.assertIsNone(results[0]["git_dir"])
+        worktree = subprocess.run(
+            [
+                "git",
+                "config",
+                "--file",
+                str(repository / ".git" / "config"),
+                "core.worktree",
+            ],
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(1, worktree.returncode, "core.worktree was written")
 
     def test_a_binary_named_cs_is_identified_without_running_it(self) -> None:
         identity = cli_identity(str(self.cli), {})
