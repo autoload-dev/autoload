@@ -488,7 +488,7 @@ class GraphTranslationTest(unittest.TestCase):
 
     def test_symbol_options_bazel_does_not_replay_are_rejected(self) -> None:
         check_options(["vulkan=no", "dev_build=yes"])
-        for option in ["debug_symbols=yes", "optimize=speed"]:
+        for option in ["debug_symbols=yes", "optimize=speed", "lto=thin"]:
             with (
                 self.subTest(option=option),
                 self.assertRaisesRegex(ValueError, "follows Bazel's flags"),

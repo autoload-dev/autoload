@@ -22,6 +22,36 @@ config_setting(
     flag_values = {":engine": ""},
 )
 
+# How source-built engines compile under -c opt, with Godot's levels: speed (-O3),
+# speed_trace (-O2), size (-Os) and size_extra (-Os with SIZE_EXTRA), plus size_min (-Oz with
+# SIZE_EXTRA), the smallest engine. auto is Godot's own choice: speed for release
+# runtimes, speed_trace for debug runtimes and editors. Other compilation modes keep
+# Bazel's levels, and prebuilt engines are unaffected.
+string_flag(
+    name = "engine_optimize",
+    build_setting_default = "auto",
+    values = [
+        "auto",
+        "size",
+        "size_extra",
+        "size_min",
+        "speed",
+        "speed_trace",
+    ],
+)
+
+# Link-time optimization of source-built engines under -c opt. thin needs Clang; full
+# multiplies an engine's link time.
+string_flag(
+    name = "engine_lto",
+    build_setting_default = "none",
+    values = [
+        "full",
+        "none",
+        "thin",
+    ],
+)
+
 # Whether godot_run and godot_test targets that leave headless unset run headless.
 bool_flag(
     name = "headless",

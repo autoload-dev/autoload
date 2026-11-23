@@ -12,6 +12,7 @@ load(":engine_source_tests.bzl", "engine_source_test_suite")
 load(":execution_tests.bzl", "execution_test_suite")
 load(":export_templates_archive_tests.bzl", "export_templates_archive_test_suite")
 load(":ios_tests.bzl", "ios_test_suite")
+load(":optimization_tests.bzl", "optimization_test_suite")
 load(":prebuilt_tests.bzl", "prebuilt_test_suite")
 load(":provenance_tests.bzl", "provenance_test_suite")
 load(":runtime_producer_tests.bzl", "runtime_producer_test_suite")
@@ -98,6 +99,8 @@ execution_test_suite(name = "execution_test_suite")
 export_templates_archive_test_suite(name = "export_templates_archive_test_suite")
 
 ios_test_suite(name = "ios_test_suite")
+
+optimization_test_suite(name = "optimization_test_suite")
 
 prebuilt_test_suite(name = "prebuilt_test_suite")
 

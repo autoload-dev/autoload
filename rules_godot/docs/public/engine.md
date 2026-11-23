@@ -230,9 +230,9 @@ from a project scan.
 Patches use the host `patch` executable with fuzz disabled and strip level 1
 (`patch_strip`); every hunk must apply. `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
-simulator switch, module selection, raw `profile` and `build_profile` paths, and
-`optimize` and `debug_symbols`, which follow Bazel's flags as in
-[debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
+simulator switch, module selection, raw `profile` and `build_profile` paths,
+`optimize` and `lto`, which follow the [optimization](#optimization) settings, and
+`debug_symbols`, which follows Bazel's flags as in [debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
 Builders must read literal keys from `env` or pass it directly to named Python
 helpers with an `env` parameter. Dynamic callbacks, environment aliases and
 unsupported forwarding fail configuration instead of silently omitting inputs.
@@ -421,13 +421,46 @@ and `build_options`, so an unchanged engine keeps its hash and its cached action
 CPU is not part of it, so the engines of one configuration for several
 Android ABIs name the same version. Neither are compiler and toolchain flags.
 
+## Optimization
+
+Under `-c opt`, a source-built engine compiles at the level of
+`--@autoload_rules_godot//godot:engine_optimize`, with Godot's values and meaning plus
+one of the ruleset's own:
+
+| Value | Compiles with |
+| --- | --- |
+| `auto` (default) | Godot's own choice: `speed` for release runtimes, `speed_trace` for debug runtimes and editors |
+| `speed` | `-O3` |
+| `speed_trace` | `-O2` |
+| `size` | `-Os` |
+| `size_extra` | `-Os` and Godot's `SIZE_EXTRA`, which stops forced inlining |
+| `size_min` | `-Oz` and `SIZE_EXTRA`, the smallest engine |
+
+`--@autoload_rules_godot//godot:engine_lto` adds link-time optimization: `none` (default),
+`thin` or `full`. Apple engines carry it in their objects into the application's link;
+Android and desktop engines also link with it. `thin` needs Clang, and `-Oz` needs Clang or
+GCC 12; `full` takes the longest to link.
+
+Both apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
+their level wins over the toolchain's and the command line's there, while extensions and
+application code keep the build's flags. Other compilation modes keep Bazel's levels: `-c dbg`
+debugs the engine unoptimized whatever the settings say. Prebuilt engines are unaffected.
+
+For the smallest release engine of an application:
+
+```sh
+bazel build //path/to:app -c opt \
+  --@autoload_rules_godot//godot:engine_optimize=size_min \
+  --@autoload_rules_godot//godot:engine_lto=full
+```
+
 ## Debug symbols
 
-A source-built engine compiles like any C++ library of the build: Bazel's `-c`,
-`--copt`, `--per_file_copt` and `--apple_generate_dsym` decide its optimization
-and debug information, for `template_release` and `template_debug` engines
-alike. `fastbuild`, the default, compiles it unoptimized; `-c opt` optimizes it
-as the C/C++ toolchain does. Godot's `optimize` and `debug_symbols` options are
+A source-built engine's debug information follows Bazel's `-c`, `--copt`,
+`--per_file_copt` and `--apple_generate_dsym`, for `template_release` and
+`template_debug` engines alike; its optimization follows the
+[optimization](#optimization) settings under `-c opt`. `fastbuild`, the default,
+compiles it unoptimized. Godot's `optimize`, `lto` and `debug_symbols` options are
 rejected.
 
 `-c dbg` debugs an application together with its engine. A store build whose

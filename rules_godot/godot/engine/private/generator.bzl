@@ -12,6 +12,7 @@ load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
+load(":optimization.bzl", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "engine_optimization")
 
 visibility("public")
 
@@ -303,18 +304,21 @@ def _floor(settings, attr):
 def _desktop_native_impl(settings, attr):
     # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
     # explains; a transition cannot compose two, so this one repeats that setting.
-    return _floor(settings, attr) | UNSTRIPPED
+    return _floor(settings, attr) | engine_optimization(settings, attr) | UNSTRIPPED
 
 _desktop_native = transition(
     implementation = _desktop_native_impl,
-    inputs = _FLOOR_OPTIONS.values(),
-    outputs = _FLOOR_OPTIONS.values() + UNSTRIPPED.keys(),
+    inputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS,
+    outputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS + UNSTRIPPED.keys(),
 )
 
+def _engine_library_impl(settings, attr):
+    return _floor(settings, attr) | engine_optimization(settings, attr)
+
 _engine_library = transition(
-    implementation = _floor,
-    inputs = _FLOOR_OPTIONS.values(),
-    outputs = _FLOOR_OPTIONS.values(),
+    implementation = _engine_library_impl,
+    inputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS,
+    outputs = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS,
 )
 
 _BINARY_ATTRS = _SOURCE_ATTRS | {

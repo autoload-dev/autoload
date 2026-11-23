@@ -1596,7 +1596,8 @@ PROTECTED_OPTIONS = {
 # Options whose flags Bazel's own flags replace, with the replacement.
 BAZEL_OPTIONS = {
     "debug_symbols": "-c dbg, or --copt=-g / --per_file_copt with -c opt",
-    "optimize": "-c, --copt or --per_file_copt",
+    "optimize": "-c with --@autoload_rules_godot//godot:engine_optimize",
+    "lto": "-c opt with --@autoload_rules_godot//godot:engine_lto",
 }
 
 
