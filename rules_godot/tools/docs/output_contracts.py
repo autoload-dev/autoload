@@ -9,7 +9,7 @@ import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
-from tools.ci.verification import CONTRACT_LANES as MACHINE_LANES
+from tools.ci.work import CONTRACT_LANES as MACHINE_LANES
 from tools.ruleset import MODULE
 
 SECTIONS = {
@@ -55,7 +55,7 @@ COMPANION_KINDS = frozenset(
 DEFAULT_CONTRACT_LANE = "docs"
 CONTRACT_LANES = (DEFAULT_CONTRACT_LANE, *MACHINE_LANES)
 # The lane whose cases evaluate the consumer modules.
-CONSUMER_MODULE_LANE = "host"
+CONSUMER_MODULE_LANE = "desktop"
 REPOSITORY_KINDS = frozenset({"repository_rule_info", "module_extension_info"})
 
 

@@ -50,7 +50,7 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
     test = (
         RULESET_TEST
         if name == RULESET_NAME
-        else f"python3 -m tools.addons.lanes host {directory.name}"
+        else f"python3 -m tools.addons.lanes desktop {directory.name}"
     )
     return {
         "name": name,

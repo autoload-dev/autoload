@@ -6,7 +6,7 @@ release is a tag `<module>-vX.Y.Z`, such as `autoload_rules_godot-v0.2.0` or
 `autoload_firebase-v0.1.0`; the tags `v0.1.0` and `v0.1.1` predate this scheme.
 [release_module.py](../../tools/ci/release_module.py) derives the rest from the tag: the
 module's directory, from the module that declares the name; its release test, the registry
-test module for the ruleset and `python3 -m tools.addons.lanes host <module>` for an add-on;
+test module for the ruleset and `python3 -m tools.addons.lanes desktop <module>` for an add-on;
 and whether the Bazel Central Registry gets it, which its templates in [.bcr](../../.bcr)
 decide. No list names the modules. Pushing a tag runs
 [release.yaml](../../.github/workflows/release.yaml), which:
@@ -61,7 +61,7 @@ builds `e2e/smoke` from the archive. An add-on's archive leaves its `examples/` 
 the module's own `.gitattributes`.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
-module by `mise run addon:new` and checked by the conventions (RG015), so a module is ready to
+module by `bazel run //tools/addons:new --` and checked by the conventions (RG015), so a module is ready to
 publish from its first commit; it is published when its tag is pushed. `.bcr/config.yml`
 lists only the ruleset: every release names its module root itself (`publish.yaml`).
 

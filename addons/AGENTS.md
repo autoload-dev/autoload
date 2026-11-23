@@ -7,8 +7,8 @@ Each directory here is a Bazel module of its own, `addons/<module>` named
 Create modules and add-ons with the generator, never by copying another module:
 
 ```sh
-mise run addon:new <module>                   # a module with one add-on, <module>
-mise run addon:new <module> --addon <addon>   # one more add-on in a module
+bazel run //tools/addons:new -- <module>                   # a module with one add-on, <module>
+bazel run //tools/addons:new -- <module> --addon <addon>   # one more add-on in a module
 ```
 
 It writes [tools/addons/template](../tools/addons/template), which builds in every lane from
@@ -26,10 +26,10 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
   [examples.bazelrc](examples.bazelrc); each adds only its BuildBuddy tag. Settings for all
   modules go in those two files.
 - `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
-  documents what a module declares: the lanes that verify it, the hosts of its host lane and
-  its test operations, such as `lanes = List("host")` and `hosts = List("macos")`. A module
+  documents what a module declares: the lanes that verify it, the desktop systems of its desktop lane
+  and its test operations, such as `lanes = List("desktop")` and `desktops = List("macos")`. A module
   without the `android` and `ios` lanes builds no application: its examples have no `app`,
-  no Android SDK and no Maven graph. CI's plan, the lanes and the conventions read it;
+  no Android SDK and no Maven graph. The lanes' work, the lanes and the conventions read it;
   nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
@@ -60,19 +60,20 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
 
 # Lanes
 
-The same tasks verify every module, from its `examples/` (`tools/addons/lanes.py`):
+The same commands verify every module, from its `examples/` (`tools/addons/lanes.py`), as
+the lanes' work (`tools/ci/work.py`), which provisions the Android SDK first:
 
 ```sh
-mise run addon:host <module>      # module tests and example targets but apps, editor and desktop
-mise run addon:android <module>   # each example project's app for Android
-mise run addon:ios <module>       # each example project's app for the iOS Simulator
+mise run ci:work -- desktop:addon:<module>      # module tests and example targets but apps
+mise run ci:work -- android:addon:<module>   # each example project's app for Android
+mise run ci:work -- ios:addon:<module>       # each example project's app for the iOS Simulator
 ```
 
-`host` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
+`desktop` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
 what they use; the release archive leaves them out with the examples. CI runs every module's
-lanes on every run; `mise run addon:template <lane>` checks the template the same way.
+lanes on every run; `mise run ci:work -- <lane>:addon-template` checks the template the same way.
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
 `examples/signing/`, install with `xcrun devicectl` and check the log for crashes.

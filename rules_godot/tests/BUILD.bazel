@@ -7,7 +7,7 @@ exports_files([
 
 # Configuration suites: the mobile tests of each Bazel configuration of .bazelrc, run as
 # `bazel test //:<suite> --config=<configuration>` from this directory. Each suite is
-# manual, so //... stays the host set; a test is listed in every suite whose
+# manual, so //... stays the desktop set; a test is listed in every suite whose
 # configuration it runs under.
 
 # --config=android --config=aab

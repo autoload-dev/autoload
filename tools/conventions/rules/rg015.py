@@ -8,7 +8,7 @@ from pathlib import Path
 from tools.addons import registry as templates
 from tools.addons.modules import (
     AMENDS,
-    HOSTS,
+    DESKTOPS,
     LANES,
     PROPERTIES,
     addon_manifest,
@@ -40,7 +40,7 @@ IMPORTS = {
 }
 # The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
 # Pkl, so nothing else checks the schema's types.
-ADDON_VALUES = {"lanes": set(LANES), "hosts": set(HOSTS)}
+ADDON_VALUES = {"lanes": set(LANES), "desktops": set(DESKTOPS)}
 # What only a module with an application lane owns: its examples' Maven graph and their
 # provisioning profile.
 APP_FILES = ("examples/BUILD.bazel", "examples/maven_install.json")

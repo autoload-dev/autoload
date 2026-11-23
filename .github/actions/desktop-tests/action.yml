@@ -1,0 +1,19 @@
+name: Run desktop tests
+description: >-
+  Set up the repository and run the desktop lane's work (tools/ci/work.py)
+  for this runner's system. Run it after the checkout.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up repository
+      uses: ./.github/actions/setup
+      with:
+        # The ruleset's desktop set includes its Android packaging tests.
+        android-cache: "true"
+    - name: Run tests
+      shell: bash
+      run: python3 -m tools.ci.work lane desktop
+    - name: Save Bazel downloads
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/setup/save-downloads

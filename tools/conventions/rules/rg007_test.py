@@ -15,7 +15,7 @@ class TestOnlyOperationsTest(RepositoryTest):
         self.write(
             "addons/gdunit/addon.pkl",
             'amends "../../tools/addons/Addon.pkl"\n'
-            'lanes = List("host")\ntestOperations = List("gdunit_test")\n',
+            'lanes = List("desktop")\ntestOperations = List("gdunit_test")\n',
         )
 
     def test_true_defaults_satisfy_the_rule_without_a_literal_attribute(self) -> None:

@@ -1,6 +1,6 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-# The add-on generator and its template; `mise run test:setup` runs this package's tests, and
+# The add-on generator and its template; `mise run ci:work -- test:setup` runs this package's tests, and
 # the conventions check (RG015) tests its rule against generated modules.
 py_library(
     name = "new_lib",
@@ -19,4 +19,13 @@ py_library(
     deps = [
         "//tools/setup:modules_lib",
     ],
+)
+
+# `bazel run //tools/addons:new -- <module> [--addon <addon>]` writes a module or an add-on
+# into this checkout (addons/AGENTS.md).
+py_binary(
+    name = "new",
+    srcs = ["new.py"],
+    tags = ["manual"],
+    deps = [":new_lib"],
 )

@@ -10,11 +10,12 @@ on:
 permissions:
   contents: read
 
-# Every run runs every lane; Bazel's caches keep unchanged work cheap. The plan
-# job (tools/ci/verification.py) assigns the lanes' tasks to the jobs and their
-# hosts, and leaves the source engines to their schedule. The jobs that need a macOS
-# runner run on the self-hosted macos-ci runners, which keep their caches
-# between jobs. Policy: docs/internal/verification-platforms.md#apple-lanes.
+# Every run runs every lane; Bazel's caches keep unchanged work cheap. Each job
+# runs one lane's work (tools/ci/work.py) for its host; the source engines run
+# on their own schedule (source-engine.yml). The jobs that need a macOS runner
+# run on the self-hosted macos-ci runners, which keep their caches between jobs
+# and run no code of a fork's pull request.
+# Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
@@ -27,40 +28,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  plan:
-    name: Plan
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 5
-    # One output per job, named like it; a host job's _android one says whether it needs
-    # the Android SDK.
-    outputs:
-      formatting: ${{ steps.plan.outputs.formatting }}
-      api_docs: ${{ steps.plan.outputs.api_docs }}
-      tests_linux: ${{ steps.plan.outputs.tests_linux }}
-      tests_linux_android: ${{ steps.plan.outputs.tests_linux_android }}
-      tests_macos: ${{ steps.plan.outputs.tests_macos }}
-      tests_macos_android: ${{ steps.plan.outputs.tests_macos_android }}
-      android: ${{ steps.plan.outputs.android }}
-      ios: ${{ steps.plan.outputs.ios }}
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up planning tools
-        uses: ./.github/actions/setup
-        with:
-          bazel: "false"
-      - name: Plan verification tasks
-        id: plan
-        run: python3 -m tools.ci.verification plan
-
   formatting:
     name: Source quality
-    needs: plan
-    if: needs.plan.outputs.formatting != '[]'
-    env:
-      VERIFICATION_TASKS: ${{ needs.plan.outputs.formatting }}
     timeout-minutes: 10
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -71,14 +40,10 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Check source quality and setup contracts
-        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.work lane quality
 
   api-docs:
     name: API documentation
-    needs: plan
-    if: needs.plan.outputs.api_docs != '[]'
-    env:
-      VERIFICATION_TASKS: ${{ needs.plan.outputs.api_docs }}
     timeout-minutes: 15
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -89,12 +54,10 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Check API docs
-        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.work lane docs
 
   tests-linux:
     name: Tests (Linux)
-    needs: plan
-    if: needs.plan.outputs.tests_linux != '[]'
     timeout-minutes: 30
     # Uncached Godot imports and exports are CPU-bound; 4 vCPUs ran 4 at a time.
     runs-on: blacksmith-8vcpu-ubuntu-2404
@@ -103,16 +66,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Run host tests
-        uses: ./.github/actions/host-tests
-        with:
-          tasks: ${{ needs.plan.outputs.tests_linux }}
-          android: ${{ needs.plan.outputs.tests_linux_android }}
+      - name: Run desktop tests
+        uses: ./.github/actions/desktop-tests
 
   tests-macos:
     name: Tests (macOS)
-    needs: plan
-    if: needs.plan.outputs.tests_macos != '[]'
+    # A fork's pull request reaches the self-hosted runners only in the merge queue.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 30
     runs-on: macos-ci
     steps:
@@ -120,18 +80,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Run host tests
-        uses: ./.github/actions/host-tests
-        with:
-          tasks: ${{ needs.plan.outputs.tests_macos }}
-          android: ${{ needs.plan.outputs.tests_macos_android }}
+      - name: Run desktop tests
+        uses: ./.github/actions/desktop-tests
 
   android:
     name: Android
-    needs: plan
-    if: needs.plan.outputs.android != '[]'
-    env:
-      VERIFICATION_TASKS: ${{ needs.plan.outputs.android }}
     timeout-minutes: 60
     # Uncached Godot, Java and dex actions are CPU-bound, as in Tests (Linux).
     runs-on: blacksmith-8vcpu-ubuntu-2404
@@ -145,14 +98,11 @@ jobs:
         with:
           android-cache: "true"
       - name: Build and inspect apps
-        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.work lane android
 
   ios:
     name: iOS
-    needs: plan
-    if: needs.plan.outputs.ios != '[]'
-    env:
-      VERIFICATION_TASKS: ${{ needs.plan.outputs.ios }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 60
     runs-on: macos-ci
     steps:
@@ -163,20 +113,23 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
       - name: Build and inspect apps
-        run: python3 -m tools.ci.verification run "$VERIFICATION_TASKS"
+        run: python3 -m tools.ci.work lane ios
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
+  # The merge queue's required check: one name, whichever jobs the workflow has.
   verification:
     name: Finalize
     if: always()
-    needs: [plan, formatting, api-docs, tests-linux, tests-macos, android, ios]
+    needs: [formatting, api-docs, tests-linux, tests-macos, android, ios]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require the planned jobs to succeed
+      - name: Require every job to succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         env:
-          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
-        run: python3 -m tools.ci.verification verify
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "A job did not succeed: $RESULTS" >&2
+          exit 1

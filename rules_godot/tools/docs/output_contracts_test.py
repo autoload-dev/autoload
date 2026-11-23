@@ -82,8 +82,8 @@ class OutputContractsTest(unittest.TestCase):
     def test_behavior_tests_resolve_in_a_lane_that_evaluates_their_module(self) -> None:
         # The docs lane of the default hook evaluates the ruleset module only.
         self.assertEqual("docs", behavior_lane("."))
-        self.assertEqual("host", behavior_lane("tests"))
-        self.assertEqual("host", behavior_lane("examples"))
+        self.assertEqual("desktop", behavior_lane("tests"))
+        self.assertEqual("desktop", behavior_lane("examples"))
 
     def test_kind_semantics(self) -> None:
         test = replace(EXECUTABLE, label="//:test")

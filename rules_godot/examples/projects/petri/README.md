@@ -76,7 +76,7 @@ source build extends to those platforms.
 
 ## Working on Petri
 
-- `mise run test:example:petri` from the repository root validates the scripts and runs the suites.
+- `bazel test --build_tests_only --config=petri //projects/petri/...` from `rules_godot/examples/` validates the scripts and runs the suites.
 - `main/petri.tscn` composes the dish, the scrims that keep the HUD legible over a
   full dish, and the HUD; `main/petri.gd` wires the HUD's requests to the dish.
 - Change the module's code under `engine/modules/reaction_diffusion/`; the next

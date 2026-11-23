@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,9 +45,9 @@ def _schema_aliases(text: str) -> dict[str, tuple[str, ...]]:
 
 _SCHEMA_TEXT = SCHEMA.read_text()
 _ALIASES = _schema_aliases(_SCHEMA_TEXT)
-# The lanes CI runs and the hosts of the host lane, as the schema names them.
+# The lanes CI runs and the desktop systems of the desktop lane, as the schema names them.
 LANES = _ALIASES["Lane"]
-HOSTS = _ALIASES["Host"]
+DESKTOPS = _ALIASES["Desktop"]
 # What an addon.pkl may set, and the defaults of what it may leave out.
 PROPERTIES = tuple(
     match[1]
@@ -54,6 +55,13 @@ PROPERTIES = tuple(
     if (match := _PROPERTY.match(line)) is not None
 )
 DEFAULTS = addon_values(_SCHEMA_TEXT)
+
+
+def host() -> str:
+    """This machine's operating system, as addon.pkl names desktop systems."""
+    return {"Darwin": "macos", "Linux": "linux"}.get(platform.system(), platform.system())
+
+
 # The lanes that build applications: a module without them has no app and no Android SDK.
 APP_LANES = ("android", "ios")
 
@@ -87,7 +95,7 @@ class AddonModule:
     path: Path
     name: str
     projects: tuple[str, ...]
-    hosts: tuple[str, ...] = HOSTS
+    desktops: tuple[str, ...] = DESKTOPS
     lanes: tuple[str, ...] = LANES
     test_operations: tuple[str, ...] = ()
 
@@ -113,7 +121,7 @@ class AddonModule:
             path=path,
             name=str(attributes["name"]),
             projects=tuple(sorted(build.parent.name for build in projects)),
-            hosts=manifest["hosts"],
+            desktops=manifest["desktops"],
             lanes=manifest.get("lanes", LANES),
             test_operations=manifest["testOperations"],
         )

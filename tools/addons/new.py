@@ -1,7 +1,7 @@
 """
 Create an add-on module in addons/ from the template, or add an add-on to a module.
 
-`python3 -m tools.addons.new <module> [--addon <addon>]` (`mise run addon:new`) writes
+`python3 -m tools.addons.new <module> [--addon <addon>]` (`bazel run //tools/addons:new --`) writes
 tools/addons/template/module/ to addons/<module>/ for a new module, with
 tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases, and
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
@@ -10,7 +10,7 @@ contents stands for a name derived from the two, and every file name ends in `.t
 module's examples then pin their Maven graph, which needs Bazel and the network. The
 written files belong to the module from then on: nothing regenerates them.
 
-`addons/.selftest` (gitignored) is the self-test's module (`mise run addon:template`): it is
+`addons/.selftest` (gitignored) is the self-test's module (`mise run ci:work -- <lane>:addon-template`): it is
 regenerated from scratch each time.
 """
 
@@ -137,10 +137,16 @@ def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> li
 
 def pin(directory: str, root: Path = ROOT) -> None:
     """Pin the examples' Maven graph, which starts from the template's empty lock file."""
+    # Under `bazel run //tools/addons:new`, the generator's own runfiles variables would
+    # point the pin's launcher at the wrong runfiles tree.
+    runfiles = {"RUNFILES_DIR", "RUNFILES_MANIFEST_FILE", "JAVA_RUNFILES"}
+    environment = {
+        name: value for name, value in os.environ.items() if name not in runfiles
+    }
     subprocess.run(
         ["bazel", "run", "@maven//:pin"],
         cwd=root / module_path(directory) / "examples",
-        env={**os.environ, "REPIN": "1"},
+        env={**environment, "REPIN": "1"},
         check=True,
     )
 
@@ -168,7 +174,7 @@ def main() -> None:
     if args.module != SELFTEST:
         print(
             "\nNext: describe the module in its README and verify it with "
-            f"`mise run addon:host {args.module}`."
+            f"`mise run ci:work -- desktop:addon:{args.module}`."
         )
 
 

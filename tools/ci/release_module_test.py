@@ -50,7 +50,7 @@ class ReleaseModuleTest(unittest.TestCase):
         self.assertEqual(widget["root"], "addons/widget")
         self.assertEqual(widget["version"], "1.0.0-rc.1")
         self.assertEqual(widget["bcr"], "true")
-        self.assertEqual(widget["test"], "python3 -m tools.addons.lanes host widget")
+        self.assertEqual(widget["test"], "python3 -m tools.addons.lanes desktop widget")
         self.assertEqual(describe("autoload_gadget-v0.1.0", self.root)["bcr"], "false")
 
     def test_unknown_modules_and_malformed_tags_are_refused(self) -> None:

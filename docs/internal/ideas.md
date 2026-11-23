@@ -51,9 +51,9 @@ what is still open. Line references are to `main` as of 2026-11-04.
   and `tests/analysis/engine_configuration/repositories_test.py`.
 - Open: which processes hold the mount in practice; extraction cost of moving the cache.
 
-### Analysis size of the host tests
+### Analysis size of the desktop tests
 
-- `mise run test:bazel` configures 1.54 million targets on macOS (0.96 million on Linux).
+- The ruleset's desktop set, the work `test:bazel`, configures 1.54 million targets on macOS (0.96 million on Linux).
   1.11 million are `toolchain` targets: every configuration evaluates all 1,295 registered
   toolchains, 696 of them Go toolchains (12 Go SDKs for 58 platforms each, from rules_go and
   rules_android).
@@ -62,7 +62,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
   `//godot/platforms/...` (1.0 million configured targets, 158 of 185 CPU seconds).
 - A fresh CI job also extracts 13 GB of repositories, 6.4 GB of them export templates.
 - Since `godot/private/config/native.bzl` decides the native options and an application
-  configures its native code once per platform slice, the host set configures 1.31 million
+  configures its native code once per platform slice, the desktop set configures 1.31 million
   targets in 890 configurations (845 target, 45 exec) on macOS.
 - Remaining: the content configuration and the project context still analyze the native
   edges of extensions and add-ons (an extension's `library` and `implementation_deps`, an

@@ -406,8 +406,8 @@ module lists it. Each module:
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
   `examples/.bazelrc` imports `addons/examples.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
-  properties: `lanes` (some of `host`, `android`, `ios`), and optionally `hosts` (some of
-  `linux`, `macos`) and `testOperations`. hk's Pkl evaluator does not check the schema's
+  properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
+  of `linux`, `macos`) and `testOperations`. hk's Pkl evaluator does not check the schema's
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
 - has at least one example project in `examples/projects/<name>/`, each defining the targets
@@ -421,10 +421,10 @@ and their text without loading Bazel; it reports a stray `backends/` directory o
 
 ## Run and maintain the checks
 
-From the rules_godot repository root:
+From the repository root:
 
 ```sh
-mise run conventions
+bazel run //tools/conventions
 ```
 
 The command runs the registered convention rules across all owned modules. Violations include the stable rule ID, file, line and a link to

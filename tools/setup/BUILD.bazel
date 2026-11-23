@@ -7,6 +7,7 @@ py_library(
     visibility = [
         "//tools/addons:__pkg__",
         "//tools/android:__pkg__",
+        "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
     ],
 )
@@ -18,7 +19,7 @@ py_test(
     deps = [":modules_lib"],
 )
 
-# The shared-pin check of the root module and its consumer modules; `mise run test:setup`
+# The shared-pin check of the root module and its consumer modules; `mise run ci:work -- test:setup`
 # runs pins.py on the checkout.
 py_test(
     name = "pins_test",

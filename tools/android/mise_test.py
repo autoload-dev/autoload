@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class MiseEnvironmentTest(unittest.TestCase):
     def test_host_commands_work_before_sdk_installation(self) -> None:
         mise = shutil.which("mise")
-        self.assertIsNotNone(mise, "Run this test with mise run test:setup")
+        self.assertIsNotNone(mise, "Run this test with mise run ci:work -- test:setup")
         with tempfile.TemporaryDirectory(prefix="rules-godot-mise-") as directory:
             root = Path(directory)
             for name in ("mise.toml", "mise.lock"):

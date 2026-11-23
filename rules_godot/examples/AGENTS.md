@@ -6,19 +6,20 @@ Each example's README owns its setup, commands and visible success criteria.
 
 ## Common workflows
 
-From the repository root, select the example you are changing:
+From this directory, select the example you are changing:
 
 ```sh
-mise run test:example:sqlite
-mise run test:example:platform_paths
-mise run test:example:app_auth
-mise run test:example:dart
-mise run test:example:lichtpost
-mise run test:example:petri
+bazel test --build_tests_only //addons/sqlite/...
+bazel test --build_tests_only //addons/platform_paths/...
+bazel test --build_tests_only //addons/app_auth/...
+bazel test --build_tests_only //addons/dart/...
+bazel test --build_tests_only //projects/lichtpost/...
+bazel test --build_tests_only --config=petri //projects/petri/...
 ```
 
-These run the chosen example's host tests; Petri's builds its engine from source with
-`--config=petri` and belongs to the source-engine lane. For a more focused test, editor or sidecar command,
+These run the chosen example's desktop tests, as the desktop lane's `test:example:<name>` work does;
+Petri's builds its engine from source with `--config=petri` and belongs to the source-engine
+lane. For a more focused test, editor or sidecar command,
 read that example's README. Required timing and the evidence of each lane come from the root
 verification policy, not from the existence of these commands.
 

@@ -36,7 +36,7 @@ at the same commit until a release has what they need.
 
 ## A new add-on
 
-`mise run addon:new <module>` creates a module with one add-on, `mise run addon:new <module>
+`bazel run //tools/addons:new -- <module>` creates a module with one add-on, `bazel run //tools/addons:new -- <module>
 --addon <addon>` adds an add-on to a module. Both write from the template in
 [tools/addons/template](../tools/addons/template), which builds on Android, iOS, the editor
 and desktop from the start. The [add-on guidance](AGENTS.md) describes the layout.
