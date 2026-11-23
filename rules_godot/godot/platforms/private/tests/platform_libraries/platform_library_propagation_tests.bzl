@@ -193,7 +193,9 @@ def _test_ios_app_embeds_linked_frameworks_once(name):
         target = name + "_app",
         impl = _ios_app_embeds_linked_frameworks_once,
         # A whole application: the simulator needs no provisioning profile.
-        config_settings = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))},
+        config_settings = {
+            "//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64")),
+        },
         extra_target_under_test_aspects = [reached_actions],
         attr_values = _IOS.attr_values,
     )
@@ -214,7 +216,10 @@ def _ios_app_embeds_linked_frameworks_once(env, target):
         for entry in reached(target)
         if entry.action.mnemonic == "ImportedDynamicFrameworkProcessor"
     ]
-    env.expect.that_collection(embedded, expr = "frameworks of each embedding action").contains_exactly([
+    env.expect.that_collection(
+        embedded,
+        expr = "frameworks of each embedding action",
+    ).contains_exactly([
         ["analytics_extension.framework"],
         ["core_extension.framework"],
         ["FixtureAnalytics.framework"],

@@ -8,8 +8,8 @@ macOS through the linker's export list and on Android through a version script;
 descriptor attributes and data reach the extension and its tool view; minimum
 operating-system versions reach GodotExtensionInfo. On iOS the extension is a framework
 named after the target, whose binary combines the library of every CPU and gets the
-framework's install name and which carries the dynamic frameworks its library links, or with
-ios_linkage = "static" the archive the application links.
+framework's install name and which carries the dynamic frameworks its library links, or
+with ios_linkage = "static" the archive the application links.
 """
 
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
@@ -241,15 +241,31 @@ def _ios_extension_is_a_framework(env, target):
     ).contains_exactly([target.label.name, "Info.plist"])
 
 def _test_ios_framework_carries_the_frameworks_it_links(name):
-    dynamic_xcframework_fixture(name = name + "_core", binary = "FixtureCore", linked = True)
-    dynamic_xcframework_fixture(name = name + "_analytics", binary = "FixtureAnalytics", linked = True, deps = [":" + name + "_core"])
-    _ios_analysis_test(name, _ios_framework_carries_the_frameworks_it_links, deps = [":" + name + "_analytics"])
+    core = name + "_core"
+    analytics = name + "_analytics"
+    dynamic_xcframework_fixture(name = core, binary = "FixtureCore", linked = True)
+    dynamic_xcframework_fixture(
+        name = analytics,
+        binary = "FixtureAnalytics",
+        linked = True,
+        deps = [":" + core],
+    )
+    _ios_analysis_test(
+        name,
+        _ios_framework_carries_the_frameworks_it_links,
+        deps = [":" + analytics],
+    )
 
 def _ios_framework_carries_the_frameworks_it_links(env, target):
     # rules_apple's framework aspect stops at the extension, so an application embeds the
     # frameworks its library links, transitive ones included, only through its provider.
+    binaries = [
+        file.basename
+        for file in target[AppleFrameworkImportInfo].framework_imports.to_list()
+        if file.extension != "plist"
+    ]
     env.expect.that_collection(
-        [file.basename for file in target[AppleFrameworkImportInfo].framework_imports.to_list() if file.extension != "plist"],
+        binaries,
         expr = "the framework binaries an Apple application embeds",
     ).contains_exactly(["FixtureAnalytics", "FixtureCore", target.label.name])
 
