@@ -19,7 +19,7 @@ bazel_dep(name = "apple_support", version = "2.12.0")
 
 # The version Bazel 10's bazel_tools requires, so Bazel 9 and 10 resolve the same graph.
 bazel_dep(name = "rules_java", version = "9.9.0")
-bazel_dep(name = "rules_jvm_external", version = "6.10")
+bazel_dep(name = "rules_jvm_external", version = "7.2")
 
 # bzl_library targets of the API reference.
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
@@ -370,23 +370,6 @@ maven.artifact(
     version = GODOT_LISTENABLEFUTURE_VERSION,
 )
 use_repo(maven, "maven")
-
-# Gradle module metadata redirects a Kotlin Multiplatform root module, which has no JVM
-# artifact of its own, to its JVM module. The gradle resolver of rules_jvm_external records
-# such a root module's POM checksum as its jar checksum, so its jar never downloads. Godot's
-# graph has two of them; each override selects the JVM module Gradle selects. Remove the
-# overrides once a rules_jvm_external release no longer falls back to the POM in
-# GradleResolver (7.2 still does), and repin.
-maven.override(
-    name = "maven",
-    coordinates = "androidx.annotation:annotation",
-    target = "@maven//:androidx_annotation_annotation_jvm",
-)
-maven.override(
-    name = "maven",
-    coordinates = "org.jetbrains.kotlinx:kotlinx-coroutines-core",
-    target = "@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm",
-)
 
 # Godot's Maven graph: what Gradle resolves for rules_godot's contribution alone. Its lock is
 # committed beside the template activities and read by each Android application's minimum

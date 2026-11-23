@@ -19,9 +19,6 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_android", version = "0.8.1")
 bazel_dep(name = "rules_apple", version = "5.4.0")
 bazel_dep(name = "rules_cc", version = "0.2.28")
-
-# 7.2 or later: with resolver = "gradle", 6.10 pins the POM's checksum for the Kotlin
-# Multiplatform artifacts Firebase pulls in (androidx.datastore), and their fetch fails.
 bazel_dep(name = "rules_jvm_external", version = "7.2")
 bazel_dep(name = "rules_python", version = "2.5.1")
 

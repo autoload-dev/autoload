@@ -34,10 +34,6 @@ UNPINNED = {"bazel_dep:autoload_rules_godot"}
 # Deliberate drifts: module -> keys, such as "addons/<name>": {"bazel_dep:<module>"}, with
 # the reason beside the entry. Remove an entry once its reason no longer holds.
 EXCEPTIONS: dict[str, set[str]] = {
-    # Firebase's Kotlin Multiplatform artifacts (androidx.datastore) need rules_jvm_external
-    # 7.2 with the gradle resolver; the ruleset's modules stay on 6.10 until they move too.
-    "addons/firebase": {"bazel_dep:rules_jvm_external"},
-    "addons/firebase/examples": {"bazel_dep:rules_jvm_external"},
     # The repository's tooling pins the rules_go the ruleset's graph resolves, which the
     # ruleset sees through its development dependency on the root module (MODULE.bazel);
     # the examples' newer one stays theirs.
