@@ -4,10 +4,11 @@ amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pk
 // no step selects paths: the pre-push hook runs the quick checks, and `hk check` adds the
 // slower ones that need Bazel in several modules. Policy: docs/internal/verification.md.
 
-// A task that runs Bazel holds its module's server, so it runs alone.
+// A piece of the lanes' work (tools/ci/work.py). Work that runs Bazel holds its module's
+// server, so it runs alone.
 local function task(name: String): Step = new {
   exclusive = true
-  check = "mise run \(name)"
+  check = "python3 -m tools.ci.work run \(name)"
 }
 
 // Formatting, lint, the workflows and the setup contracts: seconds with a warm Bazel. The

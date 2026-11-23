@@ -25,11 +25,11 @@ Godot features are covered from one passing cell.
 | Signing/distribution | Appropriate identity, provisioning and environment | Configuration explicitly selected for the task | Only the signing/distribution operation in scope; never infer Store acceptance |
 
 Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
-included, run in the host sets (`mise run test:bazel` provisions the Android SDK); the
+included, run in the host sets (`python3 -m tools.ci.work run test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
 are `manual`, so the host sets do not analyze their source recipes. CI runs the lane only in
 the [Source engine](#source-engine-workflow) workflow; locally,
-`mise run source-engine` leaves out the tests also tagged `source_engine_extended`.
+`python3 -m tools.ci.work run source-engine` leaves out the tests also tagged `source_engine_extended`.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -68,18 +68,18 @@ A planning failure fails the Finalize job rather than appearing as an empty succ
 
 `hk check` runs the checks that need no lane machine: source quality, setup contracts, the
 conventions, the API reference and the repository tooling's tests. The pre-push hook runs the
-quick ones. To run a lane locally, run its task; it needs its lane's prerequisites and must
-not silently succeed because it was invoked on an unsuitable host. `mise run test:full`,
-`mise run android` and `mise run ios` run whole lanes. `mise run test:examples` runs all
-examples; `test:example:sqlite`, `test:example:platform_paths`, `test:example:app_auth`,
-`test:example:dart` and `test:example:lichtpost` run one.
-Each uses `--build_tests_only` over its example subtree, so new test targets are discovered
-automatically without building unrelated app targets. Bazel still respects manual tags and
-platform compatibility.
+quick ones. The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py), and CI runs
+exactly that: `mise run lane -- <lane>` runs a whole lane on this host, `python3 -m
+tools.ci.work run <name>...` single pieces, and `python3 -m tools.ci.work list` lists them.
+A lane needs its prerequisites and must not silently succeed because it was invoked on an
+unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
+as `test:example:sqlite`, uses `--build_tests_only` over its example subtree, so new test
+targets are discovered automatically without building unrelated app targets. Bazel still
+respects manual tags and platform compatibility.
 
-Each add-on module runs the same generic tasks, `addon:host`, `addon:android` and `addon:ios`
-(`tools/addons/lanes.py`), from the module's `examples/`, in the lanes its `addon.pkl` names.
-Their iOS task follows the Apple-lane policy below.
+Each add-on module runs the same generic commands, `python3 -m tools.addons.lanes <lane>
+<module>`, from the module's `examples/`, in the lanes its `addon.pkl` names, as the work
+`<lane>:addon:<module>`. Their iOS work follows the Apple-lane policy below.
 
 Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
 useful immediate feedback, without duplicating the whole CI suite.
@@ -90,9 +90,9 @@ The source-engine lane is the most expensive one and the least likely to change 
 commit, so pull requests, the merge queue and CI's dispatch leave it out
 (`SCHEDULED_LANES` in `tools/ci/verification.py`). The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs every case,
-`mise run source-engine:full`, on main on its schedule, and on manual dispatch for any
+`python3 -m tools.ci.work run source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges. `mise run source-engine` runs
+before it merges. `python3 -m tools.ci.work run source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged

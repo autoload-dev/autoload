@@ -9,12 +9,12 @@ Each example's README owns its setup, commands and visible success criteria.
 From the repository root, select the example you are changing:
 
 ```sh
-mise run test:example:sqlite
-mise run test:example:platform_paths
-mise run test:example:app_auth
-mise run test:example:dart
-mise run test:example:lichtpost
-mise run test:example:petri
+python3 -m tools.ci.work run test:example:sqlite
+python3 -m tools.ci.work run test:example:platform_paths
+python3 -m tools.ci.work run test:example:app_auth
+python3 -m tools.ci.work run test:example:dart
+python3 -m tools.ci.work run test:example:lichtpost
+python3 -m tools.ci.work run test:example:petri
 ```
 
 These run the chosen example's host tests; Petri's builds its engine from source with

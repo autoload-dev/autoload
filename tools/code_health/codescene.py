@@ -28,7 +28,7 @@ Requirements: the CodeHealth MCP server has run once (it extracts the `cs` CLI
 to its cache), and a CodeScene token is configured (CS_ACCESS_TOKEN, or the
 access_token the MCP server stores in its config.json). The token is never printed.
 
-Usage (from the repository root, or `mise run code-health -- ...`):
+Usage (from the repository root, or `python3 -m tools.code_health.codescene ...`):
     python3 -m tools.code_health.codescene [REPO] [--compare main] [--top 20] [--json out.json]
         [--include-build-files] [--exclude GLOB ...] [--since 6.months]
         [--rules code-health-rules.json] [--keep-macro-arguments] [--only PATH ...]

@@ -118,7 +118,7 @@ boundaries. Call the matching CodeHealth MCP tool instead of guessing.
   re-run the review after each step. Stop when the targeted findings are substantially
   reduced and the score measurably improved; cosmetic edits are not progress.
 - **Starlark, GDScript and whole-repository scans.** The MCP tools reject Starlark (`.bzl`)
-  and GDScript (`.gd`). `mise run code-health -- --only <path>...` reviews any files like
+  and GDScript (`.gd`). `python3 -m tools.code_health.codescene --only <path>...` reviews any files like
   `code_health_review`, those included: it feeds them to the same CodeScene CLI as Python
   and exempts Bazel macros from the argument count, since their parameters mirror rule
   attributes. Without `--only` it reports the whole checkout with hotspots; add

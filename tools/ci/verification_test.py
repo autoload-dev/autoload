@@ -1,28 +1,36 @@
 """Regression tests for CI's plan of every lane and the assignment of tasks to jobs."""
 
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from tools.ci.verification import (
     JOBS,
-    LANES,
     SCHEDULED_LANES,
-    addon_task_name,
-    all_lanes,
     excluded_hosts,
     for_host,
-    lane_for,
     output_name,
     plan_outputs,
     run_tasks,
-    task_command,
     verify_results,
     without_scheduled_lanes,
 )
+from tools.ci.work import LANES, Work
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Work as the plan sees it: one Android piece, add-on lanes limited to Linux or macOS.
+KNOWN = {
+    "test:bazel": Work("test:bazel", "host", ".", ("true",), android=True),
+    "host:addon:gadget": Work(
+        "host:addon:gadget", "host", ".", ("true",), hosts=("macos",)
+    ),
+    "host:addon:widget": Work(
+        "host:addon:widget", "host", ".", ("true",), hosts=("linux",)
+    ),
+    "ios:addon:widget": Work("ios:addon:widget", "ios", ".", ("true",)),
+    "ios": Work("ios", "ios", ".", ("true",)),
+}
 
 
 def plan_outputs_of(**planned: str) -> dict[str, str]:
@@ -77,9 +85,9 @@ class VerificationTest(unittest.TestCase):
     def test_source_engine_workflow_runs_every_source_engine_case(self) -> None:
         workflow = (ROOT / ".github/workflows/source-engine.yml").read_text()
         self.assertIn("""tools.ci.verification run '["source-engine:full"]'""", workflow)
-        with mock.patch("subprocess.run") as run:
+        with mock.patch("tools.ci.work.run") as run:
             run_tasks(["source-engine:full"])
-        run.assert_called_once_with(["mise", "run", "source-engine:full"], check=True)
+        run.assert_called_once_with(["source-engine:full"])
 
     def test_missing_plan_output_is_not_an_empty_task_list(self) -> None:
         empty = {"plan": {"result": "success", "outputs": {}}}
@@ -98,118 +106,21 @@ class VerificationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failure"):
             verify_results(needs_of() | {"ios": {"result": "failure"}})
 
-    def test_every_run_plans_every_lane_but_the_scheduled_ones(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "mise.toml").write_text(
-                "".join(
-                    f'[tasks."{task}"]\nrun = "true"\n'
-                    for task in (
-                        "lint",
-                        "docs",
-                        "test:bazel",
-                        "test:example:petri",
-                        "android",
-                        "format",
-                        "addon:host",
-                    )
-                )
-            )
-            for module, lanes in (("widget", '"host", "ios"'), ("gadget", '"host"')):
-                (root / "addons" / module).mkdir(parents=True)
-                (root / "addons" / module / "MODULE.bazel").write_text(
-                    f'module(name = "autoload_{module}")\n'
-                )
-                (root / "addons" / module / "addon.pkl").write_text(
-                    f'amends "../../tools/addons/Addon.pkl"\nlanes = List({lanes})\n'
-                )
-            lanes = without_scheduled_lanes(all_lanes(root))
-            (root / "mise.toml").write_text('[tasks."test:gdscript"]\nrun = "true"\n')
-            with self.assertRaisesRegex(ValueError, "test:gdscript"):
-                all_lanes(root)
-        self.assertEqual(lanes["quality"], ["lint"])
-        self.assertEqual(lanes["docs"], ["docs"])
-        self.assertEqual(lanes["source-engine"], [])
-        self.assertEqual(
-            lanes["host"],
-            [
-                "test:bazel",
-                "host:addon:gadget",
-                "host:addon:widget",
-                "host:addon-template@linux",
-            ],
-        )
-        self.assertEqual(lanes["android"], ["android", "android:addon-template"])
-        self.assertEqual(lanes["ios"], ["ios:addon:widget", "ios:addon-template"])
-
-    def test_every_task_of_mise_toml_has_a_lane_or_is_another_task(self) -> None:
-        lanes = all_lanes(ROOT)
-        self.assertIn("test:regressions", lanes["host"])
-        self.assertIn("ios", lanes["ios"])
-
-    def test_unknown_tasks_have_no_lane(self) -> None:
-        for task in (
-            "new-check",
-            "contracts:desktop",
-            "desktop:addon:widget",
-            "host:addon:",
-        ):
-            with self.subTest(task=task), self.assertRaises(ValueError):
-                lane_for(task)
-
-    def test_a_host_lane_limited_to_some_hosts_names_them(self) -> None:
-        self.assertEqual(
-            addon_task_name("host", "widget", ("linux", "macos")), "host:addon:widget"
-        )
-        self.assertEqual(
-            addon_task_name("host", "widget", ("macos",)), "host:addon:widget@macos"
-        )
-        self.assertEqual(addon_task_name("ios", "widget", ("macos",)), "ios:addon:widget")
-
-    def test_add_on_tasks_run_the_generic_add_on_tasks(self) -> None:
-        for task, lane in (
-            ("host:addon:widget", "host"),
-            ("android:addon:widget", "android"),
-            ("host:addon:gadget@macos", "host"),
-            ("ios:addon-template", "ios"),
-        ):
-            self.assertEqual(lane_for(task), lane)
-        self.assertEqual(
-            task_command("android:addon:widget"),
-            ["mise", "run", "addon:android", "widget"],
-        )
-        self.assertEqual(
-            task_command("host:addon:gadget@macos"),
-            ["mise", "run", "addon:host", "gadget"],
-        )
-        self.assertEqual(
-            task_command("ios:addon-template"), ["mise", "run", "addon:template", "ios"]
-        )
-        self.assertEqual(
-            task_command("host:addon-template@linux"),
-            ["mise", "run", "addon:template", "host"],
-        )
-        self.assertEqual(task_command("test:setup"), ["mise", "run", "test:setup"])
-
     def test_a_host_lane_limited_to_macos_runs_on_macos_only(self) -> None:
-        lanes = {lane: [] for lane in LANES} | {
-            "host": ["test:bazel", "host:addon:gadget@macos"]
-        }
-        self.assertEqual(for_host(lanes["host"], "linux"), ["test:bazel"])
-        self.assertEqual(
-            for_host(lanes["host"], "macos"), ["test:bazel", "host:addon:gadget@macos"]
-        )
-        only_linux = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget@linux"]}
-        outputs = plan_outputs(only_linux)
-        self.assertEqual(outputs["tests_linux"], ["host:addon:gadget@linux"])
-        self.assertEqual(outputs["tests_macos"], [])
+        names = ["test:bazel", "host:addon:gadget"]
+        self.assertEqual(for_host(names, "linux", KNOWN), ["test:bazel"])
+        self.assertEqual(for_host(names, "macos", KNOWN), names)
+        lanes = {lane: [] for lane in LANES} | {"host": names}
+        outputs = plan_outputs(lanes, known=KNOWN)
+        self.assertEqual(outputs["tests_linux"], ["test:bazel"])
+        self.assertEqual(outputs["tests_macos"], names)
 
     def test_the_plan_says_which_host_jobs_need_the_android_sdk(self) -> None:
-        lanes = {lane: [] for lane in LANES} | {"host": ["host:addon:widget"]}
-        self.assertFalse(plan_outputs(lanes)["tests_linux_android"])
+        lanes = {lane: [] for lane in LANES} | {"host": ["host:addon:gadget"]}
+        self.assertFalse(plan_outputs(lanes, known=KNOWN)["tests_macos_android"])
         lanes["host"].append("test:bazel")
-        self.assertTrue(plan_outputs(lanes)["tests_linux_android"])
-        self.assertTrue(plan_outputs(lanes)["tests_macos_android"])
+        self.assertTrue(plan_outputs(lanes, known=KNOWN)["tests_linux_android"])
+        self.assertTrue(plan_outputs(lanes, known=KNOWN)["tests_macos_android"])
 
     def test_a_fork_pull_request_stays_off_the_self_hosted_runners(self) -> None:
         def event(head: dict | None) -> dict:
@@ -226,22 +137,22 @@ class VerificationTest(unittest.TestCase):
                 self.assertEqual(excluded_hosts("pull_request", event(head)), {"macos"})
         self.assertEqual(excluded_hosts("merge_group", {}), set())
         lanes = {lane: [] for lane in LANES} | {"host": ["test:bazel"], "ios": ["ios"]}
-        outputs = plan_outputs(lanes, frozenset({"macos"}))
+        outputs = plan_outputs(lanes, frozenset({"macos"}), KNOWN)
         self.assertEqual(outputs["tests_linux"], ["test:bazel"])
         self.assertEqual(outputs["tests_macos"], [])
         self.assertEqual(outputs["ios"], [])
 
     def test_the_plan_assigns_each_job_its_lane_on_its_host(self) -> None:
         lanes = {lane: [] for lane in LANES} | {
-            "host": ["test:bazel", "host:addon:widget@linux"],
+            "host": ["test:bazel", "host:addon:widget"],
             "ios": ["ios:addon:widget"],
         }
         self.assertEqual(
-            plan_outputs(lanes),
+            plan_outputs(lanes, known=KNOWN),
             {
                 "formatting": [],
                 "api_docs": [],
-                "tests_linux": ["test:bazel", "host:addon:widget@linux"],
+                "tests_linux": ["test:bazel", "host:addon:widget"],
                 "tests_linux_android": True,
                 "tests_macos": ["test:bazel"],
                 "tests_macos_android": True,

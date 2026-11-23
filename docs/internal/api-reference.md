@@ -128,8 +128,8 @@ independent entrypoint checks instead of a fictitious repository-wide main targe
 interfaces the ruleset promises are compared: underscore-prefixed groups and, for roots that forward an upstream target, its groups are not. New public APIs or
 unsupported API kinds cannot silently escape required coverage.
 
-`mise run docs` checks source schema, inventory, reference freshness, registry coverage, the
-ruleset module's behavior tests and the cases of the docs lane. `mise run contracts:host`, `contracts:source-engine`,
+`python3 -m tools.ci.work run docs` checks source schema, inventory, reference freshness, registry coverage, the
+ruleset module's behavior tests and the cases of the docs lane. `python3 -m tools.ci.work run contracts:host`, `contracts:source-engine`,
 `contracts:android` and `contracts:ios` check the cases of each profile lane
 (`bazel run //tools/docs:contracts -- --lane <lane>`); the verification selector runs
 them in their lane when rules, contract sources, fixtures or the checker change.

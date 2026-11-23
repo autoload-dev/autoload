@@ -24,10 +24,10 @@ device toolchain:
 bazel test //...
 ```
 
-`mise run test:regressions` runs the same from the repository root. Android and iOS tests
+`python3 -m tools.ci.work run test:regressions` runs the same from the repository root. Android and iOS tests
 are `manual` and run in configuration suites: `test_suite` targets in `BUILD.bazel`, one per
-`.bazelrc` configuration, run with that `--config`. The `android:apps` and `ios:apps`
-tasks run them; the
+`.bazelrc` configuration, run with that `--config`. The `android` and `ios` work of
+their lanes runs them; the
 [fixture catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks)
 lists the suites.
 

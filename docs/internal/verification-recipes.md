@@ -118,7 +118,7 @@ under `tools/`; the command's own flags win. A Bazel binary started without Baze
 the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run test:bazel
+RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy python3 -m tools.ci.work run test:bazel
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux mise exec -- bazel test //...
 ```
 
@@ -267,8 +267,8 @@ From `rules_godot/`, with the Android SDK and NDK installed:
 bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel test
 ```
 
-`mise run source-engine:full` runs this command, the `patched_engine` tests above and
-Petri's suite; `mise run source-engine` runs a quicker subset
+`python3 -m tools.ci.work run source-engine:full` runs this command, the `patched_engine` tests above and
+Petri's suite; `python3 -m tools.ci.work run source-engine` runs a quicker subset
 ([which cases, and where CI runs them](verification-platforms.md#source-engine-workflow)).
 
 
@@ -288,7 +288,7 @@ bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 application, requiring both extensions to load and register their Godot class and the
 imported texture to load from the pack. On macOS, `app_is_adhoc_signed_test` verifies the
 archived bundle's ad hoc signature; it runs only in a build that selects ad hoc signing, as
-the second command does. `mise run test:gdextension` runs both commands.
+the second command does. `python3 -m tools.ci.work run test:gdextension` runs both commands.
 
 ### Mobile artifact checks
 
@@ -297,7 +297,7 @@ code they test, such as `//godot/platforms/private/tests/library_composition`,
 `//godot/platforms/private/tests/app_platform_selection` and
 `//godot/platforms/private/tests/engine_probe`. Each builds its fixture application through a
 test-only transition that selects the platform, CPUs, format, variant or release settings it
-needs, so they run without `--config` in `mise run test:bazel`, the host set, which
+needs, so they run without `--config` in `python3 -m tools.ci.work run test:bazel`, the host set, which
 provisions the Android SDK and NDK. Android tests are skipped where rules_android finds no
 SDK; iOS tests need macOS with Xcode. Release tests compare Android Build IDs and DWARF and
 iOS executable/dSYM UUIDs. The platform-library cases check delivered classes, resources,
@@ -320,7 +320,7 @@ bazel test //:ios_official --config=official
 | `android_aab` | `android aab` | the Android smoke bundle: engine, extension library and pack |
 | `ios_official` | `official` | the iOS smoke apps' embedded extension framework and statically linked extension entry |
 
-The `android:apps` and `ios:apps` tasks run these suites. To record artifact-level evidence
+The `android` and `ios` work of their lanes runs these suites. To record artifact-level evidence
 of the smoke applications, build them, then return to the root to inspect them:
 
 ```sh
@@ -328,7 +328,7 @@ cd rules_godot/tests
 bazel build //smoke/android:app --config=android
 bazel build //smoke/ios:app --config=official
 cd ../..
-mise run inspect:mobile
+python3 -m tools.ci.work run inspect:mobile
 ```
 
 The inspector resolves each artifact with its own Bazel configuration through
@@ -341,7 +341,7 @@ input of the action that must rerun, an unrelated one is not, and a configuratio
 not matter leaves actions unchanged. They are the `*_inputs_tests.bzl` and
 `configuration_invariance_tests.bzl` suites of `godot/private/tests`,
 `godot/platforms/private/tests`, `godot/extension/tests` and `godot/engine/private/tests`,
-and run with `mise run test:bazel`. `//godot/private/tests:import_and_pack_outputs_are_reproducible_test`
+and run with `python3 -m tools.ci.work run test:bazel`. `//godot/private/tests:import_and_pack_outputs_are_reproducible_test`
 imports and exports a project twice and compares the bytes. For the actions one change
 actually ran, compare the execution logs of two invocations as the
 [verification policy](verification.md#selecting-tests-and-reviewing-changes) describes.

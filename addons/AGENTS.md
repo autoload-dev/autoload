@@ -7,8 +7,8 @@ Each directory here is a Bazel module of its own, `addons/<module>` named
 Create modules and add-ons with the generator, never by copying another module:
 
 ```sh
-mise run addon:new <module>                   # a module with one add-on, <module>
-mise run addon:new <module> --addon <addon>   # one more add-on in a module
+bazel run //tools/addons:new -- <module>                   # a module with one add-on, <module>
+bazel run //tools/addons:new -- <module> --addon <addon>   # one more add-on in a module
 ```
 
 It writes [tools/addons/template](../tools/addons/template), which builds in every lane from
@@ -60,19 +60,20 @@ The conventions check enforces it (RG015, `docs/public/conventions.md`):
 
 # Lanes
 
-The same tasks verify every module, from its `examples/` (`tools/addons/lanes.py`):
+The same commands verify every module, from its `examples/` (`tools/addons/lanes.py`), as
+the lanes' work (`tools/ci/work.py`), which provisions the Android SDK first:
 
 ```sh
-mise run addon:host <module>      # module tests and example targets but apps, editor and desktop
-mise run addon:android <module>   # each example project's app for Android
-mise run addon:ios <module>       # each example project's app for the iOS Simulator
+python3 -m tools.ci.work run host:addon:<module>      # module tests and example targets but apps
+python3 -m tools.ci.work run android:addon:<module>   # each example project's app for Android
+python3 -m tools.ci.work run ios:addon:<module>       # each example project's app for the iOS Simulator
 ```
 
 `host` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
 what they use; the release archive leaves them out with the examples. CI runs every module's
-lanes on every run; `mise run addon:template <lane>` checks the template the same way.
+lanes on every run; `python3 -m tools.ci.work run <lane>:addon-template` checks the template the same way.
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
 `examples/signing/`, install with `xcrun devicectl` and check the log for crashes.

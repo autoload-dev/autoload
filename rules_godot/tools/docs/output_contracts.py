@@ -9,7 +9,7 @@ import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
-from tools.ci.verification import CONTRACT_LANES as MACHINE_LANES
+from tools.ci.work import CONTRACT_LANES as MACHINE_LANES
 from tools.ruleset import MODULE
 
 SECTIONS = {

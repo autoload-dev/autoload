@@ -1,14 +1,23 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 py_library(
-    name = "verification_lib",
-    srcs = ["verification.py"],
-    # mise.toml's tasks: the lanes' tasks and those that provision the Android SDK.
+    name = "work_lib",
+    srcs = ["work.py"],
+    # mise.toml's pins, which Android work reads.
     data = ["//:mise.toml"],
     # The ruleset's output contracts run per lane (rules_godot/).
     visibility = ["//visibility:public"],
     # The add-on modules' lanes, from their addon.pkl.
-    deps = ["//tools/addons:new_lib"],
+    deps = [
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
+    ],
+)
+
+py_library(
+    name = "verification_lib",
+    srcs = ["verification.py"],
+    deps = [":work_lib"],
 )
 
 py_test(
@@ -26,4 +35,11 @@ py_test(
         "release_module_test.py",
     ],
     deps = ["//tools/addons:new_lib"],
+)
+
+py_test(
+    name = "work_test",
+    size = "small",
+    srcs = ["work_test.py"],
+    deps = [":work_lib"],
 )

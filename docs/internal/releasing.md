@@ -61,7 +61,7 @@ builds `e2e/smoke` from the archive. An add-on's archive leaves its `examples/` 
 the module's own `.gitattributes`.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
-module by `mise run addon:new` and checked by the conventions (RG015), so a module is ready to
+module by `bazel run //tools/addons:new --` and checked by the conventions (RG015), so a module is ready to
 publish from its first commit; it is published when its tag is pushed. `.bcr/config.yml`
 lists only the ruleset: every release names its module root itself (`publish.yaml`).
 

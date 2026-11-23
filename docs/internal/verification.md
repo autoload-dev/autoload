@@ -47,15 +47,15 @@ alone does not identify the kind because tests can inspect artifacts without lau
 
 | Kind | Evidence | Existing entry points |
 |---|---|---|
-| Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `mise run lint:ci`, `mise run conventions` |
-| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run test:setup`, cleanup tests in `mise run lint:ci` |
-| API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run docs` |
-| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run test:bazel` (the ruleset's white-box tests), `mise run test:regressions` (the regression module's host set); individual owning Bazel test targets |
+| Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `python3 -m tools.ci.work run lint:ci`, `python3 -m tools.ci.work run conventions` |
+| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `python3 -m tools.ci.work run test:setup`, cleanup tests in `python3 -m tools.ci.work run lint:ci` |
+| API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `python3 -m tools.ci.work run docs` |
+| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `python3 -m tools.ci.work run test:bazel` (the ruleset's white-box tests), `python3 -m tools.ci.work run test:regressions` (the regression module's host set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | Build steps in `android:*`, `ios:*` and desktop targets |
-| Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in `mise run test:bazel`; the consumer module's configuration suites in `android:apps`/`ios:apps` |
-| Exported application execution | The actual desktop application starts and produces meaningful assertions | The run tests in `mise run test:bazel`; the desktop smoke scenarios in `mise run test:gdextension`; `mise run source-engine` |
-| Action inputs and determinism | Required invalidation, unaffected reuse, deterministic imports/PCKs | The action-input and reproducibility tests in `mise run test:bazel`; execution-log comparison as per-change review evidence |
+| Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in `python3 -m tools.ci.work run test:bazel`; the consumer module's configuration suites in the `android`/`ios` work |
+| Exported application execution | The actual desktop application starts and produces meaningful assertions | The run tests in `python3 -m tools.ci.work run test:bazel`; the desktop smoke scenarios in `python3 -m tools.ci.work run test:gdextension`; `python3 -m tools.ci.work run source-engine` |
+| Action inputs and determinism | Required invalidation, unaffected reuse, deterministic imports/PCKs | The action-input and reproducibility tests in `python3 -m tools.ci.work run test:bazel`; execution-log comparison as per-change review evidence |
 | Mobile runtime acceptance | Target operating-system behavior on a matching device/emulator/simulator | Focused manual acceptance when changed behavior needs it |
 | Distribution acceptance | Signing/provisioning, installation policy or Store acceptance | Explicit feature/release scope; no default Store verification |
 | Review | Correct behavior, sound design, requirements, useful documentation and scope | Diff and relevant owning implementation; automated passes do not establish semantics |

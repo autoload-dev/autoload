@@ -130,7 +130,7 @@ py_library(
     srcs = ["output_contracts.py"],
     deps = [
         "//tools:ruleset_lib",
-        "@autoload_dev//tools/ci:verification_lib",
+        "@autoload_dev//tools/ci:work_lib",
     ],
 )
 
