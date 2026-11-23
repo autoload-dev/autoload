@@ -16,7 +16,7 @@ from types import MappingProxyType
 from typing import Protocol
 
 from tools.conventions.environment import nested_tool_environment
-from tools.setup.modules import RULESET
+from tools.setup.modules import RULESET, RULESET_DOCS
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
 
@@ -34,7 +34,7 @@ TYPED_ROOTS = frozenset({"projects", "addons"})
 # roots; and the regression module with its smoke paths.
 RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
-NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE, RULESET_MODULE / "docs"})
+NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE, RULESET_DOCS})
 REGRESSION_MODULE = RULESET_MODULE / "tests"
 SMOKE_ROOT = "smoke"
 ADDON_SCENARIO = "shared_addon"

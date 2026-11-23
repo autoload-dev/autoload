@@ -21,7 +21,7 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.setup.modules import RULESET
+from tools.setup.modules import RULESET, RULESET_DOCS
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
@@ -31,7 +31,7 @@ RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
 REGRESSIONS = f"{RULESET_DIR}/tests"
 # The documentation module: the API documentation metadata, its checks and the contract checker.
-DOCS = f"{RULESET_DIR}/docs"
+DOCS = RULESET_DOCS.as_posix()
 ANDROID_SETUP = "android:setup"
 
 
