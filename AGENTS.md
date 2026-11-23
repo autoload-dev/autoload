@@ -5,7 +5,9 @@ component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module holds only the repository's own
 tooling in `tools/`: CI selection, add-on scaffolding, setup checks, formatting, linting and
-the conventions check. A component never loads files from the root's `tools/`.
+the conventions check. A component's builds never load files from the root's `tools/`; only
+the ruleset's own maintenance tools may use them, through a development dependency on the root
+module (`rules_godot/MODULE.bazel`).
 
 In `rules_godot/`, `godot/` owns the rules and `tools/` the build tools, each with white-box
 tests in `tests/` subpackages. `rules_godot/examples/` and `rules_godot/tests/` are

@@ -121,10 +121,6 @@ class AddonModule:
         )
 
 
-# The ruleset's directory: its module, and below .bcr/ its registry templates.
-RULESET = Path("rules_godot")
-
-
 def module_path(directory: str) -> Path:
     """An add-on module's directory, relative to the repository root."""
     return Path(ADDONS) / directory

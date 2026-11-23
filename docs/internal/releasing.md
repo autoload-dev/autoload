@@ -53,12 +53,12 @@ first when an add-on needs rules that are not released yet.
 
 ## What the archive contains
 
-The archive holds the module's directory at its root, under `<module>-X.Y.Z/`.
-[.gitattributes](../../rules_godot/.gitattributes) keeps development-only directories out of the
-ruleset's archive: `examples/`, `tests/`, `addons/`, `.github/` and the agent tool
-directories. `e2e/` stays in, because the registry's presubmit builds `e2e/smoke` from the
-archive. An add-on's archive leaves its `examples/` out through the module's own
-`.gitattributes` and adds the repository's `LICENSE`.
+Every archive holds its module's directory at its root, under `<module>-X.Y.Z/`, with the
+repository's `LICENSE`. The ruleset's [.gitattributes](../../rules_godot/.gitattributes)
+keeps its development-only directories, `examples/` and `tests/`, and the link to the
+repository's Bazelisk wrapper out of it. `e2e/` stays in, because the registry's presubmit
+builds `e2e/smoke` from the archive. An add-on's archive leaves its `examples/` out through
+the module's own `.gitattributes`.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
 module by `mise run addon:new` and checked by the conventions (RG015), so a module is ready to

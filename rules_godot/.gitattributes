@@ -3,3 +3,5 @@
 # e2e/ stays in, because the Bazel Central Registry runs its test module.
 examples export-ignore
 tests export-ignore
+# A link to the repository's Bazelisk wrapper, outside this directory.
+tools/bazel export-ignore

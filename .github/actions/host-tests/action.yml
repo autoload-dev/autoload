@@ -20,11 +20,6 @@ runs:
         # The ruleset's host set includes its Android packaging tests; add-on modules'
         # host lanes need no Android SDK.
         android-cache: ${{ inputs.android }}
-        bazel-modules: |
-          .
-          rules_godot
-          rules_godot/examples
-          rules_godot/tests
     # The regression module's host set runs first, so that the output base check sees
     # only its repositories: later host tasks may configure Android targets.
     - name: Run the regression module's host set

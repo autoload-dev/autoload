@@ -17,10 +17,11 @@ import re
 import sys
 from pathlib import Path
 
-from tools.addons.modules import ROOT, RULESET, module_attributes, module_path
+from tools.addons.modules import ROOT, module_attributes, module_name, module_path
+from tools.setup.modules import RULESET
 
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
-RULESET_NAME = "autoload_rules_godot"
+RULESET_NAME = module_name(RULESET.name)
 # The ruleset's release test: the registry's test module, as its presubmit.yml runs it. Its
 # own //... builds engines and mobile packages.
 RULESET_TEST = f"cd {RULESET}/e2e/smoke && bazel test //..."

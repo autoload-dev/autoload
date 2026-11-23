@@ -16,6 +16,7 @@ from types import MappingProxyType
 from typing import Protocol
 
 from tools.conventions.environment import nested_tool_environment
+from tools.setup.modules import RULESET
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
 
@@ -30,7 +31,7 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
 TYPED_ROOTS = frozenset({"projects", "addons"})
 # The ruleset's module and documentation; the root and the ruleset, which are no consumers
 # and have no typed roots; and the regression module with its smoke paths.
-RULESET_MODULE = Path("rules_godot")
+RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
 NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 REGRESSION_MODULE = RULESET_MODULE / "tests"

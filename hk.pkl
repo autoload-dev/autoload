@@ -13,8 +13,23 @@ local function task(name: String): Step = new {
 local function ruleset(paths: List<String>): List<String> =
   paths.map((it) -> "rules_godot/" + it)
 
-// What every build reads: the rules, the build tools that builds run, the root module
-// and the task commands. Add a build tool here when a build starts to run it.
+// What the ruleset's own tests read of the root: the shared settings and tasks, the root
+// module, which the ruleset uses for development, and the root tooling its documentation
+// checks and artifact inspection depend on.
+local rootForRuleset = List(
+  "shared.bazelrc",
+  "mise.toml",
+  "mise.lock",
+  "MODULE.bazel",
+  "MODULE.bazel.lock",
+  "tools/android/**",
+  "tools/ci/verification.py",
+  "tools/conventions/context.py",
+  "tools/conventions/environment.py",
+)
+
+// What every build reads: the rules, the build tools that builds run, the ruleset's module,
+// the shared Bazel settings and the task commands. Add a build tool here when a build starts to run it.
 local core = ruleset(List(
   "godot/**",
   "tools/BUILD.bazel",
@@ -140,6 +155,8 @@ local apiContracts = List(
   "rules_godot/tools/tool_environment*",
   "rules_godot/tools/docs/**",
   "tools/conventions/context.py",
+  "tools/conventions/environment.py",
+  "tools/ci/verification.py",
   "rules_godot/godot/tests/api_contracts/**",
 )
 
@@ -278,7 +295,7 @@ local checks = new Mapping<String, Step> {
   }
   ["test:bazel"] = (task("test:bazel")) {
     profiles = List("host")
-    glob = List("rules_godot/**", "shared.bazelrc", "mise.toml", "mise.lock")
+    glob = List("rules_godot/**") + rootForRuleset
     exclude = List(
       "**/*.md",
       "rules_godot/docs/**",
@@ -287,10 +304,22 @@ local checks = new Mapping<String, Step> {
       "rules_godot/tests/**",
     )
   }
-  // The repository's own tooling in the root module: its Python tests.
+  // The repository's own tooling in the root module: its Python tests, which read the
+  // checkout's module declarations, registry templates and add-on manifests.
   ["test:tools"] = (task("test:tools")) {
     glob = List(
       "tools/**",
+      "hk.pkl",
+      ".bazelignore",
+      ".bcr/**",
+      "addons/*/MODULE.bazel",
+      "addons/*/addon.pkl",
+      "addons/*/examples/MODULE.bazel",
+      "addons/consumers.pkl",
+      "rules_godot/MODULE.bazel",
+      "rules_godot/.bazelignore",
+      "rules_godot/*/MODULE.bazel",
+      "rules_godot/*/.bazelrc",
       "MODULE.bazel",
       "MODULE.bazel.lock",
       "BUILD.bazel",

@@ -2,7 +2,8 @@
 The repository's own tooling: formatting, linting, conventions, CI selection, add-on
 scaffolding and setup checks across every component. It is never published; the components
 live in their own modules, such as rules_godot/ and addons/<module>/, which this module
-ignores (.bazelignore).
+ignores (.bazelignore). The ruleset's documentation checks and artifact inspection use it as a
+development dependency.
 """
 
 module(name = "autoload_dev")
@@ -24,3 +25,10 @@ python.toolchain(python_version = "3.14")
 # tools package of this module and that of a component merge as one namespace.
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
+
+# BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
+# --config=buildbuddy selects (buildbuddy.bazelrc); inert without it.
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+
+buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")

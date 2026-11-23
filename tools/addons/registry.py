@@ -9,7 +9,8 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from tools.addons.modules import ROOT, RULESET, module_name, module_path
+from tools.addons.modules import ROOT, module_name, module_path
+from tools.setup.modules import RULESET
 
 METADATA = "metadata.template.json"
 SOURCE = "source.template.json"
@@ -35,7 +36,7 @@ def metadata(directory: str, root: Path = ROOT) -> str:
 def metadata_problem(text: str, directory: str, root: Path) -> str | None:
     if text == metadata(directory, root):
         return None
-    return "must be .bcr/rules_godot/metadata.template.json with the module's homepage"
+    return f"must be {RULESET_METADATA.as_posix()} with the module's homepage"
 
 
 def source_problem(text: str, directory: str, root: Path) -> str | None:

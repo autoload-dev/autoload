@@ -10,6 +10,7 @@ py_library(
     ],
     # The ruleset's documentation checks read Bazel evidence through it (rules_godot/).
     visibility = ["//visibility:public"],
+    deps = ["//tools/setup:modules_lib"],
 )
 
 py_library(

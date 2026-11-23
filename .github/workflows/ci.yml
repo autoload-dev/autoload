@@ -70,12 +70,6 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          bazel-modules: |
-            .
-            rules_godot
-            rules_godot/examples
-            rules_godot/tests
       - name: Check source quality and setup contracts
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
@@ -150,11 +144,6 @@ jobs:
         uses: ./.github/actions/setup
         with:
           android-cache: "true"
-          bazel-modules: |
-            .
-            rules_godot
-            rules_godot/tests
-            rules_godot/examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
 
@@ -173,12 +162,6 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          bazel-modules: |
-            .
-            rules_godot
-            rules_godot/tests
-            rules_godot/examples
       - name: Build and inspect apps
         run: python3 tools/ci/verification.py run "$VERIFICATION_TASKS"
       - name: Save Bazel downloads

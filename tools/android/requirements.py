@@ -5,16 +5,16 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.addons.modules import RULESET, all_modules
+from tools.addons.modules import all_modules
 from tools.setup.modules import (
-    addon_modules,
+    RULESET,
     bazelrc_options,
     declarations,
-    module_paths,
+    ignored_modules,
 )
 
-# Provisioning must cover the SDK and .bazelrc overrides of every module: the root
-# module's development SDK and each consumer module's SDK.
+# Provisioning must cover the SDK and .bazelrc overrides of every module that builds
+# applications: the ruleset's development SDK and each consumer module's SDK.
 SDK = "android_sdk_repository_extension.configure"
 # Pins the Linux SDK and NDK of godot_android_toolchains for remote Linux executors.
 LINUX_TOOLCHAINS = f"{RULESET}/godot/platforms/private/android_toolchains.bzl"
@@ -59,21 +59,20 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 
 def application_modules(root: Path) -> list[str]:
     """
-    The modules that build applications: every module but the repository's own tooling at
-    the root, the add-on modules in addons/, which use their examples' SDK, and the examples
-    of an add-on module whose addon.pkl names no application lane. Each of them must
-    configure its SDK.
+    The modules that build applications, each of which must configure its SDK: the ruleset
+    with the modules nested in it, and the examples of every add-on module whose addon.pkl
+    names an application lane. The root's tooling and the add-on modules themselves, which
+    use their examples' SDK, build none.
     """
-    addons = set(addon_modules(root))
-    without_apps = {
-        f"{module.path.as_posix()}/examples"
-        for module in all_modules(root)
-        if not module.builds_apps
-    }
+    ruleset = RULESET.as_posix()
     return [
-        module
-        for module in module_paths(root)
-        if module not in addons | without_apps | {"."}
+        ruleset,
+        *ignored_modules(root, ruleset),
+        *(
+            f"{module.path.as_posix()}/examples"
+            for module in all_modules(root)
+            if module.builds_apps
+        ),
     ]
 
 
