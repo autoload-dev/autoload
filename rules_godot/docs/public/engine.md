@@ -227,10 +227,27 @@ The app owner chooses the allowlist. Reflection, dynamic resource paths,
 extensions and external PCKs prevent reliable inference of every engine module
 from a project scan.
 
+`build_profile` takes a Godot build profile, a `.gdbuild` file such as the editor's
+Engine Compilation Configuration writes. Its `disabled_classes` leave those classes out of
+the engine, so linking drops their code; an application whose scenes, resources or scripts
+need a disabled class fails when it loads them. Its `disabled_build_options` must agree with
+`build_options`: a profile that sets an option the recipe sets differently fails
+configuration. The profile is part of the recipe's inputs and of a lock file's pins.
+
+```starlark
+godot_engines.source_build(
+    name = "my_engine",
+    source = "@godot_sources//:source.json",
+    platforms = ["ios"],
+    build_profile = "//engines:game.gdbuild",
+)
+```
+
 Patches use the host `patch` executable with fuzz disabled and strip level 1
 (`patch_strip`); every hunk must apply. `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
-simulator switch, module selection, raw `profile` and `build_profile` paths,
+simulator switch, module selection, raw `profile` and `build_profile` paths (use the
+`build_profile` attribute),
 `optimize` and `lto`, which follow the [optimization](#optimization) settings, and
 `debug_symbols`, which follows Bazel's flags as in [debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
 Builders must read literal keys from `env` or pass it directly to named Python

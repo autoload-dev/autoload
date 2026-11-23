@@ -169,6 +169,14 @@ godot_engine_build = repository_rule(
             doc = "Number of leading path components removed from each patch filename.",
             default = 1,
         ),
+        "build_profile": attr.label(
+            doc = """
+            A Godot build profile, such as the editor's Engine Compilation Configuration
+            writes: its disabled_classes leave those classes out, and its
+            disabled_build_options must agree with build_options.
+            """,
+            allow_single_file = [".gdbuild"],
+        ),
         "build_options": attr.string_dict(
             doc = """
             Upstream configure options as string values; import_env_vars lists
@@ -297,6 +305,7 @@ def godot_engine_source_build(
         custom_modules = {},
         patches = [],
         patch_strip = 1,
+        build_profile = None,
         build_options = {},
         build_name = "custom",
         python = None,
@@ -371,6 +380,7 @@ def godot_engine_source_build(
         custom_modules: As for godot_engine_build.
         patches: As for godot_engine_build; Android shell libraries apply them too.
         patch_strip: As for godot_engine_build.
+        build_profile: As for godot_engine_build.
         build_options: As for godot_engine_build.
         build_name: As for godot_engine_build.
         python: As for godot_engine_build.
@@ -386,6 +396,7 @@ def godot_engine_source_build(
         "custom_modules": custom_modules,
         "patches": patches,
         "patch_strip": patch_strip,
+        "build_profile": build_profile,
         "build_options": build_options,
         "build_name": build_name,
         "python": python,

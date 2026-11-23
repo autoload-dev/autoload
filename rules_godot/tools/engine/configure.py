@@ -133,6 +133,63 @@ def _module_selection(args: argparse.Namespace) -> dict[str, Any]:
     return selection
 
 
+# Where a recipe repository holds its build profile: in Godot's source root.
+BUILD_PROFILE = "_build_profile.gdbuild"
+
+
+def _profile_input(args: argparse.Namespace) -> dict[str, str]:
+    """The build profile's digest; nothing without one, so earlier digests hold."""
+    return (
+        {"build_profile": file_digest(args.build_profile)} if args.build_profile else {}
+    )
+
+
+_TRUE_VALUES = {"yes", "true", "1", "y", "on"}
+_FALSE_VALUES = {"no", "false", "0", "n", "off"}
+
+
+def _option_value(value: object) -> str:
+    """Return an SCons option value as yes or no where it is a boolean, else as it is."""
+    text = str(value).lower()
+    if text in _TRUE_VALUES:
+        return "yes"
+    if text in _FALSE_VALUES:
+        return "no"
+    return str(value)
+
+
+def _read_profile(profile: Path) -> dict[str, Any]:
+    """Return a build profile's JSON object."""
+    try:
+        data = json.loads(profile.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"The build profile is not readable JSON: {error}") from error
+    if not isinstance(data, dict):
+        raise TypeError("The build profile must be a JSON object")
+    return data
+
+
+def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
+    """
+    Fail for a build profile that is no JSON object or contradicts the recipe's options.
+
+    SCons applies a profile's disabled_build_options before the platform's configuration,
+    so a contradiction would silently override what the recipe asks for.
+    """
+    profiled = dict(_read_profile(profile).get("disabled_build_options", {}))
+    requested = dict(option.partition("=")[::2] for option in options)
+    conflicts = sorted(
+        f"{key}={_option_value(value)} (build_options: {requested[key]})"
+        for key, value in profiled.items()
+        if key in requested and _option_value(value) != _option_value(requested[key])
+    )
+    if conflicts:
+        raise ValueError(
+            "The build profile contradicts the recipe's build_options: "
+            + ", ".join(conflicts)
+        )
+
+
 def inputs_hash(args: argparse.Namespace) -> str:
     """
     Return the hash an unstamped source-built engine names in place of a Git commit.
@@ -147,6 +204,7 @@ def inputs_hash(args: argparse.Namespace) -> str:
         "source": args.source_sha256,
         "patches": [file_digest(path) for path in args.patch],
         "patch_strip": args.patch_strip,
+        **_profile_input(args),
         "custom_modules": file_digests(args.custom_modules_root),
         "configuration": {
             "platform": args.platform,
@@ -1588,7 +1646,8 @@ PROTECTED_OPTIONS = {
     # The recipe's explicit iOS environment owns the SDK axis.
     "simulator",
     "ios_simulator",
-    # Raw file paths would be undeclared inputs; use patches or build_options instead.
+    # Raw file paths would be undeclared inputs; use patches, build_options or the
+    # recipe's build_profile attribute instead.
     "profile",
     "build_profile",
 }
@@ -1612,7 +1671,7 @@ def check_options(options: Iterable[str]) -> None:
         key, separator, _value = option.partition("=")
         if key in BAZEL_OPTIONS:
             raise ValueError(
-                f"Option {option} follows Bazel's flags: use {BAZEL_OPTIONS[key]}"
+                f"Option {option} follows the build's settings: use {BAZEL_OPTIONS[key]}"
             )
         if _is_controlled_option(key, bool(separator)):
             raise ValueError(f"Option is controlled by rules_godot: {option}")
@@ -1655,6 +1714,8 @@ def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
     }
     if args.default_modules:
         requested["default_modules"] = ["yes"]
+    if args.build_profile:
+        requested["build_profile"] = [file_digest(args.build_profile)]
     return requested
 
 
@@ -1725,6 +1786,7 @@ def pin_digest(args: argparse.Namespace, scons: Path) -> str:
             "source": args.source_sha256,
             "patches": [file_digest(path) for path in args.patch],
             "patch_strip": args.patch_strip,
+            **_profile_input(args),
             "custom_modules": file_digests(args.custom_modules_root, shapes_graph),
             "configuration": {
                 "platform": args.platform,
@@ -1821,6 +1883,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--modules", default="")
     # Start from the modules upstream enables by default, as Godot's official builds do.
     parser.add_argument("--default-modules", action="store_true")
+    # Apply the build profile the recipe repository holds as BUILD_PROFILE.
+    parser.add_argument("--build-profile", action="store_true")
     parser.add_argument("--custom-modules", action="append", default=[])
     parser.add_argument("--custom-module-source", action="append", default=[])
     # A custom module already below _custom_modules, as in a pin action's source tree.
@@ -1900,6 +1964,9 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     # Before SCons for the modules a recipe names; Godot's defaults are checked after it.
     require_one_text_server(args.selected_modules)
     check_options(args.options)
+    args.build_profile = root / BUILD_PROFILE if args.build_profile else None
+    if args.build_profile:
+        require_consistent_profile(args.build_profile, args.options)
     args.customizations = customizations(args)
     _add_environment_option(args)
     args.inputs_hash = inputs_hash(args)
@@ -1959,6 +2026,8 @@ def _scons_arguments(args: argparse.Namespace) -> list[str]:
         arguments.append("generate_android_binaries=no")
     if args.custom_modules:
         arguments.append("custom_modules=" + ",".join(args.custom_modules))
+    if args.build_profile:
+        arguments.append(f"build_profile={BUILD_PROFILE}")
     return arguments
 
 

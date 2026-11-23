@@ -31,6 +31,7 @@ from tools.engine.configure import (
     prepare_custom_modules,
     render_unpinned,
     requested_modules,
+    require_consistent_profile,
     require_expected_version,
     require_host_platform,
     require_one_text_server,
@@ -100,6 +101,31 @@ class ModuleGraphTest(unittest.TestCase):
             ValueError, "one text server.*text_server_adv and text_server_fb"
         ):
             require_one_text_server(["text_server_fb", "gdscript", "text_server_adv"])
+
+    def test_a_build_profile_must_agree_with_the_recipes_options(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "size.gdbuild"
+            profile.write_text(
+                json.dumps(
+                    {
+                        "type": "build_profile",
+                        "disabled_classes": ["Node3D"],
+                        "disabled_build_options": {"disable_3d": True, "vulkan": False},
+                    }
+                )
+            )
+            require_consistent_profile(profile, ["disable_3d=yes", "opengl3=yes"])
+            require_consistent_profile(profile, [])
+            with self.assertRaisesRegex(
+                ValueError, r"contradicts.*vulkan=no \(build_options: yes\)"
+            ):
+                require_consistent_profile(profile, ["vulkan=yes"])
+            profile.write_text("[]")
+            with self.assertRaisesRegex(TypeError, "JSON object"):
+                require_consistent_profile(profile, [])
+            profile.write_text("{")
+            with self.assertRaisesRegex(ValueError, "not readable JSON"):
+                require_consistent_profile(profile, [])
 
     def test_unknown_or_cyclic_dependencies_fail(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown Godot module"):
@@ -270,6 +296,8 @@ class GraphTranslationTest(unittest.TestCase):
             modules = root / "_custom_modules"
             (modules / "probe").mkdir(parents=True)
             (modules / "probe/config.py").write_text("x = 1")
+            profile = root / "size.gdbuild"
+            profile.write_text('{"disabled_classes": ["Node3D"]}')
             configuration: dict[str, Any] = {
                 "platform": "android",
                 "build_target": "template_release",
@@ -284,6 +312,7 @@ class GraphTranslationTest(unittest.TestCase):
                         "source_sha256": "1" * 64,
                         "patch": [patch],
                         "patch_strip": 1,
+                        "build_profile": None,
                         "custom_modules_root": modules,
                     }
                     | configuration
@@ -305,9 +334,13 @@ class GraphTranslationTest(unittest.TestCase):
                 {"default_modules": True},
                 {"build_target": "editor"},
                 {"platform": "ios"},
+                {"build_profile": profile},
             ]:
                 with self.subTest(changes=changes):
                     self.assertNotEqual(hash_of(**changes), first)
+            profiled = hash_of(build_profile=profile)
+            profile.write_text('{"disabled_classes": ["Node2D"]}')
+            self.assertNotEqual(hash_of(build_profile=profile), profiled)
             patch.write_text("two")
             self.assertNotEqual(hash_of(), first)
             patch.write_text("one")
@@ -491,7 +524,7 @@ class GraphTranslationTest(unittest.TestCase):
         for option in ["debug_symbols=yes", "optimize=speed", "lto=thin"]:
             with (
                 self.subTest(option=option),
-                self.assertRaisesRegex(ValueError, "follows Bazel's flags"),
+                self.assertRaisesRegex(ValueError, "follows the build's settings"),
             ):
                 check_options([option])
         for option in [
@@ -539,6 +572,7 @@ class GraphTranslationTest(unittest.TestCase):
             custom_module_names=["bazel_probe"],
             options=["vulkan=no", "disable_3d=yes"],
             default_modules=False,
+            build_profile=None,
         )
         self.assertEqual(
             customizations(args),
@@ -897,6 +931,7 @@ class PinTest(unittest.TestCase):
                     "source_sha256": "1" * 64,
                     "patch": [patch],
                     "patch_strip": 1,
+                    "build_profile": None,
                     "custom_modules_root": module.parent,
                     "platform": "linuxbsd",
                     "cpu": "x86_64",
@@ -920,6 +955,7 @@ class PinTest(unittest.TestCase):
                 {"default_modules": True},
                 {"options": ["vulkan=yes"]},
                 {"build_name": "fork"},
+                {"build_profile": patch},
             ]:
                 self.assertNotEqual(digest(**change), first, change)
             # Editing a module's code keeps the pin; its build scripts and file set do not.
