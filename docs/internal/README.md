@@ -22,7 +22,7 @@ Use the [public guides](../../rules_godot/docs/public/README.md) for supported c
 | [Verification recipes and fixtures](verification-recipes.md) | Environment setup, API regeneration, runtime acceptance and fixture commands | The specific operation or fixture is needed |
 | [Repository development](development.md) | BUILD and resource-graph maintenance | Contributor workflows change |
 | [Convention inventory and enforcement design](conventions.md) | Existing policy sources, automation limits, framework research and catalogue candidates | Convention meanings or checker architecture changes |
-| [API reference maintenance](api-reference.md) | Public API inventory, generation and documentation checks | Public surface or reference tooling changes |
+| [API documentation maintenance](api-reference.md) | Public API inventory, registry metadata and documentation checks | Public surface or documentation tooling changes |
 | [Releasing](releasing.md) | Tagging a release, the release archive and publishing to the Bazel Central Registry | Release or registry automation changes |
 
 Changes may refer to these resources and own their own scope, tasks and progress. The

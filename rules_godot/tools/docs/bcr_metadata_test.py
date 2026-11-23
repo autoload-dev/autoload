@@ -21,7 +21,7 @@ if __name__ == "__main__":
         assert label not in modules, f"Duplicate module in BCR metadata: {label}"
         modules.add(label)
         symbols = exports(label, metadata)
-        assert set(symbols) == set(inventory["PUBLIC_APIS"][label]["symbols"]), label
+        assert set(symbols) == set(inventory["PUBLIC_APIS"][label]), label
         for export in symbols.values():
             assert export.identity[1] not in inventory["CROSS_REPOSITORY_MODULES"], (
                 f"Implementation helper in BCR metadata: {export}"

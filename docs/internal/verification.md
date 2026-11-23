@@ -18,8 +18,8 @@ silently claim success or build a new test framework.
 | Before editing | Read the applicable instructions and identify the affected behavior | Baseline builds or tests, unless needed to reproduce a defect or distinguish an existing failure |
 | During editing | Follow the test-first cycle below for behavior changes; use focused checks when their feedback helps the next decision | A suite after every file edit; rerunning successful checks with unchanged relevant inputs |
 | Before claiming a local change complete | Review the diff; run `hk check` and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
-| Before committing | Let the pre-commit hook regenerate the lock files and the API reference the staged files shape, format the staged Python/Starlark/Bazel sources, lint the staged files with every linter (`//tools/lint`) and review the commit's Code Health; retain relevant evidence | A second suite just because a commit is about to happen |
-| Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality, the generated files (lock files, API reference, source-built engines' pins), setup contracts, the fast tests (`test:fast`) and the branch's Code Health | App builds, non-desktop lane suites and cache experiments in the hook |
+| Before committing | Let the pre-commit hook regenerate the lock files the staged files shape, format the staged Python/Starlark/Bazel sources, lint the staged files with every linter (`//tools/lint`) and review the commit's Code Health; retain relevant evidence | A second suite just because a commit is about to happen |
+| Before pushing | Keep the pre-push hook enabled; it checks the pushed checkout, source quality, the generated files (lock files, source-built engines' pins), setup contracts, the fast tests (`test:fast`) and the branch's Code Health | App builds, non-desktop lane suites and cache experiments in the hook |
 | PR/review readiness | Require CI's results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the execution environment |
 | Merging | The merge queue runs every lane, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | A second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
@@ -28,7 +28,7 @@ A local completion report can say CI/lane verification is pending. It is not a m
 claim. Do not wait for unrelated checks before asking a question. If no code or configuration
 changed, a read-only review does not require test execution.
 
-Use `hk check` for source quality, setup contracts, conventions, the API reference and the
+Use `hk check` for source quality, setup contracts, conventions, the API documentation and the
 repository tooling's tests; the pre-push hook runs the quick part of it, plus the fast tests:
 the `small`, analysis and `smoke` tests of the root module and the ruleset
 ([test size](verification-architecture.md#test-size)). It checks the working tree, so run it
@@ -51,7 +51,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 |---|---|---|
 | Source quality | Formatting, language/type diagnostics and repository conventions | `mise run lint`, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; mise environment works before SDK installation; CI cleanup works | `mise run ci:work -- test:setup`, cleanup tests in `mise run lint` |
-| API/documentation contracts | Inventories, metadata, visibility and generated-reference freshness | `mise run ci:work -- docs` |
+| API/documentation contracts | Inventories, metadata, visibility and docstrings | `mise run ci:work -- docs` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `mise run ci:work -- test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | The `android` and `ios` work and desktop targets |

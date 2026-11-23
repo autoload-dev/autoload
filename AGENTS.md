@@ -48,8 +48,8 @@ From the repository root:
 mise run setup                            # once per clone: install the Git hooks (hk.pkl)
 hk check                                  # lint, setup, conventions, API docs and tooling tests
 mise run format                           # when Python/Starlark/Bazel formatting is needed
-mise run generate                         # regenerate lock files and the API reference; the pre-commit hook runs it
-mise run api-docs                         # after changing the ruleset's public API
+mise run generate                         # regenerate lock files; the pre-commit hook runs it
+mise run ci:work -- docs                  # after changing the ruleset's public API
 mise run code-health                      # Code Health of the change since origin/main; the Git hooks run it too
 mise run code-health:survey               # Code Health of the whole checkout, to find refactoring targets
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>  # offload a large task to BuildBuddy

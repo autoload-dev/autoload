@@ -71,7 +71,7 @@ Locally, `mise run ci:lane -- <lane>` runs a whole lane on this host, `mise run 
 <name>...` single pieces, and `mise run ci:work` lists them. Where a piece is one Bazel command,
 the documentation shows that command instead. `hk check`
 runs the checks that need no lane machine: source quality, setup contracts, the conventions,
-the API reference and the repository tooling's tests. The pre-push hook runs the quick ones.
+the API documentation and the repository tooling's tests. The pre-push hook runs the quick ones.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such

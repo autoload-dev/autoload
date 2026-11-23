@@ -5,7 +5,7 @@ The [verification policy](verification.md) determines when evidence is needed, a
 [verification lanes](verification-platforms.md) determines the representative scope.
 
 - New environment or missing SDKs: [toolchains](#toolchains).
-- API source changes: [reference generation](#generated-api-reference).
+- API source changes: [API documentation](#api-documentation).
 - Platform Paths operating-system integration:
   [runtime acceptance](#platform-paths-runtime-acceptance).
 - Offloading work and tests to BuildBuddy: [remote execution](#remote-execution-with-buildbuddy).
@@ -60,12 +60,11 @@ The gRPC log records calls to a remote cache or executor. Open the JSON trace pr
 [Perfetto](https://ui.perfetto.dev) or summarize it with `bazel analyze-profile` to inspect
 the critical path and action timings. Keep these files only for the investigation.
 
-## Generated API reference
+## API documentation
 
-For API source changes, regenerate with
-`mise run api-docs` (`bazel run //tools/docs` in `rules_godot/`), inspect the generated diff and use the `docs` work for
-freshness and contract enforcement. See [API reference maintenance](api-reference.md) for
-metadata and generation details. Do not hand-edit generated reference pages.
+For API source changes, run the `docs` work, `mise run ci:work -- docs`: it checks the
+inventory, the docstrings and the contracts the registry's documentation relies on. See
+[API documentation maintenance](api-reference.md) for the metadata and its checks.
 
 ## Remote execution with BuildBuddy
 

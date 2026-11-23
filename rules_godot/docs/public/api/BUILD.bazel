@@ -18,25 +18,8 @@ bzl_library(
 )
 
 api_reference(
-    name = "site",
+    name = "bcr_docs",
     apis = PUBLIC_APIS,
-)
-
-py_test(
-    name = "reference_test",
-    size = "small",
-    srcs = ["//tools/docs:reference_test.py"],
-    args = [
-        "$(rootpath :site)",
-        "$(rootpath :modules.bzl)",
-    ],
-    data = [
-        "index.md",
-        ":modules.bzl",
-        ":site",
-    ] + glob(["reference/*.md"]),
-    main = "//tools/docs:reference_test.py",
-    deps = ["//tools/docs:inventory_lib"],
 )
 
 py_test(

@@ -1,4 +1,4 @@
 interface:
   display_name: "Bazel API Documentation"
   short_description: "Document Bazel APIs and enforce reference coverage"
-  default_prompt: "Use $bazel-api-docs to document the changed Bazel APIs and verify their generated reference and CI coverage."
+  default_prompt: "Use $bazel-api-docs to document the changed Bazel APIs and verify their documentation checks and CI coverage."

@@ -24,7 +24,7 @@ local quick = new Mapping<String, Step> {
   ["test:actions"] = (task("test:actions")) { exclusive = false }
 }
 
-// The conventions, the API reference and the repository tooling's tests.
+// The conventions, the API documentation and the repository tooling's tests.
 local thorough = new Mapping<String, Step> {
   ["conventions"] = task("conventions")
   ["docs"] = task("docs")
@@ -62,7 +62,7 @@ hooks {
         glob = List("**/MODULE.bazel", "*.bzl")
         exclusive = true
         fix = "python3 -m tools.generate.generate {{files}}"
-        stage = List("**/MODULE.bazel.lock", "rules_godot/docs/public/api/**")
+        stage = List("**/MODULE.bazel.lock")
       }
       // Every linter on the staged files it handles; skipped without any, which would lint
       // the whole repository.

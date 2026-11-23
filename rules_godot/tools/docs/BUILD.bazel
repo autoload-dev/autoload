@@ -7,7 +7,6 @@ package(default_visibility = ["//docs/public/api:__pkg__"])
 exports_files([
     "bcr_metadata_test.py",
     "coverage_test.py",
-    "reference_test.py",
     "rules_android_doc_visibility.patch",
     "rules_android_ndk_doc_visibility.patch",
 ])
@@ -39,22 +38,10 @@ py_library(
     deps = ["//tools:tool_environment_lib"],
 )
 
-# `bazel run //tools/docs` updates the committed reference;
-# `bazel run //tools/docs:check` checks inventories and runs the docs tests.
-py_binary(
-    name = "docs",
-    srcs = ["api_docs.py"],
-    args = ["update"],
-    main = "api_docs.py",
-    tags = ["manual"],
-    visibility = ["//visibility:private"],
-    deps = ["//tools:tool_environment_lib"],
-)
-
+# `bazel run //tools/docs:check` checks the inventory and runs the docs tests.
 py_binary(
     name = "check",
     srcs = ["api_docs.py"],
-    args = ["check"],
     main = "api_docs.py",
     tags = ["manual"],
     visibility = ["//visibility:private"],
@@ -68,23 +55,6 @@ py_library(
         ":coverage_lib",
         "//tools:ruleset_lib",
     ],
-)
-
-py_library(
-    name = "render_reference_lib",
-    srcs = ["render_reference.py"],
-    deps = [
-        ":coverage_lib",
-        ":inventory_lib",
-        ":surface_lib",
-        "//tools:ruleset_lib",
-    ],
-)
-
-py_binary(
-    name = "render_reference",
-    srcs = ["render_reference.py"],
-    deps = [":render_reference_lib"],
 )
 
 py_test(
@@ -120,7 +90,6 @@ py_test(
     srcs = ["surface_test.py"],
     deps = [
         ":coverage_lib",
-        ":render_reference_lib",
         ":surface_lib",
     ],
 )

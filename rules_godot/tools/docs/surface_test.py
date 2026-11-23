@@ -4,8 +4,7 @@ import unittest
 from typing import Any
 
 from tools.docs.coverage import ModuleInfo, parse_module
-from tools.docs.render_reference import render_site
-from tools.docs.surface import assign_surface, validate_rendered
+from tools.docs.surface import assign_surface
 
 PUBLIC = "//godot:defs.bzl"
 OTHER = "//godot/platforms:linux.bzl"
@@ -15,12 +14,8 @@ INTERNAL = "//godot/private:helper.bzl"
 def manifest() -> dict[str, Any]:
     return {
         "PUBLIC_APIS": {
-            PUBLIC: {"group": "Core", "purpose": "Build things.", "symbols": ["thing"]},
-            OTHER: {
-                "group": "Platforms",
-                "purpose": "Package things.",
-                "symbols": ["other_thing"],
-            },
+            PUBLIC: ["thing"],
+            OTHER: ["other_thing"],
         },
         "CROSS_REPOSITORY_MODULES": {},
         "PUBLIC_TARGETS": {},
@@ -48,7 +43,7 @@ def inputs() -> dict[str, ModuleInfo]:
 class SurfaceTest(unittest.TestCase):
     def test_identically_named_independent_rules_do_not_collapse(self) -> None:
         config = manifest()
-        config["PUBLIC_APIS"][OTHER]["symbols"] = ["thing"]
+        config["PUBLIC_APIS"][OTHER] = ["thing"]
         modules = inputs()
         modules[OTHER] = metadata("thing", file="//godot/private:another.bzl")
         owners = assign_surface(config, modules)
@@ -70,7 +65,7 @@ class SurfaceTest(unittest.TestCase):
         ):
             assign_surface(manifest(), modules)
 
-    def test_new_export_cannot_hide_behind_presentation_filter(self) -> None:
+    def test_new_export_cannot_hide_behind_the_primary_selection(self) -> None:
         modules = inputs()
         modules[PUBLIC].rule_info.add().CopyFrom(
             metadata("new_api", origin="new_api").rule_info[0]
@@ -82,7 +77,7 @@ class SurfaceTest(unittest.TestCase):
 
     def test_removed_primary_symbol_is_rejected(self) -> None:
         config = manifest()
-        config["PUBLIC_APIS"][PUBLIC]["symbols"].append("removed")
+        config["PUBLIC_APIS"][PUBLIC].append("removed")
         with self.assertRaisesRegex(ValueError, "removed: primary symbol does not exist"):
             assign_surface(config, inputs())
 
@@ -105,53 +100,11 @@ class SurfaceTest(unittest.TestCase):
                         getattr(helper, category)[0]
                     )
                     if selected:
-                        config["PUBLIC_APIS"][PUBLIC]["symbols"].append("helper")
+                        config["PUBLIC_APIS"][PUBLIC].append("helper")
                     with self.assertRaisesRegex(
                         ValueError, "cross-repository module leaked"
                     ):
                         assign_surface(config, modules)
-
-    def test_contracts_are_rendered_once_at_their_public_entrypoints(self) -> None:
-        modules = inputs()
-        rendered = {
-            PUBLIC: '<a id="thing"></a>\n\n## thing\n\nBuild a thing.\n',
-            OTHER: '<a id="other_thing"></a>\n\n## other_thing\n\nPackage a thing.\n',
-        }
-        pages = render_site(
-            manifest(),
-            modules,
-            rendered,
-            {PUBLIC: "godot_defs", OTHER: "godot_platforms_linux"},
-        )
-        self.assertEqual(
-            set(pages),
-            {
-                "reference/godot_defs.md",
-                "reference/godot_platforms_linux.md",
-                "index.md",
-            },
-        )
-        for symbol in ("thing", "other_thing"):
-            self.assertEqual(
-                sum(text.count(f'<a id="{symbol}"></a>') for text in pages.values()), 1
-            )
-
-    def test_missing_or_extra_rendered_contract_fails(self) -> None:
-        with self.assertRaisesRegex(ValueError, "exactly once"):
-            validate_rendered("## thing\n", ["thing"], PUBLIC)
-        with self.assertRaisesRegex(ValueError, "differs"):
-            validate_rendered(
-                '<a id="thing"></a>\n## thing\n<a id="unexpected"></a>\n## unexpected\n',
-                ["thing"],
-                PUBLIC,
-            )
-
-    def test_ordinary_documentation_sections_are_not_extra_apis(self) -> None:
-        validate_rendered(
-            '<a id="thing"></a>\n## thing\n## Outputs\nUseful description.\n',
-            ["thing"],
-            PUBLIC,
-        )
 
 
 if __name__ == "__main__":

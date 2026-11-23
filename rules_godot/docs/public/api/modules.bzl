@@ -1,74 +1,41 @@
 """
-Explicit API roles and primary references; all exports are independently extracted.
+Explicit API roles and primary symbols; all exports are independently extracted.
 
-Symbol selections control presentation only. CI rejects every new public export
-without a primary owner, duplicate ownership, and additional public load paths.
+PUBLIC_APIS maps each public entrypoint to its primary symbols, the ones the registry's
+documentation archive carries. CI rejects every new public export without a primary owner,
+duplicate ownership, and additional public load paths.
 """
 
 PUBLIC_APIS = {
-    "//godot:app.bzl": {
-        "group": "Platform applications",
-        "purpose": "Compose a start pack and the registered runtime into one application target.",
-        "symbols": ["godot_app"],
-    },
-    "//godot/platforms:defs.bzl": {
-        "group": "Platform applications",
-        "purpose": "Declare export platforms, an operating system with a CPU set, without repeating flags for each platform slice.",
-        "symbols": ["godot_export_platform"],
-    },
-    "//godot:defs.bzl": {
-        "group": "Projects and resources",
-        "purpose": "Compose resources, add-ons and projects, export PCKs, run games and application tests, open projects in the editor and write their sidecars.",
-        "symbols": [
-            "godot_resources",
-            "godot_addon",
-            "godot_project",
-            "godot_pack",
-            "godot_run",
-            "godot_test",
-            "godot_editor",
-            "godot_metadata_sync",
-        ],
-    },
-    "//godot/extension:defs.bzl": {
-        "group": "Extensions",
-        "purpose": "Build and package extensions and their extension libraries.",
-        "symbols": [
-            "godot_extension",
-            "godot_cc_extension",
-        ],
-    },
-    "//godot/extension:repositories.bzl": {
-        "group": "Extensions",
-        "purpose": "Acquire pinned godot-cpp sources and expose the generated C++ library.",
-        "symbols": [
-            "godot_cpp_bindings",
-        ],
-    },
-    "//godot/engine:defs.bzl": {
-        "group": "Engines and toolchains",
-        "purpose": "Declare editor/runtime component slots with their toolchain registrations.",
-        "symbols": [
-            "godot_editor_component",
-            "godot_runtime_component",
-        ],
-    },
-    "//godot:extensions.bzl": {
-        "group": "Module setup",
-        "purpose": "Declare prebuilt Godot engines and generate their registration hubs with Bzlmod; register experimental Android SDK and NDK toolchains for each execution platform.",
-        "symbols": [
-            "godot_engines",
-            "godot_android_toolchains",
-        ],
-    },
-    "//godot:providers.bzl": {
-        "group": "Provider contracts",
-        "purpose": "Read exported packs and desktop applications in your own rules, for example to deploy them.",
-        "symbols": [
-            "GodotPackInfo",
-            "GodotDesktopAppInfo",
-        ],
-    },
+    "//godot:app.bzl": ["godot_app"],
+    "//godot/platforms:defs.bzl": ["godot_export_platform"],
+    "//godot:defs.bzl": [
+        "godot_resources",
+        "godot_addon",
+        "godot_project",
+        "godot_pack",
+        "godot_run",
+        "godot_test",
+        "godot_editor",
+        "godot_metadata_sync",
+    ],
+    "//godot/extension:defs.bzl": [
+        "godot_extension",
+        "godot_cc_extension",
+    ],
+    "//godot/extension:repositories.bzl": ["godot_cpp_bindings"],
+    "//godot/engine:defs.bzl": [
+        "godot_editor_component",
+        "godot_runtime_component",
+    ],
+    "//godot:extensions.bzl": [
+        "godot_engines",
+        "godot_android_toolchains",
+    ],
+    "//godot:providers.bzl": [
+        "GodotPackInfo",
+        "GodotDesktopAppInfo",
+    ],
 }
 
 CROSS_REPOSITORY_MODULES = {

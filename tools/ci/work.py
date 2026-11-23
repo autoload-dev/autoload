@@ -155,7 +155,7 @@ WORK = (
         ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
-    # The generated files: lock files, the API reference and the source-built engines' pins.
+    # The generated files: lock files and the source-built engines' pins.
     Work("generated", "quality", ".", ("python3 -m tools.generate.generate --check",)),
     Work(
         "test:setup",
@@ -173,11 +173,14 @@ WORK = (
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
     Work("test:fast", None, ".", (FAST_TEST_COMMAND, In(RULESET_DIR, FAST_TEST_COMMAND))),
+    # The API inventory and the documentation of its public entrypoints, and the contract
+    # cases that need no SDK.
     Work(
         "docs",
         "docs",
         RULESET_DIR,
         (
+            "bazel run //tools/docs:check",
             contracts_command("docs"),
             "bazel run //tools/docs:evaluated_mismatch_test",
         ),

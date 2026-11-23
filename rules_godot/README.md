@@ -113,7 +113,7 @@ Choose **Let's go**, then press Space to jump over gaps and pipes. The
 | Compile and package extensions | [GDExtensions](docs/public/gdextension.md) |
 | Build an engine from source or inspect debug symbols | [Engines](docs/public/engine.md) |
 | Choose an engine version | [Versions](docs/public/versions.md) |
-| Look up a rule, provider or module extension | [API reference](docs/public/api/index.md) |
+| Look up a rule, provider or module extension | [API documentation on the Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) |
 
 ## Contributing
 

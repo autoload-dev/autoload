@@ -33,23 +33,17 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["MODULE.bazel"]),
         )
 
-    def test_ruleset_code_regenerates_its_modules_locks_and_the_api_reference(
-        self,
-    ) -> None:
+    def test_ruleset_code_regenerates_its_modules_locks(self) -> None:
         self.assertEqual(
-            [
-                *[(m, "mod", "deps", "--lockfile_mode=update") for m in RULESET_MODULES],
-                ("rules_godot", "run", "//tools/docs"),
-            ],
+            [(m, "mod", "deps", "--lockfile_mode=update") for m in RULESET_MODULES],
             self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
         )
 
-    def test_the_check_covers_lock_files_reference_and_pins(self) -> None:
+    def test_the_check_covers_lock_files_and_pins(self) -> None:
         commands = self.runs("check")
         self.assertIn(
             ("rules_godot/tests", "mod", "deps", "--lockfile_mode=error"), commands
         )
-        self.assertIn(("rules_godot", "run", "//tools/docs:check"), commands)
         self.assertIn(
             (
                 "rules_godot/examples",

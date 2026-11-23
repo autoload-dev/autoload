@@ -75,7 +75,7 @@ godot_engines.prebuilt(
 (`linux_x86_64`, `linux_arm64`, `macos`, `macos_arm64` or `macos_x86_64`);
 `templates_urls`, `templates_integrity`, `templates_macos_cpus`, `templates_linux_cpus` and
 `ios_simulator_cpus` describe the export templates. The
-[extension reference](api/reference/godot_extensions.md) lists every attribute and the
+[API documentation](https://registry.bazel.build/modules/autoload_rules_godot) of `godot_engines` lists every attribute and the
 generated targets. Names are shared with the `source` and `source_build` tags: a root module's
 request owns its name, identical requests from dependencies share one hub, and
 conflicting ones fail.

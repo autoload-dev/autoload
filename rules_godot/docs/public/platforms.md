@@ -452,7 +452,7 @@ build:android --extra_toolchains=@android_toolchains//:all
 
 Local actions keep using the SDK of `ANDROID_HOME` and the NDK of `ANDROID_NDK_HOME`; Linux
 executors receive the Linux SDK and NDK that the
-[reference](api/reference/godot_extensions.md#godot_android_toolchains) pins. Choose an
+[API documentation](https://registry.bazel.build/modules/autoload_rules_godot) of `godot_android_toolchains` pins. Choose an
 `--@androidsdk//:api_level` it pins: for another level, an action on a Linux executor fails
 analysis.
 
@@ -799,7 +799,7 @@ libraries its native code needs the same way.
   application as `${key}`, as AppAuth's redirect activity does with
   `${appAuthRedirectScheme}`. The application sets it in
   `godot_app.android_manifest_values`, the counterpart of Gradle's
-  `manifestPlaceholders`; the [attribute reference](api/reference/godot_app.md) says
+  `manifestPlaceholders`; the [API documentation](https://registry.bazel.build/modules/autoload_rules_godot) of `godot_app` says
   what an unset placeholder and a reserved key do.
 - **Activity themes:** the application element carries no theme, as in Godot's own
   Android export, so a library activity without a theme of its own gets the platform
@@ -1062,11 +1062,11 @@ without exposing an intermediate APK. iOS consumers use `AppleBundleInfo` for th
 and rules_apple's bundle metadata.
 
 Desktop consumers use
-[GodotDesktopAppInfo](api/reference/godot_providers.md#GodotDesktopAppInfo): `archive`,
+[GodotDesktopAppInfo](https://registry.bazel.build/modules/autoload_rules_godot): `archive`,
 `bundle`, `operating_system` and bundle-relative `executable_path` describe the selected result,
 including optional macOS signing. For file subsets, use the desktop `archive`, `bundle` or
 `debug_symbols` output group. The common `.debug_symbols` companion target preserves independent
-symbol access on every operating system. The [application reference](api/reference/godot_app.md#godot_app)
+symbol access on every operating system. The [API documentation](https://registry.bazel.build/modules/autoload_rules_godot) of `godot_app`
 documents each interface's availability and prerequisites.
 
 An attribute that takes file labels rather than an output group can use a group through a
