@@ -97,8 +97,8 @@ dir = "rules_godot"
 run = "bazel run //tools/docs"
 
 [tasks."code-health"]
-description = "Report Code Health changes against origin/main; --only <path>... reviews files"
-run = "python3 -m tools.code_health.codescene --compare origin/main"
+description = "Review the Code Health of the change since origin/main; fails when a file declines"
+run = "python3 -m tools.code_health.codescene"
 
 [tasks.lint]
 description = "Check formatting, Buildifier lint, Ruff and ty, and the workflows"
