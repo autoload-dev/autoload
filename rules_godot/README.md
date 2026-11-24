@@ -47,8 +47,8 @@ tests and every application package.
    register_toolchains("@godot//toolchains:all")
    ```
 
-2. Add these options to your `.bazelrc` and `.godot-editor` to your `.bazelignore`;
-   [Installation](docs/public/installation.md) explains them:
+2. Add these options to your `.bazelrc`; [Installation](docs/public/installation.md)
+   explains them:
 
    ```text
    build --incompatible_exclude_starlark_flags_from_exec_config
@@ -83,7 +83,8 @@ tests and every application package.
    dependencies, generated files and stable `res://` paths.
 
 4. Run `bazel run :play` from that package. Your game opens in its window.
-   `bazel run :edit` opens the project in the Godot editor.
+   `bazel run :edit` opens the project in the Godot editor, once `.godot-editor` is in your
+   `.bazelignore`; see [editor views](docs/public/development.md#editor-view).
 
 ## Example
 
@@ -100,22 +101,14 @@ aspect exec -- bazel run //projects/lichtpost:run
 ```
 
 Choose **Let's go**, then press Space to jump over gaps and pipes. The
-[Lichtpost guide](examples/projects/lichtpost/README.md) walks through the project.
+[Lichtpost guide](examples/projects/lichtpost/README.md) walks through the project; the
+[examples](examples/README.md) list the other projects and add-ons.
 
 ## Documentation
 
-| Task | Guide |
-| --- | --- |
-| Install the module and set Bazel options | [Installation](docs/public/installation.md) |
-| Organize a project and reusable add-ons | [Project layout](docs/public/project-layout.md) |
-| Compose resources, add-ons, imports and packs | [Projects and resources](docs/public/resources.md) |
-| Edit projects and run script or GdUnit tests | [Development and testing](docs/public/development.md) |
-| Package desktop, Android or iOS applications | [Application platforms](docs/public/platforms.md) |
-| Compile and package extensions | [GDExtensions](docs/public/gdextension.md) |
-| Build an engine from source or inspect debug symbols | [Engines](docs/public/engine.md) |
-| Make a source-built engine small | [Make the engine small](docs/public/engine-size.md) |
-| Choose an engine version | [Versions](docs/public/versions.md) |
-| Look up a rule, provider or module extension | [API documentation on the Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) |
+The [guides](docs/public/README.md) cover installation, project layout, resources, testing,
+application platforms, extensions, engines and versions. The API reference is on the
+[Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot).
 
 ## Contributing
 

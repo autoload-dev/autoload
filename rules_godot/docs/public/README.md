@@ -1,6 +1,6 @@
 # Using rules_godot
 
-Build, edit, check, test and package Godot projects with Bazel. Start with the repository's
+Build, edit, check, test and package Godot projects with Bazel. Start with the ruleset's
 [quick start](../../README.md#quick-start), then choose a guide:
 
 | Task | Guide |

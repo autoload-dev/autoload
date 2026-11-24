@@ -40,15 +40,8 @@ RULES: tuple[Rule, ...] = (
 )
 
 
-def select(
-    ids: list[str] | None = None, exclude: list[str] | None = None
-) -> tuple[Rule, ...]:
-    excluded = set(exclude or [])
-    unknown = (set(ids or []) | excluded) - {rule.info.id for rule in RULES}
+def select(ids: list[str] | None = None) -> tuple[Rule, ...]:
+    unknown = set(ids or []) - {rule.info.id for rule in RULES}
     if unknown:
         raise ValueError("Unknown convention rule IDs: " + ", ".join(sorted(unknown)))
-    return tuple(
-        rule
-        for rule in RULES
-        if (ids is None or rule.info.id in ids) and rule.info.id not in excluded
-    )
+    return tuple(rule for rule in RULES if ids is None or rule.info.id in ids)

@@ -46,15 +46,15 @@ at login: tokens stay in memory, and storage, refresh and logout are the game's 
 | macOS | Yes |
 | Linux | No: every login ends with `UNSUPPORTED` |
 
-On Linux, `bazel build //addons/app_auth/demo:app` from `examples/` builds the bundle and
-archive without fetching any AppAuth artifact.
+On Linux, `bazel build //addons/app_auth/demo:app` from `rules_godot/examples/` builds the
+bundle and archive without fetching any AppAuth artifact.
 
 ## Run the demo
 
 1. Start the demo from source:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/app_auth/demo:run
    ```
 
@@ -192,7 +192,7 @@ commits both files. The Maven lock has no such entry.
 ## Work on the add-on
 
 ```sh
-cd examples
+cd rules_godot/examples
 bazel run //addons/app_auth/demo:edit     # open the demo in the editor
 bazel run //addons/app_auth/tests:edit    # open the test project
 bazel run //addons/app_auth/demo:update   # write UIDs and node IDs into the checkout

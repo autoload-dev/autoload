@@ -27,7 +27,7 @@ top right shows the field size, the steps per frame and the frame rate.
 
 ## Getting started
 
-Run these commands from `examples/` on macOS or Linux. Every Petri command
+Run these commands from `rules_godot/examples/` on macOS or Linux. Every Petri command
 takes `--config=petri`, which selects the engine `petri`, built from the
 Godot 4.7.2 sources with the module, in place of the prebuilt engine for that
 invocation. The first command compiles that editor and runtime; Bazel caches the

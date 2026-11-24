@@ -1,7 +1,8 @@
 # Development and testing
 
 Use the rules to run projects, test them, validate their scripts and edit declared resources.
-From `examples/`, run `bazel test //projects/lichtpost/tests` for the Lichtpost gameplay suites.
+From `rules_godot/examples/`, run `bazel test //projects/lichtpost/tests` for the Lichtpost
+gameplay suites.
 
 ## Execution and tests
 
@@ -83,33 +84,10 @@ Replace `//path/to:target` with your test label.
 
 ### GdUnit
 
-GdUnit4 comes from the add-on module `autoload_gdunit` of this repository: its add-on
-`@autoload_gdunit//:gdunit` and `gdunit_test` from `@autoload_gdunit//:defs.bzl`, a
-`godot_test` whose main script is a GdUnit test adapter, as `py_pytest_test` is a
-`py_test` that runs pytest. The adapter follows Bazel's test contract: `shard_count`,
-`--test_filter` and the JUnit report work as for any Bazel test.
-
-```starlark
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
-load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
-
-godot_resources(
-    name = "unit_suites",
-    testonly = True,
-    srcs = glob(["test/**/*_test.gd"]),
-    deps = [":game", "@autoload_gdunit//:gdunit"],
-)
-
-gdunit_test(
-    name = "unit_tests",
-    project = ":project",
-    suites = [":unit_suites"],
-    shard_count = 4,
-)
-```
-
-The [module's README](../../../addons/gdunit/README.md) describes how to depend on it, what a
-suite is, how the test passes and fails and how to split suites across test environments.
+The add-on module [`autoload_gdunit`](../../../addons/gdunit/README.md) provides
+`gdunit_test`, a `godot_test` that runs [GdUnit4](https://github.com/godot-gdunit-labs/gdUnit4)
+suites. Its README describes how to depend on it, what a suite is, how the test passes and
+fails and how to shard and filter suites.
 
 Bazel owns test-result caching and selected configuration matrices. Declare
 separate test targets, with a project of their own where the configuration differs, and choose toolchains and target platforms using normal Bazel
@@ -214,7 +192,7 @@ godot_editor(
 ```
 
 ```sh
-cd examples
+cd rules_godot/examples
 bazel run //projects/lichtpost:edit
 ```
 
@@ -284,8 +262,9 @@ bazel test //path/to:metadata.test
 ```
 
 Replace `path/to` with the package declaring the snippet above. For a runnable
-example, from `examples/`, `bazel run //projects/lichtpost:update` writes Lichtpost's missing
-metadata, and `bazel test //projects/lichtpost:update.test` checks its sidecars are declared.
+example, from `rules_godot/examples/`, `bazel run //projects/lichtpost:update` writes
+Lichtpost's missing metadata, and `bazel test //projects/lichtpost:update.test` checks its
+sidecars are declared.
 
 The first command writes each missing sidecar beside its file and names the
 target to declare it in; a `glob` in `srcs` picks it up on its own. An existing

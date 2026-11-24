@@ -11,7 +11,7 @@ Choose **Options** to mute sound or reduce motion. Options and your best score
 are saved locally. Reduced motion removes shake, particle bursts and bouncing
 animation while keeping the same controls and route.
 
-Run these commands from `examples/` on macOS or Linux:
+Run these commands from `rules_godot/examples/` on macOS or Linux:
 
 1. `bazel run //projects/lichtpost:run` opens the game. Choose **Let's go** to play.
 2. `bazel run //projects/lichtpost:edit` opens the project in Godot for editing.
@@ -32,7 +32,7 @@ alongside their execution targets in `tests/`. They are not dependencies
 of the production project.
 
 For mobile packaging, use the [Android and iOS prerequisites](../../../docs/public/platforms.md)
-and stay in `examples/`:
+and stay in `rules_godot/examples/`:
 
 - `bazel build //projects/lichtpost:app --config=android --config=aab`
   produces the unsigned App Bundle. Omit `--config=aab` for a signed APK.
