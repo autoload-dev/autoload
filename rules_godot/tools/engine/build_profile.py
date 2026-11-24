@@ -74,12 +74,11 @@ def declare(
     class_db.h no longer reaches the profile; a source that can reach a registration
     includes it directly.
     """
-    graph = {
-        name: frozenset(includes) - {HEADER} if name == _CLASS_DB else frozenset(includes)
-        for name, includes in graph.items()
-    }
+    graph = {name: frozenset(includes) for name, includes in graph.items()}
+    if _CLASS_DB in graph:
+        graph[_CLASS_DB] -= {HEADER}
     registering = _reaching(graph, lambda name: _registers(root, name, generated))
-    users = {source for source in sources if source in registering}
+    users = registering.intersection(sources)
     for source in users:
         graph[source] = graph[source] | {HEADER}
     return graph, users
@@ -100,9 +99,10 @@ def _reaching(
     """Return the files whose include closure, themselves included, has a matching file."""
     found: set[str] = set()
     for component in components(graph):
-        reaches = any(matches(name) for name in component) or any(
+        # What a component includes decides before its files are read.
+        reaches = any(
             include in found for name in component for include in graph[name]
-        )
+        ) or any(matches(name) for name in component)
         if reaches:
             found.update(component)
     return found

@@ -259,7 +259,7 @@ def _object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
     targets: Mapping[str, str],
-    profile_users: Container[str] = (),
+    profile_users: Container[str],
 ) -> tuple[list[str], list[str]]:
     """
     Return a library rule per source and the labels of those libraries.
@@ -397,6 +397,7 @@ def _manifest(
     args: argparse.Namespace,
     graph: Mapping[str, Any],
     groups: Mapping[tuple[str, tuple[str, ...], tuple[str, ...]], Collection[str]],
+    profile_scoped: bool,
 ) -> dict[str, Any]:
     swift_sources = graph["swift_sources"]
     return {
@@ -414,6 +415,9 @@ def _manifest(
         "generator_actions": len(graph["generators"]),
         "scons_options": args.options,
         "minimum_os": graph["minimum_os"],
+        # Whether only class registrations see the build profile; a fork that changed
+        # class_db.h gives it to every source.
+        "build_profile_scoped": profile_scoped,
     }
 
 
@@ -422,9 +426,12 @@ def _includes(
     compiled: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     generated: Mapping[str, Generated],
     extra_roots: Sequence[str],
-) -> tuple[Mapping[str, Collection[str]], set[str]]:
-    """Return what each file includes, and the sources that see the build profile."""
-    scoped = build_profile.scope(root)
+) -> tuple[Mapping[str, Collection[str]], set[str], bool]:
+    """
+    Return what each file includes, the sources that see the build profile, and whether
+    only those do.
+    """
+    profile_scoped = build_profile.scope(root)
     includes = include_graph(
         root,
         (
@@ -434,10 +441,11 @@ def _includes(
         generated,
         extra_roots,
     )
-    if not scoped:
-        return includes, set()
+    if not profile_scoped:
+        return includes, set(), False
     sources = [source for *_, group in compiled for source in group]
-    return build_profile.declare(root, includes, generated, sources)
+    includes, users = build_profile.declare(root, includes, generated, sources)
+    return includes, users, True
 
 
 def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> None:
@@ -457,7 +465,9 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     compiled = object_groups(groups, generated_headers, generated)
     swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
     swift_roots = [swift_options["bridging_header"]] if graph["swift_sources"] else []
-    includes, profile_users = _includes(root, compiled, generated, swift_roots)
+    includes, profile_users, profile_scoped = _includes(
+        root, compiled, generated, swift_roots
+    )
     header_rules, targets = include_rules(includes)
     lines += header_rules
     object_rules, dependencies = _object_rules(compiled, includes, targets, profile_users)
@@ -469,4 +479,6 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines += _engine_rules(args, graph, dependencies)
     (root / "BUILD.bazel").write_text("\n\n".join(lines) + "\n")
     # This file is the successful-capture marker checked after SCons exits.
-    write_json(root / "engine_manifest.json", _manifest(args, graph, groups))
+    write_json(
+        root / "engine_manifest.json", _manifest(args, graph, groups, profile_scoped)
+    )
