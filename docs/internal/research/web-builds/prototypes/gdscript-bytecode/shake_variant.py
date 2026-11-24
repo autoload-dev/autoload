@@ -58,7 +58,8 @@ def _shake_variant(source: Path, usage: dict[str, list[str]], names: set[str]) -
     found, removed = _rewrite(
         source / "core/variant/variant_utility.cpp",
         _UTILITY,
-        lambda statement: statement.group(2) not in utilities,
+        # `FUNCBIND*(_typeof, ...)` registers `typeof`: the macro drops a leading `_`.
+        lambda statement: statement.group(2).removeprefix("_") not in utilities,
     )
     print(f"utility functions: {found} found, {removed} removed")
 
