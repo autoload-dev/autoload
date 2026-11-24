@@ -9,7 +9,7 @@ not cover this module: changing how a graph renders keeps every pin.
 import argparse
 from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any
 
 try:
     from . import build_profile, define_analysis
@@ -293,51 +293,33 @@ def _group_constants(index: int, language: str, copts: Sequence[str]) -> list[st
     """A group's options; C and C++ groups keep their -D and -U options apart."""
     if language == "objc":
         return [f"_COPTS_{index} = {list(copts)!r}"]
-    return [
-        f"_COPTS_{index} = {[c for c in copts if not define_analysis.is_definition(c)]!r}",
-        f"_DEFINES_{index} = {[c for c in copts if define_analysis.is_definition(c)]!r}",
-    ]
+    options: list[str] = []
+    definitions: list[str] = []
+    for copt in copts:
+        (definitions if define_analysis.is_definition(copt) else options).append(copt)
+    return [f"_COPTS_{index} = {options!r}", f"_DEFINES_{index} = {definitions!r}"]
 
 
-class _Library(NamedTuple):
-    """A source's library and the options it compiles with."""
-
-    group: int
-    language: str
-    source: str
-    name: str
-    includes: str
-    deps: list[str]
-    local_defines: list[str]
-
-
-def _library_rules(
-    library: _Library,
-) -> tuple[list[str], define_analysis.AnalyzedSource | None]:
+def _library_rules(language: str, library: define_analysis.Library) -> list[str]:
     """A source's library rule, with its define analysis unless it is Objective-C."""
     common = f"name = {library.name!r}, visibility = ['//visibility:private'], "
     rest = f"includes = {library.includes}, deps = {library.deps!r}, alwayslink = True)"
-    if library.language == "objc":
-        defines = f"local_defines = {library.local_defines!r}, " * bool(
-            library.local_defines
+    if language == "objc":
+        defines = (
+            f"local_defines = {library.local_defines!r}, "
+            if library.local_defines
+            else ""
         )
         return [
-            (
-                f"objc_library({common}srcs = {[library.source]!r}, "
-                f"copts = _COPTS_{library.group}, {defines}{rest}"
-            )
-        ], None
-    analyzed = define_analysis.AnalyzedSource(library.group, library.source, library.name)
+            f"objc_library({common}srcs = {[library.source]!r}, "
+            + f"copts = _COPTS_{library.group}, {defines}{rest}"
+        ]
     header = define_analysis.header(library.name)
     return [
-        define_analysis.defines_rule(
-            analyzed, library.includes, library.local_defines, library.deps
-        ),
-        (
-            f"cc_library({common}srcs = {[library.source, header]!r}, "
-            f"copts = _COPTS_{library.group} + ['-include', {header!r}], {rest}"
-        ),
-    ], analyzed
+        define_analysis.defines_rule(library),
+        f"cc_library({common}srcs = {[library.source, header]!r}, "
+        + f"copts = _COPTS_{library.group} + ['-include', {header!r}], {rest}",
+    ]
 
 
 def object_rules(
@@ -361,7 +343,7 @@ def object_rules(
     lines: list[str] = []
     labels: list[str] = []
     names: set[str] = set()
-    analyzed: list[define_analysis.AnalyzedSource] = []
+    analyzed: list[define_analysis.Library] = []
     for index, (language, copts, includes, sources) in enumerate(groups):
         lines += _group_constants(index, language, copts)
         include_lines, source_includes = constants(
@@ -373,20 +355,17 @@ def object_rules(
             name = object_library_name(source, index, names)
             names.add(name)
             labels.append(":" + name)
-            library_lines, source_analysis = _library_rules(
-                _Library(
-                    index,
-                    language,
-                    source,
-                    name,
-                    source_includes[source],
-                    _source_deps(graph, targets, source),
-                    [build_profile.DEFINE] if source in profile_users else [],
-                )
+            library = define_analysis.Library(
+                group=index,
+                source=source,
+                name=name,
+                includes=source_includes[source],
+                deps=_source_deps(graph, targets, source),
+                local_defines=[build_profile.DEFINE] if source in profile_users else [],
             )
-            lines += library_lines
-            if source_analysis:
-                analyzed.append(source_analysis)
+            lines += _library_rules(language, library)
+            if language != "objc":
+                analyzed.append(library)
     return lines + define_analysis.analysis_rules(analyzed), labels
 
 

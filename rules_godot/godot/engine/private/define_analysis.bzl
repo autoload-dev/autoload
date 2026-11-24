@@ -34,8 +34,8 @@ visibility(["//godot/..."])
 GodotSourceDefinesInfo = provider(
     doc = "A source's wrapper and the command line that preprocesses it.",
     fields = {
-        "wrapper": "File: the definitions, one per line, then an #include of the source.",
-        "count": "int: the number of definition lines at the wrapper's top.",
+        "definitions": "str: the source's #define and #undef lines.",
+        "wrapper": "File: the definitions, then an #include of the source.",
         "command": "list[str] | None: the preprocessing command line; None keeps every definition.",
         "env": "dict[str, str]: the command's environment.",
         "inputs": "depset[File]: the source, its wrapper and the headers it may include.",
@@ -141,10 +141,11 @@ def _source_defines_impl(ctx):
     source = ctx.file.src
 
     # cc_library puts local_defines before the options.
-    definitions = ["#define {} 1".format(name) for name in ctx.attr.local_defines]
-    definitions += [_definition(option) for option in _tokens(ctx.attr.defines)]
+    lines = ["#define {} 1".format(name) for name in ctx.attr.local_defines]
+    lines += [_definition(option) for option in _tokens(ctx.attr.defines)]
+    definitions = "".join([line + "\n" for line in lines])
     wrapper = ctx.actions.declare_file("_macros/{}.wrapper.{}".format(ctx.label.name, source.extension))
-    ctx.actions.write(wrapper, "\n".join(definitions + ['#include "{}"'.format(source.path), ""]))
+    ctx.actions.write(wrapper, definitions + '#include "{}"\n'.format(source.path))
     context = cc_common.merge_compilation_contexts(
         compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
     )
@@ -152,8 +153,8 @@ def _source_defines_impl(ctx):
     if toolchain.compiler not in _CL_COMPILERS:
         command, env = _command(ctx, toolchain, features, wrapper, context)
     return [GodotSourceDefinesInfo(
+        definitions = definitions,
         wrapper = wrapper,
-        count = len(definitions),
         command = command,
         env = env,
         inputs = depset([source, wrapper], transitive = [context.headers]),
@@ -174,28 +175,48 @@ godot_source_defines = rule(
     fragments = ["cpp"],
 )
 
-# Runs the sources' preprocessing in parallel; each writes the wrapper's definitions that
-# the compiler does not name unused. A failed preprocessing fails the action.
+# Runs the sources' preprocessing on one lane per processor; each writes the wrapper's
+# definitions, all lines but the last, except those the compiler names unused. Apple's
+# compiler wrapper colours its diagnostics whatever the options say. A failed
+# preprocessing fails the action.
 _SCRIPT = """\
 set -eu
 analyze() {
-  out=$1; wrapper=$2; count=$3; shift 3
+  out=$1; wrapper=$2; shift 2
   if ! log=$("$@" 2>&1 >/dev/null); then printf '%s\\n' "$log" >&2; exit 1; fi
-  # Apple's compiler wrapper colours its diagnostics whatever the options say.
-  unused=" $(printf '%s\\n' "$log" | LC_ALL=C sed -E "s/$(printf '\\033')\\[[0-9;]*m//g" | grep -F "$wrapper:" | grep -E ': warning: macro .*is not used' | cut -d: -f2 | tr '\\n' ' ') "
-  awk -v count="$count" -v unused="$unused" 'NR <= count && index(unused, " " NR " ") == 0' "$wrapper" > "$out"
+  printf '%s\\n' "$log" | awk -v wrapper="$wrapper" '
+    {
+      gsub(/\\033\\[[0-9;]*m/, "")
+      if (index($0, wrapper ":") == 1 && $0 ~ /: warning: macro .*is not used/) {
+        split(substr($0, length(wrapper) + 2), position, ":")
+        unused[position[1]] = 1
+      }
+    }
+    END {
+      while ((getline line < wrapper) > 0) lines[++count] = line
+      for (n = 1; n < count; n++) if (!(n in unused)) print lines[n]
+    }' > "$out"
 }
-keep() {
-  head -n "$2" "$1" > "$3"
+run() {
+  case $1 in
+{CASES}
+  esac
 }
-jobs_max=$(getconf _NPROCESSORS_ONLN)
+sources={COUNT}
+lanes=$(getconf _NPROCESSORS_ONLN)
 pids=""
-start() {
-  while [ "$(jobs -pr | wc -l)" -ge "$jobs_max" ]; do sleep 0.01; done
-  "$@" &
+lane=0
+while [ "$lane" -lt "$lanes" ] && [ "$lane" -lt "$sources" ]; do
+  (
+    index=$lane
+    while [ "$index" -lt "$sources" ]; do
+      run "$index"
+      index=$((index + lanes))
+    done
+  ) &
   pids="$pids $!"
-}
-{CALLS}
+  lane=$((lane + 1))
+done
 status=0
 for pid in $pids; do wait "$pid" || status=1; done
 exit $status
@@ -204,37 +225,46 @@ exit $status
 def _quote(text):
     return "'" + text.replace("'", "'\\''") + "'"
 
-def _call(info, header):
-    if info.command == None:
-        return "start keep {} {} {}".format(_quote(info.wrapper.path), info.count, _quote(header.path))
-    return "start analyze {} {} {} {}".format(
+def _case(index, info, header):
+    return "  {}) analyze {} {} {} ;;".format(
+        index,
         _quote(header.path),
         _quote(info.wrapper.path),
-        info.count,
         " ".join([_quote(argument) for argument in info.command]),
     )
 
-def _define_analysis_impl(ctx):
-    infos = [source[GodotSourceDefinesInfo] for source in ctx.attr.sources]
-    if len(infos) != len(ctx.outputs.outs):
-        fail("Every source needs one header in outs.")
+def _analyze(ctx, analyzed):
+    """Run the analysis of the sources that have a command, as (info, header) pairs."""
+    cases = [_case(index, info, header) for index, (info, header) in enumerate(analyzed)]
     script = ctx.actions.declare_file("_macros/{}.sh".format(ctx.label.name))
-    calls = [_call(info, header) for info, header in zip(infos, ctx.outputs.outs)]
-    ctx.actions.write(script, _SCRIPT.replace("{CALLS}", "\n".join(calls)))
+    ctx.actions.write(script, _SCRIPT.replace("{CASES}", "\n".join(cases)).replace("{COUNT}", str(len(cases))))
     env = {}
-    for info in infos:
+    for info, _ in analyzed:
         env |= info.env
     ctx.actions.run_shell(
         command = "bash " + script.path,
         env = env,
         inputs = depset(
             [script],
-            transitive = [info.inputs for info in infos] + [find_cc_toolchain(ctx).all_files],
+            transitive = [info.inputs for info, _ in analyzed] + [find_cc_toolchain(ctx).all_files],
         ),
-        outputs = ctx.outputs.outs,
+        outputs = [header for _, header in analyzed],
         mnemonic = "DefineAnalysis",
         progress_message = "Analyzing the macro definitions of %{label}",
     )
+
+def _define_analysis_impl(ctx):
+    infos = [source[GodotSourceDefinesInfo] for source in ctx.attr.sources]
+    if len(infos) != len(ctx.outputs.outs):
+        fail("Every source needs one header in outs.")
+    analyzed = []
+    for info, header in zip(infos, ctx.outputs.outs):
+        if info.command == None:
+            ctx.actions.write(header, info.definitions)
+        else:
+            analyzed.append((info, header))
+    if analyzed:
+        _analyze(ctx, analyzed)
     return [DefaultInfo(files = depset(ctx.outputs.outs))]
 
 godot_define_analysis = rule(

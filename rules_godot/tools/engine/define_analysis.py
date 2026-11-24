@@ -8,7 +8,7 @@ directory, at most SHARD_SIZE of them. See //godot/engine/private:define_analysi
 """
 
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from typing import NamedTuple
 
 # The most sources one analysis action preprocesses. A shard's action runs its sources in
@@ -21,12 +21,15 @@ SHARD_SIZE = 32
 _NESTED = {"_custom_modules", "drivers", "modules", "platform", "thirdparty"}
 
 
-class AnalyzedSource(NamedTuple):
-    """A source whose library takes its macro definitions from the analysis."""
+class Library(NamedTuple):
+    """A source's library, named after it, and the options it compiles with."""
 
     group: int
     source: str
-    library: str
+    name: str
+    includes: str
+    deps: list[str]
+    local_defines: list[str]
 
 
 def is_definition(option: str) -> bool:
@@ -39,39 +42,32 @@ def header(library: str) -> str:
     return f"_macros/{library}.h"
 
 
-def defines_rule(
-    analyzed: AnalyzedSource,
-    includes: str,
-    local_defines: Sequence[str],
-    deps: Sequence[str],
-) -> str:
+def defines_rule(library: Library) -> str:
     """The godot_source_defines target of a source, with its library's options."""
     return (
-        f"godot_source_defines(name = {_defines_target(analyzed.library)!r}, "
-        f"visibility = ['//visibility:private'], src = {analyzed.source!r}, "
-        f"copts = _COPTS_{analyzed.group}, defines = _DEFINES_{analyzed.group}, "
-        f"local_defines = {list(local_defines)!r}, includes = {includes}, deps = {list(deps)!r})"
+        f"godot_source_defines(name = {_defines_target(library.name)!r}, "
+        f"visibility = ['//visibility:private'], src = {library.source!r}, "
+        f"copts = _COPTS_{library.group}, defines = _DEFINES_{library.group}, "
+        f"local_defines = {library.local_defines!r}, includes = {library.includes}, "
+        f"deps = {library.deps!r})"
     )
 
 
-def analysis_rules(
-    sources: Iterable[AnalyzedSource], size: int = SHARD_SIZE
-) -> list[str]:
-    """The godot_define_analysis targets that write the sources' headers."""
-    shards: dict[tuple[int, str], list[AnalyzedSource]] = defaultdict(list)
-    for analyzed in sources:
-        shards[analyzed.group, _directory(analyzed.source)].append(analyzed)
+def analysis_rules(libraries: Iterable[Library], size: int = SHARD_SIZE) -> list[str]:
+    """The godot_define_analysis targets that write the libraries' headers."""
+    shards: dict[tuple[int, str], list[Library]] = defaultdict(list)
+    for library in libraries:
+        shards[library.group, _directory(library.source)].append(library)
     lines = []
     for (group, directory), members in sorted(shards.items()):
         chunks = _chunks(sorted(members, key=lambda member: member.source), size)
         for index, chunk in enumerate(chunks):
-            name = f"_macros__{group}__{directory}" + (
-                f"__{index}" if len(chunks) > 1 else ""
-            )
+            suffix = f"__{index}" if len(chunks) > 1 else ""
             lines.append(
-                f"godot_define_analysis(name = {name!r}, visibility = ['//visibility:private'], "
-                f"sources = {[':' + _defines_target(member.library) for member in chunk]!r}, "
-                f"outs = {[header(member.library) for member in chunk]!r})"
+                f"godot_define_analysis(name = '_macros__{group}__{directory}{suffix}', "
+                "visibility = ['//visibility:private'], "
+                f"sources = {[':' + _defines_target(member.name) for member in chunk]!r}, "
+                f"outs = {[header(member.name) for member in chunk]!r})"
             )
     return lines
 
@@ -86,7 +82,7 @@ def _directory(source: str) -> str:
     return "__".join(parts[: 2 if parts[0] in _NESTED else 1])
 
 
-def _chunks(members: list[AnalyzedSource], size: int) -> list[list[AnalyzedSource]]:
+def _chunks(members: list[Library], size: int) -> list[list[Library]]:
     """
     Split sorted members into the fewest runs of at most size, as even as possible.
 

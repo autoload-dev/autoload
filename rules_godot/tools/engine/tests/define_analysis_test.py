@@ -1,6 +1,6 @@
 import unittest
 
-from tools.engine.define_analysis import AnalyzedSource, analysis_rules, is_definition
+from tools.engine.define_analysis import Library, analysis_rules, is_definition
 from tools.engine.render import object_rules
 
 
@@ -50,14 +50,16 @@ class DefineAnalysisTest(unittest.TestCase):
         )
 
     def test_shards_split_by_group_and_directory_and_size(self) -> None:
-        sources = [
-            AnalyzedSource(0, f"scene/{name}.cpp", f"_objects__scene__{name}.cpp")
-            for name in "abcde"
-        ] + [
-            AnalyzedSource(0, "thirdparty/zlib/a.c", "_objects__thirdparty__zlib__a.c"),
-            AnalyzedSource(0, "thirdparty/zstd/a.c", "_objects__thirdparty__zstd__a.c"),
-            AnalyzedSource(1, "scene/f.cpp", "_objects__scene__f.cpp"),
-            AnalyzedSource(0, "main.cpp", "_objects__main.cpp"),
+        def library(group: int, source: str) -> Library:
+            return Library(
+                group, source, "_objects__" + source.replace("/", "__"), "[]", [], []
+            )
+
+        sources = [library(0, f"scene/{name}.cpp") for name in "abcde"] + [
+            library(0, "thirdparty/zlib/a.c"),
+            library(0, "thirdparty/zstd/a.c"),
+            library(1, "scene/f.cpp"),
+            library(0, "main.cpp"),
         ]
         rules = _rules(analysis_rules(sources, size=2), "godot_define_analysis")
         self.assertEqual(
