@@ -71,7 +71,10 @@ Locally, `aspect lane <lane>` runs a whole lane on this host, `aspect work <name
 pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation
 shows that command instead. `aspect pre-push` runs the checks that need no lane machine:
 format, lint, generated files, the conventions, setup contracts, the fast tests, the API
-documentation with its contract cases and the repository tooling's tests. The pre-push hook
+documentation with its contract cases and the repository tooling's tests. Of lint, the
+generated files and the API documentation, it runs only the steps whose inputs changed since
+the merge base with `origin/main`, and names those it skips; a change to the verification
+tooling runs them all (`tools/ci/changes.py`). CI's lanes run everything. The pre-push hook
 `aspect bootstrap` installs runs it.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an

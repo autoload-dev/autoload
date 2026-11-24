@@ -8,6 +8,10 @@ Each piece of work is a few shell commands, each run in a module directory.
 The add-on modules' work comes from their addon.pkl: the same generic commands for each
 module (tools/addons/lanes.py), and the add-on generator's self-test in every lane. The
 source-engine lane runs in its own scheduled workflow, the others in CI.
+
+A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook runs it, skips
+the steps whose inputs did not change since the merge base with the reference
+(tools/ci/changes.py). Lanes and named work without the option run every step.
 """
 
 import argparse
@@ -22,6 +26,7 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
+from tools.ci.changes import Changes, Inputs, changes_since, either, files, module_files
 from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
@@ -37,10 +42,14 @@ ANDROID_SETUP = "android:setup"
 
 
 class In(NamedTuple):
-    """A command that runs in another directory than the rest of its work."""
+    """
+    A command that runs in another directory than the rest of its work, or with other
+    inputs; without inputs it always runs.
+    """
 
     directory: str
     command: str
+    inputs: Inputs | None = None
 
 
 @dataclass(frozen=True)
@@ -58,11 +67,14 @@ class Work:
     android: bool = False
     hosts: tuple[str, ...] = ()
     env: tuple[tuple[str, str], ...] = ()
+    inputs: Inputs | None = None
 
     def steps(self) -> list[In]:
-        """Each command with the directory it runs in."""
+        """Each command with the directory it runs in and its inputs."""
         return [
-            command if isinstance(command, In) else In(self.directory, command)
+            command
+            if isinstance(command, In)
+            else In(self.directory, command, self.inputs)
             for command in self.commands
         ]
 
@@ -87,9 +99,11 @@ DOCS_CHECK = "bazel run //tools/docs:check"
 PETRI_TESTS = example_tests("petri", "projects", config="petri")
 
 
-def every_module(command: str, root: Path = ROOT) -> tuple[In, ...]:
+def every_module(
+    command: str, root: Path = ROOT, inputs: Inputs | None = None
+) -> tuple[In, ...]:
     """A command for each module of the checkout, as the setup checks discover them."""
-    return tuple(In(module, command) for module in module_paths(root))
+    return tuple(In(module, command, inputs) for module in module_paths(root))
 
 
 # A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
@@ -99,6 +113,37 @@ LINT_COMMAND = (
     "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
     ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
     " --skip_incompatible_explicit_targets; }"
+)
+# A module's lint runs for its own Python and the targets that hold it, and for the linters'
+# configuration.
+LINT_INPUTS = either(
+    module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
+    files("pyproject.toml", "ty.toml", "tools/lint/*", ".aspect/config.axl"),
+)
+# What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
+# the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
+GENERATED_INPUTS = files(
+    "*MODULE.bazel*",
+    f"{RULESET_DIR}/godot/*.bzl",
+    f"{RULESET_DIR}/godot/engine/*",
+    f"{RULESET_DIR}/examples/*.lock.json",
+    "tools/generate/*",
+)
+# The API documentation: the ruleset's API, the documentation module and the root module's
+# Python its tools load.
+DOCS_INPUTS = files(
+    f"{RULESET_DIR}/godot/*",
+    f"{DOCS}/*",
+    f"{RULESET_DIR}/MODULE.bazel*",
+    f"{RULESET_DIR}/BUILD.bazel",
+    "tools/conventions/*",
+    "tools/setup/*",
+)
+# The contract checker's test of its mismatch reports.
+MISMATCH_TEST_INPUTS = files(
+    f"{DOCS}/tools/docs/*",
+    f"{RULESET_DIR}/godot/tests/api_contracts/*",
+    "tools/conventions/*",
 )
 
 
@@ -165,10 +210,16 @@ WORK = (
     # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
     # The lint aspects in every module; the workflows' lint is a test.
-    Work("lint", "quality", ".", every_module(LINT_COMMAND)),
+    Work("lint", "quality", ".", every_module(LINT_COMMAND, inputs=LINT_INPUTS)),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     # The generated files: lock files and the source-built engines' pins.
-    Work("generated", "quality", ".", ("python3 -m tools.generate.generate --check",)),
+    Work(
+        "generated",
+        "quality",
+        ".",
+        ("python3 -m tools.generate.generate --check",),
+        inputs=GENERATED_INPUTS,
+    ),
     Work(
         "test:setup",
         "quality",
@@ -191,8 +242,13 @@ WORK = (
         (
             DOCS_CHECK,
             contracts_command("docs"),
-            "bazel run //tools/docs:evaluated_mismatch_test",
+            In(
+                DOCS,
+                "bazel run //tools/docs:evaluated_mismatch_test",
+                MISMATCH_TEST_INPUTS,
+            ),
         ),
+        inputs=DOCS_INPUTS,
     ),
     contracts("desktop"),
     # The ruleset's desktop set, including its Android packaging tests; tests that build an
@@ -409,6 +465,31 @@ def environment() -> dict[str, str]:
     return {**os.environ, "PATH": path}
 
 
+def selected(work: Work, changes: Changes | None) -> list[In]:
+    """
+    The steps of a piece of work to run: all of them without changes, else those without
+    inputs or whose inputs changed. Each skipped step is reported.
+    """
+    steps = work.steps()
+    if changes is None:
+        return steps
+    chosen = []
+    for step in steps:
+        if step.inputs is None or step.inputs(changes, step.directory):
+            chosen.append(step)
+        else:
+            print(
+                f"[{work.name}] {where(step, steps)} skipped: no change since {changes.base}"
+            )
+    return chosen
+
+
+def where(step: In, steps: list[In]) -> str:
+    """A step by its directory, or with its command where other steps share it."""
+    alone = [s.directory for s in steps].count(step.directory) == 1
+    return step.directory if alone else f"{step.directory}$ {step.command}"
+
+
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
     """The work to run, the Android SDK's setup first where Android work needs it."""
     if unknown := [name for name in names if name not in known]:
@@ -425,11 +506,15 @@ def require_android_environment(work: list[Work], env: dict[str, str]) -> None:
 
 
 def run(
-    names: Iterable[str], root: Path = ROOT, known: dict[str, Work] | None = None
+    names: Iterable[str],
+    root: Path = ROOT,
+    known: dict[str, Work] | None = None,
+    changes: Changes | None = None,
 ) -> None:
     """
     Run pieces of work in order; unknown names fail before any work starts, and work
-    limited to other hosts is skipped. Android work provisions the SDK first.
+    limited to other hosts is skipped. Android work provisions the SDK first. With
+    changes, only the selected steps run.
     """
     known = known or all_work(root)
     here = host()
@@ -441,9 +526,11 @@ def run(
         if not runs_on(work, here):
             print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)
             continue
-        for directory, command in work.steps():
-            print(f"[{name}] {directory}$ {command}", flush=True)
-            subprocess.run(argv(work, command), cwd=root / directory, env=env, check=True)
+        for step in selected(work, changes):
+            print(f"[{name}] {step.directory}$ {step.command}", flush=True)
+            subprocess.run(
+                argv(work, step.command), cwd=root / step.directory, env=env, check=True
+            )
 
 
 def run_lane(lane: str, root: Path = ROOT) -> None:
@@ -461,16 +548,26 @@ def main() -> None:
         "run", help="Run pieces of work by name; without names, list them by lane"
     )
     pieces.add_argument("names", nargs="*")
+    pieces.add_argument(
+        "--changed-since",
+        metavar="REF",
+        help="skip the steps whose inputs did not change since the merge base with REF",
+    )
     args = parser.parse_args()
     try:
         if args.command == "lane":
             run_lane(args.lane)
         elif args.names:
-            run(args.names)
+            run(args.names, changes=changes(args.changed_since))
         else:
             print_work()
     except ValueError as error:
         parser.error(str(error))
+
+
+def changes(ref: str | None) -> Changes | None:
+    """The changes since the merge base with a reference, if one is given."""
+    return changes_since(ref, ROOT, module_paths(ROOT)) if ref else None
 
 
 def print_work() -> None:

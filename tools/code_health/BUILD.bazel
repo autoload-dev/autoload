@@ -14,7 +14,11 @@ py_library(
         "survey.py",
         "translation.py",
     ],
-    visibility = ["//tools/setup:__pkg__"],
+    # The setup check finds the CLI; the lanes' work reads the change since origin/main.
+    visibility = [
+        "//tools/ci:__pkg__",
+        "//tools/setup:__pkg__",
+    ],
 )
 
 # The pinned CodeScene CLI (//:multitool.lock.json), whose archive does not mark it
