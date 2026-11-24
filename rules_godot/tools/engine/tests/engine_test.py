@@ -1099,6 +1099,9 @@ class IncludeGraphTest(unittest.TestCase):
             graph["editor/translations/doc.gen.cpp"],
             {"doc/translations/de.po", "editor/translations/doc.gen.h"},
         )
+        self.assertEqual(
+            graph["editor/translations/doc.gen.h"], {"doc/translations/de.po"}
+        )
 
     def test_files_that_include_each_other_form_one_component(self) -> None:
         graph = {

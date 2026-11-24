@@ -16,6 +16,11 @@ from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
+try:
+    from .source_tree import SOURCE_SUFFIXES
+except ImportError:
+    from source_tree import SOURCE_SUFFIXES
+
 # Includes, imports and __has_include checks, whose answer an undeclared header would
 # change, by their delimiter.
 _DIRECTIVES = (
@@ -50,31 +55,11 @@ class Generated(NamedTuple):
     """
     A generated file: the code of its generator and the files the generator reads.
 
-    The files one generator writes share an equal value, which is how the scan finds the
-    other files a generator writes.
+    The files one generator writes share an equal value.
     """
 
     code: str
     inputs: tuple[str, ...]
-
-
-class _Generator(NamedTuple):
-    """The code of a generator, the files it reads and the files it writes."""
-
-    code: str
-    inputs: tuple[str, ...]
-    outputs: tuple[str, ...]
-
-
-def _generators(generated: Mapping[str, Generated]) -> dict[str, _Generator]:
-    """Return each generated file mapped to its generator."""
-    writes: dict[Generated, list[str]] = {}
-    for name, generator in generated.items():
-        writes.setdefault(generator, []).append(name)
-    return {
-        name: _Generator(*generator, tuple(writes[generator]))
-        for name, generator in generated.items()
-    }
 
 
 class CompileGroup(NamedTuple):
@@ -141,16 +126,16 @@ class _Resolver:
         found = (self._existing(base, include) for base in self.directories)
         return list(dict.fromkeys(name for name in [beside, *found] if name))
 
-    def template(self, include: str, named: Sequence[str]) -> list[str]:
+    def template(self, include: str, inputs: Sequence[str]) -> list[str]:
         """
         Return the files a templated include may name, such as "{module}/register_types.h".
 
-        A template without a literal path, such as "{header}" or "{target_h}", names one
-        of the given files: the generator's inputs and the other files it writes.
+        A template without a literal path, such as "{header}" or "{target_h}", names one of
+        the generator's inputs, which include the other headers it writes.
         """
         parts = _PLACEHOLDER.split(include)
         if not any("/" in part for part in parts):
-            return list(named)
+            return list(inputs)
         if include not in self._templates:
             pattern = re.compile(".+".join(map(re.escape, parts)) + "$")
             self._templates[include] = sorted(
@@ -186,21 +171,11 @@ def _file_includes(root: Path, path: str, resolver: _Resolver) -> set[str]:
     }
 
 
-def _generated_includes(
-    path: str, generator: _Generator, resolver: _Resolver
-) -> set[str]:
-    """
-    Return the files a generated file may include.
-
-    A templated include without a literal path names one of the generator's inputs or
-    one of the other files it writes, as Godot's translation generators include their
-    header with "{target_h}".
-    """
+def _generated_includes(path: str, generated: Generated, resolver: _Resolver) -> set[str]:
     found: set[str] = set()
-    named = [*generator.inputs, *(name for name in generator.outputs if name != path)]
-    for include in _GENERATED_DIRECTIVE.findall(generator.code):
+    for include in _GENERATED_DIRECTIVE.findall(generated.code):
         if "{" in include:
-            found.update(resolver.template(include, named))
+            found.update(resolver.template(include, generated.inputs))
         else:
             found.update(resolver.resolve(path, include))
     return found
@@ -225,18 +200,41 @@ def include_graph(
         for name in [*group.includes, *option_includes(group.copts)[0]]
     ]
     resolver = _Resolver(tree_files(root) | set(generated), directories)
+    generated = _with_written_headers(generated)
     forced = _option_headers(groups, resolver)
-    generators = _generators(generated)
     graph: dict[str, frozenset[str]] = {}
     pending = [*forced, *extra_roots]
     while pending:
         path = pending.pop()
         if path not in graph:
-            graph[path] = _includes(root, path, generators, resolver) | forced.get(
+            graph[path] = _includes(root, path, generated, resolver) | forced.get(
                 path, set()
             )
             pending.extend(graph[path])
     return graph
+
+
+def _with_written_headers(generated: Mapping[str, Generated]) -> dict[str, Generated]:
+    """
+    Return each generated file with the other headers its generator writes among its inputs.
+
+    Godot's translation generators write a header and a source that includes it as
+    "{target_h}". Both files have the same code, which cannot tell which file a directive
+    belongs to, so the sources stay out and a header never includes one.
+    """
+    headers: dict[Generated, list[str]] = {}
+    for name, generator in generated.items():
+        if PurePosixPath(name).suffix not in SOURCE_SUFFIXES:
+            headers.setdefault(generator, []).append(name)
+    return {
+        name: generator._replace(
+            inputs=(
+                *generator.inputs,
+                *(header for header in headers.get(generator, ()) if header != name),
+            )
+        )
+        for name, generator in generated.items()
+    }
 
 
 def _option_headers(
@@ -254,10 +252,10 @@ def _option_headers(
 
 
 def _includes(
-    root: Path, path: str, generators: Mapping[str, _Generator], resolver: _Resolver
+    root: Path, path: str, generated: Mapping[str, Generated], resolver: _Resolver
 ) -> frozenset[str]:
-    if path in generators:
-        return frozenset(_generated_includes(path, generators[path], resolver))
+    if path in generated:
+        return frozenset(_generated_includes(path, generated[path], resolver))
     return frozenset(_file_includes(root, path, resolver))
 
 
