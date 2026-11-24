@@ -95,6 +95,12 @@ approved in Codex.
 
 # Design and review decisions
 
+rules_godot and the add-on modules are released but early, with few users: breaking changes
+are fine, so add no compatibility shims, aliases or migration layers.
+
+When weighing design options, look at how mature Bazel rulesets solve the problem, especially
+those of aspect-build, and read their code rather than guessing.
+
 When adding or moving packages, targets or Godot tests, use the relevant
 [layout section](rules_godot/docs/public/project-layout.md): [package boundaries](rules_godot/docs/public/project-layout.md#build-files-and-package-boundaries),
 [target ownership](rules_godot/docs/public/project-layout.md#target-ownership-and-project-context) or
@@ -116,6 +122,18 @@ and general task descriptions.
 
 For public Bazel API or documentation-checker changes, use the
 [bazel-api-docs skill](.agents/skills/bazel-api-docs/SKILL.md).
+
+# Issues, pull requests and CI changes
+
+- GitHub Issues stay conceptual unless the user asks otherwise: the goal, the problem and its
+  context, without attribute names, rule shapes or implementation steps.
+- Several dependent pull requests of one feature form one `gh stack`; a green,
+  self-contained lower layer may merge alone. Push each branch while it is checked out with a
+  clean working tree, which the pre-push hook requires.
+- Validate and debug CI changes in a temporary job that runs only what the change needs, and
+  remove it afterwards; do not run the whole CI for every attempt.
+- Claude Code only: before every pull request, follow-ups included, run `/simplify` and apply
+  its cleanups, then `/code-review` and fix its findings, running the relevant tests after each.
 
 # Source and generation conventions
 
