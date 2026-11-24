@@ -9,8 +9,9 @@ which designs could change that, what a prototype measured, and the conclusions.
 Snapshot: 2026-11-24, Bazel 9.3.0, BuildBuddy remote execution
 (`--config=buildbuddy --config=android`). The engine under test is the beta recipe
 `godot_beta_source_build_android` from `rules_godot/MODULE.bazel`: Godot 4.8-beta1, Android
-arm64 `template_release`, 731 engine compiles. Each action count below also includes 56
-exec-configuration compiles of tools such as zlib, which every recipe shares already.
+arm64 `template_release`, 731 engine compiles. Engine compile counts leave out 56
+exec-configuration compiles of tools such as zlib, which every recipe shares already;
+Bazel's process summaries include them.
 
 Three changes narrow each compile's inputs, and the tables below name them:
 
@@ -66,8 +67,8 @@ The last row shows a lever that the narrowing changes do not cover. SCons adds t
 custom module directory to every compile's include path, so adding or removing a custom
 module changes all 730 command lines, even within one recipe. A source needs an include
 directory only if some file of its include closure lies below it. If rendering keeps only
-those directories, 711 of the 730 compiles stay equal. The 19 that remain are
-`modules_enabled.gen.h` and the module registration.
+those directories, the prototype below reruns only about 19 actions: the sources that
+include `modules_enabled.gen.h`, the module registration, and the link.
 
 Across platforms, CPUs or build targets, practically nothing is equivalent: the
 toolchain, the target flags and `TOOLS_ENABLED`/`DEBUG_ENABLED` differ on every compile.
@@ -158,7 +159,7 @@ What the prototype leaves open:
 ## Conclusions
 
 - **Narrowing pays first.** Include-directory pruning is the open narrowing lever. It
-  turns a custom-module change from 730 recompiles into 19, within a recipe, without any
+  turns a custom-module change from 730 recompiles into about 19 actions, within a recipe, without any
   change to repositories or pins. Like the feature macros, it is a rendering change.
 - **Only a shared tree repository (option 5) shares between recipes.** It pays off where
   several recipes of one row coexist: a module's test and production engines, A/B engine

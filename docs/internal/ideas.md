@@ -161,7 +161,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
   measures the potential, compares designs and describes a prototype of a shared tree
   repository with digest-named targets.
 - Candidate first step: render each source with only the include directories its closure
-  uses. A custom-module change then recompiles 19 sources instead of 730.
+  uses. A custom-module change then reruns about 19 actions instead of 730 compiles.
 - Open: a shared tree repository when several recipes of one row coexist. It needs
   content-addressed tree names, a rendering argument, and iOS and pinned-recipe coverage.
 
