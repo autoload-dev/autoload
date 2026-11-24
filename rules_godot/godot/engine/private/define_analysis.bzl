@@ -44,7 +44,7 @@ GodotSourceDefinesInfo = provider(
     doc = "A source's wrapper and the command line that preprocesses it.",
     fields = {
         "definitions": "str: the source's #define and #undef lines.",
-        "wrapper": "File: the definitions, then an #include of the source.",
+        "wrapper": "File: a canary definition, the definitions, then an #include of the source.",
         "command": "list[str] | None: the preprocessing command line; None keeps every definition.",
         "env": "dict[str, str]: the command's environment.",
         "execution_requirements": "dict[str, str]: the toolchain's requirements of a compile, such as Xcode's.",
@@ -60,6 +60,10 @@ _SILENCING = ("-w", "-Wno-everything", "-Wno-unused-macros", "-Wfatal-errors")
 # (the NDK's says llvm-c++), name the main file's unused definitions. A compiler that
 # reported none would keep every definition too.
 _CL_COMPILERS = ("msvc-cl", "clang-cl")
+
+# The wrapper's first line, which no source reads: a compiler that does not name it
+# unused reports no unused definition at all, and the analysis fails.
+_CANARY = "#define GODOT_DEFINE_ANALYSIS_CANARY 1\n"
 
 _PER_FILE_COPT = "//command_line_option:per_file_copt"
 _PER_FILE_COPT_SET = str(Label("//godot/engine/private:per_file_copt_set"))
@@ -125,13 +129,11 @@ def _command(ctx, toolchain, features, wrapper, context):
         feature_configuration = features,
         source_file = wrapper.path,
         output_file = "/dev/null",
-        # The wrapper includes the source by its execution root path; the warnings are
-        # read as plain text.
+        # The wrapper includes the source by its execution root path.
         user_compile_flags = flags + [
             "-iquote",
             ".",
             "-E",
-            "-fno-color-diagnostics",
             "-Wunused-macros",
             "-Wno-error=unused-macros",
         ],
@@ -184,7 +186,7 @@ def _source_defines_impl(ctx):
     lines += [_definition(option) for option in _tokens(ctx.attr.defines)]
     definitions = "".join([line + "\n" for line in lines])
     wrapper = ctx.actions.declare_file("_macros/{}.wrapper.{}".format(ctx.label.name, source.extension))
-    ctx.actions.write(wrapper, definitions + '#include "{}"\n'.format(source.path))
+    ctx.actions.write(wrapper, _CANARY + definitions + '#include "{}"\n'.format(source.path))
     context = cc_common.merge_compilation_contexts(
         compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
     )
@@ -217,27 +219,15 @@ godot_source_defines = rule(
     fragments = ["cpp"],
 )
 
-# Runs the sources' preprocessing on one lane per processor; each writes the wrapper's
-# definitions, all lines but the last, except those the compiler names unused. Apple's
-# compiler wrapper colours its diagnostics whatever the options say. A failed
-# preprocessing fails the action.
+# Runs the sources' preprocessing on one lane per processor; define_analysis.awk turns
+# each one's diagnostics into its header. A failed preprocessing fails the action.
 _SCRIPT = """\
 set -eu
+program=$1
 analyze() {
   out=$1; wrapper=$2; shift 2
   if ! log=$("$@" 2>&1 >/dev/null); then printf '%s\\n' "$log" >&2; exit 1; fi
-  printf '%s\\n' "$log" | awk -v wrapper="$wrapper" '
-    {
-      gsub(/\\033\\[[0-9;]*m/, "")
-      if (index($0, wrapper ":") == 1 && $0 ~ /: warning: macro .*is not used/) {
-        split(substr($0, length(wrapper) + 2), position, ":")
-        unused[position[1]] = 1
-      }
-    }
-    END {
-      while ((getline line < wrapper) > 0) lines[++count] = line
-      for (n = 1; n < count; n++) if (!(n in unused)) print lines[n]
-    }' > "$out"
+  printf '%s\\n' "$log" | awk -v wrapper="$wrapper" -f "$program" > "$out"
 }
 run() {
   case $1 in
@@ -285,11 +275,11 @@ def _analyze(ctx, analyzed):
         env |= info.env
         requirements |= info.execution_requirements
     ctx.actions.run_shell(
-        command = "bash " + script.path,
+        command = "bash {} {}".format(script.path, ctx.file._program.path),
         env = env,
         execution_requirements = requirements,
         inputs = depset(
-            [script],
+            [script, ctx.file._program],
             transitive = [info.inputs for info, _ in analyzed] + [find_cc_toolchain(ctx).all_files],
         ),
         outputs = [header for _, header in analyzed],
@@ -320,6 +310,7 @@ godot_define_analysis = rule(
             doc = "The sources' godot_source_defines targets.",
         ),
         "outs": attr.output_list(doc = "Each source's header, in the order of sources."),
+        "_program": attr.label(default = Label("//godot/engine/private:define_analysis.awk"), allow_single_file = True),
     },
     toolchains = use_cc_toolchain(),
     fragments = ["cpp"],

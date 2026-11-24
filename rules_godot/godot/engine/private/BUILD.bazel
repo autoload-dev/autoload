@@ -22,6 +22,11 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+exports_files(
+    ["define_analysis.awk"],
+    visibility = ["//visibility:public"],
+)
+
 # Whether the build sets --per_file_copt; the define analysis keeps every definition then.
 per_file_copt_setting(
     name = "per_file_copt_set",

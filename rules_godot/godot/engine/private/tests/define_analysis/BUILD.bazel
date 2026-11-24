@@ -73,3 +73,12 @@ py_test(
         ":library",
     ],
 )
+
+# The diagnostics parser on Clang's, Apple's coloured and GCC's warnings, and its failures.
+py_test(
+    name = "diagnostics_test",
+    size = "small",
+    srcs = ["diagnostics_test.py"],
+    args = ["$(rootpath //godot/engine/private:define_analysis.awk)"],
+    data = ["//godot/engine/private:define_analysis.awk"],
+)

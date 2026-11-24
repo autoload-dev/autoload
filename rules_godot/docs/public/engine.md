@@ -597,7 +597,9 @@ source therefore compiles without the recipe's `-D` and `-U` options and with `-
 of a header that holds only the definitions its preprocessing reads. An analysis action
 writes that header: with the source's own compile command and `-Wunused-macros`, it
 preprocesses a wrapper that defines the options and then includes the source, and it
-drops the definitions the compiler reports unused. A definition that the preprocessing
+drops the definitions the compiler, Clang or GCC, reports unused. A canary definition
+that no source reads must be reported too, so a compiler that reports nothing fails the
+analysis instead of keeping or dropping definitions silently. A definition that the preprocessing
 never reads cannot change it, so the object stays the same, and the compile reruns only
 when a definition it reads changes. One analysis action covers up to 32 sources of a
 compile group and directory and reruns when one of their files changes. Flipping
