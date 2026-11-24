@@ -3,6 +3,16 @@ The Aspect CLI's configuration of this repository: the linters of `aspect lint` 
 environment of every task, the Bazel commands and the tools they run.
 """
 
+load("@aspect//feature/artifacts.axl", "ArtifactUpload")
+load("@aspect//feature/deployment.axl", "Deployment")
+load("@aspect//feature/github_lint_comments.axl", "GithubLintComments")
+load("@aspect//feature/github_status_checks.axl", "GithubStatusChecks")
+
+# The features of Aspect Workflows and its GitHub App, which this repository does not use:
+# without their credentials they only warn, and the deployment's lookup in the keychain fails
+# a task on a macOS runner without one.
+_UNUSED_FEATURES = [ArtifactUpload, Deployment, GithubLintComments, GithubStatusChecks]
+
 # The SDK packages the repository provisions (tools/android/sdk.json).
 _ANDROID_PINS = "tools/android/sdk.json"
 
@@ -48,5 +58,7 @@ def config(ctx: ConfigContext):
         "//tools/lint:linters.bzl%ty",
         "//tools/lint:linters.bzl%buildifier",
     ]
+    for feature in _UNUSED_FEATURES:
+        ctx.features[feature].enabled = False
     for name, value in _android_environment(ctx).items():
         ctx.std.env.set_var(name, value)
