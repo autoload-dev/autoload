@@ -1,0 +1,25 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "view",
+    srcs = [
+        "run_view.gd",
+        "run_view.gd.uid",
+        "run_view.tscn",
+    ],
+    prefix = "main/run/view",
+    deps = [
+        "//examples/projects/lichtpost/main/components:courier",
+        "//examples/projects/lichtpost/main/components:effects",
+        "//examples/projects/lichtpost/main/components:greenhouse",
+        "//examples/projects/lichtpost/main/components:light",
+        "//examples/projects/lichtpost/main/components:parallax",
+        "//examples/projects/lichtpost/main/components:pipe",
+        "//examples/projects/lichtpost/main/components:platform",
+        "//examples/projects/lichtpost/main/rules:route",
+        "//examples/projects/lichtpost/main/run:definitions",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)

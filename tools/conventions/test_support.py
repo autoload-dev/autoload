@@ -125,8 +125,8 @@ class RepositoryTest(unittest.TestCase):
         as in the repository.
         """
         self.write("rules_godot/MODULE.bazel", "")
-        self.write("rules_godot/examples/MODULE.bazel", "")
-        self.write("rules_godot/tests/MODULE.bazel", "")
+        self.write("examples/MODULE.bazel", "")
+        self.write("scenarios/MODULE.bazel", "")
 
     def write(self, name: str, text: str) -> None:
         path = self.root / name

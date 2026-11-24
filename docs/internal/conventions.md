@@ -130,8 +130,8 @@ loading stop the audit with an error rather than silently passing.
 ## RG004
 
 **Public documentation does not reference test fixtures.** Public guides and READMEs show
-runnable examples, which users can copy, instead of named scenarios of the regression module.
-The check reports each line with a concrete path such as `tests/smoke/linux` in Markdown under
+runnable examples, which users can copy, instead of named consumer scenarios.
+The check reports each line with a concrete path such as `scenarios/smoke/linux` in Markdown under
 `docs/` and in every README, except internal documentation (the `docs/internal/` directories
 of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
 `tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
@@ -148,8 +148,9 @@ Markdown under `docs/` and in every README, except `AGENTS.md` files. Arguments 
 Each label resolves in exactly one module that contains its package:
 
 - `@autoload_rules_godot//` labels resolve in the ruleset module, `rules_godot/`.
-- A document inside a consumer module, such as `rules_godot/examples/`, resolves labels in
-  its own module first.
+- A document inside a consumer module, such as `addons/gdunit/examples/`, resolves labels in
+  its own module first; a document in the root module, such as one in `examples/`, resolves
+  them in the root module.
 - `//:target` labels in documents of the root module and the ruleset module are consumer
   templates and are not checked.
 
@@ -236,13 +237,14 @@ reusable-resource exemptions select applicability.
 
 ## RG009
 
-**Applications and add-ons use their typed roots.** Every consumer module of this
-repository uses the same layout of projects and add-ons, measured from its module root:
+**Applications and add-ons use their typed roots.** Every consumer of this repository uses
+the same layout of projects and add-ons, measured from its root: the directory of a consumer
+in the root module, the module root of another consumer module:
 
-| Module | Application projects | Add-ons |
+| Consumer | Application projects | Add-ons |
 |---|---|---|
-| Examples, `rules_godot/examples/` | `rules_godot/examples/projects/<name>/` | `rules_godot/examples/addons/<name>/` |
-| Regression tests, `rules_godot/tests/` | `rules_godot/tests/smoke/<operating_system>/`, `rules_godot/tests/script_run/`, `rules_godot/tests/patched_engine/` | `rules_godot/tests/shared_addon/` |
+| Examples, `examples/` | `examples/projects/<name>/` | `examples/addons/<name>/` |
+| Consumer scenarios, `scenarios/` | `scenarios/smoke/<operating_system>/`, `scenarios/script_run/`, `scenarios/patched_engine/` | `scenarios/shared_addon/` |
 | Add-on examples, `addons/<module>/examples/` | `addons/<module>/examples/projects/<name>/` | none: the add-ons are in the module |
 
 The path determines whether a directory is a project or an add-on, and which rules apply.
@@ -387,7 +389,7 @@ reports:
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project
-root, such as dependency patches in `rules_godot/examples/deps/`, are outside this rule.
+root, such as dependency patches in `examples/deps/`, are outside this rule.
 The check does not read module or patch contents and does not prove that a recipe consumes
 them.
 

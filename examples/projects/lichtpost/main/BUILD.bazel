@@ -1,0 +1,19 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "game.gd",
+        "game.gd.uid",
+        "game.tscn",
+    ],
+    prefix = "main",
+    deps = [
+        "//examples/projects/lichtpost/main/levels/level_01",
+        "//examples/projects/lichtpost/main/run",
+        "//examples/projects/lichtpost/main/run:definitions",
+        "//examples/projects/lichtpost/main/ui",
+    ],
+)

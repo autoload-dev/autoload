@@ -146,7 +146,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_engines#android": {
         "lane": "android",
-        "module": "tests",
+        "module": "..",
         "conditions": ["android_shell"],
         "entrypoints": _hub_entrypoints(
             # The hub builds the debug runtimes the official release lacks from its sources.
@@ -172,7 +172,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_engines#ios": {
         "lane": "ios",
-        "module": "tests",
+        "module": "..",
         "conditions": ["ios"],
         "entrypoints": _hub_entrypoints({
             "ios_{cpu}_{environment}_{variant}": [
@@ -186,7 +186,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_android_toolchains": {
         "lane": "android",
-        "module": "tests",
+        "module": "..",
         "conditions": [],
         "entrypoints": {
             _ANDROID_TOOLCHAINS + "ndk_{target_system}": [

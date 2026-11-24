@@ -1,0 +1,33 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+
+package(default_visibility = ["//examples/addons/app_auth:__subpackages__"])
+
+# AppAuth from the module's Swift package. SwiftPM's autolinking of Security does not reach
+# Bazel's link, so the framework is declared here.
+objc_library(
+    name = "apple",
+    srcs = ["apple_backend.mm"],
+    # The Objective-C++ source imports AppAuth's module; SwiftPM's layout has no framework
+    # header path for #import <AppAuth/AppAuth.h>.
+    copts = [
+        "-fmodules",
+        "-fcxx-modules",
+    ],
+    sdk_frameworks = [
+        "Foundation",
+        "Security",
+    ] + select({
+        "@platforms//os:ios": ["UIKit"],
+        "@platforms//os:osx": ["AppKit"],
+        "//conditions:default": [],
+    }),
+    target_compatible_with = select({
+        "@platforms//os:osx": [],
+        "@platforms//os:ios": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [
+        "//examples/addons/app_auth/native:backend_api",
+        "@swiftpkg_appauth_ios//:AppAuth",
+    ],
+)

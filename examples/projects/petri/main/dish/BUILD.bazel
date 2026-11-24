@@ -1,0 +1,14 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/petri:__subpackages__"])
+
+# The simulation view: the only resources that use the reaction_diffusion module's class.
+godot_resources(
+    name = "dish",
+    srcs = [
+        "dish.gd",
+        "dish.gd.uid",
+        "dish.tscn",
+    ],
+    prefix = "main/dish",
+)

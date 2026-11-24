@@ -16,11 +16,11 @@ from tools.digest import digest
 from tools.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 
-# The consumer module's smoke applications whose artifacts this check validates, and the
-# godot-cpp extension each one packages.
-ANDROID_APP = "//smoke/android:app"
-IOS_APP = "//smoke/ios:app"
-MACOS_APP = "//smoke/macos:app"
+# The consumer scenarios' smoke applications whose artifacts this check validates, in the
+# repository's root module, and the godot-cpp extension each one packages.
+ANDROID_APP = "//scenarios/smoke/android:app"
+IOS_APP = "//scenarios/smoke/ios:app"
+MACOS_APP = "//scenarios/smoke/macos:app"
 ANDROID_LIBRARY = "lib/arm64-v8a/libcounter_native.so"
 ENTRY_SYMBOL = "native_counter_init"
 
@@ -57,15 +57,16 @@ def main() -> None:
     )
     parser.add_argument("--android-sdk", type=Path, required=True)
     parser.add_argument("--android-ndk", type=Path, required=True)
-    # The API level the consumer module configures for its SDK, which the repository's
-    # tooling reads from its MODULE.bazel (tools/android/requirements.py).
+    # The API level the root module configures for its SDK, which the repository's tooling
+    # reads from its MODULE.bazel (tools/android/requirements.py).
     parser.add_argument("--android-api-level", required=True)
     parser.add_argument("--java", type=Path, required=True)
     parser.add_argument("--build-tools", required=True)
     parser.add_argument("--output", type=Path, help="Write the result to this path")
     args = parser.parse_args()
     root = args.root.resolve()
-    consumer = root / "tests"
+    # The repository's root module, which holds the scenarios.
+    consumer = root.parent
     apk = configured_output(
         consumer,
         ANDROID_APP,

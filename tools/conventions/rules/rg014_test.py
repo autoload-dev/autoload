@@ -29,7 +29,7 @@ class EngineLayoutTest(RepositoryTest):
         return tuple(directory + "/" + name for name in (files or MODULE))
 
     def test_compliant_project_with_modules_and_patches_has_no_findings(self) -> None:
-        root = "rules_godot/tests/projects/patched"
+        root = "scenarios/projects/patched"
         self.assertEqual(
             [],
             self.evaluate(
@@ -44,12 +44,10 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_project_without_engine_directory_has_no_findings(self) -> None:
-        self.assertEqual(
-            [], self.evaluate(*self.project("rules_godot/examples/projects/game"))
-        )
+        self.assertEqual([], self.evaluate(*self.project("examples/projects/game")))
 
     def test_module_outside_engine_modules_is_reported_once_at_its_config(self) -> None:
-        root = "rules_godot/examples/projects/game"
+        root = "examples/projects/game"
         findings = self.evaluate(
             *self.project(root),
             *self.module(root + "/modules/reaction_diffusion"),
@@ -71,7 +69,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_config_without_scsub_or_register_types_is_not_a_module(self) -> None:
-        root = "rules_godot/examples/projects/game"
+        root = "examples/projects/game"
         self.assertEqual(
             [],
             self.evaluate(
@@ -83,7 +81,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_patch_outside_engine_patches_is_reported(self) -> None:
-        root = "rules_godot/tests/projects/patched"
+        root = "scenarios/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/patches/engine-name.patch",
@@ -105,7 +103,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_stray_entries_in_engine_are_reported_once_per_entry(self) -> None:
-        root = "rules_godot/tests/projects/patched"
+        root = "scenarios/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/engine/BUILD.bazel",
@@ -133,7 +131,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_non_module_directory_and_files_in_engine_modules_are_reported(self) -> None:
-        root = "rules_godot/examples/projects/petri"
+        root = "examples/projects/petri"
         findings = self.evaluate(
             *self.project(root),
             *self.module(root + "/engine/modules/reaction_diffusion"),
@@ -162,7 +160,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_engine_patches_holds_only_patch_files_and_a_build_file(self) -> None:
-        root = "rules_godot/tests/projects/patched"
+        root = "scenarios/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/engine/patches/BUILD.bazel",
@@ -187,21 +185,21 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_nested_projects_own_their_files_and_other_areas_are_outside(self) -> None:
-        addon = "rules_godot/examples/addons/widget"
+        addon = "examples/addons/widget"
         findings = self.evaluate(
             *self.project(addon + "/demo"),
             *self.project(addon + "/tests"),
             *self.module(addon + "/demo/engine/modules/ok", "config.py", "SCsub"),
             *self.module(addon + "/tests/modules/stray", "config.py", "SCsub"),
             *self.module(addon + "/native", "config.py", "SCsub"),
-            "rules_godot/examples/deps/godot_simulator.patch",
-            "rules_godot/tests/unit/engine/fix.patch",
+            "examples/deps/godot_simulator.patch",
+            "scenarios/unit/engine/fix.patch",
             *self.module("godot/private/probe", "config.py", "SCsub"),
-            *self.project("rules_godot/tests/projects/mobile/android"),
-            *self.project("rules_godot/tests/projects/mobile/ios"),
-            "rules_godot/tests/projects/mobile/BUILD.bazel",
-            "rules_godot/tests/projects/mobile/shared.patch",
-            "rules_godot/tests/projects/mobile/android/engine/stray.txt",
+            *self.project("scenarios/projects/mobile/android"),
+            *self.project("scenarios/projects/mobile/ios"),
+            "scenarios/projects/mobile/BUILD.bazel",
+            "scenarios/projects/mobile/shared.patch",
+            "scenarios/projects/mobile/android/engine/stray.txt",
         )
         self.assertEqual(
             findings,
@@ -211,7 +209,7 @@ class EngineLayoutTest(RepositoryTest):
                     f"engine/modules/ of its project: {addon}/tests/modules/stray"
                 ),
                 (
-                    "rules_godot/tests/projects/mobile/android/engine/stray.txt: engine/ holds only "
+                    "scenarios/projects/mobile/android/engine/stray.txt: engine/ holds only "
                     "modules/ and patches/; unexpected entry: engine/stray.txt"
                 ),
             ],

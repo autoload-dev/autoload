@@ -1,0 +1,12 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//examples/addons/app_auth:__subpackages__"])
+
+# Always linked: the editor library lists it beside the shared native layer that calls it,
+# and GNU ld takes archive members only for symbols already undefined when it reaches them.
+cc_library(
+    name = "unsupported",
+    srcs = ["unsupported_backend.cc"],
+    deps = ["//examples/addons/app_auth/native:backend_api"],
+    alwayslink = True,
+)

@@ -12,7 +12,7 @@ This is research evidence, not completed feature acceptance.
 ### S01
 
 Repository [MODULE.bazel](../../../MODULE.bazel), [.bazelversion](../../../../.bazelversion),
-[examples/MODULE.bazel](../../../examples/MODULE.bazel), [engine profiles](../../../godot/private/engine/profiles.bzl)
+[examples/MODULE.bazel](../../../../MODULE.bazel), [engine profiles](../../../godot/private/engine/profiles.bzl)
 and [strict source patching](../../../godot/private/patches.bzl). Pins:
 Godot 4.7.2, Bazel 9.3.0, rules_android 0.8.0, rules_apple 5.3.1.
 The Godot tag resolves to ed1daf0bf001b61586d9930840f2f1394092c079 (git ls-remote);

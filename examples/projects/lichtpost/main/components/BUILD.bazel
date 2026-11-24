@@ -1,0 +1,107 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "courier",
+    srcs = [
+        "courier/courier.gd",
+        "courier/courier.gd.uid",
+        "courier/courier.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/shared",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)
+
+godot_resources(
+    name = "effects",
+    srcs = [
+        "effects/effects.gd",
+        "effects/effects.gd.uid",
+        "effects/effects.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/shared",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)
+
+godot_resources(
+    name = "greenhouse",
+    srcs = [
+        "greenhouse/greenhouse.gd",
+        "greenhouse/greenhouse.gd.uid",
+        "greenhouse/greenhouse.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/shared",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)
+
+godot_resources(
+    name = "light",
+    srcs = [
+        "light/light.gd",
+        "light/light.gd.uid",
+        "light/light.tscn",
+        "light/light_material.tres",
+    ],
+    prefix = "main/components",
+)
+
+godot_resources(
+    name = "parallax",
+    srcs = [
+        "parallax/parallax.gd",
+        "parallax/parallax.gd.uid",
+        "parallax/parallax.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/run:definitions",
+    ],
+)
+
+godot_resources(
+    name = "pipe",
+    srcs = [
+        "pipe/pipe.gd",
+        "pipe/pipe.gd.uid",
+        "pipe/pipe.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/shared",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)
+
+godot_resources(
+    name = "platform",
+    srcs = [
+        "platform/platform.gd",
+        "platform/platform.gd.uid",
+        "platform/platform.tscn",
+    ],
+    prefix = "main/components",
+    deps = [
+        "//examples/projects/lichtpost/main/shared",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)
+
+godot_resources(
+    name = "sound",
+    srcs = [
+        "sound/sound.gd",
+        "sound/sound.gd.uid",
+        "sound/sound.tscn",
+    ],
+    prefix = "main/components",
+)

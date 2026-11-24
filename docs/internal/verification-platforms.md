@@ -30,7 +30,7 @@ source-engine lane runs those tagged `source_engine`, which build an engine from
 are `manual`, so the desktop sets do not analyze their source recipes. CI runs the lane only in
 the [Source engine](#source-engine-workflow) workflow; locally,
 `aspect work source-engine` leaves out the tests also tagged `source_engine_extended`.
-The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
+The Android and iOS lanes run the scenarios' mobile smoke tests and the API
 contract cases of their lane.
 
 The matrix separates **host**, **operating system of the application**, **CPU/ABI**,

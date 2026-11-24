@@ -1,0 +1,25 @@
+load("@autoload_rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
+
+exports_files([
+    "Package.resolved",
+    "Package.swift",
+])
+
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+godot_export_platform(
+    name = "android_distribution",
+    cpus = [
+        "@platforms//cpu:aarch64",
+        "@platforms//cpu:x86_64",
+    ],
+    operating_system = "android",
+    visibility = ["//visibility:public"],
+)

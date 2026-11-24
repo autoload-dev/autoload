@@ -152,7 +152,7 @@ For settings on every invocation, such as `common --config=buildbuddy`, create
 Use this recipe when changing Platform Paths' Android or iOS operating-system integration,
 or when explicitly accepting its mobile runtime behavior. A BUILD-only move or documentation
 edit does not require repeating it. Build commands and SDK setup remain in the
-[example README](../../rules_godot/examples/addons/platform_paths/README.md#mobile-builds).
+[example README](../../examples/addons/platform_paths/README.md#mobile-builds).
 
 On Android, install and launch on a matching ARM64 device/emulator. Check all five path
 categories, their scopes, absence of an unnecessary storage permission prompt, legitimate
@@ -179,9 +179,9 @@ docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.b
 ## Regression fixtures
 
 The projects below are controlled inputs for rules_godot regressions, separate from each
-example's own tests. For area responsibilities, see the [test-area map](../../rules_godot/tests/AGENTS.md).
-They form the consumer module `rules_godot_tests` at `rules_godot/tests/`: run their labels
-from `rules_godot/tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
+example's own tests. For area responsibilities, see the [test-area map](../../scenarios/AGENTS.md).
+They are the consumer scenarios in `scenarios/` of the root module: run their labels from the
+repository root, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
 
 Use these project cases to find a concrete behavior:
 
@@ -228,8 +228,7 @@ wrapper in `native_counter/`, with its own GdUnit suites in the test project
 own suite:
 
 ```sh
-cd rules_godot/tests
-bazel test //shared_addon/...
+bazel test //scenarios/shared_addon/...
 ```
 
 autoload_gdunit's run tests also launch an intentionally failing suite and require the JUnit
@@ -242,7 +241,7 @@ bazel test //tests/...
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
-`aspect exec -- bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
+`aspect exec -- bazel test //scenarios/smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
 or `bazel test //:ios_official --config=official`.
 
 ### Source-built engine applications
@@ -252,9 +251,9 @@ From `rules_godot/`, on macOS ARM64 with Xcode selected:
 ```sh
 bazel test //tools/engine/tests:engine_test
 cd tests
-bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/stable:all
-bazel test //patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//patched_engine/engines/beta:all
-bazel test //patched_engine/tests:app_runs_patched_engine_test //patched_engine/tests:source_built_editor_test --extra_toolchains=//patched_engine/engines/source:all
+bazel test //scenarios/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//scenarios/patched_engine/engines/stable:all
+bazel test //scenarios/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//scenarios/patched_engine/engines/beta:all
+bazel test //scenarios/patched_engine/tests:app_runs_patched_engine_test //scenarios/patched_engine/tests:source_built_editor_test --extra_toolchains=//scenarios/patched_engine/engines/source:all
 bazel aquery 'mnemonic("CppCompile|ObjcCompile|GodotGenerate", @godot_source_macos_arm64_template_release//:godot)'
 ```
 
@@ -288,9 +287,8 @@ and a godot-cpp extension and an imported SVG texture, and are compatible with t
 host only:
 
 ```sh
-cd rules_godot/tests
-bazel test //smoke/linux/... //smoke/macos/...
-bazel test //smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
+bazel test //scenarios/smoke/linux/... //scenarios/smoke/macos/...
+bazel test //scenarios/smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 ```
 
 `app_boots_with_extensions_test` inspects the desktop archive and boots the exported
@@ -315,14 +313,13 @@ permissions, symbols and Info.plist fragments. The prebuilt beta engine's tests 
 declared application, engine and tool inputs; `official_beta_ios_link_links_selected_engine_test`
 checks an unsigned device executable, which is not a signed device IPA.
 
-The consumer module's mobile smoke scenarios are `manual`, so `bazel test //...` in `tests/`
-stays the desktop set. The module root's configuration suites list them per `.bazelrc`
-configuration; from `tests/`, test a suite with `--config` set to its configuration:
+The scenarios' mobile smoke tests are `manual`, so `bazel test //scenarios/...` stays the
+desktop set. The configuration suites of `scenarios/BUILD.bazel` list them per `.bazelrc`
+configuration; test a suite with `--config` set to its configuration:
 
 ```sh
-cd rules_godot/tests
-aspect exec -- bazel test //:android_aab --config=android --config=aab
-bazel test //:ios_official --config=official
+aspect exec -- bazel test //scenarios:android_aab --config=android --config=aab
+bazel test //scenarios:ios_official --config=official
 ```
 
 | Suite | Configuration | Checks |
@@ -331,13 +328,11 @@ bazel test //:ios_official --config=official
 | `ios_official` | `official` | the iOS smoke apps' embedded extension framework and statically linked extension entry |
 
 The `android` and `ios` work of their lanes runs these suites. To record artifact-level evidence
-of the smoke applications, build them, then return to the root to inspect them:
+of the smoke applications, build them, then inspect them:
 
 ```sh
-cd rules_godot/tests
-aspect exec -- bazel build //smoke/android:app --config=android
-bazel build //smoke/ios:app --config=official
-cd ../..
+aspect exec -- bazel build //scenarios/smoke/android:app --config=android
+bazel build //scenarios/smoke/ios:app --config=official
 aspect work inspect:mobile
 ```
 

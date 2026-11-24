@@ -32,12 +32,10 @@ class AddonProjectsTest(RepositoryTest):
     def test_demo_and_tests_are_separate_without_empty_category_requirements(
         self,
     ) -> None:
-        self.assertEqual(
-            [], self.evaluate(self.layout("rules_godot/examples/addons/widget"))
-        )
+        self.assertEqual([], self.evaluate(self.layout("examples/addons/widget")))
 
     def test_nested_configuration_cannot_replace_the_test_project(self) -> None:
-        root = "rules_godot/examples/addons/widget"
+        root = "examples/addons/widget"
         names = tuple(
             name for name in self.layout(root) if name != root + "/tests/project.godot"
         )
@@ -49,7 +47,7 @@ class AddonProjectsTest(RepositoryTest):
         self.assertTrue(any("reuse those contexts" in message for message in findings))
 
     def test_each_scope_owns_a_build_file_and_legacy_project_is_not_a_demo(self) -> None:
-        root = "rules_godot/examples/addons/widget"
+        root = "examples/addons/widget"
         names = tuple(
             name for name in self.layout(root) if name != root + "/demo/BUILD.bazel"
         )
@@ -59,25 +57,19 @@ class AddonProjectsTest(RepositoryTest):
 
     def test_all_addons_are_discovered_in_both_areas_without_opt_in(self) -> None:
         names = (
-            *self.layout("rules_godot/examples/addons/widget"),
-            *self.layout("rules_godot/tests/shared_addon"),
-            "rules_godot/tests/support/cc_extensions/c_abi/native.cc",
+            *self.layout("examples/addons/widget"),
+            *self.layout("scenarios/shared_addon"),
+            "scenarios/support/cc_extensions/c_abi/native.cc",
         )
         self.assertEqual([], self.evaluate(names))
 
     def test_the_shared_addon_scenario_needs_demo_and_test_projects(self) -> None:
-        findings = self.evaluate(("rules_godot/tests/shared_addon/BUILD.bazel",))
+        findings = self.evaluate(("scenarios/shared_addon/BUILD.bazel",))
         self.assertTrue(
-            any(
-                "rules_godot/tests/shared_addon/demo/project.godot" in item
-                for item in findings
-            )
+            any("scenarios/shared_addon/demo/project.godot" in item for item in findings)
         )
         self.assertTrue(
-            any(
-                "rules_godot/tests/shared_addon/tests/project.godot" in item
-                for item in findings
-            )
+            any("scenarios/shared_addon/tests/project.godot" in item for item in findings)
         )
 
 

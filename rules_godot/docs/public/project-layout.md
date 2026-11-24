@@ -2,7 +2,7 @@
 
 A consuming Bazel module keeps its applications in `projects/<name>/` and its add-ons in
 `addons/<name>/`, measured from the module root. The typed root tells an application from an
-add-on. The examples module, `rules_godot/examples/`, follows this layout; games such as
+add-on. The repository's examples, `examples/`, follow this layout; games such as
 Lichtpost are applications under `projects/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
@@ -17,7 +17,7 @@ libraries are not add-ons merely because they contain native sources.
 
 Keep an application, an add-on and the add-on's demonstration project in useful
 Bazel packages. An add-on can then be reused without pulling its demo or tests
-into a production pack. The [SQLite example](../../examples/addons/sqlite/README.md)
+into a production pack. The [SQLite example](../../../examples/addons/sqlite/README.md)
 shows this structure with a real native library:
 
 ```text
@@ -181,11 +181,11 @@ package. Supply necessary global classes, autoloads, extension types and setting
 its declared inputs; limiting the source list must not remove required context.
 Use [test ownership](#test-ownership) to separate test resources from production inputs.
 
-Lichtpost validates both closures. From `rules_godot/examples/`:
+Lichtpost validates both closures. From `examples/`:
 
 ```sh
-bazel build //projects/lichtpost:pack
-bazel test //projects/lichtpost/tests
+bazel build //examples/projects/lichtpost:pack
+bazel test //examples/projects/lichtpost/tests
 ```
 
 The first validates the production resource closure, including route simulation and replay
@@ -270,7 +270,7 @@ main/shared/palette/garden_palette.tres
 main/shared/ui/interface_theme.tres
 ```
 
-The [Lichtpost game](../../examples/projects/lichtpost/README.md)
+The [Lichtpost game](../../../examples/projects/lichtpost/README.md)
 provides a complete example: `main/game.tscn` composes the reusable `main/run/run.tscn`,
 scene component and UI scenes own their folders, and
 `main/levels/level_01/level_01.tres` supplies level data. Shared palette and UI assets
@@ -278,25 +278,24 @@ live under `main/shared/`.
 
 ## Run the complete host workflow
 
-These commands use the standalone examples module. A host C/C++ toolchain is
+These commands use the repository's examples. A host C/C++ toolchain is
 needed for the SQLite extension; Android and Apple mobile SDKs are not needed
 for its host checks.
 
 These commands build applications for the host. Build mobile applications by their
 labels with an [export platform](platforms.md#export-platforms).
 
-1. From the repository root, enter the examples module and run the demo:
+1. From the repository root, run the demo:
 
    ```sh
-   cd rules_godot/examples
-   bazel run //addons/sqlite/demo:run
+   bazel run //examples/addons/sqlite/demo:run
    ```
 
    The window shows **SQLite says: Hello from SQLite**.
 2. Open the declared project in Godot:
 
    ```sh
-   bazel run //addons/sqlite/demo:edit
+   bazel run //examples/addons/sqlite/demo:edit
    ```
 
    Edit and save through this editor view. Changes to authored files reach the checkout;
@@ -304,30 +303,30 @@ labels with an [export platform](platforms.md#export-platforms).
 3. Write missing UID/import sidecars and keep them beside their sources:
 
    ```sh
-   bazel run //addons/sqlite/demo:update
-   bazel run //addons/sqlite/tests:update
-   bazel test //addons/sqlite/demo:update.test //addons/sqlite/tests:update.test
+   bazel run //examples/addons/sqlite/demo:update
+   bazel run //examples/addons/sqlite/tests:update
+   bazel test //examples/addons/sqlite/demo:update.test //examples/addons/sqlite/tests:update.test
    ```
 
 4. Run the add-on's suites and exported content, which validates their scripts:
 
    ```sh
-   bazel test //addons/sqlite/tests/unit //addons/sqlite/demo/tests:exported
+   bazel test //examples/addons/sqlite/tests/unit //examples/addons/sqlite/demo/tests:exported
    ```
 
 5. Export its production content:
 
    ```sh
-   bazel build //addons/sqlite/demo:pack
+   bazel build //examples/addons/sqlite/demo:pack
    ```
 
 6. Build a desktop application for your host:
 
    ```sh
-   bazel build //addons/sqlite/demo:app
+   bazel build //examples/addons/sqlite/demo:app
    ```
 
-   On macOS, use `bazel build //addons/sqlite/demo:app --@autoload_rules_godot//godot:macos_signing=adhoc` instead for
+   On macOS, use `bazel build //examples/addons/sqlite/demo:app --@autoload_rules_godot//godot:macos_signing=adhoc` instead for
    an ad hoc signed local application. Distribution signing is separate.
 
 The [platform guide](platforms.md) gives Android/iOS setup and packaging, source-built
@@ -356,8 +355,8 @@ the database result and returns a failing exit status on error.
 
 ## Module ownership
 
-Run example commands from the examples module, `rules_godot/examples/`. Each consumer
-module's `MODULE.bazel` configures its own repositories and toolchains. Dependencies of
+Run example commands from the repository root, whose `MODULE.bazel` builds the examples.
+Each consuming module's `MODULE.bazel` configures its own repositories and toolchains. Dependencies of
 another root module, including development-only dependencies, do not provide repository
 names to this one.
 Every module must declare the names used by its own targets. Reusing another

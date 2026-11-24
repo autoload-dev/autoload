@@ -69,13 +69,14 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 
 def application_modules(root: Path) -> list[str]:
     """
-    The modules that build applications, each of which must configure its SDK: the ruleset
-    with the modules nested in it, and the examples of every add-on module whose addon.pkl
-    names an application lane. The root's tooling and the add-on modules themselves, which
-    use their examples' SDK, build none.
+    The modules that build applications, each of which must configure its SDK: the root
+    module with its examples and consumer scenarios, the ruleset with the modules nested in
+    it, and the examples of every add-on module whose addon.pkl names an application lane.
+    The add-on modules themselves, which use their examples' SDK, build none.
     """
     ruleset = RULESET.as_posix()
     return [
+        ".",
         ruleset,
         *ignored_modules(root, ruleset),
         *(
@@ -143,7 +144,7 @@ def main() -> int:
     parser.add_argument(
         "--api-level",
         metavar="MODULE",
-        help="print the API level a module configures, such as rules_godot/tests, and exit",
+        help="print the API level a module configures, such as . or rules_godot, and exit",
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]

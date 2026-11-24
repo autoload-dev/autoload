@@ -1,0 +1,13 @@
+load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_runtime_component")
+
+# The patched source-built runtime; prioritize it with
+# --extra_toolchains=//scenarios/patched_engine/engines/beta:all.
+godot_runtime_component(
+    name = "runtime_macos_arm64_release",
+    cpu = "arm64",
+    platform = "macos",
+    runtime = "@godot_source_beta_macos_arm64_template_release//:godot",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)

@@ -4,7 +4,5 @@
 # docs/ holds the guides, which the repository shows; the registry renders the API
 # documentation from the release's documentation archive.
 docs export-ignore
-examples export-ignore
-tests export-ignore
 # A link to the repository's Bazelisk wrapper, outside this directory.
 tools/bazel export-ignore

@@ -1,0 +1,29 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//examples/addons/platform_paths:__subpackages__"])
+
+cc_library(
+    name = "backend_api",
+    hdrs = ["backend.h"],
+)
+
+cc_library(
+    name = "native",
+    srcs = [
+        "platform_path_result.cc",
+        "platform_paths.cc",
+    ],
+    hdrs = [
+        "platform_path_result.h",
+        "platform_paths.h",
+    ],
+    deps = [
+        ":backend_api",
+        "@godot_cpp",
+    ],
+)
+
+filegroup(
+    name = "registration",
+    srcs = ["register_types.cc"],
+)

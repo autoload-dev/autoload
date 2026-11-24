@@ -24,7 +24,7 @@ below run at the repository root unless they name another directory.
 | Role | Purpose | Registry documentation |
 | --- | --- | --- |
 | `PUBLIC_APIS` | Consumer entrypoints with their exact public symbols | Full contracts for the public symbols |
-| `CROSS_REPOSITORY_MODULES` | Modules other repositories load without them being supported API: implementation helpers of generated repositories and the test rules of the tests module; external load access is required | None |
+| `CROSS_REPOSITORY_MODULES` | Modules other repositories load without them being supported API: implementation helpers of generated repositories and the test rules of the consumer scenarios; external load access is required | None |
 | `SUPPORT_MODULES` | Private implementation files without a standalone load contract | None |
 
 Use `godot:defs.bzl` for projects, resources, exports, runs and tests. Use the
@@ -129,10 +129,10 @@ invent files.
 The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
 and configurations, not another copy of the public prose. It also names the behavior tests
 that show why an API's public companion targets are separate; the checker requires them to
-resolve. A case or behavior test names its `module` when its fixture lives in a consumer
-module, such as the regression module `tests`; the checker evaluates it there, and
-resolves a consumer module's behavior tests in the desktop lane, whose cases evaluate that module
-anyway. The checker compares actual default files, executability, groups and public companion
+resolve. A case or behavior test names its `module`, relative to `rules_godot/`, when its
+fixture lives outside the ruleset, such as `..` for the repository's root module with its
+consumer scenarios; the checker evaluates it there, and resolves such behavior tests in the
+desktop lane, whose cases evaluate that module anyway. The checker compares actual default files, executability, groups and public companion
 targets against the source in both directions. Bazel's loading facts
 establish target kinds, visibility, testonly and test behavior. Generated repositories have
 independent entrypoint checks instead of a fictitious repository-wide main target. Only

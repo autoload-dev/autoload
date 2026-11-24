@@ -1,0 +1,79 @@
+load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources", "godot_test")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "helpers",
+    srcs = [
+        "GameFixture.gd",
+        "GameFixture.gd.uid",
+    ],
+    prefix = "tests",
+    deps = ["//examples/projects/lichtpost/main"],
+)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "InputTest.gd",
+        "InputTest.gd.uid",
+        "LayoutTest.gd",
+        "LayoutTest.gd.uid",
+        "LevelTest.gd",
+        "LevelTest.gd.uid",
+        "ReplayTest.gd",
+        "ReplayTest.gd.uid",
+        "RouteTest.gd",
+        "RouteTest.gd.uid",
+        "SceneTest.gd",
+        "SceneTest.gd.uid",
+        "SoundTest.gd",
+        "SoundTest.gd.uid",
+    ],
+    prefix = "tests",
+    visibility = ["//examples/projects/lichtpost:__pkg__"],
+    deps = [
+        ":helpers",
+        ":replays",
+        "//examples/projects/lichtpost/main",
+        "@autoload_gdunit//:gdunit",
+    ],
+)
+
+godot_resources(
+    name = "replays",
+    srcs = [
+        "delivery.json",
+        "fall.json",
+        "invalid.json",
+        "level_01_layout_hashes.json",
+        "pipe.json",
+    ],
+    prefix = "tests",
+)
+
+gdunit_test(
+    name = "tests",
+    size = "small",
+    project = "//examples/projects/lichtpost:lichtpost",
+    suites = [":suites"],
+)
+
+godot_resources(
+    name = "recorder",
+    srcs = [
+        "record.gd",
+        "record.gd.uid",
+    ],
+    prefix = "tests",
+    deps = ["//examples/projects/lichtpost/main/rules:route"],
+)
+
+godot_test(
+    name = "record",
+    main = "tests/record.gd",
+    project = "//examples/projects/lichtpost:lichtpost",
+    tags = ["manual"],
+    deps = [":recorder"],
+)

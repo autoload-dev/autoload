@@ -44,8 +44,8 @@ CROSS_REPOSITORY_MODULES = {
     "//godot/engine/private:pin.bzl": "Recipe pin rules loaded by generated engine and hub BUILD files; requires cross-repository load access.",
     "//godot/extension/private:bindings.bzl": "Implementation loaded by generated godot-cpp BUILD files; requires cross-repository load access.",
     "//godot/private:adapter.bzl": "Test adapter macro of test framework modules such as autoload_gdunit, which load it across repositories; not supported API.",
-    "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
-    "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the ruleset's tests module, which loads it across repositories; not supported API.",
+    "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the repository's consumer scenarios, which load it across repositories; not supported API.",
+    "//godot/private/testing:ios_app_test.bzl": "Artifact test rule of the repository's consumer scenarios, which load it across repositories; not supported API.",
     "//godot/platforms/private:android.bzl": "godot_android_runtime, loaded by generated engine hub BUILD files; requires cross-repository load access.",
 }
 

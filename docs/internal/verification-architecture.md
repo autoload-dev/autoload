@@ -46,7 +46,7 @@ make. A behavior that no question reaches has no test kind; see
 | Build-tool unit test | Ruleset, `tools/<area>/tests/` | `py_test` | The tool's library and test data |
 | Build-output test | Ruleset, `<impl>/tests/` | Inspection `py_test` or a test rule over built fixture outputs | Private files, fixtures, transitions, tool libraries, an engine |
 | Run test | Ruleset, `<impl>/tests/` | `godot_test`, GdUnit or a launcher over an exported application | As for build-output tests |
-| Consumer scenario | Consumer module `tests/`, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
+| Consumer scenario | `scenarios/` in the root module, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
 | Example test | `examples/`, owned by the example | The example's own tests | Public API only |
 | Repository-tooling test | Root module `autoload_dev`, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
 
@@ -137,8 +137,7 @@ code.
 
 ### Consumer scenario
 
-- **Location**: The consumer module `rules_godot_tests` at `tests/`, one package per
-  scenario.
+- **Location**: `scenarios/` in the repository's root module, one package per scenario.
 - **Form**: Public test rules, `build_test` and the [artifact test rules](#artifact-test-rules).
 - **Allowed dependencies**: The public API and the artifact test rules.
 - **May prove**: That a user can build, inspect and run what the scenario declares through
@@ -156,7 +155,7 @@ code.
 - **Allowed dependencies**: The public API only.
 - **May prove**: The example's own behavior.
 - **May not claim**: Ruleset coverage. Examples demonstrate the ruleset and are not a
-  coverage matrix ([example scope](../../rules_godot/examples/AGENTS.md#scope-and-design)).
+  coverage matrix ([example scope](../../examples/AGENTS.md#scope-and-design)).
 - **Evidence**: rules_python, rules_rust and rules_jvm_external keep their examples as
   consumer modules with their own tests.
 - **Altitude**: Outside the altitude order.
@@ -202,16 +201,18 @@ package it tests. Fixtures that serve several packages go to the package whose b
 reproduce. The ruleset module has no second test tree at its root.
 
 The reason is Bazel's visibility model. [Load visibility](https://bazel.build/concepts/visibility#load-visibility)
-names packages of the same repository only, so a sibling module can reach a private file
+names packages of the same repository only, so another module can reach a private file
 only through a public re-export. Every surveyed ruleset with white-box infrastructure keeps
-those tests in its own module.
+those tests in its own module. The consumers need only another repository than the
+ruleset's, so they live in the repository's root module, which sees the ruleset as
+`@autoload_rules_godot` and runs them in one Bazel server with the tooling.
 
-| Module | Purpose | Contents |
+| Location | Purpose | Contents |
 |---|---|---|
 | `autoload_rules_godot` at `rules_godot/` | The ruleset and its white-box tests | `godot/**/tests/`, `tools/**/tests/` |
-| `autoload_dev`, the repository root | The repository's tooling and its tests | Tooling tests beside their tools in `tools/` |
-| `rules_godot_examples` at `rules_godot/examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
-| `rules_godot_tests` at `rules_godot/tests/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
+| `autoload_dev`, the repository root, `tools/` | The repository's tooling and its tests | Tooling tests beside their tools in `tools/` |
+| `autoload_dev`, `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
+| `autoload_dev`, `scenarios/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
 
 This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
@@ -236,8 +237,8 @@ suites are declared is a lane decision.
 `godot/private/testing` holds `android_bundle_test` and `ios_app_test`, which inspect a
 built App Bundle or iOS application. They are not supported API: as in rules_apple and
 rules_android, inspection rules serve the ruleset's own tests. White-box tests and the
-smoke scenarios `tests/smoke/android` and `tests/smoke/ios` load them; the tests module
-loads them across repositories, so they keep public load visibility and are classified as
+smoke scenarios `scenarios/smoke/android` and `scenarios/smoke/ios` load them; the root
+module loads them across repositories, so they keep public load visibility and are classified as
 cross-repository modules. They carry their own inspectors instead of loading
 `tools/platforms`.
 
@@ -271,7 +272,7 @@ mechanical floor of public-rule coverage, not a substitute for the analysis test
 Most tests are Starlark unit tests, analysis tests and build-tool unit tests. Build-output
 and run tests exist where an output or a run is the behavior at risk. Variants such as debug,
 release and stripped are verified there, at the lowest altitude that observes them. The
-consumer module holds one smoke path per platform plus focused scenarios. The rule is
+scenarios hold one smoke path per platform plus focused scenarios. The rule is
 qualitative and sets no ratio.
 
 rules_python and rules_apple keep hundreds of test files in the ruleset and one to three
@@ -325,7 +326,7 @@ names the kind that carries its claim, or says that none does.
 |---|---|---|---|
 | Incrementality and bundle-reuse experiments | Removed | Analysis tests of action inputs, and build-output tests of determinism for actions whose outputs feed others | Bazel reruns an action only when its declared inputs or command change, and a downstream action stays cached when an upstream output is byte-identical. Inputs and determinism together prove both sides. Every surveyed ruleset asserts action inputs. The one execution-log test, rules_js `e2e/path_mapping/test.sh`, is a single script. |
 | Capability experiments | Removed | Analysis tests of membership and import action inputs | Same claim and replacement as incrementality |
-| Desktop-set guard against Android repository fetches | Removed | None. The consumer module's desktop set runs without an Android SDK, so a desktop scenario that needs Android fails there. | What remains is a cost claim about unneeded fetches. No surveyed ruleset guards fetches. |
+| Desktop-set guard against Android repository fetches | Removed | None. The scenarios' desktop set runs without an Android SDK, so a desktop scenario that needs Android fails there. | What remains is a cost claim about unneeded fetches. No surveyed ruleset guards fetches. |
 | Isolation test in a temporary consumer without mobile toolchains | Removed | Consumer scenarios for visibility. Analysis tests for toolchain resolution without mobile toolchains, using test toolchains in the ruleset's `tests` packages. | Its claims split into two existing kinds. A whole module that registers no mobile toolchain has a precedent only as a BCR smoke module; rules_godot's `e2e/smoke` is that module and registers only the prebuilt desktop engine. |
 | Reproducibility experiment | Rewritten | A build-output test that imports and exports a fixture twice in its sandbox and compares the digests | rules_go's reproducibility test and rules_rust's `determinism_tester` are relatives. If one test cannot run the import twice, a test-only rule runs the tool in two actions that differ only in an unused salt input. |
 | Fetch and re-evaluation checks of the engine module extension in a fresh consumer module | Removed | None. Its tag evaluation, conflicts and errors become Starlark unit tests with a mocked `module_ctx`. | What remains is that no recipe repository is fetched and that a second evaluation after `clean --expunge` gives the same toolchains. No surveyed ruleset guards fetches or re-evaluates an extension. |

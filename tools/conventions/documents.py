@@ -14,7 +14,8 @@ from pathlib import Path
 from string import punctuation
 from urllib.parse import unquote, urlsplit
 
-from tools.conventions.context import DOCS, Workspace
+from tools.conventions.context import Workspace
+from tools.conventions.layout import DOCS
 
 # The ruleset's internal pages live beside its public guides.
 INTERNAL_DOCS = tuple(f"{docs}internal/" for docs in DOCS)

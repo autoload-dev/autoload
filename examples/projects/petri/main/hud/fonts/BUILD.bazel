@@ -1,0 +1,18 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/petri:__subpackages__"])
+
+# Sora for the title and chips, IBM Plex Mono for the stats; both under the SIL Open
+# Font License beside them.
+godot_resources(
+    name = "fonts",
+    srcs = [
+        "IBMPlexMono-OFL.txt",
+        "IBMPlexMono-Regular.ttf",
+        "IBMPlexMono-Regular.ttf.import",
+        "Sora-OFL.txt",
+        "Sora-Variable.ttf",
+        "Sora-Variable.ttf.import",
+    ],
+    prefix = "main/hud/fonts",
+)

@@ -33,12 +33,7 @@ MAVEN = "maven.install"
 UNPINNED = {"bazel_dep:autoload_rules_godot"}
 # Deliberate drifts: module -> keys, such as "addons/<name>": {"bazel_dep:<module>"}, with
 # the reason beside the entry. Remove an entry once its reason no longer holds.
-EXCEPTIONS: dict[str, set[str]] = {
-    # The repository's tooling pins the rules_go the ruleset's graph resolves, which the
-    # ruleset sees through its development dependency on the root module (MODULE.bazel);
-    # the examples' newer one stays theirs.
-    ".": {"bazel_dep:rules_go"},
-}
+EXCEPTIONS: dict[str, set[str]] = {}
 
 
 def _key(kind: str, name: str | None, attribute: str) -> str:

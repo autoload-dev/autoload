@@ -3,8 +3,9 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import RULESET_MODULE, Context, Location
+from tools.conventions.context import Context, Location
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.layout import RULESET_MODULE
 
 
 def _white_box(path: Path, module: Path) -> bool:

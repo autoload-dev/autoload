@@ -16,7 +16,12 @@ from types import MappingProxyType
 from typing import Protocol
 
 from tools.conventions.environment import nested_tool_environment
-from tools.setup.modules import RULESET
+from tools.conventions.layout import (
+    CONSUMER_ROOTS,
+    DOCS,
+    NON_CONSUMER_MODULES,
+    typed_directory,
+)
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
 
@@ -25,20 +30,6 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
     """The deepest root that contains path: a nested root owns its files, not the outer one."""
     owners = [root for root in roots if path.is_relative_to(root)]
     return max(owners, key=lambda root: len(root.parts)) if owners else None
-
-
-# The typed roots of a consumer module, below its module root: projects/ and addons/.
-TYPED_ROOTS = frozenset({"projects", "addons"})
-# The ruleset's module and documentation; the root and the ruleset are no consumers and have
-# no typed roots; and the regression module with its smoke paths.
-RULESET_MODULE = RULESET
-DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
-NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
-REGRESSION_MODULE = RULESET_MODULE / "tests"
-SMOKE_ROOT = "smoke"
-ADDON_SCENARIO = "shared_addon"
-# Packages of the regression module that are no scenario, such as its Bazel launcher link.
-REGRESSION_TOOLING = frozenset({"tools"})
 
 
 class EvidenceError(ValueError):
@@ -236,32 +227,25 @@ class Workspace:
         """Whether a BUILD file makes the directory a package."""
         return any((directory / name).as_posix() in self.file_set for name in BUILD_FILES)
 
-    def typed_directory(self, path: Path) -> tuple[str, Path] | None:
+    def consumer_root(self, path: Path) -> Path | None:
         """
-        Return the kind and root of the project or add-on directory
-        ``<module>/<kind>/<name>/`` that path lies in; the root and ruleset modules have no
-        typed roots, and the regression module's scenario packages are its projects.
+        The consumer that path belongs to: a consumer module, or one of the root module's
+        consumer roots; none in the rest of the root module and in the ruleset module.
         """
         module = self.owner(path.as_posix())
-        if module in NON_CONSUMER_MODULES:
-            return None
-        parts = path.relative_to(module).parts
-        if module == REGRESSION_MODULE:
-            # The regression module's consumer scenarios: one project package per scenario and
-            # per operating system below smoke/; the shared add-on scenario is an add-on.
-            if parts[0] == SMOKE_ROOT and len(parts) > 2:
-                return "projects", module / Path(*parts[:2])
-            if parts[0] == ADDON_SCENARIO and len(parts) > 1:
-                return "addons", module / ADDON_SCENARIO
-            if (
-                parts[0] not in REGRESSION_TOOLING | {SMOKE_ROOT, ADDON_SCENARIO}
-                and len(parts) > 1
-            ):
-                return "projects", module / parts[0]
-            return None
-        if len(parts) > 2 and parts[0] in TYPED_ROOTS:
-            return parts[0], module / Path(*parts[:2])
-        return None
+        if module == Path("."):
+            return next(
+                (root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None
+            )
+        return None if module in NON_CONSUMER_MODULES else module
+
+    def typed_directory(self, path: Path) -> tuple[str, Path] | None:
+        """
+        Return the kind and root of the project or add-on directory that path lies in;
+        outside consumers there are no typed roots.
+        """
+        root = self.consumer_root(path)
+        return None if root is None else typed_directory(root, path)
 
     def typed_directories(self, kind: str) -> Mapping[Path, tuple[str, ...]]:
         """Map each project or add-on directory ``<module>/<kind>/<name>`` to its files."""

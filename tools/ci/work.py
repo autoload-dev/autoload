@@ -38,8 +38,9 @@ from tools.ci.lanes import LANES
 from tools.setup.modules import RULESET, module_paths
 
 RULESET_DIR = RULESET.as_posix()
-EXAMPLES = f"{RULESET_DIR}/examples"
-REGRESSIONS = f"{RULESET_DIR}/tests"
+# The root module's Godot applications and the ruleset's consumer scenarios, by package.
+EXAMPLES = "//examples"
+SCENARIOS = "//scenarios"
 ANDROID_SETUP = "android:setup"
 
 
@@ -84,12 +85,12 @@ class Work:
 def example_tests(name: str, area: str = "addons", config: str = "") -> str:
     """The command that runs one example's own tests, below its directory in examples/."""
     flags = f" --config={config}" if config else ""
-    return f"bazel test --build_tests_only{flags} //{area}/{name}/..."
+    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{area}/{name}/..."
 
 
 def example(name: str, area: str = "addons") -> Work:
     """One example's own tests, in the desktop lane."""
-    return Work(f"test:example:{name}", "desktop", EXAMPLES, (example_tests(name, area),))
+    return Work(f"test:example:{name}", "desktop", ".", (example_tests(name, area),))
 
 
 # The API documentation's tests, all of them fast, with the API inventory's discovery
@@ -200,23 +201,25 @@ FAST_TEST_COMMAND = (
     " --skip_incompatible_explicit_targets"
 )
 PATCHED_ENGINE = (
-    "bazel test //patched_engine/tests:app_runs_patched_engine_test"
-    " --extra_toolchains=//patched_engine/engines/{engine}:all"
+    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/{{engine}}:all"
 )
 PATCHED_EDITOR = (
-    "bazel test //patched_engine/tests:app_runs_patched_engine_test"
-    " //patched_engine/tests:source_built_editor_test"
-    " --extra_toolchains=//patched_engine/engines/source:all"
+    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" {SCENARIOS}/patched_engine/tests:source_built_editor_test"
+    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/source:all"
 )
 # The example packages with an `app`, which the mobile lanes build.
 APP_PACKAGES = (
-    "//addons/sqlite/demo",
-    "//projects/lichtpost",
-    "//addons/platform_paths/demo",
-    "//addons/app_auth/demo",
+    f"{EXAMPLES}/addons/sqlite/demo",
+    f"{EXAMPLES}/projects/lichtpost",
+    f"{EXAMPLES}/addons/platform_paths/demo",
+    f"{EXAMPLES}/addons/app_auth/demo",
 )
 # The Android release bundles leave Lichtpost out.
-ANDROID_RELEASE_PACKAGES = tuple(p for p in APP_PACKAGES if p != "//projects/lichtpost")
+ANDROID_RELEASE_PACKAGES = tuple(
+    p for p in APP_PACKAGES if p != f"{EXAMPLES}/projects/lichtpost"
+)
 
 
 def apps(packages: Iterable[str], symbols: bool = False) -> str:
@@ -250,8 +253,9 @@ WORK = (
             "python3 -m tools.setup.pins",
         ),
     ),
-    # The root module's tests but the API documentation's, which the docs work runs.
-    Work("test:tools", "quality", ".", ("bazel test -- //... -//tools/docs/...",)),
+    # The repository tooling's tests but the API documentation's, which the docs work runs;
+    # the examples' and scenarios' tests run in the desktop lane.
+    Work("test:tools", "quality", ".", ("bazel test -- //tools/... -//tools/docs/...",)),
     # The ruleset's fast tests.
     Work("test:fast", None, RULESET_DIR, (FAST_TEST_COMMAND,)),
     # The API inventory and the documentation of its public entrypoints, and the contract
@@ -281,13 +285,13 @@ WORK = (
         ("bazel test --build_tests_only --test_tag_filters=-source_engine //...",),
         android=True,
     ),
-    # The regression module's desktop set needs no Android SDK or NDK; an accidental dependency
-    # fails here.
+    # The scenarios' desktop set needs no Android SDK or NDK; an accidental dependency fails
+    # here.
     Work(
         "test:regressions",
         "desktop",
-        REGRESSIONS,
-        ("bazel test //...",),
+        ".",
+        (f"bazel test {SCENARIOS}/...",),
         env=(("ANDROID_HOME", ""), ("ANDROID_NDK_HOME", "")),
     ),
     # Each desktop smoke scenario is compatible with its own host only; the other is
@@ -295,16 +299,16 @@ WORK = (
     Work(
         "test:gdextension",
         "desktop",
-        REGRESSIONS,
-        ("bazel test //smoke/linux/... //smoke/macos/...",),
+        ".",
+        (f"bazel test {SCENARIOS}/smoke/linux/... {SCENARIOS}/smoke/macos/...",),
     ),
     Work(
         "test:gdextension:signed",
         "desktop",
-        REGRESSIONS,
+        ".",
         (
             (
-                "bazel test //smoke/macos/..."
+                f"bazel test {SCENARIOS}/smoke/macos/..."
                 " --@autoload_rules_godot//godot:macos_signing=adhoc"
             ),
         ),
@@ -319,16 +323,16 @@ WORK = (
     Work(
         "android",
         "android",
-        REGRESSIONS,
+        ".",
         (
-            "bazel test //:android_aab --config=android --config=aab",
-            In(EXAMPLES, f"bazel build {apps(APP_PACKAGES)} --config=android"),
-            In(
-                EXAMPLES,
-                "bazel build //addons/sqlite/demo:app --config=multi_abi --config=aab",
+            f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
+            f"bazel build {apps(APP_PACKAGES)} --config=android",
+            (
+                f"bazel build {EXAMPLES}/addons/sqlite/demo:app"
+                " --config=multi_abi --config=aab"
             ),
             In(
-                EXAMPLES,
+                ".",
                 f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
                 " --config=android-release --config=aab",
             ),
@@ -339,11 +343,11 @@ WORK = (
     Work(
         "ios",
         "ios",
-        REGRESSIONS,
+        ".",
         (
-            "bazel test //:ios_official --config=official",
+            f"bazel test {SCENARIOS}:ios_official --config=official",
             In(
-                EXAMPLES,
+                ".",
                 f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
             ),
         ),
@@ -353,13 +357,13 @@ WORK = (
     Work(
         "source-engine:full",
         "source-engine",
-        REGRESSIONS,
+        ".",
         (
             In(RULESET_DIR, f"bazel query '{SOURCE_ENGINE_TESTS}' | xargs bazel test"),
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            In(EXAMPLES, PETRI_TESTS),
+            PETRI_TESTS,
         ),
         android=True,
     ),
@@ -368,7 +372,7 @@ WORK = (
     Work(
         "source-engine",
         None,
-        REGRESSIONS,
+        ".",
         (
             In(
                 RULESET_DIR,
@@ -380,7 +384,7 @@ WORK = (
         ),
         android=True,
     ),
-    Work("test:example:petri", None, EXAMPLES, (PETRI_TESTS,)),
+    Work("test:example:petri", None, ".", (PETRI_TESTS,)),
     # Running Android work provisions the SDK first.
     Work(
         ANDROID_SETUP,
@@ -399,7 +403,7 @@ WORK = (
                 "bazel run //tools/platforms:validate_artifacts --"
                 ' --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME"'
                 ' --android-api-level "$(cd .. && python3 -m tools.android.requirements'
-                f' --api-level {REGRESSIONS})"'
+                ' --api-level .)"'
                 ' --java "${JAVA_HOME:-$(python3 ../tools/android/java.py)}/bin/java"'
                 ' --build-tools "$ANDROID_BUILD_TOOLS"'
             ),

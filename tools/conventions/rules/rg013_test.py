@@ -15,8 +15,8 @@ class PublicDocumentationLinksTest(RepositoryTest):
             ),
             ("README.md", "docs/internal/verification.md"),
             (
-                "rules_godot/examples/addons/demo/README.md",
-                "../../../../docs/internal/verification.md",
+                "examples/addons/demo/README.md",
+                "../../../docs/internal/verification.md",
             ),
             ("rules_godot/docs/public/engine.md", "../internal/architecture.md"),
             ("addons/firebase/README.md", "../../docs/internal/releasing.md"),

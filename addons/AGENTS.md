@@ -70,7 +70,7 @@ aspect work ios:addon:<module>       # each example project's app for the iOS Si
 ```
 
 `android` and `ios` also run the example projects' tests tagged with the lane's name, such as
-an `ios_app_test` of the app (`rules_godot/tests/AGENTS.md`, "Artifact test rules"); the tag
+an `ios_app_test` of the app (`scenarios/AGENTS.md`, "Artifact test rules"); the tag
 `manual` keeps them out of `desktop`.
 
 `desktop` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in

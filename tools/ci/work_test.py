@@ -173,9 +173,6 @@ class CallersTest(unittest.TestCase):
 MODULES = (
     ".",
     "rules_godot",
-    "rules_godot/examples",
-    "rules_godot/tests",
-    "rules_godot/docs",
     "addons/sentry",
     "addons/sentry/examples",
 )
@@ -235,10 +232,10 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
         for path in (
             "rules_godot/MODULE.bazel",
-            "rules_godot/tests/MODULE.bazel.lock",
+            "MODULE.bazel.lock",
             "rules_godot/godot/defs.bzl",
             "rules_godot/godot/engine/BUILD.bazel",
-            "rules_godot/examples/engines/godot_petri.lock.json",
+            "examples/engines/godot_petri.lock.json",
             "tools/generate/generate.py",
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)

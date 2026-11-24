@@ -1,0 +1,54 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/projects/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "sky",
+    srcs = [
+        "sky.png",
+        "sky.png.import",
+    ],
+    prefix = "main/levels/level_01",
+)
+
+godot_resources(
+    name = "gardens_far",
+    srcs = [
+        "gardens-far.png",
+        "gardens-far.png.import",
+    ],
+    prefix = "main/levels/level_01",
+)
+
+godot_resources(
+    name = "gardens_near",
+    srcs = [
+        "gardens-near.png",
+        "gardens-near.png.import",
+    ],
+    prefix = "main/levels/level_01",
+)
+
+godot_resources(
+    name = "environment",
+    srcs = [
+        "garden_environment.tres",
+    ],
+    prefix = "main/levels/level_01",
+)
+
+godot_resources(
+    name = "level_01",
+    srcs = [
+        "level_01.tres",
+    ],
+    prefix = "main/levels/level_01",
+    deps = [
+        ":environment",
+        ":gardens_far",
+        ":gardens_near",
+        ":sky",
+        "//examples/projects/lichtpost/main/run:definitions",
+        "//examples/projects/lichtpost/main/shared/palette",
+    ],
+)

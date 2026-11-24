@@ -1,0 +1,25 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+package(default_testonly = True)
+
+cc_test(
+    name = "validation_test",
+    size = "small",
+    srcs = ["validation_test.cc"],
+    deps = ["//examples/addons/app_auth/native:validation"],
+)
+
+cc_test(
+    name = "id_token_test",
+    size = "small",
+    srcs = ["id_token_test.cc"],
+    deps = ["//examples/addons/app_auth/native:id_token"],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":id_token_test",
+        ":validation_test",
+    ],
+)

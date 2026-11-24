@@ -1,0 +1,20 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//examples/addons/platform_paths:__subpackages__"])
+
+cc_library(
+    name = "policy",
+    srcs = ["xdg_directories.cc"],
+    hdrs = ["xdg_directories.h"],
+    deps = ["//examples/addons/platform_paths/native:backend_api"],
+)
+
+cc_library(
+    name = "linux",
+    srcs = ["linux_backend.cc"],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        ":policy",
+        "//examples/addons/platform_paths/native:backend_api",
+    ],
+)

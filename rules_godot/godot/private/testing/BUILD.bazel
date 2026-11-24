@@ -1,8 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 # Test rules that inspect a built Android App Bundle or iOS application for the ruleset's
-# own tests and its tests module: their rules, launch templates and inspectors. The tests
-# module loads the rules across repositories; they are not supported API.
+# own tests and the repository's consumer scenarios: their rules, launch templates and
+# inspectors. The scenarios load the rules across repositories; they are not supported API.
 package(default_visibility = ["//visibility:private"])
 
 # The repository's root module lists these files in the Starlark library it extracts the API

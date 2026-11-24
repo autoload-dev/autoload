@@ -8,7 +8,8 @@ load("//godot/platforms/private/tests:ios_link.bzl", "ios_unsigned_link")
 # manual mobile runtime acceptance probe; no test runs it. The extensions link statically
 # on iOS: the probe's tests inspect the engine and godot-cpp linked into one executable,
 # and the iOS smoke and library composition tests cover extension frameworks. The manual
-# probe therefore runs the static path; the tests module's //smoke/ios:app embeds one.
+# probe therefore runs the static path; the root module's //scenarios/smoke/ios:app embeds
+# one.
 package(default_visibility = ["//godot/platforms/private/tests/engine_probe:__subpackages__"])
 
 godot_cc_extension(

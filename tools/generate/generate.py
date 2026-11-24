@@ -30,7 +30,7 @@ LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
 # The source builds with a lock file, as (module, hub).
-PINNED_ENGINES = ((f"{RULESET_DIR}/examples", "godot_petri"),)
+PINNED_ENGINES = ((".", "godot_petri"),)
 
 
 def bazel(module: str, *args: str) -> int:
@@ -46,13 +46,14 @@ def is_ruleset_code(path: str) -> bool:
 def locked_modules_shaped_by(paths: list[str]) -> list[str]:
     """
     The locked modules whose lock files the changed files can change: a module through
-    its MODULE.bazel, the ruleset's modules through the ruleset's code.
+    its MODULE.bazel, the ruleset and the root module, which consumes it, through the
+    ruleset's code.
     """
     shaped = {
         str(Path(path).parent) for path in paths if Path(path).name == "MODULE.bazel"
     }
     if any(map(is_ruleset_code, paths)):
-        shaped.update(m for m in LOCKED_MODULES if m.startswith(RULESET_DIR))
+        shaped.update((".", RULESET_DIR))
     return [module for module in LOCKED_MODULES if module in shaped]
 
 

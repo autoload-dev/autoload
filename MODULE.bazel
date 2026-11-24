@@ -13,12 +13,20 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "2.5.1")
 bazel_dep(name = "buildifier_prebuilt", version = "10.2.0")
 bazel_dep(name = "aspect_rules_lint", version = "2.9.1")
-bazel_dep(name = "rules_multitool", version = "0.11.0")
+bazel_dep(name = "rules_multitool", version = "1.0.0")
 
 # The rules_go of the formatters' graph, 0.42, predates Bazel 9. This is the version the
 # ruleset's graph resolves: the ruleset depends on this module for development, and a newer
 # one would change the Go SDK its Android tools build with.
 bazel_dep(name = "rules_go", version = "0.59.0")
+
+# Where this module is the root, Gazelle's tools, which rules_android's deploy_info and
+# rules_swift_package_manager share, need a newer rules_go (see go_sdk below); an override
+# applies only in the root, so the ruleset's graph keeps the version above.
+single_version_override(
+    module_name = "rules_go",
+    version = "0.65.0",
+)
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.14")
@@ -67,9 +75,17 @@ single_version_override(
     patches = ["//tools/docs:rules_android_ndk_doc_visibility.patch"],
 )
 
-# The ruleset's Maven installation. Protobuf contributes to it with a lock file of its own,
-# so the root module names the one lock file; this one reuses the ruleset's, since it adds no
-# artifacts. Nothing here fetches it: only its extension is evaluated.
+# The repository's Godot applications (examples/) and the ruleset's consumer scenarios
+# (scenarios/), built as a consumer builds them: every ruleset label is public, and every
+# repository they name is declared here. Shared pins equal those of the ruleset
+# (tools/setup/pins.py).
+bazel_dep(name = "autoload_gdunit", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_gdunit",
+    path = "addons/gdunit",
+)
+
+bazel_dep(name = "rules_swift", version = "4.3.0", dev_dependency = True)
 bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
 
 maven = use_extension(
@@ -80,17 +96,369 @@ maven = use_extension(
 maven.install(
     name = "maven",
     aar_import_bzl_label = "@rules_android//rules:rules.bzl",
-    known_contributing_modules = [
-        "autoload_rules_godot",
-        "protobuf",
+    artifacts = [
+        "androidx.fragment:fragment:1.8.6",
+        # AppAuth for Android, consumed by the AppAuth example add-on.
+        "net.openid:appauth:0.11.1",
     ],
-    lock_file = "@autoload_rules_godot//:maven_install.json",
+    known_contributing_modules = [
+        "protobuf",
+        "autoload_rules_godot",
+    ],
+    lock_file = "//:maven_install.json",
     repositories = [
         "https://repo.maven.apache.org/maven2",
         "https://dl.google.com/dl/android/maven2",
     ],
+    # Gradle resolves as Android libraries are published for: highest version wins and
+    # Gradle module metadata applies, as in Godot's own Gradle export; rules_godot's
+    # requests are floors. It records the repositories that actually contain each
+    # artifact, so AndroidX downloads never try Central.
     resolver = "gradle",
     use_starlark_android_rules = True,
+)
+use_repo(maven, "maven", "rules_android_maven")
+
+# rules_android and bazel_worker_java resolve their own tools from Maven without a lock file,
+# so every output base downloads all of them eagerly, including large test-only artifacts.
+# The root module may pin those repositories: pinned artifacts are fetched lazily through
+# Bazel's shared repository cache. Google's Maven Central mirror avoids Maven Central's rate
+# limits; the Maven resolver records which repository actually holds each artifact.
+maven.install(
+    name = "rules_android_maven",
+    known_contributing_modules = ["rules_android"],
+    lock_file = "//:rules_android_maven_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+maven.install(
+    name = "android_ide_common_30_1_3",
+    known_contributing_modules = ["rules_android"],
+    lock_file = "//:android_ide_common_30_1_3_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+maven.install(
+    name = "bazel_worker_maven",
+    known_contributing_modules = ["bazel_worker_java"],
+    lock_file = "//:bazel_worker_maven_install.json",
+    repositories = [
+        "https://maven-central.storage-download.googleapis.com/maven2",
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    resolver = "maven",
+)
+
+android_sdk = use_extension(
+    "@rules_android//rules/android_sdk_repository:rule.bzl",
+    "android_sdk_repository_extension",
+    dev_dependency = True,
+)
+android_sdk.configure(
+    api_level = 35,
+    build_tools_version = "35.0.0",
+)
+use_repo(android_sdk, "androidsdk")
+
+# This host's NDK and, for remote Linux executors, the Linux SDK and NDK. Godot 4.7 source
+# builds and extension libraries require NDK 29.0.14206865: set ANDROID_NDK_HOME to that
+# installation; CI reuses or installs the same pinned revision.
+godot_android_toolchains = use_extension(
+    "@autoload_rules_godot//godot:extensions.bzl",
+    "godot_android_toolchains",
+    dev_dependency = True,
+)
+godot_android_toolchains.configure(ndk_api_level = 24)
+use_repo(godot_android_toolchains, "android_toolchains")
+
+godot_engines = use_extension(
+    "@autoload_rules_godot//godot:extensions.bzl",
+    "godot_engines",
+    dev_dependency = True,
+)
+
+# The hub builds the runtimes the official 4.7.2 artifacts lack, such as the arm64 Simulator
+# runtimes, from the release's sources, the first time a build selects their slots.
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+
+# The release's sources: Petri's engine and the hub's missing runtimes.
+godot_engines.source(
+    name = "godot_sources",
+    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
+    strip_prefix = "godot-4.7.2-stable",
+    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
+    version = "4.7.2",
+)
+
+# Source archives of the scenarios; fetched only when a lane's targets or API contract cases
+# need them. The beta archive's version.py names the unnumbered beta.
+godot_engines.source(
+    name = "godot_sources_beta",
+    sha256 = "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
+    strip_prefix = "godot-4.8-beta1",
+    urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-4.8-beta1.tar.xz"],
+    version = "4.8.0-beta",
+)
+
+# A non-release snapshot of the 4.7 maintenance branch, the patched desktop recipes' fork
+# stand-in: an immutable commit archive whose version.py names 4.7.3-rc.
+godot_engines.source(
+    name = "godot_sources_snapshot",
+    sha256 = "90ef5ad9f4c59750004813813534527eb3f82f1975789fb5b79b609fe841beb8",
+    strip_prefix = "godot-2ea68c77c3157c95793987569dc44662fe4f83cf",
+    urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
+    version = "4.7.3-rc",
+)
+
+# Petri's engine, named petri: the 4.7.2 release sources with its reaction_diffusion module,
+# built for the Linux and macOS editors and runtimes. --config=petri registers the hub and
+# selects the engine; nothing is compiled until a Petri build asks for a payload.
+godot_engines.source_build(
+    name = "godot_petri",
+    # The Compatibility renderer only; Vulkan would need the MoltenVK SDK on macOS hosts.
+    build_options = {
+        "vulkan": "no",
+        "opengl3": "yes",
+    },
+    build_targets = [
+        "editor",
+        "template_release",
+    ],
+    custom_modules = {"//examples/projects/petri/engine/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+    # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "zip",
+        "reaction_diffusion",
+    ],
+    # Only builds with --@autoload_rules_godot//godot:engine=petri take these components, and they
+    # take no other engine's.
+    engine = "petri",
+    # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
+    # build any recipe, such as a Mac with remote execution the Linux editor.
+    lock_file = "//examples/engines:godot_petri.lock.json",
+    platforms = [
+        "linux",
+        "macos",
+    ],
+    source = "@godot_sources//:source.json",
+)
+
+# The patched desktop engines of scenarios/patched_engine and its source-built tests; built
+# only by the source-engine lane. Each recipe has its own policy, so each is a source
+# build of one slot; scenarios/patched_engine/engines registers their recipes' payloads.
+_BAZEL_PROBE = {"//scenarios/patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"}
+
+_ENGINE_NAME_PATCH = ["//scenarios/patched_engine/engine/patches:engine-name.patch"]
+
+# The snapshot's fuller editor: the same module and patch, without the runtime's
+# template-only reductions, plus the font and SVG support the editor itself uses.
+godot_engines.source_build(
+    name = "godot_source_editor",
+    # Metal and OpenGL stay; Vulkan would need the MoltenVK SDK on the configuring host.
+    build_options = {"vulkan": "no"},
+    build_targets = ["editor"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "svg",
+        "bazel_probe",
+    ],
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
+    source = "@godot_sources_snapshot//:source.json",
+)
+
+_REDUCED_RUNTIME = {
+    "vulkan": "no",
+    "metal": "no",
+    "opengl3": "no",
+    "disable_3d": "yes",
+    "disable_physics_2d": "yes",
+    "disable_navigation_2d": "yes",
+    "disable_navigation_3d": "yes",
+}
+
+# The reduced runtime of the snapshot; godot_source_editor is its fuller editor.
+godot_engines.source_build(
+    name = "godot_source",
+    build_options = _REDUCED_RUNTIME,
+    build_targets = ["template_release"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "bazel_probe",
+    ],
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
+    source = "@godot_sources_snapshot//:source.json",
+)
+godot_engines.source_build(
+    name = "godot_source_beta",
+    build_options = _REDUCED_RUNTIME,
+    build_targets = ["template_release"],
+    cpus = ["arm64"],
+    custom_modules = _BAZEL_PROBE,
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "bazel_probe",
+    ],
+    patches = _ENGINE_NAME_PATCH,
+    platforms = ["macos"],
+    source = "@godot_sources_beta//:source.json",
+)
+use_repo(
+    godot_engines,
+    "godot",
+    "godot_petri",
+    "godot_source_beta_macos_arm64_template_release",
+    "godot_source_editor_macos_arm64_editor",
+    "godot_source_macos_arm64_template_release",
+    "godot_sources",
+    "godot_sources_beta",
+    "godot_sources_snapshot",
+)
+
+register_toolchains(
+    "@godot//toolchains:all",
+    dev_dependency = True,
+)
+
+# AppAuth for iOS and macOS from its Swift package, pinned in Package.resolved. Only the
+# Apple backend of iOS and macOS applications and source runs needs it; the add-on's editor
+# library uses the unsupported backend, so Linux and Android builds never resolve it.
+bazel_dep(name = "rules_swift_package_manager", version = "1.26.0", dev_dependency = True)
+
+swift_deps = use_extension(
+    "@rules_swift_package_manager//:extensions.bzl",
+    "swift_deps",
+    dev_dependency = True,
+)
+swift_deps.from_package(
+    resolved = "//examples:Package.resolved",
+    swift = "//examples:Package.swift",
+)
+use_repo(swift_deps, "swift_package", "swiftpkg_appauth_ios")
+
+# rules_android's deploy_info tool and rules_swift_package_manager share Gazelle's Go
+# repositories; Gazelle 0.50.0 builds its tools with Go 1.24.12 or newer, while the first
+# registered SDK, rules_android's 1.22.4, is older. The root module's SDK takes precedence.
+# Remove this pin once rules_android registers a Go SDK that Gazelle's tools build with.
+go_sdk = use_extension(
+    "@rules_go//go:extensions.bzl",
+    "go_sdk",
+    dev_dependency = True,
+)
+go_sdk.download(version = "1.27.0")
+
+godot_cpp_bindings = use_repo_rule(
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+# Keep the API independent of the engine pin to exercise forward compatibility. Node serves
+# the scenarios' extension, the other classes the examples' add-ons.
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    dev_dependency = True,
+    enabled_classes = [
+        "ClassDB",
+        "Engine",
+        "FileAccess",
+        "JSON",
+        "Node",
+        "ProjectSettings",
+        "RefCounted",
+        "ResourceFormatLoader",
+        "ResourceFormatSaver",
+        "ResourceLoader",
+        "ResourceSaver",
+        "ScriptExtension",
+        "ScriptLanguageExtension",
+    ],
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "sqlite",
+    build_file = "//examples/deps:sqlite.BUILD.bazel",
+    dev_dependency = True,
+    sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
+    strip_prefix = "sqlite-amalgamation-3540100",
+    urls = ["https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip"],
+)
+
+# Dart for the Dart scripting add-on: rules_dart compiles scripts with the SDK release whose
+# sources build the add-on's embedded runtime; an AOT snapshot runs only on the runtime of
+# its own release.
+bazel_dep(name = "rules_dart", version = "0.10.0", dev_dependency = True)
+
+dart = use_extension(
+    "@rules_dart//dart:extensions.bzl",
+    "dart",
+    dev_dependency = True,
+)
+dart.toolchain(dart_version = "3.14.1")
+use_repo(dart, "dart_toolchains")
+
+register_toolchains(
+    "@dart_toolchains//:all",
+    dev_dependency = True,
+)
+
+bazel_dep(name = "icu", version = "78.2.bcr.3", dev_dependency = True)
+bazel_dep(name = "zlib", version = "1.4", dev_dependency = True)
+
+http_archive(
+    name = "dart_sdk_source",
+    build_file = "//examples/deps:dart_sdk.BUILD.bazel",
+    dev_dependency = True,
+    # Bazel loads the runtime's source lists from .bzl copies of GN's *_sources.gni files. The
+    # patch drops the embedder API's unused SecureSocket include, which needs BoringSSL, and
+    # corrects the macOS version the runtime derives from Darwin 25 and newer, which it
+    # compares with the deployment target before it starts an isolate.
+    patch_cmds = [
+        "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
+    ],
+    patch_strip = 1,
+    patches = ["//examples/deps:dart_sdk.patch"],
+    sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
+    strip_prefix = "sdk-3.14.1",
+    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],
+)
+
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+# Inspects App Bundles: the all-in-one release carries aapt2 for macOS and Linux.
+http_file(
+    name = "bundletool",
+    dev_dependency = True,
+    downloaded_file_path = "bundletool-all.jar",
+    sha256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
+    urls = ["https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"],
 )
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
@@ -108,10 +476,8 @@ buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
 
 # The prebuilt tools the repository's tasks run, pinned by URL and checksum per platform:
 # `bazel run @multitool//tools/<name>:cwd -- <args>` runs one in the current directory.
-multitool = use_extension(
-    "@rules_multitool//multitool:extension.bzl",
-    "multitool",
-    dev_dependency = True,
-)
+# Not a development dependency: rules_multitool 1.0.0 rejects a root module whose usages
+# are all development ones once other modules, such as cgrindel_bazel_starlib, use the hub.
+multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitool")
 multitool.hub(lockfile = "//:multitool.lock.json")
 use_repo(multitool, "multitool")

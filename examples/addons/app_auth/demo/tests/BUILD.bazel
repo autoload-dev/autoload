@@ -1,0 +1,10 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
+
+package(default_testonly = True)
+
+godot_test(
+    name = "exported",
+    size = "small",
+    headless = True,
+    pack = "//examples/addons/app_auth/demo:pack",
+)

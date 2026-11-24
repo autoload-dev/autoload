@@ -3,16 +3,17 @@
 This repository is the Autoload monorepo: tooling and support for the Godot ecosystem. Each
 component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
-and `addons/` the Godot add-on modules. The root module holds only the repository's own
-tooling in `tools/`: the lanes' work, add-on scaffolding, setup checks, formatting, linting and
-the conventions check. A component's builds never load files from the root's `tools/`; only
-the ruleset's own maintenance tools may use them, through a development dependency on the root
-module (`rules_godot/MODULE.bazel`).
+and `addons/` the Godot add-on modules. The root module, which is never published, holds the
+repository's own tooling in `tools/`: the lanes' work, add-on scaffolding, setup checks,
+formatting, linting, the conventions check and the ruleset's API documentation. It also holds
+the consumers of the components, which it reaches through `local_path_override`: the Godot
+applications of `examples/` and the ruleset's consumer scenarios in `scenarios/`. A
+component's builds never load files from the root module; the components reach its linters
+only through a development dependency.
 
 In `rules_godot/`, `godot/` owns the rules and `tools/` the build tools, each with white-box
-tests in `tests/` subpackages. `rules_godot/examples/` and `rules_godot/tests/` are
-independent consumer modules: the examples and the ruleset regressions, run from their own
-directory. Where a test goes and which form it takes is owned by the
+tests in `tests/` subpackages. `examples/` and `scenarios/` build as consumers do, through
+public `@autoload_rules_godot` labels only; run them from the repository root. Where a test goes and which form it takes is owned by the
 [verification architecture](docs/internal/verification-architecture.md). Public guides are in
 `rules_godot/docs/public/`. Maintainer references that cover the whole repository, such as
 verification, conventions, releasing and the glossary, are in [docs/internal/](docs/internal/README.md);
@@ -21,9 +22,9 @@ those of the ruleset alone, such as its architecture and the
 [rules_godot/docs/internal/](rules_godot/docs/internal/README.md).
 
 Read linked sections when their stated condition applies; links are not a request to load
-every referenced document. For examples, read [example guidance](rules_godot/examples/AGENTS.md).
+every referenced document. For examples, read [example guidance](examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
-For ruleset regression work under `rules_godot/tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
+For ruleset regression work under `scenarios/`, read [the test-area map](scenarios/AGENTS.md).
 For the add-on modules under `addons/`, read [add-on guidance](addons/AGENTS.md).
 
 Use English for code, game/example UI, documentation, commits and pull requests.
