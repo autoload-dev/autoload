@@ -42,11 +42,15 @@ class LocalLinksTest(RepositoryTest):
         self.assertEqual(
             self.findings(),
             [
-                ".agents/skills/demo/SKILL.md:1: no heading or anchor 'gone' in "
-                "docs/internal/guide.md",
+                (
+                    ".agents/skills/demo/SKILL.md:1: no heading or anchor 'gone' in "
+                    "docs/internal/guide.md"
+                ),
                 "addons/AGENTS.md:2: link target does not exist: docs/internal/gone.md",
-                "rules_godot/README.md:1: no heading or anchor 'nothing' in "
-                "rules_godot/README.md",
+                (
+                    "rules_godot/README.md:1: no heading or anchor 'nothing' in "
+                    "rules_godot/README.md"
+                ),
                 "rules_godot/README.md:2: link leaves the repository: ../outside.md",
             ],
         )
@@ -62,8 +66,10 @@ class LocalLinksTest(RepositoryTest):
         self.assertEqual(
             self.findings(),
             [
-                "docs/internal/guide.md:9: no heading or anchor 'not-a-heading' in "
-                "docs/internal/guide.md"
+                (
+                    "docs/internal/guide.md:9: no heading or anchor 'not-a-heading' in "
+                    "docs/internal/guide.md"
+                ),
             ],
         )
 

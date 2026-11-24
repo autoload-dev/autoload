@@ -37,8 +37,10 @@ class SharedSkillsTest(RepositoryTest):
         self.assertEqual(
             self.findings(),
             [
-                ".agents/skills/api: link the skill for Claude Code: "
-                ".claude/skills/api -> ../../.agents/skills/api"
+                (
+                    ".agents/skills/api: link the skill for Claude Code: "
+                    ".claude/skills/api -> ../../.agents/skills/api"
+                ),
             ],
         )
 
@@ -51,10 +53,14 @@ class SharedSkillsTest(RepositoryTest):
         self.assertEqual(
             self.findings(),
             [
-                ".claude/skills/api: .claude/skills/api must be a symbolic link to "
-                "../../.agents/skills/api, not a copy or another target",
-                ".claude/skills/docs: .claude/skills/docs must be a symbolic link to "
-                "../../.agents/skills/docs, not a copy or another target",
+                (
+                    ".claude/skills/api: .claude/skills/api must be a symbolic link to "
+                    "../../.agents/skills/api, not a copy or another target"
+                ),
+                (
+                    ".claude/skills/docs: .claude/skills/docs must be a symbolic link to "
+                    "../../.agents/skills/docs, not a copy or another target"
+                ),
             ],
         )
 
@@ -66,12 +72,18 @@ class SharedSkillsTest(RepositoryTest):
         self.assertEqual(
             self.findings(),
             [
-                ".claude/skills/README.md: .claude/skills/README.md has no skill in "
-                ".agents/skills/; move the skill there and link it",
-                ".claude/skills/gone: .claude/skills/gone has no skill in "
-                ".agents/skills/; move the skill there and link it",
-                ".claude/skills/local: .claude/skills/local has no skill in "
-                ".agents/skills/; move the skill there and link it",
+                (
+                    ".claude/skills/README.md: .claude/skills/README.md has no skill in "
+                    ".agents/skills/; move the skill there and link it"
+                ),
+                (
+                    ".claude/skills/gone: .claude/skills/gone has no skill in "
+                    ".agents/skills/; move the skill there and link it"
+                ),
+                (
+                    ".claude/skills/local: .claude/skills/local has no skill in "
+                    ".agents/skills/; move the skill there and link it"
+                ),
             ],
         )
 

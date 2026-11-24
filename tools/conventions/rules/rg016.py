@@ -17,7 +17,8 @@ class LocalLinks:
         workspace = context.workspace
         fragments: dict[str, frozenset[str]] = {}
         for name in sorted({*workspace.documents, *agent_instructions(workspace)}):
-            for link in sorted(set(local_links(name, workspace.text(name)))):
+            # Repeated links on one line are one finding.
+            for link in dict.fromkeys(local_links(name, workspace.text(name))):
                 problem = self._problem(context, link, fragments)
                 if problem:
                     yield Finding(Location(name, link.line), problem)

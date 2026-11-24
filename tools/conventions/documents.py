@@ -113,7 +113,7 @@ def agent_instructions(workspace: Workspace) -> tuple[str, ...]:
     )
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(frozen=True)
 class Link:
     """A local link: its line, the repository-relative path it resolves to and its fragment."""
 
@@ -149,11 +149,12 @@ def anchors(text: str) -> frozenset[str]:
     seen: Counter[str] = Counter()
     result: set[str] = set()
     # Inline code in a heading keeps its text in the slug.
-    for match in HEADING.finditer(block_source(text)):
+    blocks = block_source(text)
+    for match in HEADING.finditer(blocks):
         slug = re.sub(r"[^\w\- ]", "", INLINE_LINK.sub(r"\1", match[1]).lower())
         slug = slug.replace(" ", "-")
         result.add(f"{slug}-{seen[slug]}" if seen[slug] else slug)
         seen[slug] += 1
     html = HTMLLinks()
-    html.feed(link_source(text))
+    html.feed(LITERAL.sub(lambda match: blank(match[0]), blocks))
     return frozenset(result | set(html.ids))

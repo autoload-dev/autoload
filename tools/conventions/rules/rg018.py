@@ -37,30 +37,24 @@ class SharedSkills:
         # One finding per entry of .claude/skills/, however many files a copy holds.
         entries = {entry for name in workspace.entries if (entry := child(name, LINKS))}
         for entry in sorted(entries | skills):
-            problem = self.problem(
-                workspace.root, entry, entry in skills, entry in entries
-            )
-            if problem:
-                yield Finding(Location(problem[0].as_posix(), 1), problem[1])
+            finding = self.check(workspace.root, entry, entry in skills, entry in entries)
+            if finding:
+                yield finding
 
     @staticmethod
-    def problem(
-        root: Path, entry: str, skill: bool, linked: bool
-    ) -> tuple[PurePosixPath, str] | None:
-        """Where and why a skill or an entry of .claude/skills/ breaks the rule."""
+    def check(root: Path, entry: str, skill: bool, linked: bool) -> Finding | None:
+        """Check a skill or an entry of .claude/skills/."""
         link = LINKS / entry
         wanted = os.path.relpath(SKILLS / entry, LINKS)
         if not linked:
-            return SKILLS / entry, f"link the skill for Claude Code: {link} -> {wanted}"
+            message = f"link the skill for Claude Code: {link} -> {wanted}"
+            return Finding(Location((SKILLS / entry).as_posix(), 1), message)
         if not skill:
-            return (
-                link,
-                f"{link} has no skill in {SKILLS}/; move the skill there and link it",
+            message = (
+                f"{link} has no skill in {SKILLS}/; move the skill there and link it"
             )
-        path = root / link
-        if path.is_symlink() and os.readlink(path) == wanted:
+        elif (root / link).is_symlink() and os.readlink(root / link) == wanted:
             return None
-        return (
-            link,
-            f"{link} must be a symbolic link to {wanted}, not a copy or another target",
-        )
+        else:
+            message = f"{link} must be a symbolic link to {wanted}, not a copy or another target"
+        return Finding(Location(link.as_posix(), 1), message)
