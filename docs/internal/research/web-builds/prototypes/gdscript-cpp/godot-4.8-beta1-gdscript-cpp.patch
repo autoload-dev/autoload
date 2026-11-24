@@ -1003,3 +1003,18 @@ index f91ae9e..f01b612 100644
  	return retvalue;
  }
 +#endif // GDSCRIPT_NO_VM
+diff --git a/modules/gdscript/register_types.cpp b/modules/gdscript/register_types.cpp
+index 3f49ba6..5b6b16e 100644
+--- a/modules/gdscript/register_types.cpp
++++ b/modules/gdscript/register_types.cpp
+@@ -139,7 +139,10 @@ static void _editor_init() {
+ void initialize_gdscript_module(ModuleInitializationLevel p_level) {
+ 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
+ 		GDREGISTER_CLASS(GDScript);
++#ifndef GDSCRIPT_NO_COMPILER
++		// Writes bytecode from source: of no use to a runtime without the compiler.
+ 		GDREGISTER_CLASS(GDScriptBytecodeWriter);
++#endif
+ 		GDREGISTER_INTERNAL_CLASS(GDScriptFunctionState);
+ 
+ 		script_language_gd = memnew(GDScriptLanguage);

@@ -17,7 +17,7 @@ from pathlib import Path
 
 # A built-in method's registration: `bind_<kind>(Type, name, ...);` or, for String's own
 # macros, `bind_string_<kind>(name, ...);`. A utility function's: `FUNCBIND<kind>(name, ...);`.
-_BUILTIN = re.compile(r"^\t(bind_[a-z_]+)\((\w+), (\w+)[,)].*\);$", re.MULTILINE)
+_BUILTIN = re.compile(r"^\t(bind_[a-z_]+)\((\w+)(?:, (\w+))?[,)].*\);$", re.MULTILINE)
 _UTILITY = re.compile(r"^\t(FUNC[A-Z]+)\((\w+),.*\);$", re.MULTILINE)
 
 

@@ -49,7 +49,14 @@ dynamic call (`MeshInstance3D.new()`) lost its binding.
 
 `shake_variant.py` also removes the built-in methods and utility functions
 neither the bytecode nor a name table names. T4 and T5 pass the same replays (macOS builds
-of the same configuration) and play in the browser.
+of the same configuration) and play in the browser. Until R15 it missed String's own
+macros (`bind_string_method(name, sarray(), ...)`) and kept every String method.
+
+`shake_operators.py` removes the operator evaluators nothing can call: those of
+operators the engine evaluates on any type (comparisons, `+` and `-`) stay, the rest only
+for the operand types the bytecode or the compiled code (`gen_cpp.py`'s `operators`)
+evaluates them on. `Expression` evaluates any operator, so the build profile disables it
+(see `../wasm-retention/README.md`).
 
 **Properties (T6).** `dump_properties.gd` lists the properties the project's scenes store
 on nodes, the storage properties of the resources they and the project settings use (the

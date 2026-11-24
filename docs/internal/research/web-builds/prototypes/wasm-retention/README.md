@@ -87,3 +87,25 @@ build, so the game's macOS replays are unaffected.
 FreeType reads its module list through a macro include that SCons does not scan, so
 `cut_payload.py` also touches `ftinit.c`; without that, a cached object keeps every
 module.
+
+## Variant's tables (R14, R15), 2026-11-24
+
+Variant registers every operator evaluator, constructor and built-in method at startup.
+With all of Lichtpost's GDScript compiled to C++, few are called through those tables:
+
+| Build | Change | wasm, brotli |
+| --- | --- | ---: |
+| R13 | | 1,271,069 |
+| R14 | `shake_operators.py`: 405 of 728 operator evaluators | 1,261,815 |
+| R15 | `shake_variant.py` also shakes String's methods; no bytecode writer without the compiler | 1,250,746 |
+
+The operators that stay are those the engine evaluates on any type (sorting, `min()`,
+`max()`, `clamp()`, hashing, tweens) and those the compiled code evaluates on untyped
+values. Constructors stay: the engine converts values with the one-argument constructor
+of any type, and the remaining multi-argument ones are small. R15's sources, built for
+macOS, give the same replay results, and R15 plays in the browser without a console
+error.
+
+What still dominates after R15: the text server with FreeType (340 KB before wasm-opt),
+the default theme (`fill_default_theme()`, 144 KB, which Lichtpost's own theme mostly
+overrides), the compiled game (166 KB) and the WebP decoder (63 KB).
