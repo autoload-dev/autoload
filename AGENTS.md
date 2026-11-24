@@ -168,8 +168,3 @@ the CodeScene plugin skills here; the Git hooks and `aspect code-health` below r
   repository, such as in the macOS keychain, read by your own shell or user-level
   configuration; with a CodeScene account, `cs auth login` works instead. Without either,
   the hook passes with a note and `aspect code-health` reports the gap.
-
-<!-- entire-agent:begin -->
-Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.
-@.entire/agent-guide.md
-<!-- entire-agent:end -->
