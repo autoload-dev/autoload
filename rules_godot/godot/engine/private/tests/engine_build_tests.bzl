@@ -48,6 +48,7 @@ _ATTRS = {
     "_render": "tools/engine/render.py",
     "_build_profile": "tools/engine/build_profile.py",
     "_source_tree": "tools/engine/source_tree.py",
+    "_shared_objects": "tools/engine/shared_objects.py",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
     "_platforms_constraint": "@@platforms//os:android",
@@ -57,6 +58,7 @@ _ATTRS = {
     "lock_file": None,
     "lock_key": "",
     "repin": "",
+    "tree": "",
 }
 
 def _build(*, which = {"python3": _PYTHON, "patch": _PATCH}, execute = {}, path = None, environ = {}, files = {}, **overrides):
@@ -94,7 +96,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 6 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        ["watch"] * 7 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "extract",
             "getenv",
             "watch",
@@ -230,7 +232,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 6,
+        ["watch"] * 7,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -239,7 +241,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 6,
+        ["watch"] * 7,
     )
 
 def _test_declared_python_runs_configure(env):
@@ -262,7 +264,7 @@ def _test_missing_python_fails(env):
 def _test_configure_timeout_bounds_configure(env):
     ctx, errors = _build(configure_timeout = 45)
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 45, "quiet": True})
+    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 45, "quiet": True, "environment": {"GODOT_TREE_REPOSITORY": ""}})
 
 def _test_failed_configure_fails(env):
     ctx, errors = _build(execute = {_PYTHON: {"return_code": 1, "stdout": "out", "stderr": "err"}})
