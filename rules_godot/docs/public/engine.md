@@ -553,9 +553,9 @@ does not re-import unrelated assets.
 Feature macros follow the same rule. A build option such as `disable_3d` or `xr` adds a
 macro such as `_3D_DISABLED` to the compile options of every source, and every `-D`
 option is part of a compile action's cache key. Each source keeps only the feature
-macros that a file it reaches can read, so flipping `disable_3d` reruns the sources
-whose files test `_3D_DISABLED`, about a hundred of an Android engine's 731, instead
-of all of them. Feature macros are the names that end in `_ENABLED` or `_DISABLED`
+macros that a file it reaches can read: turning `disable_3d` off in an Android recipe
+of 731 sources reruns the 169 whose files test the macros it changes and compiles the
+132 sources it adds, instead of rerunning all of them. Feature macros are the names that end in `_ENABLED` or `_DISABLED`
 and that the implementation does not reserve, which `__` or `_` and a capital letter
 start; other macros, such as `NDEBUG` or `_FILE_OFFSET_BITS`, which toolchain and
 system headers read, stay on every source. A dropped macro that a file reads would
