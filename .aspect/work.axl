@@ -11,7 +11,7 @@ _PYTHON = "@rules_python//python/bin:python"
 _CODESCENE = "//tools/code_health:codescene_cli"
 
 # The pre-push hook, as a configuration-based Git hook; Git passes it the hook's stdin.
-_PRE_PUSH = "bash tools/pre_push_checkout.sh && aspect check"
+_PRE_PUSH = 'bash tools/pre_push_checkout.sh && "$(command -v aspect || echo "$HOME/.local/bin/aspect")" check'
 
 def run(ctx: TaskContext, program: str, arguments, env = {}) -> int:
     """Run a program in the repository root, with extra environment variables."""
@@ -126,7 +126,7 @@ bootstrap = task(
     },
 )
 
-def _exec_impl(ctx: TaskContext) -> int:
+def _exec_impl(ctx: TaskContext):
     command = ctx.args.command
     if not command:
         return TaskConclusion(exit_code = 2, text = "Name a command: aspect exec -- <command>...")
@@ -135,7 +135,10 @@ def _exec_impl(ctx: TaskContext) -> int:
     # current directory.
     python_bin = _built(ctx, _PYTHON).rpartition("/")[0]
     path = python_bin + ":" + (ctx.std.env.var("PATH") or "")
-    return ctx.std.process.command(command[0]).args(command[1:]).env("PATH", path).spawn().wait().code
+
+    # Through a shell, which names a missing command instead of failing the task.
+    shell = ctx.std.process.command("sh").args(["-c", 'exec "$@"', "sh"] + command)
+    return shell.env("PATH", path).spawn().wait().code
 
 exec = task(
     implementation = _exec_impl,

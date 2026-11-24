@@ -2,7 +2,7 @@
 
 load("./work.axl", "run", "run_work")
 
-def _check_impl(ctx: TaskContext) -> int:
+def _check_impl(ctx: TaskContext):
     aspect = ctx.std.env.current_exe()
 
     # Each step reports on its own and runs alone as well.

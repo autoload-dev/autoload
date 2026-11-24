@@ -32,12 +32,17 @@ case "${1:-}" in
         # The hook runs in the main checkout, whose HEAD may be anything; origin's default
         # branch is what a new task starts from.
         base="$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo HEAD)"
-        exec "$aspect" worktree add "claude/$name" "--create=$base" --output=path \
+        # A released worktree keeps its branch, which a worktree of the same name takes up again.
+        create=("--create=$base")
+        git show-ref --verify --quiet "refs/heads/claude/$name" && create=()
+        exec "$aspect" worktree add "claude/$name" ${create[@]+"${create[@]}"} --output=path \
             --agent-kind=claude-code ${session:+"--agent-id=$session"}
         ;;
     remove)
         path="$(field worktree_path)"
         [[ -n "$path" ]] || { echo "worktree.sh: no worktree_path in the input" >&2; exit 1; }
+        # From the main checkout, not from inside the worktree that goes away.
+        cd "$(git -C "$path" rev-parse --path-format=absolute --git-common-dir)/.."
         session="$(field session_id)"
         exec "$aspect" worktree release "$path" \
             --agent-kind=claude-code ${session:+"--agent-id=$session"}

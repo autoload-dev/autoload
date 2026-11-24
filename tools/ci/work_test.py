@@ -142,7 +142,15 @@ class WorkTest(unittest.TestCase):
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):
             run(["lint", "nothing"], self.root)
-        with mock.patch("subprocess.run") as process:
+        with (
+            mock.patch.dict(os.environ, {"ANDROID_SDK_ROOT": ""}),
+            self.assertRaisesRegex(ValueError, "needs the Android environment"),
+        ):
+            run(["android:addon:gadget"], self.root)
+        with (
+            mock.patch.dict(os.environ, {"ANDROID_SDK_ROOT": "/sdk"}),
+            mock.patch("subprocess.run") as process,
+        ):
             run(["android:addon:gadget"], self.root)
         commands = [call.args[0][-1] for call in process.call_args_list]
         self.assertTrue(commands[0].endswith("python3 -m tools.android.requirements"))

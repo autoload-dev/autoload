@@ -430,6 +430,12 @@ def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
     return names
 
 
+def require_android_environment(work: list[Work], env: dict[str, str]) -> None:
+    """Android work needs the SDK the Aspect CLI selects (.aspect/config.axl)."""
+    if any(piece.android for piece in work) and not env.get("ANDROID_SDK_ROOT"):
+        raise ValueError("Android work needs the Android environment: run `aspect work`")
+
+
 def run(
     names: Iterable[str], root: Path = ROOT, known: dict[str, Work] | None = None
 ) -> None:
@@ -440,7 +446,9 @@ def run(
     known = known or all_work(root)
     here = host()
     env = environment()
-    for name in with_setup(list(names), known):
+    names = with_setup(list(names), known)
+    require_android_environment([known[name] for name in names], env)
+    for name in names:
         work = known[name]
         if not runs_on(work, here):
             print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)

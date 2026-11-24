@@ -242,7 +242,7 @@ bazel test //tests/...
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
-`bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
+`aspect exec -- bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
 or `bazel test //:ios_official --config=official`.
 
 ### Source-built engine applications
@@ -321,7 +321,7 @@ configuration; from `tests/`, test a suite with `--config` set to its configurat
 
 ```sh
 cd rules_godot/tests
-bazel test //:android_aab --config=android --config=aab
+aspect exec -- bazel test //:android_aab --config=android --config=aab
 bazel test //:ios_official --config=official
 ```
 
@@ -335,7 +335,7 @@ of the smoke applications, build them, then return to the root to inspect them:
 
 ```sh
 cd rules_godot/tests
-bazel build //smoke/android:app --config=android
+aspect exec -- bazel build //smoke/android:app --config=android
 bazel build //smoke/ios:app --config=official
 cd ../..
 aspect work inspect:mobile
