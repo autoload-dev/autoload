@@ -155,6 +155,31 @@ engine, and compiled code of a whole game costs about as much as they do. What t
 compiler buys is speed (3.3 times as fast on the route model, more where typed data
 replaces dictionaries) and a project whose every engine call the linker can see.
 
+## Compact code (2026-11-24)
+
+On top of the web engine with every cut (`../wasm-retention/README.md`, R15), the
+compiled game costs 37 KB of brotli. Two changes to the generated code:
+
+- **A constant pool** (`cpp_pool.py`): each string literal, constant written as text and
+  `SNAME()` was a lambda with its own static and initialization guard at every use. Now
+  each distinct value is an entry of a table, and a use calls one shared lookup that
+  builds it on first use (91 strings, 12 constants, 83 names).
+- **Entries take arguments by reference** through one out-of-line helper instead of
+  copying each `Variant` inline.
+
+| Engine (web) | raw | brotli 11 |
+| --- | ---: | ---: |
+| R15, every cut and shake | 4,415,340 B | 1,250,746 B |
+| R16, constant pool | 4,388,411 B | 1,244,813 B |
+| R17, entries by reference | 4,379,330 B | 1,243,693 B |
+| R17 without the compiled game (size only, does not run) | 4,282,775 B | 1,213,469 B |
+
+The whole compiled game now costs 30 KB of brotli, including the engine code only it
+reaches (saving settings, tweens). The functions themselves shrank from 125 to 82 KB
+before wasm-opt; the large entries left are those whose body LTO inlined. A more compact
+form, such as a register array with one exit, could save at most a part of those 30 KB,
+so it stops here. Replays match on macOS and R17 plays in the browser.
+
 ## How it works
 
 `dump_ast.gd`, run on an engine with the compiler and the patch, writes per script the
@@ -185,13 +210,13 @@ At load, the bytecode loader looks a function up by its class's fully qualified 
 its name; `GDScriptFunction::call()` runs a match instead of the bytecode. Each compiled
 function has a typed body and a `Variant` entry that converts arguments and defaults.
 
-Constants that must stay alive (string literals, constants written as text) are built
-once and never freed: static `Variant`s and resources were destroyed after the engine at
-exit and crashed it. Resources are loaded on use from the resource cache.
+Constants that must stay alive (string literals, constants written as text, names) come
+from the constant pool, built once and never freed: static `Variant`s and resources were
+destroyed after the engine at exit and crashed it. Resources are loaded on use from the
+resource cache.
 
 ## What is missing
 
-- **Engine calls without boxing.** Direct engine calls (see above) still pass `Variant`s.
 - **Coverage.** Lambdas, `await`, typed dictionaries, `match` with bind, array or
   dictionary patterns and static variables are not compiled; Lichtpost uses none of them.
 - **Matching by name only.** A compiled function runs whenever a loaded function has its

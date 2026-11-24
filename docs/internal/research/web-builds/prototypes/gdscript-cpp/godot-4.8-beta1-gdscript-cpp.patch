@@ -581,10 +581,10 @@ index 557f428..84c3cb3 100644
  	const StringName *_global_names_ptr = nullptr;
 diff --git a/modules/gdscript/gdscript_native.h b/modules/gdscript/gdscript_native.h
 new file mode 100644
-index 0000000..d6c1291
+index 0000000..aeac177
 --- /dev/null
 +++ b/modules/gdscript/gdscript_native.h
-@@ -0,0 +1,393 @@
+@@ -0,0 +1,400 @@
 +/**************************************************************************/
 +/*  gdscript_native.h                                                     */
 +/**************************************************************************/
@@ -624,6 +624,13 @@ index 0000000..d6c1291
 +
 +struct GDScriptNative {
 +	static Variant *members(GDScriptInstance *p_instance) { return p_instance ? p_instance->members.ptr() : nullptr; }
++
++	// An entry's argument, or null where the caller passed fewer. Shared and out of line,
++	// so an entry takes its arguments without copying each one inline.
++	static _NO_INLINE_ const Variant &argument(const Variant **p_args, int p_argcount, int p_index) {
++		static const Variant *nil = new Variant();
++		return p_index < p_argcount ? *p_args[p_index] : *nil;
++	}
 +
 +	static Variant evaluate(Variant::Operator p_op, const Variant &p_a, const Variant &p_b) {
 +		Variant result;
