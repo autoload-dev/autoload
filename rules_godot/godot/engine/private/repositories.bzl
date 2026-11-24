@@ -228,6 +228,7 @@ godot_engine_build = repository_rule(
         "_include_graph": attr.label(default = Label("//tools/engine:include_graph.py")),
         "_render": attr.label(default = Label("//tools/engine:render.py")),
         "_build_profile": attr.label(default = Label("//tools/engine:build_profile.py")),
+        "_define_analysis": attr.label(default = Label("//tools/engine:define_analysis.py")),
         "_source_tree": attr.label(default = Label("//tools/engine:source_tree.py")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),

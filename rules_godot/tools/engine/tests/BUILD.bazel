@@ -13,3 +13,10 @@ py_test(
     srcs = ["include_directories_test.py"],
     deps = ["//tools/engine:support"],
 )
+
+py_test(
+    name = "define_analysis_test",
+    size = "small",
+    srcs = ["define_analysis_test.py"],
+    deps = ["//tools/engine:support"],
+)
