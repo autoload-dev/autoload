@@ -4,15 +4,14 @@ visibility("//godot/...")
 
 FlagInfo = provider(
     doc = "The value of a rules_godot build setting, for rules that read it.",
-    fields = {"value": "The build setting's string or int value."},
+    fields = {"value": "The build setting's string, int or bool value."},
 )
 
-def _bool_flag_impl(_ctx):
-    # config_setting reads the value; the flag provides nothing else.
-    return []
+def _bool_flag_impl(ctx):
+    return [FlagInfo(value = ctx.build_setting_value)]
 
 bool_flag = rule(
-    doc = "A boolean build setting, set on the command line like --//godot:headless=false.",
+    doc = "A boolean build setting, set on the command line like --//godot:headless=false; config_setting or FlagInfo reads it.",
     implementation = _bool_flag_impl,
     build_setting = config.bool(flag = True),
 )

@@ -544,8 +544,8 @@ def godot_ios_application(
         app_icons: The application's own app icons, which replace those Godot renders.
         launch_storyboard: The application's own launch storyboard, which replaces the
             generated launch screen.
-        engine_settings: The application's engine_optimize and engine_lto, for the
-            runtime component it resolves.
+        engine_settings: The application's engine_optimize, engine_lto and engine_vfe,
+            for the runtime component it resolves.
         visibility: Visibility of the application target.
         **kwargs: Remaining ios_application attributes, including signing options.
     """
