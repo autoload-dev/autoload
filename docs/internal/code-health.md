@@ -6,8 +6,8 @@ pinned in `multitool.lock.json` and built by `aspect code-health`.
 
 ## The hooks
 
-The pre-commit hook (`aspect pre-commit`) reviews the staged change, the pre-push hook
-(`aspect pre-push`) the branch against its merge base with `origin/main`. A hook fails when
+The pre-commit hook reviews the staged change, the pre-push hook the branch against its merge
+base with `origin/main`. A hook fails when
 a file declines (its score falls, or a new file scores below 9.0) or when CodeScene cannot
 score a file, and prints every new finding with its function and lines. Intermediate states
 need no review; run `aspect code-health` whenever an early look helps, such as before

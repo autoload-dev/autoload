@@ -1,2 +1,2 @@
-# The documentation module's root package, which the crate extension of autoload_dev resolves
-# //:MODULE.bazel against. The API metadata is in //public/api, its checks in //tools/docs.
+# The root package of the rules_godot_docs module. It declares no targets: the API metadata
+# is in //public/api and its checks in //tools/docs.

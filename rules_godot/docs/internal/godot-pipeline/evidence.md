@@ -1,8 +1,9 @@
-# Evidence, Experiments and Independent Review
+# Evidence and Experiments
 
 **Date:** 2026-11-01. Sources below were inspected for the catalogue. F means pinned
-upstream source, R the current ruleset at baseline 506d045. Links identify the owning
-implementation; named functions and line ranges explain which mechanisms were checked.
+upstream source, R the ruleset at baseline 506d045; its file links and line ranges refer to
+that commit, so the code may have moved since. Named functions and line ranges explain which
+mechanisms were checked.
 Bazel live reference pages are identified separately from version-pinned source/probes.
 This is research evidence, not completed feature acceptance.
 
@@ -82,7 +83,7 @@ optional shared-object collection 1930; export_pack 2464; patch export 2474.
 applies project settings/features. [PC exporter](https://github.com/godotengine/godot/blob/ed1daf0bf001b61586d9930840f2f1394092c079/editor/export/editor_export_platform_pc.cpp#L94)
 uses templates and collects/copies native shared objects for full application export.
 [Android exporter](https://github.com/godotengine/godot/blob/ed1daf0bf001b61586d9930840f2f1394092c079/platform/android/export/export_plugin.cpp#L2863)
-illustrates conditional keystore/environment/application export inputs; today's ruleset
+illustrates conditional keystore/environment/application export inputs; the baseline ruleset
 delegates APK/AAB construction to Bazel instead of this full application exporter.
 
 ### S09
@@ -112,7 +113,7 @@ and container compiler (56–270, 373–458).
 [Encrypted file access](https://github.com/godotengine/godot/blob/ed1daf0bf001b61586d9930840f2f1394092c079/core/io/file_access_encrypted.cpp#L44) uses random IV without an
 explicit IV. Export engine encryption seed handling 377–429 and encryption environment-key
 override 1139–1145 are conditional inputs. Source-backed capabilities do not imply exposure
-by the current wrapper preset/environment.
+by the baseline wrapper preset/environment.
 
 ### S13
 
@@ -127,7 +128,7 @@ Candidate resource roots, dependency availability and recognized suites are dist
 [Project/resources](../../../godot/private/project.bzl): resource paths/deps/import inputs/
 import unit metadata 253–329; per-import-unit action declaration 750–822; full project
 imports/init/provider 839–1061; pack selection/export/shell input registration 1199–1412.
-[Providers](../../../godot/providers.bzl) describe current contracts.
+[Providers](../../../godot/providers.bzl) describe the contracts.
 Whole-project memberships here are implementation facts, not desired minimum dependencies.
 
 ### R02
@@ -183,7 +184,7 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 [scanner/selector](../../../tools/resource_graph.py):
 analyzed/opaque/leaf classes 1–75, runtime/import input validation and unknown dynamic refs,
 selection 1091 onward. Static scanning does not dynamically declare new Bazel inputs.
-[Pack format inspection](../../../tools/pck.py) validates the current PCK structure.
+[Pack format inspection](../../../tools/pck.py) validates the PCK structure.
 
 ### R07
 
@@ -236,7 +237,7 @@ operating-system state.
 **New cold-import observation, 2026-11-01.** Two empty, separately isolated projects used
 the existing official executable reporting 4.7.2.stable.official.ed1daf0bf. Each ran
 `--headless --path <absolute-probe-project> --editor --import`; the placeholder is replaced
-with that fresh project directory. Both returned 0. Environment used the current wrapper's
+with that fresh project directory. Both returned 0. Environment used the baseline wrapper's
 child_environment, which isolates HOME/TMPDIR/XDG roots and fixes locale/TZ.
 
 Each project had identical probe.gd (`class_name CatalogProbe`, then `extends RefCounted`)
@@ -261,72 +262,3 @@ UIDs are deterministic. No group/extension library/shader/export/mobile behavior
 
 Local receipts: /private/tmp/godot-pipeline-probes/result.json and each case's import.log.
 The recipe/results are recorded here so conclusions do not depend on temporary files surviving.
-
-### E02
-
-**Historical probe notes, not reproducible evidence.** These earlier synthetic probes were
-reread rather than rerun. Their complete setup and commands are not preserved here;
-the temporary receipts below are provenance only. No catalogue conclusion relies on them
-as independent experimental proof. The mechanism discussion is explicitly an inference
-from [B01](#b01) and [B02](#b02).
-
-At
-/private/tmp/godot-context-aspect-probe, two operations sharing config_a resources and one
-using config_b produced three configured aspect applications. This used generated write
-actions; no real Godot conversions/contribution/native-config behavior was tested.
-
-The separate explicit binding probe used actual tiny shell actions:
-initial 2 imports + 2 consumers; unrelated extra edit/shared-only consumer 0 processing actions;
-extra edit/both consumers 1 extra import + second consumer; shared edit 1 shared import +
-both consumers; unchanged 0. Logs/JSON are binding-{initial,extra-one,extra-both,shared-both,noop}.
-This reported selected-artifact reuse in the synthetic case, not necessity of a public
-binding API or verified behavior for real Godot imports.
-
-The earlier application alias probe in /private/tmp/godot-configured-app-probe passed
-provider/aspect forwarding and failed on selecting its deliberate SDK-poison branch.
-It does not prove real Android/Apple SDK isolation.
-
-## Open questions and coverage limits
-
-| ID | Boundary / unresolved question | Consequence |
-|---|---|---|
-| Q01 | Arbitrary importer/exporter/editor/native/static/test code can read files, directories, env, external tools, time/network/device state and write extra outputs | Define declared closure/output contracts, isolate, remain conservative or document unsupported/noncacheable behavior; no universal closed plugin list |
-| Q02 | Current broad removal of resource-valued settings from the import configuration is policy, not proof custom importer independence | Reassess contract before constructing an automatic import-context key |
-| Q03 | Group imports, custom auxiliary outputs and alternative project-data locations | Preserve real group import units; current import unit capture hardcodes .godot/imported and own sidecars, so upstream alternatives are not automatically retained |
-| Q04 | Automatic sharing needs global/sibling contribution resolution and bounded native configuration propagation | Bazel aspect/transition mechanisms alone are insufficient; no public godot_imports API selected here |
-| Q05 | Cold/warm UID registry, global class/group/extension state and resource cache composition | Do not share a full initialization tree across arbitrary selected subsets; test real collision/pack order cases for implementation |
-| Q06 | PCK encryption, shader baking, patch export and custom presets are conditional upstream facilities | Source catalogued; not all are exposed by current generated preset/isolated env; no new support claim |
-| Q07 | Actual shader bake effect under headless configuration, encrypted output and external importer execution | Not experimentally exercised here; specific capability claims require focused checks |
-| Q08 | Android/iOS signing, native linkage/runtime and SDK isolation | Source reviewed, no new application/mobile acceptance run; delegate SDK internals to pinned rules_android/rules_apple rather than claim exhaustive compiler audit |
-| Q09 | Other renderers, C#/.NET pipeline, unsupported operating systems and every builtin importer implementation | Outside this catalogue's operation/workflow baseline; represented by engine/module/tool/extension classes, not audited individually |
-| Q10 | Current full-project source/export inputs, extra-pack extension library lookup and plugin capture restrictions | Known implementation boundaries; this catalogue neither fixes them nor treats them as mandatory design choices |
-
-These are documented limits of this research or current implementation, not silent missing
-input classes and not completed implementation tasks. Decision-critical questions keep the
-import API/model design open.
-
-## Independent review
-
-Completed 2026-11-01 by catalog_independent_review, separate from the research authors
-catalog_import_editor, catalog_export_native and catalog_bazel_mapping. The parent consolidated
-the catalogue and ran E01; the reviewer independently inspected pinned engine/current wrapper
-source and E01 receipt/hash comparisons rather than accepting author summaries alone.
-
-Scope: all five catalogue files; 50 artifact classes, 21 operations, 25 explicit dependency
-edges and their evidence/limits. Relative file and Markdown-heading links were also checked.
-No CRITICAL/HIGH/MEDIUM findings remain, and the final narrow refinements were resolved:
-
-- Scene-group cache generation is conditional and excluded from command-line mode.
-- Extension library prefix autodetection has a directory-membership dependency.
-- Custom project-settings override paths/build policy are explicit.
-- Alternative project-data locations are an upstream capability; current import unit retention
-  hardcodes .godot/imported and does not automatically support every such layout.
-- PCK export consumes project.files/imports and rescans; no direct initialized-tree input
-  is asserted.
-
-Verdict: coverage is complete at the documented artifact-class/operation boundary for the
-selected workflows. It is not a proof of arbitrary plugin closure, every native compiler/
-importer implementation or untested conditional capability. Q01–Q10 remain visible boundaries
-and design questions, not hidden assertions of dependency absence. Automatic import sharing
-and a public godot_imports API remain undecided. Full feature/application/mobile acceptance was
-not performed by this research review.

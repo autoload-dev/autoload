@@ -1,40 +1,19 @@
 # Projects, add-ons and their tests
 
-Projects and add-ons of this repository's two consumer modules, `examples/` and `tests/`, use
-`<module>/{projects,addons}/<name>/`, measured from the module root. The module selects
-examples or ruleset regressions; the typed root determines application or add-on type. Games such as Lichtpost are applications under `examples/projects/`.
-The [typed root convention](conventions.md#rg009) owns these roots and their checks.
+A consuming Bazel module keeps its applications in `projects/<name>/` and its add-ons in
+`addons/<name>/`, measured from the module root. The typed root tells an application from an
+add-on. The examples module, `rules_godot/examples/`, follows this layout; games such as
+Lichtpost are applications under `projects/`.
 
-Application configuration belongs to its project context and application content under
-`main/`; [application ownership](conventions.md#rg008) follows the physical placement of the
-project or add-on. A project's custom engine modules live in `engine/modules/<name>/` and its
-engine patches in `engine/patches/`, following the [engine layout](conventions.md#rg014).
-Add-ons keep reusable implementation independent of their separate `demo/` and `tests/`
-projects. Their Godot suites use `unit/` for deterministic API behavior and `integration/`
-for real operating-system behavior. Create only needed categories. Application suites,
-helpers and fixtures live under its `tests/` package. Native unit tests remain beside
-implementation/backend code, independently of consuming Godot projects.
-The [add-on layout](conventions.md#rg010) and
-[implementation independence](conventions.md#rg011) rules apply automatically in both areas.
-Focused test-input libraries are not add-ons merely because they contain native sources.
-
-Use `lower_snake_case` for package segments and authored logical target names. Additional
-macro-generated targets use the [dot-separated naming convention](conventions.md#rg002).
-Give a package's clear main entry point the package's final name and use its short label
-across packages: the SQLite
-add-on is `//addons/sqlite` and Platform Paths is `//addons/platform_paths`. Secondary
-workflows keep descriptive names such as `edit`, `update`, `pack` and `exported`.
-See [package and target names](#package-and-target-names) for selection and exceptions.
-
-Place targets by the responsibility they own and the context they need. Keep the main
-project/editor/metadata workflows beside the authored `project.godot`; suite execution
-and resources share their owning test package. Runnable entry points and packs
-may belong to the project or a smaller package according to their purpose. See
-[target ownership and project context](#target-ownership-and-project-context).
-Preserve each test's execution conditions and tags. Root operations may name child
-suite resources while child test targets name the root project, provided target dependencies
-remain acyclic. Direct test executables need no suite wrapper. Distinguish projects and
-operations for tests with names such as `test_project` and `test_update`.
+An application keeps its configuration in its project and its content under `main/`; the
+physical placement of a source decides which project or add-on owns it. A project's custom
+engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
+An add-on keeps its reusable implementation independent of its separate `demo/` and `tests/`
+projects. Its Godot suites use `unit/` for deterministic API behavior and `integration/` for
+real operating-system behavior; create only the categories that have tests. An application's
+suites, helpers and fixtures live in its `tests/` package. Native unit tests stay beside the
+implementation or backend code, independent of consuming Godot projects. Focused test-input
+libraries are not add-ons merely because they contain native sources.
 
 Keep an application, an add-on and the add-on's demonstration project in useful
 Bazel packages. An add-on can then be reused without pulling its demo or tests
@@ -116,11 +95,9 @@ BUILD files, determine which work can be reused. See
 
 ## Package and target names
 
-Follow the [naming conventions](conventions.md) for package segments, ordinary target names
-and explicit declaration names.
-The catalogue explains applicability, examples and the automated checks' limits.
-The main entry takes its package's final directory name.
-Bazel treats
+Use `lower_snake_case` for package segments and authored logical target names, and pass
+`name` explicitly in every target declaration so a reader finds the target without following
+an inferred default. The main entry takes its package's final directory name. Bazel treats
 `//addons/platform_paths` as `//addons/platform_paths:platform_paths`, so prefer the short
 form in cross-package dependencies and commands. Within the same package, use ordinary
 relative labels such as `:demo`.
@@ -144,15 +121,15 @@ Keep meaningful secondary names: `edit`, `update`, `run`, `pack`, `suites`,
 `fixtures`, `test_project` and operating-system/signing qualifiers describe different workflows or
 content. Unit/integration categories are already in their package paths; their primary
 executables need no extra `_tests` suffix. Extension use alone does not determine
-the test category. Equal sibling projects or add-ons, independently useful rules, and regression
-cases can retain their individual names without a fabricated default aggregate.
+the test category. Equal sibling projects or add-ons, and independently useful rules
+can retain their individual names without a fabricated default aggregate.
 
 Additional macro-generated targets separate the complete main name and their role with a
 dot, such as `game.debug_symbols` or `update.test`. Only documented companion targets are public;
 the same notation also names private helpers. A file subset belongs in an output group
-unless a separate operation or analysis boundary is required. See [RG002](conventions.md#rg002)
-for naming and the [API documentation](https://registry.bazel.build/modules/autoload_rules_godot) for each rule's defaults, groups, companion
-targets and providers.
+unless a separate operation or analysis boundary is required. See the
+[API documentation](https://registry.bazel.build/modules/autoload_rules_godot) for each
+rule's defaults, groups, companion targets and providers.
 
 A short label is the same target, not an alias or dispatcher. Both example add-ons expose
 their extension directly under matching package/target names. Keep library output
@@ -204,7 +181,7 @@ package. Supply necessary global classes, autoloads, extension types and setting
 its declared inputs; limiting the source list must not remove required context.
 Use [test ownership](#test-ownership) to separate test resources from production inputs.
 
-Lichtpost validates both closures. From `examples/`:
+Lichtpost validates both closures. From `rules_godot/examples/`:
 
 ```sh
 bazel build //projects/lichtpost:pack
@@ -244,10 +221,9 @@ and [target placement](#target-ownership-and-project-context).
 Behavior suites, assertion helpers and fixtures stay in test packages and remain test-only;
 production code under test and shared runtime resources remain production-eligible. Do not
 mark an entire mixed package test-only; a `godot_project` is never test-only. Godot test
-operations own their generated helpers and make them
-test-only by default. The [test-only convention](conventions.md#rg007) defines those operation
-guarantees; [production isolation](conventions.md#rg012) defines the automatically checked
-boundary. Neither requires a wrapper suite around a useful direct test executable.
+operations own their generated helpers and make them test-only by default. A production
+target never consumes a target or file of a test package. A useful direct test executable
+needs no wrapper suite.
 
 Use [package and target names](#package-and-target-names) for main test entrypoints and
 meaningful test case names. Public examples demonstrate the public test rules; the
@@ -309,10 +285,10 @@ for its host checks.
 These commands build applications for the host. Build mobile applications by their
 labels with an [export platform](platforms.md#export-platforms).
 
-1. From the repository root, enter the module and run the demo:
+1. From the repository root, enter the examples module and run the demo:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/sqlite/demo:run
    ```
 
@@ -380,9 +356,10 @@ the database result and returns a failing exit status on error.
 
 ## Module ownership
 
-Run example commands from `examples/` and regression commands from `tests/`; each
-consumer module's `MODULE.bazel` configures its own repositories and toolchains. Dependencies of another root module, including
-development-only dependencies, do not provide repository names to this one.
+Run example commands from the examples module, `rules_godot/examples/`. Each consumer
+module's `MODULE.bazel` configures its own repositories and toolchains. Dependencies of
+another root module, including development-only dependencies, do not provide repository
+names to this one.
 Every module must declare the names used by its own targets. Reusing another
 module's exported resources does not transfer that module's repository mapping.
 

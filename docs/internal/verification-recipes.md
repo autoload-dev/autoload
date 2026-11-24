@@ -51,8 +51,8 @@ hooks. Android tasks prepare their own prerequisites through `android:setup`;
 workflow-lint tools are installed when their owning tasks require them. `test:setup` checks
 provisioning declarations without installing SDK components.
 
-The pre-push hook verifies the working tree matches the pushed commit
-before running `aspect pre-push`. CI uses the same tasks through the shared
+Before its checks, the pre-push hook verifies that the working tree matches the pushed
+commit. CI uses the same tasks through the shared
 [setup action](../../.github/actions/setup/action.yml), which installs the pinned Bazelisk and
 Aspect launcher and configures Bazel's repository cache. Android
 workflow jobs reuse cached missing SDK components; host-only ones do not install Java or
@@ -132,10 +132,10 @@ RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work test:bazel
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
 ```
 
-Some work needs this host as execution platform even under a remote config: the formatters
-and linters of the `format` and `lint` tasks, which `bazel run` starts here.
-`--config=host-execution` from [shared.bazelrc](../../shared.bazelrc) names this host again;
-those tasks apply it. The remote cache still applies.
+Some work needs this host as execution platform even under a remote config, such as the
+formatters that `bazel run` starts here. Adding `--config=host-execution` from
+[shared.bazelrc](../../shared.bazelrc) after the remote config names this host again; the
+remote cache still applies.
 
 Android builds of `examples/` and `tests/` run their actions on BuildBuddy's
 executors: their `android-toolchains` config registers the toolchains of
@@ -181,8 +181,7 @@ docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.b
 The projects below are controlled inputs for rules_godot regressions, separate from each
 example's own tests. For area responsibilities, see the [test-area map](../../rules_godot/tests/AGENTS.md).
 They form the consumer module `rules_godot_tests` at `tests/`: run their labels from
-`tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from the repository
-root.
+`tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
 
 Use these project cases to find a concrete behavior:
 
@@ -356,4 +355,4 @@ and run with `aspect work test:bazel`.
 `//godot/private/tests:import_and_pack_outputs_are_reproducible_test` imports and exports a
 project twice and compares the bytes. For the actions one change actually ran, compare the
 execution logs of two invocations as the [verification
-policy](verification.md#selecting-tests-and-reviewing-changes) describes.
+architecture](verification-architecture.md#verifications-without-precedent) describes.

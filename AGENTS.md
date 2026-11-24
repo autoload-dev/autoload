@@ -45,23 +45,20 @@ From the repository root:
 ```sh
 ./bootstrap.sh                            # once per clone: install bazel and aspect, the Git hooks and Android SDK packages
 aspect doctor                             # check the setup and say what is missing
-aspect pre-commit                         # what the pre-commit hook runs: format and stage, lock files, Code Health of the staged change
-aspect pre-push                           # what the pre-push hook runs: format, lint, generated files, conventions, tests, API docs, Code Health
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
 aspect lint                               # lint the current module's Python with Ruff and ty
 aspect generate                           # regenerate lock files
 aspect work docs                          # after changing the ruleset's public API
-aspect code-health                        # Code Health of the change since origin/main; the pre-push hook runs it too
+aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy
 ```
 
-A checkout needs only Bazelisk (`bazel`) and the Aspect CLI (`aspect`), which
-`./bootstrap.sh` installs. `aspect help` lists the tasks. Use `aspect exec --` before direct
-commands that need the repository environment (the Android variables, Bazel's Python as
-`python3`). For missing prerequisites, read [toolchain
-setup](docs/internal/verification-recipes.md#toolchains). For the lanes and review
-readiness, read [lanes](docs/internal/verification-platforms.md). BuildBuddy is a regular
+`aspect help` lists the tasks. Use `aspect exec --` before direct commands that need the
+repository environment (the Android variables, Bazel's Python as `python3`). For the tools a
+checkout needs and for missing prerequisites, read [toolchain
+setup](docs/internal/verification-recipes.md#toolchains). For the lanes and review readiness,
+read [lanes](docs/internal/verification-platforms.md). BuildBuddy is a regular
 option for builds and tests; choose between local and remote runs with [when remote
 execution pays off](docs/internal/verification-recipes.md#when-remote-execution-pays-off).
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read [remote
@@ -94,7 +91,7 @@ responsibilities, dependencies, reuse or visibility; neither directory count nor
 counts are design goals. Naming/layout checks do not make those choices for you.
 
 When a convention check reports a finding or incomplete coverage, consult the named rule in
-[the catalogue](rules_godot/docs/public/conventions.md). Fix findings in source. Reserve `# noqa`,
+[the catalogue](docs/internal/conventions.md). Fix findings in source. Reserve `# noqa`,
 `# ty: ignore` and `# buildifier: disable=...` for intentional exceptions with a reason.
 Computed macro names need a recorded decision in the owning rule, not an assumption that a
 passing run checked them.
@@ -140,9 +137,7 @@ and pass them to build tools as data.
 
 # Code Health (CodeScene)
 
-Aim for Code Health 10.0. The pre-commit and pre-push hooks fail when a changed file's score
-falls or a new file scores below 9.0; refactor it rather than accept the finding, and accept
-one only with the `@codescene(disable:...)` directive the hook prints and a comment giving the
-reason. Measure only with `aspect code-health`, not the CodeHealth MCP tools or CodeScene
-plugin skills. Scoring, the survey for refactoring targets and setup are in
-[Code Health](docs/internal/code-health.md).
+Aim for Code Health 10.0. When a hook fails on a declining file, refactor it rather than
+accept the finding. Measure only with `aspect code-health`, not the CodeHealth MCP tools or
+CodeScene plugin skills. The hooks' thresholds, the directive that accepts a finding, the
+survey for refactoring targets and setup are in [Code Health](docs/internal/code-health.md).

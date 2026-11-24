@@ -20,7 +20,7 @@ database.close()
    From the repository root, enter the examples module:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/sqlite/demo:run
    ```
 
@@ -56,7 +56,7 @@ The class deliberately exposes no filesystem database or extension-loading API.
 
 ## Develop and package
 
-Run from `examples/`:
+Run from `rules_godot/examples/`:
 
 ```sh
 bazel run //addons/sqlite/demo:edit

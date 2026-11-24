@@ -1,290 +1,537 @@
-# Conventions: inventory, documentation and enforcement
+# Repository conventions
 
-**Research baseline:** 2026-11-01, repository `f5c6e66`, Bazel 9.3.0,
-`buildifier_prebuilt` 10.1.0 and `aspect_rules_lint` 2.9.0.
+The conventions check (`bazel run //tools/conventions`) audits the Bazel packages, targets,
+Godot projects, add-on modules, documentation and agent files of this repository. Each
+convention rule has a stable ID, so diagnostics stay searchable when this page is
+reorganized. This page owns each rule's ID, applicability, automated coverage and limits;
+the [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the
+layout and naming conventions mean. External repositories and source files are separate
+identities, not authored target declarations.
 
-This is an initial inventory and design comparison. Existing rules retain their current
-owners. Accepted clarifications are recorded in owning guidance; the research proposals
-below do not themselves introduce new rules, IDs, exceptions or lint gates.
-At that research baseline, implementation and test-project migration still needed a
-subsequent reviewed scope.
+| ID | Rule | Policy | Automated coverage | Enforcement |
+|---|---|---|---|---|
+| [RG001](#rg001) | Package segments use lower snake case | Required | All inventoried owned BUILD paths, relative to the nearest module | Error |
+| [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
+| [RG003](#rg003) | Target declarations pass `name` explicitly | Required | BUILD calls associated with at least one evaluated rule | Error |
+| [RG004](#rg004) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
+| [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
+| [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
+| [RG008](#rg008) | Application content lives under `main/` | Required | Production-eligible resource inputs physically owned by typed application or add-on demo/test scopes | Error; unresolved membership is reported as not checked |
+| [RG009](#rg009) | Applications and add-ons use their typed roots | Required | Project and add-on directories and authored Godot configurations of every consumer module | Error |
+| [RG010](#rg010) | Add-ons separate demo and Godot test projects | Required | Every add-on under a typed add-on root | Error |
+| [RG011](#rg011) | Reusable add-on implementation is independent of its demo | Required | Direct authored workspace inputs of production-eligible implementation declarations, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
+| [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
+| [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
+| [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
+| [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
+| [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
 
-**Current enforcement:** The [convention catalogue](../../rules_godot/docs/public/conventions.md) owns the
-automated policies, coverage and severity. The
-[convention checker](../../tools/conventions/check.py) implements them. The comparison below
-retains its research baseline; consult the catalogue for current enforcement.
+RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
+[boundary rules](verification-architecture.md#boundary-rules)). Choosing the main entry point
+and useful package boundaries still requires judgment; the checks do not elect a primary target.
 
-For the naming subset, Buildifier remains responsible for formatting and its known label
-rewrites. Buildozer's JSON interface exposes parsed calls without a new Go toolchain or
-buildtools fork. Bazel loading identifies which calls actually produce targets and evaluates
-the names of Bazel's built-in rules, so arbitrary helpers are not classified by a guessed function-name list.
-The checker uses only Python's standard library for coordination and a token scan of the
-parser's formatted call to recognize literal name arguments. It does not evaluate Starlark
-with Python. Direct buildtools AST integration remains an option if broader
-source checks justify the extra toolchain. Semgrep generic patterns and rules_lint alone
-do not supply the missing Starlark or ownership semantics.
+## RG001
+
+**Package segments use lower snake case.** Each segment of an owned Bazel package path
+must match `[a-z][a-z0-9]*(?:_[a-z0-9]+)*`: an ASCII lowercase letter first, then lowercase
+letters/digits, separated by single underscores. Leading, trailing and repeated underscores
+are excluded. This makes package labels predictable and consistent across operating systems.
+
+`addons/platform_paths` and `tools/conventions` conform; `addons/platform-paths`,
+`tools/_checks`, `tools/checks_` and `tools/my__checks` do not. Check every ancestor segment,
+even when only the leaf directory contains a BUILD file. A module root has no package
+segment. Names of directories containing only assets are outside this rule unless they
+form part of a package path.
+
+The checker inventories Git-tracked and untracked, non-ignored `BUILD`/`BUILD.bazel` files
+and resolves each against its nearest `MODULE.bazel`. It does not scan fetched repositories,
+Bazel output trees or generated BUILD templates as if they were maintained packages.
+
+## RG002
+
+**Ordinary target names use lower snake case.** Authored logical target names follow the
+same spelling as RG001. Consistent names make labels easy to type and distinguish logical
+targets from output filenames and generated artifacts.
+
+```starlark
+# Conforming declarations; helper names describe separate responsibilities.
+godot_resources(name = "main", srcs = ["game.gd"])
+filegroup(name = "linux_package", srcs = [":bundle"])
+```
+
+Names such as `LinuxPackage`, `linux-package`, `linux/package` and `linux__package` do not
+conform as ordinary authored names. A slash in a target name is not a package boundary.
+Preserve meaningful secondary names; do not create aliases or aggregates just for naming.
+
+Additional targets generated by a rules_godot-owned macro are named `<name>.<role>`, as the
+[layout guide](../../rules_godot/docs/public/project-layout.md#package-and-target-names)
+describes. Bazel's
+[symbolic macro schema](https://github.com/bazelbuild/bazel/blob/9.3.0/site/en/extending/macros.md#naming)
+allows this separator. The checker examines the Bazel-evaluated expansions of owned macros,
+including nested helpers; a compliant main name alone does not establish compliance for its
+helpers.
+
+The convention covers every rules_godot-owned public macro and its nested private macros,
+including project, test, extension, export-platform and packaging helpers. A generated
+repository's independent entrypoints do not acquire a fictitious common main target; apply
+the separator where a main target actually has companion targets. Repository names and
+output-group keys are separate interfaces.
+
+Upstream-generated identities retain upstream spelling. rules_android and rules_apple derive
+delivered basenames from a slash suffix, so a role may continue after a slash with the main
+name again, as in `app.android_apk/app.native_apk`; the owning definition explains why.
+
+Source-file labels and external identities retain their required spelling.
+An explicit output filename is also distinct: for example,
+`cc_binary(name = "libnative.so", linkshared = True)` names a shared library artifact.
+The checker recognizes that qualification only for a `cc_binary` with effective
+`linkshared = True`, a filename without `/`, and a `.so`, `.dylib` or `.dll` suffix.
+A `filegroup` named `libnative.so` has no such output contract and is a violation.
+
+For literal names, the authored declaration establishes the complete main name. Bazel
+supplies the emitted labels and the instantiation frames of each evaluated rule; generated
+names are checked against that main name, including its existing underscores.
+
+**Computed macro roots remain a review obligation**: `generator_name` may identify an internal
+helper instead of the authored invocation. Review the expression and its inputs while
+preserving output filenames, registration symbols and resource paths. Record
+the roots in `REVIEWED` in [the RG002 module](../../tools/conventions/rules/rg002.py), by BUILD
+path. The roots are the call's emitted names without a role; every other emitted owned label is
+checked against exactly one of them. A changed root set requires renewed review; stale
+reviews fail. Missing required ownership or review evidence fails the check.
+Incomplete review evidence is reported as `RG002 not checked`. This strictness does not
+change other conventions' coverage policy.
+
+## RG003
+
+**Target declarations pass `name` explicitly.** Show the target's identity at its declaration
+so readers can locate it without following an inferred default or a dictionary expansion.
+A computed expression still counts as explicit:
+
+```starlark
+godot_resources(name = "main", srcs = ["game.gd"])
+godot_resources(name = variant + "_resources", srcs = sources)
+```
+
+A target-producing call such as `target_macro(**options)` does not express `name` explicitly.
+Use `target_macro(name = target_name, **other_options)` instead. Calls such as `load`,
+`package`, `exports_files`, `glob` and arbitrary helpers are not target declarations merely
+because they appear in a BUILD file.
+
+The checker joins parsed BUILD calls with evaluated rules by their source location. This
+classifies actual target-producing calls without a guessed list of function names and
+handles macros, aliases and comprehensions. Macro implementation calls inside `.bzl` files
+and generated targets are outside this authored-BUILD check. Calls producing no evaluated
+rules are outside its coverage. Ambiguous or missing source evidence and failed parsing or
+loading stop the audit with an error rather than silently passing.
+
+## RG004
+
+**Public documentation does not reference test fixtures.** Public guides and READMEs show
+runnable examples, which users can copy, instead of named scenarios of the regression module.
+The check reports each line with a concrete path such as `tests/smoke/linux` in Markdown under
+`docs/` and in every README, except internal documentation (the `docs/internal/` directories
+of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
+`tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
+belong in internal documentation.
+
+## RG006
+
+**Documented commands name existing targets.** Copying a command from the documentation
+works only if its labels exist.
+The check reads the labels of `bazel build`, `bazel run` and `bazel test` commands in
+Markdown under `docs/` and in every README, except `AGENTS.md` files. Arguments after `--`,
+`...` patterns and `//path/to` placeholders are skipped.
+
+Each label resolves in exactly one module that contains its package:
+
+- `@autoload_rules_godot//` labels resolve in the ruleset module, `rules_godot/`.
+- A document inside a consumer module, such as `rules_godot/examples/`, resolves labels in
+  its own module first.
+- `//:target` labels in documents of the root module, the ruleset module and its
+  documentation module are consumer templates and are not checked.
+
+The named rule must exist in that package; `:all`, `:*` and `:all-targets` only require the
+package. A label is reported at its command's line when no module or several modules
+contain the package, or when the package has no such rule. A resolved label does not prove
+that the documented workflow succeeds.
+
+## RG007
+
+**Godot test operations and their helpers are test-only.** The targets created by
+`godot_test` and the test operations an add-on module declares in its `addon.pkl`
+(`testOperations`), such as autoload_gdunit's `gdunit_test`, must have effective
+`testonly = True`. This includes their generated case lists, resources and views of
+the project. They belong exclusively to the test operation and must not become production
+dependencies, following
+[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
+
+The operations set `testonly = True` on themselves and their helpers unless the caller
+passes `testonly = False`, so a test can sit in a mixed production/test package without
+further flags. The rule reports such opt-outs. The checker asks Bazel for
+[attribute defaults](https://bazel.build/query/language#xml), so it judges the effective
+value, including package defaults, without requiring a literal attribute.
+[Bazel's test-only dependency check](https://bazel.build/reference/be/common-definitions#common.testonly)
+then protects the marked targets from production consumers.
+
+Applicability comes from the evaluated `generator_function` metadata of these
+operations, including source aliases and comprehensions. Each attributed rule target is
+checked. Each false flag is reported at the call with the affected target label. Missing
+scalar flags or missing generator evidence for a directly named operation are reported as
+not checked. Other targets at the same authored call with an unknown or different generator
+are also reported as not checked; their ownership must not be inferred from a neighboring
+test target. Arbitrary wrappers which hide the operation's
+identity are outside automated coverage; a `_test` suffix alone does not establish ownership.
+
+Shared runtime resources, code under test and existing projects supplied as inputs retain
+their production eligibility. This rule does not traverse a test's dependency closure or
+classify separately declared suites and test data; those still follow the broader ownership
+policy. Loading-time flags do not establish configured resource membership or runtime behavior.
+
+## RG008
+
+**Application content lives under `main/` of its physical project.** The location of the
+project or add-on establishes ownership in every consumer module, following
+[typed roots](#rg009). Application cases own their scenes, scripts and exclusively used
+assets below `main/`. An add-on's implementation retains its own layout; its `demo/` and
+`tests/` project scopes apply the same application-content rule. Keep authored UID/import
+sidecars beside sources.
+
+For example:
+
+```starlark
+godot_resources(
+    name = "main",
+    srcs = ["main/game.gd", "main/game.tscn"],
+)
+```
+
+These sources use `res://main/game.gd` and `res://main/game.tscn`. When moving application
+files, update configuration, scene/script references, authored import sidecars and
+assertions. Do not preserve an old application path through an unnecessary `resource_paths`
+entry. Godot plugin namespaces and deliberate resource path regressions can retain explicit
+entries; a mounted `addons/` path never changes the project or add-on that physically owns a
+source.
+
+The check inspects loaded `godot_resources` inputs declared through `srcs` and
+`resource_paths`, including sources supplied across modules. Ownership comes from the
+physical source path, not the project consuming it. In an application case, the nearest
+authored configuration owns its application inputs; shared inputs without their own
+configuration use the case root's `main/`. Contexts for one operating system may each own
+their configuration and `main/`. Several resource paths of one physical source produce one
+finding.
+
+There is no blanket exemption for regression projects, test-only project compositions or
+macro-generated projects. Test-only suites and helpers belong in an application's `tests/`
+scope, or in `unit/` or `integration/` of an add-on's Godot test project. Both the physical
+test scope and the `godot_resources` target's effective test-only flag establish that
+ownership; the flag alone does not waive application layout. Generated outputs and the build
+and delivery inputs of extension and platform libraries are outside this declared
+Godot-resource subset. Missing role/membership facts and unresolved aggregate inputs are
+reported as not checked. The check does not classify undeclared files or require an empty
+`main/` where no application-owned resources exist. No manually listed application roots or
+reusable-resource exemptions select applicability.
+
+## RG009
+
+**Applications and add-ons use their typed roots.** Every consumer module of this
+repository uses the same layout of projects and add-ons, measured from its module root:
+
+| Module | Application projects | Add-ons |
+|---|---|---|
+| Examples, `rules_godot/examples/` | `rules_godot/examples/projects/<name>/` | `rules_godot/examples/addons/<name>/` |
+| Regression tests, `rules_godot/tests/` | `rules_godot/tests/smoke/<operating_system>/`, `rules_godot/tests/script_run/`, `rules_godot/tests/patched_engine/` | `rules_godot/tests/shared_addon/` |
+| Add-on examples, `addons/<module>/examples/` | `addons/<module>/examples/projects/<name>/` | none: the add-ons are in the module |
+
+The path determines whether a directory is a project or an add-on, and which rules apply.
+A project case owns a BUILD file and at least one authored Godot configuration; related
+operating-system contexts can share one named case. Add-on project structure follows
+[the add-on layout rule](#rg010). There is no per-directory admission list and no exemption
+based on a mobile module root.
+
+Focused unit/analysis packages and their C++/provider fixture inputs remain with their
+owning test domain when they are not independently reusable add-ons. C++ source files alone
+do not establish an add-on.
+
+The check inventories project and add-on directories and authored `project.godot` files in
+every consumer module; the white-box fixture projects of the ruleset module and of an add-on
+module's `tests/` are outside it. Configurations must belong to a named project or add-on.
+Temporary projects constructed inside source strings and generated configuration templates
+are outside the inventory. The check does not require a project or BUILD package for each
+assertion.
+
+## RG010
+
+**Add-ons separate implementation, demo and Godot tests.** Every add-on under a typed add-on
+root owns its reusable implementation, a normal-use project under `demo/` and a Godot test
+project under `tests/`. Each of those three scopes owns a BUILD file. The two projects own
+`project.godot` directly; do not add another project at the add-on root or inside a suite
+category. Native backend unit tests do not require a Godot configuration.
+
+The add-on roots are discovered from the shared workspace inventory, so a new add-on is
+checked without editing a list. Reuse the test root configuration for `unit/` and
+`integration/` packages, which
+[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership) creates only
+for the behavior actually present. The inventory establishes project and BUILD locations, not suite
+classification or every configured composition input.
+
+## RG011
+
+**Reusable add-on implementation is independent of its demo.** The location under a typed
+add-on root selects this rule automatically. Implementation declarations must
+not consume targets or source files owned by the add-on's `demo/`. The demo depends on the
+reusable implementation; production dependency direction must not return to it. Test inputs
+are covered for every production target by [RG012](#rg012).
+
+For production-eligible implementation declarations, the check examines authored label,
+label-list and label-keyed-string inputs; implicit attributes from the rule definition are
+not inputs the declaration chose. Bazel resolves each input to its defining target or source
+file, including source symlinks and labels of the workspace's other modules. External
+repositories cannot be a demo and are not resolved. Resource paths and name suffixes do not
+establish whether a directory is a project or an add-on. Generated helpers sharing an
+authored input produce one finding at that call. Test-only declarations are outside this
+rule, and visibility grants are not implementation dependencies.
+
+This is a loading-time direct-input check over conditional branches reported by Bazel query,
+not one selected configuration. Missing effective role flags are reported as not checked.
+Indirect paths through helper packages remain outside this automated subset; review them
+separately. Passing alone does not prove the complete configured dependency closure.
+
+## RG012
+
+**Production targets are independent of test scopes.** A target that is not test-only must
+not consume targets or source files owned by a test scope. Mark the consumer `testonly` when
+it exists only for tests, or move the input out of `tests/` when production code really
+shares it. This applies to applications, add-ons, their demos and the ruleset itself,
+following
+[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
+
+A test scope is a `tests/` directory below the root of a project or add-on, such as
+`<project>/tests/`, `<addon>/tests/`, `<addon>/demo/tests/` or a backend's
+`<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
+directory below the module root, such as the ruleset's white-box packages
+`godot/private/tests/`. Paths are measured from the owning module, so the regression
+module's directory `tests/` is not itself a test scope: a regression project's `main/` may
+use the module's `support/` fixtures, but not its own `tests/` suites.
+
+```starlark
+# game/main/BUILD.bazel
+godot_resources(
+    name = "main",
+    srcs = ["game.gd"],
+    deps = ["//game/tests:suites"],  # Reported: suites are test-owned.
+)
+```
+
+The check uses the same input resolution as [RG011](#rg011): authored label, label-list and
+label-keyed-string attributes, resolved by Bazel to their defining target or source file
+across the workspace's modules. Declarations inside a test scope and test-only targets are
+consumers, not subjects. Missing effective role flags are reported as not checked. Bazel's
+own test-only dependency check covers edges to marked targets; this rule also covers
+unmarked targets and source files by their location. Indirect paths and configured closures
+remain outside this automated subset.
+
+## RG013
+
+**Public documentation does not link to internal documentation.** Consumer guides and
+READMEs must stand on their own. Link to public setup and usage guides instead of requiring
+readers to follow contributor implementation or verification instructions.
+
+The check resolves static local destinations in Markdown links, images, reference definitions
+and quoted or unquoted HTML `href`/`src` attributes against the document's directory.
+Root-relative paths, fragments, query strings, percent encoding, Markdown punctuation escapes
+and HTML character references are handled too. Inline code, top-level fenced or indented code
+blocks and HTML comments are ignored. Merely naming an internal directory or showing a link
+inside such a code example does not create a link.
+
+Internal reference pages and agent instructions are outside this public-documentation check.
+External URLs and dynamically generated links are outside automated coverage and need
+review; the checker does not fetch remote documents.
+This source check does not implement a full Markdown renderer: nested list/blockquote blocks
+and destinations containing whitespace or nested parentheses need review.
+
+## RG014
+
+**Engine modules and patches live under `engine/`.** A Godot project that builds its engine
+from sources keeps each custom engine module in `engine/modules/<name>/` and each engine
+patch as a `.patch` or `.diff` file directly in `engine/patches/`. Readers and source
+recipes then find a project's engine inputs in one place, separate from its application
+content under `main/`.
+
+```text
+<module>/projects/<name>/
+  project.godot
+  main/
+  engine/
+    modules/
+      <module>/               # config.py, SCsub, register_types.cpp, sources, BUILD.bazel
+    patches/
+      BUILD.bazel             # exports the patches to the module's recipes
+      <change>.patch
+```
+
+The check inventories the files of every project root of a consumer module; a
+`project.godot` marks a root, and a nested project owns its own files. In each project it
+reports:
+
+- any entry of `engine/` other than `modules/` and `patches/`;
+- any file directly in `engine/modules/`, and any directory there without both `config.py`
+  and `SCsub`;
+- any entry of `engine/patches/` other than `.patch`/`.diff` files and a BUILD file,
+  including subdirectories;
+- any engine module directory outside `engine/` (a directory owning `config.py` together
+  with `SCsub` or `register_types.*`) and any `.patch`/`.diff` file outside
+  `engine/patches/`.
+
+A stray directory is reported once, at its first file. An add-on's own `register_types.*`
+without `config.py` is an extension, not an engine module. Files outside every project
+root, such as dependency patches in `rules_godot/examples/deps/`, are outside this rule.
+The check does not read module or patch contents and does not prove that a recipe consumes
+them.
+
+## RG015
+
+**Add-on modules share one layout, and backends live in `native/backends/`.** This
+repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
+template, so that the same tasks build, test and release every module and nothing outside a
+module lists it. Each module:
+
+- is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
+  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`
+  and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
+  and `.bazelversion`, and, when it builds applications, `BUILD.bazel` and
+  `maven_install.json`;
+- owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
+  `presubmit.yml` and a `source.template.json` that releases the archive
+  `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
+  removed with it;
+- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
+  `examples/.bazelrc` imports `addons/examples.bazelrc`;
+- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
+  properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
+  of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
+  types, so this rule checks the values. A module builds applications when its lanes include
+  `android` or `ios`;
+- has at least one example project in `examples/projects/<name>/`, each defining the targets
+  `edit` and `pack`, and `app` when the module builds applications;
+- gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
+  extension's framework, and an application's frameworks share one directory.
+
+In every add-on, including those of `examples/`, a `backends/` directory sits in `native/`:
+the backends implement the platform-independent API beside them. The check reads the files
+and their text without loading Bazel; it reports a stray `backends/` directory once.
+
+## RG016
+
+**Local links resolve.** A link in documentation, a README, an `AGENTS.md` or a skill's
+`SKILL.md` names a file or directory of the repository, in its exact case, and a fragment
+names a heading or an HTML `id` or `name` of the Markdown page it points to. Headings become
+fragments as on GitHub: the rendered text in lower case, without punctuation, spaces as
+hyphens and a number appended to repeats. Ignored local files, such as `user.bazelrc`, are
+no link targets.
+
+The check reads link destinations as [RG013](#rg013) does, and ignores links in code and
+comments the same way. External URLs, fragments into files other than Markdown and fragments
+after a query, such as `?plain=1#L5`, are outside automated coverage.
+
+## RG017
+
+**Agent instructions live in `AGENTS.md`.** Claude Code and Codex both read `AGENTS.md`, but
+Claude Code ignores it while a `CLAUDE.md` exists in its working directory or above it. The
+check reports every `CLAUDE.md`; rules for one agent alone go into `AGENTS.md`, marked as such.
+
+## RG018
+
+**Skills live in `.agents/skills` and are linked for Claude Code.** A skill is written once,
+as a directory `.agents/skills/<name>/` with a `SKILL.md`, where Codex finds it. Claude Code
+finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a symbolic link
+to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
+skills without a counterpart.
+
+## Run and maintain the checks
+
+From the repository root:
+
+```sh
+bazel run //tools/conventions
+```
+
+The command runs every registered convention rule across all owned modules. Violations
+include the stable rule ID, file, line and a link to this catalogue. The checker reports
+unreviewed computed macro names separately. Exit status `1` indicates convention findings;
+`2` indicates an incomplete audit. The work `conventions` of the `quality` lane runs this
+command, and the pre-push hook runs that work.
+
+Run one rule independently or list the registered rules:
+
+```sh
+bazel run //tools/conventions -- --rule RG001
+bazel run //tools/conventions -- --list-rules
+```
+
+Each rule lives in its own module under [`tools/conventions/rules`](../../tools/conventions/rules)
+with its regression tests beside it. The convention checks do not prove configured
+dependencies or runtime behavior.
+
+Fix findings in their sources. A target rename can change outputs, so update references and
+artifact assertions deliberately; there is no automatic rename fixer. Temporary exceptions
+belong beside their owning rule, with a reason and removal condition. For automated rules,
+keep qualifications and reviewed coverage limits in the owning rule module. There is no
+blanket exemption for fixtures or the test tree.
 
 ## Rule framework
 
 Each registered rule is an independent object with `info: RuleInfo` and
-`evaluate(context) -> Iterable[Finding]`. Its own module owns its ID, title, documentation
-link, applicability, predicates, artifact qualifications, incomplete-coverage findings and records of reviewed sites.
-Tests live beside the rule. No rule's implementation is placed in the CLI or tool adapters.
+`evaluate(context) -> Iterable[Finding]`. Its own module owns its ID, title, applicability,
+predicates, artifact qualifications, incomplete-coverage findings and records of reviewed
+sites. Tests live beside the rule. No rule's implementation is placed in the CLI or tool
+adapters.
 
 The [framework](../../tools/conventions/framework.py) validates unique IDs, invokes rules
 against one context and attaches their metadata to findings. It sorts diagnostics for
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
-aborts the run rather than being merged. `Finding.status` distinguishes `violation` from `not_checked`
-for every rule. The [registry](../../tools/conventions/registry.py)
-selects enabled rules, and the [CLI](../../tools/conventions/check.py) formats results and
-chooses the exit status. Registration is explicit; no dynamic plugin discovery is required.
+aborts the run rather than being merged. `Finding.status` distinguishes `violation` from
+`not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
+the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)
+formats results and chooses the exit status.
 
-The [context](../../tools/conventions/context.py) exposes standard, read-only evidence tools:
-
-| Access | Evidence |
-|---|---|
-| `context.workspace.files` | Git-owned, non-ignored files present in the working tree; `file_set` for membership |
-| `context.workspace.entries` | Like `files`, plus symbolic links to directories and dangling links |
-| `context.workspace.documents` | Markdown under `docs/` and every README, excluding AGENTS.md |
-| `context.workspace.text(path)` | A file's text, read once per run |
-| `context.workspace.strings(path)` | String literals of a BUILD, MODULE.bazel or `.bzl` file, without comments |
-| `context.workspace.owner(path)` | The nearest module directory of any file |
-| `context.workspace.modules` | BUILD files grouped under their nearest module, with `packages` |
-| `context.workspace.has_build(directory)` | Whether a BUILD file makes the directory a package |
-| `context.workspace.godot_configurations` | Every `project.godot` file |
-| `context.workspace.typed_directories(kind)` | The project or add-on directories of a typed root (`projects`, `addons`) of every consumer module, measured from its module root, with their files; `typed_directory(path)` resolves one path |
-| `context.starlark.calls(module)` | Parsed source calls, attributes, locations and literal names |
-| `context.starlark.module_name(module)` | The name a module declares in its MODULE.bazel |
-| `context.bazel.rules(module)` | Loaded target identities, string/boolean attributes including defaults, and generator location; `Target.authored_inputs()` lists the labels a declaration chose |
-| `context.bazel.inspect(module, labels)` | Cached rule, authored-file and generated-file facts for explicit labels, including local cross-module inputs |
-| `context.declarations(module)` | Source calls joined to their evaluated targets, retaining macro fan-out |
-| `context.is_local(label)` | Whether a label names a package of one of the workspace's modules |
-| `context.sources(module, labels)` | Workspace path of each local label's defining target or source file |
-
-The documentation rules share [documents](../../tools/conventions/documents.py): which pages
-are internal, which files are agent instructions (every `AGENTS.md` and `SKILL.md`), and the
-local links and anchors of a Markdown source.
+The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
+workspace files, documents, modules and typed directories, Starlark calls, Bazel rules and
+inspection, and the joins of them (`context.declarations`, `context.sources`). The public
+members of `context.py` carry their documentation. The documentation rules share
+[documents](../../tools/conventions/documents.py): which pages are internal, which files
+are agent instructions (every `AGENTS.md` and `SKILL.md`), and the local links and anchors
+of a Markdown source.
 
 Tools load evidence lazily, cache it per tool/context instance and return immutable records
 and read-only attribute maps. The first `context.declarations` call loads the calls and
-rules of every module concurrently, since each module is a separate Bazel workspace. The package-name rule only needs the workspace inventory.
-The target-name and explicit-name rules share their declaration data, and the
-documentation-label rule resolves labels against the same per-module query, so no query
-runs twice. Missing/ambiguous source evidence and failed tools raise
-`EvidenceError` and abort the audit; they are not converted into an empty
-successful result.
+rules of every module concurrently, since each module is a separate Bazel workspace. The
+target-name and explicit-name rules share their declaration data, and the documentation-label
+rule resolves labels against the same per-module query, so no query runs twice. Missing or
+ambiguous source evidence and failed tools raise `EvidenceError` and abort the audit; they
+are not converted into an empty successful result.
 
 To add a rule, create its module and adjacent regression tests, register its object, and
 declare those sources in the existing Bazel package. A rule consumes available tools and
-returns findings; it does not require a branch in the checker or a new report field. Add a tool
-capability only when a rule needs a new kind of evidence, keeping retrieval independent
+returns findings; it does not require a branch in the checker or a new report field. Add a
+tool capability only when a rule needs a new kind of evidence, keeping retrieval independent
 of the policy which consumes it. Tool protocols allow rule tests to use deterministic facts
 without launching subprocesses; context tests exercise real parsing and evidence joins.
 
-This small internal framework meets the need for independent rule evaluation and
-shared evidence. [Pluggy](https://pluggy.readthedocs.io/en/stable/) provides hook specification,
-registration and result collection, but the domain context and evidence adapters would
-still be ours. An external plugin lifecycle is not needed. `rules_lint` remains
-an integration option for a linter executable rather than the owner of rule predicates.
+### Design
 
-The [predicate draft](conventions-rules-draft.md) separates naming, placement,
-production/test isolation and the agreed add-on/ordinary-project layouts into individual
-review items. Its temporary keys are not stable
-rule IDs; no proposed predicate overrides the current guidance.
-
-## Existing sources and enforcement
-
-[AGENTS.md](../../AGENTS.md) and area instructions provide orientation, work recipes and
-review-only guidance. [Project layout](../../rules_godot/docs/public/project-layout.md) owns package, target and
-test ownership; the [convention catalogue](../../rules_godot/docs/public/conventions.md) owns automated rules
-and their coverage limits.
-
-The existing enforcement has several owners:
-
-- [Formatting](../../tools/format/BUILD.bazel) uses `rules_lint`'s `format_multirun` with
-  Ruff and Buildifier, through `aspect format`. Buildifier lints Starlark as it formats,
-  with the warnings the [Buildifier configuration](../../.buildifier.json) selects,
-  documentation warnings included.
-- [Language checks](../../tools/lint/linters.bzl) are `rules_lint` aspects for pinned Ruff
-  and ty, through `aspect lint` in the modules with Python tools, configured in
-  [pyproject.toml](../../pyproject.toml) and [ty.toml](../../ty.toml). jactionlint checks the
-  workflows in a [test](../../tools/lint/BUILD.bazel).
-- The [convention checker](../../tools/conventions/check.py) runs the
-  [catalogued rules](../../rules_godot/docs/public/conventions.md): naming, public-doc
-  fixture references, example API references and documentation command labels resolved in
-  their owning Bazel modules. It is not a full layout-policy checker.
-- [API documentation checks](../../rules_godot/docs/internal/api-reference.md) use evaluated
-  Bazel/Stardoc metadata and source inspection for inventories, ownership and descriptions.
-- Bazel analysis, project/resource rules, sidecar checks and existing behavior/artifact
-  tests already enforce parts of dependency, resource and runtime correctness.
-- The [verification guideline](verification.md) owns when and where these checks run; the
-  [Git hooks' tasks](../../.aspect/hooks.axl), the [lanes' work](../../tools/ci/work.py) and
-  [CI](../../.github/workflows/ci.yml) implement that policy.
-
-A passing existing check does not imply that all layout or naming conventions are enforced.
-
-## Inventory to refine into atomic rules
-
-This inventory records convention areas and candidate evidence, not additional requirements.
-Some predicates have rules in the public catalogue; use that catalogue for their IDs
-and automated coverage. Further predicates need explicit applicability and enforcement limits.
-
-| Existing convention area | Current owner | Candidate evidence/check | Limit requiring care |
-|---|---|---|---|
-| English code/UI/documentation | Root working conventions | Review; optional spelling assistance | Names, localization and non-ASCII test inputs cannot be classified by a language heuristic alone. |
-| `lower_snake_case` package segments and authored target names | Convention catalogue and layout guide | Filesystem inventory and Starlark syntax tree | Source filenames, generated targets, external APIs and intentional artifact/path fixtures differ. |
-| Package-named clear main targets | Layout guide | Declared primary responsibility plus syntax/evaluated target metadata | Do not infer one main target from declaration order or require an aggregate in every package. |
-| Short labels and explicit BUILD `name` arguments | Convention catalogue and layout guide | Existing Buildifier rewrites plus syntax checks where coverage is missing | Documentation strings, source labels and generated calls need their own scope. |
-| Resource/project/delivery target placement | Layout guide | File/configuration ownership and declared operation scope | A local check can use root configuration; context does not determine physical placement. |
-| Cohesive package boundaries and narrow visibility | Layout guide | Visibility metadata; dependency evidence for review | Cohesion, useful reuse and descriptive names need judgment; no fixed package count. |
-| Acyclic target dependencies | Layout guide | Bazel analysis | Package dependencies may legitimately run both ways. Do not add a package-cycle prohibition. |
-| Production independent of tests/resources/frameworks | Layout guide: test ownership | Configured dependency/resource closures and Bazel's `testonly` analysis | Bazel catches declared `testonly` edges; unmarked test resources need additional ownership evidence. |
-| Implementation-owned native unit tests | Layout guide: test ownership | Dependency closure excluding consuming Godot projects | Test categories cannot be derived from file extension or extension use. |
-| Unit versus real-operating-system integration suites | Layout guide: test ownership | Review category; then check declared location and execution tags | Classify behavior first. Do not turn the tag set into a universal operating-system policy. |
-| Public rules and focused examples | Example guidance | Syntax/visibility checks for public entrypoints; review focus | Existing text checks are partial. No new consumer-probe or coverage-matrix examples. |
-| Project configuration, application content and tests | Layout guide | Project-aware filesystem/resource inventory | Add-on test roots have needed unit/integration packages; omit empty symmetry directories. |
-| Scene/component ownership and descriptive names | Layout guide | Reference/ownership evidence for review | Directory names cannot establish scene responsibility or naming quality. |
-| Paired authored sidecars and stable resource identity | Resource APIs and layout guide | Existing analysis checks, sidecar targets and focused regression tests | Distinguish missing, undeclared and changed sidecars; preserve import options and UIDs. |
-| Deliberate library outputs, symbols and resource paths | Layout guide | Evaluated extension metadata and artifact/behavior tests | Renaming a target or source directory can affect outputs. A label rename is not automatically a safe fix. |
-| Formatting and Starlark/Python documentation style | Root source guidance | Existing Buildifier, Ruff, ty and API checks | Aiming for readable lines and useful explanations is partly review-only. |
-| Public API ownership and private implementation boundaries | API maintenance guidance | Existing API inventories, visibility and reference checks | Reuse established checks rather than restating their contracts in a new linter. |
-| Public documentation audience and runnable examples | Documentation guidance | Existing module-aware label checks; review descriptions | Resolving a label does not prove the documented workflow or support claim. |
-| Generated documents kept in templates | Root template guidance | Syntax/target-input inspection plus review | Optional repeated blocks are a legitimate special case. |
-| Export behavior derived from Godot facts/profiles | Root exporter guidance | Probe/profile and artifact tests; source-backed review | This is not provable from a filename or regular expression. |
-| Justified exceptions and suppressions | Root working/check conventions | Structured cross-references and review of reasons/removal conditions | Preserve current owner-local exception policy; no blanket test-tree waiver. |
-| Meaningful tests and appropriate validation | [Verification guideline](verification.md) | Existing test execution and reviewer assessment | Check counts, document counts and mirrored implementation tests are not quality evidence. |
-
-For every inventory entry, distinguish a fully checked predicate, a checked subset and a
-review obligation. Existing behavior preservation or incremental reuse guarantees may need
-execution tests even when related structural rules are lintable.
-
-## Existing tool options
-
-### Buildifier, buildtools and Buildozer
-
-[Buildifier 10.1.0](https://github.com/bazel-contrib/buildtools/blob/v10.1.0/buildifier/README.md)
-already supplies formatting and named lint warnings. Its
-[label rewrite](https://github.com/bazel-contrib/buildtools/blob/v10.1.0/build/rewrite.go)
-removes redundant package/target suffixes in recognized label attributes. First measure
-that existing coverage rather than implementing a second short-label normalizer.
-
-The stock configuration selects warning categories. Repository-specific semantic rules
-are not supplied as rule files through that configuration; the
-[warning registries](https://github.com/bazel-contrib/buildtools/blob/v10.1.0/warn/warn.go)
-are implemented in Go. The
-[buildtools parser](https://github.com/bazel-contrib/buildtools/blob/v10.1.0/build/lex.go)
-provides BUILD/module/Starlark syntax trees and is a candidate for custom source checks.
-That would still require project-owned checking logic and a packaging/dependency decision.
-
-[Buildozer](https://github.com/bazel-contrib/buildtools/blob/v10.1.0/buildozer/README.md)
-can inspect and rewrite BUILD syntax. It does not evaluate macros; its documentation
-explicitly distinguishes source-level operations from Bazel queries. Consider it for safe
-mechanical edits, not as proof of configured dependencies or an automatic renaming
-of evaluated targets.
-
-### Aspect rules_lint
-
-The repository already depends on `aspect_rules_lint` 2.9.0. Its
-[custom-linter guide](https://github.com/aspect-build/rules_lint/blob/v2.9.0/lint/README.md)
-explains how to adapt an executable linter through actions, aspects and report outputs.
-It is a suitable integration candidate, not an implementation of our convention semantics.
-
-Its [runner documentation](https://github.com/aspect-build/rules_lint/blob/v2.9.0/docs/linting.md)
-describes Aspect CLI and vanilla-Bazel integration. Using this library does not by itself
-require adopting Aspect CLI or hosted workflows. Compare its value against the existing
-Aspect tasks; whole-repository discovery may remain a workspace-level command.
-
-### Bazel graph and project evidence
-
-Use [query](https://bazel.build/query/guide) for evaluated targets and structural dependency
-questions. Use [cquery](https://bazel.build/query/cquery) when `select()` and configuration
-matter: ordinary query includes possible branches, while cquery reflects analysis for the
-chosen configuration. Aspects/provider metadata may supply Godot resource ownership.
-Runtime behavior and invalidation still require the appropriate existing tests.
-
-A source parser, graph checker and execution test answer different questions. They may
-share rule IDs and reporting without pretending that one generic matcher proves all three.
-
-### Generic rule engines
-
-Semgrep is worth comparing if a small source-pattern proof is useful. Its current
-[supported-language list](https://docs.semgrep.dev/supported-languages) does not list
-Starlark. [Generic matching](https://docs.semgrep.dev/writing-rules/generic-pattern-matching)
-can work without a language parser, but that does not establish faithful BUILD/macro
-semantics. Do not choose it or use Python parsing as a Starlark substitute without a
-representative experiment. No Semgrep dependency is selected or installed here.
-
-### Provisional direction
-
-Keep existing language/API tools; investigate buildtools for custom syntax checks and
-Bazel for graph facts. Evaluate rules_lint as integration/reporting infrastructure. Start
-with the thinnest useful additions to the existing commands rather than selecting a new
-all-purpose framework before knowing the rule predicates.
-
-Before selection, compare correct handling of macros/generated targets, `select()`, source
-locations, module ownership, diagnostics and doc links, exceptions, safe fixes, local/CI
-runtime, dependencies and ease of reuse outside this repository. A prototype must include
-both a genuine violation and a valid case that a naive heuristic would reject.
-
-## Catalogue and documentation design candidates
-
-The public Project Layout should become an orientation guide: the concepts, the map of
-examples, useful development paths and how consumers apply the conventions themselves.
-Detailed rules need a single canonical owner, with rationale, valid/invalid examples,
-applicability, exceptions and limits. Project Layout can reference stable IDs and links
-without copying every rule's full text. Existing public instructions remain authoritative
-until that restructuring is reviewed and implemented.
-
-The user selected flat stable IDs on 2026-11-01: `RG001`, `RG002`, and so on. Categories
-remain metadata; IDs do not encode section order or a mutable filesystem path. The first
-allocations are in the current catalogue; the remaining N/P/I/L references are temporary
-review keys.
-Retired IDs stay retired, and changed/split rules need explicit successor links.
-
-Compare these layouts before committing to one:
-
-| Candidate | Benefit | Tradeoff |
-|---|---|---|
-| Public rule documents plus implementation/tests and a small shared index | Fits current public/internal separation; supports shared checker backends | Bidirectional documentation/check links must be validated. |
-| Rule-owned directories containing prose, metadata and check tests | Strong physical adjacency | Needs a clear derivation of the public documentation and avoids duplicating shared checker logic. |
-| Machine-readable catalogue generating detailed docs | One structured catalogue and mechanical cross-links | Long rationale/examples can become awkward; avoid turning all prose into schema fields. |
-
-The first was the initial suggested fit. The user explicitly deferred the storage decision
-on 2026-11-01. All three structures remain comparison candidates; no directory/API contract
-or physical colocation choice has been adopted.
-
-Keep policy approval, checker coverage and rollout severity as separate fields. Suggested
-minimum metadata: stable ID, title, authoritative documentation, rationale, applicability,
-checker backend/entrypoint, tests, exact automated subset, review-only remainder, current
-severity, fix safety and scoped exception references. An accepted rule can be manual;
-a partial checker must describe what it actually checks. Temporary exceptions continue to
-live beside their owning rule in AGENTS.md with reason/removal condition until a replacement
-policy is explicitly agreed.
-
-A future consistency check could verify unique IDs, valid documentation/check references,
-known severities and no falsely advertised automation; diagnostics should include the ID,
-location, explanation and canonical doc link. Documentation generation should consume the
-same metadata used for diagnostics. Avoid parallel handwritten lists of enabled checks.
-
-## Applying conventions to regression projects
-
-Apply applicable conventions to the regression module `tests/` as well as to examples. Example-specific layout rules need explicit applicability; a regression
-fixture is not automatically an example add-on. Neither ignore the whole test tree nor
-rewrite intentionally broken inputs merely to make lint green.
-
-Useful first audit cases:
-
-- [shared math resources](../../rules_godot/godot/private/tests/pack_membership/fixtures/project_with_pack_variants/BUILD.bazel) have a single
-  resource target named `math`: assess whether the main-entry convention should apply.
-- [C ABI fixture](../../rules_godot/godot/extension/tests/fixtures/c_abi/BUILD.bazel) names its extension
-  `hello`, which determines its library outputs: identify the tested identity before any fix.
-- [dSYM fixtures](../../rules_godot/godot/platforms/private/tests/desktop_package/fixtures/macos_apps_with_dsyms/BUILD.bazel) deliberately use nested output
-  target names; the feature-selected libraries fixture
-  includes shared library filename targets. Classify these precise cases rather than exempting every
-  fixture target or banning every slash/dot in test data.
-
-An intentionally invalid fixture for a convention should assert the expected rule ID and
-location. A fixture invalid for a different behavior needs a narrow, justified treatment.
-Unexpected findings should remain visible and lead to a rule clarification, code fix or
-explicit scoped exception. Report-only discovery can precede blocking enforcement; do not
-silently weaken a rule, introduce global suppression or force a sweeping migration.
+- Buildozer's JSON interface exposes the parsed calls of a BUILD file without a Go
+  toolchain or buildtools fork of our own.
+- Bazel loading identifies which calls produce targets and evaluates the names of Bazel's
+  built-in rules, so no list of function names guesses which helpers are target
+  declarations.
+- The checker uses only Python's standard library and a token scan of the parser's
+  formatted call to recognize literal `name` arguments. It never evaluates Starlark with
+  Python.
+- Semgrep patterns and `rules_lint` alone supply neither the Starlark nor the ownership
+  semantics the rules need.
+- [Pluggy](https://pluggy.readthedocs.io/en/stable/) would provide hook registration and
+  result collection, but the domain context and evidence adapters would still be ours, so
+  rules are registered explicitly and not discovered.

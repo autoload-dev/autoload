@@ -14,10 +14,10 @@ else:
 
 ## Run the example
 
-1. From the repository root, enter the examples module and start the demo:
+1. From the repository root, start the demo:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/platform_paths/demo:run
    ```
 
@@ -133,7 +133,7 @@ of the other categories.
 ## Mobile builds
 
 Follow [platform setup](../../../docs/public/platforms.md) for the Android SDK/NDK, Java 21 and Xcode.
-From `examples/`:
+From `rules_godot/examples/`:
 
 ```sh
 bazel build //addons/platform_paths/demo:app --config=android

@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 This shows operation/data relationships, not exact Bazel targets or a mandatory serialized
-schedule. In the current wrapper, PCK export and the export-facts probe rescan their staging;
+schedule. At the baseline, PCK export and the export-facts probe rescan their staging;
 there is no direct Bazel OP-INIT → OP-PCK/OP-SHELL artifact dependency.
 
 ## Conversion, metadata and validation edges
@@ -57,12 +57,12 @@ there is no direct Bazel OP-INIT → OP-PCK/OP-SHELL artifact dependency.
 | Edge | Read → produced/affected artifacts | Condition and change consequence | Evidence |
 |---|---|---|---|
 | D12 | GRAPH + config roots/explicit relations/exclusions/optional membership + required identity metadata → SELECTION | D/C. Unknown dynamic/opaque refs need declarations or conservative treatment. Graph output does not retroactively narrow action inputs. | R [R06](evidence.md#r06) |
-| D13 | Export PURPOSE-CONFIG + PRESET + FEATURES + source/imports + active export plugins → EXPORTED/PCK/REPORT | D/C. Variants, remaps, script mode and plugin callbacks change packed content. Current wrapper rescan can reimport first. | F/R [S08](evidence.md#s08), [S10](evidence.md#s10), [R02](evidence.md#r02) |
-| D14 | Global class/UID/extension information derived/read in export staging + selected paths → filtered PCK metadata | D/C. Current wrapper derives it in its export rescan; do not assume it directly consumes project's initialized tree. | F/R [S08](evidence.md#s08), [R01](evidence.md#r01), [R02](evidence.md#r02) |
+| D13 | Export PURPOSE-CONFIG + PRESET + FEATURES + source/imports + active export plugins → EXPORTED/PCK/REPORT | D/C. Variants, remaps, script mode and plugin callbacks change packed content. The baseline wrapper rescan can reimport first. | F/R [S08](evidence.md#s08), [S10](evidence.md#s10), [R02](evidence.md#r02) |
+| D14 | Global class/UID/extension information derived/read in export staging + selected paths → filtered PCK metadata | D/C. The baseline wrapper derives it in its export rescan; do not assume it directly consumes project's initialized tree. | F/R [S08](evidence.md#s08), [R01](evidence.md#r01), [R02](evidence.md#r02) |
 | D15 | Export customization inputs + cache policy → EXPORT-CACHE/transformed resources | C. Plugin-generated resources and .godot/exported are distinct from reusable resource imports. | F [S08](evidence.md#s08) |
-| D16 | Encryption key/filter/seed/credentials/env or true patch base bytes → PCK encoding/contents | C upstream facility. Random IV can affect reproducibility without a seed. Not equivalent to current required_packs metadata and not automatically exposed by wrapper preset. | F/R [S08](evidence.md#s08), [S12](evidence.md#s12), [R02](evidence.md#r02) |
+| D16 | Encryption key/filter/seed/credentials/env or true patch base bytes → PCK encoding/contents | C upstream facility. Random IV can affect reproducibility without a seed. Not equivalent to required_packs metadata and not automatically exposed by wrapper preset. | F/R [S08](evidence.md#s08), [S12](evidence.md#s12), [R02](evidence.md#r02) |
 | D17 | Active renderer/backend/compiler + shader source/settings/features → shader cache/baked PCK members | C only when facility is active. Headless invocation alone does not establish every shader path active or inactive. | F/U [S07](evidence.md#s07), [S12](evidence.md#s12) |
-| D18 | Export setup + action plugin with shell probe + default/source images + engine profile/tools → EXPORT-FACTS, SHELL-ASSETS/FILES | D/C. Current export-facts probe is a separate lazy export, not metadata parsed from final PCK. | R [R08](evidence.md#r08) |
+| D18 | Export setup + action plugin with shell probe + default/source images + engine profile/tools → EXPORT-FACTS, SHELL-ASSETS/FILES | D/C. The export-facts probe is a separate lazy export, not metadata parsed from final PCK. | R [R08](evidence.md#r08) |
 | D19 | EXT-DESC + loading engine's feature/path/dependency set (+ autodetect directory listing) → loaded library/registered types/importers | C phase active. Changes can invalidate import/init/export/check as well as run. Physical library availability does not imply registration. | F/R [S09](evidence.md#s09), [R05](evidence.md#r05) |
 | D20 | PCK + RUNTIME + runtime EXT-LIBS/PLATFORM-LIBS + shell files/assets/toolchain → APPLICATION | D/C. A change only to the runtime or its extension libraries may preserve PCK bytes while changing packaging and execution inputs. | R [R05](evidence.md#r05) |
 | D21 | Native object/binary/link state + strip/symbol tools → stripped binaries + SYMBOLS | D/C. Preserve build IDs/UUIDs; symbol changes and application changes need not require resource import. | R [R05](evidence.md#r05) |
@@ -70,19 +70,6 @@ there is no direct Bazel OP-INIT → OP-PCK/OP-SHELL artifact dependency.
 | D23 | Main/delivered extra PCK bytes + load order/replace flag/offset + resource/class/UID process state → PACK-STATE | D/C. Existing loaded objects may outlive replacement; class-list inspection differs from registry entries. No automatic settings/autoload/extension-list activation. | F [S02](evidence.md#s02), [S05](evidence.md#s05), [S09](evidence.md#s09) |
 | D24 | Loaded or linked extension registration + main/delivered packs + LAUNCH + actual EXTERNAL state → execution result | D/C. Result validity includes the runtime and library environment beyond unchanged PCK bytes. | F/R [S03](evidence.md#s03), [R04](evidence.md#r04), [R05](evidence.md#r05) |
 | D25 | Plugin/application arbitrary IO or custom output outside captured roots → affected phase/result | U. Make dependency/output contracts explicit, isolate or restrict support. The catalogue does not certify arbitrary plugin IO. | F/R/U [S06](evidence.md#s06), [S08](evidence.md#s08), [R02](evidence.md#r02), [B03](evidence.md#b03) |
-
-## Current conservative action edges versus selected output
-
-| Current implementation | What remains an input | Consequence |
-|---|---|---|
-| GodotPack and GodotShellAssets | Full project.files plus project.imports and generated export setup | An excluded/unselected source can still invalidate action input keys today. Smaller PCK membership alone proves no avoided work. |
-| Source run/check/test | Full project.files/imports/INITIALIZED | Unrelated application files can still enter test runfiles. Revised selection precision is not already implemented. |
-| Per-import-unit import | Import unit input/resource path closure, prerequisite trees, active import-plugin closure/config/toolchain and suffix probe | Other independent import units need not be inputs, but plugins/group imports genuinely widen the closure. |
-| Graph scanner | All declared graph inputs; bounded format analysis | Static inference is not a mechanism for adding Files to analysis dependencies. |
-| Runner for packs | Extension library resource paths of the main pack's project plus extra PCK bytes | Extension library requirements of extra packs are not automatically aggregated. |
-| Output retention | Import unit: changed converted files + own sidecars; init: changed staged files; export: PCK/report | An upstream output existing does not establish the wrapper retains it or can reuse it. |
-
-Sources: [R01](evidence.md#r01), [R02](evidence.md#r02), [R04](evidence.md#r04), [R06](evidence.md#r06).
 
 ## Reuse criteria and representative edits
 
@@ -103,23 +90,3 @@ These are correctness conditions (I), not completed feature performance measurem
 
 Runtime/autoload naming is not itself proof of import independence: a unit/importer may
 genuinely read that resource through another edge.
-
-## Requirements for automatic import sharing
-
-A plausible reusable import identity includes actual engine/tools; the import purpose's effective
-configuration and active feature tags; logical paths/source/sidecars/import options;
-dependency conversion/group closure; importer/plugin/extension editor library code and
-actual auxiliary tool/state. UID generation and captured-output contracts must also be
-respected. This is a semantic checklist, not a finalized key encoding or a new cache
-implementation.
-
-**Inference:** configured resource aspects could own import actions, and explicit dependency
-edges could restrict their selected inputs. This follows from the configured graph and
-action mechanisms in [B01](evidence.md#b01) and [B02](evidence.md#b02); suitability for real
-Godot imports remains unverified. The historical [E02](evidence.md#e02) notes lack a durable
-reproduction recipe and are not independent evidence for this inference or a public API.
-
-Open choices remain: resolving global/sibling contributions before imports, group atomicity,
-dependency declarations for arbitrary plugins, transporting context without unrelated native
-configuration multiplication, and safely sharing conversion independently of selected
-initialization. A public godot_imports target is not established as necessary by this catalogue.

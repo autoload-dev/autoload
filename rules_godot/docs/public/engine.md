@@ -42,8 +42,14 @@ from the release's sources:
 - Official Android shell AARs are release builds, so the Android debug runtimes are
   source-built, unless you pin `android_debug_shell_urls` and
   `android_debug_shell_integrity`.
-- The official 4.7.2 iOS simulator libraries contain x86_64 code only, so the arm64
-  simulator runtimes are source-built ([iOS](platforms.md#source-built-engines)).
+- The official Simulator Godot libraries contain x86_64 objects, although the 4.7.2
+  XCFramework metadata advertises an ARM64 slice. In 4.8-beta1, the required AccessKit
+  library contains ARM64 objects, so those Simulator libraries cannot link together at
+  all. A Simulator build with a missing slice fails validation, naming each library and
+  the slices it has, so the ARM64 Simulator runtimes are source-built. The first arm64
+  Simulator build on a Mac compiles the engine once, and Bazel's cache keeps it. The
+  4.8-beta1 sources do not bundle the AccessKit SDK, so its source-built Simulator
+  runtimes have no screen reader support; device builds keep the official template's.
 
 These source recipes enable the modules Godot's official builds enable by default
 (`default_modules` of a [source build](#declare-a-source-build)); iOS recipes leave out Vulkan, which would need
@@ -207,34 +213,18 @@ Wayland, whose code generators are shell commands; Android recipes configure wit
 host's SDK, since Bazel's NDK toolchain compiles them.
 
 `renderers` names Godot's rendering methods the engine runs: `gl_compatibility`, `mobile`
-and `forward_plus`. The recipe derives the drivers from them, OpenGL for Compatibility and
-for the other two the platform's RenderingDevice driver, Metal on Apple platforms and Vulkan
-on Android and Linux, so `build_options` may not set `opengl3`, `metal` or `vulkan` too.
-Godot 4.7 builds both RenderingDevice methods or neither; 4.8 builds each on its own and
-leaves RenderingDevice out without them. Godot's iOS Simulator build has no Metal, so a
-Simulator engine runs `gl_compatibility` only. An application checks the rendering method
-its project uses on its platform, `rendering/renderer/rendering_method` with its `.mobile`
-override, against its engine's: Godot has no fallback for a method an engine lacks, so the
-build fails instead of the application at start. Without `renderers`, a recipe keeps
-Godot's drivers and its `build_options`, and nothing is checked. The example keeps the
-Compatibility renderer; set the project's rendering method to `gl_compatibility`. Some
-options apply to templates only, such as `disable_3d`; an editor recipe rejects them.
+and `forward_plus`. The recipe derives the drivers from them, so `build_options` may not
+set `opengl3`, `metal` or `vulkan` too. Without `renderers`, a recipe keeps Godot's drivers
+and its `build_options`, and nothing is checked. The example keeps the Compatibility
+renderer, so the project's rendering method must be `gl_compatibility`; [choose the
+renderers](engine-size.md#2-choose-the-renderers) has the driver rules and the check.
 
-The module list is an allowlist: other modules start disabled, unless
-`default_modules = True` starts from the modules Godot enables by default for the platform,
-as its official builds do. Without a list, a recipe enables `gdscript` and `text_server_fb`,
-or, with `default_modules = True`, only Godot's defaults, which include `text_server_adv`.
-An engine takes one text server: `text_server_adv` and `text_server_fb` define the same
-symbols, so a recipe that enables both fails. Required
-upstream dependencies are added transitively (`theora`, for example, needs
-`vorbis` and `ogg`); optional dependencies remain disabled. Editor builds also
-include upstream's required `freetype`, `regex` and `svg` modules. Misspelled
-modules, cycles, unreadable dynamic dependency declarations and modules rejected
-by Godot's configuration fail with an error.
-
-The app owner chooses the allowlist. Reflection, dynamic resource paths,
-extensions and external PCKs prevent reliable inference of every engine module
-from a project scan.
+The module list is an allowlist, as [choose the modules](engine-size.md#1-choose-the-modules)
+explains. `default_modules = True` starts from the modules Godot enables by default for the
+platform, as its official builds do: without a list, a recipe then enables only Godot's
+defaults, which include `text_server_adv`. Editor builds also include upstream's required
+`freetype`, `regex` and `svg` modules. Misspelled modules, cycles, unreadable dynamic
+dependency declarations and modules rejected by Godot's configuration fail with an error.
 
 `build_profile` takes a Godot build profile, a `.gdbuild` file such as the editor's
 Engine Compilation Configuration writes. Its `disabled_classes` leave those classes out of
@@ -480,52 +470,20 @@ GCC 12; `full` takes the longest to link.
 functions nothing calls. It compiles the engine with Clang's `-fvisibility=hidden
 -fwhole-program-vtables -fvirtual-function-elimination` and Godot's `TYPED_METHOD_BIND`;
 the link needs nothing beyond `-flto`. It needs `engine_lto=full` and Clang: under `-c opt`,
-any other `engine_lto` fails the build.
-
-`TYPED_METHOD_BIND`, Godot's default under MSVC, is not optional. Without it, Godot's method
-binds call virtual setters through member function pointers cast to a class without a
-vtable, so elimination sees no call to them, clears their slots and the engine crashes at
-start. It gives every class its own copy of each method binding, which doubles the
-engine's method bindings and costs more than elimination saves: `engine_vfe` currently
-makes native engines larger, a macOS executable by 9.6 % and an Android library by 4.6 %.
-It pays off only when the method bindings are already reduced, as in a web engine that
-kept only the bindings its game called; see [make the engine small](engine-size.md#5-optimize-for-size).
-The setting is off by default.
-
-Elimination assumes that every virtual call into the engine's classes is part of the
-engine's LTO link. Custom modules and patches compile as part of the engine.
-GDExtensions call the engine through function pointers, not C++ virtual calls, and are
-unaffected. Apple engines carry their objects into the application's link, where native
-code compiled outside the engine, such as a library in `platform_deps`, must not call
-virtual functions of engine classes: the call reaches a cleared slot and crashes.
+any other `engine_lto` fails the build. The setting is off by default, because it makes
+native engines larger; [make the engine small](engine-size.md#5-optimize-for-size) has the
+sizes and the requirements.
 
 The settings apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
 their level wins over the toolchain's and the command line's there, while extensions and
 application code keep the build's flags. Other compilation modes keep Bazel's levels: `-c dbg`
 debugs the engine unoptimized whatever the settings say. Prebuilt engines are unaffected.
 
-For the smallest release engine of an application:
-
-```sh
-bazel build //path/to:app -c opt \
-  --@autoload_rules_godot//godot:engine_optimize=size_min \
-  --@autoload_rules_godot//godot:engine_lto=full
-```
-
-An application can set them for its own engine with `godot_app`'s `engine_optimize`,
-`engine_lto` and `engine_vfe` (`on`, `off`, or empty to keep the build's), which override
-the build's settings; one recipe then serves a small release
-application beside a fast debug one, each with an engine built for it:
-
-```starlark
-godot_app(
-    name = "game",
-    pack = ":pack",
-    application_id = "com.example.game",
-    engine_optimize = "size_min",
-    engine_lto = "full",
-)
-```
+`godot_app`'s `engine_optimize`, `engine_lto` and `engine_vfe` (`on`, `off`, or empty to
+keep the build's) override the build's settings for the application's own engine; one
+recipe then serves a small release application beside a fast debug one, each with an
+engine built for it. [Optimize for size](engine-size.md#5-optimize-for-size) shows the
+command and the `godot_app` attributes for the smallest release engine.
 
 ## Debug symbols
 
@@ -546,18 +504,9 @@ your source build's name:
 bazel build //path/to:target -c opt --per_file_copt='external/autoload_rules_godot[+][+]godot_engines[+]my_engine_.*@-g'
 ```
 
-The engine links without Bazel's `--strip`, so its debug information reaches
-the applications' debug symbols; applications strip the copy they package as
-`--strip` asks.
-
-Applications provide the engine as part of their
-[debug symbols](platforms.md#debug-symbols):
-
-| Operating system | Where the symbols are |
-| --- | --- |
-| Android | `libgodot_android.so` with its DWARF and symbol table in `<name>_debug_symbols.zip` |
-| iOS | The application's dSYM includes the engine; build with `--apple_generate_dsym` |
-| macOS | The runtime's `.dSYM` has the engine's DWARF; build with `--apple_generate_dsym`, without which it names engine functions only |
+Applications provide the engine's symbols as part of their
+[debug symbols](platforms.md#debug-symbols), which also says where they are on each
+operating system and how `--strip` treats them.
 
 Debug information names sources relative to the execution root, such as
 `external/autoload_rules_godot++godot_engines+my_engine_macos_arm64_template_release/core/object/object.cpp`, so engine

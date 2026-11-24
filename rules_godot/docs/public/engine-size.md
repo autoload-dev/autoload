@@ -60,27 +60,39 @@ imported, not only on the classes its scenes use:
   the textures fail to load at run time; the build does not fail.
 - `text_server_fb` is the smaller text server. It has no complex text shaping and no
   bidirectional text; projects that show Arabic, Hebrew or Indic scripts need
-  `text_server_adv` instead. A recipe takes one of the two.
+  `text_server_adv` instead. An engine takes one text server: the two define the same
+  symbols, so a recipe that enables both fails.
 - Modules your scripts reach by name, through `ClassDB`, `load()` or reflection, are not
   visible to any check.
 
-Upstream dependencies follow automatically: enabling `theora` also enables `vorbis` and
-`ogg`.
+Required upstream dependencies follow automatically: enabling `theora` also enables
+`vorbis` and `ogg`. Optional dependencies stay disabled. Reflection, dynamic resource paths,
+extensions and external PCKs keep a project scan from inferring every module, so you
+choose the list.
 
 ## 2. Choose the renderers
 
 `renderers` names the rendering methods the engine contains: `gl_compatibility`, `mobile`
-and `forward_plus`. With only `gl_compatibility`, the engine leaves out RenderingDevice and
-its Vulkan or Metal driver. On iOS, what only Metal needs came to about 12.5 MiB of a full
-engine: the shader compilers glslang and SPIRV-Cross and the RenderingDevice renderer.
+and `forward_plus`. The recipe derives the drivers from them: OpenGL for Compatibility, and
+for the other two the platform's RenderingDevice driver, Metal on Apple platforms and
+Vulkan on Android and Linux. `build_options` may not set `opengl3`, `metal` or `vulkan`
+too. Godot 4.7 builds both RenderingDevice methods or neither; 4.8 builds each on its own
+and leaves RenderingDevice out without them. Godot's iOS Simulator build has no Metal, so
+a Simulator engine runs `gl_compatibility` only.
+
+With only `gl_compatibility`, the engine leaves out RenderingDevice and its Vulkan or
+Metal driver. On iOS, what only Metal needs came to about 12.5 MiB of a full engine: the
+shader compilers glslang and SPIRV-Cross and the RenderingDevice renderer.
 
 ```starlark
     renderers = ["gl_compatibility"],
 ```
 
-The project's rendering method must be one of them. Set
-`rendering/renderer/rendering_method` (and its `.mobile` override) to `gl_compatibility`;
-otherwise the application's build fails, since Godot has no fallback at run time.
+The project's rendering method on the application's platform,
+`rendering/renderer/rendering_method` with its `.mobile` override, must be one of them.
+Godot has no fallback for a method an engine lacks, so the build fails instead of the
+application at start. Set it to `gl_compatibility` for the example. Without `renderers`,
+a recipe keeps Godot's drivers and its `build_options`, and nothing is checked.
 
 ## 3. Turn off engine features
 
@@ -173,11 +185,13 @@ The iOS engine from the start of this guide, after steps 1 to 3:
 
 A third setting, `--@autoload_rules_godot//godot:engine_vfe` (`godot_app.engine_vfe = "on"`,
 off by default), lets the full LTO link drop the virtual functions nothing calls. **It
-currently makes native engines larger, not smaller.** Elimination needs Godot's
-`TYPED_METHOD_BIND`, without which the engine crashes at start, and that switch gives every
-class its own copy of each method binding it registers: the engine's method bindings
-double, which costs more than elimination saves. With `size_min` and full LTO, on Godot
-4.7.2, without symbols:
+makes native engines larger, not smaller.** Elimination needs Godot's `TYPED_METHOD_BIND`,
+Godot's default under MSVC. Without it, Godot's method binds call virtual setters through
+member function pointers cast to a class without a vtable, so elimination sees no call to
+them, clears their slots and the engine crashes at start. With it, every class gets its
+own copy of each method binding it registers: the engine's method bindings double, which
+costs more than elimination saves. With `size_min` and full LTO, on Godot 4.7.2, without
+symbols:
 
 | Engine | Without `engine_vfe` | With `engine_vfe` |
 | --- | ---: | ---: |
@@ -192,9 +206,13 @@ reduced: a web engine that kept only the bindings its game called shrank by 10 %
 
 It needs `engine_lto=full`, fails the build without it, and needs Clang: Apple's
 toolchains and the Android NDK have it, while a Linux engine built with GCC fails to
-compile. Keep native code that calls virtual functions of engine classes inside the
-engine, as a custom module or a patch: on Apple platforms, a library in `platform_deps`
-that does so crashes when the call reaches a removed function.
+compile. Elimination assumes that every virtual call into the engine's classes is part of
+the engine's LTO link. Custom modules and patches compile as part of the engine, and
+GDExtensions call the engine through function pointers, not C++ virtual calls, so both are
+unaffected. Apple engines carry their objects into the application's link, where native
+code compiled outside the engine, such as a library in `platform_deps`, must not call
+virtual functions of engine classes: the call reaches a cleared slot and crashes. Keep such
+code inside the engine, as a custom module or a patch.
 
 Smaller code can run slower. Measure frame times on your weakest target device; `size` and
 `size_extra` lie between Godot's default and `size_min`.
