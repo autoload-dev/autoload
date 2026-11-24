@@ -1,6 +1,8 @@
 extends CanvasLayer
 ## Scenery is cosmetic: scrolling never feeds back into the route model.
 
+const LevelDefinition = preload("res://main/run/level_definition.gd")
+
 ## Garden band height per viewport width; landscape windows use their full height.
 const BAND_ASPECT := 1.2
 ## Height in the garden textures where the islands' tops sit, as a share of the band.
@@ -14,7 +16,7 @@ var far_texture: Texture2D
 var near_texture: Texture2D
 
 
-func configure(level: Resource) -> void:
+func configure(level: LevelDefinition) -> void:
 	sky.texture = level.sky
 	far_texture = level.far_gardens
 	near_texture = level.near_gardens
@@ -46,7 +48,7 @@ func follow(distance: float, ground_y: float) -> void:
 			rect.queue_free()
 		layers.clear()
 		tile_count = needed
-		for texture in [far_texture, near_texture]:
+		for texture: Texture2D in [far_texture, near_texture]:
 			for index in range(tile_count):
 				var rect := _texture(texture)
 				rect.flip_h = index % 2 == 1

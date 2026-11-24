@@ -3,6 +3,7 @@ extends Resource
 ## Keep length <= speed * 7200: live and replay runs share the existing
 ## 7200-tick (120-second) replay input budget.
 
+const Palette = preload("res://main/shared/palette/palette.gd")
 const Pattern = preload("res://main/run/section_pattern.gd")
 
 @export var display_name := "Floating gardens"
@@ -20,7 +21,7 @@ const Pattern = preload("res://main/run/section_pattern.gd")
 @export var patterns: Array[Pattern] = []
 @export var seed_min: int = 0
 @export var seed_max: int = 2147483647
-@export var palette: Resource
+@export var palette: Palette
 @export var environment: Environment
 @export var sun_energy: float = 0.9
 @export var sky: Texture2D

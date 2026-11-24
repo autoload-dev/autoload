@@ -28,7 +28,7 @@ var coyote := COYOTE_TICKS
 var jump_age := 100
 var gaps: Array[Vector2i] = []
 var pipes: Array[int] = []
-var lights: Array[Dictionary] = []
+var lights: Array[LightState] = []
 var events: Array[String] = []
 var group_hits := 0
 var group_index := 0
@@ -61,11 +61,8 @@ func _init(route_seed: int = 27, level: Dictionary = {}) -> void:
 		if section > 0 and has_pipe:
 			pipes.append(base + int(level.get("pipe_offset", 2000)))
 		for item in range(heights.size()):
-			lights.append({
-				"x": start + int(level.get("light_offset", -600)) + item * int(level.get("light_spacing", 900)),
-				"y": heights[item],
-				"taken": false,
-			})
+			var light_x := start + int(level.get("light_offset", -600)) + item * int(level.get("light_spacing", 900))
+			lights.append(LightState.new(light_x, heights[item]))
 
 
 func has_floor(at: int) -> bool:
@@ -115,8 +112,8 @@ func step(pressed: bool, held: bool) -> void:
 		finish("lost", "fall")
 		return
 	for light in lights:
-		if not light.taken and absi(x - int(light.x)) <= 450:
-			if absi(y + 600 - int(light.y)) <= 700:
+		if not light.taken and absi(x - light.x) <= 450:
+			if absi(y + 600 - light.y) <= 700:
 				light.taken = true
 				collected += 1
 				group_hits += 1
@@ -147,3 +144,14 @@ func snapshot() -> Dictionary:
 		"status": status, "reason": reason, "score": score,
 		"collected": collected, "best_chain": best_chain,
 	}
+
+
+## A light along the route, in millimetres, and whether the courier took it.
+class LightState:
+	var x: int
+	var y: int
+	var taken := false
+
+	func _init(at_x: int, at_y: int) -> void:
+		x = at_x
+		y = at_y

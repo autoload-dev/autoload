@@ -7,10 +7,15 @@ signal pause_requested
 signal options_requested
 signal mute_changed(value: bool)
 signal motion_changed(value: bool)
-@onready var hud = $Root/Margin/Layout/Hud
-@onready var title = $Root/Margin/Layout/Center/TitleDialog
-@onready var result = $Root/Margin/Layout/Center/ResultDialog
-@onready var options = $Root/Margin/Layout/Center/OptionsDialog
+
+const Hud = preload("res://main/ui/hud/hud.gd")
+const TitleDialog = preload("res://main/ui/title_dialog/title_dialog.gd")
+const ResultDialog = preload("res://main/ui/result_dialog/result_dialog.gd")
+const OptionsDialog = preload("res://main/ui/options_dialog/options_dialog.gd")
+@onready var hud: Hud = $Root/Margin/Layout/Hud
+@onready var title: TitleDialog = $Root/Margin/Layout/Center/TitleDialog
+@onready var result: ResultDialog = $Root/Margin/Layout/Center/ResultDialog
+@onready var options: OptionsDialog = $Root/Margin/Layout/Center/OptionsDialog
 @onready var ui_margin: MarginContainer = $Root/Margin
 
 

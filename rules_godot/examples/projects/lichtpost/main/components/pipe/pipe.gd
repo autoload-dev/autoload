@@ -1,7 +1,8 @@
 extends Node3D
 
 const Primitives = preload("res://main/shared/primitives.gd")
+const Palette = preload("res://main/shared/palette/palette.gd")
 
 
-func configure(palette: Resource) -> void:
+func configure(palette: Palette) -> void:
 	Primitives.apply_palette(self, palette)
