@@ -485,8 +485,12 @@ any other `engine_lto` fails the build.
 `TYPED_METHOD_BIND`, Godot's default under MSVC, is not optional. Without it, Godot's method
 binds call virtual setters through member function pointers cast to a class without a
 vtable, so elimination sees no call to them, clears their slots and the engine crashes at
-start. It gives every class its own copy of each method binding, which on macOS and
-Android costs more than elimination saves; see [make the engine small](engine-size.md#5-optimize-for-size).
+start. It gives every class its own copy of each method binding, which doubles the
+engine's method bindings and costs more than elimination saves: `engine_vfe` currently
+makes native engines larger, a macOS executable by 9.6 % and an Android library by 4.6 %.
+It pays off only when the method bindings are already reduced, as in a web engine that
+kept only the bindings its game called; see [make the engine small](engine-size.md#5-optimize-for-size).
+The setting is off by default.
 
 Elimination assumes that every virtual call into the engine's classes is part of the
 engine's LTO link. Custom modules and patches compile as part of the engine.

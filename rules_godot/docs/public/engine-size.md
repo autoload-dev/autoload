@@ -171,13 +171,13 @@ The iOS engine from the start of this guide, after steps 1 to 3:
 `size_min` gains most from full LTO. Full LTO took that engine's build from about 33 s to
 75–95 s.
 
-A third setting, `--@autoload_rules_godot//godot:engine_vfe` (`godot_app.engine_vfe = "on"`),
-lets the full LTO link drop the virtual functions nothing calls. It needs `engine_lto=full`,
-fails the build without it, and needs Clang: Apple's toolchains and the Android NDK have
-it, while a Linux engine built with GCC fails to compile. It also compiles the engine with
-Godot's `TYPED_METHOD_BIND`, without which elimination breaks the engine. That switch gives
-every class its own copy of each method binding it registers, which costs more than
-elimination saves. With `size_min` and full LTO, on Godot 4.7.2, without symbols:
+A third setting, `--@autoload_rules_godot//godot:engine_vfe` (`godot_app.engine_vfe = "on"`,
+off by default), lets the full LTO link drop the virtual functions nothing calls. **It
+currently makes native engines larger, not smaller.** Elimination needs Godot's
+`TYPED_METHOD_BIND`, without which the engine crashes at start, and that switch gives every
+class its own copy of each method binding it registers: the engine's method bindings
+double, which costs more than elimination saves. With `size_min` and full LTO, on Godot
+4.7.2, without symbols:
 
 | Engine | Without `engine_vfe` | With `engine_vfe` |
 | --- | ---: | ---: |
@@ -185,11 +185,16 @@ elimination saves. With `size_min` and full LTO, on Godot 4.7.2, without symbols
 | The same with a build profile | 12.0 MiB | 12.8 MiB (+6.9 %) |
 | Android `libgodot_android.so`, the 2D engine of steps 1 to 3 | 16.0 MiB | 16.7 MiB (+4.6 %) |
 
-Compressed, the Android library shrinks by about 1 %, the macOS executable grows by
-about 5 %. Leave `engine_vfe` off unless your engine registers few classes and you measured
-a gain. If you turn it on, keep native code that calls virtual functions of engine classes
-inside the engine, as a custom module or a patch: on Apple platforms, a library in
-`platform_deps` that does so crashes when the call reaches a removed function.
+Compressed, the Android library shrinks by about 1 % and the macOS executable grows by
+about 5 %. Elimination pays off only when the engine's method bindings are already
+reduced: a web engine that kept only the bindings its game called shrank by 10 %. Leave
+`engine_vfe` off unless you measured a gain for your engine.
+
+It needs `engine_lto=full`, fails the build without it, and needs Clang: Apple's
+toolchains and the Android NDK have it, while a Linux engine built with GCC fails to
+compile. Keep native code that calls virtual functions of engine classes inside the
+engine, as a custom module or a patch: on Apple platforms, a library in `platform_deps`
+that does so crashes when the call reaches a removed function.
 
 Smaller code can run slower. Measure frame times on your weakest target device; `size` and
 `size_extra` lie between Godot's default and `size_min`.
