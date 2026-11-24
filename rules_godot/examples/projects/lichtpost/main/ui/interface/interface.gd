@@ -101,8 +101,18 @@ static func safe_insets(safe: Rect2, to_canvas: Transform2D, visible: Vector2) -
 	return Vector4(lead.x, lead.y, trail.x, trail.y)
 
 
+# Whether the game may choose its window size: not on mobile platforms, not in a browser,
+# whose page owns the canvas size (resizing the window would only shrink the rendered area
+# inside the canvas and offset pointer input), and not headless.
+func _can_resize_window() -> bool:
+	for feature in ["mobile", "web"]:
+		if OS.has_feature(feature):
+			return false
+	return DisplayServer.get_name() != "headless"
+
+
 func fit_desktop_window() -> void:
-	if OS.has_feature("mobile") or DisplayServer.get_name() == "headless":
+	if not _can_resize_window():
 		return
 	# Keep an explicit caller-selected resolution (including layout probes).
 	if OS.get_cmdline_args().has("--resolution") or OS.get_cmdline_args().has("--fullscreen"):
