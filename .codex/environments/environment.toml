@@ -1,12 +1,8 @@
 version = 1
 name = "rules_godot"
 
-# Codex creates each worktree at a new path. The setup checks the two tools and leases a Bazel
-# slot, so the worktree's Bazel output bases are warm from an earlier one; the cleanup stops its
-# Bazel servers and gives the slot back before Codex deletes the worktree (tools/codex/worktree.sh).
-# The clone's own setup, the pre-push hook and the Android SDK, is ./bootstrap.sh, once.
+# A new Codex worktree needs only the two tools; the clone's own setup, the pre-push hook and
+# the Android SDK, is ./bootstrap.sh, once. The worktree's Bazel slot comes from the session
+# hooks in .codex/hooks.json (tools/codex/worktree.sh), in the Codex CLI as in the app.
 [setup]
-script = "./bootstrap.sh --tools-only && tools/codex/worktree.sh setup"
-
-[cleanup]
-script = "tools/codex/worktree.sh cleanup"
+script = "./bootstrap.sh --tools-only"

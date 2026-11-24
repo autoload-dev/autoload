@@ -1,23 +1,47 @@
 #!/usr/bin/env bash
-# The setup and cleanup scripts of Codex's worktrees (.codex/environments/environment.toml).
-# Codex creates each worktree itself, at a new path, so its Bazel servers would start cold
-# and leave their output bases behind. Instead, a worktree leases a Bazel slot: a directory
-# that keeps one output base per module and passes from worktree to worktree, so a new one
-# reuses the fetched repositories and the action cache of an earlier one. tools/bazel reads
-# the lease from .bazel-slot.
+# Codex's session hooks (.codex/hooks.json), which run in the Codex CLI and app alike. Codex
+# creates each worktree itself, at a new path, so its Bazel servers would start cold and leave
+# their output bases behind. Instead, a session in such a worktree leases a Bazel slot: a
+# directory that keeps one output base per module and passes from worktree to worktree, so a
+# new one reuses the fetched repositories and the action cache of an earlier one. tools/bazel
+# reads the lease from .bazel-slot.
 #
-#   worktree.sh setup     lease a slot for the worktree; the warmest free one, else a new one
-#   worktree.sh cleanup   stop the worktree's Bazel servers and give its slot back
+#   worktree.sh session-start   reads the hook's {"cwd"} on stdin; leases a slot for its
+#                               worktree, the warmest free one, else a new one
+#   worktree.sh session-end     reads {"cwd"}; stops the worktree's Bazel servers and gives
+#                               its slot back, which the next session leases again
+#   worktree.sh setup|cleanup   the same for the worktree the current directory is in
 #
-# The worktree is CODEX_WORKTREE_PATH, else the one the current directory is in. Slots live in
-# ~/.aspect/bazel-slots/<repository>/, beside the Aspect CLI's worktree pool; a lease whose
-# worktree is gone counts as free.
+# Only a linked worktree outside the Aspect CLI's worktree pool leases a slot: a main checkout
+# and a pool slot keep their path, and with it their output bases. Slots live in
+# ~/.aspect/bazel-slots/<repository>/; a lease whose worktree is gone counts as free. A hook
+# never fails its session: without a slot, Bazel only starts cold.
 set -euo pipefail
 
-# The pinned Bazelisk where bootstrap.sh places it: an app's scripts may run with a short PATH.
+# The pinned Bazelisk where bootstrap.sh places it: an app's hooks may run with a short PATH.
 export PATH="$HOME/.local/bin:$PATH"
 
-worktree="${CODEX_WORKTREE_PATH:-$(git rev-parse --show-toplevel)}"
+mode="${1:-}"
+if [[ "$mode" == session-* ]]; then
+    input="$(cat)"
+    cwd="$(sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<<"$input" | head -n 1)"
+    worktree="$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null)" || exit 0
+    # A main checkout's Git directory is its common one; a linked worktree's is not.
+    [[ "$(git -C "$worktree" rev-parse --absolute-git-dir)" != \
+        "$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir)" ]] || exit 0
+    worktree="$(cd "$worktree" && pwd -P)"
+    aspect_pool="$(cd ~/.aspect/worktrees 2>/dev/null && pwd -P || true)"
+    [[ -z "$aspect_pool" || "$worktree" != "$aspect_pool"/* ]] || exit 0
+    # Hand the work to the plain modes, and keep the session going whatever they do.
+    script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+    plain="${mode#session-}"
+    plain="${plain/start/setup}"
+    plain="${plain/end/cleanup}"
+    (cd "$worktree" && "$script" "$plain" </dev/null >&2) || echo "worktree.sh: $plain failed" >&2
+    exit 0
+fi
+
+worktree="$(git rev-parse --show-toplevel)"
 worktree="$(cd "$worktree" && pwd -P)"
 cd "$worktree"
 

@@ -78,13 +78,16 @@ worktrees (`claude --worktree`, subagents with worktree isolation) take a slot t
 slot, `aspect worktree release <branch>` gives it back with its Bazel state, and `aspect
 worktree list` shows who holds which.
 
-Codex creates its worktrees itself, each at a new path, so they recycle the Bazel state rather
-than the path. The setup of the [Codex local environment](.codex/environments/environment.toml)
-leases a Bazel slot under `~/.aspect/bazel-slots`, and [tools/bazel](tools/bazel) then keeps
-every module's output base in it: a new worktree reuses the fetched repositories and the
-action cache of an earlier one, though not its analysis. The cleanup stops the worktree's
-Bazel servers and gives the slot back before Codex deletes the worktree; a slot whose
-worktree is gone counts as free ([tools/codex/worktree.sh](tools/codex/worktree.sh)).
+Codex creates its worktrees itself, each at a new path, and has no hook that replaces that,
+so they recycle the Bazel state rather than the path. Codex's `SessionStart` hook in
+[.codex/hooks.json](.codex/hooks.json), in the CLI as in the app, leases a Bazel slot under
+`~/.aspect/bazel-slots` for a session in a linked worktree, and [tools/bazel](tools/bazel)
+then keeps every module's output base in it: a new worktree reuses the fetched repositories
+and the action cache of an earlier one, though not its analysis. `SessionEnd` stops the
+worktree's Bazel servers and gives the slot back; a slot whose worktree is gone counts as
+free ([tools/codex/worktree.sh](tools/codex/worktree.sh)). Codex reads a linked worktree's
+project hooks from the main checkout and runs a new or changed hook only once it is
+approved in Codex.
 
 <a id="bazel-package-boundaries"></a>
 
