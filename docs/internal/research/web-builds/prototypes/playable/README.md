@@ -30,9 +30,9 @@ Lichtpost R17 with lossy backgrounds and stripped bytecode, all three files
 
 | Compression | payload | decoder |
 | --- | ---: | --- |
-| deflate -9 | 2,277,896 B | native |
-| zstd -19 (`--long` gains nothing) | 1,934,740 B | `fzstd`, 8 KB |
-| Brotli 11, 16 MB window | 1,851,743 B | 66 to 151 KB of JS (static dictionary) |
+| deflate -9 | 2,275,656 B | native |
+| zstd -19 (`--long` gains nothing) | 1,933,055 B | `fzstd`, 8 KB |
+| Brotli 11, 16 MB window | 1,851,029 B | 66 to 151 KB of JS (static dictionary) |
 | **LZMA** (`.lzma`, preset 9e) | **1,823,451 B** | `lzma.js`, written here, 3.7 KB as embedded |
 
 `lzma.js` follows the public-domain reference decoder (LzmaSpec.cpp); the output is its
