@@ -11,7 +11,6 @@ from tools.setup.doctor import (
     code_health_findings,
     entire_findings,
     hook_findings,
-    tool_findings,
 )
 
 ENTIRE_HOOK = """#!/bin/sh
@@ -32,18 +31,31 @@ class DoctorTest(unittest.TestCase):
         (self.root / ".entire").mkdir()
         (self.root / ".entire/settings.json").write_text(json.dumps({"enabled": enabled}))
 
-    def test_missing_tools_are_errors(self) -> None:
-        findings = tool_findings(
-            which=lambda name: None if name == "aspect" else "/bin/x"
-        )
-        self.assertEqual([finding.error for finding in findings], [True])
-        self.assertIn("`aspect`", findings[0].message)
-
     def test_missing_aspect_hooks_are_errors(self) -> None:
         findings = hook_findings(config=lambda name: "" if "pre-push" in name else "cmd")
         self.assertEqual(len(findings), 1)
         self.assertTrue(findings[0].error)
         self.assertIn("pre-push", findings[0].message)
+
+    def test_missing_hooks_are_warnings_when_bootstrap_skipped_them(self) -> None:
+        findings = hook_findings(config=lambda _: "", optional=True)
+        self.assertEqual([finding.error for finding in findings], [False, False])
+
+    def test_entire_disabled_locally_is_not_checked(self) -> None:
+        self.enable_entire()
+        (self.root / ".entire/settings.local.json").write_text(
+            json.dumps({"enabled": False})
+        )
+        self.assertEqual(
+            entire_findings(self.root, lambda: self.hooks, which=lambda _: None), []
+        )
+
+    def test_invalid_entire_settings_are_a_warning(self) -> None:
+        self.enable_entire()
+        (self.root / ".entire/settings.json").write_text("<<<<<<< HEAD")
+        findings = entire_findings(self.root, lambda: self.hooks, which=lambda _: None)
+        self.assertEqual([finding.error for finding in findings], [False])
+        self.assertIn("not valid JSON", findings[0].message)
 
     def test_an_unselected_android_sdk_is_a_warning(self) -> None:
         findings = android_findings({})

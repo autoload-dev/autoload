@@ -181,7 +181,7 @@ def _bootstrap_impl(ctx: TaskContext) -> int:
 
     # The setup check runs even when the Android setup failed, to name what else is missing.
     android = run_work(ctx, "android:setup") if ctx.args.android else 0
-    doctor = _doctor_impl(ctx)
+    doctor = _doctor(ctx, ctx.args.hooks)
     return android or doctor
 
 bootstrap = task(
@@ -193,14 +193,21 @@ bootstrap = task(
     },
 )
 
+def _doctor(ctx: TaskContext, hooks: bool) -> int:
+    """Run the setup check; without `hooks`, missing Git hooks are only a warning."""
+
+    # The pinned CodeScene CLI, whose sign-in the check asks for as the Git hooks do. When it
+    # cannot be built, the check reports CodeScene as unavailable instead of failing.
+    if run(ctx, "bazel", ["build", _CODESCENE]) == 0:
+        _built(ctx, _CODESCENE)
+    return python(ctx, ["-m", "tools.setup.doctor"] + ([] if hooks else ["--hooks-optional"]))
+
 def _doctor_impl(ctx: TaskContext) -> int:
-    # The pinned CodeScene CLI, whose sign-in the check asks for as the Git hooks do.
-    _built(ctx, _CODESCENE)
-    return python(ctx, ["-m", "tools.setup.doctor"])
+    return _doctor(ctx, True)
 
 doctor = task(
     implementation = _doctor_impl,
-    summary = "Check the checkout's setup: tools, Git hooks, Android SDK, Code Health and Entire.",
+    summary = "Check the checkout's setup: Git hooks, Android SDK, Code Health and Entire.",
 )
 
 def _exec_impl(ctx: TaskContext):
