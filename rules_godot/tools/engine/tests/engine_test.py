@@ -1079,6 +1079,27 @@ class IncludeGraphTest(unittest.TestCase):
             {"drivers/shader.h", "platform/android/api/api.h", "tests/test_main.h"},
         )
 
+    def test_a_generated_file_includes_the_header_its_generator_writes(self) -> None:
+        # Godot's translation generators write a header and a source that includes it.
+        code = (
+            "def make_translations(target, source, env):\n"
+            "    target_h, target_cpp = str(target[0]), str(target[1])\n"
+            '    file.write(f"""#include "{target_h}"\n""")\n'
+        )
+        translations = Generated(code, ("doc/translations/de.po",))
+        graph = self.graph(
+            {"doc/translations/de.po": ""},
+            [CompileGroup(["editor/translations/doc.gen.cpp"], [], [])],
+            {
+                "editor/translations/doc.gen.h": translations,
+                "editor/translations/doc.gen.cpp": translations,
+            },
+        )
+        self.assertEqual(
+            graph["editor/translations/doc.gen.cpp"],
+            {"doc/translations/de.po", "editor/translations/doc.gen.h"},
+        )
+
     def test_files_that_include_each_other_form_one_component(self) -> None:
         graph = {
             "main.cpp": {"a.h"},

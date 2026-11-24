@@ -47,10 +47,34 @@ _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
 
 
 class Generated(NamedTuple):
-    """A generated file: the code of its generator and the files the generator reads."""
+    """
+    A generated file: the code of its generator and the files the generator reads.
+
+    The files one generator writes share an equal value, which is how the scan finds the
+    other files a generator writes.
+    """
 
     code: str
     inputs: tuple[str, ...]
+
+
+class _Generator(NamedTuple):
+    """The code of a generator, the files it reads and the files it writes."""
+
+    code: str
+    inputs: tuple[str, ...]
+    outputs: tuple[str, ...]
+
+
+def _generators(generated: Mapping[str, Generated]) -> dict[str, _Generator]:
+    """Return each generated file mapped to its generator."""
+    writes: dict[Generated, list[str]] = {}
+    for name, generator in generated.items():
+        writes.setdefault(generator, []).append(name)
+    return {
+        name: _Generator(*generator, tuple(writes[generator]))
+        for name, generator in generated.items()
+    }
 
 
 class CompileGroup(NamedTuple):
@@ -117,15 +141,16 @@ class _Resolver:
         found = (self._existing(base, include) for base in self.directories)
         return list(dict.fromkeys(name for name in [beside, *found] if name))
 
-    def template(self, include: str, inputs: Sequence[str]) -> list[str]:
+    def template(self, include: str, named: Sequence[str]) -> list[str]:
         """
         Return the files a templated include may name, such as "{module}/register_types.h".
 
-        A template without a literal path, such as "{header}", names the generator's inputs.
+        A template without a literal path, such as "{header}" or "{target_h}", names one
+        of the given files: the generator's inputs and the other files it writes.
         """
         parts = _PLACEHOLDER.split(include)
         if not any("/" in part for part in parts):
-            return list(inputs)
+            return list(named)
         if include not in self._templates:
             pattern = re.compile(".+".join(map(re.escape, parts)) + "$")
             self._templates[include] = sorted(
@@ -161,11 +186,21 @@ def _file_includes(root: Path, path: str, resolver: _Resolver) -> set[str]:
     }
 
 
-def _generated_includes(path: str, generated: Generated, resolver: _Resolver) -> set[str]:
+def _generated_includes(
+    path: str, generator: _Generator, resolver: _Resolver
+) -> set[str]:
+    """
+    Return the files a generated file may include.
+
+    A templated include without a literal path names one of the generator's inputs or
+    one of the other files it writes, as Godot's translation generators include their
+    header with "{target_h}".
+    """
     found: set[str] = set()
-    for include in _GENERATED_DIRECTIVE.findall(generated.code):
+    named = [*generator.inputs, *(name for name in generator.outputs if name != path)]
+    for include in _GENERATED_DIRECTIVE.findall(generator.code):
         if "{" in include:
-            found.update(resolver.template(include, generated.inputs))
+            found.update(resolver.template(include, named))
         else:
             found.update(resolver.resolve(path, include))
     return found
@@ -191,12 +226,13 @@ def include_graph(
     ]
     resolver = _Resolver(tree_files(root) | set(generated), directories)
     forced = _option_headers(groups, resolver)
+    generators = _generators(generated)
     graph: dict[str, frozenset[str]] = {}
     pending = [*forced, *extra_roots]
     while pending:
         path = pending.pop()
         if path not in graph:
-            graph[path] = _includes(root, path, generated, resolver) | forced.get(
+            graph[path] = _includes(root, path, generators, resolver) | forced.get(
                 path, set()
             )
             pending.extend(graph[path])
@@ -218,10 +254,10 @@ def _option_headers(
 
 
 def _includes(
-    root: Path, path: str, generated: Mapping[str, Generated], resolver: _Resolver
+    root: Path, path: str, generators: Mapping[str, _Generator], resolver: _Resolver
 ) -> frozenset[str]:
-    if path in generated:
-        return frozenset(_generated_includes(path, generated[path], resolver))
+    if path in generators:
+        return frozenset(_generated_includes(path, generators[path], resolver))
     return frozenset(_file_includes(root, path, resolver))
 
 
