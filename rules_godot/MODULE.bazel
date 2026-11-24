@@ -351,9 +351,6 @@ maven.artifact(
 )
 use_repo(maven, "maven")
 
-# Godot's Maven graph: what Gradle resolves for rules_godot's contribution alone. Its lock is
-# committed beside the template activities and read by each Android application's minimum
-# check; repin with `REPIN=1 bazel run @godot_android_maven_graph//:pin`.
 maven_development = use_extension(
     "@rules_jvm_external//:extensions.bzl",
     "maven",
@@ -373,6 +370,10 @@ maven_development.install(
     resolver = "gradle",
     use_starlark_android_rules = True,
 )
+
+# Godot's Maven graph: what Gradle resolves for rules_godot's contribution alone. Its lock is
+# committed beside the template activities and read by each Android application's minimum
+# check; repin with `REPIN=1 bazel run @godot_android_maven_graph//:pin`.
 maven_development.install(
     name = "godot_android_maven_graph",
     artifacts = GODOT_ANDROID_ARTIFACTS,
