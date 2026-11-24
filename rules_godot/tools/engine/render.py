@@ -7,16 +7,18 @@ not cover this module: changing how a graph renders keeps every pin.
 """
 
 import argparse
+import os
 from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 try:
-    from . import build_profile
+    from . import build_profile, shared_objects
     from .include_graph import CompileGroup, Generated, components, include_graph
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
     import build_profile
+    import shared_objects
     from include_graph import CompileGroup, Generated, components, include_graph
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
@@ -154,6 +156,15 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
     return lines
 
 
+def python_files(root: Path) -> list[str]:
+    """The Python files of the source tree, which every generator may import."""
+    return sorted(
+        relative(path, root)
+        for path in root.rglob("*.py")
+        if "_scons" not in path.parts and "_bazel_generators" not in path.parts
+    )
+
+
 def _generator_rules(
     root: Path, generators: Sequence[tuple[dict[str, Any], set[str]]]
 ) -> tuple[list[str], list[str]]:
@@ -162,18 +173,14 @@ def _generator_rules(
 
     A generator's inputs are its dependencies and the Python files of the source tree.
     """
-    python_files = sorted(
-        relative(path, root)
-        for path in root.rglob("*.py")
-        if "_scons" not in path.parts and "_bazel_generators" not in path.parts
-    )
+    tree_python = python_files(root)
     lines: list[str] = []
     generated_headers: list[str] = []
     for index, (spec, dependencies) in enumerate(generators):
         name = f"_generate_{index:04d}"
         manifest = f"_bazel_generators/{name}.json"
         write_json(root / manifest, spec)
-        inputs = {source: source for source in sorted(dependencies | set(python_files))}
+        inputs = {source: source for source in sorted(dependencies | set(tree_python))}
         # A script's SCsub is needed for inspection provenance, but its captured
         # function is executed alone by tools/engine/generator.py.
         inputs[spec["code_file"]] = spec["code_file"]
@@ -472,6 +479,14 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines += header_rules
     object_rules, dependencies = _object_rules(compiled, includes, targets, profile_users)
     lines += object_rules
+    tree = os.environ.get("GODOT_TREE_REPOSITORY")
+    if tree:
+        paths = shared_objects.TreePaths(
+            root, generators, python_files(root), args.build_name
+        )
+        defines = {source: [build_profile.DEFINE] for source in profile_users}
+        recipe = shared_objects.Recipe(paths, compiled, includes, defines)
+        dependencies = shared_objects.share(tree, recipe, dependencies)
     for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)
         lines.append(_swift_rule(graph["swift_sources"], swift_options, deps))

@@ -38,6 +38,8 @@ py_library(
         "pin.py",
         "render.py",
         "revision.py",
+        "shared_objects.py",
+        "shared_tree.py",
         "source_tree.py",
     ],
 )
@@ -48,5 +50,7 @@ exports_files([
     "include_graph.py",
     "module_graph.py",
     "render.py",
+    "shared_objects.py",
+    "shared_tree.py",
     "source_tree.py",
 ])
