@@ -94,7 +94,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 5 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        ["watch"] * 6 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "extract",
             "getenv",
             "watch",
@@ -230,7 +230,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 5,
+        ["watch"] * 6,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -239,7 +239,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 5,
+        ["watch"] * 6,
     )
 
 def _test_declared_python_runs_configure(env):
