@@ -106,6 +106,24 @@ of any type, and the remaining multi-argument ones are small. R15's sources, bui
 macOS, give the same replay results, and R15 plays in the browser without a console
 error.
 
+The resource loaders registered as instances are not worth cutting: no saver is reachable
+any more, the binary and text loaders are needed (Lichtpost's pack holds `.tscn` and
+`.tres` as text), and the rest (translations, JSON, crypto, shader includes) keep under
+20 KB before wasm-opt.
+
 What still dominates after R15: the text server with FreeType (340 KB before wasm-opt),
 the default theme (`fill_default_theme()`, 144 KB, which Lichtpost's own theme mostly
 overrides), the compiled game (166 KB) and the WebP decoder (63 KB).
+
+## Where Lichtpost's web engine stands
+
+| Build | wasm, brotli | |
+| --- | ---: | --- |
+| R3: shaken bindings and Variant, interpreter | 1,870,810 | `../gdscript-bytecode/` |
+| R12: all GDScript compiled to C++, no VM | 1,880,609 | `../gdscript-cpp/` |
+| R13: unused payload cut | 1,271,069 | above |
+| R15: Variant's tables shaken | 1,250,746 | above |
+| R17: compact compiled code | 1,243,693 | `../gdscript-cpp/` |
+
+R17 is 34 % smaller than R12. Next in line by size is the default theme, which
+Lichtpost's own theme mostly overrides.
