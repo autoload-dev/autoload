@@ -1561,6 +1561,17 @@ def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
     )
 
 
+def object_library_name(source: str, group: int, taken: Container[str]) -> str:
+    """
+    Return the name of a source's library, which objc_library allows no slash in.
+
+    A source that another compile group also compiles, or whose name another source's
+    flattened path takes, adds its group's index.
+    """
+    name = "_objects__" + source.replace("/", "__")
+    return name if name not in taken else f"{name}__{group}"
+
+
 def _object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
@@ -1574,12 +1585,14 @@ def _object_rules(
     """
     lines: list[str] = []
     labels: list[str] = []
+    names: set[str] = set()
     for index, (language, copts, includes, sources) in enumerate(groups):
         lines.append(f"_COPTS_{index} = {list(copts)!r}")
         lines.append(f"_INCLUDES_{index} = {list(includes)!r}")
         rule = "objc_library" if language == "objc" else "cc_library"
         for source in sources:
-            name = "_objects/" + source
+            name = object_library_name(source, index, names)
+            names.add(name)
             labels.append(":" + name)
             deps = _source_deps(graph, targets, source)
             lines.append(

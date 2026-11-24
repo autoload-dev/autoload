@@ -27,6 +27,7 @@ from tools.engine.configure import (
     normalize_command,
     normalize_value,
     object_groups,
+    object_library_name,
     pin_digest,
     pinned_graph,
     platform_compile_options,
@@ -534,6 +535,20 @@ class GraphTranslationTest(unittest.TestCase):
                     ["platform/macos/export/export_plugin.cpp"],
                 ),
             ],
+        )
+
+    def test_object_libraries_are_named_after_their_source_without_slashes(
+        self,
+    ) -> None:
+        # objc_library rejects names with a slash.
+        self.assertEqual(
+            object_library_name("platform/ios/os_ios.mm", 3, set()),
+            "_objects__platform__ios__os_ios.mm",
+        )
+        # A source that two compile groups compile gets a library per group.
+        self.assertEqual(
+            object_library_name("core/a.cpp", 3, {"_objects__core__a.cpp"}),
+            "_objects__core__a.cpp__3",
         )
 
     def test_ios_class_name_does_not_collide_with_apple_toolchain_macro(self) -> None:
