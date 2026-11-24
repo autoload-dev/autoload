@@ -145,9 +145,13 @@ def _identifier(fn: Function, node: dict) -> Code:
         return f"GDScriptNative::{function}(p_self, SNAME({json.dumps(name)}))", gd
     direct = None
     if source == "inherited_variable":
-        direct = cpp_native.get(fn, OWNER, fn.klass.native, node.get("property"))
+        direct = cpp_native.get(
+            cpp_native.Receiver(fn, OWNER, fn.klass.native),
+            node.get("property"),
+            gd_type(node["type"]),
+        )
     if direct:
-        return _result(direct, gd_type(node["type"]))
+        return direct, gd_type(node["type"])
     raise Unsupported(f"identifier {name} ({source})")
 
 
@@ -285,8 +289,11 @@ def _engine_getter(a: _Attribute) -> Code | None:
         convert(a.base, a.bt, "Variant"),
         cpp_native.native_class(a.fn, a.bt),
     )
-    direct = cpp_native.get(a.fn, receiver, klass, a.node.get("property"))
-    return _result(direct, gd_type(a.node["type"])) if direct else None
+    result = gd_type(a.node["type"])
+    direct = cpp_native.get(
+        cpp_native.Receiver(a.fn, receiver, klass), a.node.get("property"), result
+    )
+    return (direct, result) if direct else None
 
 
 def _attribute(fn: Function, node: dict, base: str, bt: str) -> Code:
@@ -412,6 +419,19 @@ class _Call:
     result: str
     node: dict
 
+    def typed_args(self) -> list[tuple[str, str]]:
+        return [expression(self.fn, a) for a in self.args]
+
+    def direct(self, receiver: str | None) -> Code | None:
+        """A direct call of the engine method the node resolved to, if any."""
+        code = cpp_native.call(
+            cpp_native.Receiver(self.fn, receiver),
+            self.node,
+            self.typed_args(),
+            self.result,
+        )
+        return (code, self.result) if code else None
+
     def variants(self) -> list[str]:
         return [typed(self.fn, a, "Variant") for a in self.args]
 
@@ -518,11 +538,9 @@ def _global_call(call: _Call) -> Code:
     values = call.variants()
     if call.name in _VARIANT_UTILITIES:
         code = f"GDScriptNative::utility(SNAME({json.dumps(call.name)}), {{ {', '.join(values)} }})"
-    else:  # A method the script inherits from its native class.
-        code = cpp_native.call(call.fn, call.node, OWNER, values) or _dynamic(
-            OWNER, call.name, values
-        )
-    return _result(code, call.result)
+        return _result(code, call.result)
+    # A method the script inherits from its native class.
+    return call.direct(OWNER) or _result(_dynamic(OWNER, call.name, values), call.result)
 
 
 def _with_default(bt: str, name: str, values: list[str]) -> list[str]:
@@ -548,9 +566,9 @@ def _native_class_call(call: _Call, klass: str, values: list[str]) -> Code:
         return _result(
             f"GDScriptNative::instantiate(SNAME({json.dumps(klass)}))", call.result
         )
-    direct = cpp_native.call(call.fn, call.node, cpp_native.singleton(klass), values)
+    direct = call.direct(cpp_native.singleton(klass))
     if direct:
-        return _result(direct, call.result)
+        return direct
     names = f"SNAME({json.dumps(klass)}), SNAME({json.dumps(call.name)})"
     return _result(
         f"GDScriptNative::call_native({names}, {{ {', '.join(values)} }})", call.result
@@ -559,8 +577,9 @@ def _native_class_call(call: _Call, klass: str, values: list[str]) -> Code:
 
 def _object_call(call: _Call, receiver: str, values: list[str]) -> Code:
     """A method of an object: direct when the engine binds it, else by name."""
-    direct = cpp_native.call(call.fn, call.node, receiver, values)
-    return _result(direct or _dynamic(receiver, call.name, values), call.result)
+    return call.direct(receiver) or _result(
+        _dynamic(receiver, call.name, values), call.result
+    )
 
 
 def _method_call(call: _Call, base_node: dict) -> Code:

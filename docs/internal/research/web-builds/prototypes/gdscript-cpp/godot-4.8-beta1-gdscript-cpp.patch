@@ -569,10 +569,10 @@ index 557f428..84c3cb3 100644
  	const StringName *_global_names_ptr = nullptr;
 diff --git a/modules/gdscript/gdscript_native.h b/modules/gdscript/gdscript_native.h
 new file mode 100644
-index 0000000..6524563
+index 0000000..d6c1291
 --- /dev/null
 +++ b/modules/gdscript/gdscript_native.h
-@@ -0,0 +1,314 @@
+@@ -0,0 +1,393 @@
 +/**************************************************************************/
 +/*  gdscript_native.h                                                     */
 +/**************************************************************************/
@@ -594,6 +594,8 @@ index 0000000..6524563
 +#include "core/variant/variant_utility.h"
 +
 +#include <initializer_list>
++#include <type_traits>
++#include <utility>
 +
 +// A compiled function: script class, function name and the entry the runtime calls.
 +struct GDScriptNativeEntry {
@@ -601,6 +603,12 @@ index 0000000..6524563
 +	const char *name;
 +	GDScriptNativeFunction function;
 +};
++
++// `RequiredResult<T>`, which engine methods return for objects that are null only on error.
++template <typename>
++struct GDScriptNativeIsRequired : std::false_type {};
++template <typename T>
++struct GDScriptNativeIsRequired<RequiredResult<T>> : std::true_type {};
 +
 +struct GDScriptNative {
 +	static Variant *members(GDScriptInstance *p_instance) { return p_instance ? p_instance->members.ptr() : nullptr; }
@@ -882,6 +890,77 @@ index 0000000..6524563
 +		Node *node = Object::cast_to<Node>(p_instance->owner);
 +		ERR_FAIL_NULL_V_MSG(node, Variant(), "Compiled GDScript used $ outside a node.");
 +		return Variant(node->get_node(NodePath(String::utf8(p_path))));
++	}
++
++	// Typed direct engine calls: arguments go to the method's parameter types without a
++	// Variant where the generator knows their C++ type, and the result comes back in the
++	// type the GDScript expression has.
++	template <typename R>
++	using Result = std::conditional_t<std::is_void_v<R>, void, std::decay_t<R>>;
++
++	// An argument as the parameter P takes it.
++	template <typename P, typename A>
++	static decltype(auto) arg(A &&p_value) {
++		using D = std::decay_t<A>;
++		using T = std::decay_t<P>;
++		if constexpr (std::is_same_v<D, Variant>) {
++			return VariantCaster<P>::cast(p_value);
++		} else if constexpr (std::is_same_v<D, T>) {
++			return std::forward<A>(p_value);
++		} else if constexpr (std::is_constructible_v<T, A>) {
++			return T(std::forward<A>(p_value));
++		} else if constexpr (std::is_enum_v<T>) {
++			return static_cast<T>(p_value);
++		} else {
++			return VariantCaster<P>::cast(Variant(p_value));
++		}
++	}
++
++	// A result as the type T the expression has.
++	template <typename T, typename R>
++	static T to(R &&p_value) {
++		using D = std::decay_t<R>;
++		if constexpr (GDScriptNativeIsRequired<D>::value) {
++			return to<T>(p_value._internal_ptr_dont_use());
++		} else if constexpr (std::is_same_v<D, Variant>) {
++			return T(p_value);
++		} else if constexpr (std::is_same_v<T, Variant>) {
++			if constexpr (std::is_enum_v<D> || !std::is_constructible_v<Variant, D>) {
++				return Variant(static_cast<int64_t>(p_value));
++			} else {
++				return Variant(p_value);
++			}
++		} else if constexpr (std::is_constructible_v<T, D>) {
++			return T(p_value);
++		} else {
++			return T(static_cast<int64_t>(p_value));
++		}
++	}
++
++	template <typename T, typename R, typename... P, typename... A>
++	static Result<R> direct(const Variant &p_object, R (T::*p_method)(P...), A &&...p_args) {
++		static_assert(sizeof...(P) == sizeof...(A));
++		T *object = receiver<T>(p_object);
++		if (unlikely(!object)) {
++			return Result<R>();
++		}
++		return (object->*p_method)(arg<P>(std::forward<A>(p_args))...);
++	}
++
++	template <typename T, typename R, typename... P, typename... A>
++	static Result<R> direct(const Variant &p_object, R (T::*p_method)(P...) const, A &&...p_args) {
++		static_assert(sizeof...(P) == sizeof...(A));
++		const T *object = receiver<T>(p_object);
++		if (unlikely(!object)) {
++			return Result<R>();
++		}
++		return (object->*p_method)(arg<P>(std::forward<A>(p_args))...);
++	}
++
++	template <typename R, typename... P, typename... A>
++	static Result<R> direct_static(R (*p_method)(P...), A &&...p_args) {
++		static_assert(sizeof...(P) == sizeof...(A));
++		return p_method(arg<P>(std::forward<A>(p_args))...);
 +	}
 +
 +	// A constant the generator could only write as text, parsed once.

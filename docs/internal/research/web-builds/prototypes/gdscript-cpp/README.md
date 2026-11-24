@@ -129,6 +129,30 @@ Found on the way:
   keep more bindings: R9 came out 70 KB larger. `--godot` therefore points to a
   separate, never shaken worktree of the Godot sources.
 
+## Typed engine calls (2026-11-24)
+
+Direct engine calls no longer box their arguments. `GDScriptNative::direct(object,
+&Class::method, args...)` passes each argument with a static C++ type as it is (converted
+to the parameter type by construction or, for enums, by cast), Variants through the
+binder's `VariantCaster`, and returns the result in the type of the GDScript expression
+(`to<T>()`, which also unwraps 4.8's `RequiredResult<T>`). Property reads and writes go
+the same way. The generated code changes only in the call form; replays match on macOS
+and the web build without VM plays.
+
+| Engine (R3 settings, web) | raw | brotli 11 |
+| --- | ---: | ---: |
+| R3, interpreter, nothing compiled | 6,087,450 B | 1,870,810 B |
+| R10, all compiled, VM, boxed calls | 6,173,854 B | 1,892,757 B |
+| R11, all compiled, no VM, boxed calls | 6,109,378 B | 1,883,276 B |
+| R12, all compiled, no VM, typed calls | 6,093,459 B | 1,880,609 B |
+
+Typed calls save 16 KB raw and 3 KB brotli. The fully compiled engine without VM is
+10 KB brotli larger than the interpreter it replaces. For Lichtpost the script runtime
+is no longer a size lever: VM, method binds and boxing together are about 1 % of the
+engine, and compiled code of a whole game costs about as much as they do. What the
+compiler buys is speed (3.3 times as fast on the route model, more where typed data
+replaces dictionaries) and a project whose every engine call the linker can see.
+
 ## How it works
 
 `dump_ast.gd`, run on an engine with the compiler and the patch, writes per script the

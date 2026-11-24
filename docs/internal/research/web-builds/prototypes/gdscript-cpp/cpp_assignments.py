@@ -18,23 +18,27 @@ def _is_attribute(node: dict) -> bool:
     return node["node"] == "subscript" and "attribute" in node
 
 
-def _property_value(fn: Function, node: dict, current: str | None) -> str:
-    """The value a property assignment writes, compound operators applied to current."""
-    value = typed(fn, node["value"], "Variant")
+def _property_value(fn: Function, node: dict, current: str | None) -> tuple[str, str]:
+    """The value a property assignment writes, with its type; compound operators apply
+    to current."""
     op = node["operator"]
     if not op:
-        return value
+        return expression(fn, node["value"])
     if current is None or op not in _OPERATORS:
         raise Unsupported(f"compound assignment {op} to a property")
-    return f"GDScriptNative::evaluate(Variant::OP_{_OPERATORS[op]}, {current}, {value})"
+    value = typed(fn, node["value"], "Variant")
+    return (
+        f"GDScriptNative::evaluate(Variant::OP_{_OPERATORS[op]}, {current}, {value})",
+        "Variant",
+    )
 
 
 def _assign_property(fn: Function, node: dict, receiver: str, klass: str) -> bool:
     """A write through a property's setter, if the engine binds it."""
     prop = node["assignee"].get("property")
-    current = cpp_native.get(fn, receiver, klass, prop)
+    current = cpp_native.get(cpp_native.Receiver(fn, receiver, klass), prop, "Variant")
     statement = cpp_native.set_(
-        fn, receiver, klass, prop, _property_value(fn, node, current)
+        cpp_native.Receiver(fn, receiver, klass), prop, _property_value(fn, node, current)
     )
     if statement:
         fn.emit(statement)
@@ -99,7 +103,7 @@ def _assign_component(fn: Function, node: dict, base: str, bt: str) -> bool:
         return False
     receiver, klass, prop = held
     temp = fn.fresh("value")
-    setter = cpp_native.set_(fn, receiver, klass, prop, f"Variant({temp})")
+    setter = cpp_native.set_(cpp_native.Receiver(fn, receiver, klass), prop, (temp, bt))
     if not setter:
         return False
     component = "int" if bt.endswith("i") else "float"
