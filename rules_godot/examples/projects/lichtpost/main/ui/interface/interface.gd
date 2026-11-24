@@ -7,10 +7,15 @@ signal pause_requested
 signal options_requested
 signal mute_changed(value: bool)
 signal motion_changed(value: bool)
-@onready var hud = $Root/Margin/Layout/Hud
-@onready var title = $Root/Margin/Layout/Center/TitleDialog
-@onready var result = $Root/Margin/Layout/Center/ResultDialog
-@onready var options = $Root/Margin/Layout/Center/OptionsDialog
+
+const Hud = preload("res://main/ui/hud/hud.gd")
+const TitleDialog = preload("res://main/ui/title_dialog/title_dialog.gd")
+const ResultDialog = preload("res://main/ui/result_dialog/result_dialog.gd")
+const OptionsDialog = preload("res://main/ui/options_dialog/options_dialog.gd")
+@onready var hud: Hud = $Root/Margin/Layout/Hud
+@onready var title: TitleDialog = $Root/Margin/Layout/Center/TitleDialog
+@onready var result: ResultDialog = $Root/Margin/Layout/Center/ResultDialog
+@onready var options: OptionsDialog = $Root/Margin/Layout/Center/OptionsDialog
 @onready var ui_margin: MarginContainer = $Root/Margin
 
 
@@ -105,7 +110,7 @@ static func safe_insets(safe: Rect2, to_canvas: Transform2D, visible: Vector2) -
 # whose page owns the canvas size (resizing the window would only shrink the rendered area
 # inside the canvas and offset pointer input), and not headless.
 func _can_resize_window() -> bool:
-	for feature in ["mobile", "web"]:
+	for feature: String in ["mobile", "web"]:
 		if OS.has_feature(feature):
 			return false
 	return DisplayServer.get_name() != "headless"

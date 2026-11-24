@@ -4,6 +4,16 @@ config_version=5
 config/name="Lichtpost"
 run/main_scene="res://main/game.tscn"
 
+[debug]
+
+gdscript/warnings/directory_rules={
+"res://addons": 0,
+"res://tests": 0
+}
+gdscript/warnings/untyped_declaration=2
+gdscript/warnings/unsafe_property_access=2
+gdscript/warnings/unsafe_method_access=2
+
 [display]
 window/size/viewport_width=540
 window/size/viewport_height=960

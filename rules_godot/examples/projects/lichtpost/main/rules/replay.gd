@@ -14,11 +14,12 @@ func read_file(path: String) -> bool:
 	if file == null:
 		error = "Cannot read replay: " + path
 		return false
-	var data = JSON.parse_string(file.get_as_text())
-	if not data is Dictionary or data.get("version") != 1:
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if not parsed is Dictionary or (parsed as Dictionary).get("version") != 1:
 		error = "Replay needs version 1"
 		return false
-	var route_seed = data.get("seed")
+	var data: Dictionary = parsed
+	var route_seed: Variant = data.get("seed")
 	if not route_seed is float and not route_seed is int:
 		error = "Replay needs an integer seed"
 		return false
@@ -26,16 +27,17 @@ func read_file(path: String) -> bool:
 		error = "Replay seed is outside 0..2147483647"
 		return false
 	seed_value = int(route_seed)
-	var entries = data.get("actions")
-	if not entries is Array or entries.size() > 7200:
+	var entries: Variant = data.get("actions")
+	if not entries is Array or (entries as Array).size() > 7200:
 		error = "Replay needs an actions array (at most 7200 entries)"
 		return false
 	var previous := 0
 	var held := false
-	for entry in entries:
-		if not entry is Array or entry.size() != 2:
+	for item: Variant in entries as Array:
+		if not item is Array or (item as Array).size() != 2:
 			error = "Each action is [tick, held]"
 			return false
+		var entry: Array = item
 		if not (entry[0] is float or entry[0] is int) or not entry[1] is bool:
 			error = "Action tick must be an integer and held must be boolean"
 			return false
