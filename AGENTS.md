@@ -38,6 +38,8 @@ that condition is met.
 
 For implementation and review, follow the short [verification policy](docs/internal/verification.md),
 including TDD and evidence reuse. Commands below are entry points, not a checklist for every turn.
+The Git hooks run `aspect pre-commit` and `aspect pre-push`; do not run them by hand before a
+commit or push.
 From the repository root:
 
 ```sh
