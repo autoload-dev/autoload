@@ -6,9 +6,9 @@ Regenerate the repository's generated files, or check that they are current.
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | `--lockfile_mode=error` |
 | The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
-`python3 -m tools.generate.generate [PATH...]` regenerates what depends on the paths, as the
-pre-commit hook passes them, or everything without paths. `--check` checks every generated
-file, as the pre-push hook and CI's quality lane do. Bazel runs in each file's own module.
+`aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
+(`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
+every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each file's own module.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def lock_files(modules: list[str], mode: str) -> int:
 def check_lock_files() -> int:
     status = lock_files(list(LOCKED_MODULES), "error")
     if status:
-        print("A MODULE.bazel.lock is stale: run `mise run generate`.", file=sys.stderr)
+        print("A MODULE.bazel.lock is stale: run `aspect generate`.", file=sys.stderr)
     return status
 
 

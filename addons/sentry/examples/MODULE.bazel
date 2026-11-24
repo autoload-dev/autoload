@@ -71,3 +71,11 @@ godot_engines.prebuilt(
 use_repo(godot_engines, "godot")
 
 register_toolchains("@godot//toolchains:all")
+
+# The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
+# never see it.
+bazel_dep(name = "autoload_dev", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_dev",
+    path = "../../..",
+)

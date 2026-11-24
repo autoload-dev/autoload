@@ -44,7 +44,9 @@ jobs:
           - job: formatting
             name: Source quality
             work: quality
-            runner: blacksmith-2vcpu-ubuntu-2404
+            # Lint analyses every module's Python targets, the ruleset's applications with them,
+            # which 2 vCPUs did not do within the limit.
+            runner: blacksmith-8vcpu-ubuntu-2404
             timeout: 10
           - job: api-docs
             name: API documentation
@@ -94,7 +96,7 @@ jobs:
           android-cache: ${{ matrix.lane.android-cache || 'false' }}
           cache-name: ${{ matrix.lane.job }}
       - name: Run the lane's work
-        run: python3 -m tools.ci.work lane ${{ matrix.lane.work }}
+        run: aspect lane ${{ matrix.lane.work }}
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads

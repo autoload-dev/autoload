@@ -1,5 +1,7 @@
 version = 1
 name = "rules_godot"
 
+# A new Codex worktree needs only the two tools; the clone's own setup, the Git hooks and the
+# Android SDK, is ./bootstrap.sh, once. Its Bazel state: AGENTS.md, "Worktrees".
 [setup]
-script = "mise trust mise.toml\nmise bootstrap --only tools,task"
+script = "./bootstrap.sh --tools-only"

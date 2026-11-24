@@ -12,6 +12,7 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "2.5.1")
 bazel_dep(name = "buildifier_prebuilt", version = "10.2.0")
 bazel_dep(name = "aspect_rules_lint", version = "2.9.1")
+bazel_dep(name = "rules_multitool", version = "0.11.0")
 
 # The rules_go of the formatters' graph, 0.42, predates Bazel 9. This is the version the
 # ruleset's graph resolves: the ruleset depends on this module for development, and a newer
@@ -28,7 +29,23 @@ python_config.explicit_init_py(default = True)
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
 # --config=buildbuddy selects (buildbuddy.bazelrc); inert without it.
-bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+# Only where this module is the root: the extension refuses to run without the root using it,
+# and the modules that load this one's linters (`aspect lint`) choose their own.
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
 
-buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
 buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+
+# The prebuilt tools the repository's tasks run, pinned by URL and checksum per platform:
+# `bazel run @multitool//tools/<name>:cwd -- <args>` runs one in the current directory.
+multitool = use_extension(
+    "@rules_multitool//multitool:extension.bzl",
+    "multitool",
+    dev_dependency = True,
+)
+multitool.hub(lockfile = "//:multitool.lock.json")
+use_repo(multitool, "multitool")

@@ -270,3 +270,11 @@ buildbuddy = use_extension(
     dev_dependency = True,
 )
 buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+
+# The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
+# never see it.
+bazel_dep(name = "autoload_dev", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_dev",
+    path = "../..",
+)

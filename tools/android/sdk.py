@@ -1,20 +1,36 @@
 """Reuse an Android SDK and install only missing pinned SDK packages."""
 
 import argparse
+import json
 import os
 import platform
 import shutil
 import subprocess
-import tomllib
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-# The same requirements configure mise's environment, bootstrap and CI cache.
-CONFIG = Path(__file__).absolute().parents[2] / "mise.toml"
-REQUIREMENTS = tomllib.loads(CONFIG.read_text())["vars"]
-SDK_APIS = tuple(REQUIREMENTS["android_api_levels"].split(","))
-BUILD_TOOLS = REQUIREMENTS["android_build_tools"]
-NDK_VERSION = REQUIREMENTS["android_ndk_version"]
+# The same requirements configure the Aspect CLI's environment (.aspect/config.axl) and the
+# CI cache.
+CONFIG = Path(__file__).absolute().parent / "sdk.json"
+REQUIREMENTS = json.loads(CONFIG.read_text())
+SDK_APIS = tuple(REQUIREMENTS["api_levels"])
+BUILD_TOOLS = REQUIREMENTS["build_tools"]
+NDK_VERSION = REQUIREMENTS["ndk"]
+# The pinned sdkmanager (//:multitool.lock.json), which Bazel downloads only when run.
+MANAGED_SDKMANAGER = ["bazel", "run", "@multitool//tools/sdkmanager:cwd", "--"]
+# Prints the Java Bazel builds with, sdkmanager's when JAVA_HOME names none.
+JAVA = Path(__file__).absolute().with_name("java.py")
+
+
+def manager_environment() -> dict[str, str]:
+    """sdkmanager's environment: this one, with a Java."""
+    if os.environ.get("JAVA_HOME"):
+        return dict(os.environ)
+    java = subprocess.run(
+        [sys.executable, str(JAVA)], capture_output=True, text=True, check=True
+    )
+    return {**os.environ, "JAVA_HOME": java.stdout.strip()}
 
 
 def read_properties(path: Path) -> dict[str, str]:
@@ -88,7 +104,9 @@ def main() -> None:
     args = parser.parse_args()
     sdk_root = os.environ.get("ANDROID_SDK_ROOT") or os.environ.get("ANDROID_HOME")
     if not sdk_root:
-        raise SystemExit("Run mise run android:setup to select the Android environment.")
+        raise SystemExit(
+            "Run aspect work android:setup to select the Android environment."
+        )
     root = Path(sdk_root)
     ndk = Path(os.environ.get("ANDROID_NDK_HOME") or root / "ndk" / NDK_VERSION)
     missing = missing_packages(root, ndk_root=ndk)
@@ -111,17 +129,14 @@ def main() -> None:
     )
     print("Installed sdkmanager: " + (manager or "none"))
     if missing:
-        # The lazy mise tool is downloaded only when no installed manager can
-        # supply missing SDK packages. It uses the URL/checksum in mise.lock.
-        command = (
-            [manager]
-            if manager
-            else ["mise", "exec", "http:android-commandlinetools", "--", "sdkmanager"]
-        )
+        # The pinned manager is downloaded only when no installed manager can supply
+        # missing SDK packages.
+        command = [manager] if manager else MANAGED_SDKMANAGER
         subprocess.run(
             [*command, "--sdk_root=" + str(root), "--install", *missing],
             input="y\n" * 100,
             text=True,
+            env=manager_environment(),
             check=True,
         )
         if remaining := missing_packages(root, ndk_root=ndk):

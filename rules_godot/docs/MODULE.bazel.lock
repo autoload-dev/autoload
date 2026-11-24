@@ -1186,7 +1186,7 @@
     "@@toolchains_buildbuddy+//:extensions.bzl%buildbuddy": {
       "general": {
         "bzlTransitiveDigest": "YThiSErJv+jiCHJzZIEyk0yegQRS/x+T/ce309eGTvA=",
-        "usagesDigest": "dmeg2O8VhoL87HIUFmkYiDlJrRTRNYeTSQbH2ZQOkhg=",
+        "usagesDigest": "CjSRb4aRi1K+6PPUre17wtXnBWaBd3XpVRdWdVatp0k=",
         "recordedInputs": [],
         "generatedRepoSpecs": {
           "buildbuddy_toolchain": {

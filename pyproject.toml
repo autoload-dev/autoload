@@ -2,29 +2,16 @@
 target-version = "py314"
 line-length = 90
 force-exclude = true
-# First-party code: the tools packages of the root module, the ruleset and its documentation
-# module.
-src = [".", "rules_godot", "rules_godot/docs"]
+# The host's python3 runs the ruleset's launcher, down to Python 3.9 of macOS's command line
+# tools.
+per-file-target-version = { "**/tools/platforms/launch/*.py" = "py39" }
 
 [tool.ruff.lint]
 # Ruff's default rules plus required annotations.
 extend-select = ["ANN"]
 ignore = ["ANN401"]
 
-[tool.ty.environment]
-# Bazel runs these tools with the registered Python toolchain.
-python-version = "3.14"
-# The tools packages of the ruleset and of its documentation module, and the launcher, which
-# imports its sibling modules as the host's python3 runs it.
-extra-paths = ["rules_godot", "rules_godot/docs", "rules_godot/tools/platforms/launch"]
-
-[tool.ty.analysis]
-# Available only inside Bazel runfiles or Godot's SCons environment.
-allowed-unresolved-imports = [
-  "google.protobuf.**",
-  "stardoc.**",
-  "SCons.**",
-  "methods",
-]
-
-[tool.ty.src]
+# The lint aspects (`aspect lint`, tools/lint/linters.bzl) see only the sources of one target,
+# so the first-party packages are named rather than discovered.
+[tool.ruff.lint.isort]
+known-first-party = ["godot", "tools"]

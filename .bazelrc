@@ -2,6 +2,10 @@ common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
 
 import %workspace%/shared.bazelrc
 
+# The Java of this module's tools, and of the Android SDK's tools (tools/android/java.py), is
+# Bazel's own, as the ruleset's modules set it; the host's Java is not needed.
+build --java_runtime_version=remotejdk_21
+
 # Opt in to BuildBuddy with --config=buildbuddy.
 import %workspace%/buildbuddy.bazelrc
 build:buildbuddy --workspace_status_command="bash buildbuddy_status.sh"

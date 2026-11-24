@@ -1,6 +1,6 @@
 """Scanning files with the CodeScene CLI, including languages it lacks.
 
-The CodeScene CLI `cs`, which mise pins (mise.toml), reviews every file under a *virtual*
+The CodeScene CLI `cs`, which Bazel pins (multitool.lock.json), reviews every file under a *virtual*
 file name, so files CodeScene does not know are analysed as a language it does
 (translation.py), in one run with each result cached (batch.py). Nothing in the repository
 is modified; results are reported under the original paths and lines.
@@ -9,9 +9,9 @@ Code Health rules: a code-health-rules.json passed with --rules, else the reposi
 .codescene/code-health-rules.json. Its matching_content_path globs see the virtual names,
 e.g. "**/*.bzl.py" for Starlark and "**/*.gd.py" for GDScript.
 
-Requirements: `cs` on PATH, as mise provides it, or named by CODESCENE_CLI, and either a
-personal access token in CS_ACCESS_TOKEN or a `cs auth login` session. The token is never
-printed.
+Requirements: `cs` named by CODESCENE_CLI, as `aspect code-health` names it, or on PATH,
+and either a personal access token in CS_ACCESS_TOKEN or a `cs auth login` session. The
+token is never printed.
 """
 
 from __future__ import annotations
@@ -89,12 +89,12 @@ class Unavailable(Exception):
 
 
 def find_cli() -> str:
-    """The CodeScene CLI: CODESCENE_CLI, else the `cs` on PATH, which mise pins."""
+    """The CodeScene CLI: CODESCENE_CLI, as `aspect code-health` sets it, else `cs` on PATH."""
     cli = os.environ.get("CODESCENE_CLI") or shutil.which("cs")
     if not cli:
         raise Unavailable(
-            "CodeScene CLI `cs` not found: run through mise, as `mise run code-health` "
-            "does, or set CODESCENE_CLI"
+            "CodeScene CLI `cs` not found: run `aspect code-health`, which provides it, "
+            "or set CODESCENE_CLI"
         )
     return cli
 

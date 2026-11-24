@@ -1,0 +1,214 @@
+"""
+The repository's tasks that run its Python tools: the lanes' work (tools/ci/work.py), the
+generated files, Code Health and the bootstrap. They run with Bazel's Python and the tools
+Bazel pins, so a checkout needs only Bazelisk and the Aspect CLI.
+"""
+
+# rules_python's interpreter launcher, which runs the registered Python toolchain.
+_PYTHON = "@rules_python//python/bin:python"
+
+# The pinned CodeScene CLI, made executable (tools/code_health/BUILD.bazel).
+_CODESCENE = "//tools/code_health:codescene_cli"
+
+# Where a task's process tree keeps the built tools' paths, so a task and the tasks it starts
+# build and query each tool once.
+_BUILT = {
+    _PYTHON: "AUTOLOAD_PYTHON",
+    _CODESCENE: "CODESCENE_CLI",
+}
+
+def run(ctx: TaskContext, program: str, arguments, env = {}) -> int:
+    """Run a program in the repository root.
+
+    Args:
+        ctx: the running task's context.
+        program: the program to run, a path or a name on PATH.
+        arguments: its arguments.
+        env: environment variables to set beside the task's own.
+
+    Returns:
+        The program's exit code.
+    """
+    command = ctx.std.process.command(program).args(list(arguments))
+    for name, value in env.items():
+        command = command.env(name, value)
+    return command.current_dir(ctx.std.env.aspect_root_dir()).spawn().wait().code
+
+def output(ctx: TaskContext, program: str, arguments) -> str:
+    """Run a program in the repository root and return its stdout, failing the task on an error.
+
+    Args:
+        ctx: the running task's context.
+        program: the program to run, a path or a name on PATH.
+        arguments: its arguments.
+
+    Returns:
+        Its stdout, without surrounding whitespace.
+    """
+    result = (
+        ctx.std.process.command(program)
+            .args(list(arguments))
+            .current_dir(ctx.std.env.aspect_root_dir())
+            .stdout("piped")
+            .stderr("piped")
+            .spawn()
+            .wait_with_output()
+    )
+    if result.status.code != 0:
+        fail("{} {} failed:\n{}".format(program, " ".join(arguments), result.stderr))
+    return result.stdout.strip()
+
+def _built(ctx: TaskContext, target: str) -> str:
+    """The absolute path of a tool's executable in the root module, built once per task run."""
+    variable = _BUILT[target]
+    path = ctx.std.env.var(variable)
+    if path and ctx.std.fs.exists(path):
+        return path
+    output(ctx, "bazel", ["build", target])
+    path = ctx.std.env.aspect_root_dir() + "/" + output(ctx, "bazel", ["cquery", "--output=files", target])
+    ctx.std.env.set_var(variable, path)
+    return path
+
+def python(ctx: TaskContext, arguments) -> int:
+    """Run Bazel's Python in the repository root.
+
+    Args:
+        ctx: the running task's context.
+        arguments: the interpreter's arguments.
+
+    Returns:
+        Its exit code.
+    """
+    return run(ctx, _built(ctx, _PYTHON), arguments)
+
+def run_work(ctx: TaskContext, *names) -> int:
+    """Run pieces of the lanes' work by name.
+
+    Args:
+        ctx: the running task's context.
+        *names: the pieces, in order.
+
+    Returns:
+        The work's exit code.
+    """
+    return python(ctx, ["-m", "tools.ci.work", "run"] + list(names))
+
+def _work_impl(ctx: TaskContext) -> int:
+    return run_work(ctx, *ctx.args.names)
+
+work = task(
+    implementation = _work_impl,
+    summary = "Run pieces of the lanes' work by name, such as test:setup; none lists them.",
+    args = {
+        "names": args.positional(minimum = 0, maximum = 512, default = []),
+    },
+)
+
+def _lane_impl(ctx: TaskContext) -> int:
+    return python(ctx, ["-m", "tools.ci.work", "lane"] + ctx.args.lane)
+
+lane = task(
+    implementation = _lane_impl,
+    summary = "Run one CI lane's work on this host, as CI runs it.",
+    args = {
+        "lane": args.positional(minimum = 1, maximum = 1),
+    },
+)
+
+def _generate_impl(ctx: TaskContext) -> int:
+    flags = ["--check"] if ctx.args.check else []
+    return python(ctx, ["-m", "tools.generate.generate"] + flags + ctx.args.files)
+
+generate = task(
+    implementation = _generate_impl,
+    summary = "Regenerate the lock files; with files, those that depend on them.",
+    args = {
+        "check": args.boolean(default = False, description = "Fail instead of writing"),
+        "files": args.positional(minimum = 0, maximum = 512, default = []),
+    },
+)
+
+def _code_health_impl(ctx: TaskContext) -> int:
+    flags = []
+    if ctx.args.survey:
+        flags.append("--survey")
+    if ctx.args.staged:
+        flags.append("--staged")
+    if ctx.args.if_available:
+        flags.append("--if-available")
+
+    # tools/code_health finds the CLI through CODESCENE_CLI, which _built sets.
+    _built(ctx, _CODESCENE)
+    return python(ctx, ["-m", "tools.code_health.codescene"] + flags + ctx.args.options)
+
+code_health = task(
+    implementation = _code_health_impl,
+    summary = "Review the Code Health of the change since origin/main; fails when a file declines.",
+    args = {
+        "survey": args.boolean(default = False, description = "Report the whole checkout: hotspots and the lowest scores"),
+        "staged": args.boolean(default = False, description = "Review the staged changes only"),
+        "if_available": args.boolean(default = False, description = "Pass with a note without a CodeScene sign-in"),
+        "options": args.trailing_var_args(),
+    },
+)
+
+def _launcher(ctx: TaskContext) -> str:
+    """The Aspect CLI's launcher: the one bootstrap.sh placed, else the one on PATH."""
+    launcher = ctx.std.env.var("AUTOLOAD_ASPECT_LAUNCHER")
+    if launcher:
+        return launcher
+    return output(ctx, "sh", ["-c", "command -v aspect"])
+
+def _bootstrap_impl(ctx: TaskContext) -> int:
+    if ctx.args.hooks:
+        # The hooks name the launcher by its path, so a Git client with a short PATH runs them,
+        # and the worktree hooks find it in aspect.launcher. Git passes pre-push its stdin.
+        # Bazelisk lies beside the launcher, where bootstrap.sh places both.
+        launcher = _launcher(ctx)
+        aspect = 'PATH="{}:$PATH" "{}"'.format(launcher.rpartition("/")[0], launcher)
+        hooks = {
+            "pre-commit": aspect + " pre-commit",
+            "pre-push": "bash tools/pre_push_checkout.sh && " + aspect + " pre-push",
+        }
+        settings = [("aspect.launcher", launcher)]
+        for event, command in hooks.items():
+            settings += [("hook.aspect-{}.event".format(event), event), ("hook.aspect-{}.command".format(event), command)]
+        for key, value in settings:
+            if run(ctx, "git", ["config", key, value]) != 0:
+                return 1
+        for event, command in hooks.items():
+            print("Installed the {} hook: {}".format(event, command))
+    if ctx.args.android:
+        return run_work(ctx, "android:setup")
+    return 0
+
+bootstrap = task(
+    implementation = _bootstrap_impl,
+    summary = "Install the Git hooks and the pinned Android SDK and NDK packages.",
+    args = {
+        "hooks": args.boolean(default = True, description = "Install the Git hooks"),
+        "android": args.boolean(default = True, description = "Install the missing Android SDK packages"),
+    },
+)
+
+def _exec_impl(ctx: TaskContext):
+    command = ctx.args.command
+    if not command:
+        return TaskConclusion(exit_code = 2, text = "Name a command: aspect exec -- <command>...")
+
+    # The environment's `python3` is Bazel's, as for the lanes' work. The command runs in the
+    # current directory.
+    python_bin = _built(ctx, _PYTHON).rpartition("/")[0]
+    path = python_bin + ":" + (ctx.std.env.var("PATH") or "")
+
+    # Through a shell, which names a missing command instead of failing the task.
+    shell = ctx.std.process.command("sh").args(["-c", 'exec "$@"', "sh"] + command)
+    return shell.env("PATH", path).spawn().wait().code
+
+exec = task(
+    implementation = _exec_impl,
+    summary = "Run a command in the repository's environment: its Android variables and Bazel's Python.",
+    args = {
+        "command": args.trailing_var_args(),
+    },
+)

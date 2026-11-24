@@ -1,8 +1,8 @@
 """Check that repository provisioning covers the consuming Bazel modules."""
 
 import ast
+import json
 import sys
-import tomllib
 from pathlib import Path
 
 from tools.addons.modules import all_modules
@@ -17,6 +17,8 @@ from tools.setup.modules import (
 # Provisioning must cover the SDK and .bazelrc overrides of every module that builds
 # applications: the ruleset's development SDK and each consumer module's SDK.
 SDK = "android_sdk_repository_extension.configure"
+# The SDK packages the repository provisions: API levels, build tools and NDK.
+PINS = "tools/android/sdk.json"
 # Pins the Linux SDK and NDK of godot_android_toolchains for remote Linux executors.
 LINUX_TOOLCHAINS = f"{RULESET}/godot/platforms/private/android_toolchains.bzl"
 
@@ -82,9 +84,9 @@ def application_modules(root: Path) -> list[str]:
 
 
 def configuration_errors(root: Path) -> list[str]:
-    provisioned = tomllib.loads((root / "mise.toml").read_text())["vars"]
-    apis = provisioned["android_api_levels"].split(",")
-    build_tools = provisioned["android_build_tools"]
+    provisioned = json.loads((root / PINS).read_text())
+    apis = provisioned["api_levels"]
+    build_tools = provisioned["build_tools"]
     errors = []
 
     def check(location: str, key: str, required: str | int | None) -> None:
@@ -92,7 +94,7 @@ def configuration_errors(root: Path) -> list[str]:
         if str(required) not in available:
             errors.append(
                 f"{location}: Android {key} {required!r} is not provisioned by "
-                f"mise.toml ({', '.join(available)})"
+                f"{PINS} ({', '.join(available)})"
             )
 
     # A file several modules import, such as shared.bazelrc, is reported once.
@@ -120,15 +122,15 @@ def configuration_errors(root: Path) -> list[str]:
         errors.append(f"{LINUX_TOOLCHAINS}: {error}")
     else:
         check(LINUX_TOOLCHAINS, "build_tools_version", linux_build_tools)
-        if linux_ndk != provisioned["android_ndk_version"]:
+        if linux_ndk != provisioned["ndk"]:
             errors.append(
-                f"{LINUX_TOOLCHAINS}: Linux NDK {linux_ndk!r} differs from mise.toml "
-                f"({provisioned['android_ndk_version']})"
+                f"{LINUX_TOOLCHAINS}: Linux NDK {linux_ndk!r} differs from {PINS} "
+                f"({provisioned['ndk']})"
             )
         if sorted(linux_apis) != sorted(apis):
             errors.append(
                 f"{LINUX_TOOLCHAINS}: Linux api levels {sorted(linux_apis)} differ from "
-                f"mise.toml ({', '.join(apis)})"
+                f"{PINS} ({', '.join(apis)})"
             )
     return errors
 

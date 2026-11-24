@@ -7,6 +7,7 @@ from pathlib import Path
 
 from tools.android.requirements import (
     LINUX_TOOLCHAINS,
+    PINS,
     application_modules,
     configuration_errors,
 )
@@ -20,7 +21,8 @@ class RequirementsTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        for name in ("mise.toml", ".bazelignore", "shared.bazelrc", "buildbuddy.bazelrc"):
+        for name in (PINS, ".bazelignore", "shared.bazelrc", "buildbuddy.bazelrc"):
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
         # The settings the add-on modules' .bazelrc files import.
         (self.root / "addons").mkdir()
@@ -70,9 +72,9 @@ class RequirementsTest(unittest.TestCase):
 
     def test_detects_a_build_tools_bump_missing_from_a_consumer(self) -> None:
         self.replace(
-            "mise.toml",
-            'android_build_tools = "35.0.0"',
-            'android_build_tools = "99.0.0"',
+            PINS,
+            '"build_tools": "35.0.0"',
+            '"build_tools": "99.0.0"',
         )
         errors = configuration_errors(self.root)
         # Every module that builds applications, then the Linux toolchains.
@@ -82,9 +84,9 @@ class RequirementsTest(unittest.TestCase):
 
     def test_detects_an_ndk_bump_missing_from_the_linux_toolchains(self) -> None:
         self.replace(
-            "mise.toml",
-            'android_ndk_version = "29.0.14206865"',
-            'android_ndk_version = "30.0.1"',
+            PINS,
+            '"ndk": "29.0.14206865"',
+            '"ndk": "30.0.1"',
         )
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
@@ -92,7 +94,7 @@ class RequirementsTest(unittest.TestCase):
 
     def test_detects_an_api_level_missing_from_the_linux_sdk(self) -> None:
         self.replace(
-            "mise.toml", 'android_api_levels = "35,36"', 'android_api_levels = "35,36,37"'
+            PINS, '"api_levels": ["35", "36"]', '"api_levels": ["35", "36", "37"]'
         )
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)

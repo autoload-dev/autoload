@@ -1,12 +1,30 @@
-exports_files(
-    ["mise.toml"],
-    visibility = [
-        "//tools/android:__pkg__",
-        "//tools/ci:__pkg__",
-    ],
+# The Aspect CLI's tasks, which name pieces of the lanes' work.
+filegroup(
+    name = "aspect_tasks",
+    srcs = glob([".aspect/*.axl"]),
+    visibility = ["//tools/ci:__pkg__"],
 )
 
 exports_files(
-    ["hk.pkl"],
-    visibility = ["//tools/ci:__pkg__"],
+    [
+        ".bazelversion",
+        ".buildifier.json",
+        "pyproject.toml",
+        "ty.toml",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# The ruleset's registry metadata template, which the add-on generator's tests start from.
+filegroup(
+    name = "bcr_metadata",
+    srcs = [".bcr/rules_godot/metadata.template.json"],
+    visibility = ["//tools/addons:__pkg__"],
+)
+
+# The GitHub workflows and jactionlint's settings, which //tools/lint:workflows_test lints with.
+filegroup(
+    name = "workflows",
+    srcs = glob([".github/workflows/*.yml"]) + [".github/jactionlint.yaml"],
+    visibility = ["//tools/lint:__pkg__"],
 )

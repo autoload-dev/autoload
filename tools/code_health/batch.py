@@ -31,8 +31,8 @@ def cli_identity(cli: str, env: dict[str, str]) -> str | None:
     """
     What identifies the CLI's version for the cache, or None when nothing does.
 
-    The binary's path, size and modification time cost no process; a mise shim resolves to
-    mise itself, so for one the CLI is asked for its version.
+    The binary's path, size and modification time cost no process; a wrapper of another
+    name, such as a version manager's shim, is asked for its version instead.
     """
     binary = Path(cli).resolve()
     if binary.name == "cs":

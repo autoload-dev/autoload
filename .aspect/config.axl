@@ -1,0 +1,78 @@
+"""
+The Aspect CLI's configuration of this repository: the linters of `aspect lint` and the
+environment of every task, the Bazel commands and the tools they run.
+"""
+
+load("@aspect//feature/artifacts.axl", "ArtifactUpload")
+load("@aspect//feature/deployment.axl", "Deployment")
+load("@aspect//feature/github_lint_comments.axl", "GithubLintComments")
+load("@aspect//feature/github_status_checks.axl", "GithubStatusChecks")
+
+# The features of Aspect Workflows and its GitHub App, which this repository does not use:
+# without their credentials they only warn, and the deployment's lookup in the keychain fails
+# a task on a macOS runner without one.
+_UNUSED_FEATURES = [ArtifactUpload, Deployment, GithubLintComments, GithubStatusChecks]
+
+# The SDK packages the repository provisions (tools/android/sdk.json).
+_ANDROID_PINS = "tools/android/sdk.json"
+
+def _android_sdk_root(ctx: ConfigContext) -> str:
+    """The selected SDK: the one the environment names, else the platform's usual place."""
+    for name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if ctx.std.env.var(name):
+            return ctx.std.env.var(name)
+    home = ctx.std.env.home_dir()
+    if ctx.std.env.os() == "macos":
+        return home + "/Library/Android/sdk"
+    for directory in ("/usr/local/lib/android/sdk", "/opt/android-sdk"):
+        if ctx.std.fs.exists(directory):
+            return directory
+    return home + "/Android/Sdk"
+
+def _android_environment(ctx: ConfigContext):
+    """The Android variables of every task.
+
+    The selected SDK root stays available before its packages are installed, but ANDROID_HOME
+    stays empty until the SDK has the first pinned platform: rules_android accepts an empty one
+    for host-only builds, but rejects an SDK without platforms, even when building just a
+    formatter.
+    """
+    pins = json.decode(ctx.std.fs.read_to_string(ctx.std.env.aspect_root_dir() + "/" + _ANDROID_PINS))
+    root = _android_sdk_root(ctx)
+    platform = "{}/platforms/android-{}/android.jar".format(root, pins["api_levels"][0])
+    ndk = ctx.std.env.var("ANDROID_NDK_HOME") or "{}/ndk/{}".format(root, pins["ndk"])
+    return {
+        "ANDROID_SDK_ROOT": root,
+        "ANDROID_HOME": root if ctx.std.fs.exists(platform) else "",
+        "ANDROID_NDK_HOME": ndk,
+        "ANDROID_NDK_ROOT": ndk,
+        # The pinned build tools, which Android work such as inspect:mobile passes to its tools.
+        "ANDROID_BUILD_TOOLS": pins["build_tools"],
+    }
+
+def config(ctx: ConfigContext):
+    """Configure the Aspect CLI's tasks, features and environment for this repository.
+
+    Args:
+        ctx: the configuration's context, which the Aspect CLI passes.
+    """
+
+    # The root module's linters, which the ruleset and its documentation module reach as
+    # @autoload_dev too. Every finding fails a lint, as in CI, not only those on
+    # changed lines.
+    ctx.tasks["lint"].args.aspects = [
+        "@autoload_dev//tools/lint:linters.bzl%ruff",
+        "@autoload_dev//tools/lint:linters.bzl%ty",
+    ]
+    ctx.tasks["lint"].args.strategy = "hard"
+
+    # Linting needs only the sources: validations would build what the linted targets
+    # reach, such as the source-built engines that some tests' applications validate.
+    ctx.tasks["lint"].args.bazel_flags = ["--norun_validations"]
+
+    # The root module's formatter covers the whole tree, nested modules included.
+    ctx.tasks["format"].args.formatter_target = "//tools/format:format"
+    for feature in _UNUSED_FEATURES:
+        ctx.features[feature].enabled = False
+    for name, value in _android_environment(ctx).items():
+        ctx.std.env.set_var(name, value)

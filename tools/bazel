@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Bazelisk runs this script in place of Bazel in this repository's modules and passes the
 # Bazel binary as BAZEL_REAL. RULES_GODOT_BAZEL_FLAGS, whitespace-separated Bazel flags, are
-# added after the command name of every command that reads build options, so mise tasks, hk
+# added after the command name of every command that reads build options, so Aspect tasks
 # and the build tools that run Bazel use them per invocation, as with
-# `RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run <task>`. Flags on the command line come
-# after them and win. Without the variable, this script only runs Bazel.
+# `RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>`. Flags on the command
+# line come after them and win. Without the variable, this script only runs Bazel.
 #
 # Bazelisk also puts this directory first on PATH, so Bazel commands that build tools run in
 # other workspaces, such as a generated consumer, reach this script as well. Those workspaces
@@ -24,7 +24,10 @@ while [[ -n "$workspace" ]]; do
     workspace="${workspace%/*}"
 done
 
-if [[ ${#flags[@]} -gt 0 && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]]; then
+# Only a workspace whose own tools/bazel is this script defines this repository's configs.
+[[ -n "$workspace" && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]] || exec "$BAZEL_REAL" "$@"
+
+if [[ ${#flags[@]} -gt 0 ]]; then
     # The command is the first argument that is not a startup option.
     for index in "${!arguments[@]}"; do
         if [[ "${arguments[$index]}" != -* ]]; then
@@ -40,5 +43,20 @@ if [[ ${#flags[@]} -gt 0 && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]];
             break
         fi
     done
+fi
+
+# A worktree that leased a Bazel slot (AGENTS.md, "Worktrees") keeps each module's output base
+# in that slot. .bazel-slot at the worktree root, the nearest directory with a .git, names each
+# module's base; a startup option on the command line wins.
+root="$workspace"
+until [[ -e "$root/.git" || -z "$root" ]]; do root="${root%/*}"; done
+if [[ -n "$root" && -f "$root/.bazel-slot" && " ${arguments[*]} " != *" --output_base="* ]]; then
+    module="${workspace#"$root"}"
+    module="${module#/}"
+    while read -r name base; do
+        # An output base is named by 32 hexadecimal digits, never the output user root itself.
+        [[ "$name" == "${module:-.}" && "${base##*/}" =~ ^[0-9a-f]{32}$ ]] &&
+            arguments=("--output_base=$base" "${arguments[@]}") && break
+    done <"$root/.bazel-slot"
 fi
 exec "$BAZEL_REAL" "${arguments[@]}"

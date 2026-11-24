@@ -1,13 +1,10 @@
 """Tests of the Firebase configuration generator."""
 
 import json
-import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import google_services
 

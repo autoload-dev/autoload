@@ -13,8 +13,8 @@ load("//godot/private:repository_templates.bzl", "fill_template", "starlark_dict
 
 visibility(["//godot", "//godot/platforms/private/tests"])
 
-# The Android versions mise.toml pins as android_build_tools, android_api_levels and
-# android_ndk_version, from Google's SDK repository (repository2-3.xml).
+# The Android versions tools/android/sdk.json pins as build_tools, api_levels and ndk,
+# from Google's SDK repository (repository2-3.xml).
 _REPOSITORY = "https://dl.google.com/android/repository/"
 _LINUX_BUILD_TOOLS = struct(
     version = "35.0.0",

@@ -1,17 +1,16 @@
 load("@aspect_rules_lint//format:defs.bzl", "format_multirun")
 
-# Formats only: Buildifier's lint, which .buildifier.json turns on, is //tools/lint's job.
+# Every module's Python and Starlark, through `aspect format`. Buildifier lints Starlark as it
+# formats, with the warnings .buildifier.json selects; a warning fails the check and the fix
+# alike. No lint aspect sees BUILD and MODULE.bazel files.
 format_multirun(
     name = "format",
     python = "@aspect_rules_lint//format:ruff",
     starlark = "@buildifier_prebuilt//:buildifier",
-    starlark_check_args = [
-        "-mode=check",
-        "-lint=off",
-    ],
+    starlark_check_args = ["-mode=check"],
     starlark_fix_args = [
         "-mode=fix",
-        "-lint=off",
+        "-lint=warn",
     ],
     tags = ["manual"],
 )

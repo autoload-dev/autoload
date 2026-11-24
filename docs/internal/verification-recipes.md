@@ -14,36 +14,45 @@ The [verification policy](verification.md) determines when evidence is needed, a
 
 ## Toolchains
 
-Repository tools and their versions are declared in [mise.toml](../../mise.toml) and
-[mise.lock](../../mise.lock). Activate mise in your shell or prefix direct commands with
-`mise exec --`. Bazel actions continue to use their declared toolchains. Native C/C++
+A checkout needs only Bazelisk (`bazel`) and the Aspect CLI (`aspect`). Bazelisk runs the Bazel
+of [.bazelversion](../../.bazelversion), the launcher the Aspect CLI of
+[.aspect/version.axl](../../.aspect/version.axl). Prebuilt tools (jactionlint, the CodeScene
+CLI, Node, Android's sdkmanager) are pinned in [multitool.lock.json](../../multitool.lock.json)
+and come through Bazel; Python tools run with Bazel's rules_python interpreter; Java for the
+Android SDK tools is Bazel's remote JDK 21 unless `JAVA_HOME` is set. The Android SDK pins
+(API levels, build tools, NDK) are in [tools/android/sdk.json](../../tools/android/sdk.json).
+`aspect help` lists the tasks. Prefix direct commands that need the repository environment
+with `aspect exec --`: it sets the Android variables
+([.aspect/config.axl](../../.aspect/config.axl)) and puts Bazel's Python on the path as
+`python3`. Bazel actions continue to use their declared toolchains. Native C/C++
 compilers remain host prerequisites; source-engine and iOS checks need macOS and Xcode.
 
-For a complete development environment in a new clone/worktree:
+For a complete development environment in a fresh clone, run:
 
 ```sh
-mise trust
-mise bootstrap --only tools,task
+./bootstrap.sh
 ```
 
-This prepares pinned tools, hooks and missing Android SDK/NDK components. It reuses SDK
-components outside the checkout across worktrees; set `ANDROID_HOME` or `ANDROID_NDK_HOME`
-before setup for a nonstandard installation. `--only tools,task` excludes unrelated machine
-provisioning from global mise configuration. The versioned
-[Codex local environment](../../.codex/environments/environment.toml) uses the same bootstrap.
+It places the pinned Bazelisk and Aspect launcher in `~/.local/bin` (or `BIN_DIR`), verified
+by their releases' checksums, and names what is missing from the host or PATH. It then runs
+`aspect bootstrap`, which installs the pre-commit and pre-push hooks and the missing Android
+SDK/NDK components. It reuses SDK components outside the checkout across worktrees; set
+`ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
+`--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
+tools, as CI does. A new worktree needs none of it again; how worktrees reuse Bazel's state
+is in [AGENTS.md](../../AGENTS.md#worktrees).
 Bootstrap is safe to repeat but is not a required step before each check.
 
-For work that does not need Android, use mise's task environment and `mise run setup` for
-just the hooks. Android tasks prepare their own prerequisites through `android:setup`;
-`mise run android:setup` prepares only the Android environment. Java, SDK manager, Node and
+For work that does not need Android, `aspect bootstrap --android=false` installs just the
+hooks. Android tasks prepare their own prerequisites through `android:setup`;
+`aspect work android:setup` prepares only the Android environment. Java, SDK manager, Node and
 workflow-lint tools are installed when their owning tasks require them. `test:setup` checks
-provisioning declarations and mise environment behavior without installing SDK components.
+provisioning declarations without installing SDK components.
 
 The pre-push hook verifies the working tree matches the pushed commit
-before its quick checks. CI uses the same tasks through the shared
-[setup action](../../.github/actions/setup/action.yml). Its plan-only mode installs the
-pinned base tools without mounting Bazel caches or starting the Bazel server inventory/cleanup;
-the build workflow jobs enable those steps, and the cleanup finds the modules they built in. Android
+before running `aspect pre-push`. CI uses the same tasks through the shared
+[setup action](../../.github/actions/setup/action.yml), which installs the pinned Bazelisk and
+Aspect launcher and configures Bazel's repository cache. Android
 workflow jobs reuse cached missing SDK components; host-only ones do not install Java or
 Android SDKs. CI logs Xcode/SDK versions on its macOS jobs; compare with `xcodebuild -version` locally when CI runner
 equivalence matters. GitHub's runner images can change.
@@ -62,7 +71,7 @@ the critical path and action timings. Keep these files only for the investigatio
 
 ## API documentation
 
-For API source changes, run the `docs` work, `mise run ci:work -- docs`: it checks the
+For API source changes, run the `docs` work, `aspect work docs`: it checks the
 inventory, the docstrings and the contracts the registry's documentation relies on. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
@@ -110,15 +119,15 @@ Xcode compiles, local, so Apple-heavy work gains less.
 When unsure, try it and compare: Bazel's summary line shows how many actions ran `remote`
 and the critical path, and the invocation page shows where the time went.
 
-To use Bazel flags for one task, set `RULES_GODOT_BAZEL_FLAGS` to whitespace-separated flags.
-[tools/bazel](../../tools/bazel), which Bazelisk runs in place of Bazel in every module, adds
-them to every command that reads build options, including those of hk and of the build tools
-under `tools/`; the command's own flags win. A Bazel binary started without Bazelisk ignores
-the variable.
+To use Bazel flags for one task, set `RULES_GODOT_BAZEL_FLAGS` to whitespace-separated
+flags. [tools/bazel](../../tools/bazel), which Bazelisk runs in place of Bazel in every
+module, adds them to every command that reads build options, including those of `aspect`
+tasks and of the build tools under `tools/`; the command's own flags win. A Bazel binary
+started without Bazelisk ignores the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy mise run ci:work -- test:bazel
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux mise exec -- bazel test //...
+RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work test:bazel
+RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
 ```
 
 Some work needs this host as execution platform even under a remote config: the formatters
@@ -131,7 +140,7 @@ executors: their `android-toolchains` config registers the toolchains of
 [`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
 [android_toolchains.bzl](../../rules_godot/godot/platforms/private/android_toolchains.bzl) follow the
-Android versions of [mise.toml](../../mise.toml), which `test:setup` checks.
+Android versions of [sdk.json](../../tools/android/sdk.json), which `test:setup` checks.
 
 For settings on every invocation, such as `common --config=buildbuddy`, create
 `user.bazelrc` at the repository root. Every module imports it, and git ignores it.
@@ -232,7 +241,7 @@ bazel test //tests/...
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
-`bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
+`aspect exec -- bazel test //smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
 or `bazel test //:ios_official --config=official`.
 
 ### Source-built engine applications
@@ -266,8 +275,8 @@ From `rules_godot/`, with the Android SDK and NDK installed:
 bazel query 'attr(tags, "\bsource_engine\b", tests(//godot/...))' | xargs bazel test
 ```
 
-`mise run ci:work -- source-engine:full` runs this command, the `patched_engine` tests above and
-Petri's suite; `mise run ci:work -- source-engine` runs a quicker subset
+`aspect work source-engine:full` runs this command, the `patched_engine` tests above and
+Petri's suite; `aspect work source-engine` runs a quicker subset
 ([which cases, and where CI runs them](verification-platforms.md#source-engine-workflow)).
 
 
@@ -311,7 +320,7 @@ configuration; from `tests/`, test a suite with `--config` set to its configurat
 
 ```sh
 cd rules_godot/tests
-bazel test //:android_aab --config=android --config=aab
+aspect exec -- bazel test //:android_aab --config=android --config=aab
 bazel test //:ios_official --config=official
 ```
 
@@ -325,10 +334,10 @@ of the smoke applications, build them, then return to the root to inspect them:
 
 ```sh
 cd rules_godot/tests
-bazel build //smoke/android:app --config=android
+aspect exec -- bazel build //smoke/android:app --config=android
 bazel build //smoke/ios:app --config=official
 cd ../..
-mise run ci:work -- inspect:mobile
+aspect work inspect:mobile
 ```
 
 The inspector resolves each artifact with its own Bazel configuration through
@@ -341,7 +350,8 @@ input of the action that must rerun, an unrelated one is not, and a configuratio
 not matter leaves actions unchanged. They are the `*_inputs_tests.bzl` and
 `configuration_invariance_tests.bzl` suites of `godot/private/tests`,
 `godot/platforms/private/tests`, `godot/extension/tests` and `godot/engine/private/tests`,
-and run with `mise run ci:work -- test:bazel`. `//godot/private/tests:import_and_pack_outputs_are_reproducible_test`
-imports and exports a project twice and compares the bytes. For the actions one change
-actually ran, compare the execution logs of two invocations as the
-[verification policy](verification.md#selecting-tests-and-reviewing-changes) describes.
+and run with `aspect work test:bazel`.
+`//godot/private/tests:import_and_pack_outputs_are_reproducible_test` imports and exports a
+project twice and compares the bytes. For the actions one change actually ran, compare the
+execution logs of two invocations as the [verification
+policy](verification.md#selecting-tests-and-reviewing-changes) describes.

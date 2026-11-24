@@ -4,22 +4,24 @@ By default it reviews the change: the files changed since the merge base with --
 (origin/main), untracked ones included, scored at both ends. Per file it prints the score
 before and after and each new finding with its function and lines, and it exits with 1
 when a file declines (change.py). --staged reviews only what is staged against HEAD, as the
-pre-commit hook does. --only reviews just the given files against the merge base and also
+pre-commit hook (`aspect pre-commit`) does. --only reviews just the given files against the merge base and also
 lists the findings they had before. --survey reports the whole checkout instead: languages,
 hotspots and the lowest scores (survey.py).
 
 Starlark and GDScript are scored as translated Python (translation.py); the scanner, its
 rules and its requirements are described in scan.py.
 
-Usage (from the repository root):
+Usage (from the repository root), through `aspect code-health -- <options>`, which provides the
+CLI and Bazel's Python:
     python3 -m tools.code_health.codescene [REPO] [--base origin/main] [--staged]
         [--only PATH ...]
         [--survey [--top 20] [--since 6.months]] [--json out.json]
         [--include-build-files] [--exclude GLOB ...] [--rules code-health-rules.json]
         [--keep-macro-arguments] [--if-available]
 
---if-available lets the Git hooks (hk.pkl) pass with a note on a machine without the
-CodeScene CLI or a sign-in, instead of blocking every commit and push there.
+--if-available lets the Git hooks (`aspect pre-commit`, `aspect pre-push`) pass with a note on a
+machine without the CodeScene CLI or a sign-in, instead of blocking every commit and push
+there.
 """
 
 from __future__ import annotations

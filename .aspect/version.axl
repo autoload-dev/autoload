@@ -1,0 +1,3 @@
+"""The Aspect CLI this repository runs, which ./bootstrap.sh reads too."""
+
+version("2026.47.12")

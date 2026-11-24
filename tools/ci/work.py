@@ -2,9 +2,8 @@
 The repository's verification work: what each lane runs, where and how.
 
 Each piece of work is a few shell commands, each run in a module directory.
-`python3 -m tools.ci.work lane <lane>` (`mise run ci:lane -- <lane>`) runs a lane on this
-host, as each of CI's jobs does; `python3 -m tools.ci.work run <name>...`
-(`mise run ci:work -- <name>...`) runs single pieces.
+`aspect lane <lane>` runs a lane on this host, as each of CI's jobs does; `aspect work
+<name>...` runs single pieces. Both run this module with Bazel's Python (.aspect/work.axl).
 
 The add-on modules' work comes from their addon.pkl: the same generic commands for each
 module (tools/addons/lanes.py), and the add-on generator's self-test in every lane. The
@@ -12,8 +11,10 @@ source-engine lane runs in its own scheduled workflow, the others in CI.
 """
 
 import argparse
+import os
 import shlex
 import subprocess
+import sys
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,7 +22,7 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.setup.modules import RULESET, RULESET_DOCS
+from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
@@ -86,6 +87,21 @@ DOCS_CHECK = "bazel run //tools/docs:check"
 PETRI_TESTS = example_tests("petri", "projects", config="petri")
 
 
+def every_module(command: str, root: Path = ROOT) -> tuple[In, ...]:
+    """A command for each module of the checkout, as the setup checks discover them."""
+    return tuple(In(module, command) for module in module_paths(root))
+
+
+# A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
+# main repository's sources; the query spares `aspect lint` analysing every other target,
+# such as the Android and iOS applications. Targets incompatible with this host are skipped.
+LINT_COMMAND = (
+    "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
+    ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
+    " --skip_incompatible_explicit_targets; }"
+)
+
+
 def contracts_command(lane: str) -> str:
     """The command that checks the API output contract cases of a lane."""
     return f"bazel run //tools/docs:contracts -- --lane {lane}"
@@ -103,7 +119,7 @@ def contracts(lane: str) -> Work:
 
 
 SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-# The fast tests of a module, which the pre-push hook runs: the unit tests by their size,
+# The fast tests of a module, which `aspect pre-push` runs: the unit tests by their size,
 # the analysis tests by rules_testing's tag, and the few smoke tests
 # (docs/internal/verification-architecture.md, "Test size").
 FAST_TESTS = (
@@ -146,19 +162,21 @@ def apps(packages: Iterable[str], symbols: bool = False) -> str:
 # The repository's own work, in the order a lane runs it. A piece without a lane runs only
 # when named.
 WORK = (
-    Work(
-        "format",
-        "quality",
-        ".",
-        ("bazel run --config=host-execution //tools/format:format.check",),
-    ),
-    Work("lint", "quality", ".", ("bazel run --config=host-execution //tools/lint",)),
+    # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
+    Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
+    # The lint aspects in every module; the workflows' lint is a test.
+    Work("lint", "quality", ".", every_module(LINT_COMMAND)),
     # The setup action's shutdown of Bazel, which runs no Bazel itself.
     Work(
         "test:actions",
         "quality",
         ".",
-        ("mise exec node -- node --test .github/actions/setup/stop-bazel/post.test.js",),
+        (
+            (
+                "bazel run @multitool//tools/node:cwd --"
+                " --test .github/actions/setup/stop-bazel/post.test.js"
+            ),
+        ),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     # The generated files: lock files and the source-built engines' pins.
@@ -170,11 +188,6 @@ WORK = (
         (
             "python3 -m tools.android.requirements",
             "python3 -m tools.setup.pins",
-            (
-                "python3 -m unittest tools.android.mise_test tools.android.requirements_test"
-                " tools.setup.modules_test tools.setup.pins_test tools.addons.new_test"
-                " tools.addons.lanes_test"
-            ),
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
@@ -327,7 +340,8 @@ WORK = (
             (
                 "bazel run //tools/platforms:validate_artifacts --"
                 ' --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME"'
-                ' --java "$JAVA_HOME/bin/java" --build-tools "$ANDROID_BUILD_TOOLS"'
+                ' --java "${JAVA_HOME:-$(python3 ../tools/android/java.py)}/bin/java"'
+                ' --build-tools "$ANDROID_BUILD_TOOLS"'
             ),
         ),
         android=True,
@@ -394,18 +408,24 @@ def runs_on(work: Work, host: str) -> bool:
 
 def argv(work: Work, command: str) -> list[str]:
     """
-    The process that runs one command of a piece of work: in mise's environment, with the
-    work's own variables, which mise's would otherwise override. Android work runs with the
-    pinned Java and the provisioned SDK as ANDROID_HOME, which mise's environment keeps empty
-    while the SDK lacks the pinned platform.
+    The process that runs one command of a piece of work, with the work's own variables.
+    Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect CLI's
+    environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
     """
     exports = [f"export {name}={shlex.quote(value)}" for name, value in work.env]
-    tools = []
     if work.android:
-        tools = ["java"]
         exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
     script = "; ".join([*exports, command])
-    return ["mise", "exec", *tools, "--", "bash", "-eo", "pipefail", "-c", script]
+    return ["bash", "-eo", "pipefail", "-c", script]
+
+
+def environment() -> dict[str, str]:
+    """
+    The work's environment: this process's, with this Python first on PATH, so the work's
+    `python3` is the interpreter that runs this module, Bazel's when the Aspect CLI runs it.
+    """
+    path = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("PATH", "")])
+    return {**os.environ, "PATH": path}
 
 
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
@@ -417,6 +437,12 @@ def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
     return names
 
 
+def require_android_environment(work: list[Work], env: dict[str, str]) -> None:
+    """Android work needs the SDK the Aspect CLI selects (.aspect/config.axl)."""
+    if any(piece.android for piece in work) and not env.get("ANDROID_SDK_ROOT"):
+        raise ValueError("Android work needs the Android environment: run `aspect work`")
+
+
 def run(
     names: Iterable[str], root: Path = ROOT, known: dict[str, Work] | None = None
 ) -> None:
@@ -426,14 +452,17 @@ def run(
     """
     known = known or all_work(root)
     here = host()
-    for name in with_setup(list(names), known):
+    env = environment()
+    names = with_setup(list(names), known)
+    require_android_environment([known[name] for name in names], env)
+    for name in names:
         work = known[name]
         if not runs_on(work, here):
             print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)
             continue
         for directory, command in work.steps():
             print(f"[{name}] {directory}$ {command}", flush=True)
-            subprocess.run(argv(work, command), cwd=root / directory, check=True)
+            subprocess.run(argv(work, command), cwd=root / directory, env=env, check=True)
 
 
 def run_lane(lane: str, root: Path = ROOT) -> None:

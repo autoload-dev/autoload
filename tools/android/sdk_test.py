@@ -20,6 +20,8 @@ class AndroidToolchainTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         os.environ["ANDROID_HOME"] = str(self.root)
+        # A Java of the host; without one, sdkmanager's comes from Bazel (java.py).
+        os.environ["JAVA_HOME"] = "/java"
         self.patch = mock.patch.object(toolchain.platform, "system", return_value="Linux")
         self.patch.start()
         self.addCleanup(self.patch.stop)
@@ -167,11 +169,7 @@ class AndroidToolchainTest(unittest.TestCase):
         self.assertEqual(
             run.call_args.args[0],
             [
-                "mise",
-                "exec",
-                "http:android-commandlinetools",
-                "--",
-                "sdkmanager",
+                *toolchain.MANAGED_SDKMANAGER,
                 "--sdk_root=" + str(self.root),
                 "--install",
                 "ndk;29.0.14206865",
@@ -237,11 +235,21 @@ class AndroidToolchainTest(unittest.TestCase):
 
     def test_existing_sdk_manager_is_preferred_over_the_managed_fallback(self) -> None:
         installed = self.write("cmdline-tools/latest/bin/sdkmanager")
-        managed = self.write("mise/bin/sdkmanager")
+        managed = self.write("managed/bin/sdkmanager")
         installed.chmod(0o755)
         managed.chmod(0o755)
         with mock.patch.object(toolchain.shutil, "which", return_value=str(managed)):
             self.assertEqual(toolchain.find_sdkmanager(self.root), str(installed))
+
+    def test_manager_gets_bazels_java_without_a_host_java(self) -> None:
+        del os.environ["JAVA_HOME"]
+        java = mock.Mock(stdout="/bazel/jdk\n")
+        with mock.patch.object(toolchain.subprocess, "run", return_value=java) as run:
+            environment = toolchain.manager_environment()
+        self.assertEqual(environment["JAVA_HOME"], "/bazel/jdk")
+        self.assertEqual(run.call_args.args[0][1], str(toolchain.JAVA))
+        os.environ["JAVA_HOME"] = "/host/jdk"
+        self.assertEqual(toolchain.manager_environment()["JAVA_HOME"], "/host/jdk")
 
 
 if __name__ == "__main__":

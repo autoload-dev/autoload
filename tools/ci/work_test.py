@@ -1,8 +1,9 @@
 """The lanes' work: the repository's own, the add-on modules' from their addon.pkl."""
 
+import os
 import re
+import sys
 import tempfile
-import tomllib
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -19,12 +20,11 @@ from tools.ci.work import (
     addon_work,
     all_work,
     argv,
+    environment,
     lanes,
     run,
     runs_on,
 )
-
-WORK_RUN = "python3 -m tools.ci.work run "
 
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
@@ -95,14 +95,11 @@ class WorkTest(unittest.TestCase):
         anywhere = next(addon_work(self.root / "other"))
         self.assertEqual((anywhere.name, anywhere.hosts), ("desktop:addon:anywhere", ()))
 
-    def test_commands_run_in_mise_with_their_own_variables(self) -> None:
+    def test_commands_run_with_their_own_variables(self) -> None:
         plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))
         self.assertEqual(
             argv(plain, "bazel test //..."),
             [
-                "mise",
-                "exec",
-                "--",
                 "bash",
                 "-eo",
                 "pipefail",
@@ -112,8 +109,11 @@ class WorkTest(unittest.TestCase):
         )
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
-        self.assertEqual(process[:4], ["mise", "exec", "java", "--"])
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
+
+    def test_work_runs_python_with_this_interpreter(self) -> None:
+        first = environment()["PATH"].split(os.pathsep)[0]
+        self.assertEqual(Path(first), Path(sys.executable).parent)
 
     def test_a_command_may_run_in_its_own_directory(self) -> None:
         work = Work(
@@ -142,7 +142,15 @@ class WorkTest(unittest.TestCase):
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):
             run(["lint", "nothing"], self.root)
-        with mock.patch("subprocess.run") as process:
+        with (
+            mock.patch.dict(os.environ, {"ANDROID_SDK_ROOT": ""}),
+            self.assertRaisesRegex(ValueError, "needs the Android environment"),
+        ):
+            run(["android:addon:gadget"], self.root)
+        with (
+            mock.patch.dict(os.environ, {"ANDROID_SDK_ROOT": "/sdk"}),
+            mock.patch("subprocess.run") as process,
+        ):
             run(["android:addon:gadget"], self.root)
         commands = [call.args[0][-1] for call in process.call_args_list]
         self.assertTrue(commands[0].endswith("python3 -m tools.android.requirements"))
@@ -153,20 +161,13 @@ class WorkTest(unittest.TestCase):
 
 
 class CallersTest(unittest.TestCase):
-    def test_hk_and_mise_run_work_that_exists(self) -> None:
-        """hk.pkl's steps and mise.toml's tasks name work; a renamed piece fails here."""
-        hk = (ROOT / "hk.pkl").read_text()
-        names = set(re.findall(r'task\("([^"]+)"\)', hk))
-        tasks = tomllib.loads((ROOT / "mise.toml").read_text())["tasks"]
-        for task in tasks.values():
-            run = task.get("run")
-            if isinstance(run, str) and run.startswith(WORK_RUN):
-                names.update(
-                    name
-                    for name in run.removeprefix(WORK_RUN).split()
-                    if not name.startswith("$")
-                )
-        self.assertLessEqual({"lint", "test:setup", "test:bazel"}, names)
+    def test_aspect_tasks_run_work_that_exists(self) -> None:
+        """The Aspect tasks name work; a renamed piece fails here."""
+        names = set()
+        for task in (ROOT / ".aspect").glob("*.axl"):
+            for call in re.findall(r"run_work\(ctx, ([^)]*)\)", task.read_text()):
+                names.update(re.findall(r'"([^"]+)"', call))
+        self.assertLessEqual({"test:setup", "test:fast", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
 

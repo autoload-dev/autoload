@@ -128,7 +128,10 @@ py_test(
     name = "evidence_test",
     size = "small",
     srcs = ["evidence_test.py"],
-    deps = [":evidence_lib"],
+    deps = [
+        ":evidence_lib",
+        "@autoload_dev//tools/conventions:context_lib",
+    ],
 )
 
 py_library(
@@ -150,7 +153,10 @@ py_binary(
     name = "contracts",
     srcs = ["contracts.py"],
     tags = ["manual"],
-    deps = [":contracts_lib"],
+    deps = [
+        ":contracts_lib",
+        "@autoload_dev//tools/conventions:context_lib",
+    ],
 )
 
 py_test(

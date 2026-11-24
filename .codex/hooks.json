@@ -22,6 +22,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -x \"$root/tools/codex/worktree.sh\" ] || exit 0; exec \"$root/tools/codex/worktree.sh\" session-end'",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -32,6 +42,16 @@
             "type": "command",
             "command": "sh -c 'if ! command -v entire >/dev/null 2>&1; then printf \"%s\\n\" \"{\\\"systemMessage\\\":\\\"Entire CLI is enabled but not installed or not on PATH. Installation guide: https://docs.entire.io/cli/installation#installation-methods\\\"}\"; exit 0; fi; if ! entire --version </dev/null >/dev/null 2>&1; then printf \"%s\\n\" \"{\\\"systemMessage\\\":\\\"Entire CLI is enabled, but the entire command on PATH failed to run, so this session may not be captured. Check that entire --version works in this shell. Installation guide: https://docs.entire.io/cli/installation#installation-methods\\\"}\"; exit 0; fi; exec entire hooks codex session-start'",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -x \"$root/tools/codex/worktree.sh\" ] || exit 0; exec \"$root/tools/codex/worktree.sh\" session-start'",
+            "timeout": 60
           }
         ]
       }
