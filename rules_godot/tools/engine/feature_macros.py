@@ -46,7 +46,7 @@ _PASTE = re.compile(r"(\w*)\s*##\s*(\w*)")
 _STRING_TOKENS = {
     tokenize.STRING,
     tokenize.FSTRING_MIDDLE,
-    getattr(tokenize, "TSTRING_MIDDLE", tokenize.FSTRING_MIDDLE),
+    tokenize.TSTRING_MIDDLE,
 }
 
 
@@ -197,8 +197,8 @@ class _Macros:
     that pastes. Definitions of one name in different files count together.
     """
 
-    def __init__(self, texts: Iterable[str]) -> None:
-        self.definitions = [define for text in texts for define in _defines(text)]
+    def __init__(self, defines: Iterable[Iterable[_Define]]) -> None:
+        self.definitions = [define for file in defines for define in file]
         self.pasting = {
             define.name for define in self.definitions if define.pastes_parameter()
         }
@@ -209,13 +209,19 @@ class _Macros:
         }:
             self.pasting |= forwarding
 
-    def pasted_words(self, text: str) -> set[str]:
-        """Return the literal operands of ## and the arguments of pasting macros."""
-        words = {operand for define in _defines(text) for operand in define.operands}
-        for match in _INVOCATION.finditer(text):
-            if match.group(1) in self.pasting:
-                words.update(_WORD.findall(_arguments(text, match.end() - 1)))
-        return words
+    def pasted_words(
+        self, text: str, words: Collection[str], defines: Iterable[_Define]
+    ) -> set[str]:
+        """
+        Return the literal operands of a file's ## and the arguments it gives pasting
+        macros, given its words and macro definitions.
+        """
+        pasted = {operand for define in defines for operand in define.operands}
+        if not self.pasting.isdisjoint(words):
+            for match in _INVOCATION.finditer(text):
+                if match.group(1) in self.pasting:
+                    pasted.update(_WORD.findall(_arguments(text, match.end() - 1)))
+        return pasted
 
     def expansions(self, relevant: Collection[str]) -> dict[str, frozenset[str]]:
         """Return each macro mapped to the relevant words its expansion can contain."""
@@ -248,15 +254,16 @@ class FeatureMacroScan:
         )
         self.folded_pieces = frozenset(piece.casefold() for piece in self.pieces)
         files = self._file_reads(root, graph, generated) if self.names else {}
-        self.reads = self._closures(graph, files)
+        # What each file and every file it includes can read.
+        self.reads = _transitive(graph, files, _NOTHING)
+        self._groups: dict[tuple[str, ...], tuple[dict[str, str], _Reads]] = {}
 
     def copts(self, source: str, copts: Sequence[str]) -> list[str]:
         """Return a source's options without the feature macros it cannot read."""
-        options = feature_options(copts)
+        options, option_reads = self._group(copts)
         if not options:
             return list(copts)
-        words = _option_words(copts)
-        reads = self.reads.get(source, _NOTHING) | self._reads(words, words)
+        reads = self.reads.get(source, _NOTHING) | option_reads
         kept = {
             name
             for name in options.values()
@@ -266,22 +273,29 @@ class FeatureMacroScan:
             option for option in copts if option not in options or options[option] in kept
         ]
 
+    def _group(self, copts: Sequence[str]) -> tuple[dict[str, str], _Reads]:
+        """Return a compile group's feature options and what its -D values read."""
+        key = tuple(copts)
+        if key not in self._groups:
+            words = _option_words(copts)
+            self._groups[key] = (feature_options(copts), self._reads(words, words))
+        return self._groups[key]
+
     def _reads(
-        self,
-        words: Iterable[str],
-        fragments: Iterable[str],
-        folded_words: Iterable[str] = (),
-        folded_fragments: Iterable[str] = (),
+        self, words: Iterable[str], fragments: Iterable[str], *, fold: bool = False
     ) -> _Reads:
-        """
-        Return what words and fragments read of the names; folded ones match without case.
-        """
-        folded = {word.casefold() for word in folded_words}
+        """Return what words and fragments read of the names, without case if folded."""
+        if not fold:
+            return _Reads(
+                self.names.intersection(words),
+                self.pieces.intersection(fragments),
+                frozenset(),
+            )
+        folded = {word.casefold() for word in words}
         return _Reads(
-            self.names.intersection(words)
-            | frozenset(name for name in self.names if name.casefold() in folded),
-            self.pieces.intersection(fragments),
-            self.folded_pieces.intersection(word.casefold() for word in folded_fragments),
+            frozenset(name for name in self.names if name.casefold() in folded),
+            frozenset(),
+            self.folded_pieces.intersection(word.casefold() for word in fragments),
         )
 
     def _file_reads(
@@ -291,32 +305,22 @@ class FeatureMacroScan:
         generated: Mapping[str, Generated],
     ) -> dict[str, _Reads]:
         texts = {path: _read_text(root / path) for path in graph if path not in generated}
-        macros = _Macros(texts.values())
+        defines = {path: list(_defines(text)) for path, text in texts.items()}
+        macros = _Macros(defines.values())
         expansions = macros.expansions(self.pieces)
-        reads = {
-            path: self._source_reads(text, macros, expansions)
-            for path, text in texts.items()
-        }
+        reads: dict[str, _Reads] = {}
+        for path, text in texts.items():
+            words = set(_WORD.findall(text))
+            pasted = macros.pasted_words(text, words, defines[path])
+            fragments = pasted.union(
+                *(expansions[word] for word in pasted if word in expansions)
+            )
+            reads[path] = self._reads(words, fragments)
         for path in graph:
             if path in generated:
                 words, fragments = _generator_words(root, path, generated)
-                reads[path] = self._reads((), (), words, fragments)
+                reads[path] = self._reads(words, fragments, fold=True)
         return reads
-
-    def _source_reads(
-        self, text: str, macros: _Macros, expansions: Mapping[str, frozenset[str]]
-    ) -> _Reads:
-        pasted = macros.pasted_words(text)
-        fragments = pasted.union(
-            *(expansions[word] for word in pasted if word in expansions)
-        )
-        return self._reads(_WORD.findall(text), fragments)
-
-    def _closures(
-        self, graph: Mapping[str, Collection[str]], files: Mapping[str, _Reads]
-    ) -> dict[str, _Reads]:
-        """Return each file mapped to what it and every file it includes can read."""
-        return _transitive(graph, files, _NOTHING)
 
 
 def _generator_words(
@@ -337,12 +341,12 @@ def _generator_words(
     words = _words(generator.code + generator.data)
     fragments = _string_words(generator.code)
     for name in generator.inputs:
-        if name in generated and name not in seen:
+        if name not in generated:
+            words.update(_WORD.findall(_text_input(root / name)))
+        elif name not in seen:
             input_words, input_fragments = _generator_words(root, name, generated, seen)
             words |= input_words
             fragments |= input_fragments
-        elif name not in generated:
-            words.update(_WORD.findall(_text_input(root / name)))
     fragments.update(word for word in words if len(word) > 1)
     return words, fragments
 

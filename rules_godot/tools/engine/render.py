@@ -262,7 +262,7 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
 def _copts_constants(
     index: int,
     copts: Sequence[str],
-    sources: Iterable[str],
+    sources: Sequence[str],
     macros: FeatureMacroScan,
 ) -> tuple[list[str], dict[str, str]]:
     """
