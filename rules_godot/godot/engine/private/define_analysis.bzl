@@ -18,6 +18,14 @@ The source's library compiles with `-include` of its header instead of the defin
 Its command line no longer changes with the build options, so the cache decides by the
 header's content.
 
+The source is preprocessed as an included file, not as the main file, so a source whose
+preprocessing depends on that, through __INCLUDE_LEVEL__, __BASE_FILE__ or a #pragma once
+of its own, can read a definition in its compile that the analysis reported unused;
+Godot's sources have none of them.
+
+A build with --per_file_copt keeps every definition: those options reach the compiles but
+not Starlark, so the analysis could not preprocess with them.
+
 Objective-C compiles keep their -D options: they use implicit Clang modules, which see the
 command line's macros but neither a wrapper's nor a forced include's, so a definition
 reported unused can still change a module the source imports.
@@ -28,6 +36,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolcha
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//godot/private:flags.bzl", "FlagInfo")
 
 visibility(["//godot/..."])
 
@@ -38,6 +47,7 @@ GodotSourceDefinesInfo = provider(
         "wrapper": "File: the definitions, then an #include of the source.",
         "command": "list[str] | None: the preprocessing command line; None keeps every definition.",
         "env": "dict[str, str]: the command's environment.",
+        "execution_requirements": "dict[str, str]: the toolchain's requirements of a compile, such as Xcode's.",
         "inputs": "depset[File]: the source, its wrapper and the headers it may include.",
     },
 )
@@ -50,6 +60,28 @@ _SILENCING = ("-w", "-Wno-everything", "-Wno-unused-macros", "-Wfatal-errors")
 # (the NDK's says llvm-c++), name the main file's unused definitions. A compiler that
 # reported none would keep every definition too.
 _CL_COMPILERS = ("msvc-cl", "clang-cl")
+
+_PER_FILE_COPT = "//command_line_option:per_file_copt"
+_PER_FILE_COPT_SET = str(Label("//godot/engine/private:per_file_copt_set"))
+
+def _setting_impl(ctx):
+    return [FlagInfo(value = ctx.build_setting_value)]
+
+per_file_copt_setting = rule(
+    doc = "Whether the build sets --per_file_copt, which Starlark cannot read otherwise.",
+    implementation = _setting_impl,
+    build_setting = config.bool(flag = False),
+)
+
+def _per_file_copt_impl(settings, _attr):
+    return {_PER_FILE_COPT_SET: bool(settings[_PER_FILE_COPT])}
+
+# Changes the configuration only where --per_file_copt is set.
+_per_file_copt = transition(
+    implementation = _per_file_copt_impl,
+    inputs = [_PER_FILE_COPT],
+    outputs = [_PER_FILE_COPT_SET],
+)
 
 def _tokens(options):
     """The options as cc_library sees them: Bourne shell tokenization applies."""
@@ -128,7 +160,14 @@ def _command(ctx, toolchain, features, wrapper, context):
         action_name = action,
         variables = variables,
     )
-    return [tool] + arguments, env
+    requirements = {
+        requirement: ""
+        for requirement in cc_common.get_execution_requirements(
+            feature_configuration = features,
+            action_name = action,
+        )
+    }
+    return [tool] + arguments, env, requirements
 
 def _source_defines_impl(ctx):
     toolchain = find_cc_toolchain(ctx)
@@ -149,14 +188,15 @@ def _source_defines_impl(ctx):
     context = cc_common.merge_compilation_contexts(
         compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
     )
-    command, env = None, {}
-    if toolchain.compiler not in _CL_COMPILERS:
-        command, env = _command(ctx, toolchain, features, wrapper, context)
+    command, env, requirements = None, {}, {}
+    if toolchain.compiler not in _CL_COMPILERS and not ctx.attr._per_file_copt_set[FlagInfo].value:
+        command, env, requirements = _command(ctx, toolchain, features, wrapper, context)
     return [GodotSourceDefinesInfo(
         definitions = definitions,
         wrapper = wrapper,
         command = command,
         env = env,
+        execution_requirements = requirements,
         inputs = depset([source, wrapper], transitive = [context.headers]),
     )]
 
@@ -170,7 +210,9 @@ godot_source_defines = rule(
         "local_defines": attr.string_list(doc = "Names the library defines as 1."),
         "includes": attr.string_list(doc = "The library's include directories."),
         "deps": attr.label_list(providers = [CcInfo], doc = "The library's dependencies."),
+        "_per_file_copt_set": attr.label(default = _PER_FILE_COPT_SET),
     },
+    cfg = _per_file_copt,
     toolchains = use_cc_toolchain(),
     fragments = ["cpp"],
 )
@@ -238,12 +280,14 @@ def _analyze(ctx, analyzed):
     cases = [_case(index, info, header) for index, (info, header) in enumerate(analyzed)]
     script = ctx.actions.declare_file("_macros/{}.sh".format(ctx.label.name))
     ctx.actions.write(script, _SCRIPT.replace("{CASES}", "\n".join(cases)).replace("{COUNT}", str(len(cases))))
-    env = {}
+    env, requirements = {}, {}
     for info, _ in analyzed:
         env |= info.env
+        requirements |= info.execution_requirements
     ctx.actions.run_shell(
         command = "bash " + script.path,
         env = env,
+        execution_requirements = requirements,
         inputs = depset(
             [script],
             transitive = [info.inputs for info, _ in analyzed] + [find_cc_toolchain(ctx).all_files],

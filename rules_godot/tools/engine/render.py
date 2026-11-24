@@ -295,7 +295,12 @@ def _group_constants(index: int, language: str, copts: Sequence[str]) -> list[st
         return [f"_COPTS_{index} = {list(copts)!r}"]
     options: list[str] = []
     definitions: list[str] = []
-    for copt in copts:
+    copts = list(copts)
+    while copts:
+        copt = copts.pop(0)
+        if copt in ("-D", "-U") and copts:
+            # The separate form, -D NAME, as one option.
+            copt += copts.pop(0)
         (definitions if define_analysis.is_definition(copt) else options).append(copt)
     return [f"_COPTS_{index} = {options!r}", f"_DEFINES_{index} = {definitions!r}"]
 

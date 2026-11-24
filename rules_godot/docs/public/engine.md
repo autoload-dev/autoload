@@ -607,9 +607,8 @@ options: they import implicit Clang modules, which see the command line's macros
 a header's, so a definition the analysis reports unused could still change a module
 they import. Options of the toolchain and of `--copt`, `--cxxopt` and `--conlyopt`, such
 as `-c opt`'s `NDEBUG`, stay on every command line, and the analysis preprocesses with
-them. `--per_file_copt` does not reach the analysis: a `-D` or `-U` option, or one that
-changes predefined macros such as an `-O` level, given that way can make a source read a
-definition the analysis dropped.
+them. Starlark cannot read `--per_file_copt`, so with it set every source keeps all of its
+definitions.
 
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:

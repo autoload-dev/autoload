@@ -1,6 +1,7 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot/engine/private:define_analysis.bzl", "godot_define_analysis", "godot_source_defines")
+load(":per_file_copt.bzl", "header_with_per_file_copt")
 
 # A source whose preprocessing reads some of its definitions: through a header, a pasted
 # name and #ifndef. The others appear only in a comment, in an inactive branch, or not at
@@ -50,14 +51,25 @@ cc_library(
     deps = [":probe"],
 )
 
-# Build-output test: the header keeps the definitions the preprocessing reads, in order.
+# --per_file_copt reaches compiles but not the analysis, which keeps every definition then.
+header_with_per_file_copt(
+    name = "header_with_per_file_copt",
+    header = ":_macros/source.h",
+)
+
+# Build-output test: the header keeps the definitions the preprocessing reads, in order,
+# and every definition under --per_file_copt.
 py_test(
     name = "define_analysis_test",
     size = "small",
     srcs = ["define_analysis_test.py"],
-    args = ["$(rootpath :_macros/source.h)"],
+    args = [
+        "$(rootpath :_macros/source.h)",
+        "$(rootpath :header_with_per_file_copt)",
+    ],
     data = [
         ":_macros/source.h",
+        ":header_with_per_file_copt",
         ":library",
     ],
 )

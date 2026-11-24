@@ -19,11 +19,12 @@ class DefineAnalysisTest(unittest.TestCase):
     def test_c_and_cpp_sources_compile_with_their_analysed_header(self) -> None:
         graph = {"core/a.cpp": set(), "platform/ios/b.mm": set()}
         groups = [
-            ("cc", ("-Wall", "-DXR_DISABLED", "-UNDEBUG"), (".",), ["core/a.cpp"]),
+            ("cc", ("-Wall", "-DXR_DISABLED", "-U", "NDEBUG"), (".",), ["core/a.cpp"]),
             ("objc", ("-Wall", "-DXR_DISABLED"), (".",), ["platform/ios/b.mm"]),
         ]
         lines, labels = object_rules(groups, graph, {}, {"core/a.cpp"})
         self.assertIn("_COPTS_0 = ['-Wall']", lines)
+        # The separate form of an option, -U NDEBUG, stays one definition.
         self.assertIn("_DEFINES_0 = ['-DXR_DISABLED', '-UNDEBUG']", lines)
         # Objective-C imports implicit modules, which see only the command line's macros.
         self.assertIn("_COPTS_1 = ['-Wall', '-DXR_DISABLED']", lines)
