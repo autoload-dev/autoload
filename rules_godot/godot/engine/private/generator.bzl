@@ -19,8 +19,12 @@ visibility("public")
 
 def _generator_impl(ctx):
     outputs = ctx.outputs.outs
+    spec = ctx.file.spec
+    if ctx.attr.spec_json:
+        spec = ctx.actions.declare_file(ctx.label.name + ".json")
+        ctx.actions.write(spec, ctx.attr.spec_json)
     args = ctx.actions.args()
-    args.add("--spec", ctx.file.spec)
+    args.add("--spec", spec)
     for target, logical in ctx.attr.inputs.items():
         files = target[DefaultInfo].files.to_list()
         if len(files) != 1:
@@ -31,7 +35,7 @@ def _generator_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
-        inputs = depset([ctx.file.spec] + ctx.files.inputs),
+        inputs = depset([spec] + ctx.files.inputs),
         outputs = outputs,
         mnemonic = "GodotGenerate",
         progress_message = "Generating %{label}",
@@ -44,7 +48,9 @@ _godot_source_generator = rule(
         "spec": attr.label(
             doc = "JSON generator specification emitted by source graph configuration.",
             allow_single_file = [".json"],
-            mandatory = True,
+        ),
+        "spec_json": attr.string(
+            doc = "The specification itself, for a generator of a shared tree repository.",
         ),
         "inputs": attr.label_keyed_string_dict(
             doc = "Single-file input targets mapped to their upstream logical paths.",
@@ -95,6 +101,29 @@ def godot_source_generator(name, spec, inputs, outs):
         outs = outs,
         logical_outputs = outs,
         visibility = ["//visibility:private"],
+    )
+
+def godot_shared_generator(name, spec_json, inputs, outs, logical_outputs):
+    """
+    Declare one upstream source generator of a shared tree repository.
+
+    Prototype: its outputs lie below a directory named by the digest of its work, and
+    logical_outputs are the upstream paths its code writes.
+
+    Args:
+        name: Generator target name.
+        spec_json: JSON generator specification.
+        inputs: Single-file input targets mapped to upstream logical input paths.
+        outs: Declared output paths.
+        logical_outputs: Upstream paths corresponding one-to-one to outs.
+    """
+    _godot_source_generator(
+        name = name,
+        spec_json = spec_json,
+        inputs = inputs,
+        outs = outs,
+        logical_outputs = logical_outputs,
+        tags = ["manual"],
     )
 
 def _revision_impl(ctx):
