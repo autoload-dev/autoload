@@ -69,6 +69,15 @@ execution pays off](docs/internal/verification-recipes.md#when-remote-execution-
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read [remote
 execution](docs/internal/verification-recipes.md#remote-execution-with-buildbuddy).
 
+Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose slots keep their
+path, so a new worktree starts with a warm Bazel server and output base. Claude Code's
+worktrees (`claude --worktree`, subagents with worktree isolation) take a slot through the
+`WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json`
+([tools/claude/worktree.sh](tools/claude/worktree.sh)), on a branch `claude/<name>` from
+`origin`'s default branch. By hand, `aspect worktree add <branch> --create=origin/main` takes a
+slot, `aspect worktree release <branch>` gives it back with its Bazel state, and `aspect
+worktree list` shows who holds which.
+
 <a id="bazel-package-boundaries"></a>
 
 # Design and review decisions
