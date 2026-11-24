@@ -28,3 +28,10 @@ filegroup(
     srcs = glob([".github/workflows/*.yml"]) + [".github/jactionlint.yaml"],
     visibility = ["//tools/lint:__pkg__"],
 )
+
+# The setup action's shutdown of Bazel with its Node tests, which //tools/ci:setup_action_test runs.
+filegroup(
+    name = "setup_action",
+    srcs = glob([".github/actions/setup/stop-bazel/**"]),
+    visibility = ["//tools/ci:__pkg__"],
+)

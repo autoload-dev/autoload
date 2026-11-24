@@ -30,7 +30,8 @@ changed, a read-only review does not require test execution.
 
 Use `aspect pre-push` for source quality, setup contracts, conventions, the API
 documentation and the fast and tooling tests; the pre-push hook runs it. The fast tests are the `small`, analysis and `smoke` tests of the
-root module and the ruleset ([test size](verification-architecture.md#test-size)). It checks
+ruleset ([test size](verification-architecture.md#test-size)); the tooling tests are all of the
+root module's. It checks
 the working tree, so run it before a push. CI runs every lane on every run; to verify a
 lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not repeat a
 successful check merely because its changes were committed.
@@ -49,7 +50,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Kind | Evidence | Existing entry points |
 |---|---|---|
 | Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint`, `bazel run //tools/conventions` |
-| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, cleanup tests in `aspect work lint` |
+| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, `bazel test //tools/ci:setup_action_test` |
 | API/documentation contracts | Inventories, metadata, visibility and docstrings | `aspect work docs` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |

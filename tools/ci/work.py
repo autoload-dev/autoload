@@ -119,8 +119,8 @@ def contracts(lane: str) -> Work:
 
 
 SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-# The fast tests of a module, which `aspect pre-push` runs: the unit tests by their size,
-# the analysis tests by rules_testing's tag, and the few smoke tests
+# The fast tests of a module, which `aspect pre-push` runs in the ruleset: the unit tests
+# by their size, the analysis tests by rules_testing's tag, and the few smoke tests
 # (docs/internal/verification-architecture.md, "Test size").
 FAST_TESTS = (
     "(attr(size, small, tests(//...))"
@@ -166,18 +166,6 @@ WORK = (
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
     # The lint aspects in every module; the workflows' lint is a test.
     Work("lint", "quality", ".", every_module(LINT_COMMAND)),
-    # The setup action's shutdown of Bazel, which runs no Bazel itself.
-    Work(
-        "test:actions",
-        "quality",
-        ".",
-        (
-            (
-                "bazel run @multitool//tools/node:cwd --"
-                " --test .github/actions/setup/stop-bazel/post.test.js"
-            ),
-        ),
-    ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     # The generated files: lock files and the source-built engines' pins.
     Work("generated", "quality", ".", ("python3 -m tools.generate.generate --check",)),
@@ -191,16 +179,9 @@ WORK = (
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),
-    Work(
-        "test:fast",
-        None,
-        ".",
-        (
-            FAST_TEST_COMMAND,
-            In(RULESET_DIR, FAST_TEST_COMMAND),
-            In(DOCS, DOCS_CHECK),
-        ),
-    ),
+    # The ruleset's fast tests; test:tools runs the root module's tests, docs the
+    # documentation module's.
+    Work("test:fast", None, RULESET_DIR, (FAST_TEST_COMMAND,)),
     # The API inventory and the documentation of its public entrypoints, and the contract
     # cases that need no SDK.
     Work(

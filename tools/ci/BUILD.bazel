@@ -30,3 +30,18 @@ py_test(
     data = ["//:aspect_tasks"],
     deps = [":work_lib"],
 )
+
+# The setup action's shutdown of Bazel, through Node's test runner. On a GitHub Linux runner
+# a case mounts a real file system with sudo, which needs the host outside a sandbox.
+py_test(
+    name = "setup_action_test",
+    size = "small",
+    srcs = ["setup_action_test.py"],
+    args = ["$(rootpath @multitool//tools/node)"],
+    data = [
+        "//:setup_action",
+        "@multitool//tools/node",
+    ],
+    env_inherit = ["GITHUB_ACTIONS"],
+    tags = ["no-sandbox"],
+)
