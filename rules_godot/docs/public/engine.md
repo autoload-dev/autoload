@@ -550,6 +550,24 @@ an include path that a macro assembles, fails to compile in a sandbox or on a
 remote executor. A GDScript edit does not compile engine objects; an engine edit
 does not re-import unrelated assets.
 
+Feature macros follow the same rule. A build option such as `disable_3d` or `xr` adds a
+macro such as `_3D_DISABLED` to the compile options of every source, and every `-D`
+option is part of a compile action's cache key. Each source keeps only the feature
+macros that a file it reaches can read, so flipping `disable_3d` reruns the sources
+whose files test `_3D_DISABLED`, about a hundred of an Android engine's 731, instead
+of all of them. Feature macros are the names that end in `_ENABLED` or `_DISABLED`
+and that the implementation does not reserve, which `__` or `_` and a capital letter
+start; other macros, such as `NDEBUG` or `_FILE_OFFSET_BITS`, which toolchain and
+system headers read, stay on every source. A dropped macro that a file reads would
+compile silently into a different object, so the scan keeps a macro whenever it cannot
+rule out a read: when its name is a word anywhere in a file the source reaches, comments
+and strings included, or in the value of another `-D` option, or when token pasting
+(`##`) or a generator can assemble its name. Pasting is followed through the literal
+operands of `##`, the arguments of macros that paste their parameters or pass them on,
+and the words those arguments expand to; a generated file can contain any word of its
+generator's code, data and text inputs. Feature macros that most of the engine reads,
+such as `DEBUG_ENABLED` and `THREADS_ENABLED`, still rebuild most of it.
+
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:
 apple_support's thread-safety, 64-to-32-bit and undeclared-selector warnings
