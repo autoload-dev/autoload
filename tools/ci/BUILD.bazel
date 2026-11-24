@@ -2,12 +2,17 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 py_library(
     name = "work_lib",
-    srcs = ["work.py"],
+    srcs = [
+        "changes.py",
+        "work.py",
+    ],
     # The ruleset's output contracts run per lane (rules_godot/).
     visibility = ["//visibility:public"],
-    # The add-on modules' lanes, from their addon.pkl.
+    # The add-on modules' lanes, from their addon.pkl, and the change since origin/main as
+    # Code Health reads it.
     deps = [
         "//tools/addons:new_lib",
+        "//tools/code_health:codescene_lib",
         "//tools/setup:modules_lib",
     ],
 )

@@ -88,7 +88,7 @@ commit, so CI has no job for it. The
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which the pre-push hook runs too, analyses each pinned source build's
+`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned source build's
 toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built

@@ -81,17 +81,20 @@ def python(ctx: TaskContext, arguments) -> int:
     """
     return run(ctx, _built(ctx, _PYTHON), arguments)
 
-def run_work(ctx: TaskContext, *names) -> int:
+def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
     """Run pieces of the lanes' work by name.
 
     Args:
         ctx: the running task's context.
         *names: the pieces, in order.
+        changed_since: a reference; if given, only the steps whose inputs changed since
+            the merge base with it run.
 
     Returns:
         The work's exit code.
     """
-    return python(ctx, ["-m", "tools.ci.work", "run"] + list(names))
+    selection = ["--changed-since", changed_since] if changed_since else []
+    return python(ctx, ["-m", "tools.ci.work", "run"] + selection + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
     return run_work(ctx, *ctx.args.names)
