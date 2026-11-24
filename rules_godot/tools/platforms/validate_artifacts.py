@@ -12,7 +12,6 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tools.android.requirements import sdk_requirements
 from tools.digest import digest
 from tools.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
@@ -58,13 +57,15 @@ def main() -> None:
     )
     parser.add_argument("--android-sdk", type=Path, required=True)
     parser.add_argument("--android-ndk", type=Path, required=True)
+    # The API level the consumer module configures for its SDK, which the repository's
+    # tooling reads from its MODULE.bazel (tools/android/requirements.py).
+    parser.add_argument("--android-api-level", required=True)
     parser.add_argument("--java", type=Path, required=True)
     parser.add_argument("--build-tools", required=True)
     parser.add_argument("--output", type=Path, help="Write the result to this path")
     args = parser.parse_args()
     root = args.root.resolve()
     consumer = root / "tests"
-    sdk = sdk_requirements((consumer / "MODULE.bazel").read_text())
     apk = configured_output(
         consumer,
         ANDROID_APP,
@@ -85,7 +86,7 @@ def main() -> None:
         "toolchains": {
             "bazel": (root / ".bazelversion").read_text().strip(),
             "godot": "4.7.2.stable",
-            "android_sdk": str(sdk["api_level"]),
+            "android_sdk": args.android_api_level,
             "android_build_tools": args.build_tools,
             "android_ndk": (args.android_ndk / "source.properties").read_text().strip(),
             "java_build_runtime_and_language": "21",

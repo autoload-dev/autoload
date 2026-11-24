@@ -1,5 +1,6 @@
 """Check that repository provisioning covers the consuming Bazel modules."""
 
+import argparse
 import ast
 import json
 import sys
@@ -32,6 +33,13 @@ def sdk_requirements(source: str) -> dict[str, str | int]:
         for keyword, value in calls[0].keywords.items()
         if keyword in ("api_level", "build_tools_version")
     }
+
+
+def api_level(root: Path, module: str) -> str:
+    """The Android API level a module's MODULE.bazel configures for its SDK."""
+    return str(
+        sdk_requirements((root / module / "MODULE.bazel").read_text())["api_level"]
+    )
 
 
 def linux_pins(source: str) -> tuple[str, str, list[str]]:
@@ -136,7 +144,18 @@ def configuration_errors(root: Path) -> list[str]:
 
 
 def main() -> int:
-    errors = configuration_errors(Path(__file__).resolve().parents[2])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--api-level",
+        metavar="MODULE",
+        help="print the API level a module configures, such as rules_godot/tests, and exit",
+    )
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[2]
+    if args.api_level:
+        print(api_level(root, args.api_level))
+        return 0
+    errors = configuration_errors(root)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

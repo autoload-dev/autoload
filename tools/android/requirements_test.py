@@ -8,6 +8,7 @@ from pathlib import Path
 from tools.android.requirements import (
     LINUX_TOOLCHAINS,
     PINS,
+    api_level,
     application_modules,
     configuration_errors,
 )
@@ -50,6 +51,11 @@ class RequirementsTest(unittest.TestCase):
             set(module_paths(self.root)),
         )
         self.assertEqual(configuration_errors(self.root), [])
+
+    def test_reads_the_api_level_a_module_configures(self) -> None:
+        self.assertEqual(api_level(self.root, "rules_godot/tests"), "35")
+        self.replace("rules_godot/tests/MODULE.bazel", "api_level = 35", "api_level = 36")
+        self.assertEqual(api_level(self.root, "rules_godot/tests"), "36")
 
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
         self.replace("rules_godot/MODULE.bazel", "api_level = 35", "api_level = 999")

@@ -35,11 +35,8 @@ from tools.ci.changes import (
     module_files,
     only_in,
 )
+from tools.ci.lanes import LANES
 from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
-
-LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
-# The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
-CONTRACT_LANES = ("desktop", "source-engine", "android", "ios")
 
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
@@ -407,6 +404,8 @@ WORK = (
             (
                 "bazel run //tools/platforms:validate_artifacts --"
                 ' --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME"'
+                ' --android-api-level "$(cd .. && python3 -m tools.android.requirements'
+                f' --api-level {REGRESSIONS})"'
                 ' --java "${JAVA_HOME:-$(python3 ../tools/android/java.py)}/bin/java"'
                 ' --build-tools "$ANDROID_BUILD_TOOLS"'
             ),
