@@ -16,6 +16,11 @@ from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
+try:
+    from .source_tree import SOURCE_SUFFIXES
+except ImportError:
+    from source_tree import SOURCE_SUFFIXES
+
 # Includes, imports and __has_include checks, whose answer an undeclared header would
 # change, by their delimiter.
 _DIRECTIVES = (
@@ -47,10 +52,14 @@ _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
 
 
 class Generated(NamedTuple):
-    """A generated file: the code of its generator and the files the generator reads."""
+    """
+    A generated file: the code of its generator, the files the generator reads and the
+    files it writes.
+    """
 
     code: str
     inputs: tuple[str, ...]
+    outputs: tuple[str, ...]
 
 
 class CompileGroup(NamedTuple):
@@ -121,7 +130,8 @@ class _Resolver:
         """
         Return the files a templated include may name, such as "{module}/register_types.h".
 
-        A template without a literal path, such as "{header}", names the generator's inputs.
+        A template without a literal path, such as "{header}" or "{target_h}", names one of
+        the given files.
         """
         parts = _PLACEHOLDER.split(include)
         if not any("/" in part for part in parts):
@@ -162,10 +172,26 @@ def _file_includes(root: Path, path: str, resolver: _Resolver) -> set[str]:
 
 
 def _generated_includes(path: str, generated: Generated, resolver: _Resolver) -> set[str]:
+    """
+    Return the files a generated file may include.
+
+    A template without a literal path names one of the generator's inputs or one of the
+    other headers it writes: Godot's translation generators write a header and a source
+    that includes it as "{target_h}". Both files have the same code, which cannot tell
+    which file a directive belongs to, so the sources stay out.
+    """
+    named = [
+        *generated.inputs,
+        *(
+            name
+            for name in generated.outputs
+            if name != path and PurePosixPath(name).suffix not in SOURCE_SUFFIXES
+        ),
+    ]
     found: set[str] = set()
     for include in _GENERATED_DIRECTIVE.findall(generated.code):
         if "{" in include:
-            found.update(resolver.template(include, generated.inputs))
+            found.update(resolver.template(include, named))
         else:
             found.update(resolver.resolve(path, include))
     return found

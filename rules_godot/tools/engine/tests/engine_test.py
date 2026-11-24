@@ -1072,11 +1072,42 @@ class IncludeGraphTest(unittest.TestCase):
                 "tests/test_main.h": "",
             },
             [CompileGroup(["main.cpp"], [], [])],
-            {"shaders/canvas.gen.h": Generated(code, ("tests/test_main.h",))},
+            {
+                "shaders/canvas.gen.h": Generated(
+                    code, ("tests/test_main.h",), ("shaders/canvas.gen.h",)
+                )
+            },
         )
         self.assertEqual(
             graph["shaders/canvas.gen.h"],
             {"drivers/shader.h", "platform/android/api/api.h", "tests/test_main.h"},
+        )
+
+    def test_a_generated_file_includes_the_header_its_generator_writes(self) -> None:
+        # Godot's translation generators write a header and a source that includes it.
+        code = (
+            "def make_translations(target, source, env):\n"
+            "    target_h, target_cpp = str(target[0]), str(target[1])\n"
+            '    file.write(f"""#include "{target_h}"\n""")\n'
+        )
+        doc = ("editor/translations/doc.gen.h", "editor/translations/doc.gen.cpp")
+        # Another generator of the same builder file and the same inputs.
+        other = ("editor/translations/other.gen.h",)
+        inputs = ("doc/translations/de.po",)
+        graph = self.graph(
+            {"doc/translations/de.po": ""},
+            [CompileGroup(["editor/translations/doc.gen.cpp"], [], [])],
+            {
+                **dict.fromkeys(doc, Generated(code, inputs, doc)),
+                **dict.fromkeys(other, Generated(code, inputs, other)),
+            },
+        )
+        self.assertEqual(
+            graph["editor/translations/doc.gen.cpp"],
+            {"doc/translations/de.po", "editor/translations/doc.gen.h"},
+        )
+        self.assertEqual(
+            graph["editor/translations/doc.gen.h"], {"doc/translations/de.po"}
         )
 
     def test_files_that_include_each_other_form_one_component(self) -> None:
@@ -1175,12 +1206,10 @@ class BuildProfileTest(unittest.TestCase):
             root = Path(directory)
             write_tree(root, files)
             # One builder file writes both the profile's specializations and the version.
-            builders = Generated(
-                'f"template <> struct is_class_enabled<{cs}> : std::false_type {{}};"', ()
-            )
+            code = 'f"template <> struct is_class_enabled<{cs}> : std::false_type {{}};"'
             generated = {
-                build_profile.HEADER: builders,
-                "core/version_generated.gen.h": builders,
+                name: Generated(code, (), (name,))
+                for name in [build_profile.HEADER, "core/version_generated.gen.h"]
             }
             graph = include_graph(root, [CompileGroup(sources, [], [])], generated)
             self.assertIn(build_profile.HEADER, graph["core/object/class_db.h"])

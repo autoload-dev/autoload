@@ -205,12 +205,13 @@ def _generator_rules(
 def generated_files(
     root: Path, specs: Iterable[Mapping[str, Any]]
 ) -> dict[str, Generated]:
-    """Return each generated file with its generator's code and the files it reads."""
+    """Return each generated file with its generator's code, inputs and outputs."""
     files: dict[str, Generated] = {}
     for spec in specs:
         code = spec.get("inline") or (root / spec["code_file"]).read_text()
         inputs = tuple(entry["path"] for entry in spec["sources"] if "path" in entry)
-        files.update((target, Generated(code, inputs)) for target in spec["targets"])
+        outputs = tuple(spec["targets"])
+        files.update((target, Generated(code, inputs, outputs)) for target in outputs)
     return files
 
 
