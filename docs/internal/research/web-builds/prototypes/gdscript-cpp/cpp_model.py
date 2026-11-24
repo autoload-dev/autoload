@@ -64,7 +64,7 @@ class Function:
 
 
 def function_symbol(klass: Klass, name: str) -> str:
-    return f"{klass.symbol}_{name}"
+    return f"{klass.symbol}_{name.replace('@', '_')}"
 
 
 def signature(klass: Klass, f: dict) -> str:

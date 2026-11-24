@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import cpp_engine
 from cpp_expressions import typed
+from cpp_implicit import implicit_functions
 from cpp_model import Function, Klass, Program, function_symbol, signature
 from cpp_statements import suite
 from cpp_types import Unsupported, c_type, convert, gd_type
@@ -87,6 +88,10 @@ def load_class(tree: dict, program: Program) -> list[Klass]:
         if m.get("node") == "variable"
     }
     functions = {m["name"]: m for m in tree["members"] if m.get("node") == "function"}
+    variables = [m for m in tree["members"] if m.get("node") == "variable"]
+    functions.update(
+        {f["name"]: f for f in implicit_functions(variables, tree["member_indices"])}
+    )
     inner = [
         k
         for m in tree["members"]

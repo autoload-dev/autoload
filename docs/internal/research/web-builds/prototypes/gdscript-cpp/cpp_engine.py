@@ -79,6 +79,8 @@ class Engine:
         owner = _POINTER_OWNER.search(binding.pointer)
         if not owner or binding.pointer.startswith("static_cast"):
             return False
+        if binding.pointer.rsplit("::", 1)[-1].startswith("_"):
+            return False  # Binding helpers like `_get_bind` are private as a rule.
         return any(
             method in self.classes[c].public for c in self.ancestors(owner.group(1))
         )

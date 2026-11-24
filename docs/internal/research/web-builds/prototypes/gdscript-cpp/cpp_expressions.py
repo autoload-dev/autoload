@@ -44,7 +44,12 @@ _VECTORS = {
     "Vector3i": ("int32_t", 3),
     "Color": ("float", 4),
 }
-_CONTAINERS = ("Array", "Dictionary", "PackedInt32Array")
+_CONTAINERS = ("Array", "Dictionary")
+# Fields of builtin value types that are plain C++ members, with their types.
+FIELDS = {
+    "Rect2": {"position": "Vector2", "size": "Vector2"},
+    "Rect2i": {"position": "Vector2i", "size": "Vector2i"},
+}
 _CONTAINER_METHODS = {
     "append": "push_back", "push_back": "push_back", "clear": "clear", "size": "size",
     "is_empty": "is_empty", "get": "get", "has": "has", "remove_at": "remove_at",
@@ -52,6 +57,11 @@ _CONTAINER_METHODS = {
 _CONTAINER_RESULTS = {"size": "int", "is_empty": "bool", "has": "bool"}
 _LOCALS = ("parameter", "local_variable", "local_iterator", "local_constant")
 OWNER = "GDScriptNative::owner(p_self)"
+# A method or signal of the script's object used as a value.
+_SCRIPT_VALUES = {
+    "member_function": ("method", "Callable"),
+    "member_signal": ("signal", "Signal"),
+}
 
 
 def expression(fn: Function, node: dict) -> Code:
@@ -130,6 +140,9 @@ def _identifier(fn: Function, node: dict) -> Code:
         return _member(fn, name)
     if source == "native_class":
         return f"GDScriptNative::native(SNAME({json.dumps(name)}))", f"N:{name}"
+    if source in _SCRIPT_VALUES:
+        function, gd = _SCRIPT_VALUES[source]
+        return f"GDScriptNative::{function}(p_self, SNAME({json.dumps(name)}))", gd
     direct = None
     if source == "inherited_variable":
         direct = cpp_native.get(fn, OWNER, fn.klass.native, node.get("property"))
@@ -222,22 +235,76 @@ def _ternary(fn: Function, node: dict) -> Code:
 # Subscripts -------------------------------------------------------------------------
 
 
-def _attribute(fn: Function, node: dict, base: str, bt: str) -> Code:
-    name = node["attribute"]
-    key = f"SNAME({json.dumps(name)})"
-    if bt in _VECTORS and len(name) == 1:
-        return f"{base}.{name}", "int" if bt.endswith("i") else "float"
-    if bt == "Dictionary":
-        return f"GDScriptNative::get_key({base}, {key})", "Variant"
-    if bt.startswith("C:") and name in fn.program.member(bt[2:], name):
-        return foreign_member(fn, base, bt[2:], name)
-    receiver = convert(base, bt, "Variant")
-    direct = cpp_native.get(
-        fn, receiver, cpp_native.native_class(fn, bt), node.get("property")
+@dataclass
+class _Attribute:
+    fn: Function
+    node: dict
+    base: str
+    bt: str
+
+    @property
+    def name(self) -> str:
+        return self.node["attribute"]
+
+    @property
+    def key(self) -> str:
+        return f"SNAME({json.dumps(self.name)})"
+
+
+def _component(a: _Attribute) -> Code | None:
+    if a.bt in _VECTORS and len(a.name) == 1:
+        return f"{a.base}.{a.name}", "int" if a.bt.endswith("i") else "float"
+    if a.name in FIELDS.get(a.bt, {}):
+        return f"{a.base}.{a.name}", FIELDS[a.bt][a.name]
+    return None
+
+
+def _builtin_method_value(a: _Attribute) -> Code | None:
+    if a.bt not in BUILTINS or gd_type(a.node["type"]) != "Callable":
+        return None
+    return (
+        f"GDScriptNative::bound_method({convert(a.base, a.bt, 'Variant')}, {a.key})",
+        "Callable",
     )
-    if direct:
-        return _result(direct, gd_type(node["type"]))
-    return f"GDScriptNative::get_named({receiver}, {key})", "Variant"
+
+
+def _dictionary_key(a: _Attribute) -> Code | None:
+    if a.bt != "Dictionary":
+        return None
+    return f"GDScriptNative::get_key({a.base}, {a.key})", "Variant"
+
+
+def _script_member(a: _Attribute) -> Code | None:
+    if not a.bt.startswith("C:") or a.name not in a.fn.program.member(a.bt[2:], a.name):
+        return None
+    return foreign_member(a.fn, a.base, a.bt[2:], a.name)
+
+
+def _engine_getter(a: _Attribute) -> Code | None:
+    receiver, klass = (
+        convert(a.base, a.bt, "Variant"),
+        cpp_native.native_class(a.fn, a.bt),
+    )
+    direct = cpp_native.get(a.fn, receiver, klass, a.node.get("property"))
+    return _result(direct, gd_type(a.node["type"])) if direct else None
+
+
+def _attribute(fn: Function, node: dict, base: str, bt: str) -> Code:
+    attribute = _Attribute(fn, node, base, bt)
+    for strategy in (
+        _component,
+        _builtin_method_value,
+        _dictionary_key,
+        _script_member,
+        _engine_getter,
+    ):
+        found = strategy(attribute)
+        if found:
+            return found
+    return (
+        f"GDScriptNative::get_named({convert(base, bt, 'Variant')}, {attribute.key})",
+        "Variant",
+    )
 
 
 def _index(fn: Function, node: dict, base: str, bt: str) -> Code:
@@ -251,10 +318,8 @@ def _index(fn: Function, node: dict, base: str, bt: str) -> Code:
             else f"Variant({element})"
         )
         return code, result
-    if bt == "PackedInt32Array" and it == "int":
-        return f"int64_t({element})", "int"
     code = f"GDScriptNative::get_indexed({convert(base, bt, 'Variant')}, {convert(index, it, 'Variant')})"
-    return code, "Variant"
+    return _result(code, result)
 
 
 def _subscript(fn: Function, node: dict) -> Code:
@@ -271,11 +336,69 @@ def _dictionary(fn: Function, node: dict) -> Code:
     return f"GDScriptNative::dictionary({{ {', '.join(items)} }})", "Dictionary"
 
 
+def element_type(t: dict) -> str:
+    """A typed array's element type as `Variant::Type, class name, script` for C++."""
+    kind = t.get("kind")
+    if kind == "builtin" and t.get("builtin") in BUILTINS:
+        return f"Variant::{BUILTINS[t['builtin']][2]}, StringName(), Variant()"
+    if kind == "native":
+        return f"Variant::OBJECT, SNAME({json.dumps(t['native'])}), Variant()"
+    if kind in ("class", "script") and t.get("native"):
+        script = (
+            f"GDScriptNative::script_class({json.dumps(t.get('class') or t['script'])})"
+        )
+        return f"Variant::OBJECT, SNAME({json.dumps(t['native'])}), {script}"
+    raise Unsupported(f"array of {kind}")
+
+
 def _array(fn: Function, node: dict) -> Code:
-    if node["type"].get("elements"):
-        raise Unsupported("typed array literal")
-    items = [typed(fn, e, "Variant") for e in node["elements"]]
-    return f"GDScriptNative::array({{ {', '.join(items)} }})", "Array"
+    items = ", ".join(typed(fn, e, "Variant") for e in node["elements"])
+    elements = node["type"].get("elements")
+    if elements:
+        return (
+            f"GDScriptNative::typed_array({element_type(elements[0])}, {{ {items} }})",
+            "Array",
+        )
+    return f"GDScriptNative::array({{ {items} }})", "Array"
+
+
+def _get_node(fn: Function, node: dict) -> Code:
+    return f"GDScriptNative::get_node(p_self, {json.dumps(node['path'])})", gd_type(
+        node["type"]
+    )
+
+
+def _self(fn: Function, node: dict) -> Code:
+    return OWNER, f"C:{fn.klass.fqcn}"
+
+
+def _cast(fn: Function, node: dict) -> Code:
+    code, gd = expression(fn, node["operand"])
+    target = gd_type(node["type"])
+    value = convert(code, gd, "Variant")
+    if target.startswith("O:"):
+        return (
+            f"GDScriptNative::cast_native({value}, SNAME({json.dumps(target[2:])}))",
+            target,
+        )
+    if target.startswith("C:"):
+        return f"GDScriptNative::cast_script({value}, {json.dumps(target[2:])})", target
+    return convert(code, gd, target), target
+
+
+def _type_test(fn: Function, node: dict) -> Code:
+    value = typed(fn, node["operand"], "Variant")
+    test = gd_type({**node["test"], "hard": True, "meta": False})
+    if test in BUILTINS:
+        return f"(({value}).get_type() == Variant::{BUILTINS[test][2]})", "bool"
+    if test.startswith(("O:", "N:")):
+        return (
+            f"GDScriptNative::is_native({value}, SNAME({json.dumps(test[2:])}))",
+            "bool",
+        )
+    if test.startswith(("C:", "M:")):
+        return f"GDScriptNative::is_script({value}, {json.dumps(test[2:])})", "bool"
+    raise Unsupported(f"type test for {test}")
 
 
 # Calls ------------------------------------------------------------------------------
@@ -349,7 +472,10 @@ def _utility(call: _Call) -> Code | None:
 def _scalar_conversion(call: _Call) -> Code | None:
     if call.name not in ("int", "float", "bool") or len(call.args) != 1:
         return None
-    return typed(call.fn, call.args[0], call.name), call.name
+    code, gd = expression(call.fn, call.args[0])
+    if gd == "String" and call.name != "bool":  # `int("42")` parses.
+        return f"{code}.to_{call.name}()", call.name
+    return convert(code, gd, call.name), call.name
 
 
 def _vector(call: _Call) -> Code | None:
@@ -399,10 +525,16 @@ def _global_call(call: _Call) -> Code:
     return _result(code, call.result)
 
 
+def _with_default(bt: str, name: str, values: list[str]) -> list[str]:
+    """`Dictionary::get()` has no default argument in C++; GDScript's is null."""
+    missing = bt == "Dictionary" and name == "get" and len(values) == 1
+    return [*values, "Variant()"] if missing else values
+
+
 def _container_method(call: _Call, base: str, bt: str, values: list[str]) -> Code | None:
     if bt not in _CONTAINERS or call.name not in _CONTAINER_METHODS:
         return None
-    code = f"{base}.{_CONTAINER_METHODS[call.name]}({', '.join(values)})"
+    code = f"{base}.{_CONTAINER_METHODS[call.name]}({', '.join(_with_default(bt, call.name, values))})"
     if call.result in ("void", "Variant"):
         return code, call.result
     return convert(
@@ -440,8 +572,6 @@ def _method_call(call: _Call, base_node: dict) -> Code:
     found = _container_method(call, base, bt, values)
     if found:
         return found
-    if bt in BUILTINS and bt not in _CONTAINERS:
-        raise Unsupported(f"method {call.name} on {bt}")
     if bt.startswith("N:"):
         return _native_class_call(call, bt[2:], values)
     return _object_call(call, convert(base, bt, "Variant"), values)
@@ -473,6 +603,10 @@ _EXPRESSIONS: dict[str, Callable[[Function, dict], Code]] = {
     "call": _call,
     "dictionary": _dictionary,
     "array": _array,
+    "self": _self,
+    "get_node": _get_node,
+    "cast": _cast,
+    "type_test": _type_test,
 }
 
 

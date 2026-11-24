@@ -2,10 +2,11 @@
 script instances, engine properties and components of engine properties."""
 
 import json
+import re
 from collections.abc import Callable
 
 import cpp_native
-from cpp_expressions import ARITHMETIC, OWNER, expression, foreign_member, typed
+from cpp_expressions import ARITHMETIC, FIELDS, OWNER, expression, foreign_member, typed
 from cpp_model import Function
 from cpp_types import NUMBERS, Unsupported, c_type, convert
 
@@ -57,24 +58,48 @@ def _is_script_member(fn: Function, bt: str, name: str) -> bool:
 
 def _assign_script_member(fn: Function, node: dict, base: str, bt: str) -> bool:
     name = node["assignee"]["attribute"]
-    if node["operator"] or not _is_script_member(fn, bt, name):
+    if not _is_script_member(fn, bt, name):
         return False
     slot, gd = foreign_member(fn, base, bt[2:], name)
-    fn.emit(f"{slot} = {typed(fn, node['value'], gd)};")
+    op = node["operator"]
+    if not op:
+        fn.emit(f"{slot} = {typed(fn, node['value'], gd)};")
+        return True
+    if op not in _OPERATORS:
+        raise Unsupported(f"compound assignment {op} to a member")
+    value = typed(fn, node["value"], "Variant")
+    result = f"GDScriptNative::evaluate(Variant::OP_{_OPERATORS[op]}, {convert(slot, gd, 'Variant')}, {value})"
+    fn.emit(f"{slot} = {convert(result, 'Variant', gd)};")
     return True
+
+
+def _holder(fn: Function, holder: dict) -> tuple[str, str, dict | None] | None:
+    """The object and engine class of the property holding a component, and the
+    property, for `object.position.y` and the script's own `position.y`."""
+    if _is_attribute(holder):
+        outer, ot = expression(fn, holder["base"])
+        return (
+            convert(outer, ot, "Variant"),
+            cpp_native.native_class(fn, ot),
+            holder.get("property"),
+        )
+    if holder.get("source") == "inherited_variable":
+        return OWNER, fn.klass.native, holder.get("property")
+    return None
 
 
 def _assign_component(fn: Function, node: dict, base: str, bt: str) -> bool:
     """`object.position.y = value`: read the property, change the component, write it."""
-    holder = node["assignee"]["base"]
-    if bt not in _COMPONENTS or node["operator"] or not _is_attribute(holder):
-        return False
-    outer, ot = expression(fn, holder["base"])
-    receiver, klass = convert(outer, ot, "Variant"), cpp_native.native_class(fn, ot)
-    temp = fn.fresh("value")
-    setter = cpp_native.set_(
-        fn, receiver, klass, holder.get("property"), f"Variant({temp})"
+    held = (
+        None
+        if bt not in _COMPONENTS or node["operator"]
+        else _holder(fn, node["assignee"]["base"])
     )
+    if held is None:
+        return False
+    receiver, klass, prop = held
+    temp = fn.fresh("value")
+    setter = cpp_native.set_(fn, receiver, klass, prop, f"Variant({temp})")
     if not setter:
         return False
     component = "int" if bt.endswith("i") else "float"
@@ -86,16 +111,61 @@ def _assign_component(fn: Function, node: dict, base: str, bt: str) -> bool:
     return True
 
 
+def _is_lvalue(base: str) -> bool:
+    """Whether code names storage: a C++ local, or a member slot read in place."""
+    return re.fullmatch(r"l_\w+|p_members\[\d+\]", base) is not None or base.startswith(
+        "(*VariantInternal::"
+    )
+
+
+def _field_type(bt: str, name: str) -> str | None:
+    """The type of a field of a builtin value type, or None."""
+    if bt not in _COMPONENTS + tuple(FIELDS):
+        return None
+    component = "int" if bt.endswith("i") else "float"
+    return {**dict.fromkeys("xyzw", component), **FIELDS.get(bt, {})}.get(name)
+
+
+def _assign_field(fn: Function, node: dict, base: str, bt: str) -> bool:
+    """A field of a builtin value held in a local or member: `rect.position -= offset`."""
+    name = node["assignee"]["attribute"]
+    field = _field_type(bt, name)
+    if field is None or not _is_lvalue(base):
+        return False
+    value, vt = expression(fn, node["value"])
+    op = node["operator"]
+    if op and op not in ARITHMETIC:
+        raise Unsupported(f"compound assignment {op} to a field")
+    fn.emit(f"{base}.{name} {op}= {convert(value, vt, field)};")
+    return True
+
+
 def _assign_engine_property(fn: Function, node: dict, base: str, bt: str) -> bool:
     receiver = convert(base, bt, "Variant")
     return _assign_property(fn, node, receiver, cpp_native.native_class(fn, bt))
 
 
+def _assign_by_name(fn: Function, node: dict, base: str, bt: str) -> bool:
+    """A property of an object whose setter the generator cannot call: through the
+    engine by name, as the VM does."""
+    if not bt.startswith(("O:", "C:")) or node["operator"]:
+        return False
+    target = fn.fresh("object")
+    key = f"SNAME({json.dumps(node['assignee']['attribute'])})"
+    fn.emit(f"Variant {target} = {base};")
+    fn.emit(
+        f"GDScriptNative::set_named({target}, {key}, {typed(fn, node['value'], 'Variant')});"
+    )
+    return True
+
+
 _ATTRIBUTE_TARGETS: tuple[Callable[[Function, dict, str, str], bool], ...] = (
     _assign_key,
     _assign_script_member,
+    _assign_field,
     _assign_component,
     _assign_engine_property,
+    _assign_by_name,
 )
 
 
@@ -103,6 +173,28 @@ def _assign_attribute(fn: Function, node: dict) -> None:
     base, bt = expression(fn, node["assignee"]["base"])
     if not any(target(fn, node, base, bt) for target in _ATTRIBUTE_TARGETS):
         raise Unsupported(f"attribute assignment on {bt}")
+
+
+def _index_statement(fn: Function, target: dict, base: str, bt: str, value: str) -> str:
+    if bt == "Array":
+        return f"{base}[{typed(fn, target['index'], 'int')}] = {value};"
+    index = typed(fn, target["index"], "Variant")
+    if bt == "Dictionary":
+        return f"{base}[{index}] = {value};"
+    if c_type(bt) == "Variant" and _is_lvalue(base):
+        return f"GDScriptNative::set_indexed({base}, {index}, {value});"
+    raise Unsupported(f"index assignment on {bt}")
+
+
+def _assign_index(fn: Function, node: dict) -> None:
+    """`container[index] = value`: in place on arrays and dictionaries, which share their
+    data, and through the Variant that holds any other container."""
+    target = node["assignee"]
+    base, bt = expression(fn, target["base"])
+    value = typed(fn, node["value"], "Variant")
+    if node["operator"]:
+        raise Unsupported("compound assignment to an index")
+    fn.emit(_index_statement(fn, target, base, bt, value))
 
 
 def _compound(fn: Function, node: dict, lhs: str, lt: str) -> None:
@@ -117,6 +209,9 @@ def assignment(fn: Function, node: dict) -> None:
     target = node["assignee"]
     if _is_attribute(target):
         _assign_attribute(fn, node)
+        return
+    if target["node"] == "subscript":
+        _assign_index(fn, node)
         return
     if target.get("source") == "inherited_variable":
         if not _assign_property(fn, node, OWNER, fn.klass.native):

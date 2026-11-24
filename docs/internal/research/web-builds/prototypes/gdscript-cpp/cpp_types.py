@@ -113,10 +113,16 @@ def gd_type(t: dict | None) -> str:
     return kind(t) if kind else "Variant"
 
 
+def _held_in_variant(gd: str) -> bool:
+    return gd == "Variant" or ":" in gd or gd.startswith("Packed")
+
+
 def c_type(gd: str) -> str:
+    """The C++ type of a value. Objects are Variants, and so are packed arrays: their
+    methods change them in place, which only a call on the Variant holding them does."""
     if gd == "void":
         return "void"
-    if gd == "Variant" or ":" in gd:
+    if _held_in_variant(gd):
         return "Variant"
     return BUILTINS[gd][0]
 

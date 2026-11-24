@@ -81,6 +81,54 @@ What would make direct calls pay: calling with typed C++ arguments instead of bo
 `Variant`s (`object->set_text(value)`), so no conversion template is instantiated per
 method, and compiling every function, so neither the bytecode's tables nor the VM remain.
 
+## Full coverage, and a runtime without the VM (2026-11-24)
+
+All of Lichtpost's 105 functions compile, and so do the 35 functions Godot's compiler
+writes for classes itself (`cpp_implicit.py`): `@implicit_new`, which gives typed members
+their defaults and runs the member initializers, and `@implicit_ready` for `@onready`
+members. What it took, besides direct engine calls: `self`, methods and signals of the
+script as `Callable`/`Signal` values, a builtin method as a value (`signal.emit`), casts
+and `is` tests, `match` with literal, expression and wildcard patterns, typed array
+literals (also of script classes), `range` with a step, `continue` and `break`, `$Node`,
+`int("42")`, methods of builtin values through the Variant, packed arrays held in
+`Variant`s (their methods change them in place), index assignment, fields of builtin
+values (`rect.position -= offset`), a component of an inherited property
+(`rotation.y = ...`), compound assignment to members of other scripts' instances and to
+engine properties, and a write by name where the setter is not public.
+
+The bytecode then needs nothing from the engine: no operators, method binds, builtin
+methods or names. With `GDSCRIPT_NO_VM=1`, `GDScriptFunction::call()` only jumps into
+compiled functions; the interpreter is gone. The bytecode files still carry what the
+loader needs to build the classes (members, constants, signals, method infos).
+
+| Engine (R3 settings) | bindings removed | raw | brotli 11 |
+| --- | ---: | ---: | ---: |
+| R3, interpreter, nothing compiled | 13,330 | 6.09 MB | 1.87 MB |
+| R7d, 69 functions compiled | 13,411 | 6.12 MB | 1.88 MB |
+| R10, all 140 compiled, VM still present | 13,483 | 6.17 MB | 1.89 MB |
+| R11, all compiled, no VM (`GDSCRIPT_NO_VM`) | 13,483 | 6.11 MB | 1.88 MB |
+
+Lichtpost's replays match on macOS (all compiled, VM present), and the web build without
+the VM plays: title, run, result and options dialog, no errors.
+
+The VM costs 60 KB raw (10 KB brotli); compiled code costs about what the VM and the
+bindings it no longer needs save. Most of the compiled code's size is the boxing: each of
+165 direct engine calls converts its arguments to `Variant`s and back through its own
+template instance, and the 65 remaining calls by name (signals' `connect` and `emit`,
+`Script.new()`, static script functions, builtin methods) go through `callp()`.
+
+Found on the way:
+
+- An index assignment (`actions[at] = ...`) became an assignment to a temporary copy and
+  compiled without complaint; the replay then read no actions. Index targets now write in
+  place, and only expressions that name storage are assigned to.
+- `Dictionary::get()` has no default argument in C++; `_open` and `_get_bind` are bound but
+  private (bound helpers starting with `_` are now never called directly).
+- **The engine index must read unshaken sources.** Indexed from a shaken tree, removed
+  `bind_method()` statements silently turn direct calls into calls by name, which then
+  keep more bindings: R9 came out 70 KB larger. `cpp_engine.py` now reads a separate,
+  never shaken worktree of the Godot sources.
+
 ## How it works
 
 `dump_ast.gd`, run on an engine with the compiler and the patch, writes per script the
@@ -118,8 +166,8 @@ exit and crashed it. Resources are loaded on use from the resource cache.
 ## What is missing
 
 - **Engine calls without boxing.** Direct engine calls (see above) still pass `Variant`s.
-- **Coverage.** Not yet compiled: signals as values, `self`, casts, `match`, methods on
-  typed builtin values, typed array literals, lambdas, `await`.
+- **Coverage.** Lambdas, `await`, typed dictionaries, `match` with bind, array or
+  dictionary patterns and static variables are not compiled; Lichtpost uses none of them.
 - **Matching by name only.** A compiled function runs whenever a loaded function has its
   class and name, whatever its code; a check against the source's hash is missing.
 - **Errors.** Invalid accesses print an error and continue with a default value; the VM

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from cpp_assignments import assignment
 from cpp_expressions import expression, is_expression, typed
 from cpp_model import Function
-from cpp_types import Unsupported, c_type, convert, gd_type, truth
+from cpp_types import BUILTINS, Unsupported, c_type, convert, gd_type, truth
 
 
 def suite(fn: Function, node: dict | None) -> None:
@@ -82,34 +82,52 @@ def _is_range(listing: dict) -> bool:
     )
 
 
+def _range_bounds(fn: Function, arguments: list[dict]) -> tuple[str, str, str]:
+    bounds = [typed(fn, a, "int") for a in arguments]
+    if len(bounds) == 1:
+        return "0", bounds[0], "1"
+    return bounds[0], bounds[1], bounds[2] if len(bounds) == 3 else "1"
+
+
 def _for_range(fn: Function, node: dict) -> None:
     name = node["variable"]
-    bounds = [typed(fn, a, "int") for a in node["list"]["arguments"]]
-    if len(bounds) not in (1, 2):
-        raise Unsupported("range with a step")
-    start, end = ("0", bounds[0]) if len(bounds) == 1 else (bounds[0], bounds[1])
-    end_var = fn.fresh("end")
+    start, end, step = _range_bounds(fn, node["list"]["arguments"])
+    end_var, step_var = fn.fresh("end"), fn.fresh("step")
     fn.emit(f"const int64_t {end_var} = {end};")
+    fn.emit(f"const int64_t {step_var} = {step};")
     fn.locals[name] = "int"
+    condition = f"({step_var} > 0 ? l_{name} < {end_var} : l_{name} > {end_var})"
     _block(
         fn,
-        f"for (int64_t l_{name} = {start}; l_{name} < {end_var}; l_{name}++)",
+        f"for (int64_t l_{name} = {start}; {condition}; l_{name} += {step_var})",
         node["body"],
     )
+
+
+# Element types of the containers a `for` loop walks by index.
+_ELEMENTS = {
+    "Array": "Variant",
+    "PackedByteArray": "int",
+    "PackedInt32Array": "int",
+    "PackedInt64Array": "int",
+    "PackedFloat32Array": "float",
+    "PackedFloat64Array": "float",
+    "PackedStringArray": "String",
+    "PackedVector2Array": "Vector2",
+    "PackedVector3Array": "Vector3",
+    "PackedColorArray": "Color",
+}
 
 
 def _for_container(fn: Function, node: dict) -> None:
     name = node["variable"]
     gd = gd_type(node["variable_type"])
     container, ct = expression(fn, node["list"])
-    if ct not in ("Array", "PackedInt32Array"):
+    if ct not in _ELEMENTS:
         raise Unsupported(f"for over {ct}")
     holder, index = fn.fresh("list"), fn.fresh("i")
-    fn.emit(f"const {c_type(ct)} {holder} = {container};")
-    if ct == "Array":
-        item, element = f"{holder}[{index}]", "Variant"
-    else:
-        item, element = f"int64_t({holder}[{index}])", "int"
+    fn.emit(f"const {BUILTINS[ct][0]} {holder} = {container};")
+    item, element = f"{holder}[{index}]", _ELEMENTS[ct]
     fn.locals[name] = gd
     value = convert(item, element, gd) if gd != "Variant" else f"Variant({item})"
     loop = f"for (int64_t {index} = 0; {index} < {holder}.size(); {index}++)"
@@ -128,6 +146,32 @@ def _for(fn: Function, node: dict) -> None:
         _for_container(fn, node)
 
 
+def _pattern(fn: Function, test: str, pattern: dict) -> str | None:
+    """A literal or expression pattern as a condition on test; None for the wildcard."""
+    if pattern["kind"] == "wildcard":
+        return None
+    if pattern["kind"] not in ("literal", "expression"):
+        raise Unsupported(f"{pattern['kind']} pattern")
+    return f"GDScriptNative::matches({test}, {typed(fn, pattern['value'], 'Variant')})"
+
+
+def _match(fn: Function, node: dict) -> None:
+    test = fn.fresh("match")
+    fn.emit(f"const Variant {test} = {typed(fn, node['test'], 'Variant')};")
+    keyword = "if"
+    for branch in node["branches"]:
+        if branch["guard"]:
+            raise Unsupported("match guard")
+        conditions = [_pattern(fn, test, p) for p in branch["patterns"]]
+        if None in conditions:  # A wildcard takes whatever the branches before left.
+            _block(fn, "else" if keyword != "if" else "if (true)", branch["body"])
+            return
+        _block(
+            fn, f"{keyword} ({' || '.join(c for c in conditions if c)})", branch["body"]
+        )
+        keyword = "else if"
+
+
 def _return(fn: Function, node: dict) -> None:
     gd = gd_type(fn.node["return"])
     if node["value"] is not None:
@@ -140,12 +184,29 @@ def _pass(fn: Function, node: dict) -> None:
     pass
 
 
+def _raw(fn: Function, node: dict) -> None:
+    """Code the generator wrote itself, such as a member's default value."""
+    fn.emit(node["code"])
+
+
+def _continue(fn: Function, node: dict) -> None:
+    fn.emit("continue;")
+
+
+def _break(fn: Function, node: dict) -> None:
+    fn.emit("break;")
+
+
 _STATEMENTS: dict[str, Callable[[Function, dict], None]] = {
     "assignment": assignment,
     "variable": _variable,
     "if": _if,
     "while": _while,
     "for": _for,
+    "match": _match,
     "return": _return,
     "pass": _pass,
+    "continue": _continue,
+    "raw": _raw,
+    "break": _break,
 }

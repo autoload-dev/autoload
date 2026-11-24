@@ -193,9 +193,9 @@ def klass(r: Reader, use: dict[str, set[str]]) -> None:
         name = r.text()
         function(r, _discard() if f"{fqcn}.{name}" in _COMPILED else use)
         r.u8()
-    for _ in range(3):
+    for name in ("@implicit_new", "@implicit_ready", "@static_initializer"):
         if r.u8():
-            function(r, use)
+            function(r, _discard() if f"{fqcn}.{name}" in _COMPILED else use)
 
 
 def main() -> None:

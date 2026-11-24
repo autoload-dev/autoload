@@ -1,5 +1,5 @@
 diff --git a/modules/gdscript/SCsub b/modules/gdscript/SCsub
-index f2eb9cc..dec61d5 100644
+index f2eb9cc..c23e5eb 100644
 --- a/modules/gdscript/SCsub
 +++ b/modules/gdscript/SCsub
 @@ -12,6 +12,7 @@ import os
@@ -10,6 +10,16 @@ index f2eb9cc..dec61d5 100644
          "gdscript_byte_codegen.cpp",
          "gdscript_compiler.cpp",
          "gdscript_disassembler.cpp",
+@@ -22,6 +23,9 @@ if os.environ.get("GDSCRIPT_NO_COMPILER") == "1" and not env.editor_build:
+         "gdscript_warning.cpp",
+     ]
+     env_gdscript.Append(CPPDEFINES=["GDSCRIPT_NO_COMPILER"])
++    if os.environ.get("GDSCRIPT_NO_VM") == "1":
++        # PROTOTYPE: every function is compiled to C++ (gen_cpp.py), so no interpreter.
++        env_gdscript.Append(CPPDEFINES=["GDSCRIPT_NO_VM"])
+     env.Append(CPPDEFINES=["GDSCRIPT_NO_COMPILER"])
+     env_gdscript.add_source_files(
+         env.modules_sources, [f for f in Glob("*.cpp", strings=True) if f not in compiler_sources]
 diff --git a/modules/gdscript/gdscript.h b/modules/gdscript/gdscript.h
 index 12a3bbb..4db0cd2 100644
 --- a/modules/gdscript/gdscript.h
@@ -559,10 +569,10 @@ index 557f428..84c3cb3 100644
  	const StringName *_global_names_ptr = nullptr;
 diff --git a/modules/gdscript/gdscript_native.h b/modules/gdscript/gdscript_native.h
 new file mode 100644
-index 0000000..dede319
+index 0000000..6524563
 --- /dev/null
 +++ b/modules/gdscript/gdscript_native.h
-@@ -0,0 +1,250 @@
+@@ -0,0 +1,314 @@
 +/**************************************************************************/
 +/*  gdscript_native.h                                                     */
 +/**************************************************************************/
@@ -576,6 +586,7 @@ index 0000000..dede319
 +#include "gdscript_function.h"
 +
 +#include "core/config/engine.h"
++#include "scene/main/node.h"
 +#include "core/object/class_db.h"
 +#include "core/variant/binder_common.h"
 +#include "core/io/resource_loader.h"
@@ -712,7 +723,7 @@ index 0000000..dede319
 +	// A method of an engine singleton (`OS.get_name()`) or a static method of a native
 +	// class (`JSON.stringify()`).
 +	static Variant call_native(const StringName &p_class, const StringName &p_method, std::initializer_list<Variant> p_args) {
-+		Object *singleton = Engine::get_singleton()->get_singleton_object(p_class);
++		Object *singleton = Engine::get_singleton()->has_singleton(p_class) ? Engine::get_singleton()->get_singleton_object(p_class) : nullptr;
 +		if (singleton) {
 +			return call(Variant(singleton), p_method, p_args);
 +		}
@@ -810,20 +821,94 @@ index 0000000..dede319
 +		return Variant();
 +	}
 +
++	static void set_indexed(Variant &p_base, const Variant &p_index, const Variant &p_value) {
++		bool valid = false;
++		p_base.set(p_index, p_value, &valid);
++		ERR_FAIL_COND_MSG(!valid, "Invalid index assignment in compiled GDScript.");
++	}
++
++	static void set_named(Variant &p_base, const StringName &p_name, const Variant &p_value) {
++		bool valid = false;
++		p_base.set_named(p_name, p_value, valid);
++		ERR_FAIL_COND_MSG(!valid, vformat("Invalid assignment of property '%s' in compiled GDScript.", p_name));
++	}
++
++	// A method of the script's object, or one of its signals, as a value.
++	static Callable method(GDScriptInstance *p_instance, const StringName &p_name) { return Callable(p_instance->owner, p_name); }
++	static Signal signal(GDScriptInstance *p_instance, const StringName &p_name) { return Signal(p_instance->owner, p_name); }
++
++	// A builtin value's method as a value, such as a signal's `emit`.
++	static Callable bound_method(const Variant &p_base, const StringName &p_name) { return Callable::create(p_base, p_name); }
++
++	static bool is_native(const Variant &p_value, const StringName &p_class) {
++		Object *object = p_value.get_validated_object();
++		return object && object->is_class(p_class);
++	}
++
++	static bool is_script(const Variant &p_value, const char *p_fqcn) {
++		Object *object = p_value.get_validated_object();
++		if (!object) {
++			return false;
++		}
++		Variant target = script_class(p_fqcn);
++		for (Ref<Script> script = object->get_script(); script.is_valid(); script = script->get_base_script()) {
++			if (Variant(script) == target) {
++				return true;
++			}
++		}
++		return false;
++	}
++
++	// `value as Class`: the object if it is one, null otherwise.
++	static Variant cast_native(const Variant &p_value, const StringName &p_class) { return is_native(p_value, p_class) ? p_value : Variant(); }
++	static Variant cast_script(const Variant &p_value, const char *p_fqcn) { return is_script(p_value, p_fqcn) ? p_value : Variant(); }
++
++	// `match`: a literal pattern matches a value of the same type that equals it.
++	static bool matches(const Variant &p_value, const Variant &p_pattern) {
++		return p_value.get_type() == p_pattern.get_type() && p_value == p_pattern;
++	}
++
++	static Array typed_array(Variant::Type p_type, const StringName &p_class, const Variant &p_script, std::initializer_list<Variant> p_items) {
++		Array a;
++		a.set_typed(p_type, p_class, p_script);
++		for (const Variant &item : p_items) {
++			a.push_back(item);
++		}
++		return a;
++	}
++
++	// `$Path`: a node relative to the script's node.
++	static Variant get_node(GDScriptInstance *p_instance, const char *p_path) {
++		Node *node = Object::cast_to<Node>(p_instance->owner);
++		ERR_FAIL_NULL_V_MSG(node, Variant(), "Compiled GDScript used $ outside a node.");
++		return Variant(node->get_node(NodePath(String::utf8(p_path))));
++	}
++
 +	// A constant the generator could only write as text, parsed once.
 +	static Variant constant(const char *p_text) { return VariantUtilityFunctions::str_to_var(String::utf8(p_text)); }
 +};
 diff --git a/modules/gdscript/gdscript_vm.cpp b/modules/gdscript/gdscript_vm.cpp
-index f91ae9e..44dd69c 100644
+index f91ae9e..f01b612 100644
 --- a/modules/gdscript/gdscript_vm.cpp
 +++ b/modules/gdscript/gdscript_vm.cpp
-@@ -482,6 +482,9 @@ void (*type_init_function_table[])(Variant *) = {
+@@ -482,6 +482,15 @@ void (*type_init_function_table[])(Variant *) = {
  #define METHOD_CALL_ON_FREED_INSTANCE_ERROR(method_pointer) "Cannot call method '" + (method_pointer)->get_name() + "' on a previously freed instance."
  
  Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state) {
 +	if (_native && !p_state) {
 +		return _native(p_instance, p_args, p_argcount, r_err);
 +	}
++#ifdef GDSCRIPT_NO_VM
++	// PROTOTYPE: a runtime for projects compiled to C++ entirely has no interpreter.
++	r_err.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
++	ERR_FAIL_V_MSG(Variant(), vformat("GDScript function \"%s\" was not compiled to C++, and this runtime has no VM.", name));
++}
++#else
  	GodotProfileZoneScript(this, source, name, name, _initial_line);
  
  	OPCODES_TABLE;
+@@ -4058,3 +4067,4 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
+ 
+ 	return retvalue;
+ }
++#endif // GDSCRIPT_NO_VM
