@@ -126,8 +126,8 @@ Found on the way:
   private (bound helpers starting with `_` are now never called directly).
 - **The engine index must read unshaken sources.** Indexed from a shaken tree, removed
   `bind_method()` statements silently turn direct calls into calls by name, which then
-  keep more bindings: R9 came out 70 KB larger. `cpp_engine.py` now reads a separate,
-  never shaken worktree of the Godot sources.
+  keep more bindings: R9 came out 70 KB larger. `--godot` therefore points to a
+  separate, never shaken worktree of the Godot sources.
 
 ## How it works
 
