@@ -906,24 +906,17 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-def _discovered_includes(
-    root: Path, sources: Collection[str], includes: Callable[[Path, Path], list[str]]
-) -> set[str]:
-    """Return the files the sources include, transitively, relative to the source root."""
-    found: set[str] = set()
+def include_closure(root: Path, sources: Collection[str]) -> set[str]:
+    """Godot shader builders recursively read #include files themselves."""
+    root = root.resolve()
+    found = set(sources)
     pending = list(dict.fromkeys(sources))
     while pending:
-        for logical in includes(root, root / pending.pop()):
+        for logical in _shader_includes(root, root / pending.pop()):
             if logical not in found:
                 found.add(logical)
                 pending.append(logical)
     return found
-
-
-def include_closure(root: Path, sources: Collection[str]) -> set[str]:
-    """Godot shader builders recursively read #include files themselves."""
-    root = root.resolve()
-    return set(sources) | _discovered_includes(root, sources, _shader_includes)
 
 
 def generated_include_directories(
@@ -1472,6 +1465,8 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
         'package(default_visibility = ["//visibility:public"])',
         'exports_files(["engine_manifest.json"])',
         f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
+        # The source root's include directory, which every compile action searches.
+        "cc_library(name = '_root', visibility = ['//visibility:private'], includes = ['.'])",
     ]
     return lines
 
@@ -1513,11 +1508,11 @@ def _generator_rules(
 
 
 def generated_files(
-    root: Path, generators: Iterable[tuple[Mapping[str, Any], object]]
+    root: Path, specs: Iterable[Mapping[str, Any]]
 ) -> dict[str, Generated]:
     """Return each generated file with its generator's code and the files it reads."""
     files: dict[str, Generated] = {}
-    for spec, _dependencies in generators:
+    for spec in specs:
         code = spec.get("inline") or (root / spec["code_file"]).read_text()
         inputs = tuple(entry["path"] for entry in spec["sources"] if "path" in entry)
         files.update((target, Generated(code, inputs)) for target in spec["targets"])
@@ -1732,10 +1727,10 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines = _header_rules(args, bool(graph["swift_sources"]))
     generator_rules, generated_headers = _generator_rules(root, generators)
     lines += generator_rules
-    generated = generated_files(root, generators)
+    generated = generated_files(root, (spec for spec, _ in generators))
     compiled = object_groups(groups, generated_headers, generated)
     swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
-    bridging_header = swift_options["bridging_header"]
+    swift_roots = [swift_options["bridging_header"]] if graph["swift_sources"] else []
     includes = include_graph(
         root,
         (
@@ -1743,16 +1738,13 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
             for _, copts, includes, sources in compiled
         ),
         generated,
-        [bridging_header] if graph["swift_sources"] else [],
+        swift_roots,
     )
     header_rules, targets = include_rules(includes)
-    lines.append(
-        "cc_library(name = '_root', visibility = ['//visibility:private'], includes = ['.'])"
-    )
     lines += header_rules
     object_rules, dependencies = _object_rules(compiled, includes, targets)
     lines += object_rules
-    if graph["swift_sources"]:
+    for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)
         lines.append(_swift_rule(graph["swift_sources"], swift_options, deps))
         dependencies.append(":_swift")

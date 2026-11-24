@@ -180,14 +180,13 @@ def include_graph(
     bridging header, are followed like sources.
     """
     groups = list(groups)
-    options = [option_includes(group.copts) for group in groups]
     directories = [
         name
-        for group, (option_directories, _headers) in zip(groups, options)
-        for name in [*group.includes, *option_directories]
+        for group in groups
+        for name in [*group.includes, *option_includes(group.copts)[0]]
     ]
     resolver = _Resolver(tree_files(root) | set(generated), directories)
-    forced = _option_headers(groups, [headers for _, headers in options], resolver)
+    forced = _option_headers(groups, resolver)
     graph: dict[str, frozenset[str]] = {}
     pending = [*forced, *extra_roots]
     while pending:
@@ -201,11 +200,12 @@ def include_graph(
 
 
 def _option_headers(
-    groups: Sequence[CompileGroup], headers: Sequence[list[str]], resolver: _Resolver
+    groups: Iterable[CompileGroup], resolver: _Resolver
 ) -> dict[str, set[str]]:
     """Return each source mapped to the headers its group's options name."""
     forced: dict[str, set[str]] = {}
-    for group, names in zip(groups, headers):
+    for group in groups:
+        _directories, names = option_includes(group.copts)
         for source in group.sources:
             forced.setdefault(source, set()).update(
                 found for name in names for found in resolver.resolve(source, name)
