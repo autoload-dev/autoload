@@ -101,7 +101,7 @@ def optimization_error(compilation_mode, lto, vfe):
     if not vfe or compilation_mode != "opt":
         return None
     if lto != "full":
-        return 'engine_vfe needs engine_lto = "full", not "%s"' % lto
+        return 'engine_vfe needs engine_lto = "full", on the command line or the godot_app, not "%s"' % lto
     return None
 
 # The settings the engine rules check before their transition applies and resets them.

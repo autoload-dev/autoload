@@ -183,9 +183,9 @@ double, which costs more than elimination saves. With `size_min` and full LTO, o
 | --- | ---: | ---: |
 | macOS executable, Lichtpost's modules | 15.5 MiB | 17.0 MiB (+9.6 %) |
 | The same with a build profile | 12.0 MiB | 12.8 MiB (+6.9 %) |
-| Android `libgodot_android.so`, the 2D engine of steps 1 to 3 | 16.0 MiB | 16.7 MiB (+4.6 %) |
+| Android `libgodot_android.so`, a 2D engine without 3D, 2D physics and navigation | 16.0 MiB | 16.7 MiB (+4.6 %) |
 
-Compressed, the Android library shrinks by about 1 % and the macOS executable grows by
+Compressed, the Android library shrinks by 0.6 % and the macOS executable grows by
 about 5 %. Elimination pays off only when the engine's method bindings are already
 reduced: a web engine that kept only the bindings its game called shrank by 10 %. Leave
 `engine_vfe` off unless you measured a gain for your engine.

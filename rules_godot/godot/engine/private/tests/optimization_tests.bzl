@@ -89,8 +89,8 @@ def _test_other_compilation_modes_keep_bazels_levels(env):
 # compiling options the compiler rejects; other compilation modes apply no settings.
 def _test_virtual_function_elimination_needs_full_lto(env):
     for mode, lto, error in [
-        ("opt", "none", 'engine_vfe needs engine_lto = "full", not "none"'),
-        ("opt", "thin", 'engine_vfe needs engine_lto = "full", not "thin"'),
+        ("opt", "none", 'engine_vfe needs engine_lto = "full", on the command line or the godot_app, not "none"'),
+        ("opt", "thin", 'engine_vfe needs engine_lto = "full", on the command line or the godot_app, not "thin"'),
         ("opt", "full", None),
         ("dbg", "none", None),
         ("fastbuild", "thin", None),
