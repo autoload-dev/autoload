@@ -7,6 +7,7 @@ not cover this module: changing how a graph renders keeps every pin.
 """
 
 import argparse
+import hashlib
 from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -145,6 +146,7 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
         )
     lines += [
         f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision")',
+        f'load("{args.generator_bzl.replace("generator.bzl", "preprocessed.bzl")}", "godot_preprocessed_object")',
         'package(default_visibility = ["//visibility:public"])',
         'exports_files(["engine_manifest.json"])',
         f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
@@ -255,6 +257,26 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
     return name if name not in taken else f"{name}__{group}"
 
 
+# Prototype: the C and C++ sources compiled in two actions, preprocessing and compiling.
+# "split" compiles every C and C++ source so; "shadow" keeps the one-action libraries and
+# adds an unlinked two-action twin, named <library>__split, for a sample of sources.
+_MODE = "shadow"
+_SAMPLE = {
+    "core/math/aabb.cpp",
+    "core/math/a_star.cpp",
+    "core/script_encryption_key.gen.cpp",
+    "modules/gdscript/register_types.cpp",
+    "modules/register_module_types.gen.cpp",
+    "scene/main/node.cpp",
+    "thirdparty/freetype/src/base/ftbbox.c",
+}
+
+
+def _sampled(source: str) -> bool:
+    digest = hashlib.sha256(source.encode()).digest()
+    return source in _SAMPLE or digest[0] % 16 == 0
+
+
 def _object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
@@ -285,6 +307,16 @@ def _object_rules(
                 if source in profile_users
                 else ""
             )
+            split = (
+                f"godot_preprocessed_object(name = {{name!r}}, visibility = ['//visibility:private'], "
+                f"src = {source!r}, copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
+                f"{defines}deps = {deps!r})"
+            )
+            if language != "objc" and _MODE == "split":
+                lines.append(split.format(name=name))
+                continue
+            if language != "objc" and _sampled(source):
+                lines.append(split.format(name=name + "__split"))
             lines.append(
                 f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
                 f"srcs = [{source!r}], copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
