@@ -13,11 +13,23 @@ from typing import Any
 
 try:
     from . import build_profile
-    from .include_graph import CompileGroup, Generated, components, include_graph
+    from .include_graph import (
+        CompileGroup,
+        Generated,
+        components,
+        include_graph,
+        reached_directories,
+    )
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
     import build_profile
-    from include_graph import CompileGroup, Generated, components, include_graph
+    from include_graph import (
+        CompileGroup,
+        Generated,
+        components,
+        include_graph,
+        reached_directories,
+    )
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
 
@@ -255,7 +267,27 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
     return name if name not in taken else f"{name}__{group}"
 
 
-def _object_rules(
+def constants(
+    prefix: str, values: Mapping[str, Sequence[str]]
+) -> tuple[list[str], dict[str, str]]:
+    """
+    Return a constant per distinct list of the sources' values and each source's constant.
+
+    The constants of a compile group share its prefix, such as _INCLUDES_3, and count up.
+    """
+    lines: list[str] = []
+    names: dict[tuple[str, ...], str] = {}
+    by_source: dict[str, str] = {}
+    for source, value in values.items():
+        key = tuple(value)
+        if key not in names:
+            names[key] = f"{prefix}_{len(names)}"
+            lines.append(f"{names[key]} = {list(key)!r}")
+        by_source[source] = names[key]
+    return lines, by_source
+
+
+def object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
     targets: Mapping[str, str],
@@ -266,14 +298,22 @@ def _object_rules(
 
     A library is named after its source, so its object keeps its path, and its cache key,
     when other compile groups of the engine change. Sources that register classes see
-    the build profile.
+    the build profile. A source compiles with only the include directories that hold a
+    file it reaches.
     """
+    reached = reached_directories(
+        graph, {directory for _, _, includes, _ in groups for directory in includes}
+    )
     lines: list[str] = []
     labels: list[str] = []
     names: set[str] = set()
     for index, (language, copts, includes, sources) in enumerate(groups):
         lines.append(f"_COPTS_{index} = {list(copts)!r}")
-        lines.append(f"_INCLUDES_{index} = {list(includes)!r}")
+        include_lines, source_includes = constants(
+            f"_INCLUDES_{index}",
+            {source: [d for d in includes if d in reached[source]] for source in sources},
+        )
+        lines += include_lines
         rule = "objc_library" if language == "objc" else "cc_library"
         for source in sources:
             name = object_library_name(source, index, names)
@@ -287,7 +327,8 @@ def _object_rules(
             )
             lines.append(
                 f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
-                f"srcs = [{source!r}], copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
+                f"srcs = [{source!r}], copts = _COPTS_{index}, "
+                f"includes = {source_includes[source]}, "
                 f"{defines}deps = {deps!r}, alwayslink = True)"
             )
     return lines, labels
@@ -470,8 +511,8 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     )
     header_rules, targets = include_rules(includes)
     lines += header_rules
-    object_rules, dependencies = _object_rules(compiled, includes, targets, profile_users)
-    lines += object_rules
+    objects, dependencies = object_rules(compiled, includes, targets, profile_users)
+    lines += objects
     for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)
         lines.append(_swift_rule(graph["swift_sources"], swift_options, deps))

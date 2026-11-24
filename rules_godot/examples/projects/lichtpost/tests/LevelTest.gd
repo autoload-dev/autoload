@@ -13,7 +13,10 @@ func test_level_01_keeps_every_frozen_layout_for_65_seeds() -> void:
 		var gaps := []
 		for gap in model.gaps:
 			gaps.append([gap.x, gap.y])
-		var layout := {"gaps": gaps, "pipes": model.pipes, "lights": model.lights}
+		var lights := []
+		for light in model.lights:
+			lights.append({"x": light.x, "y": light.y, "taken": light.taken})
+		var layout := {"gaps": gaps, "pipes": model.pipes, "lights": lights}
 		assert_str(JSON.stringify(layout).sha256_text()).override_failure_message("Layout changed for seed " + seed_text).is_equal(hashes[seed_text])
 
 

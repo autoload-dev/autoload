@@ -2,11 +2,12 @@ extends Node3D
 ## Cosmetic pose only. The logical body remains in route_model.
 
 const Primitives = preload("res://main/shared/primitives.gd")
+const Palette = preload("res://main/shared/palette/palette.gd")
 @onready var body: Node3D = $Body
 @onready var limbs: Array[Node3D] = [$Body/BackLeg, $Body/FrontLeg, $Body/BackArm, $Body/FrontArm]
 
 
-func configure(palette: Resource) -> void:
+func configure(palette: Palette) -> void:
 	Primitives.apply_palette(self, palette)
 
 
