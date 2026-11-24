@@ -36,6 +36,8 @@ GDScript module's own bindings. Of 15,081 bindings, 7,070 go.
 | --- | ---: | ---: | ---: |
 | A2, all bindings | 9.31 MB | 3.30 MB | 2.48 MB |
 | T3, unused bindings removed | 7.78 MB | 2.87 MB | 2.19 MB |
+| T4, also unused built-in methods (675 of 805) and utility functions (90 of 109) | 7.30 MB | 2.78 MB | 2.14 MB |
+| T5, also `deprecated=no` (compatibility bindings) | 7.09 MB | 2.72 MB | 2.10 MB |
 
 Lichtpost's three replays (`replays.sh`: delivery, fall, pipe) give identical results on
 the stock engine with the source PCK and on the macOS build of T3 with the bytecode PCK
@@ -44,10 +46,16 @@ loudly, which is the point to keep: a missing binding shows as an error at load 
 (`Invalid getter`, `unknown method` in the bytecode loader) or as a null object where a
 dynamic call (`MeshInstance3D.new()`) lost its binding.
 
+`shake_variant.py` also removes the built-in methods and utility functions
+neither the bytecode nor a name table names. T4 and T5 pass the same replays (macOS builds
+of the same configuration) and play in the browser.
+
 Remaining start-up noise: `set_method_flags` for removed methods and one property whose
-`ADD_PROPERTY` the regex misses (`DPITexture.color_map`). Not removed yet: Variant's
-built-in methods and utility functions (`variant_call.cpp`, `variant_utility.cpp`), which
-the bytecode lists too, and the compatibility bindings `deprecated=no` drops.
+`ADD_PROPERTY` the regex misses (`DPITexture.color_map`).
+
+From the official template to T5, brotli: 7.10 MB (official 4.7.2) → 2.63 MB (4.7.2,
+modules, `-Oz`, profile) → 2.56 MB (4.8) → 2.48 MB (no GDScript compiler) → 2.10 MB
+(bindings, built-ins, utilities and compatibility shaken).
 
 ## How it works
 
