@@ -5,7 +5,7 @@ import %workspace%/shared.bazelrc
 # The Java of this module's tools, and of the Android SDK's tools (tools/android/java.py), is
 # Bazel's own, as the ruleset's modules set it; the host's Java is not needed.
 
-# The Godot applications (examples/) and the ruleset's consumer scenarios (scenarios/) build as
+# The Godot applications (examples/) and the ruleset's consumer scenarios (e2e/rules_godot/) build as
 # a consumer of the ruleset does, with the mobile configurations of their lanes and API
 # contract cases.
 build --incompatible_strict_action_env

@@ -40,7 +40,7 @@ from tools.setup.modules import RULESET, module_paths
 RULESET_DIR = RULESET.as_posix()
 # The root module's Godot applications and the ruleset's consumer scenarios, by package.
 EXAMPLES = "//examples"
-SCENARIOS = "//scenarios"
+SCENARIOS = "//e2e/rules_godot"
 ANDROID_SETUP = "android:setup"
 # The variable that selects a piece of work's Bazel profile (tools/bazel).
 PROFILE = "AUTOLOAD_BAZEL_PROFILE"

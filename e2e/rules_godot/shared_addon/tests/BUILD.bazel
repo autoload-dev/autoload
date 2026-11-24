@@ -11,7 +11,7 @@ godot_resources(
         "unit/CounterTest.gd.uid",
     ],
     deps = [
-        "//scenarios/shared_addon:native_counter",
+        "//e2e/rules_godot/shared_addon:native_counter",
         "@autoload_gdunit//:gdunit",
     ],
 )

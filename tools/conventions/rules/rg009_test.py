@@ -25,12 +25,12 @@ class TypedRootLayoutTest(RepositoryTest):
             self.evaluate(
                 "examples/projects/game/BUILD.bazel",
                 "examples/projects/game/project.godot",
-                "scenarios/mobile/BUILD.bazel",
-                "scenarios/mobile/android/project.godot",
+                "e2e/rules_godot/mobile/BUILD.bazel",
+                "e2e/rules_godot/mobile/android/project.godot",
                 "examples/addons/widget/demo/project.godot",
                 "examples/addons/widget/tests/project.godot",
-                "scenarios/shared_addon/demo/project.godot",
-                "scenarios/shared_addon/tests/project.godot",
+                "e2e/rules_godot/shared_addon/demo/project.godot",
+                "e2e/rules_godot/shared_addon/tests/project.godot",
             ),
         )
 
@@ -38,8 +38,8 @@ class TypedRootLayoutTest(RepositoryTest):
         findings = self.evaluate(
             "examples/games/game/project.godot",
             "examples/projects/project.godot",
-            "scenarios/project.godot",
-            "scenarios/smoke/project.godot",
+            "e2e/rules_godot/project.godot",
+            "e2e/rules_godot/smoke/project.godot",
         )
         self.assertEqual(len(findings), 4)
         self.assertTrue(
@@ -70,7 +70,7 @@ class TypedRootLayoutTest(RepositoryTest):
 
     def test_project_needs_configuration_and_own_build(self) -> None:
         findings = self.evaluate(
-            "scenarios/raw_library/native.cc",
+            "e2e/rules_godot/raw_library/native.cc",
             "examples/projects/app/project.godot",
         )
         self.assertEqual(len(findings), 3)
@@ -85,9 +85,9 @@ class TypedRootLayoutTest(RepositoryTest):
         self.assertEqual(
             [],
             self.evaluate(
-                "scenarios/tools/c_abi/native.cc",
-                "scenarios/tools/resources/project.godot.tpl",
-                "scenarios/parser_test.py",
+                "e2e/rules_godot/tools/c_abi/native.cc",
+                "e2e/rules_godot/tools/resources/project.godot.tpl",
+                "e2e/rules_godot/parser_test.py",
                 "godot/private/default_project.godot",
             ),
         )

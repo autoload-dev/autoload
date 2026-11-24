@@ -46,7 +46,7 @@ make. A behavior that no question reaches has no test kind; see
 | Build-tool unit test | Ruleset, `tools/<area>/tests/` | `py_test` | The tool's library and test data |
 | Build-output test | Ruleset, `<impl>/tests/` | Inspection `py_test` or a test rule over built fixture outputs | Private files, fixtures, transitions, tool libraries, an engine |
 | Run test | Ruleset, `<impl>/tests/` | `godot_test`, GdUnit or a launcher over an exported application | As for build-output tests |
-| Consumer scenario | `scenarios/` in the root module, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
+| Consumer scenario | `e2e/rules_godot/` in the root module, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
 | Example test | `examples/`, owned by the example | The example's own tests | Public API only |
 | Repository-tooling test | Root module `autoload_dev`, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
 
@@ -137,7 +137,7 @@ code.
 
 ### Consumer scenario
 
-- **Location**: `scenarios/` in the repository's root module, one package per scenario.
+- **Location**: `e2e/rules_godot/` in the repository's root module, one package per scenario.
 - **Form**: Public test rules, `build_test` and the [artifact test rules](#artifact-test-rules).
 - **Allowed dependencies**: The public API and the artifact test rules.
 - **May prove**: That a user can build, inspect and run what the scenario declares through
@@ -212,7 +212,7 @@ ruleset's, so they live in the repository's root module, which sees the ruleset 
 | `autoload_rules_godot` at `rules_godot/` | The ruleset and its white-box tests | `godot/**/tests/`, `tools/**/tests/` |
 | `autoload_dev`, the repository root, `tools/` | The repository's tooling and its tests | Tooling tests beside their tools in `tools/` |
 | `autoload_dev`, `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
-| `autoload_dev`, `scenarios/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
+| `autoload_dev`, `e2e/rules_godot/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
 
 This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
@@ -237,7 +237,7 @@ suites are declared is a lane decision.
 `godot/private/testing` holds `android_bundle_test` and `ios_app_test`, which inspect a
 built App Bundle or iOS application. They are not supported API: as in rules_apple and
 rules_android, inspection rules serve the ruleset's own tests. White-box tests and the
-smoke scenarios `scenarios/smoke/android` and `scenarios/smoke/ios` load them; the root
+smoke scenarios `e2e/rules_godot/smoke/android` and `e2e/rules_godot/smoke/ios` load them; the root
 module loads them across repositories, so they keep public load visibility and are classified as
 cross-repository modules. They carry their own inspectors instead of loading
 `tools/platforms`.

@@ -61,7 +61,7 @@ godot_app(
     application_id = "org.example.smoke.linux",
     pack = ":pack",
     target_compatible_with = _LINUX,
-    visibility = ["//scenarios/smoke/linux:__subpackages__"],
+    visibility = ["//e2e/rules_godot/smoke/linux:__subpackages__"],
 )
 
 [

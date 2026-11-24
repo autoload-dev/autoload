@@ -18,9 +18,9 @@ from tools.platforms.apple_bundle import application_bundle, bundle_identity
 
 # The consumer scenarios' smoke applications whose artifacts this check validates, in the
 # repository's root module, and the godot-cpp extension each one packages.
-ANDROID_APP = "//scenarios/smoke/android:app"
-IOS_APP = "//scenarios/smoke/ios:app"
-MACOS_APP = "//scenarios/smoke/macos:app"
+ANDROID_APP = "//e2e/rules_godot/smoke/android:app"
+IOS_APP = "//e2e/rules_godot/smoke/ios:app"
+MACOS_APP = "//e2e/rules_godot/smoke/macos:app"
 ANDROID_LIBRARY = "lib/arm64-v8a/libcounter_native.so"
 ENTRY_SYMBOL = "native_counter_init"
 

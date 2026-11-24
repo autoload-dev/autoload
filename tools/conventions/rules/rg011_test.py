@@ -134,7 +134,7 @@ class AddonIndependenceTest(RepositoryTest):
         self.assertIn("@consumer//:fixture.gd", findings[0].message)
 
     def test_regression_addons_get_the_same_boundary_check_without_opt_in(self) -> None:
-        root = "scenarios/shared_addon/widget"
+        root = "e2e/rules_godot/shared_addon/widget"
         unit: Record = {
             "name": "//tests/shared_addon/widget:widget",
             "path": root + "/BUILD.bazel",

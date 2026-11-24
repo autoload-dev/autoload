@@ -29,7 +29,7 @@ class EngineLayoutTest(RepositoryTest):
         return tuple(directory + "/" + name for name in (files or MODULE))
 
     def test_compliant_project_with_modules_and_patches_has_no_findings(self) -> None:
-        root = "scenarios/projects/patched"
+        root = "e2e/rules_godot/projects/patched"
         self.assertEqual(
             [],
             self.evaluate(
@@ -81,7 +81,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_patch_outside_engine_patches_is_reported(self) -> None:
-        root = "scenarios/projects/patched"
+        root = "e2e/rules_godot/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/patches/engine-name.patch",
@@ -103,7 +103,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_stray_entries_in_engine_are_reported_once_per_entry(self) -> None:
-        root = "scenarios/projects/patched"
+        root = "e2e/rules_godot/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/engine/BUILD.bazel",
@@ -160,7 +160,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_engine_patches_holds_only_patch_files_and_a_build_file(self) -> None:
-        root = "scenarios/projects/patched"
+        root = "e2e/rules_godot/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/engine/patches/BUILD.bazel",
@@ -193,24 +193,24 @@ class EngineLayoutTest(RepositoryTest):
             *self.module(addon + "/tests/modules/stray", "config.py", "SCsub"),
             *self.module(addon + "/native", "config.py", "SCsub"),
             "examples/deps/godot_simulator.patch",
-            "scenarios/unit/engine/fix.patch",
+            "e2e/rules_godot/unit/engine/fix.patch",
             *self.module("godot/private/probe", "config.py", "SCsub"),
-            *self.project("scenarios/projects/mobile/android"),
-            *self.project("scenarios/projects/mobile/ios"),
-            "scenarios/projects/mobile/BUILD.bazel",
-            "scenarios/projects/mobile/shared.patch",
-            "scenarios/projects/mobile/android/engine/stray.txt",
+            *self.project("e2e/rules_godot/projects/mobile/android"),
+            *self.project("e2e/rules_godot/projects/mobile/ios"),
+            "e2e/rules_godot/projects/mobile/BUILD.bazel",
+            "e2e/rules_godot/projects/mobile/shared.patch",
+            "e2e/rules_godot/projects/mobile/android/engine/stray.txt",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    f"{addon}/tests/modules/stray/config.py: engine module must live under "
-                    f"engine/modules/ of its project: {addon}/tests/modules/stray"
+                    "e2e/rules_godot/projects/mobile/android/engine/stray.txt: engine/ holds only "
+                    "modules/ and patches/; unexpected entry: engine/stray.txt"
                 ),
                 (
-                    "scenarios/projects/mobile/android/engine/stray.txt: engine/ holds only "
-                    "modules/ and patches/; unexpected entry: engine/stray.txt"
+                    f"{addon}/tests/modules/stray/config.py: engine module must live under "
+                    f"engine/modules/ of its project: {addon}/tests/modules/stray"
                 ),
             ],
         )

@@ -17,7 +17,7 @@ NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 # The consumers in the root module: its examples, with typed roots, and the ruleset's consumer
 # scenarios with their smoke paths.
 EXAMPLES_ROOT = Path("examples")
-REGRESSION_ROOT = Path("scenarios")
+REGRESSION_ROOT = Path("e2e/rules_godot")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
 # Each add-on module's example applications and Godot tests, a consumer of its own:
 # examples/addons/<module>/ for every module addons/<module>/.
@@ -32,7 +32,7 @@ ADDON_SCENARIO = "shared_addon"
 
 def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
     """
-    The kind and root of the consumer scenario that a path below scenarios/, given by its
+    The kind and root of the consumer scenario that a path below e2e/rules_godot/, given by its
     parts, lies in: one project package per scenario and per operating system below smoke/;
     the shared add-on scenario is an add-on.
     """
@@ -51,7 +51,7 @@ def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
 def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
     """
     The consumer in the root module that path belongs to: an add-on module's examples, when
-    its module is among the modules, or else examples/ or scenarios/.
+    its module is among the modules, or else examples/ or e2e/rules_godot/.
     """
     if path.is_relative_to(ADDON_EXAMPLES) and path != ADDON_EXAMPLES:
         module = path.relative_to(ADDON_EXAMPLES).parts[0]

@@ -58,18 +58,24 @@ class AddonProjectsTest(RepositoryTest):
     def test_all_addons_are_discovered_in_both_areas_without_opt_in(self) -> None:
         names = (
             *self.layout("examples/addons/widget"),
-            *self.layout("scenarios/shared_addon"),
-            "scenarios/support/cc_extensions/c_abi/native.cc",
+            *self.layout("e2e/rules_godot/shared_addon"),
+            "e2e/rules_godot/support/cc_extensions/c_abi/native.cc",
         )
         self.assertEqual([], self.evaluate(names))
 
     def test_the_shared_addon_scenario_needs_demo_and_test_projects(self) -> None:
-        findings = self.evaluate(("scenarios/shared_addon/BUILD.bazel",))
+        findings = self.evaluate(("e2e/rules_godot/shared_addon/BUILD.bazel",))
         self.assertTrue(
-            any("scenarios/shared_addon/demo/project.godot" in item for item in findings)
+            any(
+                "e2e/rules_godot/shared_addon/demo/project.godot" in item
+                for item in findings
+            )
         )
         self.assertTrue(
-            any("scenarios/shared_addon/tests/project.godot" in item for item in findings)
+            any(
+                "e2e/rules_godot/shared_addon/tests/project.godot" in item
+                for item in findings
+            )
         )
 
 

@@ -5,7 +5,7 @@ import unittest
 from tools.conventions.rules.rg008 import ApplicationContent
 from tools.conventions.test_support import Record, RepositoryTest
 
-APP = "scenarios/game"
+APP = "e2e/rules_godot/game"
 
 
 def resources(srcs: list[str], resource_paths: dict[str, str] | None = None) -> Record:
@@ -71,7 +71,7 @@ class ApplicationContentTest(RepositoryTest):
             [],
             self.evaluate(
                 [resources(["//:counter.gd"])],
-                {"//:counter.gd": "scenarios/shared_addon/runtime/counter.gd"},
+                {"//:counter.gd": "e2e/rules_godot/shared_addon/runtime/counter.gd"},
             ),
         )
 
@@ -119,7 +119,7 @@ class ApplicationContentTest(RepositoryTest):
     def test_test_scope_requires_every_resources_target_to_be_test_only(self) -> None:
         for path in (
             APP + "/tests/Suite.gd",
-            "scenarios/shared_addon/tests/unit/Suite.gd",
+            "e2e/rules_godot/shared_addon/tests/unit/Suite.gd",
             "examples/addons/counter/tests/integration/Suite.gd",
         ):
             with self.subTest(path=path):

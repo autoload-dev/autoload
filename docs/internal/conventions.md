@@ -131,7 +131,7 @@ loading stop the audit with an error rather than silently passing.
 
 **Public documentation does not reference test fixtures.** Public guides and READMEs show
 runnable examples, which users can copy, instead of named consumer scenarios.
-The check reports each line with a concrete path such as `scenarios/smoke/linux` in Markdown under
+The check reports each line with a concrete path such as `e2e/rules_godot/smoke/linux` in Markdown under
 `docs/` and in every README, except internal documentation (the `docs/internal/` directories
 of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
 `tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
@@ -243,7 +243,7 @@ in the root module, the module root of another consumer module:
 | Consumer | Application projects | Add-ons |
 |---|---|---|
 | Examples, `examples/` | `examples/projects/<name>/` | `examples/addons/<name>/` |
-| Consumer scenarios, `scenarios/` | `scenarios/smoke/<operating_system>/`, `scenarios/script_run/`, `scenarios/patched_engine/` | `scenarios/shared_addon/` |
+| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
 | Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | `examples/addons/<module>/projects/<name>/` | none: the add-ons are in the module |
 
 The path determines whether a directory is a project or an add-on, and which rules apply.

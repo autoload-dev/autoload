@@ -76,7 +76,7 @@ single_version_override(
 )
 
 # The repository's Godot applications (examples/) and the ruleset's consumer scenarios
-# (scenarios/), built as a consumer builds them: every ruleset label is public, and every
+# (e2e/rules_godot/), built as a consumer builds them: every ruleset label is public, and every
 # repository they name is declared here. Shared pins equal those of the ruleset
 # (tools/setup/pins.py).
 bazel_dep(name = "autoload_gdunit", version = "0.1.0", dev_dependency = True)
@@ -273,12 +273,12 @@ godot_engines.source_build(
     source = "@godot_sources//:source.json",
 )
 
-# The patched desktop engines of scenarios/patched_engine and its source-built tests; built
+# The patched desktop engines of e2e/rules_godot/patched_engine and its source-built tests; built
 # only by the source-engine lane. Each recipe has its own policy, so each is a source
-# build of one slot; scenarios/patched_engine/engines registers their recipes' payloads.
-_BAZEL_PROBE = {"//scenarios/patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"}
+# build of one slot; e2e/rules_godot/patched_engine/engines registers their recipes' payloads.
+_BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"}
 
-_ENGINE_NAME_PATCH = ["//scenarios/patched_engine/engine/patches:engine-name.patch"]
+_ENGINE_NAME_PATCH = ["//e2e/rules_godot/patched_engine/engine/patches:engine-name.patch"]
 
 # The snapshot's fuller editor: the same module and patch, without the runtime's
 # template-only reductions, plus the font and SVG support the editor itself uses.

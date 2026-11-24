@@ -3,7 +3,7 @@ load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 
 # The shared add-on: a godot-cpp extension class behind a GDScript wrapper at
 # res://addons/native_counter, used by its own suites and by its demo, a second project that reuses it.
-package(default_visibility = ["//scenarios/shared_addon:__subpackages__"])
+package(default_visibility = ["//e2e/rules_godot/shared_addon:__subpackages__"])
 
 godot_cc_extension(
     name = "counter",

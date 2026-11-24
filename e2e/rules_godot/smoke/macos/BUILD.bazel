@@ -92,7 +92,7 @@ py_test(
 )
 
 # Signing is a build setting, so the signed application exists only in a build that sets
-# it: bazel test //scenarios/smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc. Other builds
+# it: bazel test //e2e/rules_godot/smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc. Other builds
 # skip this test.
 config_setting(
     name = "adhoc_signing",

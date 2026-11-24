@@ -8,7 +8,7 @@ load("@autoload_rules_godot//godot/private/testing:android_bundle_test.bzl", "an
 
 # The Android smoke path: an App Bundle whose APK packages the engine, a godot-cpp
 # extension and the pack, inspected with the public artifact test. Every target is
-# manual: //scenarios:android_aab runs it with --config=android --config=aab.
+# manual: //e2e/rules_godot:android_aab runs it with --config=android --config=aab.
 
 godot_cc_extension(
     name = "counter",

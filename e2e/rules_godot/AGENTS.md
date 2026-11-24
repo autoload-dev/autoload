@@ -3,7 +3,7 @@
 This directory of the repository's root module holds the ruleset's consumer scenarios and
 builds them as a consumer builds: through the root module's `MODULE.bazel`, with public
 `@autoload_rules_godot` labels only. Where a new test goes is owned by the
-[verification architecture](../docs/internal/verification-architecture.md).
+[verification architecture](../../docs/internal/verification-architecture.md).
 
 ## Layout
 
@@ -20,18 +20,18 @@ From the repository root, the desktop set runs every regression that needs no An
 Apple device toolchain:
 
 ```sh
-bazel test //scenarios/...
+bazel test //e2e/rules_godot/...
 ```
 
 `aspect work test:regressions` runs the same without the Android SDK, as CI does. Android and
 iOS tests are `manual` and run in configuration suites: `test_suite` targets in
 `BUILD.bazel`, one per configuration of the root's `.bazelrc`, run with that
 `--config`. The `android` and `ios` work of their lanes runs them; the [fixture
-catalogue](../docs/internal/verification-recipes.md#mobile-artifact-checks) lists the
+catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks) lists the
 suites.
 
 For a reproducer or existing fixture, use the relevant entry in the
-[fixture catalogue](../docs/internal/verification-recipes.md#regression-fixtures) and run
+[fixture catalogue](../../docs/internal/verification-recipes.md#regression-fixtures) and run
 its focused target from the repository root. The root verification policy owns TDD, timing and
 evidence.
 

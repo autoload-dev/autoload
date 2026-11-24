@@ -102,7 +102,7 @@ provisioning. Generated compile actions use Bazel's C++/Apple toolchains.
 ## Tests
 
 White-box tests beside the implementation packages cover build contracts and
-diagnostics; the consumer scenarios in the repository's `scenarios/` export and run real
+diagnostics; the consumer scenarios in the repository's `e2e/rules_godot/` export and run real
 projects as a consumer,
 through the public module boundary and the artifact test rules of `godot/private/testing/`. Cache checks compare selected Bazel actions and output bytes.
 Repository commands and controlled fixture inputs are documented in the

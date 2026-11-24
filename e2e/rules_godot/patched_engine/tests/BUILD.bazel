@@ -7,7 +7,7 @@ load("@rules_python//python:defs.bzl", "py_test")
 # last with a fuller editor and a reduced runtime of one snapshot.
 filegroup(
     name = "app_bundle",
-    srcs = ["//scenarios/patched_engine:app"],
+    srcs = ["//e2e/rules_godot/patched_engine:app"],
     output_group = "bundle",
     tags = ["manual"],
 )
@@ -25,8 +25,8 @@ py_test(
 # The editor runs the same probe scene, so the module and patch exist in the editor role.
 godot_test(
     name = "source_built_editor_test",
-    project = "//scenarios/patched_engine:project",
+    project = "//e2e/rules_godot/patched_engine:project",
     tags = ["manual"],
     target_compatible_with = ["@platforms//os:macos"],
-    deps = ["//scenarios/patched_engine:main"],
+    deps = ["//e2e/rules_godot/patched_engine:main"],
 )

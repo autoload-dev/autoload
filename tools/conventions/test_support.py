@@ -126,7 +126,7 @@ class RepositoryTest(unittest.TestCase):
     def write_consumer_modules(self) -> None:
         """
         Make rules_godot/ the ruleset's module, as in the repository, whose root module holds
-        the consumers examples/ and scenarios/.
+        the consumers examples/ and e2e/rules_godot/.
         """
         self.write("rules_godot/MODULE.bazel", "")
 

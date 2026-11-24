@@ -9,7 +9,7 @@ from tools.conventions.rules.rg012 import ProductionIsolation, test_scope
 from tools.conventions.test_support import Record, RepositoryTest
 
 # A regression project of the consumer module at tests/: its labels are module-relative.
-APP = "scenarios/projects/game"
+APP = "e2e/rules_godot/projects/game"
 LABEL = "//projects/game"
 
 
@@ -105,17 +105,19 @@ class ProductionIsolationTest(RepositoryTest):
             f"{APP}/BUILD.bazel",
             deps=["//support/native:hello"],
         )
-        fixture = rule("//support/native:hello", "scenarios/support/native/BUILD.bazel")
+        fixture = rule(
+            "//support/native:hello", "e2e/rules_godot/support/native/BUILD.bazel"
+        )
         self.assertEqual([], self.evaluate([main, fixture]))
 
     def test_test_scopes_are_measured_from_the_owning_module(self) -> None:
         workspace = self.workspace()
         for name, expected in (
-            ("scenarios/support/x/BUILD.bazel", False),
-            ("scenarios/BUILD.bazel", False),
-            ("scenarios/projects/y/BUILD.bazel", False),
-            ("scenarios/projects/y/tests/BUILD.bazel", True),
-            ("scenarios/projects/y/tests/android/BUILD.bazel", True),
+            ("e2e/rules_godot/support/x/BUILD.bazel", False),
+            ("e2e/rules_godot/BUILD.bazel", False),
+            ("e2e/rules_godot/projects/y/BUILD.bazel", False),
+            ("e2e/rules_godot/projects/y/tests/BUILD.bazel", True),
+            ("e2e/rules_godot/projects/y/tests/android/BUILD.bazel", True),
             ("godot/private/tests/BUILD.bazel", True),
             ("godot/private/BUILD.bazel", False),
             (

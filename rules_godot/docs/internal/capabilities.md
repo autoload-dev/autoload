@@ -328,7 +328,7 @@ their leading entry instead of repeating its support.
 [EXAMPLES]: ../../../examples/README.md
 [PATHS]: ../../../examples/addons/platform_paths/README.md
 [LAYOUT]: ../public/project-layout.md
-[TESTS]: ../../../scenarios/AGENTS.md
+[TESTS]: ../../../e2e/rules_godot/AGENTS.md
 [ARCH]: architecture.md
 [CAT]: godot-pipeline/README.md
 [SENTRY]: ../../../addons/sentry/README.md

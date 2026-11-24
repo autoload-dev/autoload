@@ -50,7 +50,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint`, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, `bazel test //tools/ci:setup_action_test` |
 | API/documentation contracts | Inventories, metadata, visibility and docstrings | `aspect work docs` |
-| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `scenarios/` (the regression module's desktop set); individual owning Bazel test targets |
+| Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `e2e/rules_godot/` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | The `android` and `ios` work and desktop targets |
 | Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in the work `test:bazel`; the consumer module's configuration suites in the `android`/`ios` work |
@@ -108,7 +108,7 @@ Examples retain their own meaningful behavior tests under [design principle V](.
 [example scope](../../examples/AGENTS.md#scope-and-design) when changing them. Do not add a
 mobile automation framework merely to complete verification.
 For tests inside an example's or user's project, read [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
-For the existing regression module's layout, use its [module guide](../../scenarios/AGENTS.md).
+For the existing regression module's layout, use its [module guide](../../e2e/rules_godot/AGENTS.md).
 
 Review the diff against the user's scope and applicable AGENTS.md files; for package or target
 changes, also use the relevant [layout sections](../../rules_godot/docs/public/project-layout.md). Update rules or temporary exceptions made

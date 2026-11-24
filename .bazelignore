@@ -3,4 +3,4 @@ addons
 .claude
 .godot-editor
 examples/.godot-editor
-scenarios/.godot-editor
+e2e/rules_godot/.godot-editor

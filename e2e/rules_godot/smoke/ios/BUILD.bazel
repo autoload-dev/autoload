@@ -8,7 +8,7 @@ load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_t
 
 # The iOS smoke path: an iOS application that embeds a godot-cpp extension as a dynamic
 # framework, and one that links it statically and exports its entry symbol, inspected with
-# the public artifact test. Every target is manual: //scenarios:ios_official runs it with
+# the public artifact test. Every target is manual: //e2e/rules_godot:ios_official runs it with
 # --config=official.
 
 godot_project(
