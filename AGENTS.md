@@ -23,7 +23,7 @@ those of the ruleset alone, such as its architecture and the
 Read linked sections when their stated condition applies; links are not a request to load
 every referenced document. For examples, read [example guidance](rules_godot/examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
-For ruleset regression work under `tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
+For ruleset regression work under `rules_godot/tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
 For the add-on modules under `addons/`, read [add-on guidance](addons/AGENTS.md).
 
 Use English for code, game/example UI, documentation, commits and pull requests.

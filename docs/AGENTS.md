@@ -1,6 +1,6 @@
 # Documentation
 
-The ruleset's `rules_godot/docs/public/` serves its consumers; `internal/` here and
+`rules_godot/docs/public/` serves ruleset consumers; `internal/` and
 `rules_godot/docs/internal/` serve contributors and agents. Root and example READMEs are
 public-facing. This file provides navigation and shared authoring guidance.
 

@@ -22,8 +22,9 @@ for its checks.
   dependency boundaries rather than forcing every API into one facade.
 - Assign every `rules_godot/godot/**/*.bzl` module a role in
   `rules_godot/docs/public/api/modules.bzl`: public entrypoint,
-  generated-repository implementation, or private implementation support. A public name does not become private merely
-  because it is absent from the facade.
+  generated-repository implementation, or private implementation support. A
+  public name does not become private merely because it is absent from the
+  facade.
 - Give each symbol exactly one public load path. Identify
   symbols by the defining file and name that Bazel reports and by API kind, so a
   renamed export cannot introduce a second public entrypoint for the same API.
@@ -138,8 +139,9 @@ small tables/examples; use diagrams only for relationships that need them.
 
 1. Update definitions and their documentation together. Classify new modules
    in `rules_godot/docs/public/api/modules.bzl`; workspace discovery must detect
-   unlisted files independently of Bazel's declared inputs. Choose the primary owner of each
-   new public symbol and update guides/examples to use that load path.
+   unlisted files independently of Bazel's declared inputs. Choose the primary
+   owner of each new public symbol and update guides/examples to use that load
+   path.
 2. Extract unfiltered export inventories with Bazel's built-in
    `starlark_doc_extract`, using declared `bzl_library` dependencies. Check
    documentation and ownership against every public export before selecting
