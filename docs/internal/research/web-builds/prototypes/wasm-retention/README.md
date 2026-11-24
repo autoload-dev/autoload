@@ -51,3 +51,39 @@ The largest dominators are the engine's own startup (`Main::setup` keeps 4.2 MB)
 text server with FreeType (610 KB), the binary resource loader (258 KB), the GLES3 scene
 renderer and shader compiler, and Variant's registration tables (435 KB). The compiled
 GDScript of the whole game keeps 166 KB.
+
+## Cutting what nothing uses (R13), 2026-11-24
+
+`cut_payload.py <godot source>` removes the reference that keeps each payload, after the
+shaking of R12 and only for the web (`WEB_ENABLED`, or a class the build profile
+disables). Two cuts are build options instead: `brotli=no`, and a build profile that also
+disables `LineEdit` and `Expression`.
+
+| Cut | How | Brotli saved |
+| --- | --- | ---: |
+| Brotli decoder and the default theme font | `brotli=no`: the font is WOFF2, Lichtpost brings its own TTF | 120 KB |
+| `iconv` and its charsets | `OS::string_to_multibyte()` fails on the web | 106 KB |
+| LTC lookup tables | zero tables: the profile disables area lights | 93 KB |
+| RegEx and PCRE2 | no `RotatedFileLogger` on the web (file logging is off there) | 63 KB |
+| FreeType modules other than TrueType, SFNT, autofit and the renderers | module list | 53 KB¹ |
+| `LineEdit` | build profile | 42 KB |
+| ZSTD compressor | the web cannot open compressed files for writing | 41 KB |
+| `ParticleProcessMaterial` shaders | only built when the class is | 10 KB |
+
+¹ Measured together with the GDExtension interface (`gdextension_setup_interface()`,
+useless without dynamic linking) and `Expression`, added after the per-cut builds.
+
+Each row is the difference to a build with every cut but that one. Together:
+
+| Build | wasm | wasm, brotli |
+| --- | ---: | ---: |
+| R12: all GDScript compiled, no VM | 6,093,459 | 1,880,609 |
+| R13: R12 and every cut | 4,552,182 | 1,271,069 |
+
+R13 saves 610 KB (32 %). It plays in the browser without a console error: title, a run,
+the result with the stored personal best, and the options. The cuts change only the web
+build, so the game's macOS replays are unaffected.
+
+FreeType reads its module list through a macro include that SCons does not scan, so
+`cut_payload.py` also touches `ftinit.c`; without that, a cached object keeps every
+module.
