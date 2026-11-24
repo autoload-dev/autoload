@@ -205,6 +205,8 @@ class Workspace:
         self.root = root
         # Git also lists tracked files that were deleted from the working tree.
         self.files = tuple(sorted({name for name in files if (root / name).is_file()}))
+        # Present entries, including links to directories.
+        self.entries = tuple(sorted(n for n in set(files) if os.path.lexists(root / n)))
         self._texts: dict[str, str] = {}
         self._strings: dict[str, tuple[StringLiteral, ...]] = {}
         self._typed_directories: dict[str, Mapping[Path, tuple[str, ...]]] = {}

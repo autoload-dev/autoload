@@ -93,7 +93,7 @@ upstream generator's output contract need validation before use.
 
 Source-built descriptors derive the operating system, CPU, iOS device/Simulator
 environment and Godot variant from the build configuration; the extension editor library
-has debug features, see [extension editor and runtime libraries](#extension-editor-and-runtime-libraries).
+has debug features, see [libraries per configuration](#libraries-per-configuration).
 `features = [...]` selects rules_cc toolchain features. Imported `godot_extension.libraries` retains explicit tagged
 alternatives, including variant-independent vendor imports.
 

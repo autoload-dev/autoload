@@ -12,7 +12,9 @@ area's `AGENTS.md` when they work there. Claude Code reads `AGENTS.md` only whil
 for Claude Code alone stay in `AGENTS.md`, marked as such.
 
 Skills live once, in `.agents/skills/`, where Codex finds them. Claude Code finds project
-skills only in `.claude/skills/`, which holds a link to each skill directory.
+skills only in `.claude/skills/`, which holds a link to each skill directory. The conventions
+check enforces both, along with the links in these files
+([RG016 to RG018](../../rules_godot/docs/public/conventions.md#rg016)).
 
 | File | Owner | Purpose |
 |---|---|---|

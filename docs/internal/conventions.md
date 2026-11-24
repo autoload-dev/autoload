@@ -44,6 +44,7 @@ The [context](../../tools/conventions/context.py) exposes standard, read-only ev
 | Access | Evidence |
 |---|---|
 | `context.workspace.files` | Git-owned, non-ignored files present in the working tree; `file_set` for membership |
+| `context.workspace.entries` | Like `files`, plus symbolic links to directories |
 | `context.workspace.documents` | Markdown under `docs/` and every README, excluding AGENTS.md |
 | `context.workspace.text(path)` | A file's text, read once per run |
 | `context.workspace.strings(path)` | String literals of a BUILD, MODULE.bazel or `.bzl` file, without comments |
@@ -59,6 +60,10 @@ The [context](../../tools/conventions/context.py) exposes standard, read-only ev
 | `context.declarations(module)` | Source calls joined to their evaluated targets, retaining macro fan-out |
 | `context.is_local(label)` | Whether a label names a package of one of the workspace's modules |
 | `context.sources(module, labels)` | Workspace path of each local label's defining target or source file |
+
+The documentation rules share [documents](../../tools/conventions/documents.py): which pages
+are internal, which files are agent instructions (every `AGENTS.md` and `SKILL.md`), and the
+local links and anchors of a Markdown source.
 
 Tools load evidence lazily, cache it per tool/context instance and return immutable records
 and read-only attribute maps. The first `context.declarations` call loads the calls and
