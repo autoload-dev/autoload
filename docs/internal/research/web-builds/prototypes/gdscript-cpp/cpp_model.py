@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from cpp_engine import Engine
 from cpp_types import c_type, gd_type
 
 
@@ -11,6 +12,10 @@ class Program:
 
     classes: dict[str, Klass] = field(default_factory=dict)
     compiled: set[tuple[str, str]] = field(default_factory=set)
+    engine: Engine | None = None
+    # Engine classes whose headers direct calls need, and the bindings they call.
+    used_classes: set[str] = field(default_factory=set)
+    direct: set[str] = field(default_factory=set)
 
     def member(self, fqcn: str, name: str) -> dict[str, int]:
         """The member indices of a class that has the member, or none."""
@@ -30,6 +35,7 @@ class Klass:
     functions: dict[str, dict]
     symbol: str
     program: Program = field(default_factory=Program)
+    native: str = ""
 
 
 @dataclass

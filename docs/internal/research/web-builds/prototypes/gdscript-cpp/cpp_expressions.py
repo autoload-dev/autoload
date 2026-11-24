@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import cpp_native
 from cpp_model import Function, Klass, function_symbol
 from cpp_types import (
     BUILTINS,
@@ -50,6 +51,7 @@ _CONTAINER_METHODS = {
 }  # fmt: skip
 _CONTAINER_RESULTS = {"size": "int", "is_empty": "bool", "has": "bool"}
 _LOCALS = ("parameter", "local_variable", "local_iterator", "local_constant")
+OWNER = "GDScriptNative::owner(p_self)"
 
 
 def expression(fn: Function, node: dict) -> Code:
@@ -128,6 +130,11 @@ def _identifier(fn: Function, node: dict) -> Code:
         return _member(fn, name)
     if source == "native_class":
         return f"GDScriptNative::native(SNAME({json.dumps(name)}))", f"N:{name}"
+    direct = None
+    if source == "inherited_variable":
+        direct = cpp_native.get(fn, OWNER, fn.klass.native, node.get("property"))
+    if direct:
+        return _result(direct, gd_type(node["type"]))
     raise Unsupported(f"identifier {name} ({source})")
 
 
@@ -215,7 +222,8 @@ def _ternary(fn: Function, node: dict) -> Code:
 # Subscripts -------------------------------------------------------------------------
 
 
-def _attribute(fn: Function, base: str, bt: str, name: str) -> Code:
+def _attribute(fn: Function, node: dict, base: str, bt: str) -> Code:
+    name = node["attribute"]
     key = f"SNAME({json.dumps(name)})"
     if bt in _VECTORS and len(name) == 1:
         return f"{base}.{name}", "int" if bt.endswith("i") else "float"
@@ -223,7 +231,13 @@ def _attribute(fn: Function, base: str, bt: str, name: str) -> Code:
         return f"GDScriptNative::get_key({base}, {key})", "Variant"
     if bt.startswith("C:") and name in fn.program.member(bt[2:], name):
         return foreign_member(fn, base, bt[2:], name)
-    return f"GDScriptNative::get_named({convert(base, bt, 'Variant')}, {key})", "Variant"
+    receiver = convert(base, bt, "Variant")
+    direct = cpp_native.get(
+        fn, receiver, cpp_native.native_class(fn, bt), node.get("property")
+    )
+    if direct:
+        return _result(direct, gd_type(node["type"]))
+    return f"GDScriptNative::get_named({receiver}, {key})", "Variant"
 
 
 def _index(fn: Function, node: dict, base: str, bt: str) -> Code:
@@ -246,7 +260,7 @@ def _index(fn: Function, node: dict, base: str, bt: str) -> Code:
 def _subscript(fn: Function, node: dict) -> Code:
     base, bt = expression(fn, node["base"])
     if "attribute" in node:
-        return _attribute(fn, base, bt, node["attribute"])
+        return _attribute(fn, node, base, bt)
     return _index(fn, node, base, bt)
 
 
@@ -273,6 +287,7 @@ class _Call:
     name: str
     args: list[dict]
     result: str
+    node: dict
 
     def variants(self) -> list[str]:
         return [typed(self.fn, a, "Variant") for a in self.args]
@@ -355,8 +370,22 @@ def _construct(call: _Call) -> Code | None:
     return convert(code, "Variant", call.name), call.name
 
 
+def _unknown_constructor(call: _Call) -> Code | None:
+    if call.name in BUILTINS or call.name == "Object":
+        raise Unsupported(f"constructor {call.name}")  # Never a method of the script.
+    return None
+
+
 def _global_call(call: _Call) -> Code:
-    for strategy in (_own_function, _utility, _scalar_conversion, _vector, _construct):
+    strategies = (
+        _own_function,
+        _utility,
+        _scalar_conversion,
+        _vector,
+        _construct,
+        _unknown_constructor,
+    )
+    for strategy in strategies:
         found = strategy(call)
         if found:
             return found
@@ -364,7 +393,9 @@ def _global_call(call: _Call) -> Code:
     if call.name in _VARIANT_UTILITIES:
         code = f"GDScriptNative::utility(SNAME({json.dumps(call.name)}), {{ {', '.join(values)} }})"
     else:  # A method the script inherits from its native class.
-        code = _dynamic("GDScriptNative::owner(p_self)", call.name, values)
+        code = cpp_native.call(call.fn, call.node, OWNER, values) or _dynamic(
+            OWNER, call.name, values
+        )
     return _result(code, call.result)
 
 
@@ -379,6 +410,27 @@ def _container_method(call: _Call, base: str, bt: str, values: list[str]) -> Cod
     ), call.result
 
 
+def _native_class_call(call: _Call, klass: str, values: list[str]) -> Code:
+    """`Class.new()`, a singleton's method or a static method of an engine class."""
+    if call.name == "new" and not values:
+        return _result(
+            f"GDScriptNative::instantiate(SNAME({json.dumps(klass)}))", call.result
+        )
+    direct = cpp_native.call(call.fn, call.node, cpp_native.singleton(klass), values)
+    if direct:
+        return _result(direct, call.result)
+    names = f"SNAME({json.dumps(klass)}), SNAME({json.dumps(call.name)})"
+    return _result(
+        f"GDScriptNative::call_native({names}, {{ {', '.join(values)} }})", call.result
+    )
+
+
+def _object_call(call: _Call, receiver: str, values: list[str]) -> Code:
+    """A method of an object: direct when the engine binds it, else by name."""
+    direct = cpp_native.call(call.fn, call.node, receiver, values)
+    return _result(direct or _dynamic(receiver, call.name, values), call.result)
+
+
 def _method_call(call: _Call, base_node: dict) -> Code:
     base, bt = expression(call.fn, base_node)
     if bt.startswith("C:") and call.name in call.fn.program.functions(bt[2:]):
@@ -390,13 +442,9 @@ def _method_call(call: _Call, base_node: dict) -> Code:
         return found
     if bt in BUILTINS and bt not in _CONTAINERS:
         raise Unsupported(f"method {call.name} on {bt}")
-    if bt.startswith("N:"):  # A singleton's method, or a static method of a native class.
-        names = f"SNAME({json.dumps(bt[2:])}), SNAME({json.dumps(call.name)})"
-        return _result(
-            f"GDScriptNative::call_native({names}, {{ {', '.join(values)} }})",
-            call.result,
-        )
-    return _result(_dynamic(convert(base, bt, "Variant"), call.name, values), call.result)
+    if bt.startswith("N:"):
+        return _native_class_call(call, bt[2:], values)
+    return _object_call(call, convert(base, bt, "Variant"), values)
 
 
 def _is_method(callee: dict | None, name: str) -> bool:
@@ -407,7 +455,7 @@ def _is_method(callee: dict | None, name: str) -> bool:
 
 def _call(fn: Function, node: dict) -> Code:
     callee = node["callee"]
-    call = _Call(fn, node["function"], node["arguments"], gd_type(node["type"]))
+    call = _Call(fn, node["function"], node["arguments"], gd_type(node["type"]), node)
     if _is_method(callee, call.name):
         return _method_call(call, callee["base"])
     if callee and callee["node"] == "identifier":

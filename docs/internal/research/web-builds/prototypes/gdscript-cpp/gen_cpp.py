@@ -19,6 +19,7 @@ The modules: `cpp_types` (types and conversions), `cpp_model` (classes and funct
 `cpp_expressions` and `cpp_statements` (the code).
 
 Usage: python3 gen_cpp.py <syntax tree dir> <output .inc> [script path prefix ...]
+       [--godot <source>]   (with Godot's sources: engine calls go direct)
 """
 
 import json
@@ -27,6 +28,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import cpp_engine
 from cpp_expressions import typed
 from cpp_model import Function, Klass, Program, function_symbol, signature
 from cpp_statements import suite
@@ -94,7 +96,10 @@ def load_class(tree: dict, program: Program) -> list[Klass]:
     symbol = "gd_" + re.sub(
         r"\W", "_", tree["fqcn"].removeprefix("res://").replace(".gd", "")
     )
-    klass = Klass(tree["fqcn"], tree["member_indices"], types, functions, symbol, program)
+    native = tree.get("native", "")
+    klass = Klass(
+        tree["fqcn"], tree["member_indices"], types, functions, symbol, program, native
+    )
     program.classes[klass.fqcn] = klass
     return [klass, *inner]
 
@@ -134,8 +139,10 @@ def compile_program(program: Program, targets: list[Klass]) -> tuple[list[str], 
             return report, parts
 
 
-def generate(trees: Path, out: Path, prefixes: list[str]) -> None:
-    program = Program()
+def generate(
+    trees: Path, out: Path, prefixes: list[str], godot: Path | None = None
+) -> None:
+    program = Program(engine=cpp_engine.index(godot) if godot else None)
     for path in sorted(trees.rglob("*.json")):
         load_class(json.loads(path.read_text()), program)
     targets = [
@@ -157,10 +164,35 @@ def generate(trees: Path, out: Path, prefixes: list[str]) -> None:
         "\t{ nullptr, nullptr, nullptr },",
         "};",
     ]
+    if program.engine:
+        headers = program.engine.headers(program.used_classes)
+        lines[2:2] = [f'#include "{header}"' for header in headers]
     out.write_text("\n".join(lines) + "\n")
+    _write_usage(out, program, "\n".join(lines))
     print("\n".join(report))
     print(f"{len(rows)} functions compiled to C++")
 
 
+def _write_usage(out: Path, program: Program, code: str) -> None:
+    """Next to the output, what the compiled code still needs by name: the functions it
+    replaces (their bytecode no longer runs) and every name it looks up at run time."""
+    usage = {
+        "compiled": sorted(f"{fqcn}.{name}" for fqcn, name in program.compiled),
+        "names": sorted(set(re.findall(r'SNAME\("(\w+)"\)', code))),
+        "direct": sorted(program.direct),
+    }
+    out.with_suffix(".usage.json").write_text(json.dumps(usage, indent=1))
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    godot = None
+    if "--godot" in args:
+        at = args.index("--godot")
+        godot = Path(args[at + 1])
+        del args[at : at + 2]
+    generate(Path(args[0]), Path(args[1]), args[2:], godot)
+
+
 if __name__ == "__main__":
-    generate(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:])
+    main()

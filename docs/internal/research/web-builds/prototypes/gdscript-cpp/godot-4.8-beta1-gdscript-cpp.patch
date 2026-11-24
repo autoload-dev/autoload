@@ -41,10 +41,10 @@ index 12a3bbb..4db0cd2 100644
  	friend class GDScriptLambdaCallable;
 diff --git a/modules/gdscript/gdscript_ast_dump.cpp b/modules/gdscript/gdscript_ast_dump.cpp
 new file mode 100644
-index 0000000..54e3188
+index 0000000..7ce56fe
 --- /dev/null
 +++ b/modules/gdscript/gdscript_ast_dump.cpp
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,419 @@
 +/**************************************************************************/
 +/*  gdscript_ast_dump.cpp                                                 */
 +/**************************************************************************/
@@ -59,6 +59,7 @@ index 0000000..54e3188
 +#include "gdscript_parser.h"
 +
 +#include "core/io/json.h"
++#include "core/object/class_db.h"
 +#include "core/variant/variant_utility.h"
 +
 +using P = GDScriptParser;
@@ -146,6 +147,50 @@ index 0000000..54e3188
 +
 +Variant node(const P::Node *p_node);
 +
++// The native base class of the class being dumped, for calls and properties without a base.
++StringName current_native;
++
++// The engine method a call resolves to, with what a direct call needs: the class that
++// binds it, its argument count and default values.
++Dictionary native_method(const StringName &p_class, const StringName &p_name) {
++	Dictionary d;
++	const MethodBind *method = p_class == StringName() ? nullptr : ClassDB::get_method(p_class, p_name);
++	if (!method) {
++		return d;
++	}
++	d["class"] = method->get_instance_class();
++	d["argcount"] = method->get_argument_count();
++	d["static"] = method->is_static();
++	d["vararg"] = method->is_vararg();
++	Array defaults;
++	for (int i = method->get_argument_count() - method->get_default_argument_count(); i < method->get_argument_count(); i++) {
++		defaults.push_back(value(method->get_default_argument(i)));
++	}
++	d["defaults"] = defaults;
++	return d;
++}
++
++// The accessors of an engine property.
++Dictionary native_property(const StringName &p_class, const StringName &p_name) {
++	Dictionary d;
++	if (p_class == StringName() || !ClassDB::has_property(p_class, p_name)) {
++		return d;
++	}
++	d["setter"] = ClassDB::get_property_setter(p_class, p_name);
++	d["getter"] = ClassDB::get_property_getter(p_class, p_name);
++	d["index"] = ClassDB::get_property_index(p_class, p_name);
++	return d;
++}
++
++StringName native_of(const P::ExpressionNode *p_node) {
++	if (!p_node) {
++		return current_native;
++	}
++	const P::DataType &t = p_node->type_constraint;
++	bool object = t.kind == P::DataType::NATIVE || t.kind == P::DataType::SCRIPT || t.kind == P::DataType::CLASS;
++	return object && t.is_hard_type() ? t.native_type : StringName();
++}
++
 +template <typename T>
 +Array nodes(const T &p_list) {
 +	Array a;
@@ -195,6 +240,14 @@ index 0000000..54e3188
 +			d["arguments"] = nodes(n->arguments);
 +			d["super"] = n->is_super;
 +			d["static"] = n->is_static;
++			const P::ExpressionNode *base = nullptr;
++			if (n->callee && n->callee->type == P::Node::SUBSCRIPT) {
++				base = static_cast<const P::SubscriptNode *>(n->callee)->base;
++			}
++			Dictionary bind = native_method(native_of(base), n->function_name);
++			if (!bind.is_empty()) {
++				d["bind"] = bind;
++			}
 +		} break;
 +		case P::Node::CAST:
 +			d["operand"] = node(static_cast<const P::CastNode *>(p_node)->operand);
@@ -216,6 +269,9 @@ index 0000000..54e3188
 +			const P::IdentifierNode *n = static_cast<const P::IdentifierNode *>(p_node);
 +			d["name"] = n->name;
 +			d["source"] = SOURCE_NAMES[n->source];
++			if (n->source == P::IdentifierNode::INHERITED_VARIABLE) {
++				d["property"] = native_property(current_native, n->name);
++			}
 +		} break;
 +		case P::Node::LAMBDA:
 +			d["function"] = node(static_cast<const P::LambdaNode *>(p_node)->function);
@@ -231,6 +287,10 @@ index 0000000..54e3188
 +			d["base"] = node(n->base);
 +			if (n->is_attribute) {
 +				d["attribute"] = n->attribute->name;
++				Dictionary property = native_property(native_of(n->base), n->attribute->name);
++				if (!property.is_empty()) {
++					d["property"] = property;
++				}
 +			} else {
 +				d["index"] = node(n->index);
 +			}
@@ -361,6 +421,9 @@ index 0000000..54e3188
 +Dictionary klass(const P::ClassNode *p_class, GDScript *p_script) {
 +	Dictionary d;
 +	d["fqcn"] = p_class->fqcn;
++	const StringName outer_native = current_native;
++	current_native = p_class->base_type.native_type;
++	d["native"] = current_native;
 +	d["base"] = datatype(p_class->base_type);
 +	Array members;
 +	for (const P::ClassNode::Member &m : p_class->members) {
@@ -383,6 +446,7 @@ index 0000000..54e3188
 +	}
 +	d["members"] = members;
 +	d["member_indices"] = GDScriptAstDump::member_indices(p_script);
++	current_native = outer_native;
 +	return d;
 +}
 +
@@ -401,7 +465,7 @@ index 0000000..54e3188
 +	return JSON::stringify(d, "\t", false);
 +}
 diff --git a/modules/gdscript/gdscript_bytecode.cpp b/modules/gdscript/gdscript_bytecode.cpp
-index a2a1af2..f732a24 100644
+index a2a1af2..eb5abcf 100644
 --- a/modules/gdscript/gdscript_bytecode.cpp
 +++ b/modules/gdscript/gdscript_bytecode.cpp
 @@ -16,6 +16,24 @@
@@ -437,7 +501,18 @@ index a2a1af2..f732a24 100644
  
  		uint32_t defaults = r.u32();
  		for (uint32_t i = 0; i < defaults; i++) {
-@@ -905,6 +924,9 @@ Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer
+@@ -741,7 +760,9 @@ public:
+ 			StringName cls = r.str();
+ 			StringName method = r.str();
+ 			const MethodBind *m = ClassDB::get_method(cls, method);
+-			if (!m) {
++			// A function compiled to C++ never runs its bytecode, and its engine calls need no
++			// method binds, so the bytecode may name methods the build left out.
++			if (!m && !f->_native) {
+ 				ERR_PRINT(vformat("GDScript bytecode: unknown method %s.%s.", cls, method));
+ 				r.error = ERR_CANT_RESOLVE;
+ 			}
+@@ -905,6 +926,9 @@ Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer
  void GDScriptBytecodeWriter::_bind_methods() {
  	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("compile", "path"), &GDScriptBytecodeWriter::compile);
  	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("disassemble", "path"), &GDScriptBytecodeWriter::disassemble);
@@ -484,10 +559,10 @@ index 557f428..84c3cb3 100644
  	const StringName *_global_names_ptr = nullptr;
 diff --git a/modules/gdscript/gdscript_native.h b/modules/gdscript/gdscript_native.h
 new file mode 100644
-index 0000000..7cc2a24
+index 0000000..dede319
 --- /dev/null
 +++ b/modules/gdscript/gdscript_native.h
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,250 @@
 +/**************************************************************************/
 +/*  gdscript_native.h                                                     */
 +/**************************************************************************/
@@ -502,6 +577,7 @@ index 0000000..7cc2a24
 +
 +#include "core/config/engine.h"
 +#include "core/object/class_db.h"
++#include "core/variant/binder_common.h"
 +#include "core/io/resource_loader.h"
 +#include "core/variant/variant_internal.h"
 +#include "core/variant/variant_utility.h"
@@ -625,6 +701,14 @@ index 0000000..7cc2a24
 +		return Variant(script->find_class(fqcn));
 +	}
 +
++	// `Class.new()` of an engine class; reference counted objects come back referenced.
++	static Variant instantiate(const StringName &p_class) {
++		Object *object = ClassDB::instantiate(p_class);
++		ERR_FAIL_NULL_V_MSG(object, Variant(), vformat("Compiled GDScript could not create a %s.", p_class));
++		RefCounted *counted = Object::cast_to<RefCounted>(object);
++		return counted ? Variant(Ref<RefCounted>(counted)) : Variant(object);
++	}
++
 +	// A method of an engine singleton (`OS.get_name()`) or a static method of a native
 +	// class (`JSON.stringify()`).
 +	static Variant call_native(const StringName &p_class, const StringName &p_method, std::initializer_list<Variant> p_args) {
@@ -645,6 +729,86 @@ index 0000000..7cc2a24
 +
 +	// An engine singleton, the base of calls like `OS.get_name()`.
 +	static Variant native(const StringName &p_class) { return Engine::get_singleton()->get_singleton_object(p_class); }
++
++	// Direct engine calls: the member function pointer a class binds, called with the
++	// binder's own argument conversion, but without a MethodBind or a lookup by name.
++	template <typename T>
++	static T *receiver(const Variant &p_object) {
++		T *object = Object::cast_to<T>(p_object.get_validated_object());
++		ERR_FAIL_NULL_V_MSG(object, nullptr, "Compiled GDScript called an engine method on a null or wrong object.");
++		return object;
++	}
++
++	static int pointers(std::initializer_list<Variant> p_args, const Variant **r_pointers) {
++		int count = 0;
++		for (const Variant &arg : p_args) {
++			r_pointers[count++] = &arg;
++		}
++		return count;
++	}
++
++	template <typename T, typename... P>
++	static Variant invoke(const Variant &p_object, void (T::*p_method)(P...), std::initializer_list<Variant> p_args) {
++		T *object = receiver<T>(p_object);
++		const Variant *args[16];
++		Callable::CallError err;
++		if (object) {
++			call_with_variant_args(object, p_method, args, pointers(p_args, args), err);
++		}
++		return Variant();
++	}
++
++	template <typename T, typename... P>
++	static Variant invoke(const Variant &p_object, void (T::*p_method)(P...) const, std::initializer_list<Variant> p_args) {
++		T *object = receiver<T>(p_object);
++		const Variant *args[16];
++		Callable::CallError err;
++		if (object) {
++			call_with_variant_argsc(object, p_method, args, pointers(p_args, args), err);
++		}
++		return Variant();
++	}
++
++	template <typename T, typename R, typename... P>
++	static Variant invoke(const Variant &p_object, R (T::*p_method)(P...), std::initializer_list<Variant> p_args) {
++		T *object = receiver<T>(p_object);
++		const Variant *args[16];
++		Callable::CallError err;
++		Variant result;
++		if (object) {
++			call_with_variant_args_ret(object, p_method, args, pointers(p_args, args), result, err);
++		}
++		return result;
++	}
++
++	template <typename T, typename R, typename... P>
++	static Variant invoke(const Variant &p_object, R (T::*p_method)(P...) const, std::initializer_list<Variant> p_args) {
++		T *object = receiver<T>(p_object);
++		const Variant *args[16];
++		Callable::CallError err;
++		Variant result;
++		if (object) {
++			call_with_variant_args_retc(object, p_method, args, pointers(p_args, args), result, err);
++		}
++		return result;
++	}
++
++	template <typename R, typename... P>
++	static Variant invoke_static(R (*p_method)(P...), std::initializer_list<Variant> p_args) {
++		const Variant *args[16];
++		Callable::CallError err;
++		Variant result;
++		call_with_variant_args_static_ret(p_method, args, pointers(p_args, args), result, err);
++		return result;
++	}
++
++	template <typename... P>
++	static Variant invoke_static(void (*p_method)(P...), std::initializer_list<Variant> p_args) {
++		const Variant *args[16];
++		Callable::CallError err;
++		call_with_variant_args_static(p_method, args, pointers(p_args, args), err);
++		return Variant();
++	}
 +
 +	// A constant the generator could only write as text, parsed once.
 +	static Variant constant(const char *p_text) { return VariantUtilityFunctions::str_to_var(String::utf8(p_text)); }

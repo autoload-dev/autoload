@@ -6,7 +6,10 @@ version 1) and prints, as JSON, the method binds, built-in methods, utility func
 operators and constructors the project's scripts call, and the names they call methods by:
 the exact input for stripping the bindings nobody uses.
 
-Usage: python3 bytecode_usage.py <bytecode dir> > usage.json
+With `--compiled <usage.json>` (`gen_cpp.py`'s), the functions compiled to C++ do not
+count: their bytecode no longer runs.
+
+Usage: python3 bytecode_usage.py <bytecode dir> [--compiled <usage.json>] > usage.json
 """
 
 import json
@@ -165,8 +168,16 @@ def _named_variant(r: Reader) -> None:
     variant(r)
 
 
+# Functions compiled to C++ ("<fqcn>.<name>"), whose usage does not count.
+_COMPILED: set[str] = set()
+
+
+def _discard() -> dict[str, set[str]]:
+    return {kind: set() for kind, _ in _TABLES if kind} | {"names": set()}
+
+
 def klass(r: Reader, use: dict[str, set[str]]) -> None:
-    r.text()
+    fqcn = r.text()
     r.text()
     r.text()
     r.skip(2)
@@ -179,8 +190,8 @@ def klass(r: Reader, use: dict[str, set[str]]) -> None:
     r.repeat(_named_variant)
     variant(r)
     for _ in range(r.u32()):
-        r.text()
-        function(r, use)
+        name = r.text()
+        function(r, _discard() if f"{fqcn}.{name}" in _COMPILED else use)
         r.u8()
     for _ in range(3):
         if r.u8():
@@ -188,6 +199,9 @@ def klass(r: Reader, use: dict[str, set[str]]) -> None:
 
 
 def main() -> None:
+    if "--compiled" in sys.argv:
+        compiled = sys.argv[sys.argv.index("--compiled") + 1]
+        _COMPILED.update(json.loads(Path(compiled).read_text())["compiled"])
     use: dict[str, set[str]] = {kind: set() for kind, _ in _TABLES if kind}
     use["native_bases"] = set()
     use["names"] = set()

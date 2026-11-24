@@ -1,11 +1,11 @@
 """C++ for GDScript statements, emitted into the function being compiled."""
 
-import json
 from collections.abc import Callable
 
-from cpp_expressions import ARITHMETIC, expression, foreign_member, is_expression, typed
+from cpp_assignments import assignment
+from cpp_expressions import expression, is_expression, typed
 from cpp_model import Function
-from cpp_types import NUMBERS, Unsupported, c_type, convert, gd_type, truth
+from cpp_types import Unsupported, c_type, convert, gd_type, truth
 
 
 def suite(fn: Function, node: dict | None) -> None:
@@ -42,48 +42,6 @@ def _cache_instance(fn: Function, name: str, gd: str) -> list[str]:
         return []
     fn.instances[f"l_{name}"] = f"li_{name}"
     return [f"GDScriptInstance *li_{name} = GDScriptNative::instance_or_null(l_{name});"]
-
-
-# Assignments ------------------------------------------------------------------------
-
-
-def _assign_attribute(fn: Function, node: dict) -> None:
-    target = node["assignee"]
-    if node["operator"]:
-        raise Unsupported("compound assignment to an attribute")
-    base, bt = expression(fn, target["base"])
-    name = target["attribute"]
-    if bt == "Dictionary":
-        fn.emit(
-            f"{base}[SNAME({json.dumps(name)})] = {typed(fn, node['value'], 'Variant')};"
-        )
-    elif bt.startswith("C:") and name in fn.program.member(bt[2:], name):
-        slot, gd = foreign_member(fn, base, bt[2:], name)
-        fn.emit(f"{slot} = {typed(fn, node['value'], gd)};")
-    else:
-        raise Unsupported(f"attribute assignment on {bt}")
-
-
-def _compound(fn: Function, node: dict, lhs: str, lt: str) -> None:
-    op = node["operator"]
-    rhs, rt = expression(fn, node["value"])
-    if op not in ARITHMETIC or lt not in NUMBERS or rt not in NUMBERS:
-        raise Unsupported(f"compound assignment {op} on {lt}")
-    fn.emit(f"{lhs} {op}= {convert(rhs, rt, lt)};")
-
-
-def _assignment(fn: Function, node: dict) -> None:
-    target = node["assignee"]
-    if target["node"] == "subscript" and "attribute" in target:
-        _assign_attribute(fn, node)
-        return
-    lhs, lt = expression(fn, target)
-    if node["operator"]:
-        _compound(fn, node, lhs, lt)
-        return
-    fn.emit(f"{lhs} = {typed(fn, node['value'], lt)};")
-    if lhs in fn.instances:
-        fn.emit(f"{fn.instances[lhs]} = GDScriptNative::instance_or_null({lhs});")
 
 
 # Declarations and control flow ------------------------------------------------------
@@ -183,7 +141,7 @@ def _pass(fn: Function, node: dict) -> None:
 
 
 _STATEMENTS: dict[str, Callable[[Function, dict], None]] = {
-    "assignment": _assignment,
+    "assignment": assignment,
     "variable": _variable,
     "if": _if,
     "while": _while,

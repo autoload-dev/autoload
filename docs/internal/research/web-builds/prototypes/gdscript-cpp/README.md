@@ -34,6 +34,53 @@ Two changes to Lichtpost came with it: its route model keeps lights as a small c
 typed fields instead of dictionaries (`light.x` was a hashed lookup on every tick for
 every light), and the layout test turns them back into dictionaries for its frozen hashes.
 
+## Direct engine calls (2026-11-24)
+
+With Godot's sources (`gen_cpp.py ... --godot <source>`), calls of engine methods and
+reads and writes of engine properties no longer go by name. The dump records, for every
+call and property whose object has a static engine class, what the engine resolves it to
+(the binding class, argument count and default values; the property's setter, getter and
+index). `cpp_engine.py` reads the sources once: the member function pointer each
+`bind_method()` binds, every class's header, namespace, parent and public methods. A call
+becomes `GDScriptNative::invoke(object, &Class::method, {...})`, the binder's own
+argument conversion (`call_with_variant_args` and friends) on that pointer: no MethodBind,
+no lookup by name. Methods bound from a class's protected or private part, vararg methods
+and defaults the generator cannot write stay calls by name.
+
+69 of Lichtpost's functions compile (more than before: property writes such as
+`label.text = ...` and `body.position.y = ...` and `Class.new()` now work), with 87
+direct engine calls against 25 remaining calls by name. Replays match on macOS with the
+shaken engine below, and the web build plays.
+
+`bytecode_usage.py --compiled <gen_cpp's usage.json>` leaves out the compiled functions,
+whose bytecode no longer runs, and `gen_cpp.py` adds every name its code still looks up.
+
+| Engine (R3 settings) | bindings removed | raw | brotli 11 |
+| --- | ---: | ---: | ---: |
+| R5, 53 functions compiled, engine calls by name | 13,330 | 6.13 MB | 1.88 MB |
+| R7d, 69 compiled, engine calls direct, shaken without the compiled functions | 13,411 | 6.12 MB | 1.88 MB |
+
+The size does not move. 81 more bindings go, but each direct call instantiates the binder's
+conversion for its own member function pointer, about what the method bind it replaces
+cost. The bindings that stay are kept by the properties scenes store and by the bytecode
+of the 36 functions that do not compile yet.
+
+Found on the way:
+
+- The bytecode loader resolved the method binds of every function in a file, compiled or
+  not, and refused the script when one was missing: compiled functions now accept missing
+  ones. Without that, the shaken build looped until it ran out of memory.
+- A builtin type the generator did not know (`PackedByteArray()`) fell back to a call by
+  name on the script's own object and returned null; unknown constructors now keep the
+  function as bytecode, and methods on typed builtin values do too, since calling them on
+  a `Variant` copy would lose the change.
+- `TextureRect.new()` is neither a singleton nor a static method: engine classes are now
+  created through `ClassDB::instantiate()`.
+
+What would make direct calls pay: calling with typed C++ arguments instead of boxed
+`Variant`s (`object->set_text(value)`), so no conversion template is instantiated per
+method, and compiling every function, so neither the bytecode's tables nor the VM remain.
+
 ## How it works
 
 `dump_ast.gd`, run on an engine with the compiler and the patch, writes per script the
@@ -70,16 +117,9 @@ exit and crashed it. Resources are loaded on use from the resource cache.
 
 ## What is missing
 
-- **Engine calls are still by name.** Calls of engine methods and native property access
-  go through `Variant::callp()` and `get_named()`, so they need the method binds and gain
-  nothing for tree shaking yet. The next step is to call them through member function
-  pointers (`call_with_variant_args` and friends with `&Class::method`), taken from the
-  `ClassDB::bind_method()` statements `shake_bindings.py` already parses; then a compiled
-  project needs only the bindings that scenes, resources and the remaining dynamic calls
-  name, and once every function compiles, not the GDScript VM.
-- **Coverage.** Not yet compiled: property writes on native objects (18 functions, mostly
-  `label.text = ...`), signals as values, `self`, inherited native properties, casts,
-  `match`, typed array literals, lambdas, `await`.
+- **Engine calls without boxing.** Direct engine calls (see above) still pass `Variant`s.
+- **Coverage.** Not yet compiled: signals as values, `self`, casts, `match`, methods on
+  typed builtin values, typed array literals, lambdas, `await`.
 - **Matching by name only.** A compiled function runs whenever a loaded function has its
   class and name, whatever its code; a check against the source's hash is missing.
 - **Errors.** Invalid accesses print an error and continue with a default value; the VM
@@ -93,6 +133,7 @@ In the stage A layout, with the stage A, B and C patches applied:
 ./buildmac48.sh AC disable_path_overrides=no          # an engine with the compiler
 ./outmac48/AC/godot.macos.template_release.arm64 --headless --main-pack <lichtpost>.pck \
   --script dump_ast.gd -- <syntax tree dir>
-python3 gen_cpp.py <syntax tree dir> src48/godot/modules/gdscript/gdscript_native.gen.inc
+python3 gen_cpp.py <syntax tree dir> src48/godot/modules/gdscript/gdscript_native.gen.inc \
+  --godot src48/godot
 GDSCRIPT_NO_COMPILER=1 ./build48.sh R5 ...           # R3's arguments
 ```
