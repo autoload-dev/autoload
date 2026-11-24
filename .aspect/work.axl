@@ -1,7 +1,7 @@
 """
 The repository's tasks that run its Python tools: the lanes' work (tools/ci/work.py), the
-generated files, Code Health and the bootstrap. They run with Bazel's Python and the tools
-Bazel pins, so a checkout needs only Bazelisk and the Aspect CLI.
+generated files, Code Health, the bootstrap and the setup check. They run with Bazel's Python
+and the tools Bazel pins, so a checkout needs only Bazelisk and the Aspect CLI.
 """
 
 # rules_python's interpreter launcher, which runs the registered Python toolchain.
@@ -178,17 +178,25 @@ def _bootstrap_impl(ctx: TaskContext) -> int:
                 return 1
         for event, command in hooks.items():
             print("Installed the {} hook: {}".format(event, command))
-    if ctx.args.android:
-        return run_work(ctx, "android:setup")
-    return 0
+    if ctx.args.android and run_work(ctx, "android:setup") != 0:
+        return 1
+    return _doctor_impl(ctx)
 
 bootstrap = task(
     implementation = _bootstrap_impl,
-    summary = "Install the Git hooks and the pinned Android SDK and NDK packages.",
+    summary = "Install the Git hooks and the pinned Android SDK and NDK packages, then check the setup.",
     args = {
         "hooks": args.boolean(default = True, description = "Install the Git hooks"),
         "android": args.boolean(default = True, description = "Install the missing Android SDK packages"),
     },
+)
+
+def _doctor_impl(ctx: TaskContext) -> int:
+    return python(ctx, ["-m", "tools.setup.doctor"])
+
+doctor = task(
+    implementation = _doctor_impl,
+    summary = "Check the checkout's setup: tools, Git hooks, Android SDK, Code Health and Entire.",
 )
 
 def _exec_impl(ctx: TaskContext):

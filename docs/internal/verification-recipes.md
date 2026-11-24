@@ -36,7 +36,9 @@ For a complete development environment in a fresh clone, run:
 It places the pinned Bazelisk and Aspect launcher in `~/.local/bin` (or `BIN_DIR`), verified
 by their releases' checksums, and names what is missing from the host or PATH. It then runs
 `aspect bootstrap`, which installs the pre-commit and pre-push hooks and the missing Android
-SDK/NDK components. It reuses SDK components outside the checkout across worktrees; set
+SDK/NDK components, and ends with `aspect doctor`. The doctor fails on a missing tool or Git
+hook and warns about what only some work needs: Android SDK packages, Code Health's sign-in
+and Entire's session capture; run it again whenever the setup seems off. Bootstrap reuses SDK components outside the checkout across worktrees; set
 `ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
 `--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
 tools, as CI does. A new worktree needs none of it again; how worktrees reuse Bazel's state

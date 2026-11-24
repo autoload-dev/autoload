@@ -4,6 +4,7 @@ py_library(
     name = "android",
     srcs = ["sdk.py"],
     data = ["sdk.json"],
+    visibility = ["//tools/setup:__pkg__"],
 )
 
 # The Java Bazel builds with, for the Android SDK's tools; work.py and sdk.py run it as a script.

@@ -31,3 +31,14 @@ py_test(
     ],
     deps = [":modules_lib"],
 )
+
+# The setup check `aspect doctor` runs as a script (.aspect/work.axl).
+py_test(
+    name = "doctor_test",
+    size = "small",
+    srcs = [
+        "doctor.py",
+        "doctor_test.py",
+    ],
+    deps = ["//tools/android"],
+)
