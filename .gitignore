@@ -5,6 +5,8 @@
 /rules_godot/e2e/*/bazel-*
 # Personal Bazel settings every module of this repository imports.
 /user.bazelrc
+# The Bazel slot a Codex worktree leased (tools/codex/worktree.sh).
+/.bazel-slot
 
 # Local development caches, Python environments and agent worktrees.
 /.claude/worktrees/

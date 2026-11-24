@@ -78,6 +78,14 @@ worktrees (`claude --worktree`, subagents with worktree isolation) take a slot t
 slot, `aspect worktree release <branch>` gives it back with its Bazel state, and `aspect
 worktree list` shows who holds which.
 
+Codex creates its worktrees itself, each at a new path, so they recycle the Bazel state rather
+than the path. The setup of the [Codex local environment](.codex/environments/environment.toml)
+leases a Bazel slot under `~/.aspect/bazel-slots`, and [tools/bazel](tools/bazel) then keeps
+every module's output base in it: a new worktree reuses the fetched repositories and the
+action cache of an earlier one, though not its analysis. The cleanup stops the worktree's
+Bazel servers and gives the slot back before Codex deletes the worktree; a slot whose
+worktree is gone counts as free ([tools/codex/worktree.sh](tools/codex/worktree.sh)).
+
 <a id="bazel-package-boundaries"></a>
 
 # Design and review decisions

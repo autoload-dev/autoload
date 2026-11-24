@@ -41,4 +41,18 @@ if [[ ${#flags[@]} -gt 0 && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]];
         fi
     done
 fi
+# A worktree that leased a Bazel slot (tools/codex/worktree.sh) keeps each module's output
+# base in that slot, so a new worktree reuses the fetched repositories and action cache of an
+# earlier one. The slot's path is in .bazel-slot at the worktree root; a startup option on the
+# command line wins.
+if [[ -n "$workspace" && "$workspace/tools/bazel" -ef "${BASH_SOURCE[0]}" ]]; then
+    root="$(git -C "$workspace" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$root" && -f "$root/.bazel-slot" && " ${arguments[*]} " != *" --output_base="* ]]; then
+        slot="$(<"$root/.bazel-slot")"
+        module="${workspace#"$root"}"
+        module="${module#/}"
+        module="${module//\//+}"
+        arguments=("--output_base=$slot/${module:-_root}" "${arguments[@]}")
+    fi
+fi
 exec "$BAZEL_REAL" "${arguments[@]}"

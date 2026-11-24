@@ -39,8 +39,9 @@ by their releases' checksums, and names what is missing from the host or PATH. I
 components. It reuses SDK components outside the checkout across worktrees; set
 `ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
 `--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
-tools, as CI does. A new worktree needs none of it again. The versioned
-[Codex local environment](../../.codex/environments/environment.toml) uses the same bootstrap.
+tools, as CI does. A new worktree needs none of it again: the versioned
+[Codex local environment](../../.codex/environments/environment.toml) only checks the two
+tools and leases a Bazel slot for the worktree (see the worktrees in [AGENTS.md](../../AGENTS.md)).
 Bootstrap is safe to repeat but is not a required step before each check.
 
 For work that does not need Android, `aspect bootstrap --android=false` installs just the
