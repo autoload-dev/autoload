@@ -41,6 +41,7 @@ _DEFINE = re.compile(
     r"^[ \t]*#[ \t]*define[ \t]+(\w+)(?:\(([^)\n]*)\))?(.*)$", re.MULTILINE
 )
 _INVOCATION = re.compile(r"\b(\w+)\s*\(")
+_ESCAPE = re.compile(r"\\.")
 _PASTE = re.compile(r"(\w*)\s*##\s*(\w*)")
 _STRING_TOKENS = {
     tokenize.STRING,
@@ -333,11 +334,13 @@ def _generator_words(
     """
     generator = generated[path]
     seen |= {path}
-    words = set(_WORD.findall(generator.code + generator.data))
+    words = _words(generator.code + generator.data)
     fragments = _string_words(generator.code)
     for name in generator.inputs:
         if name in generated and name not in seen:
-            words |= _generator_words(root, name, generated, seen)[0]
+            input_words, input_fragments = _generator_words(root, name, generated, seen)
+            words |= input_words
+            fragments |= input_fragments
         elif name not in generated:
             words.update(_WORD.findall(_text_input(root / name)))
     fragments.update(word for word in words if len(word) > 1)
@@ -354,7 +357,12 @@ def _string_words(code: str) -> set[str]:
         ]
     except tokenize.TokenError, SyntaxError:
         strings = [code]
-    return {word for string in strings for word in _WORD.findall(string)}
+    return {word for string in strings for word in _words(string)}
+
+
+def _words(code: str) -> set[str]:
+    """Return the words of code whose strings escape characters, as "\\nXR_DISABLED" does."""
+    return set(_WORD.findall(_ESCAPE.sub(" ", code)))
 
 
 def _text_input(path: Path) -> str:

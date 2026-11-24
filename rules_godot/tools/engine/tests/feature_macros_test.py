@@ -105,6 +105,11 @@ class FeatureMacroTest(unittest.TestCase):
         )
         self.assertIn("-DXR_DISABLED", kept)
         self.assertNotIn("-DGLES3_ENABLED", kept)
+        escaped = self.copts(
+            files,
+            generated={"features.gen.h": Generated('write("\\nXR_DISABLED")\n', ())},
+        )
+        self.assertIn("-DXR_DISABLED", escaped)
         # Single characters of a generator's code or inputs join no name.
         dropped = self.copts(
             files | {"icon.png": "x r"},
