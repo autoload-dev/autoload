@@ -1,10 +1,5 @@
 load("@autoload_rules_godot//godot/platforms:defs.bzl", "godot_export_platform")
 
-exports_files([
-    "Package.resolved",
-    "Package.swift",
-])
-
 config_setting(
     name = "linux_arm64",
     constraint_values = [

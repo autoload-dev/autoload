@@ -33,7 +33,8 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
 - [`examples/addons/<module>/`](../examples/AGENTS.md) in the repository's root module, outside
-  the module: its example applications in `projects/<name>/`, each with the targets `edit`,
+  the module: its example application, the directory itself or one per scenario in
+  subdirectories, each with the targets `edit`,
   `pack` and, for a module that builds applications, `app`. The root module consumes the
   module like an external application, through a `local_path_override` that the generator
   adds, and the rules of this repository the same way, so an add-on always builds against

@@ -1,0 +1,5 @@
+// How this repository verifies the module and what its rules are (tools/addons/Addon.pkl).
+amends "../../tools/addons/Addon.pkl"
+
+// The Dart runtime builds for the editor and desktop systems; no application ships it yet.
+lanes = List("desktop")

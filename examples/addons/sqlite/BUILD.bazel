@@ -1,14 +1,50 @@
-load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load(
+    "@autoload_rules_godot//godot:defs.bzl",
+    "godot_editor",
+    "godot_metadata_sync",
+    "godot_pack",
+    "godot_project",
+    "godot_run",
+)
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//visibility:public"])
 
-godot_cc_extension(
-    name = "sqlite",
-    srcs = ["database.cc"],
-    entry_symbol = "sqlite_addon_init",
-    visibility = ["//visibility:public"],
-    deps = [
-        "@godot_cpp",
-        "@sqlite",
-    ],
+exports_files(["project.godot"])
+
+godot_project(
+    name = "demo",
+    main_scene = "main/database_demo.tscn",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":demo",
+    deps = ["//examples/addons/sqlite/main"],
+)
+
+godot_run(
+    name = "run",
+    headless = False,
+    pack = ":pack",
+)
+
+godot_editor(
+    name = "edit",
+    project = ":demo",
+    deps = ["//examples/addons/sqlite/main"],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":demo",
+    deps = ["//examples/addons/sqlite/main"],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.sqlite",
+    pack = ":pack",
 )

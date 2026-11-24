@@ -1,0 +1,3 @@
+# Configuration for `git archive`, which builds the module's release archive
+# (.github/workflows/release_prep.sh). The module's example applications live in the root
+# module's examples/addons/<module>/, outside the archive.

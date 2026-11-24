@@ -1,8 +1,9 @@
 # Examples
 
 This directory of the repository's root module teaches consumers to use the public rules,
-through public `@autoload_rules_godot` labels only. `addons/` holds
-reusable add-ons with demo/test projects; `projects/` holds applications such as Lichtpost.
+through public `@autoload_rules_godot` labels only. Applications such as Lichtpost are
+projects directly in it; `addons/<module>/` holds the example application of each add-on
+module in `addons/`, whose Godot tests live in `e2e/addons/<module>/`.
 Each example's README owns its setup, commands and visible success criteria.
 
 ## Common workflows
@@ -10,15 +11,13 @@ Each example's README owns its setup, commands and visible success criteria.
 From the repository root, select the example you are changing:
 
 ```sh
-bazel test --build_tests_only //examples/addons/sqlite/...
-bazel test --build_tests_only //examples/addons/platform_paths/...
-bazel test --build_tests_only //examples/addons/app_auth/...
-bazel test --build_tests_only //examples/addons/dart/...
 bazel test --build_tests_only //examples/lichtpost/...
 bazel test --build_tests_only --config=petri //examples/petri/...
+aspect work desktop:addon:sqlite        # an add-on module with its example and e2e tests
 ```
 
-These run the chosen example's desktop tests, as the desktop lane's `test:example:<name>` work does;
+These run the chosen example's desktop tests, as the desktop lane's work does; an add-on
+module's example runs with the module's lanes ([add-on guidance](../addons/AGENTS.md#lanes)).
 Petri's builds its engine from source with `--config=petri` and belongs to the source-engine
 lane. For a more focused test, editor or sidecar command,
 read that example's README. Required timing and the evidence of each lane come from the root

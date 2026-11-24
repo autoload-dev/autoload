@@ -1,21 +1,50 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@autoload_dart//dart:defs.bzl", "godot_dart_extension")
+load(
+    "@autoload_rules_godot//godot:defs.bzl",
+    "godot_editor",
+    "godot_metadata_sync",
+    "godot_pack",
+    "godot_project",
+    "godot_run",
+)
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//visibility:public"])
 
-exports_files(["defs.bzl"])
+exports_files(["project.godot"])
 
-# Dart as a Godot script language, on the Dart VM's AOT runtime. godot_dart_extension
-# links it into a project's extension, beside the snapshot of the project's scripts.
-cc_library(
-    name = "language",
-    srcs = glob([
-        "native/*.cc",
-        "native/*.h",
-    ]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "@dart_sdk_source//:dart_engine_aot",
-        "@godot_cpp",
-    ],
-    alwayslink = True,
+# The Dart language, with the demo's scripts compiled in.
+godot_dart_extension(
+    name = "dart",
+    srcs = ["//examples/addons/dart/main:scripts"],
+)
+
+godot_project(
+    name = "demo",
+    main_scene = "main/dart_demo.tscn",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":demo",
+    deps = ["//examples/addons/dart/main"],
+)
+
+godot_run(
+    name = "run",
+    headless = False,
+    pack = ":pack",
+)
+
+godot_editor(
+    name = "edit",
+    project = ":demo",
+    deps = ["//examples/addons/dart/main"],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":demo",
+    deps = ["//examples/addons/dart/main"],
 )

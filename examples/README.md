@@ -6,13 +6,13 @@ tests are organized.
 
 Add-ons, each with a `demo/` project and a `tests/` project:
 
-- [AppAuth](addons/app_auth/README.md) logs a player in with OpenID Connect through the
+- [AppAuth](../addons/app_auth/README.md) logs a player in with OpenID Connect through the
   AppAuth SDKs on Android, iOS and macOS.
-- [Dart scripts](addons/dart/README.md) adds Dart as a script language, compiled ahead of
+- [Dart scripts](../addons/dart/README.md) adds Dart as a script language, compiled ahead of
   time into the project's extension with an embedded Dart VM built from source.
-- [Platform Paths](addons/platform_paths/README.md) exposes operating-system storage
+- [Platform Paths](../addons/platform_paths/README.md) exposes operating-system storage
   locations through one typed API on macOS, Linux, iOS and Android.
-- [SQLite](addons/sqlite/README.md) builds the SQLite C library and exposes parameterized
+- [SQLite](../addons/sqlite/README.md) builds the SQLite C library and exposes parameterized
   in-memory queries to GDScript.
 
 Projects:
@@ -29,7 +29,7 @@ Projects:
 2. From the repository root, run:
 
    ```sh
-   bazel run //examples/addons/sqlite/demo:run
+   bazel run //examples/addons/sqlite:run
    ```
 
    The window shows **SQLite says: Hello from SQLite**.

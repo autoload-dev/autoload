@@ -1,0 +1,25 @@
+load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "PathContractTest.gd",
+        "PathContractTest.gd.uid",
+    ],
+    prefix = "unit",
+    visibility = ["//e2e/addons/platform_paths:__pkg__"],
+    deps = [
+        "@autoload_gdunit//:gdunit",
+        "@autoload_platform_paths//platform_paths",
+    ],
+)
+
+gdunit_test(
+    name = "unit",
+    size = "small",
+    project = "//e2e/addons/platform_paths:tests",
+    suites = [":suites"],
+)

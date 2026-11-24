@@ -1,0 +1,5 @@
+/bazel-*
+/user.bazelrc
+# Only the repository's root module, which builds the examples, pins dependencies. The
+# module's own lock file plays no part when an application consumes it.
+/MODULE.bazel.lock

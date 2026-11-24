@@ -1,0 +1,5 @@
+{
+  "integrity": "**leave this alone**",
+  "strip_prefix": "autoload_dart-{VERSION}",
+  "url": "https://github.com/{OWNER}/{REPO}/releases/download/{TAG}/autoload_dart-{VERSION}.tar.gz"
+}

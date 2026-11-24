@@ -344,7 +344,7 @@ signer analysis, including in certificate mode without an identity.
 Use the [repository's root module](../../../MODULE.bazel), which builds the examples, as a
 setup template: it declares the SDK/NDK toolchains, the registered engines and the
 Maven lock file. Its
-[SQLite project BUILD file](../../../examples/addons/sqlite/demo/BUILD.bazel)
+[SQLite project BUILD file](../../../examples/addons/sqlite/BUILD.bazel)
 declares one app for every operating system, packaged as APK or
 [App Bundle](#app-bundles-for-store-upload);
 [`.bazelrc`](../../../.bazelrc) supplies build configurations.
@@ -360,7 +360,7 @@ Bazel unless `JAVA_HOME` is set). From the repository root:
 
 ```sh
 aspect work android:setup
-aspect exec -- bazel build //examples/addons/sqlite/demo:app --config=android
+aspect exec -- bazel build //examples/addons/sqlite:app --config=android
 ```
 
 The setup reuses an existing SDK and installs only missing pinned components.
@@ -481,9 +481,9 @@ Changing only format reuses content export and native compilation.
 From `examples/`, with the Android SDK configured:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app --config=android
-bazel build //examples/addons/sqlite/demo:app --config=android --config=aab
-bazel build //examples/addons/sqlite/demo:app --config=multi_abi --config=aab
+bazel build //examples/addons/sqlite:app --config=android
+bazel build //examples/addons/sqlite:app --config=android --config=aab
+bazel build //examples/addons/sqlite:app --config=multi_abi --config=aab
 ```
 
 The `multi_abi` export platform requests arm64 and x86_64. Both platform slices receive a
@@ -516,12 +516,12 @@ platform 36; install it alongside the stable platform and select it with
 
 Use macOS with Xcode selected and an installed iOS SDK. The
 [repository's root module](../../../MODULE.bazel), which builds the examples, the
-[SQLite project BUILD file](../../../examples/addons/sqlite/demo/BUILD.bazel) and the root's
+[SQLite project BUILD file](../../../examples/addons/sqlite/BUILD.bazel) and the root's
 [`.bazelrc`](../../../.bazelrc) provide the complete engine, editor,
 export platform and application setup. From the repository root:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app --config=official
+bazel build //examples/addons/sqlite:app --config=official
 ```
 
 `official` selects x86_64 Simulator, the CPU of the official templates' Simulator
@@ -616,7 +616,7 @@ A release pipeline sets the version and build number on the command line,
 without editing BUILD files. For the Android example, from `examples/`:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
+bazel build //examples/addons/sqlite:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
 ```
 
 | Consumer | `app_version` | `build_number` |
@@ -700,13 +700,13 @@ The `android-release` and `ios-release` configurations in the examples'
 linked `.bazelrc` provide these flags. From `examples/`:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app //examples/addons/sqlite/demo:app.debug_symbols --config=android-release --config=aab
+bazel build //examples/addons/sqlite:app //examples/addons/sqlite:app.debug_symbols --config=android-release --config=aab
 ```
 
 For iOS:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app //examples/addons/sqlite/demo:app.debug_symbols --config=ios-release
+bazel build //examples/addons/sqlite:app //examples/addons/sqlite:app.debug_symbols --config=ios-release
 ```
 
 Match the packaged library and its symbols by build ID on Android or UUID on
@@ -792,7 +792,7 @@ libraries its native code needs the same way.
   default. An SDK activity that extends `AppCompatActivity` then fails to start with
   "You need to use a Theme.AppCompat theme". Give such an activity a theme in the
   add-on's manifest; the merge adds it to the SDK's entry. The
-  [AppAuth add-on](../../../examples/addons/app_auth/native/backends/android/AndroidManifest.xml)
+  [AppAuth add-on](../../../addons/app_auth/app_auth/native/backends/android/AndroidManifest.xml)
   does this for AppAuth's redirect activity with the SDK's own AppCompat theme.
 - **Info.plist entries:** rules_apple has no library-level Info.plist, so an
   add-on's fragments go in its `infoplists`, and those an extension's native code needs
@@ -1022,9 +1022,9 @@ mix of both kinds.
 Build the SQLite APK and Simulator IPA from `examples/`:
 
 ```sh
-bazel build //examples/addons/sqlite/demo:app --config=android
+bazel build //examples/addons/sqlite:app --config=android
 bazel cquery //addons/sqlite/demo:app --config=android --output=files
-bazel build //examples/addons/sqlite/demo:app --config=official
+bazel build //examples/addons/sqlite:app --config=official
 bazel cquery //addons/sqlite/demo:app --config=official --output=files
 ```
 

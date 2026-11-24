@@ -1,5 +1,0 @@
-exports_files([
-    "dart_sdk.BUILD.bazel",
-    "dart_sdk.patch",
-    "sqlite.BUILD.bazel",
-])

@@ -1,0 +1,26 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+
+package(default_visibility = ["//app_auth:__subpackages__"])
+
+# AppAuth from its release's sources (third_party/appauth.BUILD.bazel).
+objc_library(
+    name = "apple",
+    srcs = ["apple_backend.mm"],
+    sdk_frameworks = [
+        "Foundation",
+        "Security",
+    ] + select({
+        "@platforms//os:ios": ["UIKit"],
+        "@platforms//os:osx": ["AppKit"],
+        "//conditions:default": [],
+    }),
+    target_compatible_with = select({
+        "@platforms//os:osx": [],
+        "@platforms//os:ios": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [
+        "//app_auth/native:backend_api",
+        "@appauth//:AppAuth",
+    ],
+)

@@ -1,49 +1,57 @@
 # Projects, add-ons and their tests
 
-A consuming Bazel module keeps its applications in `projects/<name>/` and its add-ons in
-`addons/<name>/`, measured from the module root. The typed root tells an application from an
-add-on. The repository's examples, `examples/`, follow this layout; games such as
-Lichtpost are applications under `projects/`.
+A consuming Bazel module keeps each application project in a directory of its own and each
+reusable add-on in `addons/<name>/`, apart from the projects that show and test it: the
+add-on's demo project in `examples/addons/<name>/` and its Godot test project in
+`e2e/addons/<name>/`. A demo or test directory is the project itself; one with several
+scenarios holds a project per scenario in subdirectories. The repository follows this layout:
+games such as Lichtpost are projects directly in `examples/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
 physical placement of a source decides which project or add-on owns it. A project's custom
 engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
-An add-on keeps its reusable implementation independent of its separate `demo/` and `tests/`
-projects. Its Godot suites use `unit/` for deterministic API behavior and `integration/` for
-real operating-system behavior; create only the categories that have tests. An application's
+An add-on keeps its reusable implementation independent of its demo and test projects. Its
+Godot suites use `unit/` for deterministic API behavior and `integration/` for real
+operating-system behavior; create only the categories that have tests. An application's
 suites, helpers and fixtures live in its `tests/` package. Native unit tests stay beside the
 implementation or backend code, independent of consuming Godot projects. Focused test-input
-libraries are not add-ons merely because they contain native sources.
+libraries are not add-ons merely because they contain native sources. Build files of pinned
+third-party archives live in `third_party/` of the module that pins them.
 
 Keep an application, an add-on and the add-on's demonstration project in useful
 Bazel packages. An add-on can then be reused without pulling its demo or tests
-into a production pack. The [SQLite example](../../../examples/addons/sqlite/README.md)
-shows this structure with a real native library:
+into a production pack. The [SQLite add-on](../../../addons/sqlite/README.md)
+shows this structure with a real native library; in this repository the add-on is a module
+of its own, which the root module consumes:
 
 ```text
-examples/                         # one consuming Bazel module
-  MODULE.bazel                    # dependency pins and toolchains
-  deps/                           # BUILD files for pinned dependencies
-  addons/sqlite/
+MODULE.bazel                      # the consuming root module: pins, toolchains, overrides
+addons/sqlite/                    # the add-on module autoload_sqlite
+  MODULE.bazel
+  third_party/
+    sqlite.BUILD.bazel            # build file of the pinned SQLite archive
+  sqlite/
     BUILD.bazel                   # reusable extension
     database.cc
-    demo/
-      BUILD.bazel                 # demo project, editor, pack and applications
-      project.godot
-      main/
-        BUILD.bazel               # scene and its extension dependency
-        database_demo.gd
-        database_demo.gd.uid
-        database_demo.tscn
-      tests/
-        BUILD.bazel               # exported-demo test
+examples/
+  addons/sqlite/                  # the add-on's demo project
+    BUILD.bazel                   # project, editor, pack and applications
+    project.godot
+    main/
+      BUILD.bazel                 # scene and its extension dependency
+      database_demo.gd
+      database_demo.gd.uid
+      database_demo.tscn
     tests/
-      BUILD.bazel                 # project, editor, metadata sync and configuration export
-      project.godot
-      unit/
-        BUILD.bazel               # suites and direct tests executable
-        DatabaseTest.gd
-        DatabaseTest.gd.uid
+      BUILD.bazel                 # exported-demo test
+e2e/
+  addons/sqlite/                  # the add-on's Godot test project
+    BUILD.bazel                   # project, editor, metadata sync and configuration export
+    project.godot
+    unit/
+      BUILD.bazel                 # suites and direct tests executable
+      DatabaseTest.gd
+      DatabaseTest.gd.uid
 ```
 
 An application consumes reusable add-ons through explicit dependencies. Keep related code
@@ -181,7 +189,7 @@ package. Supply necessary global classes, autoloads, extension types and setting
 its declared inputs; limiting the source list must not remove required context.
 Use [test ownership](#test-ownership) to separate test resources from production inputs.
 
-Lichtpost validates both closures. From `examples/`:
+Lichtpost validates both closures. From the repository root:
 
 ```sh
 bazel build //examples/lichtpost:pack
@@ -201,12 +209,12 @@ and test level, not the presence of an extension or a desire for symmetric direc
 | Tested behavior | Owner and context |
 |---|---|
 | Native implementation/backend | Unit tests beside the implementation, such as `<addon>/native/backends/linux/tests/`; depend on its interface/implementation without requiring Godot |
-| Deterministic Godot API behavior or contract | Add-on `tests/unit/`, with suites, helpers and execution together |
-| Real operating-system behavior | Add-on `tests/integration/`, using the required operating-system context |
-| Exported demo behavior | `demo/tests/`, consuming the demo artifact |
+| Deterministic Godot API behavior or contract | The add-on's test project, `e2e/addons/<name>/unit/`, with suites, helpers and execution together |
+| Real operating-system behavior | The add-on's test project, `e2e/addons/<name>/integration/`, using the required operating-system context |
+| Exported demo behavior | The demo's `tests/`, consuming the demo artifact |
 | Game/application behavior | The application's `tests/` package, including suites, helpers, fixtures and execution |
 
-The add-on's `tests/` Godot project owns its configuration, such as the warning rules for the
+The add-on's Godot test project in `e2e/addons/<name>/` owns its configuration, such as the warning rules for the
 add-on under test, and its editor/metadata workflows. The suites' test targets name that project and the necessary dependencies explicitly.
 Reusable helpers and frameworks are dependencies, not implicitly selected suites. Create only
 categories with actual behavior tests; extension use alone does not make a suite an
@@ -288,14 +296,14 @@ labels with an [export platform](platforms.md#export-platforms).
 1. From the repository root, run the demo:
 
    ```sh
-   bazel run //examples/addons/sqlite/demo:run
+   bazel run //examples/addons/sqlite:run
    ```
 
    The window shows **SQLite says: Hello from SQLite**.
 2. Open the declared project in Godot:
 
    ```sh
-   bazel run //examples/addons/sqlite/demo:edit
+   bazel run //examples/addons/sqlite:edit
    ```
 
    Edit and save through this editor view. Changes to authored files reach the checkout;
@@ -303,30 +311,30 @@ labels with an [export platform](platforms.md#export-platforms).
 3. Write missing UID/import sidecars and keep them beside their sources:
 
    ```sh
-   bazel run //examples/addons/sqlite/demo:update
-   bazel run //examples/addons/sqlite/tests:update
-   bazel test //examples/addons/sqlite/demo:update.test //examples/addons/sqlite/tests:update.test
+   bazel run //examples/addons/sqlite:update
+   bazel run //e2e/addons/sqlite:update
+   bazel test //examples/addons/sqlite:update.test //e2e/addons/sqlite:update.test
    ```
 
 4. Run the add-on's suites and exported content, which validates their scripts:
 
    ```sh
-   bazel test //examples/addons/sqlite/tests/unit //examples/addons/sqlite/demo/tests:exported
+   bazel test //e2e/addons/sqlite/unit //examples/addons/sqlite/tests:exported
    ```
 
 5. Export its production content:
 
    ```sh
-   bazel build //examples/addons/sqlite/demo:pack
+   bazel build //examples/addons/sqlite:pack
    ```
 
 6. Build a desktop application for your host:
 
    ```sh
-   bazel build //examples/addons/sqlite/demo:app
+   bazel build //examples/addons/sqlite:app
    ```
 
-   On macOS, use `bazel build //examples/addons/sqlite/demo:app --@autoload_rules_godot//godot:macos_signing=adhoc` instead for
+   On macOS, use `bazel build //examples/addons/sqlite:app --@autoload_rules_godot//godot:macos_signing=adhoc` instead for
    an ad hoc signed local application. Distribution signing is separate.
 
 The [platform guide](platforms.md) gives Android/iOS setup and packaging, source-built

@@ -1,41 +1,11 @@
-load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sync", "godot_project")
-load("//examples/addons/dart:defs.bzl", "godot_dart_extension")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 
 package(default_testonly = True)
 
-exports_files(
-    ["project.godot"],
-    visibility = [
-        "//examples/addons/dart/tests/unit:__pkg__",
-    ],
-)
-
-# The Dart language with the suites' fixture scripts.
-godot_dart_extension(
-    name = "dart",
-    srcs = ["//examples/addons/dart/tests/unit:fixtures"],
-    visibility = ["//examples/addons/dart/tests:__subpackages__"],
-)
-
-godot_project(
-    name = "tests",
-    project_file = "project.godot",
-    visibility = ["//examples/addons/dart/tests:__subpackages__"],
-)
-
-godot_editor(
-    name = "edit",
-    project = ":tests",
-    deps = [
-        "//examples/addons/dart/tests/unit:suites",
-    ],
-)
-
-godot_metadata_sync(
-    name = "update",
+# Runs the exported demo; Godot's errors, such as a script that does not load, fail it.
+godot_test(
+    name = "exported",
     size = "small",
-    project = ":tests",
-    deps = [
-        "//examples/addons/dart/tests/unit:suites",
-    ],
+    headless = True,
+    pack = "//examples/addons/dart:pack",
 )

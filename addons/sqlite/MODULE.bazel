@@ -1,0 +1,44 @@
+"""SQLite: a Godot add-on of autoload-dev that reads and writes SQLite databases."""
+
+module(
+    name = "autoload_sqlite",
+    version = "0.1.0",
+    bazel_compatibility = [">=9.0.0"],
+)
+
+# The release of rules_godot the add-ons need. Builds in this repository use the rules beside
+# them instead (addons/module.bazelrc and the root MODULE.bazel).
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+
+# The add-ons' own godot-cpp, with the classes their native code uses.
+godot_cpp_bindings = use_repo_rule(
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    enabled_classes = ["RefCounted"],
+)
+
+# SQLite's amalgamation, which the add-on compiles into its extension library.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "sqlite",
+    build_file = "//third_party:sqlite.BUILD.bazel",
+    sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
+    strip_prefix = "sqlite-amalgamation-3540100",
+    urls = ["https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip"],
+)
+
+# The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
+# never see it.
+bazel_dep(name = "autoload_dev", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_dev",
+    path = "../..",
+)

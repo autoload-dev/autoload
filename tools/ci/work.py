@@ -89,19 +89,15 @@ class Work:
         ]
 
 
-def example_tests(name: str, area: str = "addons", config: str = "") -> str:
-    """
-    The command that runs one example's own tests, below its directory in examples/ or, with
-    an area, in examples/<area>/.
-    """
+def example_tests(name: str, config: str = "") -> str:
+    """The command that runs one application's own tests, below examples/<name>/."""
     flags = f" --config={config}" if config else ""
-    directory = f"{area}/{name}" if area else name
-    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{directory}/..."
+    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{name}/..."
 
 
-def example(name: str, area: str = "addons") -> Work:
-    """One example's own tests, in the desktop lane."""
-    return Work(f"test:example:{name}", "desktop", ".", (example_tests(name, area),))
+def example(name: str) -> Work:
+    """One application's own tests, in the desktop lane; add-on modules have lanes of their own."""
+    return Work(f"test:example:{name}", "desktop", ".", (example_tests(name),))
 
 
 # The API documentation's tests, all of them fast, with the API inventory's discovery
@@ -110,7 +106,7 @@ DOCS_CHECK = "bazel run //tools/docs:check"
 
 # Petri's suites run in an editor built from the engine sources with its module, so the
 # source-engine lane runs them; named on its own, it runs here too.
-PETRI_TESTS = example_tests("petri", "", config="petri")
+PETRI_TESTS = example_tests("petri", config="petri")
 
 
 def every_module(
@@ -223,10 +219,10 @@ PATCHED_EDITOR = (
 )
 # The example packages with an `app`, which the mobile lanes build.
 APP_PACKAGES = (
-    f"{EXAMPLES}/addons/sqlite/demo",
+    f"{EXAMPLES}/addons/sqlite",
     f"{EXAMPLES}/lichtpost",
-    f"{EXAMPLES}/addons/platform_paths/demo",
-    f"{EXAMPLES}/addons/app_auth/demo",
+    f"{EXAMPLES}/addons/platform_paths",
+    f"{EXAMPLES}/addons/app_auth",
 )
 # The Android release bundles leave Lichtpost out.
 ANDROID_RELEASE_PACKAGES = tuple(p for p in APP_PACKAGES if p != f"{EXAMPLES}/lichtpost")
@@ -324,11 +320,7 @@ WORK = (
         ),
         hosts=("macos",),
     ),
-    example("sqlite"),
-    example("lichtpost", ""),
-    example("platform_paths"),
-    example("app_auth"),
-    example("dart"),
+    example("lichtpost"),
     contracts("android"),
     Work(
         "android",
@@ -337,10 +329,7 @@ WORK = (
         (
             f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
             f"bazel build {apps(APP_PACKAGES)} --config=android",
-            (
-                f"bazel build {EXAMPLES}/addons/sqlite/demo:app"
-                " --config=multi_abi --config=aab"
-            ),
+            (f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab"),
             (
                 f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
                 " --config=android-release --config=aab"

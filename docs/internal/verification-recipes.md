@@ -173,7 +173,7 @@ For settings on every invocation, such as `common --config=buildbuddy`, create
 Use this recipe when changing Platform Paths' Android or iOS operating-system integration,
 or when explicitly accepting its mobile runtime behavior. A BUILD-only move or documentation
 edit does not require repeating it. Build commands and SDK setup remain in the
-[example README](../../examples/addons/platform_paths/README.md#mobile-builds).
+[example README](../../addons/platform_paths/README.md#mobile-builds).
 
 On Android, install and launch on a matching ARM64 device/emulator. Check all five path
 categories, their scopes, absence of an unnecessary storage permission prompt, legitimate

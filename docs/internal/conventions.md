@@ -236,15 +236,18 @@ reusable-resource exemptions select applicability.
 
 ## RG009
 
-**Applications and add-ons use their typed roots.** Every consumer of this repository uses
-the same layout of projects and add-ons, measured from its root: the directory of a consumer
-in the root module, the module root of another consumer module:
+**Applications and add-ons use their typed roots.** Every consumer in the repository's root
+module places its projects and add-ons by path:
 
 | Consumer | Application projects | Add-ons |
 |---|---|---|
-| Examples, `examples/` | `examples/<name>/` | `examples/addons/<name>/` |
+| Applications, `examples/` | `examples/<name>/` | none |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or `examples/addons/<module>/<scenario>/` per scenario | none: the add-ons are in the module |
 | Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
-| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | `examples/addons/<module>/projects/<name>/` | none: the add-ons are in the module |
+| Add-on end-to-end tests, `e2e/addons/<module>/` | any layout: white-box fixtures | none |
+
+A consumer module outside the root module measures `projects/<name>/` and `addons/<name>/`
+from its module root.
 
 The path determines whether a directory is a project or an add-on, and which rules apply.
 A project case owns a BUILD file and at least one authored Godot configuration; related
@@ -258,7 +261,7 @@ do not establish an add-on.
 
 The check inventories project and add-on directories and authored `project.godot` files in
 every consumer; the white-box fixture projects of the ruleset module and of an add-on
-module's `examples/addons/<module>/tests/` are outside it. Configurations must belong to a named project or add-on.
+module's end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
 Temporary projects constructed inside source strings and generated configuration templates
 are outside the inventory. The check does not require a project or BUILD package for each
 assertion.
@@ -266,7 +269,8 @@ assertion.
 ## RG010
 
 **Add-ons separate implementation, demo and Godot tests.** Every add-on under a typed add-on
-root owns its reusable implementation, a normal-use project under `demo/` and a Godot test
+root, such as the scenario add-on `e2e/rules_godot/shared_addon/`, owns its reusable
+implementation, a normal-use project under `demo/` and a Godot test
 project under `tests/`. Each of those three scopes owns a BUILD file. The two projects own
 `project.godot` directly; do not add another project at the add-on root or inside a suite
 category. Native backend unit tests do not require a Godot configuration.
@@ -362,7 +366,7 @@ recipes then find a project's engine inputs in one place, separate from its appl
 content under `main/`.
 
 ```text
-<module>/projects/<name>/
+<project>/
   project.godot
   main/
   engine/
@@ -413,7 +417,8 @@ root module's declaration lists it. Each module:
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
 - has at least one example project in the root module's
-  `examples/addons/<module>/projects/<name>/`, each defining the targets `edit` and `pack`,
+  `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
+  defining the targets `edit` and `pack`,
   and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.

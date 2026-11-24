@@ -316,7 +316,7 @@ instead. Include the extension
 in the project's `deps`, or those of resources it contains. The iOS application
 links its archive and transitive C++ dependencies from the pack's project.
 The [SQLite extension](../../../examples/addons/sqlite/BUILD.bazel) and its
-[project BUILD file](../../../examples/addons/sqlite/demo/BUILD.bazel) show the
+[project BUILD file](../../../examples/addons/sqlite/BUILD.bazel) show the
 extension, project, pack and application together; follow the
 [iOS setup and build commands](platforms.md#ios) to build it.
 

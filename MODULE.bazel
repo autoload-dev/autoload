@@ -20,9 +20,9 @@ bazel_dep(name = "rules_multitool", version = "1.0.0")
 # one would change the Go SDK its Android tools build with.
 bazel_dep(name = "rules_go", version = "0.59.0")
 
-# Where this module is the root, Gazelle's tools, which rules_android's deploy_info and
-# rules_swift_package_manager share, need a newer rules_go (see go_sdk below); an override
-# applies only in the root, so the ruleset's graph keeps the version above.
+# Where this module is the root, Gazelle's tools, which rules_android's deploy_info uses, need
+# a newer rules_go (see go_sdk below); an override applies only in the root, so the ruleset's
+# graph keeps the version above.
 single_version_override(
     module_name = "rules_go",
     version = "0.65.0",
@@ -98,6 +98,30 @@ local_path_override(
     path = "addons/sentry",
 )
 
+bazel_dep(name = "autoload_sqlite", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_sqlite",
+    path = "addons/sqlite",
+)
+
+bazel_dep(name = "autoload_platform_paths", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_platform_paths",
+    path = "addons/platform_paths",
+)
+
+bazel_dep(name = "autoload_app_auth", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_app_auth",
+    path = "addons/app_auth",
+)
+
+bazel_dep(name = "autoload_dart", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_dart",
+    path = "addons/dart",
+)
+
 bazel_dep(name = "rules_swift", version = "4.3.0", dev_dependency = True)
 bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
 
@@ -111,10 +135,9 @@ maven.install(
     aar_import_bzl_label = "@rules_android//rules:rules.bzl",
     artifacts = [
         "androidx.fragment:fragment:1.8.6",
-        # AppAuth for Android, consumed by the AppAuth example add-on.
-        "net.openid:appauth:0.11.1",
     ],
     known_contributing_modules = [
+        "autoload_app_auth",
         "autoload_firebase",
         "autoload_rules_godot",
         "autoload_sentry",
@@ -360,24 +383,8 @@ register_toolchains(
     dev_dependency = True,
 )
 
-# AppAuth for iOS and macOS from its Swift package, pinned in Package.resolved. Only the
-# Apple backend of iOS and macOS applications and source runs needs it; the add-on's editor
-# library uses the unsupported backend, so Linux and Android builds never resolve it.
-bazel_dep(name = "rules_swift_package_manager", version = "1.26.0", dev_dependency = True)
-
-swift_deps = use_extension(
-    "@rules_swift_package_manager//:extensions.bzl",
-    "swift_deps",
-    dev_dependency = True,
-)
-swift_deps.from_package(
-    resolved = "//examples:Package.resolved",
-    swift = "//examples:Package.swift",
-)
-use_repo(swift_deps, "swift_package", "swiftpkg_appauth_ios")
-
-# rules_android's deploy_info tool and rules_swift_package_manager share Gazelle's Go
-# repositories; Gazelle 0.50.0 builds its tools with Go 1.24.12 or newer, while the first
+# rules_android's deploy_info tool uses Gazelle's Go repositories; Gazelle 0.50.0 and newer
+# build their tools with Go 1.24.12 or newer, while the first
 # registered SDK, rules_android's 1.22.4, is older. The root module's SDK takes precedence.
 # Remove this pin once rules_android registers a Go SDK that Gazelle's tools build with.
 go_sdk = use_extension(
@@ -392,78 +399,18 @@ godot_cpp_bindings = use_repo_rule(
     "godot_cpp_bindings",
 )
 
-# Keep the API independent of the engine pin to exercise forward compatibility. Node serves
-# the scenarios' extension, the other classes the examples' add-ons.
+# Keep the API independent of the engine pin to exercise forward compatibility; the scenarios'
+# extension needs Node only.
 godot_cpp_bindings(
     name = "godot_cpp",
     api_path = "gdextension/extension_api-4-7.json",
     dev_dependency = True,
-    enabled_classes = [
-        "ClassDB",
-        "Engine",
-        "FileAccess",
-        "JSON",
-        "Node",
-        "ProjectSettings",
-        "RefCounted",
-        "ResourceFormatLoader",
-        "ResourceFormatSaver",
-        "ResourceLoader",
-        "ResourceSaver",
-        "ScriptExtension",
-        "ScriptLanguageExtension",
-    ],
+    enabled_classes = ["Node"],
 )
 
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "sqlite",
-    build_file = "//third_party:sqlite.BUILD.bazel",
-    dev_dependency = True,
-    sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
-    strip_prefix = "sqlite-amalgamation-3540100",
-    urls = ["https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip"],
-)
-
-# Dart for the Dart scripting add-on: rules_dart compiles scripts with the SDK release whose
-# sources build the add-on's embedded runtime; an AOT snapshot runs only on the runtime of
-# its own release.
+# rules_dart, whose analysis summaries setting the root's .bazelrc propagates to the exec
+# configuration for the Dart add-on (autoload_dart).
 bazel_dep(name = "rules_dart", version = "0.10.0", dev_dependency = True)
-
-dart = use_extension(
-    "@rules_dart//dart:extensions.bzl",
-    "dart",
-    dev_dependency = True,
-)
-dart.toolchain(dart_version = "3.14.1")
-use_repo(dart, "dart_toolchains")
-
-register_toolchains(
-    "@dart_toolchains//:all",
-    dev_dependency = True,
-)
-
-bazel_dep(name = "icu", version = "78.2.bcr.3", dev_dependency = True)
-bazel_dep(name = "zlib", version = "1.4", dev_dependency = True)
-
-http_archive(
-    name = "dart_sdk_source",
-    build_file = "//third_party:dart_sdk.BUILD.bazel",
-    dev_dependency = True,
-    # Bazel loads the runtime's source lists from .bzl copies of GN's *_sources.gni files. The
-    # patch drops the embedder API's unused SecureSocket include, which needs BoringSSL, and
-    # corrects the macOS version the runtime derives from Darwin 25 and newer, which it
-    # compares with the deployment target before it starts an isolate.
-    patch_cmds = [
-        "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
-    ],
-    patch_strip = 1,
-    patches = ["//third_party:dart_sdk.patch"],
-    sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
-    strip_prefix = "sdk-3.14.1",
-    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],
-)
 
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 

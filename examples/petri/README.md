@@ -17,7 +17,7 @@ texture.update(field.get_image())
 
 Petri fits when you want to see how a module, an engine recipe and an application
 connect in rules_godot. It does not show native code as a GDExtension; the
-[SQLite](../addons/sqlite/README.md) and [Platform Paths](../addons/platform_paths/README.md)
+[SQLite](../../addons/sqlite/README.md) and [Platform Paths](../../addons/platform_paths/README.md)
 add-ons do that.
 
 Tap or drag the dish to drop a culture. The chips switch between **Coral**,

@@ -326,7 +326,7 @@ their leading entry instead of repeating its support.
 [EXT]: ../public/gdextension.md
 [VERS]: ../public/versions.md
 [EXAMPLES]: ../../../examples/README.md
-[PATHS]: ../../../examples/addons/platform_paths/README.md
+[PATHS]: ../../../addons/platform_paths/README.md
 [LAYOUT]: ../public/project-layout.md
 [TESTS]: ../../../e2e/rules_godot/AGENTS.md
 [ARCH]: architecture.md

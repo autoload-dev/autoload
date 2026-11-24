@@ -1,0 +1,4 @@
+// How this repository verifies the module and what its rules are (tools/addons/Addon.pkl).
+amends "../../tools/addons/Addon.pkl"
+
+lanes = List("desktop", "android", "ios")

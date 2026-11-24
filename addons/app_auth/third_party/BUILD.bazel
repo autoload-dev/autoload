@@ -1,0 +1,2 @@
+# Build files of third-party archives, which MODULE.bazel names.
+exports_files(["appauth.BUILD.bazel"])
