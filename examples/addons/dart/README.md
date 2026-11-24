@@ -112,10 +112,10 @@ has one Dart extension, since Godot registers one language per name.
 
 Dart does not distribute its VM as a library. The [module](../../../MODULE.bazel) fetches the
 Dart SDK sources of the release that rules_dart compiles with, and
-[`dart_sdk.BUILD.bazel`](../../deps/dart_sdk.BUILD.bazel) builds the SDK's precompiled
+[`dart_sdk.BUILD.bazel`](../../../third_party/dart_sdk.BUILD.bazel) builds the SDK's precompiled
 runtime and its `dart_engine.h` embedding API with rules_cc, from the source lists of the
 SDK's own GN build. An AOT snapshot runs only on the runtime of its own release, which
-checks this when the isolate starts. [`dart_sdk.patch`](../../deps/dart_sdk.patch) drops an
+checks this when the isolate starts. [`dart_sdk.patch`](../../../third_party/dart_sdk.patch) drops an
 unused BoringSSL include, so `dart:io` has no `SecureSocket`, and corrects the macOS
 version the runtime reads on Darwin 25 and newer.
 

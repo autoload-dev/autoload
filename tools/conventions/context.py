@@ -217,6 +217,11 @@ class Workspace:
         )
 
     @cached_property
+    def configured(self) -> frozenset[Path]:
+        """The directories with a project.godot of their own."""
+        return frozenset(path.parent for path in self.godot_configurations)
+
+    @cached_property
     def godot_configurations(self) -> tuple[Path, ...]:
         """Every ``project.godot`` file."""
         return tuple(
@@ -243,7 +248,7 @@ class Workspace:
         outside consumers there are no typed roots.
         """
         root = self.consumer_root(path)
-        return None if root is None else typed_directory(root, path)
+        return None if root is None else typed_directory(root, path, self.configured)
 
     def typed_directories(self, kind: str) -> Mapping[Path, tuple[str, ...]]:
         """Map each project or add-on directory ``<module>/<kind>/<name>`` to its files."""

@@ -251,7 +251,7 @@ godot_engines.source_build(
         "editor",
         "template_release",
     ],
-    custom_modules = {"//examples/projects/petri/engine/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+    custom_modules = {"//examples/petri/engine/modules/reaction_diffusion:config.py": "reaction_diffusion"},
     # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
     enabled_modules = [
         "gdscript",
@@ -265,7 +265,7 @@ godot_engines.source_build(
     engine = "petri",
     # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
     # build any recipe, such as a Mac with remote execution the Linux editor.
-    lock_file = "//examples/engines:godot_petri.lock.json",
+    lock_file = "//examples/petri:godot_petri.lock.json",
     platforms = [
         "linux",
         "macos",
@@ -419,7 +419,7 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 http_archive(
     name = "sqlite",
-    build_file = "//examples/deps:sqlite.BUILD.bazel",
+    build_file = "//third_party:sqlite.BUILD.bazel",
     dev_dependency = True,
     sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
     strip_prefix = "sqlite-amalgamation-3540100",
@@ -449,7 +449,7 @@ bazel_dep(name = "zlib", version = "1.4", dev_dependency = True)
 
 http_archive(
     name = "dart_sdk_source",
-    build_file = "//examples/deps:dart_sdk.BUILD.bazel",
+    build_file = "//third_party:dart_sdk.BUILD.bazel",
     dev_dependency = True,
     # Bazel loads the runtime's source lists from .bzl copies of GN's *_sources.gni files. The
     # patch drops the embedder API's unused SecureSocket include, which needs BoringSSL, and
@@ -459,7 +459,7 @@ http_archive(
         "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
     ],
     patch_strip = 1,
-    patches = ["//examples/deps:dart_sdk.patch"],
+    patches = ["//third_party:dart_sdk.patch"],
     sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
     strip_prefix = "sdk-3.14.1",
     urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],

@@ -242,7 +242,7 @@ in the root module, the module root of another consumer module:
 
 | Consumer | Application projects | Add-ons |
 |---|---|---|
-| Examples, `examples/` | `examples/projects/<name>/` | `examples/addons/<name>/` |
+| Examples, `examples/` | `examples/<name>/` | `examples/addons/<name>/` |
 | Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
 | Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | `examples/addons/<module>/projects/<name>/` | none: the add-ons are in the module |
 
@@ -388,7 +388,7 @@ reports:
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project
-root, such as dependency patches in `examples/deps/`, are outside this rule.
+root, such as dependency patches in `third_party/`, are outside this rule.
 The check does not read module or patch contents and does not prove that a recipe consumes
 them.
 

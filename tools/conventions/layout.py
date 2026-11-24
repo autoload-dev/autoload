@@ -14,16 +14,17 @@ TYPED_ROOTS = frozenset({"projects", "addons"})
 RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
 NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
-# The consumers in the root module: its examples, with typed roots, and the ruleset's consumer
-# scenarios with their smoke paths.
+# The consumers in the root module: its examples, each application a project directly in
+# examples/, and the ruleset's consumer scenarios with their smoke paths.
 EXAMPLES_ROOT = Path("examples")
 REGRESSION_ROOT = Path("e2e/rules_godot")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
-# Each add-on module's example applications and Godot tests, a consumer of its own:
-# examples/addons/<module>/ for every module addons/<module>/.
+# Each add-on module's example application, a consumer of its own: examples/addons/<module>/
+# for every module addons/<module>/, one project or one per scenario.
 ADDON_EXAMPLES = EXAMPLES_ROOT / "addons"
-# The Godot tests of an add-on module's examples: white-box fixtures, no typed root.
-ADDON_TESTS = "tests"
+# Each add-on module's end-to-end tests, e2e/addons/<module>/: test projects and fixtures in a
+# layout of their own, without typed roots.
+ADDON_E2E = Path("e2e/addons")
 SMOKE_ROOT = "smoke"
 # Packages of the scenarios that are no scenario, such as shared tools.
 REGRESSION_TOOLING = frozenset({"tools"})
@@ -50,35 +51,53 @@ def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
 
 def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
     """
-    The consumer in the root module that path belongs to: an add-on module's examples, when
-    its module is among the modules, or else examples/ or e2e/rules_godot/.
+    The consumer in the root module that path belongs to: an add-on module's examples or
+    end-to-end tests, when its module is among the modules, or else examples/ or
+    e2e/rules_godot/.
     """
-    if path.is_relative_to(ADDON_EXAMPLES) and path != ADDON_EXAMPLES:
-        module = path.relative_to(ADDON_EXAMPLES).parts[0]
-        if Path("addons") / module in modules:
-            return ADDON_EXAMPLES / module
+    for area in (ADDON_EXAMPLES, ADDON_E2E):
+        if path.is_relative_to(area) and path != area:
+            module = path.relative_to(area).parts[0]
+            if Path("addons") / module in modules:
+                return area / module
     return next((root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None)
 
 
-def is_addon_test(path: Path, root: Path | None) -> bool:
-    """Whether path lies in the Godot tests of an add-on module's examples."""
-    return (
-        root is not None
-        and root.parent == ADDON_EXAMPLES
-        and path.relative_to(root).parts[:1] == (ADDON_TESTS,)
-    )
+def is_addon_test(root: Path | None) -> bool:
+    """Whether a consumer is an add-on module's end-to-end tests, which have no typed roots."""
+    return root is not None and root.parent == ADDON_E2E
 
 
-def typed_directory(root: Path, path: Path) -> tuple[str, Path] | None:
+def typed_directory(
+    root: Path, path: Path, configured: frozenset[Path]
+) -> tuple[str, Path] | None:
     """
-    The kind and root of the project or add-on directory ``<consumer>/<kind>/<name>/`` that
-    path lies in, below the consumer root ``root``; the scenarios' packages are their projects.
+    The kind and root of the project or add-on that path lies in, below the consumer root
+    ``root``: a project directly in examples/ or an add-on module's examples, one of the
+    scenarios' packages, or a directory of a consumer module's typed roots. ``configured``
+    holds the directories with a project.godot.
     """
-    if path == root:
+    if path == root or is_addon_test(root):
         return None
     parts = path.relative_to(root).parts
     if root == REGRESSION_ROOT:
         return scenario_directory(parts)
+    if root.parent == ADDON_EXAMPLES:
+        return "projects", example_project(root, parts, configured)
+    return consumer_directory(root, parts)
+
+
+def example_project(
+    root: Path, parts: tuple[str, ...], configured: frozenset[Path]
+) -> Path:
+    """An add-on module's example project: its examples themselves, or one per scenario."""
+    return root if root in configured or len(parts) == 1 else root / parts[0]
+
+
+def consumer_directory(root: Path, parts: tuple[str, ...]) -> tuple[str, Path] | None:
+    """A project directly in examples/, or a directory of a consumer module's typed roots."""
     if len(parts) > 2 and parts[0] in TYPED_ROOTS:
         return parts[0], root / Path(*parts[:2])
+    if root == EXAMPLES_ROOT and len(parts) > 1:
+        return "projects", root / parts[0]
     return None

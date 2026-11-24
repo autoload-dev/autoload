@@ -23,8 +23,8 @@ class TypedRootLayoutTest(RepositoryTest):
         self.assertEqual(
             [],
             self.evaluate(
-                "examples/projects/game/BUILD.bazel",
-                "examples/projects/game/project.godot",
+                "examples/game/BUILD.bazel",
+                "examples/game/project.godot",
                 "e2e/rules_godot/mobile/BUILD.bazel",
                 "e2e/rules_godot/mobile/android/project.godot",
                 "examples/addons/widget/demo/project.godot",
@@ -36,24 +36,22 @@ class TypedRootLayoutTest(RepositoryTest):
 
     def test_legacy_groups_unit_packages_and_unnamed_roots_are_rejected(self) -> None:
         findings = self.evaluate(
-            "examples/games/game/project.godot",
-            "examples/projects/project.godot",
+            "examples/project.godot",
             "e2e/rules_godot/project.godot",
             "e2e/rules_godot/smoke/project.godot",
+            "e2e/project.godot",
         )
         self.assertEqual(len(findings), 4)
         self.assertTrue(
-            all(
-                "named project or add-on below projects/ or addons/" in item
-                for item in findings
-            )
+            all("named project or add-on of their consumer" in item for item in findings)
         )
 
     def test_an_add_on_modules_test_fixtures_may_live_in_its_tests(self) -> None:
         findings = self.evaluate(
             "addons/runner/MODULE.bazel",
-            "examples/addons/runner/tests/fixtures/suites/project.godot",
-            "examples/addons/runner/fixtures/project.godot",
+            "e2e/addons/runner/fixtures/suites/project.godot",
+            "e2e/addons/runner/project.godot",
+            "e2e/project.godot",
         )
         self.assertEqual(len(findings), 1)
 
@@ -71,7 +69,7 @@ class TypedRootLayoutTest(RepositoryTest):
     def test_project_needs_configuration_and_own_build(self) -> None:
         findings = self.evaluate(
             "e2e/rules_godot/raw_library/native.cc",
-            "examples/projects/app/project.godot",
+            "examples/app/project.godot",
         )
         self.assertEqual(len(findings), 3)
         self.assertTrue(

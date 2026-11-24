@@ -48,7 +48,7 @@ class GenerateTest(RepositoryTestCase):
         )
         plugin = "widget/widget/native/backends/android/dev/autoload/widget/widget/WidgetPlugin.java"
         self.assertIn("package dev.autoload.widget.widget;", self.read(plugin))
-        examples = self.root / "examples/addons/widget/projects/demo"
+        examples = self.root / "examples/addons/widget"
         scene = (examples / "main/demo.tscn").read_text()
         uid = (examples / "main/demo.gd.uid").read_text().strip()
         self.assertRegex(uid, r"^uid://[a-z0-9]+$")
@@ -60,7 +60,7 @@ class GenerateTest(RepositoryTestCase):
             (self.root / ".bcr/addons/widget/presubmit.yml").read_text(),
         )
         self.assertIn(
-            "//examples/addons/widget/projects/demo/main",
+            "//examples/addons/widget/main",
             (examples / "BUILD.bazel").read_text(),
         )
         self.assertFalse((self.root / "addons/widget/examples").exists())
@@ -115,7 +115,7 @@ class DeclarationTest(RepositoryTestCase):
 
     def test_the_self_test_module_drops_its_dot_in_its_examples(self) -> None:
         generate(".selftest", root=self.root, release=False)
-        self.assertTrue((self.root / "examples/addons/selftest/projects/demo").is_dir())
+        self.assertTrue((self.root / "examples/addons/selftest/project.godot").is_file())
         self.assertIn(
             'module_name = "autoload_selftest"', (self.root / "MODULE.bazel").read_text()
         )

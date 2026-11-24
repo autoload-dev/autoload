@@ -118,7 +118,7 @@ GdUnit and reports to Bazel.
 
 The example application in `examples/addons/gdunit/` at the repository root consumes the
 module as applications do: the project `projects/scores` tests its scripts with GdUnit.
-`examples/addons/gdunit/tests/` holds the module's own
+`e2e/addons/gdunit/` holds the module's own
 tests: GdUnit runs that pass, fail, shard, filter and report the way Bazel's test
 encyclopedia requires, a pack with GdUnit, and a GdUnit run in a project with strict
 warnings. `python3 -m tools.addons.lanes desktop gdunit` runs both.

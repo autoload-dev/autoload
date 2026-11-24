@@ -90,7 +90,7 @@ class AddonModuleLayoutTest(RepositoryTest):
 
     def test_example_projects_define_the_targets_the_lanes_build(self) -> None:
         self.module("widget")
-        build = "examples/addons/widget/projects/demo/BUILD.bazel"
+        build = "examples/addons/widget/BUILD.bazel"
         self.write(
             build, (self.root / build).read_text().replace('name = "edit"', 'name = "e"')
         )
@@ -102,7 +102,7 @@ class AddonModuleLayoutTest(RepositoryTest):
             "addons/widget/addon.pkl",
             'amends "../../tools/addons/Addon.pkl"\nlanes = List("desktop")\n',
         )
-        build = "examples/addons/widget/projects/demo/BUILD.bazel"
+        build = "examples/addons/widget/BUILD.bazel"
         self.write(
             build, (self.root / build).read_text().replace('name = "app"', 'name = "a"')
         )

@@ -44,10 +44,10 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_project_without_engine_directory_has_no_findings(self) -> None:
-        self.assertEqual([], self.evaluate(*self.project("examples/projects/game")))
+        self.assertEqual([], self.evaluate(*self.project("examples/game")))
 
     def test_module_outside_engine_modules_is_reported_once_at_its_config(self) -> None:
-        root = "examples/projects/game"
+        root = "examples/game"
         findings = self.evaluate(
             *self.project(root),
             *self.module(root + "/modules/reaction_diffusion"),
@@ -69,7 +69,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_config_without_scsub_or_register_types_is_not_a_module(self) -> None:
-        root = "examples/projects/game"
+        root = "examples/game"
         self.assertEqual(
             [],
             self.evaluate(
@@ -131,7 +131,7 @@ class EngineLayoutTest(RepositoryTest):
         )
 
     def test_non_module_directory_and_files_in_engine_modules_are_reported(self) -> None:
-        root = "examples/projects/petri"
+        root = "examples/petri"
         findings = self.evaluate(
             *self.project(root),
             *self.module(root + "/engine/modules/reaction_diffusion"),
@@ -192,7 +192,7 @@ class EngineLayoutTest(RepositoryTest):
             *self.module(addon + "/demo/engine/modules/ok", "config.py", "SCsub"),
             *self.module(addon + "/tests/modules/stray", "config.py", "SCsub"),
             *self.module(addon + "/native", "config.py", "SCsub"),
-            "examples/deps/godot_simulator.patch",
+            "third_party/godot_simulator.patch",
             "e2e/rules_godot/unit/engine/fix.patch",
             *self.module("godot/private/probe", "config.py", "SCsub"),
             *self.project("e2e/rules_godot/projects/mobile/android"),

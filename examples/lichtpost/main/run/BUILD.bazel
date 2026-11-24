@@ -1,0 +1,32 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/lichtpost:__subpackages__"])
+
+godot_resources(
+    name = "definitions",
+    srcs = [
+        "level_definition.gd",
+        "level_definition.gd.uid",
+        "section_pattern.gd",
+        "section_pattern.gd.uid",
+    ],
+    prefix = "main/run",
+    deps = ["//examples/lichtpost/main/shared/palette"],
+)
+
+godot_resources(
+    name = "run",
+    srcs = [
+        "run.gd",
+        "run.gd.uid",
+        "run.tscn",
+    ],
+    prefix = "main/run",
+    deps = [
+        ":definitions",
+        "//examples/lichtpost/main/components:sound",
+        "//examples/lichtpost/main/rules:replay",
+        "//examples/lichtpost/main/rules:route",
+        "//examples/lichtpost/main/run/view",
+    ],
+)

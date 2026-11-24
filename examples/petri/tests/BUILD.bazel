@@ -1,0 +1,33 @@
+load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+load("//examples/petri:source_engine.bzl", "SOURCE_ENGINE_ONLY")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "DishTest.gd",
+        "DishTest.gd.uid",
+        "FieldTest.gd",
+        "FieldTest.gd.uid",
+        "LayoutTest.gd",
+        "LayoutTest.gd.uid",
+        "SceneTest.gd",
+        "SceneTest.gd.uid",
+    ],
+    prefix = "tests",
+    visibility = ["//examples/petri:__pkg__"],
+    deps = [
+        "//examples/petri/main",
+        "@autoload_gdunit//:gdunit",
+    ],
+)
+
+gdunit_test(
+    name = "tests",
+    size = "small",
+    project = "//examples/petri:petri",
+    suites = [":suites"],
+    target_compatible_with = SOURCE_ENGINE_ONLY,
+)

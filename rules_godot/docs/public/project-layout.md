@@ -184,8 +184,8 @@ Use [test ownership](#test-ownership) to separate test resources from production
 Lichtpost validates both closures. From `examples/`:
 
 ```sh
-bazel build //examples/projects/lichtpost:pack
-bazel test //examples/projects/lichtpost/tests
+bazel build //examples/lichtpost:pack
+bazel test //examples/lichtpost/tests
 ```
 
 The first validates the production resource closure, including route simulation and replay
@@ -270,7 +270,7 @@ main/shared/palette/garden_palette.tres
 main/shared/ui/interface_theme.tres
 ```
 
-The [Lichtpost game](../../../examples/projects/lichtpost/README.md)
+The [Lichtpost game](../../../examples/lichtpost/README.md)
 provides a complete example: `main/game.tscn` composes the reusable `main/run/run.tscn`,
 scene component and UI scenes own their folders, and
 `main/levels/level_01/level_01.tres` supplies level data. Shared palette and UI assets

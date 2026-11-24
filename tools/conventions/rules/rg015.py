@@ -204,12 +204,24 @@ class AddonModuleLayout:
     def projects(
         workspace: Workspace, module: Path, builds_apps: bool
     ) -> Iterable[Finding]:
-        """The module's example projects in the root module, examples/addons/<module>/."""
-        root = EXAMPLES / module.name / "projects"
-        builds = sorted(
-            Path(name)
+        """
+        The module's example projects in the root module: examples/addons/<module>/ itself, or
+        each of its subdirectories with a project.
+        """
+        root = EXAMPLES / module.name
+        configured = {
+            Path(name).parent
             for name in workspace.files
-            if Path(name).parent.parent == root and Path(name).name in BUILD_FILES
+            if Path(name).name == "project.godot"
+        }
+        projects = (
+            [root] if root in configured else [d for d in configured if d.parent == root]
+        )
+        builds = sorted(
+            project / build
+            for project in projects
+            for build in BUILD_FILES
+            if (project / build).as_posix() in workspace.file_set
         )
         if not builds:
             yield Finding(

@@ -15,9 +15,12 @@ from tools.setup.modules import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-# Where the root module keeps each add-on module's example applications and Godot tests:
-# examples/addons/<module>/, which consumes the module as an application does.
+# Where the root module keeps each add-on module's example applications: examples/addons/<module>/,
+# which consumes the module as an application does, is one project or holds one per scenario.
 EXAMPLES = Path("examples/addons")
+# Where the root module keeps an add-on module's end-to-end tests, if it has any:
+# e2e/addons/<module>/, with test projects and fixtures in a layout of their own.
+E2E = Path("e2e/addons")
 # The schema every addons/<module>/addon.pkl amends. This module applies its defaults but
 # not its types, so RG015 checks the values against it.
 SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
@@ -101,6 +104,7 @@ class AddonModule:
     desktops: tuple[str, ...] = DESKTOPS
     lanes: tuple[str, ...] = LANES
     test_operations: tuple[str, ...] = ()
+    end_to_end: bool = False
 
     @property
     def directory(self) -> str:
@@ -115,6 +119,11 @@ class AddonModule:
         """The module's example applications in the root module, relative to the root."""
         return EXAMPLES / self.directory.removeprefix(".")
 
+    @property
+    def tests(self) -> Path:
+        """The module's end-to-end tests in the root module, relative to the root."""
+        return E2E / self.directory.removeprefix(".")
+
     @classmethod
     def load(cls, path: Path, root: Path = ROOT) -> AddonModule:
         """Read the module at `path`, relative to the repository root."""
@@ -125,15 +134,25 @@ class AddonModule:
         addon = module / "addon.pkl"
         manifest = addon_manifest(addon.read_text() if addon.is_file() else "")
         examples = root / EXAMPLES / path.name.removeprefix(".")
-        projects = (examples / "projects").glob("*/BUILD.bazel")
         return cls(
             path=path,
             name=str(attributes["name"]),
-            projects=tuple(sorted(build.parent.name for build in projects)),
+            projects=example_projects(examples),
             desktops=manifest["desktops"],
             lanes=manifest.get("lanes", LANES),
             test_operations=manifest["testOperations"],
+            end_to_end=(root / E2E / path.name.removeprefix(".")).is_dir(),
         )
+
+
+def example_projects(examples: Path) -> tuple[str, ...]:
+    """
+    A module's example projects, relative to its examples: the examples themselves, ".", when
+    they are one project, else each subdirectory with a project.
+    """
+    if (examples / "project.godot").is_file():
+        return (".",)
+    return tuple(sorted(p.parent.name for p in examples.glob("*/project.godot")))
 
 
 def module_path(directory: str) -> Path:

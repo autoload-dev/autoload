@@ -1,0 +1,15 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_visibility = ["//examples/petri:__subpackages__"])
+
+godot_resources(
+    name = "hud",
+    srcs = [
+        "hud.gd",
+        "hud.gd.uid",
+        "hud.tscn",
+        "hud_theme.tres",
+    ],
+    prefix = "main/hud",
+    deps = ["//examples/petri/main/hud/fonts"],
+)

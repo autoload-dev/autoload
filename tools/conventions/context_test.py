@@ -373,8 +373,8 @@ escaped = "a\\"b"
             self.write(name, "")
         workspace = self.workspace()
         self.assertEqual(
-            ("projects", Path("examples/projects/x")),
-            workspace.typed_directory(Path("examples/projects/x/BUILD.bazel")),
+            ("projects", Path("examples/x")),
+            workspace.typed_directory(Path("examples/x/BUILD.bazel")),
         )
         self.assertEqual(
             ("projects", Path("e2e/rules_godot/y")),

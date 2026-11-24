@@ -21,10 +21,16 @@ class LanesTest(unittest.TestCase):
                 "--",
                 "@autoload_widget//...",
                 "//examples/addons/widget/...",
-                "-//examples/addons/widget/projects/demo:app",
-                "-//examples/addons/widget/projects/store:app",
+                "-//examples/addons/widget/demo:app",
+                "-//examples/addons/widget/store:app",
             ],
         )
+
+    def test_desktop_runs_a_module_s_end_to_end_tests(self) -> None:
+        widget = AddonModule(
+            Path("addons/widget"), "autoload_widget", (".",), end_to_end=True
+        )
+        self.assertIn("//e2e/addons/widget/...", command("desktop", widget))
 
     def test_desktop_lane_of_a_module_without_application_lanes_tests_all_its_examples(
         self,
@@ -32,7 +38,7 @@ class LanesTest(unittest.TestCase):
         widget = AddonModule(
             Path("addons/widget"),
             "autoload_widget",
-            ("demo",),
+            (".",),
             lanes=("desktop",),
         )
         self.assertEqual(
@@ -48,34 +54,26 @@ class LanesTest(unittest.TestCase):
 
     def test_mobile_lanes_build_each_example_app(self) -> None:
         self.assertEqual(
-            command("ios", module("demo")),
-            [
-                "bazel",
-                "build",
-                "--config=ios_sim",
-                "//examples/addons/widget/projects/demo:app",
-            ],
+            command("ios", module(".")),
+            ["bazel", "build", "--config=ios_sim", "//examples/addons/widget:app"],
         )
-        self.assertEqual(command("android", module("demo"))[2], "--config=android")
+        self.assertEqual(command("android", module("."))[2], "--config=android")
 
     def test_mobile_lanes_run_the_tests_tagged_with_their_name(self) -> None:
         self.assertEqual(
-            command(
-                "ios", module("demo"), ["//examples/addons/widget/projects/demo:app_test"]
-            ),
+            command("ios", module("."), ["//examples/addons/widget:app_test"]),
             [
                 "bazel",
                 "test",
                 "--config=ios_sim",
                 "--",
-                "//examples/addons/widget/projects/demo:app",
-                "//examples/addons/widget/projects/demo:app_test",
+                "//examples/addons/widget:app",
+                "//examples/addons/widget:app_test",
             ],
         )
         self.assertEqual(
-            lane_tests_query("android", module("demo"))[-1],
-            'attr(tags, "[\\[ ]android[,\\]]",'
-            " tests(//examples/addons/widget/projects/...))",
+            lane_tests_query("android", module("."))[-1],
+            'attr(tags, "[\\[ ]android[,\\]]", tests(//examples/addons/widget/...))',
         )
 
     def test_a_module_without_example_projects_is_refused(self) -> None:

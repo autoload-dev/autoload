@@ -1,7 +1,7 @@
 # Development and testing
 
 Use the rules to run projects, test them, validate their scripts and edit declared resources.
-From `examples/`, run `bazel test //examples/projects/lichtpost/tests` for the Lichtpost
+From `examples/`, run `bazel test //examples/lichtpost/tests` for the Lichtpost
 gameplay suites.
 
 ## Execution and tests
@@ -192,7 +192,7 @@ godot_editor(
 ```
 
 ```sh
-bazel run //examples/projects/lichtpost:edit
+bazel run //examples/lichtpost:edit
 ```
 
 Bazel must ignore the editor views: add the line `.godot-editor` to `.bazelignore`.
@@ -261,8 +261,8 @@ bazel test //path/to:metadata.test
 ```
 
 Replace `path/to` with the package declaring the snippet above. For a runnable
-example, from `examples/`, `bazel run //examples/projects/lichtpost:update` writes
-Lichtpost's missing metadata, and `bazel test //examples/projects/lichtpost:update.test` checks its
+example, from `examples/`, `bazel run //examples/lichtpost:update` writes
+Lichtpost's missing metadata, and `bazel test //examples/lichtpost:update.test` checks its
 sidecars are declared.
 
 The first command writes each missing sidecar beside its file and names the

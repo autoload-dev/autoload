@@ -12,7 +12,7 @@ def _white_box(workspace: Workspace, path: Path) -> bool:
     """Whether a configuration is a fixture: the ruleset's, or of an add-on module's tests."""
     if workspace.owner(path.as_posix()) == RULESET_MODULE:
         return True
-    return is_addon_test(path, workspace.consumer_root(path))
+    return is_addon_test(workspace.consumer_root(path))
 
 
 class TypedRootLayout:
@@ -34,8 +34,7 @@ class TypedRootLayout:
                 continue
             yield Finding(
                 Location(path.as_posix(), 1),
-                "Godot configurations must belong to a named project or add-on below projects/ or "
-                "addons/ of their consumer module",
+                "Godot configurations must belong to a named project or add-on of their consumer",
             )
         for project, members in workspace.typed_directories("projects").items():
             location = Location(members[0], 1)

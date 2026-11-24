@@ -90,9 +90,13 @@ class Work:
 
 
 def example_tests(name: str, area: str = "addons", config: str = "") -> str:
-    """The command that runs one example's own tests, below its directory in examples/."""
+    """
+    The command that runs one example's own tests, below its directory in examples/ or, with
+    an area, in examples/<area>/.
+    """
     flags = f" --config={config}" if config else ""
-    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{area}/{name}/..."
+    directory = f"{area}/{name}" if area else name
+    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{directory}/..."
 
 
 def example(name: str, area: str = "addons") -> Work:
@@ -106,7 +110,7 @@ DOCS_CHECK = "bazel run //tools/docs:check"
 
 # Petri's suites run in an editor built from the engine sources with its module, so the
 # source-engine lane runs them; named on its own, it runs here too.
-PETRI_TESTS = example_tests("petri", "projects", config="petri")
+PETRI_TESTS = example_tests("petri", "", config="petri")
 
 
 def every_module(
@@ -220,14 +224,12 @@ PATCHED_EDITOR = (
 # The example packages with an `app`, which the mobile lanes build.
 APP_PACKAGES = (
     f"{EXAMPLES}/addons/sqlite/demo",
-    f"{EXAMPLES}/projects/lichtpost",
+    f"{EXAMPLES}/lichtpost",
     f"{EXAMPLES}/addons/platform_paths/demo",
     f"{EXAMPLES}/addons/app_auth/demo",
 )
 # The Android release bundles leave Lichtpost out.
-ANDROID_RELEASE_PACKAGES = tuple(
-    p for p in APP_PACKAGES if p != f"{EXAMPLES}/projects/lichtpost"
-)
+ANDROID_RELEASE_PACKAGES = tuple(p for p in APP_PACKAGES if p != f"{EXAMPLES}/lichtpost")
 
 
 def apps(packages: Iterable[str], symbols: bool = False) -> str:
@@ -323,7 +325,7 @@ WORK = (
         hosts=("macos",),
     ),
     example("sqlite"),
-    example("lichtpost", "projects"),
+    example("lichtpost", ""),
     example("platform_paths"),
     example("app_auth"),
     example("dart"),

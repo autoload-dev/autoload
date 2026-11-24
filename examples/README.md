@@ -17,9 +17,9 @@ Add-ons, each with a `demo/` project and a `tests/` project:
 
 Projects:
 
-- [Lichtpost](projects/lichtpost/README.md) is a one-button courier game with tests, an
+- [Lichtpost](lichtpost/README.md) is a one-button courier game with tests, an
   editor view and application packaging.
-- [Petri](projects/petri/README.md) grows reaction-diffusion cultures with a source-built
+- [Petri](petri/README.md) grows reaction-diffusion cultures with a source-built
   engine and its own C++ module.
 
 ## Getting started
