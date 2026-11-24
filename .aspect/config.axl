@@ -1,0 +1,8 @@
+load("@aspect//bazel/trait.axl", "BazelTrait")
+
+def config(ctx: ConfigContext):
+    ctx.tasks["lint"].args.aspects = [
+        "//tools/lint:linters.bzl%ruff",
+        "//tools/lint:linters.bzl%ty",
+        "//tools/lint:linters.bzl%buildifier",
+    ]

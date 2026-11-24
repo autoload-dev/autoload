@@ -1,0 +1,33 @@
+"""The check before a push: one entry point for people, hooks and agents."""
+
+# The modules whose fast tests a push runs, relative to the repository root.
+_MODULES = [".", "rules_godot"]
+
+def _run(ctx: TaskContext, argv, directory = ".") -> int:
+    root = ctx.std.env.aspect_root_dir()
+    command = ctx.std.process.command(ctx.std.env.current_exe()).args(argv)
+    return command.current_dir(root + "/" + directory).spawn().wait().code
+
+def _check_impl(ctx: TaskContext) -> int:
+    # Each step is an Aspect task of its own, so it reports and can be run alone.
+    steps = [("format", ["format", "--severity=fail"], "."), ("lint", ["lint"], ".")]
+    steps += [("fast-test " + m, ["fast-test"], m) for m in _MODULES]
+    steps.append(("docs", ["run", "//tools/docs:check"], "rules_godot/docs"))
+    failed = []
+    for name, argv, directory in steps:
+        ctx.task.phase(name, description = " ".join(argv))
+        if _run(ctx, argv, directory) != 0:
+            failed.append(name)
+            if not ctx.args.keep_going:
+                break
+    if failed:
+        return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
+    return 0
+
+check = task(
+    implementation = _check_impl,
+    summary = "Format, lint and run the fast tests of the change, as before a push.",
+    args = {
+        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+    },
+)

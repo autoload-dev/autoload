@@ -1,0 +1,33 @@
+"""Test tasks of the repository's Bazel modules."""
+
+# The fast tests of a module: the unit tests by their size, the analysis tests by
+# rules_testing's tag, and the smoke tests (docs/internal/verification-architecture.md).
+_FAST_TESTS = (
+    "(attr(size, small, tests({scope}))" +
+    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests({scope})))' +
+    ' except attr(tags, "\\b(manual|source_engine)\\b", tests({scope}))'
+)
+
+def _fast_test_impl(ctx: TaskContext) -> int:
+    query = _FAST_TESTS.format(scope = ctx.args.scope)
+    result = ctx.bazel.query(query)
+    targets = [t.name for t in result]
+    if not targets:
+        print("No fast tests below " + ctx.args.scope)
+        return 0
+    print("{} fast tests below {}".format(len(targets), ctx.args.scope))
+
+    # The tests are named explicitly, so those incompatible with this host are skipped
+    # rather than rejected.
+    return ctx.bazel.test(
+        flags = ["--build_tests_only", "--skip_incompatible_explicit_targets"],
+        *targets
+    ).wait().code
+
+fast_test = task(
+    implementation = _fast_test_impl,
+    summary = "Run a module's fast tests: small, analysis and smoke tests.",
+    args = {
+        "scope": args.string(default = "//...", description = "The target pattern to select tests from"),
+    },
+)

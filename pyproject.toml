@@ -11,6 +11,11 @@ src = [".", "rules_godot", "rules_godot/docs"]
 extend-select = ["ANN"]
 ignore = ["ANN401"]
 
+# Bazel's lint actions see only the sources of one target, so the first-party packages are
+# named rather than discovered.
+[tool.ruff.lint.isort]
+known-first-party = ["tools"]
+
 [tool.ty.environment]
 # Bazel runs these tools with the registered Python toolchain.
 python-version = "3.14"

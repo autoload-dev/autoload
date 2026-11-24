@@ -28,3 +28,5 @@ py_test(
     srcs = ["lint_test.py"],
     deps = [":lint_lib"],
 )
+
+exports_files(["ty.toml"])

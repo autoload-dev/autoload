@@ -10,3 +10,11 @@ exports_files(
     ["hk.pkl"],
     visibility = ["//tools/ci:__pkg__"],
 )
+
+exports_files(
+    [
+        ".buildifier.json",
+        "pyproject.toml",
+    ],
+    visibility = ["//visibility:public"],
+)
