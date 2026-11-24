@@ -336,7 +336,8 @@ rules_godot code that capture the graph, and of each custom module its `SCsub`,
 `config.py` and shader sources and the paths of its other files. A recipe whose digest no
 longer matches, after such a change or a rules_godot upgrade that changes that code,
 fails with the pin command instead of reconfiguring silently; editing a custom module's
-C++ code keeps its pin. Commit the lock file with the change that requires it.
+C++ code keeps its pin, and so does a rules_godot upgrade that changes only how a graph
+becomes Bazel targets. Commit the lock file with the change that requires it.
 
 ### Android shell libraries
 

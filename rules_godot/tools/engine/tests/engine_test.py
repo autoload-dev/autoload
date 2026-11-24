@@ -17,22 +17,17 @@ from tools.engine.configure import (
     deployment_target,
     engine_link_options,
     engine_renderers,
-    generated_include_directories,
     has_renderer_switches,
     include_closure,
-    include_rules,
     inputs_hash,
     is_directory_action,
     merge_swift_module_options,
     normalize_command,
     normalize_value,
-    object_groups,
-    object_library_name,
     pin_digest,
     pinned_graph,
     platform_compile_options,
     prepare_custom_modules,
-    render_unpinned,
     renderer_options,
     requested_modules,
     require_consistent_profile,
@@ -41,11 +36,9 @@ from tools.engine.configure import (
     require_one_text_server,
     require_renderer_options_unset,
     scalar_environment,
-    source_build_facts,
     source_version,
     stand_in_host,
     swift_module_options,
-    target_constraints,
     version_name,
     with_renderer_modules,
     write_json,
@@ -59,6 +52,14 @@ from tools.engine.include_graph import (
 )
 from tools.engine.module_graph import module_closure, module_dependencies
 from tools.engine.pin import copy_tree, extract, merge
+from tools.engine.render import (
+    include_rules,
+    object_groups,
+    object_library_name,
+    render_unpinned,
+    source_build_facts,
+    target_constraints,
+)
 from tools.engine.revision import revision
 
 
@@ -479,28 +480,54 @@ class GraphTranslationTest(unittest.TestCase):
     def test_generated_sibling_headers_resolve_from_separate_bazel_output_tree(
         self,
     ) -> None:
-        self.assertEqual(
-            generated_include_directories(
-                [
+        groups = object_groups(
+            {
+                ("cc", (), ()): [
                     "core/extension/gdextension_interface.cpp",
                     "unrelated/file.cpp",
                     "modules/register.gen.cpp",
-                ],
-                ["core/extension/gdextension_interface.gen.h"],
-                {"modules/register.gen.cpp"},
-            ),
-            ["core/extension", "modules"],
+                ]
+            },
+            ["core/extension/gdextension_interface.gen.h"],
+            {"modules/register.gen.cpp"},
+        )
+        self.assertEqual(
+            groups,
+            [
+                ("cc", (), (), ["unrelated/file.cpp"]),
+                (
+                    "cc",
+                    (),
+                    ("core/extension",),
+                    ["core/extension/gdextension_interface.cpp"],
+                ),
+                ("cc", (), ("modules",), ["modules/register.gen.cpp"]),
+            ],
         )
 
     def test_generated_headers_below_a_source_resolve_by_relative_path(self) -> None:
         # gdscript_editor.cpp includes "editor/script_templates/templates.gen.h".
+        groups = object_groups(
+            {
+                ("cc", (), ()): [
+                    "modules/gdscript/gdscript_editor.cpp",
+                    "modules/other/file.cpp",
+                ]
+            },
+            ["modules/gdscript/editor/script_templates/templates.gen.h"],
+            set(),
+        )
         self.assertEqual(
-            generated_include_directories(
-                ["modules/gdscript/gdscript_editor.cpp", "modules/other/file.cpp"],
-                ["modules/gdscript/editor/script_templates/templates.gen.h"],
-                set(),
-            ),
-            ["modules/gdscript"],
+            groups,
+            [
+                ("cc", (), (), ["modules/other/file.cpp"]),
+                (
+                    "cc",
+                    (),
+                    ("modules/gdscript",),
+                    ["modules/gdscript/gdscript_editor.cpp"],
+                ),
+            ],
         )
 
     def test_same_named_generated_headers_stay_with_their_sources(self) -> None:
@@ -1208,6 +1235,29 @@ class PinTest(unittest.TestCase):
             fourth = digest()
             (scons / "SCons/__init__.py").write_text('__version__ = "4.11.0"')
             self.assertNotEqual(digest(), fourth)
+
+    def test_digest_covers_the_capture_but_not_the_rendering(self) -> None:
+        # Changing how a graph renders keeps every pin; changing the capture does not.
+        args = argparse.Namespace(
+            source_sha256="",
+            patch=[],
+            patch_strip=1,
+            build_profile_digest="",
+            custom_modules_root=None,
+            platform="linuxbsd",
+            cpu="x86_64",
+            build_target="editor",
+            modules=[],
+            default_modules=False,
+            options=[],
+            build_name="custom",
+        )
+        with mock.patch("tools.engine.configure.file_digest", return_value="") as digest:
+            pin_digest(args, Path("scons"))
+        self.assertEqual(
+            {Path(call.args[0]).name for call in digest.call_args_list},
+            {"configure.py", "module_graph.py", "source_tree.py", "__init__.py"},
+        )
 
     def test_a_lock_entry_counts_only_for_its_digest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
