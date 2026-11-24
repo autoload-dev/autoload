@@ -180,6 +180,23 @@ before wasm-opt; the large entries left are those whose body LTO inlined. A more
 form, such as a register array with one exit, could save at most a part of those 30 KB,
 so it stops here. Replays match on macOS and R17 plays in the browser.
 
+## Stripped bytecode (2026-11-24)
+
+The pack still held the bytecode of every script, 268 KB raw, although the engine runs
+none of it. `strip_bytecode.py <bytecode dir> <gen_cpp's usage.json> <output dir>` keeps
+the head of each compiled function (name, types, argument count, the table of default
+arguments, whose length sets how many arguments a caller may omit) and writes its code,
+constants, names and pointer tables as empty; without compiled functions it reproduces
+the input byte for byte. 139 bodies go, and the bytecode drops to 194 KB, most of what is
+left being each method's `MethodInfo` for reflection (104 KB).
+
+| Pack (lossy backgrounds) | raw | brotli 11 |
+| --- | ---: | ---: |
+| full bytecode | 861,552 B | 574,720 B |
+| stripped bytecode | 787,888 B | 558,590 B |
+
+Replays match on macOS without the VM, and the web build plays.
+
 ## How it works
 
 `dump_ast.gd`, run on an engine with the compiler and the patch, writes per script the
