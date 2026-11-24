@@ -19,10 +19,14 @@ from tools.code_health.scan import run_git
 SELECTS_EVERYTHING = (
     "tools/ci/*",
     ".aspect/*",
-    "shared.bazelrc",
+    "*.bazelrc",
     ".bazelversion",
     "tools/bazel",
     "*/tools/bazel",
+    # What the selection itself reads: the change and the modules.
+    "tools/code_health/change.py",
+    "tools/code_health/scan.py",
+    "tools/setup/modules.py",
 )
 
 
@@ -75,6 +79,14 @@ def module_files(*names: str) -> Inputs:
     return lambda changes, directory: changes.in_module(directory, names)
 
 
+def only_in(directories: Iterable[str], inputs: Inputs) -> Inputs:
+    """Inputs of the steps that run in one of the directories."""
+    directories = frozenset(directories)
+    return lambda changes, directory: (
+        directory in directories and inputs(changes, directory)
+    )
+
+
 def either(*inputs: Inputs) -> Inputs:
     """Inputs of each of the given inputs."""
     return lambda changes, directory: any(i(changes, directory) for i in inputs)
@@ -88,7 +100,8 @@ def changes_since(ref: str, root: Path, modules: tuple[str, ...]) -> Changes | N
     """
     merge_base = run_git(root, "merge-base", "HEAD", ref)
     if merge_base.returncode != 0:
-        print(f"[work] no merge base with {ref}: running every step", flush=True)
+        reason = merge_base.stderr.strip().splitlines()[-1:] or ["unrelated histories"]
+        print(f"[work] no merge base with {ref} ({reason[0]}): running every step")
         return None
     base = merge_base.stdout.strip()
     paths = frozenset(

@@ -26,7 +26,15 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.ci.changes import Changes, Inputs, changes_since, either, files, module_files
+from tools.ci.changes import (
+    Changes,
+    Inputs,
+    changes_since,
+    either,
+    files,
+    module_files,
+    only_in,
+)
 from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
@@ -114,19 +122,34 @@ LINT_COMMAND = (
     ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
     " --skip_incompatible_explicit_targets; }"
 )
-# A module's lint runs for its own Python and the targets that hold it, and for the linters'
-# configuration.
+# A module's lint runs for its own Python and the targets that hold it, for the linters and
+# their configuration, which the root module pins, and in the modules whose Python imports
+# the root module's, for that.
 LINT_INPUTS = either(
     module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
-    files("pyproject.toml", "ty.toml", "tools/lint/*", ".aspect/config.axl"),
+    files(
+        "pyproject.toml",
+        "ty.toml",
+        "tools/lint/*",
+        ".aspect/config.axl",
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+    ),
+    only_in((RULESET_DIR, DOCS), files("tools/*.py")),
 )
 # What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
 # the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
 GENERATED_INPUTS = files(
     "*MODULE.bazel*",
+    "*.bazelignore",
     f"{RULESET_DIR}/godot/*.bzl",
     f"{RULESET_DIR}/godot/engine/*",
-    f"{RULESET_DIR}/examples/*.lock.json",
+    # Files that module extensions read and the lock files record: tool and engine pins,
+    # Maven and Swift package resolutions.
+    "*.lock.json",
+    "*maven_install.json",
+    "*Package.resolved",
+    "*Package.swift",
     "tools/generate/*",
 )
 # The API documentation: the ruleset's API, the documentation module and the root module's
@@ -136,6 +159,13 @@ DOCS_INPUTS = files(
     f"{DOCS}/*",
     f"{RULESET_DIR}/MODULE.bazel*",
     f"{RULESET_DIR}/BUILD.bazel",
+    f"{RULESET_DIR}/tools/*",
+    # The root module, which the documentation module depends on, and the Python of it that
+    # its tools load.
+    "MODULE.bazel",
+    "MODULE.bazel.lock",
+    "tools/addons/*",
+    "tools/code_health/*",
     "tools/conventions/*",
     "tools/setup/*",
 )

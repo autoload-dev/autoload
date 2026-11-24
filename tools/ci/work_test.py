@@ -213,7 +213,12 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(
             ["rules_godot/docs"], self.directories("lint", "rules_godot/docs/BUILD.bazel")
         )
-        self.assertEqual(["."], self.directories("lint", "tools/addons/new.py"))
+        self.assertEqual(["."], self.directories("lint", "tools/BUILD.bazel"))
+        # The ruleset's modules import the root module's Python.
+        self.assertEqual(
+            [".", "rules_godot", "rules_godot/docs"],
+            self.directories("lint", "tools/addons/new.py"),
+        )
         self.assertEqual([], self.directories("lint"))
 
     def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
@@ -222,7 +227,12 @@ class SelectionTest(unittest.TestCase):
         )
 
     def test_a_lint_input_lints_every_module(self) -> None:
-        for path in ("pyproject.toml", "ty.toml", "tools/lint/linters.bzl"):
+        for path in (
+            "pyproject.toml",
+            "ty.toml",
+            "tools/lint/linters.bzl",
+            "MODULE.bazel",
+        ):
             self.assertEqual(list(MODULES), self.directories("lint", path))
 
     def test_generated_runs_for_what_shapes_a_generated_file(self) -> None:
