@@ -48,6 +48,7 @@ _VFE_OPTIONS = [
 # The settings' values, for their flags and godot_app's attributes.
 OPTIMIZE_VALUES = ["auto"] + _OPTIMIZE_OPTIONS.keys()
 LTO_VALUES = _LTO_OPTIONS.keys()
+VFE_VALUES = ["", "on", "off"]
 
 # The engine's graph takes the settings' options and resets the settings, so engines that
 # compile alike share one configuration whatever values led there.
@@ -58,7 +59,7 @@ OPTIMIZATION_INPUTS = OPTIMIZATION_OUTPUTS + [COMPILATION_MODE]
 
 def engine_optimization(settings, attr):
     """
-    Return the engine's --copt and --linkopt: under -c opt, those of the engine settings.
+    Return the engine's --copt and --linkopt: under -c opt, the engine_* settings' options.
 
     They follow the build's own options, so the engine's level wins over the toolchain's.
 
@@ -78,12 +79,9 @@ def engine_optimization(settings, attr):
     level = settings[_ENGINE_OPTIMIZE]
     if level == "auto":
         level = "speed" if attr.role == "runtime" and attr.variant == "release" else "speed_trace"
-    lto_options = _LTO_OPTIONS[settings[_ENGINE_LTO]]
+    lto = _LTO_OPTIONS[settings[_ENGINE_LTO]]
     vfe = _VFE_OPTIONS if settings[_ENGINE_VFE] else []
-    return {
-        COPT: copts + _OPTIMIZE_OPTIONS[level] + lto_options + vfe,
-        LINKOPT: linkopts + lto_options,
-    } | _RESET
+    return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto + vfe, LINKOPT: linkopts + lto} | _RESET
 
 def optimization_error(compilation_mode, lto, vfe):
     """
@@ -139,7 +137,7 @@ ENGINE_SETTINGS_ATTRS = {
     ),
     "engine_vfe": attr.string(
         doc = "Whether this application's source-built engine drops unreachable virtual functions: on, off, or empty to keep the build's.",
-        values = ["", "on", "off"],
+        values = VFE_VALUES,
     ),
 }
 

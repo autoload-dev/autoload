@@ -7,7 +7,7 @@ Export content and Godot configuration belong to the declared pack/project.
 """
 
 load("//godot/engine/private:components.bzl", _resolved_runtime = "resolved_runtime")
-load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES")
+load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES", "VFE_VALUES")
 load(
     "//godot/platforms/private:android.bzl",
     _godot_android_application = "godot_android_application",
@@ -624,7 +624,7 @@ godot_app = macro(
         "engine_vfe": attr.string(
             doc = "Whether this application's source-built engine drops the virtual functions nothing calls under -c opt, overriding --@autoload_rules_godot//godot:engine_vfe: on, off, or empty to keep the build's. Needs full LTO and Clang.",
             configurable = False,
-            values = ["", "on", "off"],
+            values = VFE_VALUES,
         ),
     },
 )
