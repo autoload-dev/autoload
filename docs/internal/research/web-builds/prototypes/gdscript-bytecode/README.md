@@ -38,6 +38,7 @@ GDScript module's own bindings. Of 15,081 bindings, 7,070 go.
 | T3, unused bindings removed | 7.78 MB | 2.87 MB | 2.19 MB |
 | T4, also unused built-in methods (675 of 805) and utility functions (90 of 109) | 7.30 MB | 2.78 MB | 2.14 MB |
 | T5, also `deprecated=no` (compatibility bindings) | 7.09 MB | 2.72 MB | 2.10 MB |
+| T6, also the accessors and registrations of unused properties | 6.83 MB | 2.66 MB | 2.05 MB |
 
 Lichtpost's three replays (`replays.sh`: delivery, fall, pipe) give identical results on
 the stock engine with the source PCK and on the macOS build of T3 with the bytecode PCK
@@ -49,6 +50,21 @@ dynamic call (`MeshInstance3D.new()`) lost its binding.
 `shake_variant.py` also removes the built-in methods and utility functions
 neither the bytecode nor a name table names. T4 and T5 pass the same replays (macOS builds
 of the same configuration) and play in the browser.
+
+**Properties (T6).** `dump_properties.gd` lists the properties the project's scenes store
+on nodes, the storage properties of the resources they and the project settings use (the
+input map's `InputEventKey`s need `physical_keycode`), and the methods their connections
+name. `shake_bindings.py --properties` keeps only those properties' accessors, plus those
+whose name the bytecode holds as a string constant (`tween_property(self, "position", …)`)
+or calls, and removes the other properties' `ADD_PROPERTY` registrations: 13,342 of 15,081
+bindings go. Replays stay identical, keyboard input works in the browser. The gain is
+small (50 KB brotli): the engine still calls the accessors directly, and a method bind's
+wrapper is a template per class and signature, so a wrapper only goes once no bound method
+of that class shares its signature.
+
+Code before `wasm-opt` (wasm-ld map, no LTO), Q2 against T5: MethodBind wrappers 2,480 →
+743 KiB, `_bind_methods` 658 → 479 KiB, Variant built-ins 665 → 161 KiB, utilities 94 →
+23 KiB; the GDScript VM stays at 49 KiB.
 
 Remaining start-up noise: `set_method_flags` for removed methods and one property whose
 `ADD_PROPERTY` the regex misses (`DPITexture.color_map`).

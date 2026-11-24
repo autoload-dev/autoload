@@ -68,8 +68,21 @@ def _dictionary(r: Reader) -> None:
     r.repeat(lambda r: (variant(r), variant(r)))
 
 
+# Strings the constants hold, such as property paths for `tween_property()` or `set()`.
+_STRINGS: set[str] = set()
+_STRING_TYPES = (4, 21)  # Variant::STRING, Variant::STRING_NAME
+
+
+def _encoded(r: Reader) -> None:
+    """A Variant in Godot's binary encoding; strings are recorded."""
+    end = r.u32() + r.pos
+    if r.u32() & 0xFF in _STRING_TYPES:
+        _STRINGS.add(r.text())
+    r.pos = end
+
+
 _VARIANTS: dict[int, Callable[[Reader], None]] = {
-    0: lambda r: r.skip(r.u32()),
+    0: _encoded,
     1: _object,
     2: _array,
     3: _dictionary,
@@ -184,6 +197,7 @@ def main() -> None:
         r.repeat(lambda r: (r.text(), r.text(), r.text()))
         for _ in range(r.u32()):
             klass(r, use)
+    use["strings"] = _STRINGS
     json.dump(
         {kind: sorted(values) for kind, values in use.items()}, sys.stdout, indent=1
     )

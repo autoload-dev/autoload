@@ -18,7 +18,12 @@ Without the binding, the method bind's template instance and often the method it
 their last reference, and the linker drops them. Rewrites the files in place; restore the
 sources with git afterwards.
 
+With `--properties <names.json>` (`dump_properties.gd`), only the accessors of properties
+that a scene or resource stores, or whose name the bytecode holds as a string or calls,
+stay; without it, every property's accessors do.
+
 Usage: python3 shake_bindings.py <godot source> <usage.json> [--keep Class.method,...]
+       [--properties names.json]
 """
 
 import json
@@ -31,9 +36,23 @@ _STATEMENT = re.compile(
     r"^(\t+)ClassDB::bind_(?:method|static_method|vararg_method)\([^;]*?\);[^\n]*\n",
     re.MULTILINE,
 )
+# A single-line property registration, with its property name.
+_PROPERTY_STATEMENT = re.compile(
+    r'^(\t+)ADD_PROPERTYI?\(\s*PropertyInfo\(\s*Variant::[\w:]+,\s*"([^"]*)".*\);[^\n]*\n',
+    re.MULTILINE,
+)
+
+
+def _unused_property(statement: re.Match[str], used: set[str]) -> str:
+    """The registration of a used property, or a comment in place of an unused one's."""
+    if statement.group(2) in used:
+        return statement.group(0)
+    return f"{statement.group(1)}// Shaken property: {statement.group(2)}\n"
+
+
 _NAME = re.compile(r'D_METHOD\("(\w+)"|bind_vararg_method\(\s*\w+,\s*"(\w+)"')
 _PROPERTY = re.compile(
-    r'ADD_PROPERTYI?\(\s*PropertyInfo\((?:[^;])*?\),\s*"(\w*)",\s*"(\w*)"'
+    r'ADD_PROPERTYI?\(\s*PropertyInfo\(\s*Variant::[\w:]+,\s*"([^"]*)"[^;]*?\),\s*"(\w*)",\s*"(\w*)"'
 )
 _DIRECTORIES = ("core", "scene", "servers", "modules", "drivers", "platform/web", "main")
 
@@ -103,25 +122,32 @@ def _engine_sources(source: Path) -> dict[Path, str]:
     }
 
 
-def _accessors(texts: dict[Path, str]) -> set[str]:
-    """The setter and getter names of every property any class registers."""
+def _accessors(texts: dict[Path, str], used: set[str] | None) -> set[str]:
+    """The setter and getter names of the used properties, or of all when used is None."""
     return {
-        name
+        accessor
         for text in texts.values()
-        for pair in _PROPERTY.findall(text)
-        for name in pair
-        if name
+        for prop, setter, getter in _PROPERTY.findall(text)
+        if used is None or prop in used
+        for accessor in (setter, getter)
+        if accessor
     }
 
 
-def _shake_sources(texts: dict[Path, str], keep: set[str], names: set[str]) -> None:
+def _shake_sources(
+    texts: dict[Path, str], keep: set[str], names: set[str], used: set[str] | None
+) -> None:
     """Remove the unused bindings from every source and report how many went."""
-    accessors = _accessors(texts)
+    accessors = _accessors(texts, used)
     total_found = total_removed = 0
     for path, text in texts.items():
         if "_bind_methods()" not in text:
             continue
         new_text, found, removed = _shake(text, keep, accessors, names)
+        if used is not None:
+            new_text = _PROPERTY_STATEMENT.sub(
+                lambda m: _unused_property(m, used), new_text
+            )
         total_found += found
         total_removed += removed
         if removed:
@@ -136,7 +162,13 @@ def main() -> None:
     names = set(usage["names"])
     if "--keep" in sys.argv:
         keep |= set(sys.argv[sys.argv.index("--keep") + 1].split(","))
-    _shake_sources(_engine_sources(source), keep, names)
+    used = None
+    if "--properties" in sys.argv:
+        used = set(
+            json.loads(Path(sys.argv[sys.argv.index("--properties") + 1]).read_text())
+        )
+        used |= names | set(usage["strings"])
+    _shake_sources(_engine_sources(source), keep, names, used)
 
 
 if __name__ == "__main__":
