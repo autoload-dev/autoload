@@ -1072,7 +1072,11 @@ class IncludeGraphTest(unittest.TestCase):
                 "tests/test_main.h": "",
             },
             [CompileGroup(["main.cpp"], [], [])],
-            {"shaders/canvas.gen.h": Generated(code, ("tests/test_main.h",))},
+            {
+                "shaders/canvas.gen.h": Generated(
+                    code, ("tests/test_main.h",), ("shaders/canvas.gen.h",)
+                )
+            },
         )
         self.assertEqual(
             graph["shaders/canvas.gen.h"],
@@ -1086,13 +1090,16 @@ class IncludeGraphTest(unittest.TestCase):
             "    target_h, target_cpp = str(target[0]), str(target[1])\n"
             '    file.write(f"""#include "{target_h}"\n""")\n'
         )
-        translations = Generated(code, ("doc/translations/de.po",))
+        doc = ("editor/translations/doc.gen.h", "editor/translations/doc.gen.cpp")
+        # Another generator of the same builder file and the same inputs.
+        other = ("editor/translations/other.gen.h",)
+        inputs = ("doc/translations/de.po",)
         graph = self.graph(
             {"doc/translations/de.po": ""},
             [CompileGroup(["editor/translations/doc.gen.cpp"], [], [])],
             {
-                "editor/translations/doc.gen.h": translations,
-                "editor/translations/doc.gen.cpp": translations,
+                **dict.fromkeys(doc, Generated(code, inputs, doc)),
+                **dict.fromkeys(other, Generated(code, inputs, other)),
             },
         )
         self.assertEqual(
@@ -1199,12 +1206,10 @@ class BuildProfileTest(unittest.TestCase):
             root = Path(directory)
             write_tree(root, files)
             # One builder file writes both the profile's specializations and the version.
-            builders = Generated(
-                'f"template <> struct is_class_enabled<{cs}> : std::false_type {{}};"', ()
-            )
+            code = 'f"template <> struct is_class_enabled<{cs}> : std::false_type {{}};"'
             generated = {
-                build_profile.HEADER: builders,
-                "core/version_generated.gen.h": builders,
+                name: Generated(code, (), (name,))
+                for name in [build_profile.HEADER, "core/version_generated.gen.h"]
             }
             graph = include_graph(root, [CompileGroup(sources, [], [])], generated)
             self.assertIn(build_profile.HEADER, graph["core/object/class_db.h"])
