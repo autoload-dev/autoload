@@ -153,6 +153,18 @@ what is still open. Line references are to `main` as of 2026-11-04.
   flags or per-slot boilerplate, e.g. an application attribute that transitions that build
   setting, or a macro that generates the per-slot `select()` components from a hub.
 
+### Share compiles between source recipes
+
+- Two source recipes never share a compile: each compile's paths contain its recipe
+  repository's name. A recipe that keeps its name is incremental already. The
+  [engine action sharing](../../rules_godot/docs/internal/engine-action-sharing.md) note
+  measures the potential, compares designs and describes a prototype of a shared tree
+  repository with digest-named targets.
+- Candidate first step: render each source with only the include directories its closure
+  uses. A custom-module change then recompiles 19 sources instead of 730.
+- Open: a shared tree repository when several recipes of one row coexist. It needs
+  content-addressed tree names, a rendering argument, and iOS and pinned-recipe coverage.
+
 ### Configurable deployment targets of engine recipes
 
 - A macOS or iOS source recipe compiles for the deployment target Godot's SCons platform
