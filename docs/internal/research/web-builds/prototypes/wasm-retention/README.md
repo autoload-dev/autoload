@@ -127,3 +127,47 @@ overrides), the compiled game (166 KB) and the WebP decoder (63 KB).
 
 R17 is 34 % smaller than R12. Next in line by size is the default theme, which
 Lichtpost's own theme mostly overrides.
+
+## Reproduce R17
+
+In the layout of `../gdscript-bytecode/` (Godot 4.8-beta1 in `src48/godot` with the
+stage A to C patches, emsdk 6.0.12, `build48.sh`), with `typed.inc` and `typed.usage.json`
+from `gen_cpp.py` and `usage.json` from `bytecode_usage.py --compiled typed.usage.json`:
+
+```sh
+cd src48/godot && git checkout -- .
+cp typed.inc modules/gdscript/gdscript_native.gen.inc
+python3 shake_bindings.py . usage.json --properties properties.json
+python3 shake_variant.py . usage.json
+python3 shake_operators.py . usage.json --compiled typed.usage.json
+python3 no_rtti.py .
+python3 cut_payload.py .
+VF="-fwhole-program-vtables -fvirtual-function-elimination"
+GDSCRIPT_NO_VM=1 GDSCRIPT_NO_COMPILER=1 ./build48.sh R17 brotli=no lto=full optimize=custom \
+  build_profile=lichtpost48c.gdbuild disable_2d=yes deprecated=no \
+  "ccflags=-Oz -DSIZE_EXTRA -fvisibility=hidden" "cxxflags=$VF -fno-rtti -DTYPED_METHOD_BIND" \
+  "linkflags=-Oz -fvisibility=hidden $VF -Wl,--save-temps"
+```
+
+`lichtpost48c.gdbuild` is `lichtpost48.gdbuild` (research notes) plus `LineEdit` and
+`Expression`. Restore the sources with `git checkout -- .` before the next variant: the
+scripts rewrite them in place. A build of the same sources for macOS
+(`buildmac48.sh`, same environment variables) runs the replays (`replays.sh`): delivery
+1260 at tick 2000, fall at tick 161, pipe at tick 554.
+
+## Lessons
+
+- **Measure what keeps code alive, then cut the reference.** The dominator tree of the LTO
+  object named every large payload and the one call that held it; most cuts were one
+  `#ifdef` or a build option. Guessing from symbol sizes would have missed RegEx (kept by
+  the file logger) and iconv (kept by one virtual of the web OS).
+- **Measure each cut alone.** Builds take under a minute with SCons' cache, so a build
+  without each cut costs little and showed which cuts matter (iconv, Brotli, LTC tables).
+- **SCons does not see macro includes.** FreeType reads its module list through
+  `#include FT_CONFIG_MODULES_H`; changing that header changed nothing until `ftinit.c`
+  itself changed.
+- **Keep the console clean.** Harmless errors from shaken lookups hid nothing yet, but
+  would have hidden the next real one; they are fixed, not filtered.
+- **Shaking Variant is safe only per operator.** The engine evaluates comparisons, `+`
+  and `-` on values of any type (sorting, hashing, tweens), so only the other operators
+  can be shaken by the types the game uses.
