@@ -152,6 +152,7 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._source_tree))
     ctx.watch(ctx.path(ctx.attr._render))
     ctx.watch(ctx.path(ctx.attr._include_graph))
+    ctx.watch(ctx.path(ctx.attr._feature_macros))
 
 def engine_build_impl(ctx, *, _fail = fail):
     """

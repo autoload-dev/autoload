@@ -45,6 +45,7 @@ _ATTRS = {
     "_configure": "tools/engine/configure.py",
     "_module_graph": "tools/engine/module_graph.py",
     "_include_graph": "tools/engine/include_graph.py",
+    "_feature_macros": "tools/engine/feature_macros.py",
     "_render": "tools/engine/render.py",
     "_source_tree": "tools/engine/source_tree.py",
     "_generator": "@@//godot/engine/private:generator.bzl",

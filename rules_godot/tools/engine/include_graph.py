@@ -47,10 +47,14 @@ _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
 
 
 class Generated(NamedTuple):
-    """A generated file: the code of its generator and the files the generator reads."""
+    """
+    A generated file: the code of its generator, the files the generator reads, and the
+    values it is given, as JSON.
+    """
 
     code: str
     inputs: tuple[str, ...]
+    data: str = ""
 
 
 class CompileGroup(NamedTuple):

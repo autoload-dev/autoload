@@ -7,14 +7,17 @@ not cover this module: changing how a graph renders keeps every pin.
 """
 
 import argparse
+import json
 from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 try:
+    from .feature_macros import FeatureMacroScan
     from .include_graph import CompileGroup, Generated, components, include_graph
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
+    from feature_macros import FeatureMacroScan
     from include_graph import CompileGroup, Generated, components, include_graph
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
@@ -191,12 +194,15 @@ def _generator_rules(
 def generated_files(
     root: Path, specs: Iterable[Mapping[str, Any]]
 ) -> dict[str, Generated]:
-    """Return each generated file with its generator's code and the files it reads."""
+    """Return each generated file with its generator's code, inputs and values."""
     files: dict[str, Generated] = {}
     for spec in specs:
         code = spec.get("inline") or (root / spec["code_file"]).read_text()
         inputs = tuple(entry["path"] for entry in spec["sources"] if "path" in entry)
-        files.update((target, Generated(code, inputs)) for target in spec["targets"])
+        data = json.dumps([spec["sources"], spec.get("environment", {})])
+        files.update(
+            (target, Generated(code, inputs, data)) for target in spec["targets"]
+        )
     return files
 
 
@@ -253,10 +259,35 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
     return name if name not in taken else f"{name}__{group}"
 
 
+def _copts_constants(
+    index: int,
+    copts: Sequence[str],
+    sources: Iterable[str],
+    macros: FeatureMacroScan,
+) -> tuple[list[str], dict[str, str]]:
+    """
+    Return the options constants of a compile group and each source's constant.
+
+    Sources that read different feature macros of the group compile with different
+    options; each distinct set of options is one constant.
+    """
+    lines: list[str] = []
+    constants: dict[tuple[str, ...], str] = {}
+    by_source: dict[str, str] = {}
+    for source in sources:
+        options = tuple(macros.copts(source, copts))
+        if options not in constants:
+            constants[options] = f"_COPTS_{index}_{len(constants)}"
+            lines.append(f"{constants[options]} = {list(options)!r}")
+        by_source[source] = constants[options]
+    return lines, by_source
+
+
 def _object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
     targets: Mapping[str, str],
+    macros: FeatureMacroScan,
 ) -> tuple[list[str], list[str]]:
     """
     Return a library rule per source and the labels of those libraries.
@@ -268,7 +299,8 @@ def _object_rules(
     labels: list[str] = []
     names: set[str] = set()
     for index, (language, copts, includes, sources) in enumerate(groups):
-        lines.append(f"_COPTS_{index} = {list(copts)!r}")
+        copts_lines, source_copts = _copts_constants(index, copts, sources, macros)
+        lines += copts_lines
         lines.append(f"_INCLUDES_{index} = {list(includes)!r}")
         rule = "objc_library" if language == "objc" else "cc_library"
         for source in sources:
@@ -278,8 +310,8 @@ def _object_rules(
             deps = _source_deps(graph, targets, source)
             lines.append(
                 f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
-                f"srcs = [{source!r}], copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
-                f"deps = {deps!r}, alwayslink = True)"
+                f"srcs = [{source!r}], copts = {source_copts[source]}, "
+                f"includes = _INCLUDES_{index}, deps = {deps!r}, alwayslink = True)"
             )
     return lines, labels
 
@@ -436,7 +468,10 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     )
     header_rules, targets = include_rules(includes)
     lines += header_rules
-    object_rules, dependencies = _object_rules(compiled, includes, targets)
+    macros = FeatureMacroScan(
+        root, includes, generated, (copts for _, copts, _, _ in compiled)
+    )
+    object_rules, dependencies = _object_rules(compiled, includes, targets, macros)
     lines += object_rules
     for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)

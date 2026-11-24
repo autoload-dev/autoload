@@ -12,6 +12,7 @@ py_binary(
     name = "pin",
     srcs = [
         "configure.py",
+        "feature_macros.py",
         "include_graph.py",
         "module_graph.py",
         "pin.py",
@@ -30,6 +31,7 @@ py_library(
     name = "support",
     srcs = [
         "configure.py",
+        "feature_macros.py",
         "generator.py",
         "include_graph.py",
         "module_graph.py",
@@ -42,6 +44,7 @@ py_library(
 
 exports_files([
     "configure.py",
+    "feature_macros.py",
     "include_graph.py",
     "module_graph.py",
     "render.py",

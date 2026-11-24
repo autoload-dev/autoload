@@ -6,3 +6,10 @@ py_test(
     srcs = ["engine_test.py"],
     deps = ["//tools/engine:support"],
 )
+
+py_test(
+    name = "feature_macros_test",
+    size = "small",
+    srcs = ["feature_macros_test.py"],
+    deps = ["//tools/engine:support"],
+)

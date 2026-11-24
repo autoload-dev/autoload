@@ -226,6 +226,7 @@ godot_engine_build = repository_rule(
         "_generator": attr.label(default = Label("//godot/engine/private:generator.bzl")),
         "_module_graph": attr.label(default = Label("//tools/engine:module_graph.py")),
         "_include_graph": attr.label(default = Label("//tools/engine:include_graph.py")),
+        "_feature_macros": attr.label(default = Label("//tools/engine:feature_macros.py")),
         "_render": attr.label(default = Label("//tools/engine:render.py")),
         "_source_tree": attr.label(default = Label("//tools/engine:source_tree.py")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
