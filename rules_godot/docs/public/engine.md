@@ -607,7 +607,8 @@ compile group and directory and reruns when one of their files changes. Flipping
 then has, instead of all of them. Objective-C and Objective-C++ sources keep their `-D`
 options: they import implicit Clang modules, which see the command line's macros but not
 a header's, so a definition the analysis reports unused could still change a module
-they import. Options of the toolchain and of `--copt`, `--cxxopt` and `--conlyopt`, such
+they import. Assembly sources, such as zstd's `.S` files on Linux, keep their `-D` options
+too: the analysis covers C and C++. Options of the toolchain and of `--copt`, `--cxxopt` and `--conlyopt`, such
 as `-c opt`'s `NDEBUG`, stay on every command line, and the analysis preprocesses with
 them. Starlark cannot read `--per_file_copt`, so with it set every source keeps all of its
 definitions.

@@ -306,18 +306,27 @@ def _group_constants(index: int, language: str, copts: Sequence[str]) -> list[st
 
 
 def _library_rules(language: str, library: define_analysis.Library) -> list[str]:
-    """A source's library rule, with its define analysis unless it is Objective-C."""
+    """
+    A source's library rule, with its define analysis if it is C or C++.
+
+    Objective-C sources import implicit modules, which see only the command line's macros,
+    and assembly sources are no C or C++: both keep their -D options.
+    """
     common = f"name = {library.name!r}, visibility = ['//visibility:private'], "
     rest = f"includes = {library.includes}, deps = {library.deps!r}, alwayslink = True)"
-    if language == "objc":
+    if not define_analysis.analyzed(language, library.source):
+        rule = "objc_library" if language == "objc" else "cc_library"
+        copts = f"_COPTS_{library.group}" + (
+            f" + _DEFINES_{library.group}" if language != "objc" else ""
+        )
         defines = (
             f"local_defines = {library.local_defines!r}, "
             if library.local_defines
             else ""
         )
         return [
-            f"objc_library({common}srcs = {[library.source]!r}, "
-            + f"copts = _COPTS_{library.group}, {defines}{rest}"
+            f"{rule}({common}srcs = {[library.source]!r}, "
+            + f"copts = {copts}, {defines}{rest}"
         ]
     header = define_analysis.header(library.name)
     return [
@@ -369,7 +378,7 @@ def object_rules(
                 local_defines=[build_profile.DEFINE] if source in profile_users else [],
             )
             lines += _library_rules(language, library)
-            if language != "objc":
+            if define_analysis.analyzed(language, source):
                 analyzed.append(library)
     return lines + define_analysis.analysis_rules(analyzed), labels
 

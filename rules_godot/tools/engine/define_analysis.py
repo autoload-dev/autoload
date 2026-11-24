@@ -32,6 +32,21 @@ class Library(NamedTuple):
     local_defines: list[str]
 
 
+# The suffixes godot_source_defines takes: C and C++. Assembly sources, though GCC and
+# Clang preprocess .S files too, keep their -D options.
+ANALYZED_SUFFIXES = (".c", ".cc", ".cpp", ".cxx")
+
+
+def analyzed(language: str, source: str) -> bool:
+    """
+    Whether a source takes its definitions from the analysis: C and C++ do.
+
+    Objective-C sources, of the objc language, import implicit modules, which see only the
+    command line's macros.
+    """
+    return language != "objc" and source.endswith(ANALYZED_SUFFIXES)
+
+
 def is_definition(option: str) -> bool:
     """Whether a compiler option defines or undefines a macro."""
     return option.startswith(("-D", "-U"))

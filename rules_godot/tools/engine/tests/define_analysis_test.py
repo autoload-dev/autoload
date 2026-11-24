@@ -17,9 +17,14 @@ class DefineAnalysisTest(unittest.TestCase):
         self.assertFalse(is_definition("-fdebug-compilation-dir=."))
 
     def test_c_and_cpp_sources_compile_with_their_analysed_header(self) -> None:
-        graph = {"core/a.cpp": set(), "platform/ios/b.mm": set()}
+        graph = {"core/a.cpp": set(), "platform/ios/b.mm": set(), "core/c.S": set()}
         groups = [
-            ("cc", ("-Wall", "-DXR_DISABLED", "-U", "NDEBUG"), (".",), ["core/a.cpp"]),
+            (
+                "cc",
+                ("-Wall", "-DXR_DISABLED", "-U", "NDEBUG"),
+                (".",),
+                ["core/a.cpp", "core/c.S"],
+            ),
             ("objc", ("-Wall", "-DXR_DISABLED"), (".",), ["platform/ios/b.mm"]),
         ]
         lines, labels = object_rules(groups, graph, {}, {"core/a.cpp"})
@@ -44,10 +49,19 @@ class DefineAnalysisTest(unittest.TestCase):
             "outs = ['_macros/_objects__core__a.cpp.h']",
             _rules(lines, "godot_define_analysis")["_macros__0__core"],
         )
+        # Assembly keeps its options, after the others.
+        assembly = _rules(lines, "cc_library")["_objects__core__c.S"]
+        self.assertIn("srcs = ['core/c.S'], copts = _COPTS_0 + _DEFINES_0,", assembly)
+        self.assertNotIn("_objects__core__c.S__defines", "\n".join(lines))
         objc = _rules(lines, "objc_library")["_objects__platform__ios__b.mm"]
         self.assertIn("srcs = ['platform/ios/b.mm'], copts = _COPTS_1,", objc)
         self.assertEqual(
-            labels, [":_objects__core__a.cpp", ":_objects__platform__ios__b.mm"]
+            labels,
+            [
+                ":_objects__core__a.cpp",
+                ":_objects__core__c.S",
+                ":_objects__platform__ios__b.mm",
+            ],
         )
 
     def test_shards_split_by_group_and_directory_and_size(self) -> None:
