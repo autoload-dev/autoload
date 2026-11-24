@@ -338,7 +338,6 @@ maven.install(
     aar_import_bzl_label = "@rules_android//rules:rules.bzl",
     artifacts = GODOT_ANDROID_ARTIFACTS,
     known_contributing_modules = ["protobuf"],
-    lock_file = "//:maven_install.json",
     repositories = GODOT_ANDROID_REPOSITORIES,
     resolver = "gradle",
     use_starlark_android_rules = True,
@@ -359,6 +358,20 @@ maven_development = use_extension(
     "@rules_jvm_external//:extensions.bzl",
     "maven",
     dev_dependency = True,
+)
+
+# The pin of the shared installation, only where this module is the root: consumers pin their
+# own, and a second dependency's lock file beside protobuf's fails the extension. The root's
+# last install decides the settings, so keep them in sync with the install above; artifacts
+# add up, so it names none.
+maven_development.install(
+    name = "maven",
+    aar_import_bzl_label = "@rules_android//rules:rules.bzl",
+    known_contributing_modules = ["protobuf"],
+    lock_file = "//:maven_install.json",
+    repositories = GODOT_ANDROID_REPOSITORIES,
+    resolver = "gradle",
+    use_starlark_android_rules = True,
 )
 maven_development.install(
     name = "godot_android_maven_graph",

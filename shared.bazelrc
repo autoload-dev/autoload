@@ -24,8 +24,10 @@ common --incompatible_default_to_explicit_init_py
 # that resolve binaries of this host use it, such as the formatters of rules_multirun and
 # rules_multitool that `bazel run` starts here. The default names the host as well, so the
 # config changes no option without a remote config and keeps Bazel's analysis cache.
-common --extra_execution_platforms=@platforms//host
-common:host-execution --extra_execution_platforms=@platforms//host
+# Bazel resolves a flag's label in each module's own repository mapping, which need not include
+# @platforms; every module sees @bazel_tools, whose host platform is an alias of @platforms//host.
+common --extra_execution_platforms=@bazel_tools//tools:host_platform
+common:host-execution --extra_execution_platforms=@bazel_tools//tools:host_platform
 
 # Print the logs of failing tests, which CI does not keep.
 test --test_output=errors

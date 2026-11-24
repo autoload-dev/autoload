@@ -29,7 +29,8 @@ build:buildbuddy --extra_toolchains=@toolchains_buildbuddy//toolchains/cc:ubuntu
 build:buildbuddy --remote_exec_header=x-buildbuddy-platform.recycle-runner=true
 build:buildbuddy --spawn_strategy=remote,worker,sandboxed,local
 build:buildbuddy --allowed_strategies_by_exec_platform=@toolchains_buildbuddy//platforms:linux_x86_64=remote
-build:buildbuddy --allowed_strategies_by_exec_platform=@platforms//host:host=worker,sandboxed,local
+# The host platform by its canonical name, which every module resolves alike (shared.bazelrc).
+build:buildbuddy --allowed_strategies_by_exec_platform=@@platforms//host:host=worker,sandboxed,local
 # Concurrent actions, most of them remote; this host's own actions stay within its resources.
 build:buildbuddy --jobs=100
 
