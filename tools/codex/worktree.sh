@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Codex's session hooks (.codex/hooks.json), which lease a Bazel slot for a session in a Codex
-# worktree (AGENTS.md, "Worktrees"): one output base per module, which tools/bazel uses while
-# .bazel-slot names them.
+# worktree (docs/internal/agent-setup.md, "Worktrees"): one output base per module, which
+# tools/bazel uses while .bazel-slot names them.
 #
 #   worktree.sh session-start   reads the hook's {"cwd"} on stdin; leases a slot for its
 #                               worktree, the warmest free one, else a new one

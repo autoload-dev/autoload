@@ -45,9 +45,9 @@ if [[ ${#flags[@]} -gt 0 ]]; then
     done
 fi
 
-# A worktree that leased a Bazel slot (AGENTS.md, "Worktrees") keeps each module's output base
-# in that slot. .bazel-slot at the worktree root, the nearest directory with a .git, names each
-# module's base; a startup option on the command line wins.
+# A worktree that leased a Bazel slot (docs/internal/agent-setup.md, "Worktrees") keeps each
+# module's output base in that slot. .bazel-slot at the worktree root, the nearest directory
+# with a .git, names each module's base; a startup option on the command line wins.
 root="$workspace"
 until [[ -e "$root/.git" || -z "$root" ]]; do root="${root%/*}"; done
 if [[ -n "$root" && -f "$root/.bazel-slot" && " ${arguments[*]} " != *" --output_base="* ]]; then

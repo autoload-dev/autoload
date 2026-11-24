@@ -10,7 +10,7 @@
 # Both are placed in BIN_DIR (default ~/.local/bin), verified by the checksums of their GitHub
 # releases; an installed copy that matches is kept. Other arguments go to `aspect bootstrap`,
 # which installs the pre-commit and pre-push hooks and the missing pinned Android SDK and NDK
-# packages. Safe to repeat.
+# packages, then runs `aspect doctor` to name what the setup still lacks. Safe to repeat.
 set -euo pipefail
 
 BAZELISK_VERSION=1.29.0

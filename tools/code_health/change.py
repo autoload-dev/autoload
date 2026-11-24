@@ -37,7 +37,7 @@ HASH_COMMENT = {
 ACCEPT_HINT = (
     "Refactor each declined file until it no longer declines. To accept a finding "
     "deliberately instead, put the directive shown under it above its function's definition, "
-    'with a comment that gives the reason (AGENTS.md, "Code Health").'
+    'with a comment that gives the reason (docs/internal/code-health.md, "The hooks").'
 )
 
 

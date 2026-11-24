@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code's WorktreeCreate and WorktreeRemove hooks (.claude/settings.json), which take
-# Claude's worktrees from the Aspect CLI's worktree pool (AGENTS.md, "Worktrees").
+# Claude's worktrees from the Aspect CLI's worktree pool (docs/internal/agent-setup.md,
+# "Worktrees").
 #
 #   worktree.sh create   reads {"name", "session_id", "cwd"} on stdin; leases a slot on a new
 #                        branch claude/<name> from origin's default branch, as Claude's own

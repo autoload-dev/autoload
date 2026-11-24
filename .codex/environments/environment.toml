@@ -2,6 +2,6 @@ version = 1
 name = "autoload"
 
 # A new Codex worktree needs only the two tools; the clone's own setup, the Git hooks and the
-# Android SDK, is ./bootstrap.sh, once. Its Bazel state: AGENTS.md, "Worktrees".
+# Android SDK, is ./bootstrap.sh, once. Its Bazel state: docs/internal/agent-setup.md, "Worktrees".
 [setup]
 script = "./bootstrap.sh --tools-only"
