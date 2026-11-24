@@ -44,38 +44,13 @@ runs:
         echo "ANDROID_NDK_HOME=" >> "$GITHUB_ENV"
         echo "ANDROID_NDK_ROOT=" >> "$GITHUB_ENV"
     # The repository's tools are Bazel and the Aspect CLI; everything else comes through
-    # Bazel. This step places pinned Bazelisk and Aspect launcher binaries, verified by the
-    # checksums of their GitHub releases. Bazelisk runs the Bazel of .bazelversion, the
-    # launcher the Aspect CLI of .aspect/version.axl.
+    # Bazel. bootstrap.sh places the pinned Bazelisk and Aspect launcher, verified by the
+    # checksums of their releases, as it does in a fresh clone.
     - name: Install Bazelisk and the Aspect CLI
       shell: bash
-      env:
-        BAZELISK_VERSION: 1.29.0
-        BAZELISK_SHA256_LINUX_X64: 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
-        BAZELISK_SHA256_MACOS_ARM64: cee851f726789227d5561004e9904a52be45c3efb56f8b38b6993d6adbaa0409
-        ASPECT_VERSION: 2026.47.12
-        ASPECT_SHA256_LINUX_X64: a49be533dc38314bbc9d578a9a7c537a5ec10d2a5e296ed5a909d43c4b68a237
-        ASPECT_SHA256_MACOS_ARM64: d395dd7ccaeeb77bff93f56b92cfb579211478d35295f37af50da8614bdfe422
       run: |
-        case "$RUNNER_OS-$RUNNER_ARCH" in
-          Linux-X64)
-            bazelisk=bazelisk-linux-amd64 bazelisk_sha256=$BAZELISK_SHA256_LINUX_X64
-            aspect=aspect-launcher-x86_64-unknown-linux-musl aspect_sha256=$ASPECT_SHA256_LINUX_X64 ;;
-          macOS-ARM64)
-            bazelisk=bazelisk-darwin-arm64 bazelisk_sha256=$BAZELISK_SHA256_MACOS_ARM64
-            aspect=aspect-launcher-aarch64-apple-darwin aspect_sha256=$ASPECT_SHA256_MACOS_ARM64 ;;
-          *) echo "No pinned tools for $RUNNER_OS $RUNNER_ARCH" >&2; exit 1 ;;
-        esac
         bin="$RUNNER_TEMP/repository-tools"
-        mkdir -p "$bin"
-        fetch() {
-          curl -fsSL --retry 3 --connect-timeout 10 --max-time 120 -o "$bin/$1" "$2"
-          echo "$3  $bin/$1" | shasum -a 256 -c --status ||
-            { echo "::error::$2 does not match its pinned checksum"; exit 1; }
-          chmod +x "$bin/$1"
-        }
-        fetch bazel "https://github.com/bazelbuild/bazelisk/releases/download/v$BAZELISK_VERSION/$bazelisk" "$bazelisk_sha256"
-        fetch aspect "https://github.com/aspect-build/aspect-cli/releases/download/v$ASPECT_VERSION/$aspect" "$aspect_sha256"
+        BIN_DIR="$bin" ./bootstrap.sh --tools-only
         echo "$bin" >> "$GITHUB_PATH"
         # The Aspect CLI and its launcher send usage telemetry unless told not to.
         echo "DO_NOT_TRACK=1" >> "$GITHUB_ENV"

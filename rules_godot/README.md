@@ -88,12 +88,13 @@ tests and every application package.
 ## Example
 
 Lichtpost is a small one-button courier game that uses tests, an editor view and
-application packaging. With [Bazelisk](https://github.com/bazelbuild/bazelisk) and the
-[Aspect CLI](https://docs.aspect.build/cli) installed:
+application packaging. `./bootstrap.sh` installs [Bazelisk](https://github.com/bazelbuild/bazelisk)
+and the [Aspect CLI](https://docs.aspect.build/cli):
 
 ```sh
 git clone https://github.com/autoload-dev/autoload.git
 cd autoload
+./bootstrap.sh --hooks=false --android=false
 cd rules_godot/examples
 aspect exec -- bazel run //projects/lichtpost:run
 ```

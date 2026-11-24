@@ -27,17 +27,19 @@ with `aspect exec --`: it sets the Android variables
 `python3`. Bazel actions continue to use their declared toolchains. Native C/C++
 compilers remain host prerequisites; source-engine and iOS checks need macOS and Xcode.
 
-For a complete development environment in a new clone/worktree, install Bazelisk and the
-Aspect CLI, then run:
+For a complete development environment in a fresh clone, run:
 
 ```sh
-aspect bootstrap
+./bootstrap.sh
 ```
 
-This installs the pre-push hook and the missing Android SDK/NDK components. It reuses SDK
-components outside the checkout across worktrees; set `ANDROID_HOME` or `ANDROID_NDK_HOME`
-before setup for a nonstandard installation; `--android=false` and `--hooks=false` skip
-a part. The versioned
+It places the pinned Bazelisk and Aspect launcher in `~/.local/bin` (or `BIN_DIR`), verified
+by their releases' checksums, and names what is missing from the host or PATH. It then runs
+`aspect bootstrap`, which installs the pre-push hook and the missing Android SDK/NDK
+components. It reuses SDK components outside the checkout across worktrees; set
+`ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
+`--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
+tools, as CI does. A new worktree needs none of it again. The versioned
 [Codex local environment](../../.codex/environments/environment.toml) uses the same bootstrap.
 Bootstrap is safe to repeat but is not a required step before each check.
 

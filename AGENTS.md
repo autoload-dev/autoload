@@ -48,7 +48,7 @@ including TDD and evidence reuse. Commands below are entry points, not a checkli
 From the repository root:
 
 ```sh
-aspect bootstrap                          # once per clone: install the pre-push hook and missing Android SDK packages
+./bootstrap.sh                            # once per clone: install bazel and aspect, the pre-push hook and Android SDK packages
 aspect check                              # format, lint, generated files, conventions, setup, fast tests, Code Health
 aspect format                             # format changed files (--scope=all for the whole tree)
 aspect generate                           # regenerate lock files
@@ -58,12 +58,13 @@ aspect code-health --survey               # Code Health of the whole checkout, t
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy
 ```
 
-A checkout needs only Bazelisk (`bazel`) and the Aspect CLI (`aspect`). `aspect help` lists
-the tasks. Use `aspect exec --` before direct commands that need the repository environment
-(the Android variables, Bazel's Python as `python3`). For missing prerequisites, read
-[toolchain setup](docs/internal/verification-recipes.md#toolchains). For the lanes and
-review readiness, read [lanes](docs/internal/verification-platforms.md). BuildBuddy is a
-regular option for builds and tests; choose between local and remote runs with [when remote
+A checkout needs only Bazelisk (`bazel`) and the Aspect CLI (`aspect`), which
+`./bootstrap.sh` installs. `aspect help` lists the tasks. Use `aspect exec --` before direct
+commands that need the repository environment (the Android variables, Bazel's Python as
+`python3`). For missing prerequisites, read [toolchain
+setup](docs/internal/verification-recipes.md#toolchains). For the lanes and review
+readiness, read [lanes](docs/internal/verification-platforms.md). BuildBuddy is a regular
+option for builds and tests; choose between local and remote runs with [when remote
 execution pays off](docs/internal/verification-recipes.md#when-remote-execution-pays-off).
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read [remote
 execution](docs/internal/verification-recipes.md#remote-execution-with-buildbuddy).
