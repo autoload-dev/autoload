@@ -11,6 +11,7 @@ godot_resources(
         "section_pattern.gd.uid",
     ],
     prefix = "main/run",
+    deps = ["//projects/lichtpost/main/shared/palette"],
 )
 
 godot_resources(

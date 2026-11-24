@@ -45,7 +45,7 @@ func configure(level: LevelDefinition, model: Route) -> void:
 		course.remove_child(child)
 		child.queue_free()
 	light_nodes.clear()
-	var palette := level.palette as Palette
+	var palette := level.palette
 	var sun: DirectionalLight3D = $Sun
 	($Environment as WorldEnvironment).environment = level.environment
 	sun.light_color = palette.ivory.albedo_color

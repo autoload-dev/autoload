@@ -28,7 +28,7 @@ var coyote := COYOTE_TICKS
 var jump_age := 100
 var gaps: Array[Vector2i] = []
 var pipes: Array[int] = []
-var lights: Array[Light] = []
+var lights: Array[LightState] = []
 var events: Array[String] = []
 var group_hits := 0
 var group_index := 0
@@ -62,7 +62,7 @@ func _init(route_seed: int = 27, level: Dictionary = {}) -> void:
 			pipes.append(base + int(level.get("pipe_offset", 2000)))
 		for item in range(heights.size()):
 			var light_x := start + int(level.get("light_offset", -600)) + item * int(level.get("light_spacing", 900))
-			lights.append(Light.new(light_x, heights[item]))
+			lights.append(LightState.new(light_x, heights[item]))
 
 
 func has_floor(at: int) -> bool:
@@ -147,7 +147,7 @@ func snapshot() -> Dictionary:
 
 
 ## A light along the route, in millimetres, and whether the courier took it.
-class Light:
+class LightState:
 	var x: int
 	var y: int
 	var taken := false
