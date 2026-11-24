@@ -44,9 +44,9 @@ for its checks.
   use. For godot-cpp, keep `godot_cpp_bindings` and the generated
   `@godot_cpp//:godot_cpp` dependency in `godot_cc_extension` documented; its
   binding-generation rule is an implementation detail.
-- This module has not been released. When moving an API, update all loads,
-  examples, tests and generated BUILD files directly. Do not retain previous
-  load paths or introduce compatibility exports.
+- Breaking changes are fine (root `AGENTS.md`). When moving an API, update all
+  loads, examples, tests and generated BUILD files directly. Do not retain
+  previous load paths or introduce compatibility exports.
 - Cover all public rules, legacy and symbolic macros, functions, providers,
   aspects, repository rules, module extensions and their tag classes. Include
   supported constants, structs, transitions or build settings when introduced.

@@ -109,7 +109,9 @@ source-built engine join them in `source-engine:full`.
 The lanes that need a macOS runner are the Apple lanes: the desktop tests on macOS, the apps
 with source-built engines and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
-their tools and Bazel caches on their own disk between jobs. CI runs the Apple lanes like the
+their tools and Bazel caches on their own disk between jobs. The VM, its runners and its
+BuildBuddy executor are set up in the private repository `autoload-dev/macos-ci`; a change
+there takes a new image and a replaced VM, done only while no job runs on it. CI runs the Apple lanes like the
 other lanes, on pull requests and in the merge queue. A pull request from a
 fork runs no Apple lane: the VM also holds caches and the BuildBuddy executor's key, so a
 fork's code reaches it only in the merge queue. CI's `Finalize` is the
