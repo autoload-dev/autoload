@@ -48,7 +48,7 @@ make. A behavior that no question reaches has no test kind; see
 | Run test | Ruleset, `<impl>/tests/` | `godot_test`, GdUnit or a launcher over an exported application | As for build-output tests |
 | Consumer scenario | Consumer module `tests/`, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
 | Example test | `examples/`, owned by the example | The example's own tests | Public API only |
-| Repository-tooling test | Ruleset, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
+| Repository-tooling test | Root module `autoload_dev`, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
 
 `<impl>` is the implementation package under test, such as `godot/private` or
 `godot/platforms/private`. Starlark unit tests through run tests are white-box tests.
@@ -163,8 +163,8 @@ code.
 
 ### Repository-tooling test
 
-- **Location**: The ruleset module, beside the tool in its package `tools/<tool>/`, as
-  `tools/conventions` does.
+- **Location**: The root module `autoload_dev`, beside the tool in its package
+  `tools/<tool>/`, as `tools/conventions` does.
 - **Form**: `py_test` or `unittest`.
 - **Allowed dependencies**: The tool's library.
 - **May prove**: That a check, CI script or setup tool behaves as specified.
@@ -208,9 +208,10 @@ those tests in its own module.
 
 | Module | Purpose | Contents |
 |---|---|---|
-| `autoload_rules_godot`, the repository root | The ruleset and its white-box and repository-tooling tests | `godot/**/tests/`, `tools/**/tests/`, tooling tests beside their tools |
-| `rules_godot_examples` at `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
-| `rules_godot_tests` at `tests/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
+| `autoload_rules_godot` at `rules_godot/` | The ruleset and its white-box tests | `godot/**/tests/`, `tools/**/tests/` |
+| `autoload_dev`, the repository root | The repository's tooling and its tests | Tooling tests beside their tools in `tools/` |
+| `rules_godot_examples` at `rules_godot/examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
+| `rules_godot_tests` at `rules_godot/tests/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
 
 This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
@@ -223,7 +224,7 @@ stay out of them with a small scope.
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
 | B3 | Consumer scenarios load no private module but the artifact test rules, which are classified as cross-repository modules. | The API inventory check | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
-| L1 | Each test has exactly one owning lane, derived from its module, its kind and the Bazel configuration it needs. Ruleset tests and repository-tooling tests belong to the lane that runs the ruleset's desktop set. A consumer scenario belongs to the lane of its platform configuration. A lane does not rerun another lane's tests. | Review. [Selection and lanes](verification-platforms.md) names the concrete task of each lane class. | None |
+| L1 | Each test has exactly one owning lane, derived from its module, its kind and the Bazel configuration it needs. Ruleset tests belong to the lane that runs the ruleset's desktop set, and repository-tooling tests to the `quality` lane. A consumer scenario belongs to the lane of its platform configuration. A lane does not rerun another lane's tests. | Review. [Selection and lanes](verification-platforms.md) names the concrete task of each lane class. | None |
 
 B1 and B2 need no convention rule. Bazel rejects a load or a dependency outside the declared
 visibility, as rules_cc, rules_apple and rules_java use it. Lanes select tests; packages own
@@ -356,11 +357,9 @@ the build because they were expensive and hard to debug
 
 ## Evidence
 
-The comparisons on this page come from a survey of 17 Bazel rulesets, snapshot 2026-11-06:
-[report](research/verification-architecture/report.md) and
-[notes](research/verification-architecture/notes/). Bazel sources
-are the [rule testing guide](https://bazel.build/rules/testing),
+The comparisons on this page come from a survey of 17 Bazel rulesets, snapshot 2026-11-06.
+Bazel sources are the [rule testing guide](https://bazel.build/rules/testing),
 [visibility](https://bazel.build/concepts/visibility) and
-[remote cache debugging](https://bazel.build/remote/cache-remote). Repository facts were read
-at commit `631e545`. The rules_testing users were read from the `MODULE.bazel` files of
-rules_cc, rules_java and rules_python on 2026-11-06.
+[remote cache debugging](https://bazel.build/remote/cache-remote). The rules_testing users
+were read from the `MODULE.bazel` files of rules_cc, rules_java and rules_python on
+2026-11-06.

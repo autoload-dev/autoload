@@ -4,7 +4,11 @@ Godot add-ons of autoload-dev, built with the rules of this repository and consu
 applications through Bazel. Every add-on brings its native SDKs.
 
 Each directory here is a Bazel module of its own, `addons/<module>` named `autoload_<module>`,
-with its own `MODULE.bazel`, version, release tags and a README that describes its add-ons.
+with its own `MODULE.bazel`, version, release tags and a README that describes its add-ons:
+
+- [Firebase](firebase/README.md): Firebase Core, Analytics and Cloud Firestore on Android and iOS.
+- [GdUnit](gdunit/README.md): GdUnit4 test suites as Bazel tests.
+- [Sentry](sentry/README.md): crash and error reporting on Android, iOS, Linux and macOS.
 
 There is one module per add-on, or per group of add-ons that must be versioned together
 because they share one SDK. Each module keeps its example applications in its `examples/`
@@ -36,13 +40,13 @@ at the same commit until a release has what they need.
 
 ## A new add-on
 
-`bazel run //tools/addons:new -- <module>` creates a module with one add-on, `bazel run //tools/addons:new -- <module>
---addon <addon>` adds an add-on to a module. Both write from the template in
+`bazel run //tools/addons:new -- <module>` creates a module with one add-on, and
+`bazel run //tools/addons:new -- <module> --addon <addon>` adds an add-on to a module. Both
+write from the template in
 [tools/addons/template](../tools/addons/template), which builds on Android, iOS, the editor
 and desktop from the start. The [add-on guidance](AGENTS.md) describes the layout.
 
 ## Releases
 
-Every module is released on its own, with tags named `<module>-v<version>`, such as
-`autoload_<module>-v0.1.0`. The tag's commit has the same `version` in the module's
-`MODULE.bazel`, and its release notes show the `bazel_dep` to add.
+Every module is released on its own, with a tag `autoload_<module>-v<version>` whose release
+notes show the `bazel_dep` to add.

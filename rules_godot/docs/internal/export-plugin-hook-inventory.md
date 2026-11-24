@@ -19,9 +19,9 @@ longer declares; such a pin needs a new review of the rows below.
 
 No build runs an `EditorExportPlugin` of an add-on's editor part: an add-on
 declares what its plugin does as the counterparts below, and a project transforms files a
-customization hook would change in a `genrule`. Export plugins an extension registers
-natively still run in pack exports, which load every extension. The facts below say what
-such a plugin can affect.
+customization hook would change in a `genrule`. The facts below say what an
+[export plugin an extension registers natively](../public/resources.md#export-plugins),
+which does run in pack exports, can affect.
 
 rules_godot builds a pack with Godot's pack export (`EditorExportPlatform::export_pack`,
 `editor/export/editor_export_platform.cpp:2464`) and packages the application itself. The

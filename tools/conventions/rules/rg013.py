@@ -15,9 +15,8 @@ class PublicDocumentationLinks:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         for name in context.workspace.documents:
-            # The shared index routes readers to both audiences. Internal reference
-            # pages are not consumer documentation.
-            if name == "docs/README.md" or internal_document(name):
+            # Internal reference pages are not consumer documentation.
+            if internal_document(name):
                 continue
             # Several links on one line to the same page are one finding.
             targets = {

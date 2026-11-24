@@ -14,14 +14,7 @@ it. See [platform setup](platforms.md) for the configuration of each operating s
 
 Every build still selects an **exact version and checksum**. A compatibility
 range never causes Bazel to resolve “latest” or change downloads without a
-repository change.
-
-```starlark
-godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.prebuilt(name = "godot", version = "4.7.2")
-use_repo(godot_engines, "godot")
-register_toolchains("@godot//toolchains:all")
-```
+repository change. [Installation](installation.md#add-the-module) shows the registration.
 
 Built-in editor and template digests are available for these versions:
 
@@ -88,17 +81,3 @@ API. This descriptor field is a stable runtime minimum; it is not the editor
 version and does not accept preview suffixes. Raise the API baseline and minimum
 only when the extension requires newer functionality. See
 [GDExtensions](gdextension.md) for the compatibility contract and validation.
-
-## Maintaining the range
-
-When a new release needs special handling, scope it to the affected feature or version
-range. Do not add one branch per patch release. A digest update is an acquisition
-change; an API-baseline update is a separate change with its own native rebuild
-cost.
-
-The 4.8-beta1 source probe explicitly enables `freetype`. In this snapshot,
-`text_server_fb` without FreeType fails compilation in its face-index setter
-because FreeType members are referenced without the feature guard. The rules
-keep optional module dependencies optional; this tested configuration declares
-FreeType explicitly. This upstream beta issue does not affect using the
-prebuilt engine or reusing a compatible extension.

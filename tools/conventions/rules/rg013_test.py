@@ -9,22 +9,30 @@ from tools.conventions.test_support import RepositoryTest
 class PublicDocumentationLinksTest(RepositoryTest):
     def test_public_pages_and_readmes_cannot_link_to_internal_guides(self) -> None:
         for name, target in (
-            ("docs/public/versions.md", "../internal/verification.md#engines"),
-            ("README.md", "docs/internal/architecture.md"),
-            ("examples/addons/demo/README.md", "../../../docs/internal/verification.md"),
-            ("docs/public/api/index.md", "../../internal/api-reference.md"),
+            (
+                "rules_godot/docs/public/versions.md",
+                "../internal/android-shell.md#review",
+            ),
+            ("README.md", "docs/internal/verification.md"),
+            (
+                "rules_godot/examples/addons/demo/README.md",
+                "../../../../docs/internal/verification.md",
+            ),
             ("rules_godot/docs/public/engine.md", "../internal/architecture.md"),
+            ("addons/firebase/README.md", "../../docs/internal/releasing.md"),
             ("rules_godot/README.md", "docs/internal/android-shell.md"),
+            # A page under the root docs/ outside internal/ is public.
+            ("docs/guide.md", "internal/verification.md"),
         ):
             self.write(name, f"Intro\n[Guide]({target})\n")
         findings = list(PublicDocumentationLinks().evaluate(self.context()))
-        self.assertEqual(len(findings), 6)
+        self.assertEqual(len(findings), 7)
         self.assertTrue(all(item.location.line == 2 for item in findings))
         self.assertEqual((self.tools.call_requests, self.tools.rule_requests), (0, 0))
 
     def test_link_forms_normalize_paths_and_report_definition_lines(self) -> None:
         self.write(
-            "docs/public/usage.md",
+            "rules_godot/docs/public/usage.md",
             "[Inline](../internal/./guide.md?view=1#part)\n"
             "[Reference][guide]\n"
             '[guide]: <../internal/guide.md> "Title"\n'
@@ -86,12 +94,11 @@ class PublicDocumentationLinksTest(RepositoryTest):
         for name in (
             "docs/internal/design.md",
             "rules_godot/docs/internal/architecture.md",
-            "docs/README.md",
-            "docs/public/AGENTS.md",
+            "rules_godot/docs/public/AGENTS.md",
         ):
             self.write(name, "[Internal](/docs/internal/guide.md)\n")
         self.write(
-            "docs/public/usage.md",
+            "rules_godot/docs/public/usage.md",
             "[Public](development.md)\n[Section](#internal)\n"
             "[Other directory](../internal-tools/guide.md)\n"
             "[External](https://example.org/docs/internal/guide.md)\n"

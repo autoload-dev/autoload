@@ -139,14 +139,13 @@ Firebase project of the placeholder configuration unless the project setting
 `examples/firestore_emulator` names a Firestore emulator as `host:port`, such as
 `10.0.2.2:8080` from the Android emulator.
 
-## Open questions
+## Limits
 
 - **Simulator runs.** The x86_64 Simulator build of the prebuilt 4.7 engine does not run on
   the iOS 27 Simulator, so the iOS lane only builds the app and checks that it embeds each
-  Firebase framework. On a device, the example
-  configures the default app once and starts Analytics; Firebase products register with
-  FirebaseCore when their framework loads, which Godot does for all extensions before the
-  `Firebase` autoload configures the app.
+  Firebase framework. On a device, the example configures the default app once and starts
+  Analytics; Firebase products register with FirebaseCore when their framework loads, which
+  Godot does for all extensions before the `Firebase` autoload configures the app.
 - **Maven resolution for Android.** The gradle resolver of rules_jvm_external resolves for
   the JVM, so `MODULE.bazel` selects the Android modules of androidx.datastore and pins
-  Guava's JRE flavor by hand. Both go once the resolver resolves for Android.
+  Guava's JRE flavor by hand.
