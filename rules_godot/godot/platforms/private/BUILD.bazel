@@ -17,6 +17,7 @@ exports_files(
         "macos_signing.bzl",
         "manifest_graph.bzl",
         "maven.bzl",
+        "web.bzl",
     ],
     visibility = ["//visibility:public"],
 )

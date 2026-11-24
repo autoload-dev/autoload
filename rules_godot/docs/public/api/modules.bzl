@@ -64,6 +64,7 @@ SUPPORT_MODULES = [
     "//godot/extension/private:godot_cpp.bzl",
     "//godot/extension/private:ios_framework.bzl",
     "//godot/platforms/private:macos_signing.bzl",
+    "//godot/platforms/private:web.bzl",
     "//godot/platforms/private:android_bootstrap.bzl",
     "//godot/platforms/private:android_jni_libraries.bzl",
     "//godot/platforms/private:android_outputs.bzl",
@@ -135,6 +136,7 @@ PUBLIC_TARGETS = {
     "//godot/platforms:is_android": "config_setting matching the effective android operating system for engine, library and compatibility selection.",
     "//godot/platforms:is_macos": "config_setting matching the effective macos operating system for engine, library and compatibility selection.",
     "//godot/platforms:is_linux": "config_setting matching the effective linux operating system for engine, library and compatibility selection.",
+    "//godot/platforms:is_web": "config_setting matching the effective web (Emscripten) environment for engine, library and compatibility selection; prototype.",
     "//godot/metadata:node_ids": "How packs and godot_metadata_sync treat scene nodes without unique_id, which Godot would give random IDs: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing).",
     "//godot/metadata:resource_uids": "How packs and godot_metadata_sync treat ext_resource references without their file's UID: off, assign (complete the exported copy), sync (default; also commit them) or require (fail while missing or stale).",
     "//godot:macos_signing": "macOS app signing selection: unsigned (default), adhoc or local certificate; app identity and entitlements remain app-specific.",
@@ -166,4 +168,5 @@ PUBLIC_TARGETS = {
     "//godot/platforms:ios_arm64": "iOS arm64 device export platform; requires Xcode and the selected device signing configuration.",
     "//godot/platforms:ios_sim_arm64": "iOS arm64 Simulator export platform; register a matching Simulator runtime.",
     "//godot/platforms:ios_sim_x86_64": "iOS x86_64 Simulator export platform; register a matching Simulator runtime.",
+    "//godot/platforms:web_wasm32": "Web wasm32 export platform; prototype, requires a web runtime and an Emscripten toolchain for native code.",
 }
