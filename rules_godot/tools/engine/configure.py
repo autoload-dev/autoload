@@ -1414,7 +1414,8 @@ def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]
 
 
 # The files whose behavior a pinned graph depends on: the capture and its translation.
-# Rendering a graph, render.py and include_graph.py, changes no pin.
+# Rendering a graph, render.py, include_graph.py and feature_macros.py, changes no
+# pin.
 _PIN_TOOLS = (
     Path(__file__).resolve(),
     Path(inspect.getfile(module_closure)).resolve(),
