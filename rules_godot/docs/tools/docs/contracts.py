@@ -4,14 +4,15 @@ import argparse
 import json
 import os
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from tools.conventions.context import EvidenceError, Module, Target
 from tools.docs.api_docs import read_inventory
 from tools.docs.coverage import ModuleInfo, module_apis
-from tools.docs.evidence import EvaluatedBazel, behavior_tests, is_test
+from tools.docs.evidence import EvaluatedBazel, behavior_tests, is_test, unqualified
 from tools.docs.output_contracts import (
     CONTRACT_LANES,
     DEFAULT_CONTRACT_LANE,
@@ -101,44 +102,39 @@ def companion_errors(
     return errors
 
 
-def check_case(
-    bazel: EvaluatedBazel,
-    identity: str,
-    case: dict[str, Any],
-    api: Api,
-) -> list[str]:
-    """Compare one source contract with a configured fixture and its expansion."""
-    if "entrypoints" in case:
-        errors = check_repository(bazel, case, api.contract)
-        return [f"{identity}: {error}" for error in errors]
-    module = Module(Path(case["module"]), ())
-    label = case["target"]
-    package, _, root = label.rpartition(":")
-    loaded = {
-        target.label.partition("//")[2]: target
-        for target in bazel.expansion(module, label)
-    }
-    root_fact = loaded[label.partition("//")[2]]
-    errors = []
+@dataclass(frozen=True)
+class Fixture:
+    """
+    A target case's loading facts: the rules of its root's invocation by unqualified
+    label, its documented companions by label, and rows that resolve to none.
+    """
+
+    loaded: Mapping[str, Target]
+    companions: Mapping[str, dict[str, str]]
+    unresolved: tuple[str, ...]
+
+
+def fixture(case: dict[str, Any], api: Api, expansion: Iterable[Target]) -> Fixture:
+    """Resolve a case's documented companions against its root's invocation."""
+    loaded = {unqualified(target.label): target for target in expansion}
+    package, _, root = case["target"].rpartition(":")
+    unresolved = []
     companions = {}
     for row in active(api.contract.companions, case["conditions"]):
         pattern = row["name"]
         companion = package + ":" + pattern.replace("{name}", root, 1)
         if not pattern.startswith("{name}") or "{" in companion:
-            errors.append(f"unresolved generated companion pattern {pattern}")
-        elif companion.partition("//")[2] not in loaded:
-            errors.append(f"missing evaluated loading facts for {companion}")
+            unresolved.append(f"unresolved generated companion pattern {pattern}")
+        elif unqualified(companion) not in loaded:
+            unresolved.append(f"missing evaluated loading facts for {companion}")
         else:
             companions[companion] = row
-    observed = bazel.configured(module, (label, *companions), case["options"])
-    for companion, row in companions.items():
-        errors.extend(
-            f"companion {companion} {error}"
-            for error in companion_errors(
-                row, loaded[companion.partition("//")[2]], root_fact, observed[companion]
-            )
-        )
-    discovered = {
+    return Fixture(loaded, companions, tuple(unresolved))
+
+
+def discovered_companions(root: str, api: Api, loaded: Mapping[str, Target]) -> set[str]:
+    """Consumer-visible rules of the invocation besides its root, as name patterns."""
+    return {
         "{name}" + name.removeprefix(root) if name.startswith(root) else name
         for target in loaded.values()
         if (name := target.label.rpartition(":")[2]) != root
@@ -148,18 +144,103 @@ def check_case(
             symbolic_macro=api.kind == "macro_info",
         )
     }
+
+
+def check_case(
+    case: dict[str, Any],
+    api: Api,
+    facts: Fixture,
+    observed: Mapping[str, ConfiguredTarget],
+) -> list[str]:
+    """Compare one source contract with its configured fixture and its expansion."""
+    label = case["target"]
+    root_fact = facts.loaded[unqualified(label)]
+    errors = list(facts.unresolved)
+    for companion, row in facts.companions.items():
+        errors.extend(
+            f"companion {companion} {error}"
+            for error in companion_errors(
+                row, facts.loaded[unqualified(companion)], root_fact, observed[companion]
+            )
+        )
     errors.extend(
         compare(
             api.contract,
             observed[label],
             test=is_test(root_fact),
             shared_library=is_shared_library(root_fact.kind, root_fact.booleans),
-            companions=discovered,
+            companions=discovered_companions(label.rpartition(":")[2], api, facts.loaded),
             conditions=case["conditions"],
             forwarded_groups=case.get("forwarded_groups", False),
         )
     )
-    return [f"{identity}: {error}" for error in errors]
+    return errors
+
+
+# Contract cases with their extracted API, by case key.
+Cases = Mapping[str, tuple[dict[str, Any], Api]]
+
+
+def case_groups(cases: Cases) -> list[tuple[Module, tuple[str, ...], list[str]]]:
+    """
+    Case keys grouped by module and options, the host's default options last.
+
+    Options change Bazel's configuration, which discards the module's analysis
+    cache; ending on the default configuration leaves it for the next build.
+    """
+    groups: dict[tuple[str, tuple[str, ...]], list[str]] = {}
+    for key, (case, _) in sorted(cases.items()):
+        groups.setdefault((case["module"], tuple(case["options"])), []).append(key)
+    return [
+        (Module(Path(module), ()), options, groups[module, options])
+        for module, options in sorted(groups, key=lambda group: (not group[1], group))
+    ]
+
+
+def check_targets(
+    bazel: EvaluatedBazel, module: Module, options: tuple[str, ...], cases: Cases
+) -> dict[str, list[str]]:
+    """Check target cases of one module and options with one query and one cquery."""
+    expansions = bazel.expansions(module, (case["target"] for case, _ in cases.values()))
+    fixtures = {
+        key: fixture(case, api, expansions[case["target"]])
+        for key, (case, api) in cases.items()
+    }
+    labels = [
+        label
+        for key, (case, _) in cases.items()
+        for label in (case["target"], *fixtures[key].companions)
+    ]
+    try:
+        observed = bazel.configured(module, labels, options)
+    except EvidenceError as error:
+        raise EvidenceError(f"cases {', '.join(cases)}: {error}") from error
+    return {
+        key: check_case(case, api, fixtures[key], observed)
+        for key, (case, api) in cases.items()
+    }
+
+
+def check_cases(bazel: EvaluatedBazel, cases: Cases) -> dict[str, list[str]]:
+    """
+    Each case's diagnostics, with one query and one cquery per module and options.
+
+    A repository case fetches its own facts, partly with other options, so it runs
+    before its group's target cases, which then end the group on its own
+    configuration; a group of repository cases alone may end on host execution.
+    """
+    errors = {}
+    for module, options, keys in case_groups(cases):
+        targets = {}
+        for key in keys:
+            case, api = cases[key]
+            if "entrypoints" in case:
+                errors[key] = check_repository(bazel, case, api.contract)
+            else:
+                targets[key] = cases[key]
+        if targets:
+            errors |= check_targets(bazel, module, options, targets)
+    return {key: [f"{key}: {error}" for error in found] for key, found in errors.items()}
 
 
 def lane_independent_errors(
@@ -188,6 +269,34 @@ def behavior_errors(
     return errors
 
 
+def lane_cases(
+    cases: Mapping[str, dict[str, Any]], lane: str
+) -> dict[str, dict[str, Any]]:
+    """The configured cases of one lane, by key."""
+    return {key: case for key, case in cases.items() if case["lane"] == lane}
+
+
+def lane_errors(
+    bazel: EvaluatedBazel,
+    apis: Mapping[str, Api],
+    cases: Mapping[str, dict[str, Any]],
+    lane: str,
+) -> list[str]:
+    """Diagnostics of one lane's configured cases, in module, options and key order."""
+    if not cases:
+        return [f"{lane}: required lane contains no configured cases"]
+    checked = {
+        key: (case, api)
+        for key, case in cases.items()
+        if (api := apis.get(key.partition("#")[0])) is not None
+    }
+    results = check_cases(bazel, checked)
+    order = sorted(
+        checked, key=lambda key: (cases[key]["module"], cases[key]["options"], key)
+    )
+    return [error for key in order for error in results[key]]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lane", choices=CONTRACT_LANES, required=True)
@@ -209,17 +318,8 @@ def main() -> int:
         )
     errors.extend(behavior_errors(bazel, manifest["behavior"], args.lane))
     cases = {key: host_case(case) for key, case in manifest["cases"].items()}
-    selected = sorted(
-        (case["module"], case["options"], key)
-        for key, case in cases.items()
-        if case["lane"] == args.lane
-    )
-    for _, _, key in selected:
-        api = apis.get(key.partition("#")[0])
-        if api is not None:
-            errors.extend(check_case(bazel, key, cases[key], api))
-    if not selected:
-        errors.append(f"{args.lane}: required lane contains no configured cases")
+    selected = lane_cases(cases, args.lane)
+    errors.extend(lane_errors(bazel, apis, selected, args.lane))
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

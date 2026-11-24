@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from tools.docs.contracts import check_case, extracted_apis, host_case
+from tools.docs.contracts import check_cases, extracted_apis, host_case
 from tools.docs.evidence import ROOT_MODULE, EvaluatedBazel
 
 _FIXTURES = "//godot/tests/api_contracts:"
@@ -47,10 +47,19 @@ def main() -> None:
     module = bazel.extracted([inventory], ROOT_MODULE)[inventory]
     apis, errors = extracted_apis({_FIXTURES + "mismatch.bzl": module})
     assert not errors, errors
-    for symbol, (target, expected) in SCENARIOS.items():
-        identity = _FIXTURES + "mismatch.bzl%" + symbol
-        case = host_case({"target": _FIXTURES + target})
-        errors = check_case(bazel, identity, case, apis[identity])
+    identities = {symbol: _FIXTURES + "mismatch.bzl%" + symbol for symbol in SCENARIOS}
+    results = check_cases(
+        bazel,
+        {
+            identities[symbol]: (
+                host_case({"target": _FIXTURES + target}),
+                apis[identities[symbol]],
+            )
+            for symbol, (target, _) in SCENARIOS.items()
+        },
+    )
+    for symbol, (_, expected) in SCENARIOS.items():
+        errors = results[identities[symbol]]
         if not expected:
             assert not errors, errors
         for diagnostic in expected:

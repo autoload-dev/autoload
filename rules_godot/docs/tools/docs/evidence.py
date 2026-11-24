@@ -33,8 +33,8 @@ _EVIDENCE = (
 )
 
 
-def _name(label: str) -> str:
-    """A label without its repository, which cquery reports in canonical form."""
+def unqualified(label: str) -> str:
+    """A label without its repository, as cquery and the loading facts are keyed."""
     return label.partition("//")[2]
 
 
@@ -56,8 +56,23 @@ def decode_configured(output: str) -> dict[str, ConfiguredTarget]:
             raise EvidenceError(
                 f"invalid evaluated configured evidence: {error}"
             ) from error
-        result[_name(target.label)] = target
+        name = unqualified(target.label)
+        if name in result:
+            raise EvidenceError(
+                f"{target.label}: configured in more than one configuration"
+            )
+        result[name] = target
     return result
+
+
+def invocation(label: str, targets: tuple[Target, ...]) -> tuple[Target, ...]:
+    """The rules that the authored call of the root ``label`` emits, among loaded targets."""
+    roots = [
+        target for target in targets if unqualified(target.label) == unqualified(label)
+    ]
+    if len(roots) != 1:
+        raise EvidenceError(f"{label}: unresolved evaluated invocation root")
+    return tuple(target for target in targets if target.origin == roots[0].origin)
 
 
 # The ruleset module, where behavior tests resolve unless they name another module.
@@ -89,7 +104,7 @@ class EvaluatedBazel(Bazel):
         ).split()
         result = {}
         for target in targets:
-            suffix = _name(target).replace(":", "/")
+            suffix = unqualified(target).replace(":", "/")
             matches = [path for path in paths if path.endswith(suffix)]
             if len(matches) != 1:
                 raise EvidenceError(target + ": unresolved build output")
@@ -105,14 +120,17 @@ class EvaluatedBazel(Bazel):
             for target, path in self.outputs(targets, module).items()
         }
 
-    def expansion(self, module: Module, label: str) -> tuple[Target, ...]:
-        """Every rule emitted by the root's evaluated invocation, including the root."""
-        query = self.query(module, "kind(rule, siblings(" + label + "))")
+    def expansions(
+        self, module: Module, labels: Iterable[str]
+    ) -> dict[str, tuple[Target, ...]]:
+        """
+        Every rule emitted by each root's evaluated invocation, including the root, from
+        one query for all roots.
+        """
+        labels = tuple(dict.fromkeys(labels))
+        query = self.query(module, "kind(rule, siblings(set(" + " ".join(labels) + ")))")
         targets = query_targets(self.root, module, query)
-        roots = [target for target in targets if _name(target.label) == _name(label)]
-        if len(roots) != 1:
-            raise EvidenceError(f"{label}: unresolved evaluated invocation root")
-        return tuple(target for target in targets if target.origin == roots[0].origin)
+        return {label: invocation(label, targets) for label in labels}
 
     def configured(
         self, module: Module, labels: Iterable[str], options: Iterable[str] = ()
@@ -142,8 +160,8 @@ class EvaluatedBazel(Bazel):
         observed = cquery(labels) if labels else {}
         result = {}
         for label in labels:
-            if _name(label) in observed:
-                result[label] = observed[_name(label)]
+            if unqualified(label) in observed:
+                result[label] = observed[unqualified(label)]
                 continue
             actual = list(cquery((label,)).values())
             if len(actual) != 1:
