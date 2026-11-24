@@ -20,13 +20,6 @@ those of the ruleset alone, such as its architecture and the
 [design principles](rules_godot/docs/internal/principles.md), are in
 [rules_godot/docs/internal/](rules_godot/docs/internal/README.md).
 
-Keep ideas and follow-ups that are not yet planned in [ideas.md](docs/internal/ideas.md).
-Agents may propose an entry, with a short reason, but must wait for the user's approval
-before adding it. An explicit request to capture items supplies that approval; discovering
-an issue while working does not. Check existing entries first to avoid duplicates.
-Follow the file's entry format, and remove an entry once a change delivers it.
-Implementation needs its own approval. Do not propose, create or maintain GitHub Issues.
-
 Read linked sections when their stated condition applies; links are not a request to load
 every referenced document. For examples, read [example guidance](rules_godot/examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
