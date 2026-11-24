@@ -145,6 +145,14 @@ godot_recipe_pin(
         constraints,
     )
 
+def _watch_tools(ctx):
+    """Configure again when the code that captures or renders a recipe's graph changes."""
+    ctx.watch(ctx.path(ctx.attr._configure))
+    ctx.watch(ctx.path(ctx.attr._module_graph))
+    ctx.watch(ctx.path(ctx.attr._source_tree))
+    ctx.watch(ctx.path(ctx.attr._render))
+    ctx.watch(ctx.path(ctx.attr._include_graph))
+
 def engine_build_impl(ctx, *, _fail = fail):
     """
     Extract and patch one source recipe and render its build graph.
@@ -159,8 +167,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     Returns:
         The repository's metadata: reproducible except for unpinned Linux recipes.
     """
-    ctx.watch(ctx.path(ctx.attr._configure))
-    ctx.watch(ctx.path(ctx.attr._module_graph))
+    _watch_tools(ctx)
     if ctx.attr.platform == "ios" and not ctx.attr.environment:
         _fail("%s: iOS recipes need environment = \"device\" or \"simulator\"" % ctx.attr.name)
         return None

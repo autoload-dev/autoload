@@ -225,6 +225,9 @@ godot_engine_build = repository_rule(
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_generator": attr.label(default = Label("//godot/engine/private:generator.bzl")),
         "_module_graph": attr.label(default = Label("//tools/engine:module_graph.py")),
+        "_include_graph": attr.label(default = Label("//tools/engine:include_graph.py")),
+        "_render": attr.label(default = Label("//tools/engine:render.py")),
+        "_source_tree": attr.label(default = Label("//tools/engine:source_tree.py")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
         "_apple_constraint": attr.label(

@@ -17,21 +17,17 @@ from tools.engine.configure import (
     deployment_target,
     engine_link_options,
     engine_renderers,
-    generated_include_directories,
     has_renderer_switches,
     include_closure,
-    included_sources,
     inputs_hash,
     is_directory_action,
     merge_swift_module_options,
     normalize_command,
     normalize_value,
-    object_groups,
     pin_digest,
     pinned_graph,
     platform_compile_options,
     prepare_custom_modules,
-    render_unpinned,
     renderer_options,
     requested_modules,
     require_consistent_profile,
@@ -40,18 +36,30 @@ from tools.engine.configure import (
     require_one_text_server,
     require_renderer_options_unset,
     scalar_environment,
-    source_build_facts,
     source_version,
     stand_in_host,
     swift_module_options,
-    target_constraints,
     version_name,
     with_renderer_modules,
     write_json,
 )
 from tools.engine.generator import File, run, safe_relative
+from tools.engine.include_graph import (
+    CompileGroup,
+    Generated,
+    components,
+    include_graph,
+)
 from tools.engine.module_graph import module_closure, module_dependencies
 from tools.engine.pin import copy_tree, extract, merge
+from tools.engine.render import (
+    include_rules,
+    object_groups,
+    object_library_name,
+    render_unpinned,
+    source_build_facts,
+    target_constraints,
+)
 from tools.engine.revision import revision
 
 
@@ -472,28 +480,54 @@ class GraphTranslationTest(unittest.TestCase):
     def test_generated_sibling_headers_resolve_from_separate_bazel_output_tree(
         self,
     ) -> None:
-        self.assertEqual(
-            generated_include_directories(
-                [
+        groups = object_groups(
+            {
+                ("cc", (), ()): [
                     "core/extension/gdextension_interface.cpp",
                     "unrelated/file.cpp",
                     "modules/register.gen.cpp",
-                ],
-                ["core/extension/gdextension_interface.gen.h"],
-                {"modules/register.gen.cpp"},
-            ),
-            ["core/extension", "modules"],
+                ]
+            },
+            ["core/extension/gdextension_interface.gen.h"],
+            {"modules/register.gen.cpp"},
+        )
+        self.assertEqual(
+            groups,
+            [
+                ("cc", (), (), ["unrelated/file.cpp"]),
+                (
+                    "cc",
+                    (),
+                    ("core/extension",),
+                    ["core/extension/gdextension_interface.cpp"],
+                ),
+                ("cc", (), ("modules",), ["modules/register.gen.cpp"]),
+            ],
         )
 
     def test_generated_headers_below_a_source_resolve_by_relative_path(self) -> None:
         # gdscript_editor.cpp includes "editor/script_templates/templates.gen.h".
+        groups = object_groups(
+            {
+                ("cc", (), ()): [
+                    "modules/gdscript/gdscript_editor.cpp",
+                    "modules/other/file.cpp",
+                ]
+            },
+            ["modules/gdscript/editor/script_templates/templates.gen.h"],
+            set(),
+        )
         self.assertEqual(
-            generated_include_directories(
-                ["modules/gdscript/gdscript_editor.cpp", "modules/other/file.cpp"],
-                ["modules/gdscript/editor/script_templates/templates.gen.h"],
-                set(),
-            ),
-            ["modules/gdscript"],
+            groups,
+            [
+                ("cc", (), (), ["modules/other/file.cpp"]),
+                (
+                    "cc",
+                    (),
+                    ("modules/gdscript",),
+                    ["modules/gdscript/gdscript_editor.cpp"],
+                ),
+            ],
         )
 
     def test_same_named_generated_headers_stay_with_their_sources(self) -> None:
@@ -528,6 +562,20 @@ class GraphTranslationTest(unittest.TestCase):
                     ["platform/macos/export/export_plugin.cpp"],
                 ),
             ],
+        )
+
+    def test_object_libraries_are_named_after_their_source_without_slashes(
+        self,
+    ) -> None:
+        # objc_library rejects names with a slash.
+        self.assertEqual(
+            object_library_name("platform/ios/os_ios.mm", 3, set()),
+            "_objects__platform__ios__os_ios.mm",
+        )
+        # A source that two compile groups compile gets a library per group.
+        self.assertEqual(
+            object_library_name("core/a.cpp", 3, {"_objects__core__a.cpp"}),
+            "_objects__core__a.cpp__3",
         )
 
     def test_ios_class_name_does_not_collide_with_apple_toolchain_macro(self) -> None:
@@ -901,30 +949,165 @@ class GraphTranslationTest(unittest.TestCase):
             )
 
 
-class IncludedSourcesTest(unittest.TestCase):
-    def test_sources_that_other_sources_include_become_textual_headers(self) -> None:
+def write_tree(root: Path, files: dict[str, str]) -> None:
+    """Write files below a source root."""
+    for name, text in files.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text)
+
+
+class IncludeGraphTest(unittest.TestCase):
+    def graph(
+        self,
+        files: dict[str, str],
+        groups: list[CompileGroup],
+        generated: dict[str, Generated] | None = None,
+    ) -> dict[str, frozenset[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            kernels = root / "thirdparty/embree/kernels/bvh"
-            kernels.mkdir(parents=True)
-            (kernels / "hybrid4.cpp").write_text(
-                '#include "bvh_intersector_hybrid.cpp"\n'
-            )
-            (kernels / "bvh_intersector_hybrid.cpp").write_text(
-                '#include "../common/shared.cpp"\n#include "bvh.h"\n'
-            )
-            (root / "thirdparty/embree/kernels/common").mkdir()
-            (root / "thirdparty/embree/kernels/common/shared.cpp").write_text("")
-            (root / "core.cpp").write_text('#include "missing.cpp"\n')
-            self.assertEqual(
-                included_sources(
-                    root, ["thirdparty/embree/kernels/bvh/hybrid4.cpp", "core.cpp"]
+            write_tree(root, files)
+            return include_graph(root, groups, generated or {})
+
+    def test_quoted_includes_prefer_the_including_files_directory(self) -> None:
+        graph = self.graph(
+            {
+                "modules/a/register_types.cpp": '#include "register_types.h"\n',
+                "modules/a/register_types.h": '#include "core/object.h"\n',
+                "modules/b/register_types.h": "",
+                "core/object.h": "#pragma once\n",
+            },
+            [CompileGroup(["modules/a/register_types.cpp"], ["modules/b"], [])],
+        )
+        self.assertEqual(
+            graph["modules/a/register_types.cpp"], {"modules/a/register_types.h"}
+        )
+        self.assertEqual(graph["modules/a/register_types.h"], {"core/object.h"})
+
+    def test_angle_includes_name_every_include_directory_of_any_group(self) -> None:
+        # Two groups may resolve <config.h> differently; a header both include gets both.
+        graph = self.graph(
+            {
+                "lib/x.c": '#include "shared.h"\n',
+                "lib/y.c": '#include "shared.h"\n',
+                "lib/shared.h": "#include <config.h>\n#include <missing.h>\n",
+                "lib/config.h": "",
+                "x/config.h": "",
+                "y/config.h": "",
+            },
+            [
+                CompileGroup(["lib/x.c"], ["x"], []),
+                CompileGroup(["lib/y.c"], ["y"], []),
+            ],
+        )
+        self.assertEqual(
+            graph["lib/shared.h"], {"lib/config.h", "x/config.h", "y/config.h"}
+        )
+
+    def test_sources_textual_files_and_includes_beyond_the_root(self) -> None:
+        # Embree compiles one source that includes others.
+        graph = self.graph(
+            {
+                "thirdparty/embree/bvh/hybrid4.cpp": '#include "intersector.cpp"\n',
+                "thirdparty/embree/bvh/intersector.cpp": (
+                    '#include "../common/shared.inc"\n#include "../../../../outside.h"\n'
                 ),
-                [
-                    "thirdparty/embree/kernels/bvh/bvh_intersector_hybrid.cpp",
-                    "thirdparty/embree/kernels/common/shared.cpp",
-                ],
-            )
+                "thirdparty/embree/common/shared.inc": "",
+            },
+            [CompileGroup(["thirdparty/embree/bvh/hybrid4.cpp"], [], [])],
+        )
+        self.assertEqual(
+            set(graph),
+            {
+                "thirdparty/embree/bvh/hybrid4.cpp",
+                "thirdparty/embree/bvh/intersector.cpp",
+                "thirdparty/embree/common/shared.inc",
+            },
+        )
+
+    def test_computed_and_conditional_includes_count(self) -> None:
+        graph = self.graph(
+            {
+                "font.cpp": "#include <ft2build.h>\n#include FT_FREETYPE_H\n"
+                "#if __has_include(<optional.h>)\n#endif\n",
+                "freetype/ft2build.h": "#include <freetype/config/ftheader.h>\n",
+                "freetype/freetype/config/ftheader.h": (
+                    "#define FT_FREETYPE_H <freetype/freetype.h>\n"
+                ),
+                "freetype/freetype/freetype.h": "",
+                "optional.h": "",
+                "crypto.c": "#include MBEDTLS_CONFIG_FILE\n",
+                "mbedtls/godot_config.h": "",
+            },
+            [
+                CompileGroup(["font.cpp"], ["freetype"], []),
+                CompileGroup(
+                    ["crypto.c"],
+                    [],
+                    ['-DMBEDTLS_CONFIG_FILE=\\"godot_config.h\\"', "-Imbedtls"],
+                ),
+            ],
+        )
+        self.assertEqual(graph["font.cpp"], {"freetype/ft2build.h", "optional.h"})
+        self.assertEqual(
+            graph["freetype/freetype/config/ftheader.h"],
+            {"freetype/freetype/freetype.h"},
+        )
+        self.assertEqual(graph["crypto.c"], {"mbedtls/godot_config.h"})
+
+    def test_generated_files_include_what_their_generator_writes(self) -> None:
+        code = (
+            "def build(target, source, env):\n"
+            '    file.write("""#include "drivers/shader.h"\n""")\n'
+            "    includes = [f'#include \"{path}/api/api.h\"' for path in paths]\n"
+            "    tests = [f'#include \"{header}\"' for header in headers]\n"
+            '    print_error(f\'In "{name}": #include "{line}" could not be found\')\n'
+        )
+        graph = self.graph(
+            {
+                "main.cpp": '#include "shaders/canvas.gen.h"\n',
+                "drivers/shader.h": "",
+                "platform/android/api/api.h": "",
+                "platform/android/api/other.h": "",
+                "tests/test_main.h": "",
+            },
+            [CompileGroup(["main.cpp"], [], [])],
+            {"shaders/canvas.gen.h": Generated(code, ("tests/test_main.h",))},
+        )
+        self.assertEqual(
+            graph["shaders/canvas.gen.h"],
+            {"drivers/shader.h", "platform/android/api/api.h", "tests/test_main.h"},
+        )
+
+    def test_files_that_include_each_other_form_one_component(self) -> None:
+        graph = {
+            "main.cpp": {"a.h"},
+            "a.h": {"b.h", "c.h"},
+            "b.h": {"a.h"},
+            "c.h": set(),
+        }
+        self.assertEqual(components(graph), [["c.h"], ["a.h", "b.h"], ["main.cpp"]])
+
+    def test_each_set_of_included_files_becomes_one_header_target(self) -> None:
+        lines, targets = include_rules(
+            {
+                "main.cpp": {"a.h"},
+                "a.h": {"b.h", "c.h"},
+                "b.h": {"a.h"},
+                "c.h": set(),
+            }
+        )
+        self.assertEqual(
+            lines,
+            [
+                "godot_source_headers(name = '_includes/c.h', hdrs = ['c.h'], deps = [])",
+                (
+                    "godot_source_headers(name = '_includes/a.h', hdrs = ['a.h', 'b.h'], "
+                    "deps = [':_includes/c.h'])"
+                ),
+            ],
+        )
+        self.assertNotIn("main.cpp", targets)
+        self.assertEqual(targets["b.h"], ":_includes/a.h")
 
 
 class PinTest(unittest.TestCase):
@@ -1052,6 +1235,29 @@ class PinTest(unittest.TestCase):
             fourth = digest()
             (scons / "SCons/__init__.py").write_text('__version__ = "4.11.0"')
             self.assertNotEqual(digest(), fourth)
+
+    def test_digest_covers_the_capture_but_not_the_rendering(self) -> None:
+        # Changing how a graph renders keeps every pin; changing the capture does not.
+        args = argparse.Namespace(
+            source_sha256="",
+            patch=[],
+            patch_strip=1,
+            build_profile_digest="",
+            custom_modules_root=None,
+            platform="linuxbsd",
+            cpu="x86_64",
+            build_target="editor",
+            modules=[],
+            default_modules=False,
+            options=[],
+            build_name="custom",
+        )
+        with mock.patch("tools.engine.configure.file_digest", return_value="") as digest:
+            pin_digest(args, Path("scons"))
+        self.assertEqual(
+            {Path(call.args[0]).name for call in digest.call_args_list},
+            {"configure.py", "module_graph.py", "source_tree.py", "__init__.py"},
+        )
 
     def test_a_lock_entry_counts_only_for_its_digest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

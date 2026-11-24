@@ -22,7 +22,6 @@ from collections import defaultdict
 from collections.abc import (
     Callable,
     Collection,
-    Container,
     Iterable,
     Iterator,
     Mapping,
@@ -34,11 +33,12 @@ from typing import Any, TypeGuard, cast
 
 try:
     from .module_graph import module_closure, module_dependencies
+    from .render import render, render_unpinned
+    from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
     from module_graph import module_closure, module_dependencies
-
-
-SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".s", ".S", ".swift"}
+    from render import render, render_unpinned
+    from source_tree import SOURCE_SUFFIXES, relative, write_json
 
 
 _VERSION_FIELDS = ("major", "minor", "patch", "status")
@@ -416,70 +416,6 @@ def engine_link_options(platform: str, options: list[str]) -> list[str]:
     if platform == "ios" and "-Wl,-dead_strip" not in library:
         library.append("-Wl,-dead_strip")
     return library
-
-
-def target_constraints(args: argparse.Namespace) -> list[str]:
-    operating_system = {
-        "macos": "macos",
-        "linuxbsd": "linux",
-        "android": "android",
-        "ios": "ios",
-    }[args.platform]
-    cpus = {
-        "arm64": "aarch64",
-        "arm32": "arm",
-        "x86_32": "x86_32",
-        "x86_64": "x86_64",
-        "rv64": "riscv64",
-    }
-    if args.cpu not in cpus:
-        raise ValueError(f"No Bazel CPU constraint mapping for SCons arch={args.cpu}")
-    result = [
-        f"{args.platforms_repository}//os:{operating_system}",
-        f"{args.platforms_repository}//cpu:{cpus[args.cpu]}",
-    ]
-    if args.platform == "ios":
-        result.append(f"{args.apple_repository}//constraints:" + args.environment)
-    return result
-
-
-def source_build_facts(args: argparse.Namespace) -> dict[str, str]:
-    """Describe the configured source graph independently of a consumer's build request."""
-    build_target = args.build_target
-    if build_target not in {"editor", "template_debug", "template_release"}:
-        raise ValueError(
-            f"Unknown build target {build_target}; "
-            "expected editor, template_debug or template_release"
-        )
-    return {
-        "canonical_version": args.version,
-        "platform": "linux" if args.platform == "linuxbsd" else args.platform,
-        "cpu": args.cpu,
-        "environment": args.environment,
-        "role": "editor" if build_target == "editor" else "runtime",
-        "variant": ""
-        if build_target == "editor"
-        else build_target.removeprefix("template_"),
-    }
-
-
-def write_json(path: Path, value: object, indent: int = 2) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Upstream builders can depend on ordered SCons Value mappings (for
-    # example, module registration). Preserve their insertion order exactly.
-    path.write_text(json.dumps(value, indent=indent) + "\n")
-
-
-def relative(path: object, root: Path) -> str:
-    value = Path(str(path).removeprefix("#"))
-    if value.is_absolute():
-        try:
-            return value.relative_to(root).as_posix()
-        except ValueError as error:
-            raise ValueError(f"Undeclared path outside engine source: {value}") from error
-    if ".." in value.parts:
-        raise ValueError(f"Path escapes engine source: {value}")
-    return value.as_posix()
 
 
 _DEPLOYMENT_FLAGS = (
@@ -904,116 +840,17 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-_SOURCE_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE)
-
-
-_INCLUDED_SOURCE_MARKERS = (b'.cpp"', b'.cc"', b'.cxx"')
-
-
-def _resolve_source_include(root: Path, path: Path, include: str) -> str | None:
-    """Resolve an include beside the including source, else below the source root."""
-    for base in (path.parent, root):
-        candidate = (base / include).resolve()
-        if candidate.is_file() and candidate.is_relative_to(root):
-            return relative(candidate, root)
-    return None
-
-
-def _source_includes(root: Path, path: Path) -> list[str]:
-    """Return the C++ sources that a source includes, relative to the source root."""
-    text = path.read_bytes() if path.is_file() else b""
-    if not any(marker in text for marker in _INCLUDED_SOURCE_MARKERS):
-        return []
-    includes = _SOURCE_INCLUDE.findall(text.decode(errors="replace"))
-    resolved = (_resolve_source_include(root, path, include) for include in includes)
-    return [logical for logical in resolved if logical]
-
-
-def _discovered_includes(
-    root: Path, sources: Collection[str], includes: Callable[[Path, Path], list[str]]
-) -> set[str]:
-    """Return the files the sources include, transitively, relative to the source root."""
-    found: set[str] = set()
+def include_closure(root: Path, sources: Collection[str]) -> set[str]:
+    """Godot shader builders recursively read #include files themselves."""
+    root = root.resolve()
+    found = set(sources)
     pending = list(dict.fromkeys(sources))
     while pending:
-        for logical in includes(root, root / pending.pop()):
+        for logical in _shader_includes(root, root / pending.pop()):
             if logical not in found:
                 found.add(logical)
                 pending.append(logical)
     return found
-
-
-def include_closure(root: Path, sources: Collection[str]) -> set[str]:
-    """Godot shader builders recursively read #include files themselves."""
-    root = root.resolve()
-    return set(sources) | _discovered_includes(root, sources, _shader_includes)
-
-
-def included_sources(root: Path, sources: Collection[str]) -> list[str]:
-    """
-    Return the C++ sources that other sources include, relative to the source root.
-
-    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
-    source that includes others; those must reach each compile action as textual headers.
-    """
-    return sorted(_discovered_includes(root.resolve(), sources, _source_includes))
-
-
-def generated_include_directories(
-    sources: Iterable[str],
-    generated_headers: Iterable[str],
-    generated_sources: Container[str],
-) -> list[str]:
-    """
-    Bazel outputs live apart from sources; preserve includes relative to the source.
-
-    A source finds a generated header beside it or, by a relative path such as
-    "editor/script_templates/templates.gen.h", below its own directory.
-    """
-    ancestors = header_ancestors(generated_headers)
-    return sorted(
-        {
-            str(Path(source).parent)
-            for source in sources
-            if source in generated_sources or Path(source).parent in ancestors
-        }
-    )
-
-
-def header_ancestors(generated_headers: Iterable[str]) -> frozenset[Path]:
-    """Every directory that contains a generated header, directly or below it."""
-    directories = {Path(header).parent for header in generated_headers}
-    return frozenset(
-        ancestor
-        for directory in directories
-        for ancestor in (directory, *directory.parents)
-    )
-
-
-def object_groups(
-    groups: Mapping[tuple[str, tuple[str, ...], tuple[str, ...]], Iterable[str]],
-    generated_headers: Iterable[str],
-    generated_sources: Container[str],
-) -> list[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]]:
-    """
-    Split compile groups so each source sees only its own generated include directories.
-
-    Generated headers of different directories share basenames, such as each platform's
-    export/logo_svg.gen.h; a library-wide include path would resolve them to one.
-    """
-    ancestors = header_ancestors(generated_headers)
-    result: dict[tuple[str, tuple[str, ...], tuple[str, ...]], list[str]] = {}
-    for (language, copts, includes), sources in sorted(groups.items()):
-        for source in sorted(set(sources)):
-            parent = Path(source).parent
-            directories = (
-                [str(parent)]
-                if source in generated_sources or parent in ancestors
-                else []
-            )
-            key = (language, copts, tuple(dict.fromkeys([*includes, *directories])))
-            result.setdefault(key, []).append(source)
-    return [(*key, sources) for key, sources in sorted(result.items())]
 
 
 _SWIFT_VALUE_OPTIONS = {
@@ -1459,297 +1296,6 @@ def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any
     return capture.graph(args.selected_modules)
 
 
-def engine_targets(platform: str) -> list[str]:
-    """The public targets render() declares for a platform's engine."""
-    return (
-        ["engine_library", "libgodot_android.so", "godot"]
-        if platform == "android"
-        else (["engine_library"] if platform == "ios" else ["engine_library", "godot"])
-    )
-
-
-_UNPINNED_REASONS = {
-    "missing": "has no pin for",
-    "stale": "pins other sources, patches, modules, options or rules_godot code for",
-}
-
-
-def render_unpinned(args: argparse.Namespace, status: str, root: Path) -> None:
-    """Write a BUILD file whose engine targets fail with the repin command."""
-    message = args.unpinned_message.format(reason=_UNPINNED_REASONS[status])
-    lines = [
-        f'load("{args.pin_bzl}", "godot_unpinned_recipe")',
-        'package(default_visibility = ["//visibility:public"])',
-        *(
-            f"godot_unpinned_recipe(name = {name!r}, message = {message!r})"
-            for name in engine_targets(args.platform)
-        ),
-    ]
-    (root / "BUILD.bazel").write_text("\n".join(lines) + "\n")
-
-
-def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
-    """Return the loads, package defaults and revision target that open the BUILD file."""
-    lines = [
-        "# Generated from Godot SCons; do not edit.",
-        f'load("{args.cc_repository}//cc:cc_library.bzl", "cc_library")',
-        f'load("{args.cc_repository}//cc:cc_binary.bzl", "cc_binary")',
-        f'load("{args.cc_repository}//cc:objc_library.bzl", "objc_library")',
-    ]
-    if uses_swift:
-        lines.append(
-            f'load("{args.swift_repository}//swift:swift_library.bzl", "swift_library")'
-        )
-    lines += [
-        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_library", "godot_source_binary", "godot_source_revision")',
-        'package(default_visibility = ["//visibility:public"])',
-        'exports_files(["engine_manifest.json"])',
-        f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
-    ]
-    return lines
-
-
-def _generator_rules(
-    root: Path, generators: Sequence[tuple[dict[str, Any], set[str]]]
-) -> tuple[list[str], list[str]]:
-    """
-    Write each generator's specification and return its rules and its generated headers.
-
-    A generator's inputs are its dependencies and the Python files of the source tree.
-    """
-    python_files = sorted(
-        relative(path, root)
-        for path in root.rglob("*.py")
-        if "_scons" not in path.parts and "_bazel_generators" not in path.parts
-    )
-    lines: list[str] = []
-    generated_headers: list[str] = []
-    for index, (spec, dependencies) in enumerate(generators):
-        name = f"_generate_{index:04d}"
-        manifest = f"_bazel_generators/{name}.json"
-        write_json(root / manifest, spec)
-        inputs = {source: source for source in sorted(dependencies | set(python_files))}
-        # A script's SCsub is needed for inspection provenance, but its captured
-        # function is executed alone by tools/engine/generator.py.
-        inputs[spec["code_file"]] = spec["code_file"]
-        attributes = {
-            "name": name,
-            "spec": manifest,
-            "inputs": inputs,
-            "outs": spec["targets"],
-        }
-        lines.append(_multiline_rule("godot_source_generator", attributes))
-        generated_headers.extend(
-            name for name in spec["targets"] if Path(name).suffix not in SOURCE_SUFFIXES
-        )
-    return lines, generated_headers
-
-
-def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:
-    # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm,
-    # and glslang includes SPIR-V's C++11 header spirv.hpp11, which hdrs does not accept.
-    return (
-        'cc_library(\n    name = "_headers",\n    visibility = ["//visibility:private"],\n    hdrs = glob(["**/*.h", "**/*.hh", "**/*.hpp", "**/*.hxx"], exclude = ["_scons/**"], allow_empty = True) + '
-        f"{list(generated_headers)!r},\n"
-        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm", "**/*.hpp11"], exclude = ["_scons/**"], allow_empty = True) + '
-        f"{list(included)!r},\n"
-        '    includes = ["."],\n)'
-    )
-
-
-def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
-    return (
-        rule
-        + "(\n"
-        + "".join(f"    {key} = {value!r},\n" for key, value in attributes.items())
-        + ")"
-    )
-
-
-def _object_rules(
-    groups: Mapping[tuple[str, tuple[str, ...], tuple[str, ...]], Iterable[str]],
-    generators: Sequence[tuple[dict[str, Any], set[str]]],
-    generated_headers: Iterable[str],
-) -> tuple[list[str], list[str]]:
-    """Return the library rule of each object group and the labels of those libraries."""
-    generated_sources = {
-        name
-        for spec, _inputs in generators
-        for name in spec["targets"]
-        if Path(name).suffix in SOURCE_SUFFIXES
-    }
-    lines: list[str] = []
-    labels: list[str] = []
-    for index, (language, copts, includes, sources) in enumerate(
-        object_groups(groups, generated_headers, generated_sources)
-    ):
-        name = f"_objects_{index:04d}"
-        labels.append(":" + name)
-        attributes: dict[str, object] = {
-            "name": name,
-            "visibility": ["//visibility:private"],
-            "srcs": sources,
-            "copts": list(copts),
-            "includes": list(includes),
-            "deps": [":_headers"],
-            "alwayslink": True,
-        }
-        lines.append(
-            _multiline_rule(
-                "objc_library" if language == "objc" else "cc_library", attributes
-            )
-        )
-    return lines, labels
-
-
-def _swift_rule(
-    swift_sources: Iterable[str], swift_options: dict[str, Any] | None
-) -> str:
-    options = swift_options or {
-        "module_name": "godot_swift_module",
-        "bridging_header": "drivers/apple_embedded/bridging_header_apple_embedded.h",
-        "generated_header": None,
-        "copts": ["-swift-version", "6", "-cxx-interoperability-mode=default"],
-    }
-    attributes: dict[str, object] = {
-        "name": "_swift",
-        "visibility": ["//visibility:private"],
-        "srcs": sorted(set(swift_sources)),
-        "module_name": options["module_name"],
-        "copts": options["copts"]
-        + ["-import-objc-header", f"$(location {options['bridging_header']})"],
-        "swiftc_inputs": [options["bridging_header"]],
-        "deps": [":_headers"],
-        "generates_header": bool(options["generated_header"]),
-        "alwayslink": True,
-    }
-    if options["generated_header"]:
-        attributes["generated_header_name"] = Path(options["generated_header"]).name
-    return _multiline_rule("swift_library", attributes)
-
-
-# Upstream's combined static archive cannot carry application framework dependencies;
-# the iOS engine library represents them with Bazel's built-in Objective-C providers.
-_IOS_FRAMEWORKS = [
-    "ARKit",
-    "AVFoundation",
-    "AudioToolbox",
-    "CoreAudio",
-    "CoreGraphics",
-    "CoreHaptics",
-    "CoreMedia",
-    "CoreMotion",
-    "CoreText",
-    "CoreVideo",
-    "Foundation",
-    "GameController",
-    "Metal",
-    "OpenGLES",
-    "QuartzCore",
-    "Security",
-    "SystemConfiguration",
-    "UIKit",
-    "UniformTypeIdentifiers",
-]
-
-
-def _source_rule(
-    args: argparse.Namespace, graph: Mapping[str, Any], name: str, library: str
-) -> str:
-    """Return the rule that publishes a built library with the engine's provenance."""
-    facts = source_build_facts(args)
-    metadata_arguments = ", ".join(f"{key} = {value!r}" for key, value in facts.items())
-    digest = "sha256:" + args.source_sha256 if args.source_sha256 else ""
-    rule = (
-        "godot_source_library"
-        if args.platform in {"android", "ios"}
-        else "godot_source_binary"
-    )
-    renderers = (
-        f", renderers = {args.engine_renderers!r}, declares_renderers = True"
-        if args.renderers
-        else ""
-    )
-    return f"{rule}(name = {name!r}, deps = [{library!r}], version = {graph['version']!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', digest = {digest!r}, customizations = {args.customizations!r}, minimum_os = {graph['minimum_os']!r}, {metadata_arguments}{renderers})"
-
-
-def _engine_rules(
-    args: argparse.Namespace, graph: Mapping[str, Any], dependencies: list[str]
-) -> list[str]:
-    """Return the rules of the platform's engine targets."""
-    # Android's libgodot is a shared library. iOS consumers link engine_library
-    # through rules_apple; cc_binary is the desktop executable/editor.
-    compatibility = target_constraints(args)
-    linkopts = graph["linkopts"]
-    if args.platform == "ios":
-        return [
-            f"objc_library(name = '_engine_library', visibility = ['//visibility:private'], deps = {dependencies!r}, linkopts = {linkopts!r}, sdk_frameworks = {_IOS_FRAMEWORKS!r}, sdk_dylibs = ['c++', 'z', 'iconv'], target_compatible_with = {compatibility!r})",
-            _source_rule(args, graph, "engine_library", ":_engine_library"),
-        ]
-    library = f"cc_library(name = 'engine_library', deps = {dependencies!r}, linkopts = {linkopts!r}, target_compatible_with = {compatibility!r})"
-    if args.platform == "android":
-        return [
-            library,
-            f"cc_binary(name = 'libgodot_android.so', deps = [':engine_library'], linkstatic = True, linkshared = True, target_compatible_with = {compatibility!r})",
-            _source_rule(args, graph, "godot", ":libgodot_android.so"),
-        ]
-    return [
-        library,
-        f"cc_binary(name = '_godot', visibility = ['//visibility:private'], deps = [':engine_library'], linkstatic = True, target_compatible_with = {compatibility!r})",
-        _source_rule(args, graph, "godot", ":_godot"),
-    ]
-
-
-def _manifest(
-    args: argparse.Namespace,
-    graph: Mapping[str, Any],
-    groups: Mapping[tuple[str, tuple[str, ...], tuple[str, ...]], Collection[str]],
-) -> dict[str, Any]:
-    swift_sources = graph["swift_sources"]
-    return {
-        "schema_version": 1,
-        "version": args.version,
-        "platform": args.platform,
-        "cpu": args.cpu,
-        "build_target": args.build_target,
-        "requested_modules": args.modules,
-        "selected_modules": graph["modules"],
-        "object_actions": sum(len(set(sources)) for sources in groups.values())
-        + len(set(swift_sources)),
-        "swift_sources": sorted(set(swift_sources)),
-        "compile_groups": len(groups),
-        "generator_actions": len(graph["generators"]),
-        "scons_options": args.options,
-        "minimum_os": graph["minimum_os"],
-    }
-
-
-def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> None:
-    """Write the BUILD file, generator specifications and manifest of a configured graph."""
-    groups = {
-        (language, tuple(copts), tuple(includes)): sources
-        for language, copts, includes, sources in graph["groups"]
-    }
-    generators = [
-        (generator["spec"], set(generator["dependencies"]))
-        for generator in graph["generators"]
-    ]
-    lines = _header_rules(args, bool(graph["swift_sources"]))
-    generator_rules, generated_headers = _generator_rules(root, generators)
-    lines += generator_rules
-    compiled = [source for _key, sources in groups.items() for source in sources]
-    lines.append(_headers_rule(generated_headers, included_sources(root, compiled)))
-    object_rules, dependencies = _object_rules(groups, generators, generated_headers)
-    lines += object_rules
-    if graph["swift_sources"]:
-        lines.append(_swift_rule(graph["swift_sources"], graph["swift_options"]))
-        dependencies.append(":_swift")
-    lines += _engine_rules(args, graph, dependencies)
-    (root / "BUILD.bazel").write_text("\n\n".join(lines) + "\n")
-    # This file is the successful-capture marker checked after SCons exits.
-    write_json(root / "engine_manifest.json", _manifest(args, graph, groups))
-
-
 PROTECTED_OPTIONS = {
     "platform",
     "arch",
@@ -1868,7 +1414,12 @@ def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]
 
 
 # The files whose behavior a pinned graph depends on: the capture and its translation.
-_PIN_TOOLS = (Path(__file__).resolve(), Path(inspect.getfile(module_closure)).resolve())
+# Rendering a graph, render.py and include_graph.py, changes no pin.
+_PIN_TOOLS = (
+    Path(__file__).resolve(),
+    Path(inspect.getfile(module_closure)).resolve(),
+    Path(inspect.getfile(relative)).resolve(),
+)
 
 # The version of a recipe pin's layout.
 PIN_FORMAT = 1

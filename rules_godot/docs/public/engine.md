@@ -336,7 +336,8 @@ rules_godot code that capture the graph, and of each custom module its `SCsub`,
 `config.py` and shader sources and the paths of its other files. A recipe whose digest no
 longer matches, after such a change or a rules_godot upgrade that changes that code,
 fails with the pin command instead of reconfiguring silently; editing a custom module's
-C++ code keeps its pin. Commit the lock file with the change that requires it.
+C++ code keeps its pin, and so does a rules_godot upgrade that changes only how a graph
+becomes Bazel targets. Commit the lock file with the change that requires it.
 
 ### Android shell libraries
 
@@ -534,10 +535,20 @@ after linking.
 
 ## Cache behavior and limits
 
-Files with identical upstream compile flags share a native library, but each
-translation unit has its own compile action. Bazel's own header dependency
-tracking selects the objects affected by a header change. A GDScript edit does
-not compile engine objects; an engine edit does not re-import unrelated assets.
+Each translation unit is its own native library, named after its source, and
+declares only the files its source can include: the configuration scans the
+`#include`, `#import` and `__has_include` directives of the engine tree,
+transitively and regardless of conditional compilation, together with headers
+that macros or compile options name for computed includes. A header change
+therefore reruns only the compile actions whose sources reach it, also on another
+machine, in a new checkout or on CI, where the remote or disk cache, not Bazel's
+local header dependency tracking, decides; a change to a header that almost every
+source includes, such as `core/object/class_db.h`, still recompiles most of the
+engine. Generated files are scanned by the include directives their generator's
+code writes. A source that reaches a header in a way the scan cannot see, such as
+an include path that a macro assembles, fails to compile in a sandbox or on a
+remote executor. A GDScript edit does not compile engine objects; an engine edit
+does not re-import unrelated assets.
 
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:

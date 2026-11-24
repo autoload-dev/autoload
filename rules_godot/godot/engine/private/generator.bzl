@@ -6,6 +6,7 @@ Generated repositories with consumer-chosen names load it, so its load visibilit
 is public.
 """
 
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
@@ -161,6 +162,37 @@ godot_source_revision = rule(
             providers = [FlagInfo],
         ),
     },
+)
+
+def _headers_impl(ctx):
+    headers = depset(
+        ctx.files.hdrs,
+        transitive = [dep[CcInfo].compilation_context.headers for dep in ctx.attr.deps],
+    )
+    return [CcInfo(compilation_context = cc_common.create_compilation_context(headers = headers))]
+
+godot_source_headers = rule(
+    doc = """
+    Declare files that engine sources include, together with what those files include.
+
+    Each compile action of a source-built engine depends on the headers its source can
+    reach, not on every header of the engine, so a header change reruns only the actions
+    of the sources that include it, also from a remote or disk cache. Files that include
+    each other form one target, since dependencies cannot form cycles.
+    """,
+    implementation = _headers_impl,
+    attrs = {
+        "hdrs": attr.label_list(
+            doc = "Files of the engine tree or generated files that sources include.",
+            allow_files = True,
+            mandatory = True,
+        ),
+        "deps": attr.label_list(
+            doc = "The targets of the files these files include.",
+            providers = [CcInfo],
+        ),
+    },
+    provides = [CcInfo],
 )
 
 GodotEngineVersionInfo = provider(
