@@ -135,8 +135,8 @@ For public Bazel API or documentation-checker changes, use the
 - GitHub Issues stay conceptual unless the user asks otherwise: the goal, the problem and its
   context, without attribute names, rule shapes or implementation steps.
 - Several dependent pull requests of one feature form one `gh stack`; a green,
-  self-contained lower layer may merge alone. Push each branch from its own checkout, which
-  the pre-push hook requires.
+  self-contained lower layer may merge alone. Push each branch while it is checked out with a
+  clean working tree, which the pre-push hook requires.
 - Validate and debug CI changes in a temporary job that runs only what the change needs, and
   remove it afterwards; do not run the whole CI for every attempt.
 - Claude Code only: before every pull request, follow-ups included, run `/simplify` and apply

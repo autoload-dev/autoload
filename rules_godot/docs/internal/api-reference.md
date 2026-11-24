@@ -53,8 +53,8 @@ docstring and the [C++ integration guide](../public/gdextension.md#c-bindings).
 
 Each public symbol identity (API kind plus its defining file and name) has
 exactly one public owner. A second public export fails CI even when it uses a
-different name. API moves update every repository consumer directly without
-retaining previous load paths.
+different name. Breaking changes are fine ([AGENTS.md](../../../AGENTS.md)), so API moves
+update every repository consumer directly without retaining previous load paths.
 
 ## Outputs and generated targets
 
