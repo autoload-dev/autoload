@@ -160,10 +160,19 @@ what is still open. Line references are to `main` as of 2026-11-04.
   [engine action sharing](../../rules_godot/docs/internal/engine-action-sharing.md) note
   measures the potential, compares designs and describes a prototype of a shared tree
   repository with digest-named targets.
-- Candidate first step: render each source with only the include directories its closure
-  uses. A custom-module change then reruns about 19 actions instead of 730 compiles.
-- Open: a shared tree repository when several recipes of one row coexist. It needs
+- Deferred: a shared tree repository when several recipes of one row coexist. It needs
   content-addressed tree names, a rendering argument, and iOS and pinned-recipe coverage.
+  The compiler-based define analysis fixes each source's defines only at execution time,
+  so digest-named tree objects would need that analysis at pin time, with the build-time
+  analysis as a check.
+
+### Patch overlays and per-source Android shells
+
+- Depends on the shared tree above. A recipe with other patches gets another tree and
+  shares nothing, and the Android shell library is built per source build.
+- Open: patched files as content-addressed overlays, like generated files, so a patch does
+  not split the tree; one Android shell library per source and patch list instead of per
+  source build.
 
 ### Configurable deployment targets of engine recipes
 

@@ -24,8 +24,17 @@ Status on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 
 aside for a compiler-based define analysis, in prototype: `clang -E -Wunused-macros` on a
 wrapper main file that defines the macros reports those a source does not read, and a
 per-source forced-include header passes only the rest, so compiles stay `cc_library`
-actions. Splitting each compile into a preprocess and a
-compile action is parked.
+actions.
+
+Decided on 2026-11-24:
+
+- **Preprocess split: not pursued.** Splitting each compile into a preprocess and a
+  compile action (branch `prototype/engine-preprocess-split`, report
+  `rules_godot/docs/internal/engine-preprocess-split.md` on that branch) would, after the
+  define analysis, only save header edits that leave the preprocessed text unchanged. It
+  costs twice the actions and the `.ii` files in the CAS, and supports neither
+  Objective-C nor `-g3`.
+- **Shared tree (option 5): deferred,** with the prototype below kept on its branch.
 
 ## Why two recipes share nothing
 
@@ -191,22 +200,26 @@ What the prototype leaves open:
   files as content-addressed overlays, like generated files, could close this.
 - **Coverage.** Only Android was built. iOS (Objective-C objects in the tree, Swift in the
   recipe), desktop editors and the lock-file workflow were not exercised.
+- **Define sets.** The compiler-based define analysis fixes each source's defines only at
+  execution time, but a digest-named tree object needs them when rendering names it. The
+  analysis would have to run at pin time, with the build-time analysis as a check.
 
 ## Conclusions
 
 - **Narrowing pays first.** Narrowing each compile to what its source really reads makes
   an edit within a recipe rerun only what it changes, without any change to repositories
   or pins: include-directory pruning does this for custom modules (see the paragraph
-  after the equivalence table). The defines are the remaining lever, best measured by the compiler rather
-  than guessed by name.
+  after the equivalence table). The defines are the remaining lever, best measured by the
+  compiler rather than guessed by name.
 - **Narrowing has a floor.** A change to a header that nearly every source reads reruns
   nearly every compile, as the Godot upgrade shows.
-- **Only a shared tree repository (option 5) shares between recipes.** It pays off where
-  several recipes of one row coexist: a module's test and production engines, A/B engine
-  variants, or consumer projects on one remote cache. A complete version needs:
+- **Only a shared tree repository (option 5) shares between recipes** (deferred). It pays
+  off where several recipes of one row coexist: a module's test and production engines,
+  A/B engine variants, or consumer projects on one remote cache. A complete version needs:
   - content-addressed tree names;
   - a rendering argument instead of the environment variable;
-  - coverage of iOS and pinned recipes.
+  - coverage of iOS and pinned recipes;
+  - define sets known at pin time.
 - **Options 1, 2, 3, 4, 6 and 7 share nothing,** or they cost the incremental edits that
   work today.
 
