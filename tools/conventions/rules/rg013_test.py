@@ -21,10 +21,12 @@ class PublicDocumentationLinksTest(RepositoryTest):
             ("rules_godot/docs/public/engine.md", "../internal/architecture.md"),
             ("addons/firebase/README.md", "../../docs/internal/releasing.md"),
             ("rules_godot/README.md", "docs/internal/android-shell.md"),
+            # A page under the root docs/ outside internal/ is public.
+            ("docs/guide.md", "internal/verification.md"),
         ):
             self.write(name, f"Intro\n[Guide]({target})\n")
         findings = list(PublicDocumentationLinks().evaluate(self.context()))
-        self.assertEqual(len(findings), 6)
+        self.assertEqual(len(findings), 7)
         self.assertTrue(all(item.location.line == 2 for item in findings))
         self.assertEqual((self.tools.call_requests, self.tools.rule_requests), (0, 0))
 

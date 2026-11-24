@@ -83,8 +83,8 @@ the presubmit.
 
 ## Supporting a Godot release
 
-The ruleset accepts every Godot release in its [version range](../../rules_godot/docs/public/versions.md),
-so a compatible patch or minor release needs no allowlist entry. When a release needs
+A compatible release in the [version range](../../rules_godot/docs/public/versions.md) needs
+no change. When a release needs
 special handling, scope it to the affected feature or version range, not to one branch per
 patch release. A digest update is an acquisition change. An API-baseline update is a separate
 change with its own native rebuild cost.

@@ -213,11 +213,9 @@ Wayland, whose code generators are shell commands; Android recipes configure wit
 host's SDK, since Bazel's NDK toolchain compiles them.
 
 `renderers` names Godot's rendering methods the engine runs: `gl_compatibility`, `mobile`
-and `forward_plus`. The recipe derives the drivers from them, so `build_options` may not
-set `opengl3`, `metal` or `vulkan` too. Without `renderers`, a recipe keeps Godot's drivers
-and its `build_options`, and nothing is checked. The example keeps the Compatibility
-renderer, so the project's rendering method must be `gl_compatibility`; [choose the
-renderers](engine-size.md#2-choose-the-renderers) has the driver rules and the check.
+and `forward_plus`. The example keeps the Compatibility renderer, so the project's rendering
+method must be `gl_compatibility`; [choose the renderers](engine-size.md#2-choose-the-renderers)
+has the driver rules and the check.
 
 The module list is an allowlist, as [choose the modules](engine-size.md#1-choose-the-modules)
 explains. `default_modules = True` starts from the modules Godot enables by default for the
@@ -470,9 +468,8 @@ GCC 12; `full` takes the longest to link.
 functions nothing calls. It compiles the engine with Clang's `-fvisibility=hidden
 -fwhole-program-vtables -fvirtual-function-elimination` and Godot's `TYPED_METHOD_BIND`;
 the link needs nothing beyond `-flto`. It needs `engine_lto=full` and Clang: under `-c opt`,
-any other `engine_lto` fails the build. The setting is off by default, because it makes
-native engines larger; [make the engine small](engine-size.md#5-optimize-for-size) has the
-sizes and the requirements.
+any other `engine_lto` fails the build. The setting is off by default;
+[make the engine small](engine-size.md#5-optimize-for-size) explains why.
 
 The settings apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
 their level wins over the toolchain's and the command line's there, while extensions and
