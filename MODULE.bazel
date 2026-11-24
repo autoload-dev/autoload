@@ -29,9 +29,15 @@ python_config.explicit_init_py(default = True)
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
 # --config=buildbuddy selects (buildbuddy.bazelrc); inert without it.
-bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+# Only where this module is the root: the extension refuses to run without the root using it,
+# and the modules that load this one's linters (`aspect lint`) choose their own.
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
 
-buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
 buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
 
 # The prebuilt tools the repository's tasks run, pinned by URL and checksum per platform:

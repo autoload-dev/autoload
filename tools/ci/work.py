@@ -22,7 +22,7 @@ from typing import NamedTuple
 
 from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
-from tools.setup.modules import RULESET, RULESET_DOCS
+from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
 
 LANES = ("quality", "docs", "desktop", "source-engine", "android", "ios")
 # The lanes that need a machine of their own, each with API contract cases: contracts:<lane>.
@@ -87,6 +87,21 @@ DOCS_CHECK = "bazel run //tools/docs:check"
 PETRI_TESTS = example_tests("petri", "projects", config="petri")
 
 
+def every_module(command: str, root: Path = ROOT) -> tuple[In, ...]:
+    """A command for each module of the checkout, as the setup checks discover them."""
+    return tuple(In(module, command) for module in module_paths(root))
+
+
+# A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
+# main repository's sources; the query spares `aspect lint` analysing every other target,
+# such as the Android and iOS applications. Targets incompatible with this host are skipped.
+LINT_COMMAND = (
+    "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
+    ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
+    " --skip_incompatible_explicit_targets; }"
+)
+
+
 def contracts_command(lane: str) -> str:
     """The command that checks the API output contract cases of a lane."""
     return f"bazel run //tools/docs:contracts -- --lane {lane}"
@@ -149,13 +164,8 @@ def apps(packages: Iterable[str], symbols: bool = False) -> str:
 WORK = (
     # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
-    # The lint aspects of the modules with Python tools; the workflows' lint is a test.
-    Work(
-        "lint",
-        "quality",
-        ".",
-        tuple(In(module, "aspect lint //...") for module in (".", RULESET_DIR, DOCS)),
-    ),
+    # The lint aspects in every module; the workflows' lint is a test.
+    Work("lint", "quality", ".", every_module(LINT_COMMAND)),
     # The setup action's shutdown of Bazel, which runs no Bazel itself.
     Work(
         "test:actions",

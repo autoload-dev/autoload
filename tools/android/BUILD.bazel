@@ -1,9 +1,16 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 py_library(
     name = "android",
     srcs = ["sdk.py"],
     data = ["sdk.json"],
+)
+
+# The Java Bazel builds with, for the Android SDK's tools; work.py and sdk.py run it as a script.
+py_binary(
+    name = "java",
+    srcs = ["java.py"],
+    tags = ["manual"],
 )
 
 py_library(
