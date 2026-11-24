@@ -19,7 +19,7 @@ be versioned with others, such as products that share one SDK.
 
 # Module layout
 
-The conventions check enforces it (RG015, [conventions.md](../rules_godot/docs/public/conventions.md)):
+The conventions check enforces it (RG015, [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and `examples/.bazelrc` imports
@@ -77,7 +77,8 @@ an `ios_app_test` of the app (`rules_godot/tests/AGENTS.md`, "Artifact test rule
 the module or its examples need no registration. Tests that need more than the module's own
 dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
 what they use; the release archive leaves them out with the examples. CI runs every module's
-lanes on every run; `aspect work <lane>:addon-template` checks the template the same way.
+[lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
+`aspect work <lane>:addon-template` checks the template the same way.
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
 `examples/signing/`, install with `xcrun devicectl` and check the log for crashes.

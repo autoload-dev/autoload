@@ -16,13 +16,10 @@ def main() -> int:
     parser.add_argument(
         "--rule", action="append", help="Run only this rule ID; repeatable"
     )
-    parser.add_argument(
-        "--exclude-rule", action="append", help="Exclude this rule ID; repeatable"
-    )
     parser.add_argument("--list-rules", action="store_true")
     args = parser.parse_args()
     try:
-        rules = select(args.rule, args.exclude_rule)
+        rules = select(args.rule)
         if args.list_rules:
             for rule in rules:
                 print(f"{rule.info.id}: {rule.info.title} ({rule.info.documentation})")

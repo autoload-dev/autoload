@@ -2,8 +2,7 @@
 
 This independent Bazel module, `rules_godot_tests`, holds the ruleset's regression
 projects and builds them as a consumer builds: through its own `MODULE.bazel`, with public
-`@autoload_rules_godot` labels only. This page describes the module as it exists. Where a new test
-goes, and what this module will contain, is owned by the
+`@autoload_rules_godot` labels only. Where a new test goes is owned by the
 [verification architecture](../../docs/internal/verification-architecture.md).
 
 ## Layout

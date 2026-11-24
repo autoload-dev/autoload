@@ -25,7 +25,7 @@ final script = Script(Spinner.new);
    From the repository root, enter the examples module:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/dart/demo:run
    ```
 
@@ -127,9 +127,8 @@ code calls Godot through.
 
 ## Limits
 
-- The extension runs on macOS and Linux. Android needs the snapshot and runtime built for
-  it, which is untried; iOS forbids loading a snapshot as a library and would need it
-  linked into the application.
+- The extension runs on macOS and Linux. It has no Android or iOS build; iOS also forbids
+  loading a snapshot as a library.
 - The editor shows Dart scripts as placeholders, as it does any script that is not a tool
   script, and offers no completion, errors or debugging; the build compiles the scripts and
   reports their errors. A script change takes effect after the next build.
@@ -137,7 +136,7 @@ code calls Godot through.
 
 ## Develop and package
 
-Run from `examples/`:
+Run from `rules_godot/examples/`:
 
 ```sh
 bazel run //addons/dart/demo:edit

@@ -1,28 +1,26 @@
 # rules_godot examples
 
-This standalone Bazel module shows how to consume rules_godot through its public
-rules. The [SQLite add-on](addons/sqlite/README.md) builds the SQLite C library
-and exposes parameterized in-memory queries to GDScript. Its `demo/` project includes
-an editor view and application targets for Linux, macOS, Android and iOS;
-`tests/` owns the add-on's Godot test project, with `unit/` for deterministic API
-suites and `integration/` for operating-system behavior suites where needed. Both add-ons
-keep demo application content under `main/` and Godot suites/fixtures in the test project.
+This standalone Bazel module shows how to consume rules_godot through its public rules.
+[Project layout](../docs/public/project-layout.md) explains how its add-ons, demos and
+tests are organized.
 
-[Platform Paths](addons/platform_paths/README.md) demonstrates operating-system storage APIs
-behind a common typed extension API on macOS, Linux, iOS and Android. Run
-`bazel run //addons/platform_paths/demo:run` to inspect the five directory categories.
+Add-ons, each with a `demo/` project and a `tests/` project:
 
-[Dart scripts](addons/dart/README.md) adds Dart as a script language: `.dart` files attach to
-nodes as GDScript files do, compiled ahead of time into the project's extension with an
-embedded Dart VM built from source. Run `bazel run //addons/dart/demo:run` to see three Dart
-scripts at work.
+- [AppAuth](addons/app_auth/README.md) logs a player in with OpenID Connect through the
+  AppAuth SDKs on Android, iOS and macOS.
+- [Dart scripts](addons/dart/README.md) adds Dart as a script language, compiled ahead of
+  time into the project's extension with an embedded Dart VM built from source.
+- [Platform Paths](addons/platform_paths/README.md) exposes operating-system storage
+  locations through one typed API on macOS, Linux, iOS and Android.
+- [SQLite](addons/sqlite/README.md) builds the SQLite C library and exposes parameterized
+  in-memory queries to GDScript.
 
-[Lichtpost](projects/lichtpost/README.md) is a one-button courier game; from this directory,
-`bazel run //projects/lichtpost:run` opens it for play.
+Projects:
 
-[Petri](projects/petri/README.md) grows reaction-diffusion cultures in a petri dish with a
-source-built engine and its own C++ module; `bazel run //projects/petri:run --config=petri`
-opens it.
+- [Lichtpost](projects/lichtpost/README.md) is a one-button courier game with tests, an
+  editor view and application packaging.
+- [Petri](projects/petri/README.md) grows reaction-diffusion cultures with a source-built
+  engine and its own C++ module.
 
 ## Getting started
 
@@ -31,16 +29,15 @@ opens it.
 2. From the repository root, run:
 
    ```sh
-   cd examples
+   cd rules_godot/examples
    bazel run //addons/sqlite/demo:run
    ```
 
    The window shows **SQLite says: Hello from SQLite**.
 
-Follow the add-on README for its API and tests, the
-[project layout guide](../docs/public/project-layout.md) for its complete development
-cycle, and the [platform guide](../docs/public/platforms.md) for Android/iOS SDK setup,
-source-built engines and release artifacts.
+Follow the add-on README for its API and tests and the
+[platform guide](../docs/public/platforms.md) for Android/iOS SDK setup, source-built
+engines and release artifacts.
 
 ## Working on an example
 

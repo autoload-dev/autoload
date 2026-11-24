@@ -34,7 +34,7 @@ class FrameworkTest(RepositoryTest):
         self.assertEqual(1, len(report.not_checked))
         self.assertEqual("RG999", report.violations[0].rule.id)
         self.assertEqual(
-            "BUILD.bazel:2: RG999: a violation (rules_godot/docs/public/conventions.md#rg999)",
+            "BUILD.bazel:2: RG999: a violation (docs/internal/conventions.md#rg999)",
             str(report.violations[0]),
         )
         self.assertIn("RG999 not checked", str(report.not_checked[0]))
@@ -78,16 +78,6 @@ class FrameworkTest(RepositoryTest):
             run(self.context(), (AdditionalRule(), AdditionalRule()))
         with self.assertRaisesRegex(ValueError, "Unknown convention rule IDs"):
             select(["RG999"])
-        with self.assertRaisesRegex(ValueError, "Unknown convention rule IDs"):
-            select(exclude=["RG999"])
-
-    def test_complementary_selection_checks_every_rule_once(self) -> None:
-        selected = ["RG004", "RG006", "RG013"]
-        included = {rule.info.id for rule in select(selected)}
-        excluded = {rule.info.id for rule in select(exclude=selected)}
-        self.assertFalse(included & excluded)
-        self.assertEqual(included | excluded, {rule.info.id for rule in select()})
-        self.assertEqual(select(["RG004"], ["RG004"]), ())
 
 
 if __name__ == "__main__":

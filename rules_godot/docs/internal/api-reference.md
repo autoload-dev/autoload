@@ -86,7 +86,7 @@ independently named repository datasets and toolchains separately from companion
 main target. Neither an output group per provider field nor a synthetic main target for an entire
 repository is required. Check actual visibility as well as documented support.
 
-Additional macro target names follow [RG002](../public/conventions.md#rg002): `<name>.<role>`.
+Additional macro target names follow [RG002](../../../docs/internal/conventions.md#rg002): `<name>.<role>`.
 The convention, including slash-suffixed rules_android basenames, is owned there. A dotted name does
 not grant public visibility, and output-group keys and artifact filenames do not inherit
 the target separator. Document only the supported public companion targets as consumer interfaces.
@@ -142,10 +142,9 @@ unsupported API kinds cannot silently escape required coverage.
 ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
 checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
 lane's work `contracts:<lane>`. It builds the extraction in the documentation module and
-evaluates the fixtures in the ruleset's module or in the consumer module a case names; the
-verification selector runs
-them in their lane when rules, contract sources, fixtures or the checker change.
-Missing evidence of a selected lane remains pending; a host documentation pass cannot replace it.
+evaluates the fixtures in the ruleset's module or in the consumer module a case names. Each
+lane's CI job runs its cases ([lanes](../../../docs/internal/verification-platforms.md#lanes-and-execution)),
+and a host documentation pass cannot replace them.
 
 Update source docs, inventories and consumers together when a public interface changes. Review actual behavior and the necessity of each companion target
 separately: a resolvable test and a structurally valid justification do not establish that
@@ -162,8 +161,6 @@ specific to this repository.
 
 ## Documentation contracts
 
-The [verification policy](../../../docs/internal/verification.md) owns execution timing;
-[verification lanes](../../../docs/internal/verification-platforms.md) own the lanes.
 The documentation checker covers complete module and public target inventories, evaluated
 API descriptions, primary ownership and internal boundaries. New modules must be explicitly classified in `modules.bzl`, including
 private support files.
@@ -197,9 +194,8 @@ not on PATH.
 `bazel build //public/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
 for the public primary symbols. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
-The release script (`.github/workflows/release_prep.sh`) packs exactly these files into
-`rules_godot-<tag>.docs.tar.gz`, which `docs_url` in `.bcr/rules_godot/source.template.json` names and
-the registry renders; see [Releasing](../../../docs/internal/releasing.md).
+The release script packs exactly these files into the documentation archive that the registry
+renders, as [Releasing](../../../docs/internal/releasing.md) describes.
 
 Do not collect every `starlark_doc_extract` output into an archive: unfiltered
 inventories and intentionally invalid test fixtures have different purposes.

@@ -12,10 +12,9 @@ For research, state version/source scope, established findings, inference and op
 Preserve necessary experiment recipes and conclusions; temporary log paths are optional
 provenance, never the only evidence. Preserve snapshot dates rather than implying a new audit.
 
-When changing capability goals, scope or coverage, read
-[maintaining capability references](../../rules_godot/docs/internal/capabilities.md#maintaining-capability-references).
-That section owns the distinction between desired outcomes, observed workflows and open
-candidates; ordinary maintenance recipes do not require reading the full capability matrix.
+When support changes, update the capability matrix as
+[maintaining capability references](../../rules_godot/docs/internal/capabilities.md#maintaining-capability-references)
+describes.
 
 Link to owning code and public support guides where useful. Ruleset fixture commands and
 setup instructions belong in the relevant [verification recipe](verification-recipes.md);

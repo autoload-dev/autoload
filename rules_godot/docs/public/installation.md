@@ -48,10 +48,11 @@ git_override(
 ```
 
 An `archive_override` with an integrity digest works as well. To work on rules_godot beside
-your project, use a local checkout:
+your project, use a local checkout of the repository; the module is its `rules_godot/`
+directory:
 
 ```starlark
-local_path_override(module_name = "autoload_rules_godot", path = "../rules_godot")
+local_path_override(module_name = "autoload_rules_godot", path = "../autoload/rules_godot")
 ```
 
 ## Bazel options
@@ -76,13 +77,3 @@ for each. Bazel's path mapping shares these actions through a disk or remote cac
 sandboxed or remote execution: with `--spawn_strategy=local` these actions fail to find a
 strategy. The pattern keeps it to the actions rules_godot opts in; other rules' mnemonics
 you want mapped, such as rules_android's `DexBuilder` and `Desugar`, join the list.
-
-## Editor views
-
-`bazel run` of a `godot_editor` target opens the project in the Godot editor, and what you
-save there changes your checkout. Add this line to your `.bazelignore` before the first
-editor view:
-
-```text
-.godot-editor
-```

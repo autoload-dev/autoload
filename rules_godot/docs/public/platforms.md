@@ -360,7 +360,7 @@ Bazel unless `JAVA_HOME` is set). From the repository root:
 
 ```sh
 aspect work android:setup
-cd examples
+cd rules_godot/examples
 aspect exec -- bazel build //addons/sqlite/demo:app --config=android
 ```
 
@@ -479,7 +479,7 @@ Select the same app with `--@autoload_rules_godot//godot:android_format=aab`; th
 The delivered AAB is unsigned and contains no alternate delivery APK. Sign the AAB outside Bazel before upload.
 Changing only format reuses content export and native compilation.
 
-From `examples`, with the Android SDK configured:
+From `rules_godot/examples`, with the Android SDK configured:
 
 ```sh
 bazel build //addons/sqlite/demo:app --config=android
@@ -522,12 +522,12 @@ Use macOS with Xcode selected and an installed iOS SDK. The standalone
 export platform and application setup. From the repository root:
 
 ```sh
-cd examples
+cd rules_godot/examples
 bazel build //addons/sqlite/demo:app --config=official
 ```
 
 `official` selects x86_64 Simulator, the CPU of the official templates' Simulator
-libraries; see [template CPU limits](#template-cpu-limits). Select the
+libraries; see [prebuilt engines](engine.md#use-a-prebuilt-engine). Select the
 export platform for the runtime you supply; it configures compiler CPU flags
 and the iOS environment together. A device build needs `ios_arm64`, a matching runtime,
 provisioning and signing configuration through `rules_apple`.
@@ -566,17 +566,16 @@ Extensions use [embedded dynamic frameworks](gdextension.md#ios-frameworks), whi
 ### Source-built engines
 
 A catalogued prebuilt engine builds the ARM64 Simulator runtimes the official templates
-lack from the release's sources ([prebuilt engines](engine.md#use-a-prebuilt-engine)): the
-first arm64 Simulator build on a Mac compiles the engine once, and Bazel's cache keeps it.
+lack from the release's sources; [prebuilt engines](engine.md#use-a-prebuilt-engine) has the
+details and limits.
 To use other modules, patches or options, register a [source build](engine.md#declare-a-source-build) with
 `platforms = ["ios"]` and `ios_environments = ["simulator"]` ahead of the
 prebuilt engine, or a `godot_runtime_component` of a prebuilt arm64 Simulator engine
 library, such as one of [godot-ios-builds](https://github.com/godot-mobile-plugins/godot-ios-builds).
 
-A source-built iOS engine library compiles for the deployment target Godot's own build
-sets, 14.0, whatever `ios_minimum_os_version` the applications linking it declare, so one
-build of the library serves them all; an application's minimum applies to its bundle and
-its extension libraries and may not fall below that target.
+A source-built iOS engine library compiles for one
+[deployment target](engine.md#build-an-engine-from-source), whatever
+`ios_minimum_os_version` the applications linking it declare.
 Then select the export platform:
 
 ```sh
@@ -613,21 +612,10 @@ Statically linked iOS extension libraries follow the
 the executable, while their descriptors remain in the PCK. A prebuilt static XCFramework follows the
 [GDExtension setup](gdextension.md#ios-static-linking).
 
-### Template CPU limits
-
-The official Simulator Godot libraries contain x86_64 objects, although the
-**4.7.2** XCFramework metadata advertises an ARM64 slice. In 4.8-beta1, the required
-AccessKit library contains ARM64 objects, so those Simulator libraries cannot link
-together at all. A Simulator build with a missing slice fails validation, naming each
-library and the slices it has. A prebuilt engine therefore builds its ARM64 Simulator
-runtimes from source ([source-built engines](#source-built-engines)). The 4.8-beta1
-sources do not bundle the AccessKit SDK, so its source-built Simulator runtimes have no
-screen reader support; device builds keep the official template's.
-
 ## Version and build number
 
 A release pipeline sets the version and build number on the command line,
-without editing BUILD files. For the Android example, from `examples`:
+without editing BUILD files. For the Android example, from `rules_godot/examples`:
 
 ```sh
 bazel build //addons/sqlite/demo:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
@@ -711,7 +699,7 @@ since App Bundles do not embed it.
 On Android, add `--copt=-fdebug-compilation-dir=.` so the NDK does not record
 the sandbox directory in debug information and make compilation bytes differ.
 The `android-release` and `ios-release` configurations in the examples'
-linked `.bazelrc` provide these flags. From `examples`:
+linked `.bazelrc` provide these flags. From `rules_godot/examples`:
 
 ```sh
 bazel build //addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols --config=android-release --config=aab
@@ -1032,7 +1020,7 @@ mix of both kinds.
 
 ## Inspect the result
 
-Build the SQLite APK and Simulator IPA from `examples`:
+Build the SQLite APK and Simulator IPA from `rules_godot/examples`:
 
 ```sh
 bazel build //addons/sqlite/demo:app --config=android

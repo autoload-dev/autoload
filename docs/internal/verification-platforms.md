@@ -43,9 +43,8 @@ Do not multiply every test across all dimensions.
 
 Linux ARM64 and macOS Intel acquisition support does not imply dedicated CI execution for
 every editor platform. Windows hosts, Windows and Web applications and .NET/C# have no routine
-verification commitment here. The capability catalogue's open questions are not implied
-test obligations. There is no default mobile GdUnit/device automation or visual/manual
-desktop gameplay gate.
+verification commitment here. There is no default mobile GdUnit/device automation or
+visual/manual desktop gameplay gate.
 
 Engine compatibility uses the pinned stable release and pinned next-minor preview, not every
 accepted patch/minor version. Engine acquisition/configuration changes require the relevant
@@ -55,27 +54,21 @@ all source suites in every release configuration.
 
 ## Lanes and execution
 
-CI runs every lane on every run: pull requests, the merge queue and a manual dispatch. Bazel's
-caches keep unchanged work cheap; a run in which every lane found its work cached took 2.5
-minutes with the Android job as its longest (November 2026), which no path selection would
-save. The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's
-own, each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
-self-test in every lane. Each job of [CI](../../.github/workflows/ci.yml)'s lane matrix runs
-one lane on its host with `python3 -m tools.ci.work lane <lane>`, which leaves out add-on work
-whose `addon.pkl` excludes the host, and `Finalize` fails when any job failed or was cancelled.
+CI runs every lane on every run: pull requests, the merge queue and a manual dispatch.
+Bazel's caches keep unchanged work cheap. The lanes' work lives in
+[`tools/ci/work.py`](../../tools/ci/work.py): the repository's own, each add-on module's
+lanes as its `addon.pkl` names them and the add-on generator's self-test in each add-on lane.
+Each job of [CI](../../.github/workflows/ci.yml)'s lane matrix runs one lane on its host with
+`aspect lane <lane>`, which leaves out add-on work whose `addon.pkl` excludes the host, and
+`Finalize` fails when any job failed or was cancelled.
 The matrix fails fast: the first job to fail cancels the others, so they free their runners
 and `Finalize` fails at once, which in the merge queue removes the entry without waiting for
 the slowest lane; the work they finished stays in Bazel's caches.
 
 Locally, `aspect lane <lane>` runs a whole lane on this host, `aspect work <name>...` single
 pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation
-shows that command instead. `aspect pre-push` runs the checks that need no lane machine:
-format, lint, generated files, the conventions, setup contracts, the fast tests, the API
-documentation with its contract cases and the repository tooling's tests. Of lint, the
-generated files and the API documentation, it runs only the steps whose inputs changed since
-the merge base with `origin/main`, and names those it skips; a change to the verification
-tooling runs them all (`tools/ci/changes.py`). CI's lanes run everything. The pre-push hook
-`aspect bootstrap` installs runs it.
+shows that command instead. The pre-push hook runs the checks that need no lane machine, as
+the [verification policy](verification.md#when-to-verify) describes.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
@@ -83,12 +76,9 @@ as `test:example:sqlite`, uses `--build_tests_only` over its example subtree, so
 targets are discovered automatically without building unrelated app targets. Bazel still
 respects manual tags and platform compatibility.
 
-Each add-on module runs the same generic commands, `python3 -m tools.addons.lanes <lane>
-<module>`, from the module's `examples/`, in the lanes its `addon.pkl` names, as the work
-`<lane>:addon:<module>`. Their iOS work follows the Apple-lane policy below.
-
-Lane suites run in CI at the PR boundary. Run a focused local regression when it provides
-useful immediate feedback, without duplicating the whole CI suite.
+Each add-on module runs the same generic work in the lanes its `addon.pkl` names, as the
+work `<lane>:addon:<module>`; [add-on guidance](../../addons/AGENTS.md#lanes) has the
+commands. Their iOS work follows the Apple-lane policy below.
 
 ### Source engine workflow
 
@@ -98,7 +88,7 @@ commit, so CI has no job for it. The
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which `aspect pre-push` runs too, analyses each pinned source build's
+`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned source build's
 toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
@@ -125,5 +115,3 @@ checks show on the commit and a push to main runs no CI. The merge queue also sa
 caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
 group's entries.
-
-Each workflow keeps job identities and a final result even when unrelated lanes are skipped.
