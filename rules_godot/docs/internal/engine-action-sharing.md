@@ -13,13 +13,18 @@ arm64 `template_release`, 731 engine compiles. Engine compile counts leave out 5
 exec-configuration compiles of tools such as zlib, which every recipe shares already;
 Bazel's process summaries include them.
 
-Changes that narrow each compile's inputs, as the tables below name them:
+Changes that narrow each compile's inputs:
 
-- the per-source include closures (autoload-dev/autoload#81, merged);
-- the scoped build profile (#82, merged);
-- the per-source feature macros (#83): a scan for `*_ENABLED` and `*_DISABLED` names,
-  measured here but set aside for a compiler-based define analysis;
-- include-directory pruning (#85, merged after the snapshot).
+- the per-source include closures (autoload-dev/autoload#81);
+- the scoped build profile (#82);
+- the per-source feature macros (#83), a scan for `*_ENABLED` and `*_DISABLED` names;
+- include-directory pruning (#85).
+
+Status on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 was set
+aside for a compiler-based define analysis, in prototype: `clang -E -Wunused-macros` finds
+the defines each source reads, and a per-source forced-include header passes only those,
+so compiles stay `cc_library` actions. Splitting each compile into a preprocess and a
+compile action is parked.
 
 ## Why two recipes share nothing
 
@@ -86,25 +91,21 @@ The equal compiles are mostly third-party code and Godot sources whose closure n
 reads `DEBUG_ENABLED`. `TOOLS_ENABLED` and `DEBUG_ENABLED` change core headers, so the
 rest is genuinely different work. Between editor and templates, `NO_EDITOR_SPLASH` and
 `GDSCRIPT_NO_LSP` alone hide the 296 compiles that do not reach `TOOLS_ENABLED`.
-Both are Godot feature macros that the name-based scan of #83 misses, because their names
-do not end in `_ENABLED` or `_DISABLED`; an analysis that asks the compiler which macros a
-source reads sees them. Sharing across build targets also needs a shared tree that spans a
+The name-based scan of #83 misses both, because their names do not end in `_ENABLED` or
+`_DISABLED`; the compiler-based define analysis would see them. Sharing across build targets also needs a shared tree that spans a
 recipe's build targets: the prototype groups by row.
 
-A Godot upgrade within one recipe keeps every path, so the cache reuses whatever kept its
-content and closure. Switching `godot_source_build_android` from 4.7.2-stable to the 4.7.3
-snapshot (87 upstream commits, 120 files) on current `main` (closures, scoped profile and
-include-directory pruning, no feature macros) gave, after `bazel clean`:
+### Within one recipe: a Godot upgrade
 
-| Recipe change | Engine compiles | Hits | Remote | Why the remote ones reran |
-|---|---:|---:|---:|---|
-| Godot 4.7.2-stable to the 4.7.3 snapshot | 682 | 105 | 577 | 23 changed sources, 553 changed included headers, 1 changed version header |
-
-The hits are 93 third-party sources and 12 Godot sources. Two core headers that almost
-every Godot source includes changed: `core/templates/hashfuncs.h` (one added
-specialization, in 551 closures) and `core/templates/safe_refcount.h` (`constexpr`
-constructors, in 549). A patch release that touches such a header recompiles nearly all
-of Godot; per-source narrowing cannot avoid that, because the header is really read.
+An upgrade that keeps the recipe name keeps every path, so the cache reuses each compile
+whose source and closure kept their content. On `main` with #85 (no feature macros), the
+Android recipe `godot_source_build_android` moved from 4.7.2-stable to the 4.7.3 snapshot:
+87 upstream commits, 120 files. Of its 682 engine compiles, 105 hit the cache after
+`bazel clean`, 93 of them third-party. The other 577 reran: 23 changed sources, 553
+sources with a changed header in their closure, and 1 source whose only change is the
+generated version header. Two changed core headers account for nearly all of the 553:
+`core/templates/hashfuncs.h` and `core/templates/safe_refcount.h`, each in about 550
+closures.
 
 ## Options
 
@@ -191,13 +192,13 @@ What the prototype leaves open:
 
 ## Conclusions
 
-- **Narrowing pays first.** Include-directory pruning (#85, merged) turns a custom-module
-  change from 730 recompiles into about 19 actions within a recipe, without any change to
-  repositories or pins. The remaining narrowing lever is the defines: instead of #83's
-  name-based scan, a compiler-based analysis (`clang -E -Wunused-macros`) is being
-  prototyped that gives each source a forced-include header with only the defines it
-  uses, so compiles stay `cc_library` actions. Splitting each compile into a preprocess
-  and a compile action is parked.
+- **Narrowing pays first.** Narrowing each compile to what its source really reads makes
+  an edit within a recipe rerun only what it changes, without any change to repositories
+  or pins: include-directory pruning does this for custom modules (see the custom-module
+  row above). The defines are the remaining lever, best measured by the compiler rather
+  than guessed by name.
+- **Narrowing has a floor.** A change to a header that nearly every source reads reruns
+  nearly every compile, as the Godot upgrade shows.
 - **Only a shared tree repository (option 5) shares between recipes.** It pays off where
   several recipes of one row coexist: a module's test and production engines, A/B engine
   variants, or consumer projects on one remote cache. A complete version needs:
@@ -224,6 +225,7 @@ What the prototype leaves open:
    - key each compile by argv, environment, and the (path, digest) of each input;
    - take a generated input's digest from its file in the execution root's `bazel-out`.
 3. **Cache hits.** Build the base recipe, then each variant after `bazel clean`, and read
-   `N remote` and `N disk cache hit` from Bazel's process summary. For engine compiles
-   alone, count the `CppCompile` entries of `--execution_log_json_file` by `cacheHit`. See
+   `N remote` and `N disk cache hit` from Bazel's process summary. To count only engine
+   compiles, pass `--execution_log_json_file` to the same build and count its
+   `CppCompile` entries by `cacheHit`. See
    [remote execution with BuildBuddy](../../../docs/internal/verification-recipes.md#remote-execution-with-buildbuddy).
