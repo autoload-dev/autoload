@@ -9,6 +9,7 @@ definitions, so its cache key changes only when the preprocessed text does.
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 visibility("public")
@@ -77,6 +78,11 @@ def _preprocessed_object_impl(ctx):
     )
     compiler_files = toolchain.all_files
 
+    # cc_library applies Bourne shell tokenization to copts; do the same.
+    copts = []
+    for copt in ctx.attr.copts:
+        cc_helper.tokenize(copts, copt)
+
     tool, arguments, env = _command(
         ctx,
         toolchain,
@@ -84,7 +90,7 @@ def _preprocessed_object_impl(ctx):
         action,
         source,
         preprocessed,
-        ctx.attr.copts + ["-E"],
+        copts + ["-E"],
         context,
         ctx.attr.local_defines,
     )
@@ -98,7 +104,7 @@ def _preprocessed_object_impl(ctx):
         progress_message = "Preprocessing " + source.short_path,
     )
 
-    flags = [flag for flag in ctx.attr.copts if not flag.startswith(_PREPROCESSOR_PREFIXES)]
+    flags = [flag for flag in copts if not flag.startswith(_PREPROCESSOR_PREFIXES)]
     tool, arguments, env = _command(ctx, toolchain, features, action, preprocessed, obj, flags)
     ctx.actions.run(
         executable = tool,
@@ -123,7 +129,7 @@ def _preprocessed_object_impl(ctx):
     return [
         DefaultInfo(files = depset([obj])),
         CcInfo(linking_context = linking_context),
-        OutputGroupInfo(preprocessed = depset([preprocessed])),
+        OutputGroupInfo(compilation_outputs = depset([obj]), preprocessed = depset([preprocessed])),
     ]
 
 godot_preprocessed_object = rule(
