@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from . import build_profile
     from .include_graph import CompileGroup, Generated, components, include_graph
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
+    import build_profile
     from include_graph import CompileGroup, Generated, components, include_graph
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
@@ -257,12 +259,14 @@ def _object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
     targets: Mapping[str, str],
+    profile_users: Container[str] = (),
 ) -> tuple[list[str], list[str]]:
     """
     Return a library rule per source and the labels of those libraries.
 
     A library is named after its source, so its object keeps its path, and its cache key,
-    when other compile groups of the engine change.
+    when other compile groups of the engine change. Sources that register classes see
+    the build profile.
     """
     lines: list[str] = []
     labels: list[str] = []
@@ -276,10 +280,15 @@ def _object_rules(
             names.add(name)
             labels.append(":" + name)
             deps = _source_deps(graph, targets, source)
+            defines = (
+                f"local_defines = [{build_profile.DEFINE!r}], "
+                if source in profile_users
+                else ""
+            )
             lines.append(
                 f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
                 f"srcs = [{source!r}], copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
-                f"deps = {deps!r}, alwayslink = True)"
+                f"{defines}deps = {deps!r}, alwayslink = True)"
             )
     return lines, labels
 
@@ -408,6 +417,29 @@ def _manifest(
     }
 
 
+def _includes(
+    root: Path,
+    compiled: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
+    generated: Mapping[str, Generated],
+    extra_roots: Sequence[str],
+) -> tuple[Mapping[str, Collection[str]], set[str]]:
+    """Return what each file includes, and the sources that see the build profile."""
+    scoped = build_profile.scope(root)
+    includes = include_graph(
+        root,
+        (
+            CompileGroup(sources, directories, copts)
+            for _, copts, directories, sources in compiled
+        ),
+        generated,
+        extra_roots,
+    )
+    if not scoped:
+        return includes, set()
+    sources = [source for *_, group in compiled for source in group]
+    return build_profile.declare(root, includes, generated, sources)
+
+
 def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> None:
     """Write the BUILD file, generator specifications and manifest of a configured graph."""
     groups = {
@@ -425,18 +457,10 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     compiled = object_groups(groups, generated_headers, generated)
     swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
     swift_roots = [swift_options["bridging_header"]] if graph["swift_sources"] else []
-    includes = include_graph(
-        root,
-        (
-            CompileGroup(sources, includes, copts)
-            for _, copts, includes, sources in compiled
-        ),
-        generated,
-        swift_roots,
-    )
+    includes, profile_users = _includes(root, compiled, generated, swift_roots)
     header_rules, targets = include_rules(includes)
     lines += header_rules
-    object_rules, dependencies = _object_rules(compiled, includes, targets)
+    object_rules, dependencies = _object_rules(compiled, includes, targets, profile_users)
     lines += object_rules
     for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)
