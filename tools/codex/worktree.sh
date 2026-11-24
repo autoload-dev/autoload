@@ -57,24 +57,15 @@ free() {
     [[ "$holder" != "$worktree" ]] && ! git -C "$holder" rev-parse --git-dir >/dev/null 2>&1
 }
 
-# Stop the Bazel servers whose output bases are in a slot. A module of this worktree is shut
-# down through Bazel; a server of a worktree that is gone is ended through its pid.
+# Stop the Bazel servers whose output bases are in a slot, through the pid each server records;
+# Bazel ends on the signal, and the next build in the slot must not meet it.
 stop_servers() {
-    local base module pid
-    for base in "$1"/*/; do
-        base="${base%/}"
-        [[ -f "$base/server/server.pid.txt" ]] || continue
-        module="${base##*/}"
-        module="${module//+//}"
-        [[ "$module" == _root ]] && module=""
-        if [[ -f "$worktree/$module/MODULE.bazel" && "$(<"$worktree/.bazel-slot")" == "$1" ]]; then
-            (cd "$worktree/$module" && bazel shutdown) || true
-        else
-            pid="$(<"$base/server/server.pid.txt")"
-            kill "$pid" 2>/dev/null || continue
-            # Bazel ends on the signal; the next build in the slot must not meet it.
-            for _ in {1..100}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
-        fi
+    local pid_file pid
+    for pid_file in "$1"/*/server/server.pid.txt; do
+        [[ -f "$pid_file" ]] || continue
+        pid="$(<"$pid_file")"
+        kill "$pid" 2>/dev/null || continue
+        for _ in {1..100}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
     done
 }
 

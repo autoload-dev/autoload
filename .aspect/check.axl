@@ -1,22 +1,18 @@
 """The check before a push: one entry point for people, the pre-push hook and agents."""
 
-load("./work.axl", "run_work")
-
-def _aspect(ctx: TaskContext, *arguments) -> int:
-    """Run another Aspect task in the repository root."""
-    command = ctx.std.process.command(ctx.std.env.current_exe()).args(list(arguments))
-    return command.current_dir(ctx.std.env.aspect_root_dir()).spawn().wait().code
+load("./work.axl", "run", "run_work")
 
 def _check_impl(ctx: TaskContext) -> int:
+    aspect = ctx.std.env.current_exe()
+
     # Each step reports on its own and runs alone as well.
     steps = [
-        ("format", lambda: _aspect(ctx, "format", "--severity=fail")),
-        ("lint", lambda: _aspect(ctx, "lint")),
+        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
         # The whole repository's lint, generated files and conventions, the setup contracts,
         # the setup action's tests, and the fast tests of the modules with the documentation
         # check.
         ("work", lambda: run_work(ctx, "lint", "generated", "conventions", "test:setup", "test:actions", "test:fast")),
-        ("code-health", lambda: _aspect(ctx, "code-health", "--if-available")),
+        ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ]
     failed = []
     for name, step in steps:

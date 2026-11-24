@@ -9,7 +9,6 @@ from pathlib import Path
 from unittest import mock
 
 from tools.ci.work import (
-    ANDROID_JAVA,
     DOCS,
     DOCS_CHECK,
     FAST_TEST_COMMAND,
@@ -111,7 +110,6 @@ class WorkTest(unittest.TestCase):
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
-        self.assertIn(ANDROID_JAVA, process[-1])
 
     def test_work_runs_python_with_this_interpreter(self) -> None:
         first = environment()["PATH"].split(os.pathsep)[0]

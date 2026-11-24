@@ -6,6 +6,7 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -18,6 +19,18 @@ BUILD_TOOLS = REQUIREMENTS["build_tools"]
 NDK_VERSION = REQUIREMENTS["ndk"]
 # The pinned sdkmanager (//:multitool.lock.json), which Bazel downloads only when run.
 MANAGED_SDKMANAGER = ["bazel", "run", "@multitool//tools/sdkmanager:cwd", "--"]
+# Prints the Java Bazel builds with, sdkmanager's when JAVA_HOME names none.
+JAVA = Path(__file__).absolute().with_name("java.py")
+
+
+def manager_environment() -> dict[str, str]:
+    """sdkmanager's environment: this one, with a Java."""
+    if os.environ.get("JAVA_HOME"):
+        return dict(os.environ)
+    java = subprocess.run(
+        [sys.executable, str(JAVA)], capture_output=True, text=True, check=True
+    )
+    return {**os.environ, "JAVA_HOME": java.stdout.strip()}
 
 
 def read_properties(path: Path) -> dict[str, str]:
@@ -123,6 +136,7 @@ def main() -> None:
             [*command, "--sdk_root=" + str(root), "--install", *missing],
             input="y\n" * 100,
             text=True,
+            env=manager_environment(),
             check=True,
         )
         if remaining := missing_packages(root, ndk_root=ndk):

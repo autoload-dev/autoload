@@ -39,7 +39,7 @@ arguments=()
 for argument in "$@"; do
     case "$argument" in
         --tools-only) tools_only=true ;;
-        -h | --help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h | --help) awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
         *) arguments+=("$argument") ;;
     esac
 done

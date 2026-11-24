@@ -16,14 +16,11 @@ _UNUSED_FEATURES = [ArtifactUpload, Deployment, GithubLintComments, GithubStatus
 # The SDK packages the repository provisions (tools/android/sdk.json).
 _ANDROID_PINS = "tools/android/sdk.json"
 
-def _env(ctx: ConfigContext, name: str) -> str:
-    return ctx.std.env.var(name) or ""
-
 def _android_sdk_root(ctx: ConfigContext) -> str:
     """The selected SDK: the one the environment names, else the platform's usual place."""
     for name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
-        if _env(ctx, name):
-            return _env(ctx, name)
+        if ctx.std.env.var(name):
+            return ctx.std.env.var(name)
     home = ctx.std.env.home_dir()
     if ctx.std.env.os() == "macos":
         return home + "/Library/Android/sdk"
@@ -42,7 +39,7 @@ def _android_environment(ctx: ConfigContext):
     pins = json.decode(ctx.std.fs.read_to_string(ctx.std.env.aspect_root_dir() + "/" + _ANDROID_PINS))
     root = _android_sdk_root(ctx)
     platform = "{}/platforms/android-{}/android.jar".format(root, pins["api_levels"][0])
-    ndk = _env(ctx, "ANDROID_NDK_HOME") or "{}/ndk/{}".format(root, pins["ndk"])
+    ndk = ctx.std.env.var("ANDROID_NDK_HOME") or "{}/ndk/{}".format(root, pins["ndk"])
     return {
         "ANDROID_SDK_ROOT": root,
         "ANDROID_HOME": root if ctx.std.fs.exists(platform) else "",

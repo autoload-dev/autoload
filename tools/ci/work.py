@@ -104,9 +104,20 @@ def contracts(lane: str) -> Work:
 
 
 SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-# The fast tests of a module, which `aspect check` runs: the unit tests by their size, the
-# analysis tests by rules_testing's tag, and the few smoke tests (.aspect/tests.axl).
-FAST_TEST_COMMAND = "aspect fast-test"
+# The fast tests of a module, which `aspect check` runs: the unit tests by their size,
+# the analysis tests by rules_testing's tag, and the few smoke tests
+# (docs/internal/verification-architecture.md, "Test size").
+FAST_TESTS = (
+    "(attr(size, small, tests(//...))"
+    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests(//...)))'
+    ' except attr(tags, "\\b(manual|source_engine)\\b", tests(//...))'
+)
+# The query names its tests explicitly, so tests incompatible with this host, such as the
+# macOS-only analysis tests on Linux, are skipped rather than rejected.
+FAST_TEST_COMMAND = (
+    f"bazel query '{FAST_TESTS}' | xargs bazel test --build_tests_only"
+    " --skip_incompatible_explicit_targets"
+)
 PATCHED_ENGINE = (
     "bazel test //patched_engine/tests:app_runs_patched_engine_test"
     " --extra_toolchains=//patched_engine/engines/{engine}:all"
@@ -322,7 +333,8 @@ WORK = (
             (
                 "bazel run //tools/platforms:validate_artifacts --"
                 ' --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME"'
-                ' --java "$JAVA_HOME/bin/java" --build-tools "$ANDROID_BUILD_TOOLS"'
+                ' --java "${JAVA_HOME:-$(python3 ../tools/android/java.py)}/bin/java"'
+                ' --build-tools "$ANDROID_BUILD_TOOLS"'
             ),
         ),
         android=True,
@@ -387,20 +399,15 @@ def runs_on(work: Work, host: str) -> bool:
     return not work.hosts or host in work.hosts
 
 
-# Android work's Java: the host's JAVA_HOME, or else the runtime Bazel builds with.
-ANDROID_JAVA = 'export JAVA_HOME="${JAVA_HOME:-$(python3 -m tools.android.java)}"'
-
-
 def argv(work: Work, command: str) -> list[str]:
     """
     The process that runs one command of a piece of work, with the work's own variables.
-    Android work runs with a Java and the provisioned SDK as ANDROID_HOME, which the Aspect
-    CLI's environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned
-    platform.
+    Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect CLI's
+    environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
     """
     exports = [f"export {name}={shlex.quote(value)}" for name, value in work.env]
     if work.android:
-        exports[:0] = ['export ANDROID_HOME="$ANDROID_SDK_ROOT"', ANDROID_JAVA]
+        exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
     script = "; ".join([*exports, command])
     return ["bash", "-eo", "pipefail", "-c", script]
 
