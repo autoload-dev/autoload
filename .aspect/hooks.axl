@@ -90,5 +90,7 @@ pre_push = task(
     summary = "Before a push: check the checkout's formatting, lint, generated files, conventions, tests, API documentation and Code Health.",
     args = {
         "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+        # The hook's remote name and URL, which Git appends; the checks read the checkout.
+        "remote": args.positional(minimum = 0, maximum = 2, default = []),
     },
 )
