@@ -178,7 +178,7 @@ class ReportTest(unittest.TestCase):
         self.assertIn("- Bumpy Road Ahead (`grown:30`, lines 30-39): cc = 12", text)
         self.assertNotIn("`kept:7`", text)
         self.assertIn('- `# @codescene(disable:"Bumpy Road Ahead")` above `grown`', text)
-        self.assertIn("AGENTS.md", text)
+        self.assertIn("docs/internal/code-health.md", text)
 
     def test_directives_use_the_comment_of_the_file_s_language(self) -> None:
         self.assertEqual(

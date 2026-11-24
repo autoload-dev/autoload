@@ -42,7 +42,7 @@ From the repository root:
 
 ```sh
 ./bootstrap.sh                            # once per clone: install bazel and aspect, the Git hooks and Android SDK packages
-aspect doctor                             # check the setup: tools, Git hooks, Android SDK, Code Health sign-in, Entire
+aspect doctor                             # check the setup and say what is missing
 aspect pre-commit                         # what the pre-commit hook runs: format and stage, lock files, Code Health of the staged change
 aspect pre-push                           # what the pre-push hook runs: format, lint, generated files, conventions, tests, API docs, Code Health
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)

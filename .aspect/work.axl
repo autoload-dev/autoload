@@ -178,9 +178,11 @@ def _bootstrap_impl(ctx: TaskContext) -> int:
                 return 1
         for event, command in hooks.items():
             print("Installed the {} hook: {}".format(event, command))
-    if ctx.args.android and run_work(ctx, "android:setup") != 0:
-        return 1
-    return _doctor_impl(ctx)
+
+    # The setup check runs even when the Android setup failed, to name what else is missing.
+    android = run_work(ctx, "android:setup") if ctx.args.android else 0
+    doctor = _doctor_impl(ctx)
+    return android or doctor
 
 bootstrap = task(
     implementation = _bootstrap_impl,
@@ -192,6 +194,8 @@ bootstrap = task(
 )
 
 def _doctor_impl(ctx: TaskContext) -> int:
+    # The pinned CodeScene CLI, whose sign-in the check asks for as the Git hooks do.
+    _built(ctx, _CODESCENE)
     return python(ctx, ["-m", "tools.setup.doctor"])
 
 doctor = task(

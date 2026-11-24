@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tools.android.sdk import NDK_VERSION, missing_packages
+from tools.code_health.scan import Unavailable, cli_environment, find_cli
 
 ROOT = Path(__file__).absolute().parents[2]
 # The Git hooks `aspect bootstrap` configures, by event.
@@ -40,14 +41,19 @@ def warning(message: str) -> Finding:
     return Finding(False, message)
 
 
-def git_config(name: str) -> str:
+def git(*args: str) -> str:
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "config", "--get", name],
-        capture_output=True,
-        text=True,
-        check=False,
+        ["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=False
     )
     return result.stdout.strip()
+
+
+def git_config(name: str) -> str:
+    return git("config", "--get", name)
+
+
+def hooks_directory() -> Path:
+    return Path(git("rev-parse", "--path-format=absolute", "--git-common-dir")) / "hooks"
 
 
 def tool_findings(which=shutil.which) -> list[Finding]:
@@ -68,7 +74,7 @@ def hook_findings(config=git_config) -> list[Finding]:
     ]
 
 
-def android_findings(env: dict[str, str]) -> list[Finding]:
+def android_findings(env) -> list[Finding]:
     """The pinned Android SDK packages, which Android builds and the lanes need."""
     sdk = env.get("ANDROID_SDK_ROOT") or env.get("ANDROID_HOME")
     if not sdk:
@@ -84,20 +90,21 @@ def android_findings(env: dict[str, str]) -> list[Finding]:
     ]
 
 
-def code_health_findings(env: dict[str, str]) -> list[Finding]:
+def code_health_findings(
+    env, sign_in=lambda: cli_environment(find_cli())
+) -> list[Finding]:
     """CodeScene's sign-in, without which the hooks skip the Code Health review."""
     if env.get("CS_ACCESS_TOKEN"):
         return []
-    return [
-        warning(
-            "CS_ACCESS_TOKEN is not set: the hooks review Code Health only with it or a "
-            "`cs auth login` session (docs/internal/code-health.md#setup)"
-        )
-    ]
+    try:
+        sign_in()
+    except Unavailable as unavailable:
+        return [warning(f"{unavailable} (docs/internal/code-health.md#setup)")]
+    return []
 
 
-def entire_findings(root: Path, hooks: Path, which=shutil.which) -> list[Finding]:
-    """Entire's session capture, when the repository enables it."""
+def entire_findings(root: Path, hooks, which=shutil.which) -> list[Finding]:
+    """Entire's session capture, when the repository enables it; `hooks` names Git's hooks."""
     settings = root / ".entire/settings.json"
     if not settings.is_file() or not json.loads(settings.read_text()).get("enabled"):
         return []
@@ -108,18 +115,18 @@ def entire_findings(root: Path, hooks: Path, which=shutil.which) -> list[Finding
                 "(docs/internal/agent-setup.md#entire)"
             )
         ]
-    installed = [
-        hook
-        for hook in sorted(hooks.glob("*"))
-        if hook.is_file() and ENTIRE_MARKER in hook.read_text(errors="replace")
+    texts = [
+        text
+        for hook in sorted(hooks().glob("*"))
+        if hook.is_file() and ENTIRE_MARKER in (text := hook.read_text(errors="replace"))
     ]
-    if not installed:
+    if not texts:
         return [warning("Entire's Git hooks are not installed: run entire enable")]
     stale = sorted(
         {
             path
-            for hook in installed
-            for path in QUOTED_PATH.findall(hook.read_text(errors="replace"))
+            for text in texts
+            for path in QUOTED_PATH.findall(text)
             if not Path(path).is_file()
         }
     )
@@ -132,31 +139,13 @@ def entire_findings(root: Path, hooks: Path, which=shutil.which) -> list[Finding
     ]
 
 
-def hooks_directory() -> Path:
-    common = subprocess.run(
-        [
-            "git",
-            "-C",
-            str(ROOT),
-            "rev-parse",
-            "--path-format=absolute",
-            "--git-common-dir",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-    return Path(common) / "hooks"
-
-
 def main() -> int:
-    env = dict(os.environ)
     findings = [
         *tool_findings(),
         *hook_findings(),
-        *android_findings(env),
-        *code_health_findings(env),
-        *entire_findings(ROOT, hooks_directory()),
+        *android_findings(os.environ),
+        *code_health_findings(os.environ),
+        *entire_findings(ROOT, hooks_directory),
     ]
     for finding in findings:
         print(("error: " if finding.error else "warning: ") + finding.message)

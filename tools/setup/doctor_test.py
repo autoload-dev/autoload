@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tools.code_health.scan import Unavailable
 from tools.setup.doctor import (
     android_findings,
     code_health_findings,
@@ -53,25 +54,35 @@ class DoctorTest(unittest.TestCase):
         self.assertFalse(findings[0].error)
         self.assertIn("ndk;", findings[0].message)
 
-    def test_code_health_needs_no_warning_with_a_token(self) -> None:
-        self.assertEqual(code_health_findings({"CS_ACCESS_TOKEN": "secret"}), [])
-        findings = code_health_findings({})
+    def test_code_health_needs_no_warning_with_a_token_or_a_session(self) -> None:
+        def unavailable() -> None:
+            raise Unavailable("CodeScene is not signed in")
+
+        self.assertEqual(
+            code_health_findings({"CS_ACCESS_TOKEN": "secret"}, sign_in=unavailable), []
+        )
+        self.assertEqual(code_health_findings({}, sign_in=lambda: None), [])
+        findings = code_health_findings({}, sign_in=unavailable)
         self.assertFalse(findings[0].error)
-        self.assertNotIn("secret", findings[0].message)
+        self.assertIn("not signed in", findings[0].message)
 
     def test_entire_is_not_checked_when_the_repository_disables_it(self) -> None:
         self.enable_entire(enabled=False)
-        self.assertEqual(entire_findings(self.root, self.hooks, which=lambda _: None), [])
+        self.assertEqual(
+            entire_findings(self.root, lambda: self.hooks, which=lambda _: None), []
+        )
 
     def test_a_missing_entire_is_a_warning(self) -> None:
         self.enable_entire()
-        findings = entire_findings(self.root, self.hooks, which=lambda _: None)
+        findings = entire_findings(self.root, lambda: self.hooks, which=lambda _: None)
         self.assertEqual([finding.error for finding in findings], [False])
         self.assertIn("not on PATH", findings[0].message)
 
     def test_missing_entire_git_hooks_are_a_warning(self) -> None:
         self.enable_entire()
-        findings = entire_findings(self.root, self.hooks, which=lambda _: "/bin/entire")
+        findings = entire_findings(
+            self.root, lambda: self.hooks, which=lambda _: "/bin/entire"
+        )
         self.assertIn("entire enable", findings[0].message)
 
     def test_entire_git_hooks_with_a_stale_binary_are_a_warning(self) -> None:
@@ -79,7 +90,9 @@ class DoctorTest(unittest.TestCase):
         stale = self.root / "old/entire"
         for name in ("post-commit", "pre-push"):
             (self.hooks / name).write_text(ENTIRE_HOOK.format(path=stale))
-        findings = entire_findings(self.root, self.hooks, which=lambda _: "/bin/entire")
+        findings = entire_findings(
+            self.root, lambda: self.hooks, which=lambda _: "/bin/entire"
+        )
         self.assertEqual(len(findings), 1)
         self.assertIn(str(stale), findings[0].message)
         self.assertIn("entire configure --force", findings[0].message)
@@ -91,7 +104,8 @@ class DoctorTest(unittest.TestCase):
         binary.write_text("")
         (self.hooks / "post-commit").write_text(ENTIRE_HOOK.format(path=binary))
         self.assertEqual(
-            entire_findings(self.root, self.hooks, which=lambda _: "/bin/entire"), []
+            entire_findings(self.root, lambda: self.hooks, which=lambda _: "/bin/entire"),
+            [],
         )
 
 

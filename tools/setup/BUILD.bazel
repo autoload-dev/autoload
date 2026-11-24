@@ -40,5 +40,8 @@ py_test(
         "doctor.py",
         "doctor_test.py",
     ],
-    deps = ["//tools/android"],
+    deps = [
+        "//tools/android",
+        "//tools/code_health:codescene_lib",
+    ],
 )

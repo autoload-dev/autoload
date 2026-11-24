@@ -21,10 +21,6 @@ skills only in `.claude/skills/`, which holds a link to each skill directory.
 | `.claude/settings.json` | Entire, except `WorktreeCreate` and `WorktreeRemove` | Claude Code's hooks |
 | `.codex/hooks.json` | Entire, except the `tools/codex/worktree.sh` hooks | Codex's hooks |
 | `.codex/environments/environment.toml` | Repository | The Codex app's environment: `./bootstrap.sh --tools-only` |
-| `.entire/settings.json` | Entire | Entire's repository settings |
-
-Entire writes its hooks into the two hook files with `entire agent add` and keeps the
-repository's own hooks beside them. Do not edit Entire's entries by hand.
 
 <a id="worktrees"></a>
 
@@ -57,7 +53,9 @@ is approved in Codex.
 [Entire](https://docs.entire.io) records Claude Code's and Codex's sessions and links them to
 commits as checkpoints, which it pushes to the private repository
 `autoload-dev/autoload-checkpoints`. The repository uses it for that alone: no Entire skills,
-agents or guides.
+agents or guides. Its settings are in `.entire/settings.json`; `entire agent add` writes its
+hooks into the two hook files and keeps the repository's own beside them, so do not edit
+Entire's entries by hand.
 
 Entire is optional and installed per person, outside the repository. Its agent hooks above,
 and the Git hooks `entire enable` installs in a clone, do nothing without it, so a session

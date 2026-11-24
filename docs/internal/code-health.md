@@ -1,12 +1,8 @@
 # Code Health
 
-Code Health measures maintainability from 10.0 (optimal) down to 1.0; aim for 10.0. The
-glossary, conventions and design decisions still decide naming, structure and package
-boundaries. In this repository `tools/code_health` is the one way to measure it: it scores
-every language here, Starlark and GDScript included, with the CodeScene CLI `cs`, pinned in
-`multitool.lock.json` and built by `aspect code-health`. The CodeHealth MCP tools and the
-CodeScene plugin skills are not used here; the Git hooks and `aspect code-health` replace
-them.
+Code Health measures maintainability from 10.0 (optimal) down to 1.0. `tools/code_health`
+scores every language here, Starlark and GDScript included, with the CodeScene CLI `cs`,
+pinned in `multitool.lock.json` and built by `aspect code-health`.
 
 ## The hooks
 
@@ -23,14 +19,12 @@ finding, `# @codescene(disable:"<rule>")` (`//` in C-like languages, one line pe
 put above the function's definition with a comment that gives the reason. There is no other
 way to acknowledge a decline.
 
-## Refactoring targets
+## Survey and scoring
 
 `aspect code-health --survey` reports the whole checkout: languages, hotspots (commits × (10 −
 score)) and the lowest scores. It is no gate; use it to choose what to improve, such as
 before working in an area. Refactor in small structural steps and review the files again with
 `aspect code-health -- --only <path>...` until the targeted findings are gone.
-
-## Scoring of Starlark and GDScript
 
 Starlark and GDScript are scored as translated Python: documentation strings and `doc` values
 do not count, and Bazel macros are exempt from the argument count, since their parameters
