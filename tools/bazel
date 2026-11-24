@@ -45,9 +45,8 @@ if [[ ${#flags[@]} -gt 0 ]]; then
     done
 fi
 
-# A worktree that leased a Bazel slot (tools/codex/worktree.sh) keeps each module's output
-# base in that slot, so a new worktree reuses the fetched repositories and action cache of an
-# earlier one. The slot's path is in .bazel-slot at the worktree root, the nearest directory
+# A worktree that leased a Bazel slot (AGENTS.md, "Worktrees") keeps each module's output base
+# in that slot. The slot's path is in .bazel-slot at the worktree root, the nearest directory
 # with a .git; a startup option on the command line wins.
 root="$workspace"
 until [[ -e "$root/.git" || -z "$root" ]]; do root="${root%/*}"; done

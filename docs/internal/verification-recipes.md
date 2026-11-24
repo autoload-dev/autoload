@@ -35,24 +35,22 @@ For a complete development environment in a fresh clone, run:
 
 It places the pinned Bazelisk and Aspect launcher in `~/.local/bin` (or `BIN_DIR`), verified
 by their releases' checksums, and names what is missing from the host or PATH. It then runs
-`aspect bootstrap`, which installs the pre-push hook and the missing Android SDK/NDK
-components. It reuses SDK components outside the checkout across worktrees; set
+`aspect bootstrap`, which installs the pre-commit and pre-push hooks and the missing Android
+SDK/NDK components. It reuses SDK components outside the checkout across worktrees; set
 `ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
 `--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
-tools, as CI does. A new worktree needs none of it again: the versioned
-[Codex local environment](../../.codex/environments/environment.toml) only checks the two
-tools, and Codex's session hooks lease a Bazel slot for the worktree (see the worktrees in
-[AGENTS.md](../../AGENTS.md)).
+tools, as CI does. A new worktree needs none of it again; how worktrees reuse Bazel's state
+is in [AGENTS.md](../../AGENTS.md#worktrees).
 Bootstrap is safe to repeat but is not a required step before each check.
 
 For work that does not need Android, `aspect bootstrap --android=false` installs just the
-hook. Android tasks prepare their own prerequisites through `android:setup`;
+hooks. Android tasks prepare their own prerequisites through `android:setup`;
 `aspect work android:setup` prepares only the Android environment. Java, SDK manager, Node and
 workflow-lint tools are installed when their owning tasks require them. `test:setup` checks
 provisioning declarations without installing SDK components.
 
 The pre-push hook verifies the working tree matches the pushed commit
-before running `aspect check`. CI uses the same tasks through the shared
+before running `aspect pre-push`. CI uses the same tasks through the shared
 [setup action](../../.github/actions/setup/action.yml), which installs the pinned Bazelisk and
 Aspect launcher and configures Bazel's repository cache. Android
 workflow jobs reuse cached missing SDK components; host-only ones do not install Java or

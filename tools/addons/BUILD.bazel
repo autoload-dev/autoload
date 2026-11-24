@@ -1,7 +1,7 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-# The add-on generator and its template; `aspect work test:setup` runs this package's tests, and
-# the conventions check (RG015) tests its rule against generated modules.
+# The add-on generator and its template; the conventions check (RG015) tests its rule against
+# generated modules.
 py_library(
     name = "new_lib",
     srcs = [
@@ -28,4 +28,40 @@ py_binary(
     srcs = ["new.py"],
     tags = ["manual"],
     deps = [":new_lib"],
+)
+
+# A module's lane work, which tools/ci/work.py runs for each add-on module.
+py_library(
+    name = "lanes_lib",
+    srcs = ["lanes.py"],
+    deps = [":new_lib"],
+)
+
+py_library(
+    name = "test_support",
+    testonly = True,
+    srcs = ["test_support.py"],
+    # The files a repository test root starts from.
+    data = [
+        "//:.bazelversion",
+        "//:bcr_metadata",
+    ],
+    deps = [":new_lib"],
+)
+
+py_test(
+    name = "new_test",
+    size = "small",
+    srcs = ["new_test.py"],
+    deps = [
+        ":new_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "lanes_test",
+    size = "small",
+    srcs = ["lanes_test.py"],
+    deps = [":lanes_lib"],
 )

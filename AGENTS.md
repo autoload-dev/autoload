@@ -48,9 +48,11 @@ including TDD and evidence reuse. Commands below are entry points, not a checkli
 From the repository root:
 
 ```sh
-./bootstrap.sh                            # once per clone: install bazel and aspect, the pre-push hook and Android SDK packages
-aspect check                              # format, lint, generated files, conventions, setup, fast tests, Code Health
-aspect format                             # format changed files (--scope=all for the whole tree)
+./bootstrap.sh                            # once per clone: install bazel and aspect, the Git hooks and Android SDK packages
+aspect pre-commit                         # what the pre-commit hook runs: format and stage, lock files, Code Health of the staged change
+aspect pre-push                           # what the pre-push hook runs: format, lint, generated files, conventions, tests, API docs, Code Health
+aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
+aspect lint                               # lint the current module's Python with Ruff and ty
 aspect generate                           # regenerate lock files
 aspect work docs                          # after changing the ruleset's public API
 aspect code-health                        # Code Health of the change since origin/main; the pre-push hook runs it too
@@ -69,14 +71,19 @@ execution pays off](docs/internal/verification-recipes.md#when-remote-execution-
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read [remote
 execution](docs/internal/verification-recipes.md#remote-execution-with-buildbuddy).
 
-Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose slots keep their
-path, so a new worktree starts with a warm Bazel server and output base. Claude Code's
-worktrees (`claude --worktree`, subagents with worktree isolation) take a slot through the
-`WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json`
-([tools/claude/worktree.sh](tools/claude/worktree.sh)), on a branch `claude/<name>` from
-`origin`'s default branch. By hand, `aspect worktree add <branch> --create=origin/main` takes a
-slot, `aspect worktree release <branch>` gives it back with its Bazel state, and `aspect
-worktree list` shows who holds which.
+<a id="worktrees"></a>
+
+# Worktrees
+
+This section is the one description of how worktrees reuse Bazel's state; the scripts and
+configuration it names link here. Worktrees come from the Aspect CLI's pool under
+`~/.aspect/worktrees`, whose slots keep their path, so a new worktree starts with a warm Bazel
+server and output base. Claude Code's worktrees (`claude --worktree`, subagents with worktree
+isolation) take a slot through the `WorktreeCreate` and `WorktreeRemove` hooks in
+`.claude/settings.json` ([tools/claude/worktree.sh](tools/claude/worktree.sh)), on a branch
+`claude/<name>` from `origin`'s default branch. By hand, `aspect worktree add <branch>
+--create=origin/main` takes a slot, `aspect worktree release <branch>` gives it back with its
+Bazel state, and `aspect worktree list` shows who holds which.
 
 Codex creates its worktrees itself, each at a new path, and has no hook that replaces that,
 so they recycle the Bazel state rather than the path. Codex's `SessionStart` hook in
@@ -139,29 +146,32 @@ glossary, conventions and design decisions above still decide naming, structure 
 boundaries. In this repository `tools/code_health` is the one way to measure it: it scores
 every language here, Starlark and GDScript included, with the CodeScene CLI `cs`, pinned in
 `multitool.lock.json` and built by `aspect code-health`. Do not use the CodeHealth MCP tools or
-the CodeScene plugin skills here; the pre-push hook and `aspect code-health` below replace them.
+the CodeScene plugin skills here; the Git hooks and `aspect code-health` below replace them.
 
-- **The hook checks; work freely in between.** The pre-push hook (`aspect check`) reviews
-  the branch against its merge base with `origin/main`. It fails when a file declines (its
+- **The hooks check; work freely in between.** The pre-commit hook (`aspect pre-commit`)
+  reviews the staged change, the pre-push hook (`aspect pre-push`) the branch against its
+  merge base with `origin/main`. It fails when a file declines (its
   score falls, or a new file scores below 9.0) or when CodeScene cannot score a file, and
   prints every new finding with its function and lines. Intermediate states need no review;
   run `aspect code-health` whenever an early look helps, such as before committing a larger
-  change. - **When the hook fails,** refactor the declined file until it no longer declines.
-  Accept a finding only deliberately, in the code: the failing output prints the directive
-  for each new finding, `# @codescene(disable:"<rule>")` (`//` in C-like languages, one line
-  per rule), to put above the function's definition with a comment that gives the reason.
-  There is no other way to acknowledge a decline. - **Find refactoring targets with the
-  survey.** `aspect code-health --survey` reports the whole checkout: languages, hotspots
-  (commits × (10 − score)) and the lowest scores. It is no gate; use it to choose what to
-  improve, such as before working in an area. Refactor in small structural steps and review
-  the files again with `aspect code-health -- --only <path>...` until the targeted findings
-  are gone. - **Starlark and GDScript** are scored as translated Python: documentation
-  strings and `doc` values do not count, and Bazel macros are exempt from the argument
-  count, since their parameters mirror rule attributes. - **Setup:** set `CS_ACCESS_TOKEN`
-  to a CodeScene personal access token kept outside the repository, such as in the macOS
-  keychain, read by your own shell or user-level configuration; with a CodeScene account,
-  `cs auth login` works instead. Without either, the hook passes with a note and `aspect
-  code-health` reports the gap.
+  change.
+- **When a hook fails,** refactor the declined file until it no longer declines. Accept a
+  finding only deliberately, in the code: the failing output prints the directive for each
+  new finding, `# @codescene(disable:"<rule>")` (`//` in C-like languages, one line per
+  rule), to put above the function's definition with a comment that gives the reason. There
+  is no other way to acknowledge a decline.
+- **Find refactoring targets with the survey.** `aspect code-health --survey` reports the
+  whole checkout: languages, hotspots (commits × (10 − score)) and the lowest scores. It is
+  no gate; use it to choose what to improve, such as before working in an area. Refactor in
+  small structural steps and review the files again with `aspect code-health -- --only
+  <path>...` until the targeted findings are gone.
+- **Starlark and GDScript** are scored as translated Python: documentation strings and `doc`
+  values do not count, and Bazel macros are exempt from the argument count, since their
+  parameters mirror rule attributes.
+- **Setup:** set `CS_ACCESS_TOKEN` to a CodeScene personal access token kept outside the
+  repository, such as in the macOS keychain, read by your own shell or user-level
+  configuration; with a CodeScene account, `cs auth login` works instead. Without either,
+  the hook passes with a note and `aspect code-health` reports the gap.
 
 <!-- entire-agent:begin -->
 Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.

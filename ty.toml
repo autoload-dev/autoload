@@ -1,0 +1,15 @@
+# ty's settings, for the lint aspects (tools/lint/linters.bzl) in every module and for editors.
+# The aspects pass each target's own import paths, so no module needs extra paths here.
+
+[environment]
+# Bazel runs these tools with the registered Python toolchain.
+python-version = "3.14"
+
+[analysis]
+# Available only inside Bazel runfiles or Godot's SCons environment.
+allowed-unresolved-imports = [
+  "google.protobuf.**",
+  "stardoc.**",
+  "SCons.**",
+  "methods",
+]

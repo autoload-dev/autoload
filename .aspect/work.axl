@@ -10,20 +10,43 @@ _PYTHON = "@rules_python//python/bin:python"
 # The pinned CodeScene CLI, made executable (tools/code_health/BUILD.bazel).
 _CODESCENE = "//tools/code_health:codescene_cli"
 
-# The pre-push hook, as a configuration-based Git hook; Git passes it the hook's stdin.
-_PRE_PUSH = 'bash tools/pre_push_checkout.sh && "$(command -v aspect || echo "$HOME/.local/bin/aspect")" check'
+# Where a task's process tree keeps the built tools' paths, so a task and the tasks it starts
+# build and query each tool once.
+_BUILT = {
+    _PYTHON: "AUTOLOAD_PYTHON",
+    _CODESCENE: "CODESCENE_CLI",
+}
 
 def run(ctx: TaskContext, program: str, arguments, env = {}) -> int:
-    """Run a program in the repository root, with extra environment variables."""
+    """Run a program in the repository root.
+
+    Args:
+        ctx: the running task's context.
+        program: the program to run, a path or a name on PATH.
+        arguments: its arguments.
+        env: environment variables to set beside the task's own.
+
+    Returns:
+        The program's exit code.
+    """
     command = ctx.std.process.command(program).args(list(arguments))
     for name, value in env.items():
         command = command.env(name, value)
     return command.current_dir(ctx.std.env.aspect_root_dir()).spawn().wait().code
 
-def _output(ctx: TaskContext, *arguments) -> str:
-    """One Bazel command's output in the root module, without its progress messages."""
+def output(ctx: TaskContext, program: str, arguments) -> str:
+    """Run a program in the repository root and return its stdout, failing the task on an error.
+
+    Args:
+        ctx: the running task's context.
+        program: the program to run, a path or a name on PATH.
+        arguments: its arguments.
+
+    Returns:
+        Its stdout, without surrounding whitespace.
+    """
     result = (
-        ctx.std.process.command("bazel")
+        ctx.std.process.command(program)
             .args(list(arguments))
             .current_dir(ctx.std.env.aspect_root_dir())
             .stdout("piped")
@@ -32,20 +55,42 @@ def _output(ctx: TaskContext, *arguments) -> str:
             .wait_with_output()
     )
     if result.status.code != 0:
-        fail("bazel {} failed:\n{}".format(" ".join(arguments), result.stderr))
+        fail("{} {} failed:\n{}".format(program, " ".join(arguments), result.stderr))
     return result.stdout.strip()
 
 def _built(ctx: TaskContext, target: str) -> str:
-    """The absolute path of a target's executable in the root module, built first."""
-    _output(ctx, "build", target)
-    return ctx.std.env.aspect_root_dir() + "/" + _output(ctx, "cquery", "--output=files", target)
+    """The absolute path of a tool's executable in the root module, built once per task run."""
+    variable = _BUILT[target]
+    path = ctx.std.env.var(variable)
+    if path and ctx.std.fs.exists(path):
+        return path
+    output(ctx, "bazel", ["build", target])
+    path = ctx.std.env.aspect_root_dir() + "/" + output(ctx, "bazel", ["cquery", "--output=files", target])
+    ctx.std.env.set_var(variable, path)
+    return path
 
-def python(ctx: TaskContext, arguments, env = {}) -> int:
-    """Run Bazel's Python in the repository root."""
-    return run(ctx, _built(ctx, _PYTHON), arguments, env)
+def python(ctx: TaskContext, arguments) -> int:
+    """Run Bazel's Python in the repository root.
+
+    Args:
+        ctx: the running task's context.
+        arguments: the interpreter's arguments.
+
+    Returns:
+        Its exit code.
+    """
+    return run(ctx, _built(ctx, _PYTHON), arguments)
 
 def run_work(ctx: TaskContext, *names) -> int:
-    """Run pieces of the lanes' work by name."""
+    """Run pieces of the lanes' work by name.
+
+    Args:
+        ctx: the running task's context.
+        *names: the pieces, in order.
+
+    Returns:
+        The work's exit code.
+    """
     return python(ctx, ["-m", "tools.ci.work", "run"] + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
@@ -91,10 +136,10 @@ def _code_health_impl(ctx: TaskContext) -> int:
         flags.append("--staged")
     if ctx.args.if_available:
         flags.append("--if-available")
-    env = {}
-    if not ctx.std.env.var("CODESCENE_CLI"):
-        env["CODESCENE_CLI"] = _built(ctx, _CODESCENE)
-    return python(ctx, ["-m", "tools.code_health.codescene"] + flags + ctx.args.options, env)
+
+    # tools/code_health finds the CLI through CODESCENE_CLI, which _built sets.
+    _built(ctx, _CODESCENE)
+    return python(ctx, ["-m", "tools.code_health.codescene"] + flags + ctx.args.options)
 
 code_health = task(
     implementation = _code_health_impl,
@@ -107,12 +152,32 @@ code_health = task(
     },
 )
 
+def _launcher(ctx: TaskContext) -> str:
+    """The Aspect CLI's launcher: the one bootstrap.sh placed, else the one on PATH."""
+    launcher = ctx.std.env.var("AUTOLOAD_ASPECT_LAUNCHER")
+    if launcher:
+        return launcher
+    return output(ctx, "sh", ["-c", "command -v aspect"])
+
 def _bootstrap_impl(ctx: TaskContext) -> int:
     if ctx.args.hooks:
-        for key, value in (("event", "pre-push"), ("command", _PRE_PUSH)):
-            if run(ctx, "git", ["config", "hook.aspect-pre-push." + key, value]) != 0:
+        # The hooks name the launcher by its path, so a Git client with a short PATH runs them,
+        # and the worktree hooks find it in aspect.launcher. Git passes pre-push its stdin.
+        # Bazelisk lies beside the launcher, where bootstrap.sh places both.
+        launcher = _launcher(ctx)
+        aspect = 'PATH="{}:$PATH" "{}"'.format(launcher.rpartition("/")[0], launcher)
+        hooks = {
+            "pre-commit": aspect + " pre-commit",
+            "pre-push": "bash tools/pre_push_checkout.sh && " + aspect + " pre-push",
+        }
+        settings = [("aspect.launcher", launcher)]
+        for event, command in hooks.items():
+            settings += [("hook.aspect-{}.event".format(event), event), ("hook.aspect-{}.command".format(event), command)]
+        for key, value in settings:
+            if run(ctx, "git", ["config", key, value]) != 0:
                 return 1
-        print("Installed the pre-push hook: " + _PRE_PUSH)
+        for event, command in hooks.items():
+            print("Installed the {} hook: {}".format(event, command))
     if ctx.args.android:
         return run_work(ctx, "android:setup")
     return 0

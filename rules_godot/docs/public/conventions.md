@@ -430,7 +430,7 @@ bazel run //tools/conventions
 The command runs the registered convention rules across all owned modules. Violations
 include the stable rule ID, file, line and a link to this catalogue. The checker reports
 unreviewed computed macro names separately. Exit status `1` indicates convention findings;
-`2` indicates an incomplete audit. The pre-push hook (`aspect check`) and CI select
+`2` indicates an incomplete audit. The pre-push hook (`aspect pre-push`) and CI select
 complementary code and documentation tasks, so each rule runs at most once per check
 invocation. The full command above explicitly runs both sets.
 

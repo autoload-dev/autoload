@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Claude Code's WorktreeCreate and WorktreeRemove hooks (.claude/settings.json): Claude's
-# worktrees come from the Aspect CLI's worktree pool, whose slots keep their path, so each new
-# worktree starts with a warm Bazel server and output base.
+# Claude Code's WorktreeCreate and WorktreeRemove hooks (.claude/settings.json), which take
+# Claude's worktrees from the Aspect CLI's worktree pool (AGENTS.md, "Worktrees").
 #
 #   worktree.sh create   reads {"name", "session_id", "cwd"} on stdin; leases a slot on a new
 #                        branch claude/<name> from origin's default branch, as Claude's own
@@ -17,13 +16,13 @@ field() {
     sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" <<<"$input" | head -n 1
 }
 
-# The Aspect CLI on PATH, else where bootstrap.sh places it: an app's hooks may run with a
-# shorter PATH than a shell.
-aspect="$(command -v aspect || echo "$HOME/.local/bin/aspect")"
+cd "$(field cwd)"
+
+# The Aspect CLI on PATH, else the launcher `aspect bootstrap` recorded: an app's hooks may run
+# with a shorter PATH than a shell.
+aspect="$(command -v aspect || git config aspect.launcher || true)"
 [[ -x "$aspect" ]] || { echo "worktree.sh: the Aspect CLI is missing; run ./bootstrap.sh" >&2; exit 1; }
 export DO_NOT_TRACK=1
-
-cd "$(field cwd)"
 case "${1:-}" in
     create)
         name="$(field name)"

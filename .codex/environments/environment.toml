@@ -1,8 +1,7 @@
 version = 1
 name = "rules_godot"
 
-# A new Codex worktree needs only the two tools; the clone's own setup, the pre-push hook and
-# the Android SDK, is ./bootstrap.sh, once. The worktree's Bazel slot comes from the session
-# hooks in .codex/hooks.json (tools/codex/worktree.sh), in the Codex CLI as in the app.
+# A new Codex worktree needs only the two tools; the clone's own setup, the Git hooks and the
+# Android SDK, is ./bootstrap.sh, once. Its Bazel state: AGENTS.md, "Worktrees".
 [setup]
 script = "./bootstrap.sh --tools-only"

@@ -69,9 +69,10 @@ the slowest lane; the work they finished stays in Bazel's caches.
 
 Locally, `aspect lane <lane>` runs a whole lane on this host, `aspect work <name>...` single
 pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation
-shows that command instead. `aspect check` runs the checks that need no lane machine:
-format, lint, generated files, the conventions, setup contracts and the fast tests with the
-API documentation. The pre-push hook `aspect bootstrap` installs runs it.
+shows that command instead. `aspect pre-push` runs the checks that need no lane machine:
+format, lint, generated files, the conventions, setup contracts, the fast tests, the API
+documentation with its contract cases and the repository tooling's tests. The pre-push hook
+`aspect bootstrap` installs runs it.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
@@ -94,7 +95,7 @@ commit, so CI has no job for it. The
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which `aspect check` runs too, analyses each pinned source build's
+`generated` work, which `aspect pre-push` runs too, analyses each pinned source build's
 toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built

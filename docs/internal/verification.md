@@ -17,9 +17,9 @@ silently claim success or build a new test framework.
 |---|---|---|
 | Before editing | Read the applicable instructions and identify the affected behavior | Baseline builds or tests, unless needed to reproduce a defect or distinguish an existing failure |
 | During editing | Follow the test-first cycle below for behavior changes; use focused checks when their feedback helps the next decision | A suite after every file edit; rerunning successful checks with unchanged relevant inputs |
-| Before claiming a local change complete | Review the diff; run `aspect check` and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
-| Before committing | Regenerate the lock files the changed files shape (`aspect generate`), format the changed sources (`aspect format`), lint them (`aspect work lint`) and review the change's Code Health (`aspect code-health`); retain relevant evidence | A second suite just because a commit is about to happen |
-| Before pushing | Keep the pre-push hook (`aspect bootstrap` installs it) enabled; it checks the pushed checkout (`aspect check`): format, lint, source quality, the generated files (lock files, source-built engines' pins), setup contracts, the fast tests (`test:fast`) and the branch's Code Health | App builds, non-desktop lane suites and cache experiments in the hook |
+| Before claiming a local change complete | Review the diff; run `aspect pre-push` and the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
+| Before committing | Keep the pre-commit hook (`aspect bootstrap` installs it) enabled; it formats and restages the staged files, regenerates the lock files they shape and reviews the staged change's Code Health (`aspect pre-commit`); retain relevant evidence | A second suite just because a commit is about to happen |
+| Before pushing | Keep the pre-push hook (`aspect bootstrap` installs it) enabled; it checks the pushed checkout (`aspect pre-push`): format, lint, source quality, the generated files (lock files, source-built engines' pins), setup contracts, the fast tests (`test:fast`), the API documentation with its contract cases, the repository tooling's tests and the branch's Code Health | App builds, non-desktop lane suites and cache experiments in the hook |
 | PR/review readiness | Require CI's results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the execution environment |
 | Merging | The merge queue runs every lane, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | A second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
@@ -28,9 +28,8 @@ A local completion report can say CI/lane verification is pending. It is not a m
 claim. Do not wait for unrelated checks before asking a question. If no code or configuration
 changed, a read-only review does not require test execution.
 
-Use `aspect check` for source quality, setup contracts, conventions, the API documentation
-and the fast tests (add the `test:tools` work for the repository tooling's tests); the
-pre-push hook runs it. The fast tests are the `small`, analysis and `smoke` tests of the
+Use `aspect pre-push` for source quality, setup contracts, conventions, the API
+documentation and the fast and tooling tests; the pre-push hook runs it. The fast tests are the `small`, analysis and `smoke` tests of the
 root module and the ruleset ([test size](verification-architecture.md#test-size)). It checks
 the working tree, so run it before a push. CI runs every lane on every run; to verify a
 lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not repeat a

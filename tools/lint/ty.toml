@@ -1,7 +1,0 @@
-# ty's settings for the lint aspect, which checks one Bazel module's targets in a sandbox that
-# holds only their sources; the nested modules' paths of pyproject.toml do not exist there.
-[environment]
-python-version = "3.14"
-
-[analysis]
-allowed-unresolved-imports = ["google.protobuf.**", "stardoc.**", "SCons.**", "methods"]

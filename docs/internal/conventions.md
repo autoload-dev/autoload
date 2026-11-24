@@ -96,23 +96,25 @@ and their coverage limits.
 
 The existing enforcement has several owners:
 
-- [Formatting](../../tools/format/BUILD.bazel) uses `rules_lint`'s `format_multirun`, Ruff
-  and Buildifier, and only formats. [Buildifier configuration](../../.buildifier.json)
-  selects the lint warnings the language checks report, documentation warnings included. -
-  [Language checks](../../tools/lint/lint.py) run every linter: pinned Ruff and ty,
-  Buildifier's lint, jactionlint for the workflows. - The [convention
-  checker](../../tools/conventions/check.py) runs the [catalogued
-  rules](../../rules_godot/docs/public/conventions.md): naming, public-doc fixture
-  references, example API references and documentation command labels resolved in their
-  owning Bazel modules. It is not a full layout-policy checker. - [API documentation
-  checks](../../rules_godot/docs/internal/api-reference.md) use evaluated Bazel/Stardoc
-  metadata and source inspection for inventories, ownership and descriptions. - Bazel
-  analysis, project/resource rules, sidecar checks and existing behavior/artifact tests
-  already enforce parts of dependency, resource and runtime correctness. - The [verification
-  guideline](verification.md) owns when and where these checks run; the [Aspect
-  tasks](../../.aspect/work.axl) and the pre-push hook `aspect bootstrap` installs, the
-  [lanes' work](../../tools/ci/work.py) and [CI](../../.github/workflows/ci.yml) implement
-  that policy.
+- [Formatting](../../tools/format/BUILD.bazel) uses `rules_lint`'s `format_multirun` with
+  Ruff and Buildifier, through `aspect format`. Buildifier lints Starlark as it formats,
+  with the warnings the [Buildifier configuration](../../.buildifier.json) selects,
+  documentation warnings included.
+- [Language checks](../../tools/lint/linters.bzl) are `rules_lint` aspects for pinned Ruff
+  and ty, through `aspect lint` in the modules with Python tools, configured in
+  [pyproject.toml](../../pyproject.toml) and [ty.toml](../../ty.toml). jactionlint checks the
+  workflows in a [test](../../tools/lint/BUILD.bazel).
+- The [convention checker](../../tools/conventions/check.py) runs the
+  [catalogued rules](../../rules_godot/docs/public/conventions.md): naming, public-doc
+  fixture references, example API references and documentation command labels resolved in
+  their owning Bazel modules. It is not a full layout-policy checker.
+- [API documentation checks](../../rules_godot/docs/internal/api-reference.md) use evaluated
+  Bazel/Stardoc metadata and source inspection for inventories, ownership and descriptions.
+- Bazel analysis, project/resource rules, sidecar checks and existing behavior/artifact
+  tests already enforce parts of dependency, resource and runtime correctness.
+- The [verification guideline](verification.md) owns when and where these checks run; the
+  [Git hooks' tasks](../../.aspect/hooks.axl), the [lanes' work](../../tools/ci/work.py) and
+  [CI](../../.github/workflows/ci.yml) implement that policy.
 
 A passing existing check does not imply that all layout or naming conventions are enforced.
 

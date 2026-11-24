@@ -5,30 +5,30 @@
 #   ./bootstrap.sh --android=false     everything but the Android SDK packages
 #   ./bootstrap.sh --tools-only        only Bazelisk and the Aspect CLI, as CI uses it
 #
-# Bazelisk (`bazel`) runs the Bazel of .bazelversion, and the Aspect CLI's launcher (`aspect`)
-# the Aspect CLI of .aspect/version.axl; everything else comes through them. Both are placed
-# in BIN_DIR (default ~/.local/bin), verified by the checksums of their GitHub releases; an
-# installed copy that matches is kept. Other arguments go to `aspect bootstrap`, which installs
-# the pre-push hook and the missing pinned Android SDK and NDK packages. Safe to repeat.
+# Bazelisk (`bazel`) runs the Bazel of .bazelversion, and the Aspect CLI's launcher (`aspect`),
+# of the release .aspect/version.axl names, its Aspect CLI; everything else comes through them.
+# Both are placed in BIN_DIR (default ~/.local/bin), verified by the checksums of their GitHub
+# releases; an installed copy that matches is kept. Other arguments go to `aspect bootstrap`,
+# which installs the pre-commit and pre-push hooks and the missing pinned Android SDK and NDK
+# packages. Safe to repeat.
 set -euo pipefail
 
 BAZELISK_VERSION=1.29.0
-ASPECT_VERSION=2026.47.12
 
-# The release assets and their SHA-256 checksums per platform: Bazelisk's, then the launcher's.
+# Each platform's Bazelisk asset with its SHA-256 checksum, then its Aspect launcher asset.
 assets() {
     case "$1" in
         Darwin-arm64)
             echo bazelisk-darwin-arm64 cee851f726789227d5561004e9904a52be45c3efb56f8b38b6993d6adbaa0409
-            echo aspect-launcher-aarch64-apple-darwin d395dd7ccaeeb77bff93f56b92cfb579211478d35295f37af50da8614bdfe422
+            echo aspect-launcher-aarch64-apple-darwin
             ;;
         Linux-x86_64)
             echo bazelisk-linux-amd64 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
-            echo aspect-launcher-x86_64-unknown-linux-musl a49be533dc38314bbc9d578a9a7c537a5ec10d2a5e296ed5a909d43c4b68a237
+            echo aspect-launcher-x86_64-unknown-linux-musl
             ;;
         Linux-aarch64 | Linux-arm64)
             echo bazelisk-linux-arm64 e20e8b0f4f240091b7a55bf17b9398bd4f40ee70ae0208dff95dd4c445fb4010
-            echo aspect-launcher-aarch64-unknown-linux-musl 8d79895d8e3066c173324b7288d3839f842ceead766393ae559ed3e6d549d8b7
+            echo aspect-launcher-aarch64-unknown-linux-musl
             ;;
         *) return 1 ;;
     esac
@@ -97,18 +97,28 @@ check_host() {
 platform="$(uname -s)-$(uname -m)"
 pins="$(assets "$platform")" || fail "no pinned tools for $platform"
 read -r bazelisk bazelisk_sha256 <<<"$(sed -n 1p <<<"$pins")"
-read -r launcher launcher_sha256 <<<"$(sed -n 2p <<<"$pins")"
+launcher="$(sed -n 2p <<<"$pins")"
+
+# The Aspect CLI's one pin is .aspect/version.axl; the launcher comes from the same release,
+# verified by the checksum the release publishes beside it.
+cd "$(dirname "${BASH_SOURCE[0]}")"
+aspect_version="$(sed -n 's/^version("\([^"]*\)").*/\1/p' .aspect/version.axl)"
+[[ -n "$aspect_version" ]] || fail "no version(\"...\") in .aspect/version.axl"
+aspect_release="https://github.com/aspect-build/aspect-cli/releases/download/v$aspect_version"
+launcher_sha256="$(curl -fsSL --retry 3 "$aspect_release/$launcher.sha256" | cut -d' ' -f1)" ||
+    fail "could not read the launcher's checksum from $aspect_release"
 
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
 check_host
 install bazel "https://github.com/bazelbuild/bazelisk/releases/download/v$BAZELISK_VERSION/$bazelisk" "$bazelisk_sha256"
-install aspect "https://github.com/aspect-build/aspect-cli/releases/download/v$ASPECT_VERSION/$launcher" "$launcher_sha256"
+install aspect "$aspect_release/$launcher" "$launcher_sha256"
 
 if [[ "$tools_only" == true ]]; then
     exit 0
 fi
 check_path bazel
 check_path aspect
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# The hooks `aspect bootstrap` installs run this launcher by its path.
+export AUTOLOAD_ASPECT_LAUNCHER="$BIN_DIR/aspect"
 PATH="$BIN_DIR:$PATH" exec aspect bootstrap "${arguments[@]+"${arguments[@]}"}"

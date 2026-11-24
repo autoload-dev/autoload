@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Codex's session hooks (.codex/hooks.json), which run in the Codex CLI and app alike. Codex
-# creates each worktree itself, at a new path, so its Bazel servers would start cold and leave
-# their output bases behind. Instead, a session in such a worktree leases a Bazel slot: a
-# directory that keeps one output base per module and passes from worktree to worktree, so a
-# new one reuses the fetched repositories and the action cache of an earlier one. tools/bazel
-# reads the lease from .bazel-slot.
+# Codex's session hooks (.codex/hooks.json), which lease a Bazel slot for a session in a Codex
+# worktree (AGENTS.md, "Worktrees"): a directory with one output base per module, which
+# tools/bazel uses while .bazel-slot names it.
 #
 #   worktree.sh session-start   reads the hook's {"cwd"} on stdin; leases a slot for its
 #                               worktree, the warmest free one, else a new one
@@ -12,14 +9,15 @@
 #                               its slot back, which the next session leases again
 #   worktree.sh setup|cleanup   the same for the worktree the current directory is in
 #
-# Only a linked worktree outside the Aspect CLI's worktree pool leases a slot: a main checkout
-# and a pool slot keep their path, and with it their output bases. Slots live in
+# Only a linked worktree outside the Aspect CLI's worktree pool leases a slot. Slots live in
 # ~/.aspect/bazel-slots/<repository>/; a lease whose worktree is gone counts as free. A hook
 # never fails its session: without a slot, Bazel only starts cold.
 set -euo pipefail
 
-# The pinned Bazelisk where bootstrap.sh places it: an app's hooks may run with a short PATH.
-export PATH="$HOME/.local/bin:$PATH"
+# The tools where bootstrap.sh placed them, beside the launcher `aspect bootstrap` recorded: an
+# app's hooks may run with a short PATH.
+launcher="$(git config aspect.launcher || true)"
+[[ -z "$launcher" ]] || export PATH="${launcher%/*}:$PATH"
 
 mode="${1:-}"
 if [[ "$mode" == session-* ]]; then

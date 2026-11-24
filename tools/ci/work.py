@@ -104,7 +104,7 @@ def contracts(lane: str) -> Work:
 
 
 SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-# The fast tests of a module, which `aspect check` runs: the unit tests by their size,
+# The fast tests of a module, which `aspect pre-push` runs: the unit tests by their size,
 # the analysis tests by rules_testing's tag, and the few smoke tests
 # (docs/internal/verification-architecture.md, "Test size").
 FAST_TESTS = (
@@ -147,13 +147,15 @@ def apps(packages: Iterable[str], symbols: bool = False) -> str:
 # The repository's own work, in the order a lane runs it. A piece without a lane runs only
 # when named.
 WORK = (
+    # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
+    Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
+    # The lint aspects of the modules with Python tools; the workflows' lint is a test.
     Work(
-        "format",
+        "lint",
         "quality",
         ".",
-        ("bazel run --config=host-execution //tools/format:format.check",),
+        tuple(In(module, "aspect lint //...") for module in (".", RULESET_DIR, DOCS)),
     ),
-    Work("lint", "quality", ".", ("bazel run --config=host-execution //tools/lint",)),
     # The setup action's shutdown of Bazel, which runs no Bazel itself.
     Work(
         "test:actions",
@@ -176,11 +178,6 @@ WORK = (
         (
             "python3 -m tools.android.requirements",
             "python3 -m tools.setup.pins",
-            (
-                "python3 -m unittest tools.android.requirements_test"
-                " tools.setup.modules_test tools.setup.pins_test tools.addons.new_test"
-                " tools.addons.lanes_test"
-            ),
         ),
     ),
     Work("test:tools", "quality", ".", ("bazel test //...",)),

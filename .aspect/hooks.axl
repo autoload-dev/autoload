@@ -1,0 +1,94 @@
+"""
+The Git hooks' tasks, which `aspect bootstrap` installs: `aspect pre-commit` keeps a commit
+formatted, its lock files current and its Code Health from declining; `aspect pre-push` checks
+the pushed checkout as CI's quality and documentation lanes would, on this host.
+"""
+
+load("./work.axl", "output", "python", "run", "run_work")
+
+def _lines(text: str) -> list:
+    return [line for line in text.split("\n") if line]
+
+def _diff(ctx: TaskContext, path: str) -> str:
+    """A file's changes that are not staged."""
+    return output(ctx, "git", ["diff", "--", path])
+
+def _steps(ctx: TaskContext, steps):
+    """Run named steps in order; stop at the first failure unless asked to keep going."""
+    failed = []
+    for name, step in steps:
+        ctx.task.phase(name, description = name)
+        if step() != 0:
+            failed.append(name)
+            if not ctx.args.keep_going:
+                break
+    if failed:
+        return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
+    return 0
+
+def _format_staged(ctx: TaskContext, aspect: str, staged) -> int:
+    """Format the staged files and stage the result.
+
+    A file with unstaged changes as well is formatted too, but staging it would take those
+    along, so a change to it fails the step.
+    """
+    partial = {path: _diff(ctx, path) for path in _lines(output(ctx, "git", ["diff", "--name-only"])) if path in staged}
+    if run(ctx, aspect, ["format", "--severity=info", "--"] + staged) != 0:
+        return 1
+    reformatted = [path for path, before in partial.items() if _diff(ctx, path) != before]
+    if reformatted:
+        print("Formatting changed partially staged files; stage them whole or as formatted: " + ", ".join(reformatted))
+        return 1
+    whole = [path for path in staged if path not in partial]
+    return run(ctx, "git", ["add", "--"] + whole) if whole else 0
+
+def _generate_staged(ctx: TaskContext, staged) -> int:
+    """Regenerate the lock files the staged files shape, and stage them."""
+    before = _lines(output(ctx, "git", ["diff", "--name-only"]))
+    if python(ctx, ["-m", "tools.generate.generate"] + staged) != 0:
+        return 1
+    locks = [
+        path
+        for path in _lines(output(ctx, "git", ["diff", "--name-only"]))
+        if path not in before and path.endswith("MODULE.bazel.lock")
+    ]
+    return run(ctx, "git", ["add", "--"] + locks) if locks else 0
+
+def _pre_commit_impl(ctx: TaskContext):
+    staged = _lines(output(ctx, "git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]))
+    if not staged:
+        return 0
+    aspect = ctx.std.env.current_exe()
+    return _steps(ctx, [
+        ("format", lambda: _format_staged(ctx, aspect, staged)),
+        ("generate", lambda: _generate_staged(ctx, staged)),
+        ("code-health", lambda: run(ctx, aspect, ["code-health", "--staged", "--if-available"])),
+    ])
+
+pre_commit = task(
+    implementation = _pre_commit_impl,
+    summary = "Before a commit: format and stage the staged files, regenerate their lock files, review their Code Health.",
+    args = {
+        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+    },
+)
+
+def _pre_push_impl(ctx: TaskContext):
+    aspect = ctx.std.env.current_exe()
+
+    # Each step runs alone as well. The work covers lint, the generated files, the conventions,
+    # the setup contracts and the setup action's tests, the modules' fast tests, the API
+    # documentation with its contract cases, and the repository tooling's tests.
+    return _steps(ctx, [
+        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
+        ("work", lambda: run_work(ctx, "lint", "generated", "conventions", "test:setup", "test:actions", "test:fast", "docs", "test:tools")),
+        ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
+    ])
+
+pre_push = task(
+    implementation = _pre_push_impl,
+    summary = "Before a push: check the checkout's formatting, lint, generated files, conventions, tests, API documentation and Code Health.",
+    args = {
+        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+    },
+)
