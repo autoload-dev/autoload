@@ -2,20 +2,22 @@ extends Node3D
 ## Transient effects own their lifetimes; none of these values feed gameplay.
 
 const Primitives = preload("res://main/shared/primitives.gd")
+const Palette = preload("res://main/shared/palette/palette.gd")
 const IVORY := Color("fff1d2")
 const MOSS := Color("83b493")
 const ORANGE := Color("ef9b52")
 const CORAL := Color("d76866")
-var palette: Resource
+
+var palette: Palette
 var reduced_motion := false
 var landing := 0.0
 var kick := 0.0
 var route_length := 180000
-var sparks: Array[Dictionary] = []
+var sparks: Array[Spark] = []
 var parcel_tweens: Array[Tween] = []
 
 
-func configure(colors: Resource, finish: int) -> void:
+func configure(colors: Palette, finish: int) -> void:
 	palette = colors
 	route_length = finish
 	landing = 0.0
@@ -71,12 +73,12 @@ func _burst(at: Vector3, color: Color, count: int) -> void:
 	for index in range(count):
 		var mote := _sphere(self, 0.06, at, color)
 		var angle := float(index) * TAU / count
-		sparks.append({"node": mote, "life": 0.5, "velocity": Vector3(cos(angle), absf(sin(angle)) + 0.5, 0.2) * 2})
+		sparks.append(Spark.new(mote, Vector3(cos(angle), absf(sin(angle)) + 0.5, 0.2) * 2))
 
 
 func _animate_sparks(delta: float) -> void:
 	for index in range(sparks.size() - 1, -1, -1):
-		var spark := sparks[index]
+		var spark: Spark = sparks[index]
 		if not is_instance_valid(spark.node):
 			sparks.remove_at(index)
 			continue
@@ -91,3 +93,14 @@ func _animate_sparks(delta: float) -> void:
 
 func _sphere(parent: Node3D, radius: float, at: Vector3, color: Color) -> MeshInstance3D:
 	return Primitives.sphere(parent, radius, at, color, palette)
+
+
+## A mote of a burst, flying until its life runs out.
+class Spark:
+	var node: MeshInstance3D
+	var life := 0.5
+	var velocity: Vector3
+
+	func _init(mote: MeshInstance3D, start: Vector3) -> void:
+		node = mote
+		velocity = start

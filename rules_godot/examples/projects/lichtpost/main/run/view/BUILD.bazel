@@ -18,5 +18,8 @@ godot_resources(
         "//projects/lichtpost/main/components:parallax",
         "//projects/lichtpost/main/components:pipe",
         "//projects/lichtpost/main/components:platform",
+        "//projects/lichtpost/main/rules:route",
+        "//projects/lichtpost/main/run:definitions",
+        "//projects/lichtpost/main/shared/palette",
     ],
 )

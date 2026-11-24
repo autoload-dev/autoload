@@ -2,9 +2,11 @@ extends Node
 ## Entry and screen flow: title -> round(level) -> result.
 
 const LevelDefinition = preload("res://main/run/level_definition.gd")
+const Run = preload("res://main/run/run.gd")
+const Interface = preload("res://main/ui/interface/interface.gd")
 @export var level: LevelDefinition
-@onready var run = $Run
-@onready var ui = $Interface
+@onready var run: Run = $Run
+@onready var ui: Interface = $Interface
 var mode := "title"
 var paused := false
 var best := 0
@@ -100,14 +102,16 @@ func _notification(what: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if run.replay != null:
 		return
-	if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed and not event.echo:
+	var key := event as InputEventKey
+	if key and key.keycode == KEY_ESCAPE and key.pressed and not key.echo:
 		toggle_pause()
 		return
 	# Controls receive emulated mouse events; original touches cannot also jump.
 	# Releases still reach the owning finger when it finishes over a control.
-	if event is InputEventScreenTouch and event.pressed and ui.contains_pointer(event.position):
+	var touch := event as InputEventScreenTouch
+	if touch and touch.pressed and ui.contains_pointer(touch.position):
 		return
-	var pressed: bool = run.feed_input(event)
+	var pressed := run.feed_input(event)
 	if pressed and not paused and not ui.options_open():
 		if mode != "playing":
 			if mode == "title" or result_age >= 0.45:

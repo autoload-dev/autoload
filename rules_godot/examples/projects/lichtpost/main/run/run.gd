@@ -5,13 +5,16 @@ signal finished(state: Dictionary)
 signal event_happened(event: String)
 const Route = preload("res://main/rules/route_model.gd")
 const Replay = preload("res://main/rules/replay.gd")
+const LevelDefinition = preload("res://main/run/level_definition.gd")
+const RunView = preload("res://main/run/view/run_view.gd")
+const Sound = preload("res://main/components/sound/sound.gd")
 ## Seconds per rule tick: the route model runs at a fixed 60 Hz.
 const TICK := 1.0 / 60.0
-@onready var view = $View
-@onready var sound = $SoundCues
-var model = Route.new()
-var level: Resource
-var replay = null
+@onready var view: RunView = $View
+@onready var sound: Sound = $SoundCues
+var model: Route = Route.new()
+var level: LevelDefinition
+var replay: Replay = null
 var replay_held := false
 var keyboard_held := false
 var touch_id := -1
@@ -29,14 +32,14 @@ func load_replay(path: String) -> bool:
 	return replay.read_file(path)
 
 
-func prepare(definition: Resource, seed_value: int) -> void:
+func prepare(definition: LevelDefinition, seed_value: int) -> void:
 	level = definition
 	model = Route.new(seed_value, level.rules_data())
 	previous = Vector2(model.x, model.y)
 	_rebuild_view()
 
 
-func start(definition: Resource, seed_value: int) -> void:
+func start(definition: LevelDefinition, seed_value: int) -> void:
 	clear_input()
 	clock = 0.0
 	replay_held = false
@@ -68,14 +71,16 @@ func set_options(muted: bool, reduced: bool) -> void:
 
 func feed_input(event: InputEvent) -> bool:
 	var pressed := false
-	if event is InputEventKey and event.keycode == KEY_SPACE and not event.echo:
-		pressed = event.pressed and not keyboard_held
-		keyboard_held = event.pressed
-	elif event is InputEventScreenTouch:
-		if event.pressed and touch_id == -1:
-			touch_id = event.index
+	var key := event as InputEventKey
+	var touch := event as InputEventScreenTouch
+	if key and key.keycode == KEY_SPACE and not key.echo:
+		pressed = key.pressed and not keyboard_held
+		keyboard_held = key.pressed
+	elif touch:
+		if touch.pressed and touch_id == -1:
+			touch_id = touch.index
 			pressed = true
-		elif not event.pressed and event.index == touch_id:
+		elif not touch.pressed and touch.index == touch_id:
 			touch_id = -1
 	return pressed
 
@@ -113,9 +118,9 @@ func tick() -> void:
 	model.step(pressed, held)
 	if view_ready and DisplayServer.get_name() != "headless":
 		view.react(model.events, model)
-		for event in model.events:
+		for event: String in model.events:
 			sound.play(event)
-	for event in model.events:
+	for event: String in model.events:
 		event_happened.emit(event)
 	if model.status != "running":
 		active = false

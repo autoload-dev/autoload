@@ -1,13 +1,16 @@
 extends RefCounted
 ## Primitive helpers for variable-length platforms and transient effects.
 
+const Palette = preload("res://main/shared/palette/palette.gd")
 
-static func apply_palette(root: Node3D, palette: Resource) -> void:
-	for mesh in root.find_children("*", "MeshInstance3D", true, false):
+
+static func apply_palette(root: Node3D, palette: Palette) -> void:
+	for node in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
 		if mesh.has_meta("palette"):
-			mesh.material_override = palette.get(mesh.get_meta("palette"))
+			mesh.material_override = palette.get(mesh.get_meta("palette") as String) as Material
 
-static func sphere(parent: Node3D, radius: float, at: Vector3, color: Color, palette: Resource) -> MeshInstance3D:
+static func sphere(parent: Node3D, radius: float, at: Vector3, color: Color, palette: Palette) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	var mesh := SphereMesh.new()
 	mesh.radius = radius
@@ -18,7 +21,7 @@ static func sphere(parent: Node3D, radius: float, at: Vector3, color: Color, pal
 	parent.add_child(node)
 	return node
 
-static func cylinder(parent: Node3D, radius: float, height: float, at: Vector3, color: Color, palette: Resource) -> MeshInstance3D:
+static func cylinder(parent: Node3D, radius: float, height: float, at: Vector3, color: Color, palette: Palette) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = radius
@@ -31,7 +34,7 @@ static func cylinder(parent: Node3D, radius: float, height: float, at: Vector3, 
 	parent.add_child(node)
 	return node
 
-static func box(parent: Node3D, size: Vector3, at: Vector3, color: Color, palette: Resource) -> MeshInstance3D:
+static func box(parent: Node3D, size: Vector3, at: Vector3, color: Color, palette: Palette) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size

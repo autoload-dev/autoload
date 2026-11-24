@@ -9,4 +9,7 @@ godot_resources(
         "primitives.gd.uid",
     ],
     prefix = "main/shared",
+    deps = [
+        "//projects/lichtpost/main/shared/palette",
+    ],
 )

@@ -2,11 +2,12 @@ extends Node3D
 ## Builds only the geometry of one generated island; endpoints are millimetres.
 
 const Primitives = preload("res://main/shared/primitives.gd")
+const Palette = preload("res://main/shared/palette/palette.gd")
 const MOSS := Color("83b493")
 const ORANGE := Color("ef9b52")
-var palette: Resource
+var palette: Palette
 
-func configure(left: int, right: int, colors: Resource) -> void:
+func configure(left: int, right: int, colors: Palette) -> void:
 	palette = colors
 	var world := self
 	var length := (right - left) / 1000.0
