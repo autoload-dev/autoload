@@ -242,6 +242,11 @@ the engine, so linking drops their code; an application whose scenes, resources 
 need a disabled class fails when it loads them. Its `disabled_build_options` must agree with
 `build_options`: a profile that sets an option the recipe sets differently fails
 configuration. The profile is part of the recipe's inputs and of a lock file's pins.
+Changing its `disabled_classes` recompiles only the sources that register classes: when the
+engine's `core/object/class_db.h` includes the profile as upstream does, rules_godot lets it
+include the profile only in the sources whose includes reach a `GDREGISTER_*` macro or
+`GD_IS_CLASS_ENABLED`, and any other source that evaluates a class's state fails to compile
+instead of ignoring the profile.
 
 ```starlark
 godot_engines.source_build(

@@ -151,6 +151,7 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._module_graph))
     ctx.watch(ctx.path(ctx.attr._source_tree))
     ctx.watch(ctx.path(ctx.attr._render))
+    ctx.watch(ctx.path(ctx.attr._build_profile))
     ctx.watch(ctx.path(ctx.attr._include_graph))
 
 def engine_build_impl(ctx, *, _fail = fail):
