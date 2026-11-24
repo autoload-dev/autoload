@@ -160,6 +160,17 @@ py_binary(
 )
 
 py_test(
+    name = "contracts_test",
+    size = "small",
+    srcs = ["contracts_test.py"],
+    deps = [
+        ":contracts_lib",
+        ":evidence_lib",
+        ":output_contracts_lib",
+    ],
+)
+
+py_test(
     name = "repository_contracts_test",
     size = "small",
     srcs = ["repository_contracts_test.py"],

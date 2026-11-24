@@ -19,6 +19,10 @@ class EvidenceTest(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceError, "invalid evaluated configured"):
             decode_configured('{"label":"//:app"}')
 
+    def test_a_label_in_two_configurations_is_an_error(self) -> None:
+        with self.assertRaisesRegex(EvidenceError, "more than one configuration"):
+            decode_configured(APP + "\n" + APP)
+
     def test_aliases_are_configured_separately_under_their_own_label(self) -> None:
         module = Module(Path("."), ())
         bazel = EvaluatedBazel(Path("/workspace"))
