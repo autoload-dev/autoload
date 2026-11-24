@@ -13,7 +13,7 @@ directives that the code of their generator writes, as literal paths or as templ
 import os
 import re
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
 # Includes, imports and __has_include checks, whose answer an undeclared header would
@@ -233,6 +233,36 @@ def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
     and the files of a cycle are included together anyway.
     """
     return _Components(graph).search()
+
+
+def reached_directories(
+    graph: Mapping[str, Collection[str]], directories: Iterable[str]
+) -> dict[str, frozenset[str]]:
+    """
+    Return each file of an include graph mapped to the directories, as spelled, that hold
+    it or a file it includes, transitively, at any depth.
+
+    The scan resolves an include to every directory that has the file, so an include
+    directory that holds no file a source reaches resolves none of its includes. The
+    source root, ".", holds every file.
+    """
+    spellings: dict[str, set[str]] = {}
+    for directory in directories:
+        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
+    reached: dict[str, frozenset[str]] = {}
+    # Dependencies come first, and the files of a cycle reach the same directories.
+    for component in components(graph):
+        found = {
+            spelling
+            for name in component
+            for parent in PurePosixPath(name).parents
+            for spelling in spellings.get(str(parent), ())
+        }
+        for name in component:
+            for include in graph[name]:
+                found |= reached.get(include, frozenset())
+        reached.update(dict.fromkeys(component, frozenset(found)))
+    return reached
 
 
 class _Components:
