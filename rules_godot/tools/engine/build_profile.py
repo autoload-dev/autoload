@@ -41,9 +41,13 @@ _SCOPED = f"""\
 #endif
 """
 
-# What evaluates the profile, outside class_db.h, which defines it.
+# What evaluates the profile, outside class_db.h, which defines it: the registration
+# macros, and the trait itself, whose primary template would silently count a disabled
+# class as enabled. A specialization, such as the profile's own, evaluates nothing, and
+# ClassDB::is_class_enabled(), a call, asks the registered classes.
 _REGISTRATION = re.compile(
-    r"\bGDREGISTER_\w+|\bGD_IS_CLASS_ENABLED\b|\bis_class_enabled_v\b"
+    r"\bGDREGISTER_\w+|\bGD_IS_CLASS_ENABLED\b"
+    r"|\bis_class_enabled_v\b|(?<!struct )\bis_class_enabled[ \t]*<"
 )
 
 

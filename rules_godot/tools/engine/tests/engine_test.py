@@ -1153,21 +1153,45 @@ class BuildProfileTest(unittest.TestCase):
                 '#include "core/object/class_db.h"\n'
                 "#define REGISTER_X(c) if constexpr (GD_IS_CLASS_ENABLED(c)) {}\n"
             ),
+            "modules/y/trait.cpp": (
+                '#include "core/object/class_db.h"\n'
+                "bool y = is_class_enabled<Node>::value;\n"
+            ),
+            "core/core_bind.cpp": (
+                '#include "core/object/class_db.h"\n'
+                "bool f() { return ::ClassDB::is_class_enabled(name); }\n"
+            ),
+            "core/version.cpp": '#include "core/version_generated.gen.h"\n',
         }
         sources = [
             "scene/node.cpp",
             "scene/register_scene_types.cpp",
             "modules/x/register.cpp",
+            "modules/y/trait.cpp",
+            "core/core_bind.cpp",
+            "core/version.cpp",
         ]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             write_tree(root, files)
-            generated = {build_profile.HEADER: Generated("", ())}
+            # One builder file writes both the profile's specializations and the version.
+            builders = Generated(
+                'f"template <> struct is_class_enabled<{cs}> : std::false_type {{}};"', ()
+            )
+            generated = {
+                build_profile.HEADER: builders,
+                "core/version_generated.gen.h": builders,
+            }
             graph = include_graph(root, [CompileGroup(sources, [], [])], generated)
             self.assertIn(build_profile.HEADER, graph["core/object/class_db.h"])
             graph, users = build_profile.declare(root, graph, generated, sources)
         self.assertEqual(
-            users, {"scene/register_scene_types.cpp", "modules/x/register.cpp"}
+            users,
+            {
+                "scene/register_scene_types.cpp",
+                "modules/x/register.cpp",
+                "modules/y/trait.cpp",
+            },
         )
         self.assertNotIn(build_profile.HEADER, graph["core/object/class_db.h"])
         self.assertNotIn(build_profile.HEADER, graph["scene/node.cpp"])
