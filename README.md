@@ -12,7 +12,7 @@ in its own directory and is released on its own:
 | [Add-ons](addons/README.md) | Godot add-ons with their native SDKs, one Bazel module each, `autoload_<module>` |
 
 The repository root holds only what the components share: the tooling in `tools/`, the CI in
-`.github/`, the task and hook configuration in `mise.toml` and `hk.pkl`, and the maintainer
+`.github/`, the task configuration in `.aspect/` and the pinned tools, and the maintainer
 documentation in `docs/`.
 
 ## Contributing

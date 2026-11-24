@@ -407,7 +407,7 @@ module lists it. Each module:
   `examples/.bazelrc` imports `addons/examples.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
   properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
-  of `linux`, `macos`) and `testOperations`. hk's Pkl evaluator does not check the schema's
+  of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
 - has at least one example project in `examples/projects/<name>/`, each defining the targets
@@ -427,11 +427,12 @@ From the repository root:
 bazel run //tools/conventions
 ```
 
-The command runs the registered convention rules across all owned modules. Violations include the stable rule ID, file, line and a link to
-this catalogue. The checker reports unreviewed computed macro names separately.
-Exit status `1` indicates convention findings; `2` indicates an incomplete audit.
-The hk hooks and CI select complementary code and documentation tasks, so each rule runs
-at most once per check invocation. The full command above explicitly runs both sets.
+The command runs the registered convention rules across all owned modules. Violations
+include the stable rule ID, file, line and a link to this catalogue. The checker reports
+unreviewed computed macro names separately. Exit status `1` indicates convention findings;
+`2` indicates an incomplete audit. The pre-push hook (`aspect check`) and CI select
+complementary code and documentation tasks, so each rule runs at most once per check
+invocation. The full command above explicitly runs both sets.
 
 Run one rule independently or list the registered rules:
 

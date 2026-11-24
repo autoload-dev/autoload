@@ -353,20 +353,19 @@ and use your project's targets in the BUILD declarations.
 
 The template pins SDK platform **35**, build tools **35.0.0**, NDK
 **29.0.14206865**, Java **21** and native API **24** for Godot 4.7.2.
-In this checkout, [mise](https://mise.jdx.dev/getting-started.html) prepares
-those components and supplies Java 21 and the Android environment throughout
-the repository. From the repository root:
+In this checkout, with [Bazelisk](https://github.com/bazelbuild/bazelisk) and the
+[Aspect CLI](https://docs.aspect.build/cli) installed, `aspect work android:setup` installs
+those components, and `aspect exec` supplies the Android environment (Java 21 comes from
+Bazel unless `JAVA_HOME` is set). From the repository root:
 
 ```sh
-mise trust
-mise bootstrap --only tools,task
+aspect work android:setup
 cd examples
-mise exec -- bazel build //addons/sqlite/demo:app --config=android
+aspect exec -- bazel build //addons/sqlite/demo:app --config=android
 ```
 
-Bootstrap reuses an existing SDK and installs only missing pinned components.
-The SDK stays outside the checkout and is shared by worktrees. With mise
-activated in your shell, the `bazel` command works directly too.
+The setup reuses an existing SDK and installs only missing pinned components.
+The SDK stays outside the checkout and is shared by worktrees.
 
 For a separate consuming module, provide equivalent toolchain setup or select
 your installed SDK, NDK and JDK explicitly:

@@ -29,7 +29,7 @@ included, run in the desktop sets (the work `test:bazel` provisions the Android 
 source-engine lane runs those tagged `source_engine`, which build an engine from source and
 are `manual`, so the desktop sets do not analyze their source recipes. CI runs the lane only in
 the [Source engine](#source-engine-workflow) workflow; locally,
-`mise run ci:work -- source-engine` leaves out the tests also tagged `source_engine_extended`.
+`aspect work source-engine` leaves out the tests also tagged `source_engine_extended`.
 The Android and iOS lanes run the consumer module's mobile smoke scenarios and the API
 contract cases of their lane.
 
@@ -67,11 +67,11 @@ The matrix fails fast: the first job to fail cancels the others, so they free th
 and `Finalize` fails at once, which in the merge queue removes the entry without waiting for
 the slowest lane; the work they finished stays in Bazel's caches.
 
-Locally, `mise run ci:lane -- <lane>` runs a whole lane on this host, `mise run ci:work --
-<name>...` single pieces, and `mise run ci:work` lists them. Where a piece is one Bazel command,
-the documentation shows that command instead. `hk check`
-runs the checks that need no lane machine: source quality, setup contracts, the conventions,
-the API documentation and the repository tooling's tests. The pre-push hook runs the quick ones.
+Locally, `aspect lane <lane>` runs a whole lane on this host, `aspect work <name>...` single
+pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation
+shows that command instead. `aspect check` runs the checks that need no lane machine:
+format, lint, generated files, the conventions, setup contracts and the fast tests with the
+API documentation. The pre-push hook `aspect bootstrap` installs runs it.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
@@ -94,9 +94,9 @@ commit, so CI has no job for it. The
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which the pre-push hook runs too, analyses each pinned source build's
+`generated` work, which `aspect check` runs too, analyses each pinned source build's
 toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
-`mise run ci:work -- source-engine` runs
+`aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged
@@ -116,7 +116,7 @@ merge queue's required check: a pull request whose lanes fail there leaves the q
 does not reach main. The ruleset of main, which requires the merge queue and that check, is
 managed in the repository settings. Main receives the merge group's commit unchanged, so its
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
-caches that later runs read, such as the Linux jobs' mise tools: Blacksmith's branch
+caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
 group's entries.
 
