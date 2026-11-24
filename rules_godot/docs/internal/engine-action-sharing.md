@@ -116,6 +116,17 @@ generated version header. Two changed core headers account for nearly all of the
 `core/templates/hashfuncs.h` and `core/templates/safe_refcount.h`, each in about 550
 closures.
 
+### Within one recipe: an option flip
+
+The define analysis (#98) gives each C or C++ compile only the definitions its
+preprocessing reads, so an option flip reruns only the sources that read a changed
+definition or a changed file. The beta recipe, with `renderers` in place of its three driver options, was
+built and then flipped after `bazel clean`, with the base in the remote cache:
+
+| Flip | Engine compiles after | Before #98 | With #98 |
+|---|---:|---:|---:|
+| `renderers` `["gl_compatibility"]` to `["gl_compatibility", "mobile"]` | 825 | 825 remote, 0 hits; 578 s executor | **224** remote (94 new sources, 130 existing), 601 hits, 73 analyses; 261 s + 25 s executor |
+
 ## Options
 
 | Option | Expected sharing between recipes | Analysis and repository cost | Pins and lock files | Apple and Android | Complexity | Fit with Bazel and Godot |
