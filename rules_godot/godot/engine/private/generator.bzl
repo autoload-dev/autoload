@@ -13,9 +13,14 @@ load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
+load(":define_analysis.bzl", _godot_define_analysis = "godot_define_analysis", _godot_source_defines = "godot_source_defines")
 load(":optimization.bzl", "OPTIMIZATION_CHECK_ATTRS", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "check_optimization", "engine_optimization")
 
 visibility("public")
+
+# The macro definition analysis, for generated engine BUILD files.
+godot_define_analysis = _godot_define_analysis
+godot_source_defines = _godot_source_defines
 
 def _generator_impl(ctx):
     outputs = ctx.outputs.outs

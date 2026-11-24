@@ -1,0 +1,103 @@
+import unittest
+
+from tools.engine.define_analysis import Library, analysis_rules, is_definition
+from tools.engine.render import object_rules
+
+
+def _rules(lines: list[str], kind: str) -> dict[str, str]:
+    return {line.split("'")[1]: line for line in lines if line.startswith(kind + "(")}
+
+
+class DefineAnalysisTest(unittest.TestCase):
+    def test_only_macro_options_are_definitions(self) -> None:
+        self.assertTrue(is_definition("-DXR_DISABLED"))
+        self.assertTrue(is_definition('-DMBEDTLS_CONFIG_FILE=\\"x.h\\"'))
+        self.assertTrue(is_definition("-UNDEBUG"))
+        self.assertFalse(is_definition("-Wall"))
+        self.assertFalse(is_definition("-fdebug-compilation-dir=."))
+
+    def test_c_and_cpp_sources_compile_with_their_analysed_header(self) -> None:
+        graph = {"core/a.cpp": set(), "platform/ios/b.mm": set(), "core/c.S": set()}
+        groups = [
+            (
+                "cc",
+                ("-Wall", "-DXR_DISABLED", "-U", "NDEBUG"),
+                (".",),
+                ["core/a.cpp", "core/c.S"],
+            ),
+            ("objc", ("-Wall", "-DXR_DISABLED"), (".",), ["platform/ios/b.mm"]),
+        ]
+        lines, labels = object_rules(groups, graph, {}, {"core/a.cpp"})
+        self.assertIn("_COPTS_0 = ['-Wall']", lines)
+        # The separate form of an option, -U NDEBUG, stays one definition.
+        self.assertIn("_DEFINES_0 = ['-DXR_DISABLED', '-UNDEBUG']", lines)
+        # Objective-C imports implicit modules, which see only the command line's macros.
+        self.assertIn("_COPTS_1 = ['-Wall', '-DXR_DISABLED']", lines)
+        self.assertNotIn("_DEFINES_1", "\n".join(lines))
+        library = _rules(lines, "cc_library")["_objects__core__a.cpp"]
+        self.assertIn(
+            "srcs = ['core/a.cpp', '_macros/_objects__core__a.cpp.h'], "
+            "copts = _COPTS_0 + ['-include', '_macros/_objects__core__a.cpp.h']",
+            library,
+        )
+        self.assertNotIn("local_defines", library)
+        defines = _rules(lines, "godot_source_defines")["_objects__core__a.cpp__defines"]
+        self.assertIn("copts = _COPTS_0, defines = _DEFINES_0", defines)
+        self.assertIn("local_defines = ['GODOT_DECLARES_BUILD_PROFILE']", defines)
+        self.assertIn(
+            "sources = [':_objects__core__a.cpp__defines'], "
+            "outs = ['_macros/_objects__core__a.cpp.h']",
+            _rules(lines, "godot_define_analysis")["_macros__0__core"],
+        )
+        # Assembly keeps its options, after the others.
+        assembly = _rules(lines, "cc_library")["_objects__core__c.S"]
+        self.assertIn("srcs = ['core/c.S'], copts = _COPTS_0 + _DEFINES_0,", assembly)
+        self.assertNotIn("_objects__core__c.S__defines", "\n".join(lines))
+        objc = _rules(lines, "objc_library")["_objects__platform__ios__b.mm"]
+        self.assertIn("srcs = ['platform/ios/b.mm'], copts = _COPTS_1,", objc)
+        self.assertEqual(
+            labels,
+            [
+                ":_objects__core__a.cpp",
+                ":_objects__core__c.S",
+                ":_objects__platform__ios__b.mm",
+            ],
+        )
+
+    def test_shards_split_by_group_and_directory_and_size(self) -> None:
+        def library(group: int, source: str) -> Library:
+            return Library(
+                group, source, "_objects__" + source.replace("/", "__"), "[]", [], []
+            )
+
+        sources = [library(0, f"scene/{name}.cpp") for name in "abcde"] + [
+            library(0, "thirdparty/zlib/a.c"),
+            library(0, "thirdparty/zstd/a.c"),
+            library(1, "scene/f.cpp"),
+            library(0, "main.cpp"),
+        ]
+        rules = _rules(analysis_rules(sources, size=2), "godot_define_analysis")
+        self.assertEqual(
+            sorted(rules),
+            [
+                "_macros__0___root",
+                "_macros__0__scene__0",
+                "_macros__0__scene__1",
+                "_macros__0__scene__2",
+                "_macros__0__thirdparty__zlib",
+                "_macros__0__thirdparty__zstd",
+                "_macros__1__scene",
+            ],
+        )
+        # Sorted runs of nearly even size keep neighbouring sources together.
+        self.assertIn(
+            "outs = ['_macros/_objects__scene__a.cpp.h', '_macros/_objects__scene__b.cpp.h']",
+            rules["_macros__0__scene__0"],
+        )
+        self.assertIn(
+            "outs = ['_macros/_objects__scene__e.cpp.h']", rules["_macros__0__scene__2"]
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

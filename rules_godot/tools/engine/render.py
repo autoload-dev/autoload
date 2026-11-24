@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from . import build_profile
+    from . import build_profile, define_analysis
     from .include_graph import (
         CompileGroup,
         Generated,
@@ -23,6 +23,7 @@ try:
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
     import build_profile
+    import define_analysis
     from include_graph import (
         CompileGroup,
         Generated,
@@ -156,7 +157,7 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
             f'load("{args.swift_repository}//swift:swift_library.bzl", "swift_library")'
         )
     lines += [
-        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision")',
+        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision", "godot_define_analysis", "godot_source_defines")',
         'package(default_visibility = ["//visibility:public"])',
         'exports_files(["engine_manifest.json"])',
         f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
@@ -288,6 +289,53 @@ def constants(
     return lines, by_source
 
 
+def _group_constants(index: int, language: str, copts: Sequence[str]) -> list[str]:
+    """A group's options; C and C++ groups keep their -D and -U options apart."""
+    if language == "objc":
+        return [f"_COPTS_{index} = {list(copts)!r}"]
+    options: list[str] = []
+    definitions: list[str] = []
+    copts = list(copts)
+    while copts:
+        copt = copts.pop(0)
+        if copt in ("-D", "-U") and copts:
+            # The separate form, -D NAME, as one option.
+            copt += copts.pop(0)
+        (definitions if define_analysis.is_definition(copt) else options).append(copt)
+    return [f"_COPTS_{index} = {options!r}", f"_DEFINES_{index} = {definitions!r}"]
+
+
+def _library_rules(language: str, library: define_analysis.Library) -> list[str]:
+    """
+    A source's library rule, with its define analysis if it is C or C++.
+
+    Objective-C sources import implicit modules, which see only the command line's macros,
+    and assembly sources are no C or C++: both keep their -D options.
+    """
+    common = f"name = {library.name!r}, visibility = ['//visibility:private'], "
+    rest = f"includes = {library.includes}, deps = {library.deps!r}, alwayslink = True)"
+    if not define_analysis.analyzed(language, library.source):
+        rule = "objc_library" if language == "objc" else "cc_library"
+        copts = f"_COPTS_{library.group}" + (
+            f" + _DEFINES_{library.group}" if language != "objc" else ""
+        )
+        defines = (
+            f"local_defines = {library.local_defines!r}, "
+            if library.local_defines
+            else ""
+        )
+        return [
+            f"{rule}({common}srcs = {[library.source]!r}, "
+            + f"copts = {copts}, {defines}{rest}"
+        ]
+    header = define_analysis.header(library.name)
+    return [
+        define_analysis.defines_rule(library),
+        f"cc_library({common}srcs = {[library.source, header]!r}, "
+        + f"copts = _COPTS_{library.group} + ['-include', {header!r}], {rest}",
+    ]
+
+
 def object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
@@ -300,7 +348,8 @@ def object_rules(
     A library is named after its source, so its object keeps its path, and its cache key,
     when other compile groups of the engine change. Sources that register classes see
     the build profile. A source compiles with only the include directories that hold a
-    file it reaches.
+    file it reaches. C and C++ sources take their macro definitions from the define
+    analysis; Objective-C sources, which import implicit modules, keep their -D options.
     """
     reached = reached_directories(
         graph, {directory for _, _, includes, _ in groups for directory in includes}
@@ -308,31 +357,30 @@ def object_rules(
     lines: list[str] = []
     labels: list[str] = []
     names: set[str] = set()
+    analyzed: list[define_analysis.Library] = []
     for index, (language, copts, includes, sources) in enumerate(groups):
-        lines.append(f"_COPTS_{index} = {list(copts)!r}")
+        lines += _group_constants(index, language, copts)
         include_lines, source_includes = constants(
             f"_INCLUDES_{index}",
             {source: [d for d in includes if d in reached[source]] for source in sources},
         )
         lines += include_lines
-        rule = "objc_library" if language == "objc" else "cc_library"
         for source in sources:
             name = object_library_name(source, index, names)
             names.add(name)
             labels.append(":" + name)
-            deps = _source_deps(graph, targets, source)
-            defines = (
-                f"local_defines = [{build_profile.DEFINE!r}], "
-                if source in profile_users
-                else ""
+            library = define_analysis.Library(
+                group=index,
+                source=source,
+                name=name,
+                includes=source_includes[source],
+                deps=_source_deps(graph, targets, source),
+                local_defines=[build_profile.DEFINE] if source in profile_users else [],
             )
-            lines.append(
-                f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
-                f"srcs = [{source!r}], copts = _COPTS_{index}, "
-                f"includes = {source_includes[source]}, "
-                f"{defines}deps = {deps!r}, alwayslink = True)"
-            )
-    return lines, labels
+            lines += _library_rules(language, library)
+            if define_analysis.analyzed(language, source):
+                analyzed.append(library)
+    return lines + define_analysis.analysis_rules(analyzed), labels
 
 
 _DEFAULT_SWIFT_OPTIONS: dict[str, Any] = {

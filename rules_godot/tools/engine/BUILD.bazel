@@ -13,6 +13,7 @@ py_binary(
     srcs = [
         "build_profile.py",
         "configure.py",
+        "define_analysis.py",
         "include_graph.py",
         "module_graph.py",
         "pin.py",
@@ -32,6 +33,7 @@ py_library(
     srcs = [
         "build_profile.py",
         "configure.py",
+        "define_analysis.py",
         "generator.py",
         "include_graph.py",
         "module_graph.py",
@@ -45,6 +47,7 @@ py_library(
 exports_files([
     "build_profile.py",
     "configure.py",
+    "define_analysis.py",
     "include_graph.py",
     "module_graph.py",
     "render.py",

@@ -1,0 +1,108 @@
+"""
+Render the macro definition analysis of a source-built engine's C and C++ sources.
+
+Each such source gets a `godot_source_defines` target with its -D and -U options, and its
+library compiles with `-include _macros/<library>.h` instead of them. `godot_define_analysis`
+targets write those headers, one action per shard: the sources of one compile group and
+directory, at most SHARD_SIZE of them. See //godot/engine/private:define_analysis.bzl.
+"""
+
+from collections import defaultdict
+from collections.abc import Iterable
+from typing import NamedTuple
+
+# The most sources one analysis action preprocesses. A shard's action runs its sources in
+# parallel on one executor, so a large shard lengthens the critical path; a small one
+# adds a remote action's overhead per few sources.
+SHARD_SIZE = 32
+
+# Top-level directories whose subdirectories are separate libraries; their sources shard
+# by subdirectory, so editing one library's headers reruns only its shards.
+_NESTED = {"_custom_modules", "drivers", "modules", "platform", "thirdparty"}
+
+
+class Library(NamedTuple):
+    """A source's library, named after it, and the options it compiles with."""
+
+    group: int
+    source: str
+    name: str
+    includes: str
+    deps: list[str]
+    local_defines: list[str]
+
+
+# The suffixes godot_source_defines takes: C and C++. Assembly sources, though GCC and
+# Clang preprocess .S files too, keep their -D options.
+ANALYZED_SUFFIXES = (".c", ".cc", ".cpp", ".cxx")
+
+
+def analyzed(language: str, source: str) -> bool:
+    """
+    Whether a source takes its definitions from the analysis: C and C++ do.
+
+    Objective-C sources, of the objc language, import implicit modules, which see only the
+    command line's macros.
+    """
+    return language != "objc" and source.endswith(ANALYZED_SUFFIXES)
+
+
+def is_definition(option: str) -> bool:
+    """Whether a compiler option defines or undefines a macro."""
+    return option.startswith(("-D", "-U"))
+
+
+def header(library: str) -> str:
+    """The header the analysis writes for a library's source."""
+    return f"_macros/{library}.h"
+
+
+def defines_rule(library: Library) -> str:
+    """The godot_source_defines target of a source, with its library's options."""
+    return (
+        f"godot_source_defines(name = {_defines_target(library.name)!r}, "
+        f"visibility = ['//visibility:private'], src = {library.source!r}, "
+        f"copts = _COPTS_{library.group}, defines = _DEFINES_{library.group}, "
+        f"local_defines = {library.local_defines!r}, includes = {library.includes}, "
+        f"deps = {library.deps!r})"
+    )
+
+
+def analysis_rules(libraries: Iterable[Library], size: int = SHARD_SIZE) -> list[str]:
+    """The godot_define_analysis targets that write the libraries' headers."""
+    shards: dict[tuple[int, str], list[Library]] = defaultdict(list)
+    for library in libraries:
+        shards[library.group, _directory(library.source)].append(library)
+    lines = []
+    for (group, directory), members in sorted(shards.items()):
+        chunks = _chunks(sorted(members, key=lambda member: member.source), size)
+        for index, chunk in enumerate(chunks):
+            suffix = f"__{index}" if len(chunks) > 1 else ""
+            lines.append(
+                f"godot_define_analysis(name = '_macros__{group}__{directory}{suffix}', "
+                "visibility = ['//visibility:private'], "
+                f"sources = {[':' + _defines_target(member.name) for member in chunk]!r}, "
+                f"outs = {[header(member.name) for member in chunk]!r})"
+            )
+    return lines
+
+
+def _defines_target(library: str) -> str:
+    return library + "__defines"
+
+
+def _directory(source: str) -> str:
+    """The directory a source shards by: its top-level one, or below _NESTED the next."""
+    parts = source.split("/")[:-1] or ["_root"]
+    return "__".join(parts[: 2 if parts[0] in _NESTED else 1])
+
+
+def _chunks(members: list[Library], size: int) -> list[list[Library]]:
+    """
+    Split sorted members into the fewest runs of at most size, as even as possible.
+
+    Runs keep neighbouring sources, which tend to share headers, in one shard.
+    """
+    count = -(-len(members) // size)
+    per = -(-len(members) // count)
+    return [members[start : start + per] for start in range(0, len(members), per)]

@@ -1,3 +1,5 @@
+load(":define_analysis.bzl", "per_file_copt_setting")
+
 # The documentation module (docs/) lists these files in the Starlark library it extracts
 # the API documentation with. Their load visibility still restricts who loads them.
 exports_files(
@@ -6,6 +8,7 @@ exports_files(
         "catalogue.bzl",
         "source_build_rows.bzl",
         "components.bzl",
+        "define_analysis.bzl",
         "extension_plan.bzl",
         "generator.bzl",
         "hub.bzl",
@@ -16,5 +19,17 @@ exports_files(
         "resolution.bzl",
         "source_repositories.bzl",
     ],
+    visibility = ["//visibility:public"],
+)
+
+exports_files(
+    ["define_analysis.awk"],
+    visibility = ["//visibility:public"],
+)
+
+# Whether the build sets --per_file_copt; the define analysis keeps every definition then.
+per_file_copt_setting(
+    name = "per_file_copt_set",
+    build_setting_default = False,
     visibility = ["//visibility:public"],
 )

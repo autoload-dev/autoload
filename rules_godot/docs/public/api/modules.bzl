@@ -61,6 +61,7 @@ SUPPORT_MODULES = [
     "//godot/engine/private:hub.bzl",
     "//godot/engine/private:source_repositories.bzl",
     "//godot/engine/private:optimization.bzl",
+    "//godot/engine/private:define_analysis.bzl",
     "//godot/extension/private:cc_extension.bzl",
     "//godot/extension/private:godot_cpp.bzl",
     "//godot/extension/private:ios_framework.bzl",

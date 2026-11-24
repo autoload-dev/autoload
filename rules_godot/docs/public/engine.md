@@ -591,6 +591,28 @@ the source's includes. Removing the only custom module of an Android recipe of 7
 sources reruns the 19 sources whose files change or reached the module instead of all of
 them, and so does adding one back.
 
+Macro definitions follow the same rule. Build options such as `disable_3d` add `-D`
+options, and every compile option is part of a compile action's cache key. A C or C++
+source therefore compiles without the recipe's `-D` and `-U` options and with `-include`
+of a header that holds only the definitions its preprocessing reads. An analysis action
+writes that header: with the source's own compile command and `-Wunused-macros`, it
+preprocesses a wrapper that defines the options and then includes the source, and it
+drops the definitions the compiler, Clang or GCC, reports unused. A canary definition
+that no source reads must be reported too, so a compiler that reports nothing fails the
+analysis instead of keeping or dropping definitions silently. A definition that the preprocessing
+never reads cannot change it, so the object stays the same, and the compile reruns only
+when a definition it reads changes. One analysis action covers up to 32 sources of a
+compile group and directory and reruns when one of their files changes. Flipping
+`disable_3d` on an Android recipe of 731 sources recompiles 278 of the 863 sources it
+then has, instead of all of them. Objective-C and Objective-C++ sources keep their `-D`
+options: they import implicit Clang modules, which see the command line's macros but not
+a header's, so a definition the analysis reports unused could still change a module
+they import. Assembly sources, such as zstd's `.S` files on Linux, keep their `-D` options
+too: the analysis covers C and C++. Options of the toolchain and of `--copt`, `--cxxopt` and `--conlyopt`, such
+as `-c opt`'s `NDEBUG`, stay on every command line, and the analysis preprocesses with
+them. Starlark cannot read `--per_file_copt`, so with it set every source keeps all of its
+definitions.
+
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:
 apple_support's thread-safety, 64-to-32-bit and undeclared-selector warnings
