@@ -120,9 +120,9 @@ closures.
 ### Within one recipe: an option flip
 
 With the define analysis (#98), an option flip reruns only the sources that read a
-changed definition or a changed file. The beta recipe sets `renderers =
-["gl_compatibility"]` in place of its `vulkan`, `opengl3` and `rendering_device` options,
-and then `["gl_compatibility", "mobile"]`. Each was built after `bazel clean`, the second
+changed definition or a changed file. The beta recipe sets
+`renderers = ["gl_compatibility"]` in place of its `vulkan`, `opengl3` and
+`rendering_device` options, and then `["gl_compatibility", "mobile"]`. Each was built after `bazel clean`, the second
 with the first in the remote cache; once on `main` before #98 and once with it:
 
 | `renderers` flip to `["gl_compatibility", "mobile"]` | Before #98 | With #98 |
@@ -265,6 +265,8 @@ What the prototype leaves open:
    The name stays, so both versions resolve to the same external directory: record each
    compile's input digests (step 2) before switching, not after.
 5. **Option flip.** Edit the beta recipe's options in place, build it, change one option
-   and build again after `bazel clean`. Count the second build's `CppCompile` and
+   and build again after `bazel clean`. Pass `--disk_cache=` and the same new
+   `--copt=-fdebug-prefix-map=/salt-<n>=.` to both builds, so that no earlier run answers
+   them; the salt changes no object. Count the second build's `CppCompile` and
    `DefineAnalysis` entries in `--execution_log_json_file` by `cacheHit`, and compare their
    object paths with the first build's to tell new sources from existing ones.
