@@ -475,7 +475,7 @@ index 0000000..7ce56fe
 +	return JSON::stringify(d, "\t", false);
 +}
 diff --git a/modules/gdscript/gdscript_bytecode.cpp b/modules/gdscript/gdscript_bytecode.cpp
-index a2a1af2..eb5abcf 100644
+index a2a1af2..d7bc251 100644
 --- a/modules/gdscript/gdscript_bytecode.cpp
 +++ b/modules/gdscript/gdscript_bytecode.cpp
 @@ -16,6 +16,24 @@
@@ -511,7 +511,19 @@ index a2a1af2..eb5abcf 100644
  
  		uint32_t defaults = r.u32();
  		for (uint32_t i = 0; i < defaults; i++) {
-@@ -741,7 +760,9 @@ public:
+@@ -717,7 +736,10 @@ public:
+ 		n = r.u32();
+ 		for (uint32_t i = 0; i < n; i++) {
+ 			Variant::Type t = (Variant::Type)r.u32();
+-			f->builtin_methods.push_back(Variant::get_validated_builtin_method(t, r.str()));
++			StringName name = r.str();
++			// Like method binds below: a compiled function's table names methods the build may
++			// have left out, and it never reads them.
++			f->builtin_methods.push_back(f->_native ? nullptr : Variant::get_validated_builtin_method(t, name));
+ 		}
+ 		finish_table(f->builtin_methods, f->_builtin_methods_ptr, f->_builtin_methods_count);
+ 		n = r.u32();
+@@ -741,7 +763,9 @@ public:
  			StringName cls = r.str();
  			StringName method = r.str();
  			const MethodBind *m = ClassDB::get_method(cls, method);
@@ -522,7 +534,7 @@ index a2a1af2..eb5abcf 100644
  				ERR_PRINT(vformat("GDScript bytecode: unknown method %s.%s.", cls, method));
  				r.error = ERR_CANT_RESOLVE;
  			}
-@@ -905,6 +926,9 @@ Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer
+@@ -905,6 +929,9 @@ Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer
  void GDScriptBytecodeWriter::_bind_methods() {
  	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("compile", "path"), &GDScriptBytecodeWriter::compile);
  	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("disassemble", "path"), &GDScriptBytecodeWriter::disassemble);

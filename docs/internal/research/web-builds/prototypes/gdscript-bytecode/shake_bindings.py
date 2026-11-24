@@ -50,6 +50,10 @@ def _unused_property(statement: re.Match[str], used: set[str]) -> str:
     return f"{statement.group(1)}// Shaken property: {statement.group(2)}\n"
 
 
+# Flags set on a bound method after binding it: they go with the binding.
+_FLAGS = re.compile(
+    r'^(\t+)ClassDB::set_method_flags\([^;]*?"(\w+)"\)?, [^;]*\);[^\n]*\n', re.MULTILINE
+)
 _NAME = re.compile(r'D_METHOD\("(\w+)"|bind_vararg_method\(\s*\w+,\s*"(\w+)"')
 _PROPERTY = re.compile(
     r'ADD_PROPERTYI?\(\s*PropertyInfo\(\s*Variant::[\w:]+,\s*"([^"]*)"[^;]*?\),\s*"(\w*)",\s*"(\w*)"'
@@ -105,10 +109,18 @@ def _shake(
             return f"{statement.group(1)}// Shaken: {cls}.{name}\n"
 
         pieces.append(text[last:start])
-        pieces.append(_STATEMENT.sub(replace, body))
+        pieces.append(_without_flags(_STATEMENT.sub(replace, body), cls))
         last = end
     pieces.append(text[last:])
     return "".join(pieces), found, removed
+
+
+def _without_flags(body: str, cls: str) -> str:
+    """body without the method flags of the bindings it no longer has."""
+    return _FLAGS.sub(
+        lambda m: m.group(0) if f"Shaken: {cls}.{m.group(2)}\n" not in body else "",
+        body,
+    )
 
 
 def _engine_sources(source: Path) -> dict[Path, str]:
