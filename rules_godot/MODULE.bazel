@@ -44,8 +44,8 @@ android_sdk = use_extension(
 )
 use_repo(android_sdk, "androidsdk")
 
-# The SDK of //godot/platforms/private/tests, at the API level and build tools mise.toml
-# provisions; a dependency's tags would apply to consumers without their own.
+# The SDK of //godot/platforms/private/tests, at the API level and build tools the
+# repository provisions (tools/android/sdk.json); a dependency's tags would apply to consumers without their own.
 android_sdk_development = use_extension(
     "@rules_android//rules/android_sdk_repository:rule.bzl",
     "android_sdk_repository_extension",

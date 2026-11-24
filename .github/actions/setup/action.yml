@@ -1,6 +1,6 @@
 name: Set up repository
 description: >-
-  Install and cache mise tools, reuse SDK components, and configure Bazel
+  Install Bazelisk and the Aspect CLI, reuse SDK components, and configure Bazel
   repository caching and cleanup. A persistent runner keeps its tools, SDK
   components and Bazel caches on its own disk between jobs, and its machine
   configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
@@ -36,66 +36,54 @@ runs:
           echo "fresh=$fresh"
           echo "persistent-disk=$persistent"
         } >> "$GITHUB_OUTPUT"
-    # Runner images may select an older NDK. Empty values let mise apply the
-    # repository default while preserving its local override policy.
+    # Runner images may select an older NDK. Empty values let the Aspect CLI apply the
+    # repository default (.aspect/config.axl) while preserving its local override policy.
     - name: Clear runner NDK defaults
       shell: bash
       run: |
         echo "ANDROID_NDK_HOME=" >> "$GITHUB_ENV"
         echo "ANDROID_NDK_ROOT=" >> "$GITHUB_ENV"
-    # mise-action downloads mise, and verifies a cached mise, through GitHub releases unless
-    # mise is in place with a known checksum. This step places the pinned mise from mise's
-    # CDN, or from the GitHub release if the CDN fails. The archive checksums are the
-    # entries of the release's minisign-signed SHASUMS256.txt.
-    - name: Download mise
-      id: mise
+    # The repository's tools are Bazel and the Aspect CLI; everything else comes through
+    # Bazel. This step places pinned Bazelisk and Aspect launcher binaries, verified by the
+    # checksums of their GitHub releases. Bazelisk runs the Bazel of .bazelversion, the
+    # launcher the Aspect CLI of .aspect/version.axl.
+    - name: Install Bazelisk and the Aspect CLI
       shell: bash
       env:
-        MISE_VERSION: 2026.10.15
-        MISE_SHA256_LINUX_X64: 1c2d85dc42bef51e0bb20780093c746d6e12dfd15ca461f3979bd52cc214bc19
-        MISE_SHA256_MACOS_ARM64: 8a44a56f72323c777298a1d5abd88ffd21d0fca19fab1ccccd389a912374f69c
+        BAZELISK_VERSION: 1.29.0
+        BAZELISK_SHA256_LINUX_X64: 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
+        BAZELISK_SHA256_MACOS_ARM64: cee851f726789227d5561004e9904a52be45c3efb56f8b38b6993d6adbaa0409
+        ASPECT_VERSION: 2026.47.12
+        ASPECT_SHA256_LINUX_X64: a49be533dc38314bbc9d578a9a7c537a5ec10d2a5e296ed5a909d43c4b68a237
+        ASPECT_SHA256_MACOS_ARM64: d395dd7ccaeeb77bff93f56b92cfb579211478d35295f37af50da8614bdfe422
       run: |
         case "$RUNNER_OS-$RUNNER_ARCH" in
-          Linux-X64) target=linux-x64 archive_sha256=$MISE_SHA256_LINUX_X64 ;;
-          macOS-ARM64) target=macos-arm64 archive_sha256=$MISE_SHA256_MACOS_ARM64 ;;
-          *) echo "No pinned mise for $RUNNER_OS $RUNNER_ARCH" >&2; exit 1 ;;
+          Linux-X64)
+            bazelisk=bazelisk-linux-amd64 bazelisk_sha256=$BAZELISK_SHA256_LINUX_X64
+            aspect=aspect-launcher-x86_64-unknown-linux-musl aspect_sha256=$ASPECT_SHA256_LINUX_X64 ;;
+          macOS-ARM64)
+            bazelisk=bazelisk-darwin-arm64 bazelisk_sha256=$BAZELISK_SHA256_MACOS_ARM64
+            aspect=aspect-launcher-aarch64-apple-darwin aspect_sha256=$ASPECT_SHA256_MACOS_ARM64 ;;
+          *) echo "No pinned tools for $RUNNER_OS $RUNNER_ARCH" >&2; exit 1 ;;
         esac
-        asset="mise-v$MISE_VERSION-$target.tar.gz"
-        archive="$RUNNER_TEMP/$asset"
-        verified=false
-        for url in "https://mise.jdx.dev/v$MISE_VERSION/$asset" \
-          "https://github.com/jdx/mise/releases/download/v$MISE_VERSION/$asset"; do
-          curl -fsSL --retry 3 --connect-timeout 10 --max-time 120 -o "$archive" "$url" &&
-            echo "$archive_sha256  $archive" | shasum -a 256 -c --status &&
-            verified=true && echo "Downloaded $asset from $url" && break
-          echo "::warning::Could not download a verified $asset from $url"
-        done
-        [[ "$verified" == true ]] || exit 1
-        # mise-action's default data directory; it restores its cache there.
-        bin="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/bin"
+        bin="$RUNNER_TEMP/repository-tools"
         mkdir -p "$bin"
-        tar -xzf "$archive" -C "$RUNNER_TEMP" mise/bin/mise
-        mv "$RUNNER_TEMP/mise/bin/mise" "$bin/mise"
-        # With the binary's checksum, mise-action verifies it without GitHub.
-        {
-          echo "version=$MISE_VERSION"
-          echo "sha256=$(shasum -a 256 "$bin/mise" | cut -d' ' -f1)"
-        } >> "$GITHUB_OUTPUT"
-    # Save last, after tasks have installed any additional tools.
-    - name: Install mise
-      uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
-      with:
-        version: ${{ steps.mise.outputs.version }}
-        sha256: ${{ steps.mise.outputs.sha256 }}
-        cache: ${{ steps.runner.outputs.fresh }}
-        cache_save_post: ${{ steps.runner.outputs.fresh }}
-        cache_key_prefix: mise-${{ inputs.cache-name }}
-        reshim: true
+        fetch() {
+          curl -fsSL --retry 3 --connect-timeout 10 --max-time 120 -o "$bin/$1" "$2"
+          echo "$3  $bin/$1" | shasum -a 256 -c --status ||
+            { echo "::error::$2 does not match its pinned checksum"; exit 1; }
+          chmod +x "$bin/$1"
+        }
+        fetch bazel "https://github.com/bazelbuild/bazelisk/releases/download/v$BAZELISK_VERSION/$bazelisk" "$bazelisk_sha256"
+        fetch aspect "https://github.com/aspect-build/aspect-cli/releases/download/v$ASPECT_VERSION/$aspect" "$aspect_sha256"
+        echo "$bin" >> "$GITHUB_PATH"
+        # The Aspect CLI and its launcher send usage telemetry unless told not to.
+        echo "DO_NOT_TRACK=1" >> "$GITHUB_ENV"
     - name: Record runner tool versions
       shell: bash
       run: |
-        bazelisk --version
-        python3 --version
+        bazel --version
+        aspect version
         clang --version
         if [[ "$RUNNER_OS" == macOS ]]; then
           xcode-select -p
@@ -103,24 +91,6 @@ runs:
           xcrun --sdk iphoneos --show-sdk-version
           xcrun --sdk iphonesimulator --show-sdk-version
         fi
-    - name: Find missing Android SDK components
-      if: inputs.android-cache == 'true' && steps.runner.outputs.fresh == 'true'
-      id: sdk-cache
-      shell: bash
-      run: |
-        paths="$(python3 tools/android/sdk.py --cache-paths)"
-        if [[ -n "$paths" ]]; then
-          {
-            printf 'paths<<SDK_PATHS\n%s\nSDK_PATHS\n' "$paths"
-            echo "key=$(printf '%s' "$paths" | sha256sum | cut -d' ' -f1)"
-          } >> "$GITHUB_OUTPUT"
-        fi
-    - name: Restore missing Android SDK components
-      if: steps.sdk-cache.outputs.paths != ''
-      uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
-      with:
-        path: ${{ steps.sdk-cache.outputs.paths }}
-        key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Keep normal progress output without collecting per-invocation trace profiles.
     - name: Configure Bazel output
       if: steps.runner.outputs.fresh == 'true'
@@ -196,6 +166,26 @@ runs:
       env:
         REPOSITORY_BAZELRC: ${{ steps.cache.outputs.bazelrc }}
       run: printf '%s\n' "$REPOSITORY_BAZELRC" >> "$HOME/.bazelrc"
+    # After the repository cache is configured: finding them builds Bazel's Python.
+    - name: Find missing Android SDK components
+      if: inputs.android-cache == 'true' && steps.runner.outputs.fresh == 'true'
+      id: sdk-cache
+      shell: bash
+      run: |
+        # In the Aspect CLI's environment, which selects the SDK, with Bazel's Python.
+        paths="$(aspect exec -- python3 tools/android/sdk.py --cache-paths)"
+        if [[ -n "$paths" ]]; then
+          {
+            printf 'paths<<SDK_PATHS\n%s\nSDK_PATHS\n' "$paths"
+            echo "key=$(printf '%s' "$paths" | sha256sum | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+        fi
+    - name: Restore missing Android SDK components
+      if: steps.sdk-cache.outputs.paths != ''
+      uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
+      with:
+        path: ${{ steps.sdk-cache.outputs.paths }}
+        key: android-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk-cache.outputs.key }}
     # Persistent workers run from extracted repositories on the disk. Steps
     # clean up in reverse order, so Bazel stops before the disk is unmounted.
     # Only on fresh Linux runners: a persistent runner keeps its Bazel servers

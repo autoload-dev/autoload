@@ -12,8 +12,8 @@ _PYTHON = "@rules_python//python/bin:python"
 _PYTHON_PATH = "external/rules_python+/python/bin/python3"
 
 # The pinned CodeScene CLI, made executable (tools/code_health/BUILD.bazel).
-_CODESCENE = "//tools/code_health:cs"
-_CODESCENE_PATH = "tools/code_health/cs_bin"
+_CODESCENE = "//tools/code_health:codescene_cli"
+_CODESCENE_PATH = "tools/code_health/cs"
 
 def _root(ctx: TaskContext) -> str:
     return ctx.std.env.aspect_root_dir()
@@ -95,7 +95,7 @@ def _code_health_impl(ctx: TaskContext) -> int:
     env = {}
     if not ctx.std.env.var("CODESCENE_CLI"):
         env["CODESCENE_CLI"] = _built(ctx, _CODESCENE, _CODESCENE_PATH)
-    return python(ctx, ["-m", "tools.code_health.codescene"] + flags, env = env)
+    return python(ctx, ["-m", "tools.code_health.codescene"] + flags + ctx.args.options, env = env)
 
 code_health = task(
     implementation = _code_health_impl,
@@ -104,6 +104,7 @@ code_health = task(
         "survey": args.boolean(default = False, description = "Report the whole checkout: hotspots and the lowest scores"),
         "staged": args.boolean(default = False, description = "Review the staged changes only"),
         "if_available": args.boolean(default = False, description = "Pass with a note without a CodeScene sign-in"),
+        "options": args.trailing_var_args(),
     },
 )
 
@@ -131,5 +132,23 @@ bootstrap = task(
     args = {
         "hooks": args.boolean(default = True, description = "Install the Git hooks"),
         "android": args.boolean(default = True, description = "Install the missing Android SDK packages"),
+    },
+)
+
+def _exec_impl(ctx: TaskContext) -> int:
+    command = ctx.args.command
+    if not command:
+        return TaskConclusion(exit_code = 2, text = "Name a command: aspect exec -- <command>...")
+
+    # The environment's `python3` is Bazel's, as for the lanes' work.
+    python_bin = _built(ctx, _PYTHON, _PYTHON_PATH).rpartition("/")[0]
+    path = python_bin + ":" + (ctx.std.env.var("PATH") or "")
+    return ctx.std.process.command(command[0]).args(command[1:]).env("PATH", path).spawn().wait().code
+
+exec = task(
+    implementation = _exec_impl,
+    summary = "Run a command in the repository's environment: its Android variables and Bazel's Python.",
+    args = {
+        "command": args.trailing_var_args(),
     },
 )

@@ -94,7 +94,7 @@ jobs:
           android-cache: ${{ matrix.lane.android-cache || 'false' }}
           cache-name: ${{ matrix.lane.job }}
       - name: Run the lane's work
-        run: python3 -m tools.ci.work lane ${{ matrix.lane.work }}
+        run: aspect lane ${{ matrix.lane.work }}
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads

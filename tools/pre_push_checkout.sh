@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fail a push unless the checkout holds the pushed commits without other
-# changes. The checks of hk.pkl's pre-push hook read the working tree, not the
-# pushed commits. Reads Git's pre-push lines on stdin.
+# changes. The pre-push hook's checks (`aspect check`) read the working tree,
+# not the pushed commits. Reads Git's pre-push lines on stdin.
 set -euo pipefail
 
 fail() {

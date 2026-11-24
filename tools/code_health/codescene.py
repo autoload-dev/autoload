@@ -18,7 +18,7 @@ Usage (from the repository root):
         [--include-build-files] [--exclude GLOB ...] [--rules code-health-rules.json]
         [--keep-macro-arguments] [--if-available]
 
---if-available lets the Git hooks (hk.pkl) pass with a note on a machine without the
+--if-available lets `aspect check` and its pre-push hook pass with a note on a machine without the
 CodeScene CLI or a sign-in, instead of blocking every commit and push there.
 """
 

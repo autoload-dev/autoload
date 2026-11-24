@@ -10,7 +10,7 @@ contents stands for a name derived from the two, and every file name ends in `.t
 module's examples then pin their Maven graph, which needs Bazel and the network. The
 written files belong to the module from then on: nothing regenerates them.
 
-`addons/.selftest` (gitignored) is the self-test's module (`mise run ci:work -- <lane>:addon-template`): it is
+`addons/.selftest` (gitignored) is the self-test's module (`aspect work <lane>:addon-template`): it is
 regenerated from scratch each time.
 """
 
@@ -206,7 +206,7 @@ def main() -> None:
     if args.module != SELFTEST:
         print(
             "\nNext: describe the module in its README and verify it with "
-            f"`mise run ci:work -- desktop:addon:{args.module}`."
+            f"`aspect work desktop:addon:{args.module}`."
         )
 
 

@@ -66,7 +66,7 @@ def lock_files(modules: list[str], mode: str) -> int:
 def check_lock_files() -> int:
     status = lock_files(list(LOCKED_MODULES), "error")
     if status:
-        print("A MODULE.bazel.lock is stale: run `mise run generate`.", file=sys.stderr)
+        print("A MODULE.bazel.lock is stale: run `aspect generate`.", file=sys.stderr)
     return status
 
 

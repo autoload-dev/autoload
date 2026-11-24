@@ -12,9 +12,10 @@ def _check_impl(ctx: TaskContext) -> int:
     steps = [
         ("format", lambda: _aspect(ctx, "format", "--severity=fail")),
         ("lint", lambda: _aspect(ctx, "lint")),
-        # The whole repository's lint and generated files, the setup contracts, the setup
-        # action's tests, and the fast tests of the modules with the documentation check.
-        ("work", lambda: run_work(ctx, "lint", "generated", "test:setup", "test:actions", "test:fast")),
+        # The whole repository's lint, generated files and conventions, the setup contracts,
+        # the setup action's tests, and the fast tests of the modules with the documentation
+        # check.
+        ("work", lambda: run_work(ctx, "lint", "generated", "conventions", "test:setup", "test:actions", "test:fast")),
         ("code-health", lambda: _aspect(ctx, "code-health", "--if-available")),
     ]
     failed = []
@@ -30,7 +31,7 @@ def _check_impl(ctx: TaskContext) -> int:
 
 check = task(
     implementation = _check_impl,
-    summary = "Check the change before a push: format, lint, generated files, fast tests, Code Health.",
+    summary = "Check the change before a push: format, lint, generated files, conventions, fast tests, Code Health.",
     args = {
         "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
     },
