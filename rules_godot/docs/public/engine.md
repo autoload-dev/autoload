@@ -555,6 +555,15 @@ an include path that a macro assembles, fails to compile in a sandbox or on a
 remote executor. A GDScript edit does not compile engine objects; an engine edit
 does not re-import unrelated assets.
 
+Include directories follow the same rule. Godot gives every source of a compile group the
+same include directories, among them `_custom_modules`, the directory that holds a recipe's
+custom modules, and each one is part of the compile command. Each source keeps only the
+include directories, in their order, that hold a file it reaches: the scan resolves an
+include to every directory that has the file, so no other directory can resolve one of
+the source's includes. Removing the only custom module of an Android recipe of 731
+sources reruns the 19 sources whose files change or reached the module instead of all of
+them, and so does adding one back.
+
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:
 apple_support's thread-safety, 64-to-32-bit and undeclared-selector warnings
