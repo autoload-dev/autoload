@@ -6,7 +6,15 @@ import re
 from collections.abc import Callable
 
 import cpp_native
-from cpp_expressions import ARITHMETIC, FIELDS, OWNER, expression, foreign_member, typed
+from cpp_expressions import (
+    ARITHMETIC,
+    FIELDS,
+    OWNER,
+    expression,
+    foreign_member,
+    typed,
+    variant_operator,
+)
 from cpp_model import Function
 from cpp_types import NUMBERS, Unsupported, c_type, convert
 
@@ -26,11 +34,8 @@ def _property_value(fn: Function, node: dict, current: str | None) -> tuple[str,
         return expression(fn, node["value"])
     if current is None or op not in _OPERATORS:
         raise Unsupported(f"compound assignment {op} to a property")
-    value = typed(fn, node["value"], "Variant")
-    return (
-        f"GDScriptNative::evaluate(Variant::OP_{_OPERATORS[op]}, {current}, {value})",
-        "Variant",
-    )
+    value = expression(fn, node["value"])
+    return variant_operator(fn, _OPERATORS[op], (current, "Variant"), value), "Variant"
 
 
 def _assign_property(fn: Function, node: dict, receiver: str, klass: str) -> bool:
@@ -71,8 +76,9 @@ def _assign_script_member(fn: Function, node: dict, base: str, bt: str) -> bool:
         return True
     if op not in _OPERATORS:
         raise Unsupported(f"compound assignment {op} to a member")
-    value = typed(fn, node["value"], "Variant")
-    result = f"GDScriptNative::evaluate(Variant::OP_{_OPERATORS[op]}, {convert(slot, gd, 'Variant')}, {value})"
+    result = variant_operator(
+        fn, _OPERATORS[op], (slot, gd), expression(fn, node["value"])
+    )
     fn.emit(f"{slot} = {convert(result, 'Variant', gd)};")
     return True
 

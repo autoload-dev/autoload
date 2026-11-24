@@ -199,9 +199,17 @@ def _comparison(o: _Operands) -> Code | None:
     return None
 
 
-def _variant_operator(o: _Operands) -> Code:
-    left, right = convert(o.left, o.lt, "Variant"), convert(o.right, o.rt, "Variant")
-    code = f"GDScriptNative::evaluate(Variant::OP_{_BINARY[o.op]}, {left}, {right})"
+def variant_operator(fn: Function, op: str, left: Code, right: Code) -> str:
+    """Evaluate an operator at run time. The program records the operator and its static
+    operand types, so the build keeps only the evaluators that may run."""
+    fn.program.operators.add((op, left[1], right[1]))
+    operands = ", ".join(convert(code, t, "Variant") for code, t in (left, right))
+    return f"GDScriptNative::evaluate(Variant::OP_{op}, {operands})"
+
+
+def _variant_operator(fn: Function, o: _Operands) -> Code:
+    left, right = (o.left, o.lt), (o.right, o.rt)
+    code = variant_operator(fn, _BINARY[o.op], left, right)
     return convert(code, "Variant", o.result) if o.result != "Variant" else code, o.result
 
 
@@ -213,7 +221,7 @@ def _binary(fn: Function, node: dict) -> Code:
         found = strategy(operands)
         if found:
             return found
-    return _variant_operator(operands)
+    return _variant_operator(fn, operands)
 
 
 def _unary(fn: Function, node: dict) -> Code:

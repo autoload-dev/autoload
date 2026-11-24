@@ -54,6 +54,8 @@ shaken engine below, and the web build plays.
 
 `bytecode_usage.py --compiled <gen_cpp's usage.json>` leaves out the compiled functions,
 whose bytecode no longer runs, and `gen_cpp.py` adds every name its code still looks up.
+The usage also lists the operators the compiled code still evaluates at run time, with
+the static types of their operands, for `shake_operators.py --compiled`.
 
 | Engine (R3 settings) | bindings removed | raw | brotli 11 |
 | --- | ---: | ---: | ---: |

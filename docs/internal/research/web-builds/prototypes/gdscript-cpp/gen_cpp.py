@@ -185,6 +185,7 @@ def _write_usage(out: Path, program: Program, code: str) -> None:
         "compiled": sorted(f"{fqcn}.{name}" for fqcn, name in program.compiled),
         "names": sorted(set(re.findall(r'SNAME\("(\w+)"\)', code))),
         "direct": sorted(program.direct),
+        "operators": sorted(program.operators),
     }
     out.with_suffix(".usage.json").write_text(json.dumps(usage, indent=1))
 

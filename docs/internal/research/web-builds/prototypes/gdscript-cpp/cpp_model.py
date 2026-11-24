@@ -16,6 +16,8 @@ class Program:
     # Engine classes whose headers direct calls need, and the bindings they call.
     used_classes: set[str] = field(default_factory=set)
     direct: set[str] = field(default_factory=set)
+    # Operators evaluated at run time: (operator, left type, right type).
+    operators: set[tuple[str, str, str]] = field(default_factory=set)
 
     def member(self, fqcn: str, name: str) -> dict[str, int]:
         """The member indices of a class that has the member, or none."""
