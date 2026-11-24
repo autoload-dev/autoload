@@ -259,7 +259,7 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
     return name if name not in taken else f"{name}__{group}"
 
 
-def _copts_constants(
+def copts_constants(
     index: int,
     copts: Sequence[str],
     sources: Sequence[str],
@@ -299,7 +299,7 @@ def _object_rules(
     labels: list[str] = []
     names: set[str] = set()
     for index, (language, copts, includes, sources) in enumerate(groups):
-        copts_lines, source_copts = _copts_constants(index, copts, sources, macros)
+        copts_lines, source_copts = copts_constants(index, copts, sources, macros)
         lines += copts_lines
         lines.append(f"_INCLUDES_{index} = {list(includes)!r}")
         rule = "objc_library" if language == "objc" else "cc_library"

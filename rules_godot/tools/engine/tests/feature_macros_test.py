@@ -5,6 +5,7 @@ from pathlib import Path
 
 from tools.engine.feature_macros import FeatureMacroScan, assembles, feature_options
 from tools.engine.include_graph import CompileGroup, Generated, include_graph
+from tools.engine.render import copts_constants
 
 
 def write_tree(root: Path, files: dict[str, str]) -> None:
@@ -120,6 +121,47 @@ class FeatureMacroTest(unittest.TestCase):
             },
         )
         self.assertNotIn("-DXR_DISABLED", dropped)
+
+    def test_aliases_of_pasting_macros_paste(self) -> None:
+        alias = "#define CONCAT(a, b) a ## b\n#define JOIN CONCAT\nJOIN(XR_, DISABLED)\n"
+        self.assertIn("-DXR_DISABLED", self.copts({"main.cpp": alias}))
+        spliced = "#define FEATURE(x) x ## \\ \n _DISABLED\nFEATURE(XR)\n"
+        self.assertIn("-DXR_DISABLED", self.copts({"main.cpp": spliced}))
+
+    def test_text_inputs_of_generators_need_not_be_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_tree(root, {"main.cpp": '#include "features.gen.h"\n'})
+            (root / "names.txt").write_bytes("XR_DISABLED caf\xe9\n".encode("latin-1"))
+            generated = {"features.gen.h": Generated("", ("names.txt",))}
+            graph = include_graph(root, [CompileGroup(["main.cpp"], [], [])], generated)
+            scan = FeatureMacroScan(root, graph, generated, [self.COPTS])
+            self.assertIn("-DXR_DISABLED", scan.copts("main.cpp", self.COPTS))
+
+    def test_each_distinct_set_of_options_is_one_constant(self) -> None:
+        files = {
+            "a.cpp": "#ifdef XR_DISABLED\n#endif\n",
+            "b.cpp": "",
+            "c.cpp": "",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_tree(root, files)
+            sources = sorted(files)
+            graph = include_graph(root, [CompileGroup(sources, [], self.COPTS)], {})
+            scan = FeatureMacroScan(root, graph, {}, [self.COPTS])
+            lines, by_source = copts_constants(3, self.COPTS, sources, scan)
+        self.assertEqual(
+            lines,
+            [
+                "_COPTS_3_0 = ['-O2', '-DXR_DISABLED', '-DNDEBUG']",
+                "_COPTS_3_1 = ['-O2', '-DNDEBUG']",
+            ],
+        )
+        self.assertEqual(
+            by_source,
+            {"a.cpp": "_COPTS_3_0", "b.cpp": "_COPTS_3_1", "c.cpp": "_COPTS_3_1"},
+        )
 
     def test_names_assemble_from_fragments_and_numbers(self) -> None:
         self.assertTrue(assembles("_3D_DISABLED", {"_", "D_DISABLED"}, ()))

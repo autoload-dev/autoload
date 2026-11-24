@@ -9,7 +9,8 @@ into a different object, so the scan keeps a macro whenever it cannot rule out a
 
 - Only Godot's feature macros are dropped: names that end in _ENABLED or _DISABLED and
   that are not reserved for the implementation, which __ or _ and a capital letter start.
-  The scan does not see system headers; none reads such a name.
+  The scan does not see system headers; none of the Android NDK's or Xcode SDKs' reads
+  such a name.
 - A file reads a macro whose name is one of its words, in code, strings or comments,
   or a word of the value of one of the source's -D options.
 - Token pasting assembles names from fragments: the literal operands of ##, the
@@ -36,7 +37,7 @@ FEATURE_MACRO = re.compile(r"(?!__|_[A-Z])\w+_(?:ENABLED|DISABLED)")
 
 _DEFINE_OPTION = re.compile(r"-D(\w+)(?:=(.*))?$", re.DOTALL)
 _WORD = re.compile(r"\w+")
-_SPLICE = re.compile(r"\\\r?\n")
+_SPLICE = re.compile(r"\\[ \t]*\r?\n")
 _DEFINE = re.compile(
     r"^[ \t]*#[ \t]*define[ \t]+(\w+)(?:\(([^)\n]*)\))?(.*)$", re.MULTILINE
 )
@@ -65,10 +66,11 @@ class _Define(NamedTuple):
         return not self.parameters.isdisjoint(self.operands)
 
     def forwards(self, pasting: Collection[str]) -> bool:
-        """Return whether the body can pass a parameter to one of the pasting macros."""
-        return not self.parameters.isdisjoint(self.words) and not self.words.isdisjoint(
-            pasting
-        )
+        """
+        Return whether the body names one of the pasting macros, to pass it parameters or
+        to stand for it, as an alias such as #define JOIN CONCAT does.
+        """
+        return not self.words.isdisjoint(pasting)
 
 
 class _Reads(NamedTuple):
@@ -193,8 +195,8 @@ class _Macros:
     """
     The macro definitions of every scanned file.
 
-    A macro pastes when its body pastes one of its parameters, or passes one to a macro
-    that pastes. Definitions of one name in different files count together.
+    A macro pastes when its body pastes one of its parameters or names a macro that
+    pastes. Definitions of one name in different files count together.
     """
 
     def __init__(self, defines: Iterable[Iterable[_Define]]) -> None:
@@ -370,8 +372,9 @@ def _words(code: str) -> set[str]:
 
 
 def _text_input(path: Path) -> str:
-    """Return a generator input's text, or nothing for a binary file."""
+    """Return a generator input's text, or nothing for a binary file, which has NUL bytes."""
     try:
-        return path.read_bytes().decode()
-    except FileNotFoundError, IsADirectoryError, UnicodeDecodeError:
+        data = path.read_bytes()
+    except FileNotFoundError, IsADirectoryError:
         return ""
+    return "" if b"\0" in data else data.decode(errors="replace")

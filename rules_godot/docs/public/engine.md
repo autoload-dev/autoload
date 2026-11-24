@@ -557,8 +557,9 @@ macros that a file it reaches can read: turning `disable_3d` off in an Android r
 of 731 sources reruns the 169 whose files test the macros it changes and compiles the
 132 sources it adds, instead of rerunning all of them. Feature macros are the names that end in `_ENABLED` or `_DISABLED`
 and that the implementation does not reserve, which `__` or `_` and a capital letter
-start; other macros, such as `NDEBUG` or `_FILE_OFFSET_BITS`, which toolchain and
-system headers read, stay on every source. A dropped macro that a file reads would
+start; no header of the Android NDK or the Xcode SDKs reads such a name. Other macros,
+such as `NDEBUG` or `_FILE_OFFSET_BITS`, which toolchain and system headers read, stay
+on every source. A dropped macro that a file reads would
 compile silently into a different object, so the scan keeps a macro whenever it cannot
 rule out a read: when its name is a word anywhere in a file the source reaches, comments
 and strings included, or in the value of another `-D` option, or when token pasting
