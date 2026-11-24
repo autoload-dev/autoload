@@ -18,11 +18,12 @@ Changes that narrow each compile's inputs:
 - the per-source include closures (autoload-dev/autoload#81);
 - the scoped build profile (#82);
 - the per-source feature macros (#83), a scan for `*_ENABLED` and `*_DISABLED` names;
-- include-directory pruning (#85).
+- include-directory pruning (#85);
+- the compiler-based define analysis (#98), which replaced #83.
 
 Status and decisions on 2026-11-24: #81, #82 and #85 have merged, #85 after the
-snapshot. #83 was set aside for a compiler-based define analysis, in prototype:
-`clang -E -Wunused-macros` on a wrapper main file that defines the macros reports those a
+snapshot. #83 was set aside for a compiler-based define analysis, which merged later as
+#98: `-Wunused-macros` on a wrapper main file that defines the macros reports those a
 source does not read, and a per-source forced-include header passes only the rest, so
 compiles stay `cc_library` actions.
 
@@ -100,7 +101,7 @@ reads `DEBUG_ENABLED`. `TOOLS_ENABLED` and `DEBUG_ENABLED` change core headers, 
 rest is genuinely different work. Between editor and templates, `NO_EDITOR_SPLASH` and
 `GDSCRIPT_NO_LSP` alone hide the 296 compiles that do not reach `TOOLS_ENABLED`.
 The name-based scan of #83 misses both, because their names do not end in `_ENABLED` or
-`_DISABLED`; the compiler-based define analysis would see them. Sharing across build
+`_DISABLED`; the compiler-based define analysis (#98) sees them. Sharing across build
 targets also needs a shared tree that spans a recipe's build targets: the prototype groups
 by row.
 
@@ -115,6 +116,22 @@ sources with a changed header in their closure, and 1 source whose only change i
 generated version header. Two changed core headers account for nearly all of the 553:
 `core/templates/hashfuncs.h` and `core/templates/safe_refcount.h`, each in about 550
 closures.
+
+### Within one recipe: an option flip
+
+With the define analysis (#98), an option flip reruns only the sources that read a
+changed definition or a changed file. The beta recipe sets
+`renderers = ["gl_compatibility"]` in place of its `vulkan`, `opengl3` and
+`rendering_device` options, and then `["gl_compatibility", "mobile"]`. Each was built after `bazel clean`, the second
+with the first in the remote cache; once on `main` before #98 and once with it:
+
+| `renderers` flip to `["gl_compatibility", "mobile"]` | Before #98 | With #98 |
+|---|---:|---:|
+| Engine compiles | 825 | 825 |
+| Run remotely | 825 | 224: 94 new sources, 130 existing |
+| Remote cache hits | 0 | 601 |
+| Define analysis actions | none | 73 |
+| Remote executor time, compiles + analyses | 578 s | 261 s + 25 s |
 
 ## Options
 
@@ -247,3 +264,9 @@ What the prototype leaves open:
    build it. Then edit the recipe's `source` in place and build again after `bazel clean`.
    The name stays, so both versions resolve to the same external directory: record each
    compile's input digests (step 2) before switching, not after.
+5. **Option flip.** Edit the beta recipe's options in place, build it, change one option
+   and build again after `bazel clean`. Pass `--disk_cache=` and the same new
+   `--copt=-fdebug-prefix-map=/salt-<n>=.` to both builds, so that no earlier run answers
+   them; the salt changes no object. Count the second build's `CppCompile` and
+   `DefineAnalysis` entries in `--execution_log_json_file` by `cacheHit`, and compare their
+   object paths with the first build's to tell new sources from existing ones.
