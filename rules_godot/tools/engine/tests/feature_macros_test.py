@@ -127,6 +127,8 @@ class FeatureMacroTest(unittest.TestCase):
         self.assertIn("-DXR_DISABLED", self.copts({"main.cpp": alias}))
         spliced = "#define FEATURE(x) x ## \\ \n _DISABLED\nFEATURE(XR)\n"
         self.assertIn("-DXR_DISABLED", self.copts({"main.cpp": spliced}))
+        commented = "#define FEATURE(x) /* a\n */ x ## _DISABLED\nFEATURE /* b */ (XR)\n"
+        self.assertIn("-DXR_DISABLED", self.copts({"main.cpp": commented}))
 
     def test_text_inputs_of_generators_need_not_be_utf8(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

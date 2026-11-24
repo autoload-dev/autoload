@@ -41,6 +41,7 @@ _SPLICE = re.compile(r"\\[ \t]*\r?\n")
 _DEFINE = re.compile(
     r"^[ \t]*#[ \t]*define[ \t]+(\w+)(?:\(([^)\n]*)\))?(.*)$", re.MULTILINE
 )
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _INVOCATION = re.compile(r"\b(\w+)\s*\(")
 _ESCAPE = re.compile(r"\\.")
 _PASTE = re.compile(r"(\w*)\s*##\s*(\w*)")
@@ -138,11 +139,19 @@ def _is_fragment(piece: str, fragments: Collection[str], folded: Collection[str]
     return piece.isdigit() or piece in fragments or piece.casefold() in folded
 
 
-def _read_text(path: Path) -> str:
+def _read_text(path: Path) -> tuple[str, ...]:
+    """
+    Return a file's text with its lines spliced, as written and, if it has block
+    comments, without them, as the preprocessor replaces each by a space. A definition
+    whose body goes on after a comment's line break is whole only without comments; a
+    comment marker that a string holds can hide code only there.
+    """
     try:
-        return _SPLICE.sub("", path.read_text(errors="replace"))
+        text = _SPLICE.sub("", path.read_text(errors="replace"))
     except FileNotFoundError, IsADirectoryError:
-        return ""
+        return ("",)
+    uncommented = _BLOCK_COMMENT.sub(" ", text)
+    return (text,) if uncommented == text else (text, uncommented)
 
 
 def _defines(text: str) -> Iterator[_Define]:
@@ -307,22 +316,40 @@ class FeatureMacroScan:
         generated: Mapping[str, Generated],
     ) -> dict[str, _Reads]:
         texts = {path: _read_text(root / path) for path in graph if path not in generated}
-        defines = {path: list(_defines(text)) for path, text in texts.items()}
+        defines = {
+            path: [define for text in variants for define in _defines(text)]
+            for path, variants in texts.items()
+        }
         macros = _Macros(defines.values())
         expansions = macros.expansions(self.pieces)
-        reads: dict[str, _Reads] = {}
-        for path, text in texts.items():
-            words = set(_WORD.findall(text))
-            pasted = macros.pasted_words(text, words, defines[path])
-            fragments = pasted.union(
-                *(expansions[word] for word in pasted if word in expansions)
-            )
-            reads[path] = self._reads(words, fragments)
-        for path in graph:
-            if path in generated:
-                words, fragments = _generator_words(root, path, generated)
-                reads[path] = self._reads(words, fragments, fold=True)
+        reads = {
+            path: self._source_reads(variants, defines[path], macros, expansions)
+            for path, variants in texts.items()
+        }
+        reads.update(
+            (path, self._reads(*_generator_words(root, path, generated), fold=True))
+            for path in graph
+            if path in generated
+        )
         return reads
+
+    def _source_reads(
+        self,
+        variants: Sequence[str],
+        defines: Sequence[_Define],
+        macros: _Macros,
+        expansions: Mapping[str, frozenset[str]],
+    ) -> _Reads:
+        """Return what a file reads, given its texts, as written first, and definitions."""
+        # The text without comments has no word the text as written lacks.
+        words = set(_WORD.findall(variants[0]))
+        pasted = set().union(
+            *(macros.pasted_words(text, words, defines) for text in variants)
+        )
+        fragments = pasted.union(
+            *(expansions[word] for word in pasted if word in expansions)
+        )
+        return self._reads(words, fragments)
 
 
 def _generator_words(
