@@ -161,18 +161,16 @@ what is still open. Line references are to `main` as of 2026-11-04.
   measures the potential, compares designs and describes a prototype of a shared tree
   repository with digest-named targets.
 - Deferred: a shared tree repository when several recipes of one row coexist. It needs
-  content-addressed tree names, a rendering argument, and iOS and pinned-recipe coverage.
-  The compiler-based define analysis fixes each source's defines only at execution time,
-  so digest-named tree objects would need that analysis at pin time, with the build-time
-  analysis as a check.
+  content-addressed tree names, a rendering argument, iOS and pinned-recipe coverage, and
+  define sets known at pin time, because the compiler-based define analysis fixes them
+  only at execution time (the note's open points).
 
 ### Patch overlays and per-source Android shells
 
-- Depends on the shared tree above. A recipe with other patches gets another tree and
-  shares nothing, and the Android shell library is built per source build.
-- Open: patched files as content-addressed overlays, like generated files, so a patch does
-  not split the tree; one Android shell library per source and patch list instead of per
-  source build.
+- Depends on the shared tree above, deferred with it.
+- Open: patched files as content-addressed overlays, so a patch does not split the tree
+  (the note's open point "Patches"); one Android shell library per source and patch list
+  instead of per source build.
 
 ### Configurable deployment targets of engine recipes
 

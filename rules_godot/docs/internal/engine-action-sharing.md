@@ -20,20 +20,18 @@ Changes that narrow each compile's inputs:
 - the per-source feature macros (#83), a scan for `*_ENABLED` and `*_DISABLED` names;
 - include-directory pruning (#85).
 
-Status on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 was set
+Status and decisions on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 was set
 aside for a compiler-based define analysis, in prototype: `clang -E -Wunused-macros` on a
 wrapper main file that defines the macros reports those a source does not read, and a
 per-source forced-include header passes only the rest, so compiles stay `cc_library`
 actions.
 
-Decided on 2026-11-24:
-
-- **Preprocess split: not pursued.** Splitting each compile into a preprocess and a
-  compile action (branch `prototype/engine-preprocess-split`, report
-  `rules_godot/docs/internal/engine-preprocess-split.md` on that branch) would, after the
-  define analysis, only save header edits that leave the preprocessed text unchanged. It
-  costs twice the actions and the `.ii` files in the CAS, and supports neither
-  Objective-C nor `-g3`.
+- **Preprocess split: not pursued.** Once the define analysis is in, splitting each
+  compile into a preprocess and a compile action would only save header edits that leave
+  the preprocessed text unchanged. It doubles the actions, stores every `.ii` file in the
+  remote cache, and supports neither Objective-C nor `-g3` (macro debug information,
+  which preprocessing removes). The prototype's report is on its branch:
+  `git show origin/prototype/engine-preprocess-split:rules_godot/docs/internal/engine-preprocess-split.md`.
 - **Shared tree (option 5): deferred,** with the prototype below kept on its branch.
 
 ## Why two recipes share nothing
@@ -220,6 +218,7 @@ What the prototype leaves open:
   - a rendering argument instead of the environment variable;
   - coverage of iOS and pinned recipes;
   - define sets known at pin time.
+- **A preprocess split does not pay** once the defines are narrowed (see the status above).
 - **Options 1, 2, 3, 4, 6 and 7 share nothing,** or they cost the incremental edits that
   work today.
 
