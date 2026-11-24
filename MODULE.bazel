@@ -85,6 +85,19 @@ local_path_override(
     path = "addons/gdunit",
 )
 
+# The add-on modules whose example applications examples/addons/<module>/ holds.
+bazel_dep(name = "autoload_firebase", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_firebase",
+    path = "addons/firebase",
+)
+
+bazel_dep(name = "autoload_sentry", version = "0.1.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_sentry",
+    path = "addons/sentry",
+)
+
 bazel_dep(name = "rules_swift", version = "4.3.0", dev_dependency = True)
 bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
 
@@ -102,8 +115,10 @@ maven.install(
         "net.openid:appauth:0.11.1",
     ],
     known_contributing_modules = [
-        "protobuf",
+        "autoload_firebase",
         "autoload_rules_godot",
+        "autoload_sentry",
+        "protobuf",
     ],
     lock_file = "//:maven_install.json",
     repositories = [

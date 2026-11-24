@@ -19,5 +19,8 @@ class RepositoryTestCase(unittest.TestCase):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
         # The root module, which ignores the consumer modules it names here.
-        (self.root / "MODULE.bazel").write_text('module(name = "autoload_rules_godot")\n')
+        (self.root / "MODULE.bazel").write_text(
+            'module(name = "autoload_dev")\n\n'
+            "# The add-on modules whose example applications examples/addons/<module>/ holds.\n"
+        )
         (self.root / ".bazelignore").write_text("addons\n")

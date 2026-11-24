@@ -192,7 +192,6 @@ MODULES = (
     ".",
     "rules_godot",
     "addons/sentry",
-    "addons/sentry/examples",
 )
 
 
@@ -307,7 +306,7 @@ class SelectionTest(unittest.TestCase):
         with contextlib.redirect_stdout(printed):
             selected(lint, changed("addons/sentry/a.py"))
         self.assertIn(
-            "[lint] addons/sentry/examples skipped: no change since abc1234",
+            "[lint] rules_godot skipped: no change since abc1234",
             printed.getvalue(),
         )
 

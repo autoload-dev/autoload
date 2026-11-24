@@ -46,6 +46,10 @@ build:official --platforms=@autoload_rules_godot//godot/platforms:ios_sim_x86_64
 # arm64 Simulator, as current Simulators on Apple silicon require; the @godot hub builds its
 # runtime from the release's sources.
 build:simulator --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64
+# An iOS device; a device build needs a provisioning profile on godot_app.
+build:ios --platforms=@autoload_rules_godot//godot/platforms:ios_arm64
+# The add-on examples' name for the official x86_64 Simulator slot.
+build:ios_sim --config=official
 # The scenarios' name for the same slot.
 build:source --config=simulator
 build:ios-release --config=official

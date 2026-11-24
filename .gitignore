@@ -44,6 +44,9 @@ bazel-remote-grpc.log
 /execution_log.binpb.zst
 # Swift Package Manager's scratch directory beside examples/Package.swift.
 /examples/.build/
+# The add-on examples' local iOS provisioning profiles.
+/examples/addons/*/signing/
 
 # The add-on generator's self-test module (aspect work <lane>:addon-template).
 /addons/.selftest/
+/examples/addons/selftest/

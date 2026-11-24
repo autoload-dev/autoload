@@ -11,8 +11,9 @@ with its own `MODULE.bazel`, version, release tags and a README that describes i
 - [Sentry](sentry/README.md): crash and error reporting on Android, iOS, Linux and macOS.
 
 There is one module per add-on, or per group of add-ons that must be versioned together
-because they share one SDK. Each module keeps its example applications in its `examples/`
-directory: a root module that consumes the add-ons like an external application.
+because they share one SDK. Each module's example applications live in
+[`examples/addons/<module>/`](../examples/addons) of the repository's root module, which
+consumes the add-ons like an external application.
 
 ## Use in an application
 

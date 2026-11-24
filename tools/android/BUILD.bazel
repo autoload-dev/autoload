@@ -17,10 +17,7 @@ py_binary(
 py_library(
     name = "requirements_lib",
     srcs = ["requirements.py"],
-    deps = [
-        "//tools/addons:new_lib",
-        "//tools/setup:modules_lib",
-    ],
+    deps = ["//tools/setup:modules_lib"],
 )
 
 py_test(

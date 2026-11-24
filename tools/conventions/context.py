@@ -17,9 +17,9 @@ from typing import Protocol
 
 from tools.conventions.environment import nested_tool_environment
 from tools.conventions.layout import (
-    CONSUMER_ROOTS,
     DOCS,
     NON_CONSUMER_MODULES,
+    root_consumer,
     typed_directory,
 )
 
@@ -234,9 +234,7 @@ class Workspace:
         """
         module = self.owner(path.as_posix())
         if module == Path("."):
-            return next(
-                (root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None
-            )
+            return root_consumer(path, self.module_paths)
         return None if module in NON_CONSUMER_MODULES else module
 
     def typed_directory(self, path: Path) -> tuple[str, Path] | None:

@@ -3,20 +3,16 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.layout import RULESET_MODULE
+from tools.conventions.layout import RULESET_MODULE, is_addon_test
 
 
-def _white_box(path: Path, module: Path) -> bool:
+def _white_box(workspace: Workspace, path: Path) -> bool:
     """Whether a configuration is a fixture: the ruleset's, or of an add-on module's tests."""
-    if module == RULESET_MODULE:
+    if workspace.owner(path.as_posix()) == RULESET_MODULE:
         return True
-    return (
-        module.parent.parent == Path("addons")
-        and module.name == "examples"
-        and path.relative_to(module).parts[0] == "tests"
-    )
+    return is_addon_test(path, workspace.consumer_root(path))
 
 
 class TypedRootLayout:
@@ -32,7 +28,7 @@ class TypedRootLayout:
             # Consumer modules keep Godot configurations in their typed roots; white-box
             # fixtures of the ruleset module, and the fixtures of an add-on module's tests in
             # its examples/tests/, may live anywhere there.
-            if _white_box(path, workspace.owner(path.as_posix())):
+            if _white_box(workspace, path):
                 continue
             if workspace.typed_directory(path) is not None:
                 continue

@@ -15,6 +15,9 @@ from tools.setup.modules import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+# Where the root module keeps each add-on module's example applications and Godot tests:
+# examples/addons/<module>/, which consumes the module as an application does.
+EXAMPLES = Path("examples/addons")
 # The schema every addons/<module>/addon.pkl amends. This module applies its defaults but
 # not its types, so RG015 checks the values against it.
 SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
@@ -107,6 +110,11 @@ class AddonModule:
     def builds_apps(self) -> bool:
         return builds_apps(self.lanes)
 
+    @property
+    def examples(self) -> Path:
+        """The module's example applications in the root module, relative to the root."""
+        return EXAMPLES / self.directory.removeprefix(".")
+
     @classmethod
     def load(cls, path: Path, root: Path = ROOT) -> AddonModule:
         """Read the module at `path`, relative to the repository root."""
@@ -116,7 +124,8 @@ class AddonModule:
             raise ValueError(f"{path}/MODULE.bazel: no module() name")
         addon = module / "addon.pkl"
         manifest = addon_manifest(addon.read_text() if addon.is_file() else "")
-        projects = (module / "examples" / "projects").glob("*/BUILD.bazel")
+        examples = root / EXAMPLES / path.name.removeprefix(".")
+        projects = (examples / "projects").glob("*/BUILD.bazel")
         return cls(
             path=path,
             name=str(attributes["name"]),

@@ -148,9 +148,8 @@ Markdown under `docs/` and in every README, except `AGENTS.md` files. Arguments 
 Each label resolves in exactly one module that contains its package:
 
 - `@autoload_rules_godot//` labels resolve in the ruleset module, `rules_godot/`.
-- A document inside a consumer module, such as `addons/gdunit/examples/`, resolves labels in
-  its own module first; a document in the root module, such as one in `examples/`, resolves
-  them in the root module.
+- A document inside a module resolves labels in its own module first; a document in the
+  root module's consumers, such as one in `examples/`, resolves them in the root module.
 - `//:target` labels in documents of the root module and the ruleset module are consumer
   templates and are not checked.
 
@@ -245,7 +244,7 @@ in the root module, the module root of another consumer module:
 |---|---|---|
 | Examples, `examples/` | `examples/projects/<name>/` | `examples/addons/<name>/` |
 | Consumer scenarios, `scenarios/` | `scenarios/smoke/<operating_system>/`, `scenarios/script_run/`, `scenarios/patched_engine/` | `scenarios/shared_addon/` |
-| Add-on examples, `addons/<module>/examples/` | `addons/<module>/examples/projects/<name>/` | none: the add-ons are in the module |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | `examples/addons/<module>/projects/<name>/` | none: the add-ons are in the module |
 
 The path determines whether a directory is a project or an add-on, and which rules apply.
 A project case owns a BUILD file and at least one authored Godot configuration; related
@@ -258,8 +257,8 @@ owning test domain when they are not independently reusable add-ons. C++ source 
 do not establish an add-on.
 
 The check inventories project and add-on directories and authored `project.godot` files in
-every consumer module; the white-box fixture projects of the ruleset module and of an add-on
-module's `tests/` are outside it. Configurations must belong to a named project or add-on.
+every consumer; the white-box fixture projects of the ruleset module and of an add-on
+module's `examples/addons/<module>/tests/` are outside it. Configurations must belong to a named project or add-on.
 Temporary projects constructed inside source strings and generated configuration templates
 are outside the inventory. The check does not require a project or BUILD package for each
 assertion.
@@ -397,27 +396,25 @@ them.
 
 **Add-on modules share one layout, and backends live in `native/backends/`.** This
 repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
-template, so that the same tasks build, test and release every module and nothing outside a
-module lists it. Each module:
+template, so that the same tasks build, test and release every module and nothing but the
+root module's declaration lists it. Each module:
 
 - is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
-  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`
-  and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
-  and `.bazelversion`, and, when it builds applications, `BUILD.bazel` and
-  `maven_install.json`;
+  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes` and
+  `addon.pkl`;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
-- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
-  `examples/.bazelrc` imports `addons/examples.bazelrc`;
+- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
   properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
   of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
-- has at least one example project in `examples/projects/<name>/`, each defining the targets
-  `edit` and `pack`, and `app` when the module builds applications;
+- has at least one example project in the root module's
+  `examples/addons/<module>/projects/<name>/`, each defining the targets `edit` and `pack`,
+  and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# The add-on modules, each a directory below it with its examples/ beside its own module.
+# The add-on modules, each a directory below it; the root module holds their examples.
 ADDONS = "addons"
 # The ruleset's directory: its module, and below .bcr/ its registry templates.
 RULESET = Path("rules_godot")
@@ -54,16 +54,9 @@ def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
 def module_paths(root: Path) -> tuple[str, ...]:
     """
     The root module, every module its `.bazelignore` names, with the modules nested in those,
-    and each add-on module of `addons/` with its examples: the root ignores `addons` as a
-    whole.
+    and each add-on module of `addons/`: the root ignores `addons` as a whole.
     """
-    addons = tuple(
-        module
-        for addon in addon_modules(root)
-        for module in (addon, f"{addon}/examples")
-        if (root / module / "MODULE.bazel").is_file()
-    )
-    return (".", *ignored_modules(root), *addons)
+    return (".", *ignored_modules(root), *addon_modules(root))
 
 
 @dataclass(frozen=True)

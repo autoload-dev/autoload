@@ -6,7 +6,6 @@ import json
 import sys
 from pathlib import Path
 
-from tools.addons.modules import all_modules
 from tools.setup.modules import (
     RULESET,
     bazelrc_options,
@@ -70,21 +69,12 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 def application_modules(root: Path) -> list[str]:
     """
     The modules that build applications, each of which must configure its SDK: the root
-    module with its examples and consumer scenarios, the ruleset with the modules nested in
-    it, and the examples of every add-on module whose addon.pkl names an application lane.
-    The add-on modules themselves, which use their examples' SDK, build none.
+    module with its examples, the add-on modules' among them, and its consumer scenarios,
+    and the ruleset with the modules nested in it. The add-on modules themselves, whose
+    examples the root module builds, build none.
     """
     ruleset = RULESET.as_posix()
-    return [
-        ".",
-        ruleset,
-        *ignored_modules(root, ruleset),
-        *(
-            f"{module.path.as_posix()}/examples"
-            for module in all_modules(root)
-            if module.builds_apps
-        ),
-    ]
+    return [".", ruleset, *ignored_modules(root, ruleset)]
 
 
 def configuration_errors(root: Path) -> list[str]:

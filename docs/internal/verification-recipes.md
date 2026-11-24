@@ -256,8 +256,7 @@ autoload_gdunit's run tests also launch an intentionally failing suite and requi
 report to keep the assertion's details, expected 5 versus actual 4:
 
 ```sh
-cd addons/gdunit/examples
-bazel test //tests/...
+bazel test //examples/addons/gdunit/tests/...
 ```
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.

@@ -131,7 +131,7 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
 ## Development
 
 `bazel test //...` in this directory runs the `firebase_config` tests. The example
-application in [`examples/`](examples) builds the add-ons for every platform; its headless
+application in [`examples/addons/firebase/`](../../examples/addons/firebase) builds the add-ons for every platform; its headless
 test checks that they load and do nothing on desktop, and its iOS lane test
 (`app_embeds_firebase_frameworks_test`) that the iOS application embeds the extensions'
 frameworks and the Firebase frameworks they link. Its Firestore part talks to the

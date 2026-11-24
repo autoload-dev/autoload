@@ -9,6 +9,7 @@ from tools.addons import registry as templates
 from tools.addons.modules import (
     AMENDS,
     DESKTOPS,
+    EXAMPLES,
     LANES,
     PROPERTIES,
     addon_manifest,
@@ -23,27 +24,16 @@ from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import ADDONS as ADDON_DIRECTORY
 
 ADDONS = Path(ADDON_DIRECTORY)
-# The files every module addons/<directory> owns: those of the generator's template, but
-# its example project, which a module may name and shape as it likes.
-REQUIRED = tuple(
-    relative
-    for _, relative in template_files("module")
-    if not relative.startswith("examples/projects/")
-)
+# The files every module addons/<directory> owns: those of the generator's module template.
+REQUIRED = tuple(relative for _, relative in template_files("module"))
 # The registry templates each module owns in .bcr/addons/<directory>/, which the generator
 # writes once with the module; publish-to-bcr reads them there.
 REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
-# The shared settings each module's .bazelrc files import.
-IMPORTS = {
-    ".bazelrc": "import %workspace%/../module.bazelrc",
-    "examples/.bazelrc": "import %workspace%/../../examples.bazelrc",
-}
+# The shared settings each module's .bazelrc imports.
+IMPORTS = {".bazelrc": "import %workspace%/../module.bazelrc"}
 # The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
 # Pkl, so nothing else checks the schema's types.
 ADDON_VALUES = {"lanes": set(LANES), "desktops": set(DESKTOPS)}
-# What only a module with an application lane owns: its examples' Maven graph and their
-# provisioning profile.
-APP_FILES = ("examples/BUILD.bazel", "examples/maven_install.json")
 # The targets the generic lanes build in each example project (tools/addons/lanes.py); the
 # application lanes build :app too.
 PROJECT_TARGETS = ("edit", "pack")
@@ -124,7 +114,7 @@ class AddonModuleLayout:
             yield from self.registry(workspace, module)
             yield from self.imports(workspace, module)
             yield from self.addon_pkl(workspace, module / "addon.pkl")
-            yield from self.projects(workspace, module / "examples/projects", builds_apps)
+            yield from self.projects(workspace, module, builds_apps)
         yield from self.extensions(workspace, modules)
         yield from self.orphaned_templates(workspace, modules)
 
@@ -153,10 +143,7 @@ class AddonModuleLayout:
     @staticmethod
     def files(workspace: Workspace, module: Path, builds_apps: bool) -> Iterable[Finding]:
         manifest = module / "MODULE.bazel"
-        required = [
-            relative for relative in REQUIRED if builds_apps or relative not in APP_FILES
-        ]
-        for relative in required:
+        for relative in REQUIRED:
             if (module / relative).as_posix() not in workspace.file_set:
                 yield Finding(at(manifest), f"add-on module must own {module / relative}")
         expected = module_name(module.name)
@@ -215,8 +202,10 @@ class AddonModuleLayout:
 
     @staticmethod
     def projects(
-        workspace: Workspace, root: Path, builds_apps: bool
+        workspace: Workspace, module: Path, builds_apps: bool
     ) -> Iterable[Finding]:
+        """The module's example projects in the root module, examples/addons/<module>/."""
+        root = EXAMPLES / module.name / "projects"
         builds = sorted(
             Path(name)
             for name in workspace.files
@@ -224,7 +213,7 @@ class AddonModuleLayout:
         )
         if not builds:
             yield Finding(
-                at(root.parent / "MODULE.bazel"), f"needs an example project in {root}"
+                at(module / "MODULE.bazel"), f"needs an example project in {root}"
             )
         targets = set(PROJECT_TARGETS) | ({APP_TARGET} if builds_apps else set())
         for build in builds:

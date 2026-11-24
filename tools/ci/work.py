@@ -446,15 +446,11 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
 
 def template_work(lane: str) -> Work:
     """The add-on generator's self-test in one lane: a fresh module, then its lane."""
-    pin = "" if lane == "android" else " --no-pin"
     return Work(
         f"{lane}:addon-template",
         lane,
         ".",
-        (
-            f"python3 -m tools.addons.new .selftest{pin}",
-            f"python3 -m tools.addons.lanes {lane} .selftest",
-        ),
+        (f"python3 -m tools.addons.selftest {lane}",),
         android=lane == "android",
         hosts=("linux",) if lane == "desktop" else (),
         profile=lane if lane in PROFILE_LANES else None,

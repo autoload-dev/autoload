@@ -116,8 +116,9 @@ editor part, and `//:gdunit` assembles them into the add-on. `gdunit_test` is a 
 rules_godot's test adapter: the adapter lists the suites, and `private/run.gd` runs them with
 GdUnit and reports to Bazel.
 
-The example application in `examples/` consumes the module as applications do: the project
-`projects/scores` tests its scripts with GdUnit. `examples/tests/` holds the module's own
+The example application in `examples/addons/gdunit/` at the repository root consumes the
+module as applications do: the project `projects/scores` tests its scripts with GdUnit.
+`examples/addons/gdunit/tests/` holds the module's own
 tests: GdUnit runs that pass, fail, shard, filter and report the way Bazel's test
 encyclopedia requires, a pack with GdUnit, and a GdUnit run in a project with strict
 warnings. `python3 -m tools.addons.lanes desktop gdunit` runs both.

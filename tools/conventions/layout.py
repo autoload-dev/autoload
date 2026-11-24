@@ -19,6 +19,11 @@ NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 EXAMPLES_ROOT = Path("examples")
 REGRESSION_ROOT = Path("scenarios")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
+# Each add-on module's example applications and Godot tests, a consumer of its own:
+# examples/addons/<module>/ for every module addons/<module>/.
+ADDON_EXAMPLES = EXAMPLES_ROOT / "addons"
+# The Godot tests of an add-on module's examples: white-box fixtures, no typed root.
+ADDON_TESTS = "tests"
 SMOKE_ROOT = "smoke"
 # Packages of the scenarios that are no scenario, such as shared tools.
 REGRESSION_TOOLING = frozenset({"tools"})
@@ -41,6 +46,27 @@ def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
     ):
         return "projects", REGRESSION_ROOT / parts[0]
     return None
+
+
+def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
+    """
+    The consumer in the root module that path belongs to: an add-on module's examples, when
+    its module is among the modules, or else examples/ or scenarios/.
+    """
+    if path.is_relative_to(ADDON_EXAMPLES) and path != ADDON_EXAMPLES:
+        module = path.relative_to(ADDON_EXAMPLES).parts[0]
+        if Path("addons") / module in modules:
+            return ADDON_EXAMPLES / module
+    return next((root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None)
+
+
+def is_addon_test(path: Path, root: Path | None) -> bool:
+    """Whether path lies in the Godot tests of an add-on module's examples."""
+    return (
+        root is not None
+        and root.parent == ADDON_EXAMPLES
+        and path.relative_to(root).parts[:1] == (ADDON_TESTS,)
+    )
 
 
 def typed_directory(root: Path, path: Path) -> tuple[str, Path] | None:

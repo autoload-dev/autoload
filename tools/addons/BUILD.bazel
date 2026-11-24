@@ -30,10 +30,14 @@ py_binary(
     deps = [":new_lib"],
 )
 
-# A module's lane work, which tools/ci/work.py runs for each add-on module.
+# A module's lane work, which tools/ci/work.py runs for each add-on module, and the
+# generator's self-test, which runs a lane of a fresh module.
 py_library(
     name = "lanes_lib",
-    srcs = ["lanes.py"],
+    srcs = [
+        "lanes.py",
+        "selftest.py",
+    ],
     deps = [":new_lib"],
 )
 
