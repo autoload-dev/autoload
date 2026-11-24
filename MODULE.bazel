@@ -3,7 +3,8 @@ The repository's own tooling: formatting, linting, conventions, the lanes' work,
 scaffolding and setup checks across every component. It is never published; the components
 live in their own modules, such as rules_godot/ and addons/<module>/, which this module
 ignores (.bazelignore). The other modules load its linters as a development dependency;
-the ruleset's documentation module (rules_godot/docs) depends on it.
+it extracts and checks the ruleset's API documentation (tools/docs), whose dependencies and
+overrides are development dependencies here, out of the ruleset's published MODULE.bazel.
 """
 
 module(name = "autoload_dev")
@@ -26,6 +27,71 @@ python.toolchain(python_version = "3.14")
 # tools package of this module and that of a component merge as one namespace.
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
+
+# The ruleset, whose API documentation tools/docs extracts and checks.
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_rules_godot",
+    path = "rules_godot",
+)
+
+# The API documentation's extraction and checks (tools/docs).
+bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
+bazel_dep(name = "protobuf", version = "36.2", dev_dependency = True)
+
+# The modules whose Starlark libraries the ruleset's public entrypoints load
+# (EXTERNAL_LOADS in tools/docs/api/modules.bzl).
+bazel_dep(name = "bazel_skylib", version = "1.9.2", dev_dependency = True)
+bazel_dep(name = "rules_android", version = "0.8.1", dev_dependency = True)
+bazel_dep(name = "rules_android_ndk", version = "0.1.5", dev_dependency = True)
+bazel_dep(name = "rules_apple", version = "5.4.0", dev_dependency = True)
+bazel_dep(name = "rules_cc", version = "0.2.28", dev_dependency = True)
+
+# The extracted documentation names rules_java's providers, such as JavaInfo, by their
+# apparent repository, as the ruleset sees them.
+bazel_dep(name = "rules_java", version = "9.9.0", dev_dependency = True)
+
+# rules_android 0.8.1 exports its API files but keeps the transitive Starlark library
+# private. Expose only its documentation source library for starlark_doc_extract.
+single_version_override(
+    module_name = "rules_android",
+    patch_strip = 1,
+    patches = ["//tools/docs:rules_android_doc_visibility.patch"],
+)
+
+# rules_android_ndk 0.1.5 exports no files; expose rules.bzl, which godot_android_toolchains
+# loads, for starlark_doc_extract.
+single_version_override(
+    module_name = "rules_android_ndk",
+    patch_strip = 1,
+    patches = ["//tools/docs:rules_android_ndk_doc_visibility.patch"],
+)
+
+# The ruleset's Maven installation. Protobuf contributes to it with a lock file of its own,
+# so the root module names the one lock file; this one reuses the ruleset's, since it adds no
+# artifacts. Nothing here fetches it: only its extension is evaluated.
+bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
+
+maven = use_extension(
+    "@rules_jvm_external//:extensions.bzl",
+    "maven",
+    dev_dependency = True,
+)
+maven.install(
+    name = "maven",
+    aar_import_bzl_label = "@rules_android//rules:rules.bzl",
+    known_contributing_modules = [
+        "autoload_rules_godot",
+        "protobuf",
+    ],
+    lock_file = "@autoload_rules_godot//:maven_install.json",
+    repositories = [
+        "https://repo.maven.apache.org/maven2",
+        "https://dl.google.com/dl/android/maven2",
+    ],
+    resolver = "gradle",
+    use_starlark_android_rules = True,
+)
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
 # --config=buildbuddy selects (buildbuddy.bazelrc); inert without it.

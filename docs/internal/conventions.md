@@ -150,8 +150,8 @@ Each label resolves in exactly one module that contains its package:
 - `@autoload_rules_godot//` labels resolve in the ruleset module, `rules_godot/`.
 - A document inside a consumer module, such as `rules_godot/examples/`, resolves labels in
   its own module first.
-- `//:target` labels in documents of the root module, the ruleset module and its
-  documentation module are consumer templates and are not checked.
+- `//:target` labels in documents of the root module and the ruleset module are consumer
+  templates and are not checked.
 
 The named rule must exist in that package; `:all`, `:*` and `:all-targets` only require the
 package. A label is reported at its command's line when no module or several modules

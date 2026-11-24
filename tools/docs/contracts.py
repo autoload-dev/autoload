@@ -27,6 +27,8 @@ from tools.docs.output_contracts import (
     kind_errors,
 )
 from tools.docs.repository_contracts import check_public_targets, check_repository
+from tools.docs.ruleset import INVENTORY
+from tools.setup.modules import RULESET
 
 MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
 
@@ -34,7 +36,7 @@ MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
 def inventory_target(module: str) -> str:
     """The unfiltered evaluated extraction of one public API module."""
     page = module.removeprefix("//").replace("/", "_").replace(":", "_")
-    return "//public/api:" + page.removesuffix(".bzl") + "_inventory.textproto"
+    return "//tools/docs/api:" + page.removesuffix(".bzl") + "_inventory.textproto"
 
 
 def extracted_apis(
@@ -302,8 +304,8 @@ def main() -> int:
     parser.add_argument("--lane", choices=CONTRACT_LANES, required=True)
     args = parser.parse_args()
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    inventory = read_inventory(root / "public/api/modules.bzl")
-    bazel = EvaluatedBazel(root.parent)
+    inventory = read_inventory(root / INVENTORY)
+    bazel = EvaluatedBazel(root / RULESET)
     targets = {inventory_target(label): label for label in inventory["PUBLIC_APIS"]}
     manifest = json.loads(bazel.outputs([MANIFEST])[MANIFEST].read_text())
     modules = bazel.extracted(targets)

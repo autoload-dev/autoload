@@ -13,7 +13,6 @@ RULESET_MODULES = (
     "rules_godot",
     "rules_godot/examples",
     "rules_godot/tests",
-    "rules_godot/docs",
 )
 
 

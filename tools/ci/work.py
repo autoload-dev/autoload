@@ -33,16 +33,13 @@ from tools.ci.changes import (
     either,
     files,
     module_files,
-    only_in,
 )
 from tools.ci.lanes import LANES
-from tools.setup.modules import RULESET, RULESET_DOCS, module_paths
+from tools.setup.modules import RULESET, module_paths
 
 RULESET_DIR = RULESET.as_posix()
 EXAMPLES = f"{RULESET_DIR}/examples"
 REGRESSIONS = f"{RULESET_DIR}/tests"
-# The documentation module: the API documentation metadata, its checks and the contract checker.
-DOCS = RULESET_DOCS.as_posix()
 ANDROID_SETUP = "android:setup"
 
 
@@ -95,7 +92,7 @@ def example(name: str, area: str = "addons") -> Work:
     return Work(f"test:example:{name}", "desktop", EXAMPLES, (example_tests(name, area),))
 
 
-# The documentation module's tests, all of them fast, with the API inventory's discovery
+# The API documentation's tests, all of them fast, with the API inventory's discovery
 # of new Starlark modules, which a test's sandbox cannot see.
 DOCS_CHECK = "bazel run //tools/docs:check"
 
@@ -119,9 +116,8 @@ LINT_COMMAND = (
     ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
     " --skip_incompatible_explicit_targets; }"
 )
-# A module's lint runs for its own Python and the targets that hold it, for the linters and
-# their configuration, which the root module pins, and in the modules whose Python imports
-# the root module's, for that.
+# A module's lint runs for its own Python and the targets that hold it, and for the linters
+# and their configuration, which the root module pins.
 LINT_INPUTS = either(
     module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
     files(
@@ -132,7 +128,6 @@ LINT_INPUTS = either(
         "MODULE.bazel",
         "MODULE.bazel.lock",
     ),
-    only_in((RULESET_DIR, DOCS), files("tools/*.py")),
 )
 # What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
 # the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
@@ -149,16 +144,15 @@ GENERATED_INPUTS = files(
     "*Package.swift",
     "tools/generate/*",
 )
-# The API documentation: the ruleset's API, the documentation module and the root module's
-# Python its tools load.
+# The API documentation: the ruleset's API, the documentation's tools and the root module's
+# declarations and the Python those tools load.
 DOCS_INPUTS = files(
     f"{RULESET_DIR}/godot/*",
-    f"{DOCS}/*",
     f"{RULESET_DIR}/MODULE.bazel*",
     f"{RULESET_DIR}/BUILD.bazel",
     f"{RULESET_DIR}/tools/*",
-    # The root module, which the documentation module depends on, and the Python of it that
-    # its tools load.
+    "tools/docs/*",
+    "tools/ci/lanes.py",
     "MODULE.bazel",
     "MODULE.bazel.lock",
     "tools/addons/*",
@@ -168,7 +162,7 @@ DOCS_INPUTS = files(
 )
 # The contract checker's test of its mismatch reports.
 MISMATCH_TEST_INPUTS = files(
-    f"{DOCS}/tools/docs/*",
+    "tools/docs/*",
     f"{RULESET_DIR}/godot/tests/api_contracts/*",
     "tools/conventions/*",
 )
@@ -184,7 +178,7 @@ def contracts(lane: str) -> Work:
     return Work(
         f"contracts:{lane}",
         lane,
-        DOCS,
+        ".",
         (contracts_command(lane),),
         android=lane == "android",
     )
@@ -256,21 +250,21 @@ WORK = (
             "python3 -m tools.setup.pins",
         ),
     ),
-    Work("test:tools", "quality", ".", ("bazel test //...",)),
-    # The ruleset's fast tests; test:tools runs the root module's tests, docs the
-    # documentation module's.
+    # The root module's tests but the API documentation's, which the docs work runs.
+    Work("test:tools", "quality", ".", ("bazel test -- //... -//tools/docs/...",)),
+    # The ruleset's fast tests.
     Work("test:fast", None, RULESET_DIR, (FAST_TEST_COMMAND,)),
     # The API inventory and the documentation of its public entrypoints, and the contract
     # cases that need no SDK.
     Work(
         "docs",
         "docs",
-        DOCS,
+        ".",
         (
             DOCS_CHECK,
             contracts_command("docs"),
             In(
-                DOCS,
+                ".",
                 "bazel run //tools/docs:evaluated_mismatch_test",
                 MISMATCH_TEST_INPUTS,
             ),

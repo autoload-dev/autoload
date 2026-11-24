@@ -79,14 +79,6 @@ def module_files(*names: str) -> Inputs:
     return lambda changes, directory: changes.in_module(directory, names)
 
 
-def only_in(directories: Iterable[str], inputs: Inputs) -> Inputs:
-    """Inputs of the steps that run in one of the directories."""
-    directories = frozenset(directories)
-    return lambda changes, directory: (
-        directory in directories and inputs(changes, directory)
-    )
-
-
 def either(*inputs: Inputs) -> Inputs:
     """Inputs of each of the given inputs."""
     return lambda changes, directory: any(i(changes, directory) for i in inputs)

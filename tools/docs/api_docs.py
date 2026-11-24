@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from tools.conventions.environment import nested_tool_environment
+from tools.docs.ruleset import INVENTORY
+from tools.setup.modules import RULESET
 
 ROLES = (
     "PUBLIC_APIS",
@@ -79,7 +81,7 @@ def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
                 )
     for label in sorted(actual - set(declared)):
         errors.append(
-            f"{label}: unclassified new module; declare its API role in docs/public/api/modules.bzl"
+            f"{label}: unclassified new module; declare its API role in tools/docs/api/modules.bzl"
         )
     for label, symbols in inventory["PUBLIC_APIS"].items():
         if not symbols:
@@ -161,8 +163,8 @@ def main() -> None:
     parser.add_argument("--bazel", default=os.environ.get("BAZEL", "bazel"))
     args = parser.parse_args()
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    ruleset = root.parent
-    inventory = read_inventory(root / "public/api/modules.bzl")
+    ruleset = root / RULESET
+    inventory = read_inventory(root / INVENTORY)
     errors = inventory_errors(ruleset, inventory)
     if errors:
         sys.exit("\n".join(errors))
@@ -190,7 +192,7 @@ def main() -> None:
         )
     if any(not description.strip() for description in targets.values()):
         sys.exit("PUBLIC_TARGETS descriptions must be nonempty.")
-    run_bazel(args.bazel, root, "test", "//...")
+    run_bazel(args.bazel, root, "test", "//tools/docs/...")
     print("API entrypoints, ownership, internal separation and descriptions passed.")
 
 

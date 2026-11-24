@@ -13,7 +13,6 @@ from unittest import mock
 
 from tools.ci.changes import Changes, changes_since
 from tools.ci.work import (
-    DOCS,
     FAST_TEST_COMMAND,
     ROOT,
     RULESET_DIR,
@@ -69,7 +68,7 @@ class WorkTest(unittest.TestCase):
         self.assertFalse(any("inspect:mobile" in names for names in planned.values()))
 
     def test_fast_tests_run_in_the_ruleset_only_when_named(self) -> None:
-        # The root module's tests are test:tools, the documentation module's are docs.
+        # The root module's tests are test:tools, the API documentation's are docs.
         fast = all_work(self.root)["test:fast"]
         self.assertIsNone(fast.lane)
         self.assertEqual([In(RULESET_DIR, FAST_TEST_COMMAND)], fast.steps())
@@ -211,14 +210,11 @@ class SelectionTest(unittest.TestCase):
             ["addons/sentry"], self.directories("lint", "addons/sentry/a.py")
         )
         self.assertEqual(
-            ["rules_godot/docs"], self.directories("lint", "rules_godot/docs/BUILD.bazel")
+            ["rules_godot"], self.directories("lint", "rules_godot/tools/BUILD.bazel")
         )
         self.assertEqual(["."], self.directories("lint", "tools/BUILD.bazel"))
-        # The ruleset's modules import the root module's Python.
-        self.assertEqual(
-            [".", "rules_godot", "rules_godot/docs"],
-            self.directories("lint", "tools/addons/new.py"),
-        )
+        # No other module imports the root module's Python.
+        self.assertEqual(["."], self.directories("lint", "tools/addons/new.py"))
         self.assertEqual([], self.directories("lint"))
 
     def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
@@ -264,13 +260,13 @@ class SelectionTest(unittest.TestCase):
 
     def test_the_contract_checker_runs_its_own_test(self) -> None:
         for path in (
-            "rules_godot/docs/tools/docs/contracts.py",
+            "tools/docs/contracts.py",
             "rules_godot/godot/tests/api_contracts/cases.bzl",
             "tools/conventions/check.py",
         ):
             steps = self.run_steps("docs", path)
             self.assertEqual(
-                (DOCS, "bazel run //tools/docs:evaluated_mismatch_test"),
+                (".", "bazel run //tools/docs:evaluated_mismatch_test"),
                 steps[-1][:2],
                 path,
             )
@@ -288,8 +284,7 @@ class SelectionTest(unittest.TestCase):
         with contextlib.redirect_stdout(printed):
             selected(all_work(ROOT)["docs"], changed("addons/sentry/a.py"))
         self.assertIn(
-            "[docs] rules_godot/docs$ bazel run //tools/docs:check skipped:"
-            " no change since abc1234",
+            "[docs] .$ bazel run //tools/docs:check skipped: no change since abc1234",
             printed.getvalue(),
         )
         printed = io.StringIO()
@@ -394,7 +389,7 @@ class ChangesTest(unittest.TestCase):
             "shared.bazelrc",
             ".bazelversion",
             "tools/bazel",
-            "rules_godot/docs/tools/bazel",
+            "rules_godot/tools/bazel",
         ):
             self.write(path)
             self.assertIsNone(self.changes(), path)

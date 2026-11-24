@@ -9,6 +9,7 @@ py_library(
         "//tools/android:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
+        "//tools/docs:__pkg__",
         "//tools/generate:__pkg__",
     ],
 )

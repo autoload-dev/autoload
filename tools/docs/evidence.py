@@ -77,8 +77,8 @@ def invocation(label: str, targets: tuple[Target, ...]) -> tuple[Target, ...]:
 
 # The ruleset module, where behavior tests resolve unless they name another module.
 ROOT_MODULE = Module(Path("."), ())
-# This documentation module, which extracts the ruleset's Starlark modules.
-DOCS_MODULE = Module(Path("docs"), ())
+# The repository's root module, which extracts the ruleset's Starlark modules (tools/docs/api).
+DOCS_MODULE = Module(Path(".."), ())
 
 
 class EvaluatedBazel(Bazel):

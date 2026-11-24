@@ -5,20 +5,21 @@ metadata carries them to the [Bazel Central Registry](https://registry.bazel.bui
 repository keeps no generated reference of its own. Each symbol has one public load path.
 Platform setup, tutorials and architecture remain in the guides.
 
-## The documentation module
+## Where the documentation is built
 
-The extraction, the registry's metadata and their checks live in a Bazel module of their own,
-[`rules_godot/docs/`](../MODULE.bazel), beside `tests/` and `examples/`.
-It depends on the ruleset through a `local_path_override`, extracts the ruleset's Starlark
-modules and holds every dependency and override that only the documentation needs: Stardoc's
-output schema, Protobuf and the [visibility patches](#third-party-documentation-dependencies).
-The ruleset's published `MODULE.bazel` thereby carries none of them. Its `//public/api`
-package holds the inventory and the extraction, `//tools/docs` the checks and the contract
-checker. Commands below run in `rules_godot/docs/` unless they name another directory.
+The extraction, the registry's metadata and their checks live in the repository's
+[root module](../../../MODULE.bazel), which is never published. It depends on the ruleset
+through a `local_path_override`, extracts the ruleset's Starlark modules and holds every
+dependency and override that only the documentation needs as development dependencies:
+Stardoc's output schema, Protobuf and the
+[visibility patches](#third-party-documentation-dependencies). The ruleset's published
+`MODULE.bazel` thereby carries none of them. Its `//tools/docs/api` package holds the
+inventory and the extraction, `//tools/docs` the checks and the contract checker. Commands
+below run at the repository root unless they name another directory.
 
 ## Public entrypoints and implementation modules
 
-[`modules.bzl`](../public/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
+[`modules.bzl`](../../../tools/docs/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
 
 | Role | Purpose | Registry documentation |
 | --- | --- | --- |
@@ -96,7 +97,7 @@ the API has them, `### Output groups` and `### Generated targets`; a section wit
 omitted. Private rules, macros and repository rules keep these sections too: they document
 the ruleset's internal use and are ready when a symbol becomes public, although only public
 ones are checked against Bazel. Each section is a list, which stays readable on narrow pages
-such as the BCR's, in the form the [output-contract parser](../tools/docs/output_contracts.py)
+such as the BCR's, in the form the [output-contract parser](../../../tools/docs/output_contracts.py)
 defines:
 
 ```markdown
@@ -141,7 +142,7 @@ unsupported API kinds cannot silently escape required coverage.
 `aspect work docs` checks source schema, inventory, registry coverage, the
 ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
 checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
-lane's work `contracts:<lane>`. It builds the extraction in the documentation module and
+lane's work `contracts:<lane>`. It builds the extraction in the root module and
 evaluates the fixtures in the ruleset's module or in the consumer module a case names. Each
 lane's CI job runs its cases ([lanes](../../../docs/internal/verification-platforms.md#lanes-and-execution)),
 and a host documentation pass cannot replace them.
@@ -191,7 +192,7 @@ not on PATH.
 
 ## Metadata for the BCR documentation archive
 
-`bazel build //public/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
+`bazel build //tools/docs/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
 for the public primary symbols. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
 The release script packs exactly these files into the documentation archive that the registry
@@ -204,10 +205,10 @@ The curated BCR metadata contains public contracts only.
 ## Third-party documentation dependencies
 
 `rules_android` 0.8.0 exports its API `.bzl` files, but its transitive
-`//rules:bzl` documentation library has restricted visibility. The documentation module
+`//rules:bzl` documentation library has restricted visibility. The root module
 applies `tools/docs/rules_android_doc_visibility.patch` to expose that single
 library for `starlark_doc_extract`. `rules_android_ndk` 0.1.5 exports no files; the
-documentation module applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export
+root module applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export
 `rules.bzl`, which `godot_android_toolchains` loads. Both change BUILD visibility only.
 Rulesets that build on rules_android publish no registry documentation or document no
 Android rules; `godot_app` loads rules_android, so its extraction needs the patches.
