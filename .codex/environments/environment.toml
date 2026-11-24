@@ -1,5 +1,5 @@
 version = 1
-name = "rules_godot"
+name = "autoload"
 
 # A new Codex worktree needs only the two tools; the clone's own setup, the Git hooks and the
 # Android SDK, is ./bootstrap.sh, once. Its Bazel state: AGENTS.md, "Worktrees".

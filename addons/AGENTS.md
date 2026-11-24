@@ -19,7 +19,7 @@ be versioned with others, such as products that share one SDK.
 
 # Module layout
 
-The conventions check enforces it (RG015, `docs/public/conventions.md`):
+The conventions check enforces it (RG015, [the catalogue](../rules_godot/docs/public/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and `examples/.bazelrc` imports
