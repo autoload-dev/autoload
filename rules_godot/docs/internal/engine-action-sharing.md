@@ -13,11 +13,19 @@ arm64 `template_release`, 731 engine compiles. Engine compile counts leave out 5
 exec-configuration compiles of tools such as zlib, which every recipe shares already;
 Bazel's process summaries include them.
 
-Three changes narrow each compile's inputs, and the tables below name them:
+Changes that narrow each compile's inputs:
 
 - the per-source include closures (autoload-dev/autoload#81);
 - the scoped build profile (#82);
-- the per-source feature macros (#83, open at the snapshot).
+- the per-source feature macros (#83), a scan for `*_ENABLED` and `*_DISABLED` names;
+- include-directory pruning (#85).
+
+Status on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 was set
+aside for a compiler-based define analysis, in prototype: `clang -E -Wunused-macros` on a
+wrapper main file that defines the macros reports those a source does not read, and a
+per-source forced-include header passes only the rest, so compiles stay `cc_library`
+actions. Splitting each compile into a preprocess and a
+compile action is parked.
 
 ## Why two recipes share nothing
 
@@ -84,10 +92,22 @@ The equal compiles are mostly third-party code and Godot sources whose closure n
 reads `DEBUG_ENABLED`. `TOOLS_ENABLED` and `DEBUG_ENABLED` change core headers, so the
 rest is genuinely different work. Between editor and templates, `NO_EDITOR_SPLASH` and
 `GDSCRIPT_NO_LSP` alone hide the 296 compiles that do not reach `TOOLS_ENABLED`.
-Both are Godot feature macros that the feature-macro scan does not consider yet,
-because their names do not end in `_ENABLED` or `_DISABLED`. Sharing across build targets
-also needs a shared tree that spans a recipe's build targets: the prototype groups by
-row.
+The name-based scan of #83 misses both, because their names do not end in `_ENABLED` or
+`_DISABLED`; the compiler-based define analysis would see them. Sharing across build
+targets also needs a shared tree that spans a recipe's build targets: the prototype groups
+by row.
+
+### Within one recipe: a Godot upgrade
+
+An upgrade that keeps the recipe name keeps every path, so the cache reuses each compile
+whose source and closure kept their content. On `main` with #85 (no feature macros), the
+Android recipe `godot_source_build_android` moved from 4.7.2-stable to the 4.7.3 snapshot:
+87 upstream commits, 120 files. Of its 682 engine compiles, 105 hit the cache after
+`bazel clean`, 93 of them third-party. The other 577 reran: 23 changed sources, 553
+sources with a changed header in their closure, and 1 source whose only change is the
+generated version header. Two changed core headers account for nearly all of the 553:
+`core/templates/hashfuncs.h` and `core/templates/safe_refcount.h`, each in about 550
+closures.
 
 ## Options
 
@@ -100,7 +120,7 @@ row.
 | **5. Shared tree repository with digest-named targets** (prototyped). Generators, header sets and objects live in a tree repository shared by every recipe of one source, patch list and row. Each target name is a digest of what its action reads, so equivalent work is one target. Recipe repositories keep only links and revision-dependent work. | Everything the content measurement found, plus include-directory pruning: 92 to 100 % of the compiles both engines have, for profile, module, custom-module and option variants. Variants of one row in one module are also built only once per build. | Loading the tree loads every recipe of its row (fetch and configure). Each recipe also writes about 2 MB of `shared.bzl`. Analysis: see the prototype. | Unchanged. Rendering only, so no graph or pin changes. | `objc_library` objects move like `cc_library` ones. The Swift module (one action) and Android packaging stay in the recipe. | high | Good. It is Bazel's own answer: equivalent actions are one target. Godot's SCons graph is untouched. |
 | **6. Custom compile rule with `cc_common.compile`.** | 0 on its own: outputs still lie below the declaring package. It only matters for 5, to declare many objects with fewer targets. | Lower per-target overhead. | unchanged | Objective-C needs its own path. | high | Low. It reimplements `cc_library`. |
 | **7. Path-independent action keys** (path mapping, REAPI normalization, a ccache-like executor cache). | Not reachable. Bazel maps only the configuration segment, REAPI keys contain the paths, and an executor-side compiler cache is not hermetic. | none | unchanged | unchanged | n/a | Poor. |
-| **8. Narrow per-source inputs further** (the three changes above, include-directory pruning, a shared build-name file). | Within a recipe: an edit reruns only what it changes. Between recipes: it multiplies the benefit of 5. | small | unchanged | unchanged | low each | Good. |
+| **8. Narrow per-source inputs further** (include closures, scoped profile, include-directory pruning, a define analysis, a shared build-name file). | Within a recipe: an edit reruns only what it changes. Between recipes: it multiplies the benefit of 5. | small | unchanged | unchanged | low each | Good. |
 
 ## Prototype
 
@@ -174,9 +194,13 @@ What the prototype leaves open:
 
 ## Conclusions
 
-- **Narrowing pays first.** Include-directory pruning is the open narrowing lever. It
-  turns a custom-module change from 730 recompiles into about 19 actions, within a recipe, without any
-  change to repositories or pins. Like the feature macros, it is a rendering change.
+- **Narrowing pays first.** Narrowing each compile to what its source really reads makes
+  an edit within a recipe rerun only what it changes, without any change to repositories
+  or pins: include-directory pruning does this for custom modules (see the paragraph
+  after the equivalence table). The defines are the remaining lever, best measured by the compiler rather
+  than guessed by name.
+- **Narrowing has a floor.** A change to a header that nearly every source reads reruns
+  nearly every compile, as the Godot upgrade shows.
 - **Only a shared tree repository (option 5) shares between recipes.** It pays off where
   several recipes of one row coexist: a module's test and production engines, A/B engine
   variants, or consumer projects on one remote cache. A complete version needs:
@@ -203,5 +227,11 @@ What the prototype leaves open:
    - key each compile by argv, environment, and the (path, digest) of each input;
    - take a generated input's digest from its file in the execution root's `bazel-out`.
 3. **Cache hits.** Build the base recipe, then each variant after `bazel clean`, and read
-   `N remote` and `N disk cache hit` from Bazel's process summary. See
+   `N remote` and `N disk cache hit` from Bazel's process summary. To count only engine
+   compiles, pass `--execution_log_json_file` to the same build and count its
+   `CppCompile` entries by `cacheHit`. See
    [remote execution with BuildBuddy](../../../docs/internal/verification-recipes.md#remote-execution-with-buildbuddy).
+4. **Upgrade.** `use_repo` the recipe's `_android_arm64_template_release` repository and
+   build it. Then edit the recipe's `source` in place and build again after `bazel clean`.
+   The name stays, so both versions resolve to the same external directory: record each
+   compile's input digests (step 2) before switching, not after.
