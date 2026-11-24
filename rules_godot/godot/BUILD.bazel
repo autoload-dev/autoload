@@ -37,6 +37,12 @@ string_flag(
     values = LTO_VALUES,
 )
 
+# Virtual function elimination of source-built engines under -c opt; see docs/public/engine.md.
+bool_flag(
+    name = "engine_vfe",
+    build_setting_default = False,
+)
+
 # Whether godot_run and godot_test targets that leave headless unset run headless.
 bool_flag(
     name = "headless",

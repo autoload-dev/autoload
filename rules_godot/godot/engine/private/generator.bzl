@@ -13,7 +13,7 @@ load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
-load(":optimization.bzl", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "engine_optimization")
+load(":optimization.bzl", "OPTIMIZATION_CHECK_ATTRS", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "check_optimization", "engine_optimization")
 
 visibility("public")
 
@@ -214,6 +214,7 @@ GodotEngineVersionInfo = provider(
 )
 
 def _library_impl(ctx):
+    check_optimization(ctx)
     if len(ctx.attr.deps) != 1:
         fail("%s: deps must name exactly the engine's native library" % ctx.label)
     if (ctx.attr.role == "runtime") != bool(ctx.attr.variant):
@@ -360,7 +361,7 @@ _desktop_native = transition(
     outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys(),
 )
 
-_BINARY_ATTRS = _SOURCE_ATTRS | {
+_BINARY_ATTRS = _SOURCE_ATTRS | OPTIMIZATION_CHECK_ATTRS | {
     "deps": attr.label_list(
         doc = "The engine's native executable target, as the only item.",
         mandatory = True,
@@ -369,7 +370,7 @@ _BINARY_ATTRS = _SOURCE_ATTRS | {
     ),
 }
 
-_LIBRARY_ATTRS = _SOURCE_ATTRS | {
+_LIBRARY_ATTRS = _SOURCE_ATTRS | OPTIMIZATION_CHECK_ATTRS | {
     "deps": attr.label_list(
         doc = "The engine's native library target, as the only item.",
         mandatory = True,
