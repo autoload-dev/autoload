@@ -6,8 +6,9 @@ I1–I5 and L1–L12 are working references, not allocated stable diagnostic IDs
 Existing AGENTS.md files and public guidance remain authoritative.
 
 **Implemented subset:** N1, N2 and N3 correspond to
-[RG001, RG002 and RG003](../../rules_godot/docs/public/conventions.md). That catalogue owns their current
-automated predicates and limitations; the remaining references below remain review drafts.
+[RG001, RG002 and RG003](../../rules_godot/docs/public/conventions.md); the sections below name
+the further subsets that RG007 to RG012 implement. That catalogue owns their current automated
+predicates and limitations; the remaining references below remain review drafts.
 
 The broader [inventory and tool comparison](conventions.md) covers other convention areas.
 The layout section below explicitly captures the already selected add-on and ordinary-project
