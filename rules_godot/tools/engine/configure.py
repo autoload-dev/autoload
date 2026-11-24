@@ -33,8 +33,10 @@ from types import FunctionType
 from typing import Any, TypeGuard, cast
 
 try:
+    from .include_graph import CompileGroup, Generated, components, include_graph
     from .module_graph import module_closure, module_dependencies
 except ImportError:
+    from include_graph import CompileGroup, Generated, components, include_graph
     from module_graph import module_closure, module_dependencies
 
 
@@ -904,31 +906,6 @@ def _shader_includes(root: Path, path: Path) -> list[str]:
     ]
 
 
-_SOURCE_INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+\.(?:cc|cpp|cxx))"', re.MULTILINE)
-
-
-_INCLUDED_SOURCE_MARKERS = (b'.cpp"', b'.cc"', b'.cxx"')
-
-
-def _resolve_source_include(root: Path, path: Path, include: str) -> str | None:
-    """Resolve an include beside the including source, else below the source root."""
-    for base in (path.parent, root):
-        candidate = (base / include).resolve()
-        if candidate.is_file() and candidate.is_relative_to(root):
-            return relative(candidate, root)
-    return None
-
-
-def _source_includes(root: Path, path: Path) -> list[str]:
-    """Return the C++ sources that a source includes, relative to the source root."""
-    text = path.read_bytes() if path.is_file() else b""
-    if not any(marker in text for marker in _INCLUDED_SOURCE_MARKERS):
-        return []
-    includes = _SOURCE_INCLUDE.findall(text.decode(errors="replace"))
-    resolved = (_resolve_source_include(root, path, include) for include in includes)
-    return [logical for logical in resolved if logical]
-
-
 def _discovered_includes(
     root: Path, sources: Collection[str], includes: Callable[[Path, Path], list[str]]
 ) -> set[str]:
@@ -947,16 +924,6 @@ def include_closure(root: Path, sources: Collection[str]) -> set[str]:
     """Godot shader builders recursively read #include files themselves."""
     root = root.resolve()
     return set(sources) | _discovered_includes(root, sources, _shader_includes)
-
-
-def included_sources(root: Path, sources: Collection[str]) -> list[str]:
-    """
-    Return the C++ sources that other sources include, relative to the source root.
-
-    Some third-party libraries, such as Embree and Convection Texture Tools, compile one
-    source that includes others; those must reach each compile action as textual headers.
-    """
-    return sorted(_discovered_includes(root.resolve(), sources, _source_includes))
 
 
 def generated_include_directories(
@@ -1501,7 +1468,7 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
             f'load("{args.swift_repository}//swift:swift_library.bzl", "swift_library")'
         )
     lines += [
-        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_library", "godot_source_binary", "godot_source_revision")',
+        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision")',
         'package(default_visibility = ["//visibility:public"])',
         'exports_files(["engine_manifest.json"])',
         f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
@@ -1545,16 +1512,49 @@ def _generator_rules(
     return lines, generated_headers
 
 
-def _headers_rule(generated_headers: Iterable[str], included: Iterable[str]) -> str:
-    # Editor sources also include XPM images, such as editor/import/atlas_import_failed.xpm,
-    # and glslang includes SPIR-V's C++11 header spirv.hpp11, which hdrs does not accept.
-    return (
-        'cc_library(\n    name = "_headers",\n    visibility = ["//visibility:private"],\n    hdrs = glob(["**/*.h", "**/*.hh", "**/*.hpp", "**/*.hxx"], exclude = ["_scons/**"], allow_empty = True) + '
-        f"{list(generated_headers)!r},\n"
-        '    textual_hdrs = glob(["**/*.inc", "**/*.inl", "**/*.c", "**/*.xpm", "**/*.hpp11"], exclude = ["_scons/**"], allow_empty = True) + '
-        f"{list(included)!r},\n"
-        '    includes = ["."],\n)'
-    )
+def generated_files(
+    root: Path, generators: Iterable[tuple[Mapping[str, Any], object]]
+) -> dict[str, Generated]:
+    """Return each generated file with its generator's code and the files it reads."""
+    files: dict[str, Generated] = {}
+    for spec, _dependencies in generators:
+        code = spec.get("inline") or (root / spec["code_file"]).read_text()
+        inputs = tuple(entry["path"] for entry in spec["sources"] if "path" in entry)
+        files.update((target, Generated(code, inputs)) for target in spec["targets"])
+    return files
+
+
+def include_rules(
+    graph: Mapping[str, Collection[str]],
+) -> tuple[list[str], dict[str, str]]:
+    """
+    Return a header target per set of files that include each other, and each file's target.
+
+    Each target depends on the targets of the files its files include, so a compile
+    action's inputs are what its source reaches.
+    """
+    included = {name for names in graph.values() for name in names}
+    lines: list[str] = []
+    targets: dict[str, str] = {}
+    for component in components(graph):
+        if included.isdisjoint(component):
+            continue
+        label = ":_includes/" + component[0]
+        targets.update((file, label) for file in component)
+        deps = sorted(
+            {targets[include] for file in component for include in graph[file]} - {label}
+        )
+        lines.append(
+            f"godot_source_headers(name = {label[1:]!r}, hdrs = {component!r}, deps = {deps!r})"
+        )
+    return lines, targets
+
+
+def _source_deps(
+    graph: Mapping[str, Collection[str]], targets: Mapping[str, str], source: str
+) -> list[str]:
+    """The source root's include directory and the header targets of a source's includes."""
+    return [":_root", *sorted({targets[name] for name in graph[source]})]
 
 
 def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
@@ -1567,50 +1567,45 @@ def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
 
 
 def _object_rules(
-    groups: Mapping[tuple[str, tuple[str, ...], tuple[str, ...]], Iterable[str]],
-    generators: Sequence[tuple[dict[str, Any], set[str]]],
-    generated_headers: Iterable[str],
+    groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
+    graph: Mapping[str, Collection[str]],
+    targets: Mapping[str, str],
 ) -> tuple[list[str], list[str]]:
-    """Return the library rule of each object group and the labels of those libraries."""
-    generated_sources = {
-        name
-        for spec, _inputs in generators
-        for name in spec["targets"]
-        if Path(name).suffix in SOURCE_SUFFIXES
-    }
+    """
+    Return a library rule per source and the labels of those libraries.
+
+    A library is named after its source, so its object keeps its path, and its cache key,
+    when other compile groups of the engine change.
+    """
     lines: list[str] = []
     labels: list[str] = []
-    for index, (language, copts, includes, sources) in enumerate(
-        object_groups(groups, generated_headers, generated_sources)
-    ):
-        name = f"_objects_{index:04d}"
-        labels.append(":" + name)
-        attributes: dict[str, object] = {
-            "name": name,
-            "visibility": ["//visibility:private"],
-            "srcs": sources,
-            "copts": list(copts),
-            "includes": list(includes),
-            "deps": [":_headers"],
-            "alwayslink": True,
-        }
-        lines.append(
-            _multiline_rule(
-                "objc_library" if language == "objc" else "cc_library", attributes
+    for index, (language, copts, includes, sources) in enumerate(groups):
+        lines.append(f"_COPTS_{index} = {list(copts)!r}")
+        lines.append(f"_INCLUDES_{index} = {list(includes)!r}")
+        rule = "objc_library" if language == "objc" else "cc_library"
+        for source in sources:
+            name = "_objects/" + source
+            labels.append(":" + name)
+            deps = _source_deps(graph, targets, source)
+            lines.append(
+                f"{rule}(name = {name!r}, visibility = ['//visibility:private'], "
+                f"srcs = [{source!r}], copts = _COPTS_{index}, includes = _INCLUDES_{index}, "
+                f"deps = {deps!r}, alwayslink = True)"
             )
-        )
     return lines, labels
 
 
+_DEFAULT_SWIFT_OPTIONS: dict[str, Any] = {
+    "module_name": "godot_swift_module",
+    "bridging_header": "drivers/apple_embedded/bridging_header_apple_embedded.h",
+    "generated_header": None,
+    "copts": ["-swift-version", "6", "-cxx-interoperability-mode=default"],
+}
+
+
 def _swift_rule(
-    swift_sources: Iterable[str], swift_options: dict[str, Any] | None
+    swift_sources: Iterable[str], options: Mapping[str, Any], deps: list[str]
 ) -> str:
-    options = swift_options or {
-        "module_name": "godot_swift_module",
-        "bridging_header": "drivers/apple_embedded/bridging_header_apple_embedded.h",
-        "generated_header": None,
-        "copts": ["-swift-version", "6", "-cxx-interoperability-mode=default"],
-    }
     attributes: dict[str, object] = {
         "name": "_swift",
         "visibility": ["//visibility:private"],
@@ -1619,7 +1614,7 @@ def _swift_rule(
         "copts": options["copts"]
         + ["-import-objc-header", f"$(location {options['bridging_header']})"],
         "swiftc_inputs": [options["bridging_header"]],
-        "deps": [":_headers"],
+        "deps": deps,
         "generates_header": bool(options["generated_header"]),
         "alwayslink": True,
     }
@@ -1737,12 +1732,29 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
     lines = _header_rules(args, bool(graph["swift_sources"]))
     generator_rules, generated_headers = _generator_rules(root, generators)
     lines += generator_rules
-    compiled = [source for _key, sources in groups.items() for source in sources]
-    lines.append(_headers_rule(generated_headers, included_sources(root, compiled)))
-    object_rules, dependencies = _object_rules(groups, generators, generated_headers)
+    generated = generated_files(root, generators)
+    compiled = object_groups(groups, generated_headers, generated)
+    swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
+    bridging_header = swift_options["bridging_header"]
+    includes = include_graph(
+        root,
+        (
+            CompileGroup(sources, includes, copts)
+            for _, copts, includes, sources in compiled
+        ),
+        generated,
+        [bridging_header] if graph["swift_sources"] else [],
+    )
+    header_rules, targets = include_rules(includes)
+    lines.append(
+        "cc_library(name = '_root', visibility = ['//visibility:private'], includes = ['.'])"
+    )
+    lines += header_rules
+    object_rules, dependencies = _object_rules(compiled, includes, targets)
     lines += object_rules
     if graph["swift_sources"]:
-        lines.append(_swift_rule(graph["swift_sources"], graph["swift_options"]))
+        deps = _source_deps(includes, targets, bridging_header)
+        lines.append(_swift_rule(graph["swift_sources"], swift_options, deps))
         dependencies.append(":_swift")
     lines += _engine_rules(args, graph, dependencies)
     (root / "BUILD.bazel").write_text("\n\n".join(lines) + "\n")

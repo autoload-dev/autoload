@@ -161,6 +161,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     """
     ctx.watch(ctx.path(ctx.attr._configure))
     ctx.watch(ctx.path(ctx.attr._module_graph))
+    ctx.watch(ctx.path(ctx.attr._include_graph))
     if ctx.attr.platform == "ios" and not ctx.attr.environment:
         _fail("%s: iOS recipes need environment = \"device\" or \"simulator\"" % ctx.attr.name)
         return None

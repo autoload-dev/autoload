@@ -20,7 +20,7 @@ from tools.engine.configure import (
     generated_include_directories,
     has_renderer_switches,
     include_closure,
-    included_sources,
+    include_rules,
     inputs_hash,
     is_directory_action,
     merge_swift_module_options,
@@ -907,32 +907,6 @@ class GraphTranslationTest(unittest.TestCase):
             )
 
 
-class IncludedSourcesTest(unittest.TestCase):
-    def test_sources_that_other_sources_include_become_textual_headers(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            kernels = root / "thirdparty/embree/kernels/bvh"
-            kernels.mkdir(parents=True)
-            (kernels / "hybrid4.cpp").write_text(
-                '#include "bvh_intersector_hybrid.cpp"\n'
-            )
-            (kernels / "bvh_intersector_hybrid.cpp").write_text(
-                '#include "../common/shared.cpp"\n#include "bvh.h"\n'
-            )
-            (root / "thirdparty/embree/kernels/common").mkdir()
-            (root / "thirdparty/embree/kernels/common/shared.cpp").write_text("")
-            (root / "core.cpp").write_text('#include "missing.cpp"\n')
-            self.assertEqual(
-                included_sources(
-                    root, ["thirdparty/embree/kernels/bvh/hybrid4.cpp", "core.cpp"]
-                ),
-                [
-                    "thirdparty/embree/kernels/bvh/bvh_intersector_hybrid.cpp",
-                    "thirdparty/embree/kernels/common/shared.cpp",
-                ],
-            )
-
-
 def write_tree(root: Path, files: dict[str, str]) -> None:
     """Write files below a source root."""
     for name, text in files.items():
@@ -1070,6 +1044,28 @@ class IncludeGraphTest(unittest.TestCase):
             "c.h": set(),
         }
         self.assertEqual(components(graph), [["c.h"], ["a.h", "b.h"], ["main.cpp"]])
+
+    def test_each_set_of_included_files_becomes_one_header_target(self) -> None:
+        lines, targets = include_rules(
+            {
+                "main.cpp": {"a.h"},
+                "a.h": {"b.h", "c.h"},
+                "b.h": {"a.h"},
+                "c.h": set(),
+            }
+        )
+        self.assertEqual(
+            lines,
+            [
+                "godot_source_headers(name = '_includes/c.h', hdrs = ['c.h'], deps = [])",
+                (
+                    "godot_source_headers(name = '_includes/a.h', hdrs = ['a.h', 'b.h'], "
+                    "deps = [':_includes/c.h'])"
+                ),
+            ],
+        )
+        self.assertNotIn("main.cpp", targets)
+        self.assertEqual(targets["b.h"], ":_includes/a.h")
 
 
 class PinTest(unittest.TestCase):

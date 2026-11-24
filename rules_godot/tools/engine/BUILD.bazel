@@ -12,6 +12,7 @@ py_binary(
     name = "pin",
     srcs = [
         "configure.py",
+        "include_graph.py",
         "module_graph.py",
         "pin.py",
     ],
@@ -37,5 +38,6 @@ py_library(
 
 exports_files([
     "configure.py",
+    "include_graph.py",
     "module_graph.py",
 ])

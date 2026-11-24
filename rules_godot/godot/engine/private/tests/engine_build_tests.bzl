@@ -44,6 +44,7 @@ _ATTRS = {
     "configure_timeout": 600,
     "_configure": "tools/engine/configure.py",
     "_module_graph": "tools/engine/module_graph.py",
+    "_include_graph": "tools/engine/include_graph.py",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
     "_platforms_constraint": "@@platforms//os:android",
