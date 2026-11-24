@@ -40,7 +40,7 @@ SDK/NDK components. It reuses SDK components outside the checkout across worktre
 `ANDROID_HOME` or `ANDROID_NDK_HOME` before setup for a nonstandard installation;
 `--android=false` and `--hooks=false` skip a part, and `--tools-only` installs just the two
 tools, as CI does. A new worktree needs none of it again; how worktrees reuse Bazel's state
-is in [AGENTS.md](../../AGENTS.md#worktrees).
+is in [agent setup](agent-setup.md#worktrees).
 Bootstrap is safe to repeat but is not a required step before each check.
 
 For work that does not need Android, `aspect bootstrap --android=false` installs just the
