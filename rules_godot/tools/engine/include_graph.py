@@ -62,9 +62,13 @@ class CompileGroup(NamedTuple):
 
 
 def tree_files(root: Path) -> set[str]:
-    """Return the files below the source root, relative to it, without the build tools."""
+    """
+    Return the files below the source root, relative to it, without the build tools.
+
+    Linked directories count, as they did for the header glob this scan replaces.
+    """
     files: set[str] = set()
-    for directory, directories, names in os.walk(root):
+    for directory, directories, names in os.walk(root, followlinks=True):
         logical = os.path.relpath(directory, root)
         if logical == ".":
             directories[:] = [
