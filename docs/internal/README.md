@@ -8,7 +8,6 @@ Use the [public guides](../../rules_godot/docs/public/README.md) for supported c
 
 | Resource | Purpose | Review when |
 |---|---|---|
-| [Ideas and to-dos](ideas.md) | Candidate work that is not yet planned | Capturing or delivering an idea |
 | [Glossary](glossary.md) | The terms code, documentation and conversation use, and the terms to avoid | Naming a concept, field, attribute or target |
 | [Verification policy](verification.md) | TDD, execution timing, evidence reuse and completion | Making or reviewing a change |
 | [Verification architecture](verification-architecture.md) | Test kinds, placement, boundaries, coverage and altitude | Adding a test or reviewing a change's tests |

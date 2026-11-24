@@ -20,17 +20,10 @@ those of the ruleset alone, such as its architecture and the
 [design principles](rules_godot/docs/internal/principles.md), are in
 [rules_godot/docs/internal/](rules_godot/docs/internal/README.md).
 
-Keep ideas and follow-ups that are not yet planned in [ideas.md](docs/internal/ideas.md).
-Agents may propose an entry, with a short reason, but must wait for the user's approval
-before adding it. An explicit request to capture items supplies that approval; discovering
-an issue while working does not. Check existing entries first to avoid duplicates.
-Follow the file's entry format, and remove an entry once a change delivers it.
-Implementation needs its own approval. Do not propose, create or maintain GitHub Issues.
-
 Read linked sections when their stated condition applies; links are not a request to load
 every referenced document. For examples, read [example guidance](rules_godot/examples/AGENTS.md).
 For documentation and every README, read [documentation guidance](docs/AGENTS.md).
-For ruleset regression work under `tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
+For ruleset regression work under `rules_godot/tests/`, read [the test-area map](rules_godot/tests/AGENTS.md).
 For the add-on modules under `addons/`, read [add-on guidance](addons/AGENTS.md).
 
 Use English for code, game/example UI, documentation, commits and pull requests.
@@ -138,8 +131,9 @@ or replace the same `{NAME}` placeholders in a build-time tool. Short optional/r
 may be produced in code; a placeholder alone on its line stands for such a block.
 
 When changing exporters, obtain export options, defaults and project settings from Godot's
-shell probe (`tools/action/shell.gd`), not copies in Starlark or Python. Keep remaining per-minor tables
-and constants in `godot/private/engine/profiles.bzl` and pass them to build tools as data.
+shell probe (`rules_godot/tools/action/shell.gd`), not copies in Starlark or Python. Keep
+remaining per-minor tables and constants in `rules_godot/godot/private/engine/profiles.bzl`
+and pass them to build tools as data.
 
 # Code Health (CodeScene)
 

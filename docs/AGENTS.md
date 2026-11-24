@@ -1,11 +1,12 @@
 # Documentation
 
-`public/` serves ruleset consumers; `internal/` serves contributors and agents. Root and example
-READMEs are public-facing. This directory provides navigation and shared authoring guidance.
+`rules_godot/docs/public/` serves ruleset consumers; `docs/internal/` and
+`rules_godot/docs/internal/` serve contributors and agents. Root and example READMEs are
+public-facing. This file provides navigation and shared authoring guidance.
 
 Read [public guidance](../rules_godot/docs/public/AGENTS.md) for consumer pages and every user-facing README;
 read [internal guidance](internal/AGENTS.md) for architecture, research and maintainer material,
-both the repository's in `internal/` and the ruleset's in `rules_godot/docs/internal/`.
+both the repository's in `docs/internal/` and the ruleset's in `rules_godot/docs/internal/`.
 
 Give each fact one owning page and link to the relevant section. Keep commands copyable;
 use explicit placeholders such as `//path/to:target` when a user must supply a label.
