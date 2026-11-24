@@ -6,6 +6,7 @@ exports_files(
         "catalogue.bzl",
         "source_build_rows.bzl",
         "components.bzl",
+        "define_analysis.bzl",
         "extension_plan.bzl",
         "generator.bzl",
         "hub.bzl",

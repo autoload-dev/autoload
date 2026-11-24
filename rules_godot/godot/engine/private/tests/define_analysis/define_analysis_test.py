@@ -1,0 +1,21 @@
+import sys
+import unittest
+from pathlib import Path
+
+
+class DefineAnalysisTest(unittest.TestCase):
+    def test_the_header_keeps_the_definitions_the_preprocessing_reads(self) -> None:
+        self.assertEqual(
+            Path(sys.argv[1]).read_text().splitlines(),
+            [
+                "#define GODOT_DECLARES_BUILD_PROFILE 1",
+                "#define HEADER_ENABLED 1",
+                "#define PASTED_DISABLED 1",
+                '#define MESSAGE "header_enabled"',
+                "#undef NDEBUG",
+            ],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main(argv=sys.argv[:1])

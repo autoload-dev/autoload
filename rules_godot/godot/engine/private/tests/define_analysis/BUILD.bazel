@@ -1,0 +1,63 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//godot/engine/private:define_analysis.bzl", "godot_define_analysis", "godot_source_defines")
+
+# A source whose preprocessing reads some of its definitions: through a header, a pasted
+# name and #ifndef. The others appear only in a comment, in an inactive branch, or not at
+# all. -w and -Werror would silence or fail the analysis' warning; it removes them.
+godot_source_defines(
+    name = "defines",
+    src = "source.cpp",
+    copts = [
+        "-w",
+        "-Werror",
+    ],
+    defines = [
+        "-DHEADER_ENABLED",
+        "-DPASTED_DISABLED=1",
+        "-DCOMMENT_ONLY_ENABLED",
+        "-DINSIDE_INACTIVE_ENABLED",
+        "-DUNUSED_ENABLED",
+        "-DMESSAGE=\\\"header_enabled\\\"",
+        "-UNDEBUG",
+    ],
+    local_defines = ["GODOT_DECLARES_BUILD_PROFILE"],
+    deps = [":probe"],
+)
+
+godot_define_analysis(
+    name = "analysis",
+    outs = ["_macros/source.h"],
+    sources = [":defines"],
+)
+
+cc_library(
+    name = "probe",
+    hdrs = ["probe.h"],
+)
+
+# The source compiles with the analysis' header in place of its definitions.
+cc_library(
+    name = "library",
+    srcs = [
+        "_macros/source.h",
+        "source.cpp",
+    ],
+    copts = [
+        "-include",
+        "godot/engine/private/tests/define_analysis/_macros/source.h",
+    ],
+    deps = [":probe"],
+)
+
+# Build-output test: the header keeps the definitions the preprocessing reads, in order.
+py_test(
+    name = "define_analysis_test",
+    size = "small",
+    srcs = ["define_analysis_test.py"],
+    args = ["$(rootpath :_macros/source.h)"],
+    data = [
+        ":_macros/source.h",
+        ":library",
+    ],
+)
