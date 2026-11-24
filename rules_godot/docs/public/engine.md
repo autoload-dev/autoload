@@ -476,7 +476,26 @@ one of the ruleset's own:
 Android and desktop engines also link with it. `thin` needs Clang, and `-Oz` needs Clang or
 GCC 12; `full` takes the longest to link.
 
-Both apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
+`--@autoload_rules_godot//godot:engine_vfe` lets the full LTO link drop the virtual
+functions nothing calls. It compiles the engine with Clang's `-fvisibility=hidden
+-fwhole-program-vtables -fvirtual-function-elimination` and Godot's `TYPED_METHOD_BIND`;
+the link needs nothing beyond `-flto`. It needs `engine_lto=full` and Clang: under `-c opt`,
+any other `engine_lto` fails the build.
+
+`TYPED_METHOD_BIND`, Godot's default under MSVC, is not optional. Without it, Godot's method
+binds call virtual setters through member function pointers cast to a class without a
+vtable, so elimination sees no call to them, clears their slots and the engine crashes at
+start. It gives every class its own copy of each method binding, which on macOS and
+Android costs more than elimination saves; see [make the engine small](engine-size.md#5-optimize-for-size).
+
+Elimination assumes that every virtual call into the engine's classes is part of the
+engine's LTO link. Custom modules and patches compile as part of the engine.
+GDExtensions call the engine through function pointers, not C++ virtual calls, and are
+unaffected. Apple engines carry their objects into the application's link, where native
+code compiled outside the engine, such as a library in `platform_deps`, must not call
+virtual functions of engine classes: the call reaches a cleared slot and crashes.
+
+The settings apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
 their level wins over the toolchain's and the command line's there, while extensions and
 application code keep the build's flags. Other compilation modes keep Bazel's levels: `-c dbg`
 debugs the engine unoptimized whatever the settings say. Prebuilt engines are unaffected.
@@ -489,8 +508,9 @@ bazel build //path/to:app -c opt \
   --@autoload_rules_godot//godot:engine_lto=full
 ```
 
-An application can set both for its own engine with `godot_app`'s `engine_optimize` and
-`engine_lto`, which override the build's settings; one recipe then serves a small release
+An application can set them for its own engine with `godot_app`'s `engine_optimize`,
+`engine_lto` and `engine_vfe` (`on`, `off`, or empty to keep the build's), which override
+the build's settings; one recipe then serves a small release
 application beside a fast debug one, each with an engine built for it:
 
 ```starlark

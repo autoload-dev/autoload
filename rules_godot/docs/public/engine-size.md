@@ -171,6 +171,26 @@ The iOS engine from the start of this guide, after steps 1 to 3:
 `size_min` gains most from full LTO. Full LTO took that engine's build from about 33 s to
 75–95 s.
 
+A third setting, `--@autoload_rules_godot//godot:engine_vfe` (`godot_app.engine_vfe = "on"`),
+lets the full LTO link drop the virtual functions nothing calls. It needs `engine_lto=full`,
+fails the build without it, and needs Clang: Apple's toolchains and the Android NDK have
+it, while a Linux engine built with GCC fails to compile. It also compiles the engine with
+Godot's `TYPED_METHOD_BIND`, without which elimination breaks the engine. That switch gives
+every class its own copy of each method binding it registers, which costs more than
+elimination saves. With `size_min` and full LTO, on Godot 4.7.2, without symbols:
+
+| Engine | Without `engine_vfe` | With `engine_vfe` |
+| --- | ---: | ---: |
+| macOS executable, Lichtpost's modules | 15.5 MiB | 17.0 MiB (+9.6 %) |
+| The same with a build profile | 12.0 MiB | 12.8 MiB (+6.9 %) |
+| Android `libgodot_android.so`, the 2D engine of steps 1 to 3 | 16.0 MiB | 16.7 MiB (+4.6 %) |
+
+Compressed, the Android library shrinks by about 1 %, the macOS executable grows by
+about 5 %. Leave `engine_vfe` off unless your engine registers few classes and you measured
+a gain. If you turn it on, keep native code that calls virtual functions of engine classes
+inside the engine, as a custom module or a patch: on Apple platforms, a library in
+`platform_deps` that does so crashes when the call reaches a removed function.
+
 Smaller code can run slower. Measure frame times on your weakest target device; `size` and
 `size_extra` lie between Godot's default and `size_min`.
 [Optimization](engine.md#optimization) lists every value.
