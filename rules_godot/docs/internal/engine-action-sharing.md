@@ -70,8 +70,24 @@ directory only if some file of its include closure lies below it. If rendering k
 those directories, the prototype below reruns only about 19 actions: the sources that
 include `modules_enabled.gen.h`, the module registration, and the link.
 
-Across platforms, CPUs or build targets, practically nothing is equivalent: the
-toolchain, the target flags and `TOOLS_ENABLED`/`DEBUG_ENABLED` differ on every compile.
+Across platforms or CPUs, practically nothing is equivalent: the toolchain and the
+target flags differ on every compile. Across build targets of one recipe, a part is. The
+same comparison, with the feature macros and include-directory pruning applied, gave:
+
+| Build targets compared | Engine compiles | Equal | What differs |
+|---|---:|---:|---|
+| Android `template_release` and `template_debug` (beta recipe) | 731 | 188 | `-DDEBUG_ENABLED` in 542 sources |
+| macOS `template_release` and `template_debug` (4.7.3 snapshot, Compatibility renderer) | 1045 | 286 | `-DDEBUG_ENABLED` |
+| macOS `template_debug` and `editor` (same recipe) | 1045 and 1456 | 0 | `-DNO_EDITOR_SPLASH` and `-DGDSCRIPT_NO_LSP` on every compile, `-DTOOLS_ENABLED` in 749 sources, 411 editor-only sources |
+
+The equal compiles are mostly third-party code and Godot sources whose closure never
+reads `DEBUG_ENABLED`. `TOOLS_ENABLED` and `DEBUG_ENABLED` change core headers, so the
+rest is genuinely different work. Between editor and templates, `NO_EDITOR_SPLASH` and
+`GDSCRIPT_NO_LSP` alone hide the 296 compiles that do not reach `TOOLS_ENABLED`.
+Both are Godot feature macros that the feature-macro scan does not consider yet,
+because their names do not end in `_ENABLED` or `_DISABLED`. Sharing across build targets
+also needs a shared tree that spans a recipe's build targets: the prototype groups by
+row.
 
 ## Options
 
