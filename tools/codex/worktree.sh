@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Codex's session hooks (.codex/hooks.json), which lease a Bazel slot for a session in a Codex
-# worktree (AGENTS.md, "Worktrees"): a directory with one output base per module, which
-# tools/bazel uses while .bazel-slot names it.
+# worktree (AGENTS.md, "Worktrees"): one output base per module, which tools/bazel uses while
+# .bazel-slot names them.
 #
 #   worktree.sh session-start   reads the hook's {"cwd"} on stdin; leases a slot for its
 #                               worktree, the warmest free one, else a new one
@@ -9,8 +9,9 @@
 #                               its slot back, which the next session leases again
 #   worktree.sh setup|cleanup   the same for the worktree the current directory is in
 #
-# Only a linked worktree outside the Aspect CLI's worktree pool leases a slot. Slots live in
-# ~/.aspect/bazel-slots/<repository>/; a lease whose worktree is gone counts as free. A hook
+# Only a linked worktree outside the Aspect CLI's worktree pool leases a slot. The leases live
+# in ~/.aspect/bazel-slots/<repository>/, the output bases under Bazel's output user root, where
+# `aspect gc` collects them; a lease whose worktree is gone counts as free. A hook
 # never fails its session: without a slot, Bazel only starts cold.
 set -euo pipefail
 
@@ -79,21 +80,52 @@ free() {
     [[ "$holder" != "$worktree" ]] && ! git -C "$holder" rev-parse --git-dir >/dev/null 2>&1
 }
 
-# Stop the Bazel servers whose output bases are in a slot, through the pid each server records;
-# Bazel ends on the signal, and the next build in the slot must not meet it.
+# Bazel's output user root, where `aspect gc` and `aspect output-bases` find output bases.
+output_user_root() {
+    if [[ "$(uname -s)" == Darwin ]]; then
+        echo "$HOME/Library/Caches/bazel/_bazel_$USER"
+    else
+        echo "${XDG_CACHE_HOME:-$HOME/.cache}/bazel/_bazel_$USER"
+    fi
+}
+
+# 32 hexadecimal digits of a text's SHA-256, the length of Bazel's output base names.
+hash32() {
+    local sum
+    if command -v sha256sum >/dev/null; then sum="$(printf '%s' "$1" | sha256sum)"
+    else sum="$(printf '%s' "$1" | shasum -a 256)"; fi
+    [[ "$sum" =~ ^[0-9a-f]{64} ]] || { note "cannot hash: no sha256sum or shasum"; exit 1; }
+    echo "${sum:0:32}"
+}
+
+# A slot's output base for one module: named like Bazel's own, by a hash, under the output user
+# root, so `aspect gc` keeps, idles out and removes it as it does every other.
+output_base() {
+    echo "$(output_user_root)/$(hash32 "bazel-slot:$1:$2")"
+}
+
+# Stop the Bazel servers of a slot's output bases, through the pid each server records; Bazel
+# ends on the signal, and the next build in the slot must not meet it.
 stop_servers() {
-    local pid_file pid
-    for pid_file in "$1"/*/server/server.pid.txt; do
+    local base pid_file pid
+    [[ -f "$1/bases" ]] || return 0
+    while read -r base; do
+        pid_file="$base/server/server.pid.txt"
         [[ -f "$pid_file" ]] || continue
         pid="$(<"$pid_file")"
         kill "$pid" 2>/dev/null || continue
         for _ in {1..100}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
-    done
+    done <"$1/bases"
+}
+
+# The slot a lease file names: the first line of .bazel-slot.
+leased_slot() {
+    sed -n '1s/^slot //p' .bazel-slot 2>/dev/null
 }
 
 setup() {
-    if [[ -f .bazel-slot ]] && [[ "$(cat "$(<.bazel-slot)/lease" 2>/dev/null)" == "$worktree" ]]; then
-        note "already holds $(<.bazel-slot)"
+    if [[ -f .bazel-slot ]] && [[ "$(cat "$(leased_slot)/lease" 2>/dev/null)" == "$worktree" ]]; then
+        note "already holds $(leased_slot)"
         return
     fi
     lock
@@ -112,14 +144,26 @@ setup() {
     fi
     echo "$worktree" >"$slot/lease"
     touch "$slot"
-    echo "$slot" >.bazel-slot
+    # The slot, then each module of the worktree with its output base, which tools/bazel reads.
+    local module
+    {
+        echo "slot $slot"
+        git ls-files -- MODULE.bazel '*/MODULE.bazel' | while read -r module; do
+            module="$(dirname "$module")"
+            echo "$module $(output_base "$slot" "$module")"
+        done
+    } >.bazel-slot
+    # Every output base the slot has had, whose servers a later lease stops.
+    touch "$slot/bases"
+    sed -n '2,$s/^[^ ]* //p' .bazel-slot | sort -u - "$slot/bases" >"$slot/bases.new"
+    mv "$slot/bases.new" "$slot/bases"
     note "leased $slot"
 }
 
 cleanup() {
     [[ -f .bazel-slot ]] || { note "holds no Bazel slot"; return; }
     local slot
-    slot="$(<.bazel-slot)"
+    slot="$(leased_slot)"
     stop_servers "$slot"
     lock
     if [[ "$(cat "$slot/lease" 2>/dev/null)" == "$worktree" ]]; then

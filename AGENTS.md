@@ -89,9 +89,11 @@ Codex creates its worktrees itself, each at a new path, and has no hook that rep
 so they recycle the Bazel state rather than the path. Codex's `SessionStart` hook in
 [.codex/hooks.json](.codex/hooks.json), in the CLI as in the app, leases a Bazel slot under
 `~/.aspect/bazel-slots` for a session in a linked worktree, and [tools/bazel](tools/bazel)
-then keeps every module's output base in it: a new worktree reuses the fetched repositories
-and the action cache of an earlier one, though not its analysis. `SessionEnd` stops the
-worktree's Bazel servers and gives the slot back; a slot whose worktree is gone counts as
+then gives every module the slot's output base for it: a new worktree reuses the fetched
+repositories and the action cache of an earlier one, though not its analysis. The slots'
+output bases lie under Bazel's output user root with hash names like any other, so `aspect
+output-bases` lists them and `aspect gc` collects them by the same rules. `SessionEnd` stops
+the worktree's Bazel servers and gives the slot back; a slot whose worktree is gone counts as
 free ([tools/codex/worktree.sh](tools/codex/worktree.sh)). Codex reads a linked worktree's
 project hooks from the main checkout and runs a new or changed hook only once it is
 approved in Codex.

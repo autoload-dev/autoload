@@ -46,14 +46,17 @@ if [[ ${#flags[@]} -gt 0 ]]; then
 fi
 
 # A worktree that leased a Bazel slot (AGENTS.md, "Worktrees") keeps each module's output base
-# in that slot. The slot's path is in .bazel-slot at the worktree root, the nearest directory
-# with a .git; a startup option on the command line wins.
+# in that slot. .bazel-slot at the worktree root, the nearest directory with a .git, names each
+# module's base; a startup option on the command line wins.
 root="$workspace"
 until [[ -e "$root/.git" || -z "$root" ]]; do root="${root%/*}"; done
 if [[ -n "$root" && -f "$root/.bazel-slot" && " ${arguments[*]} " != *" --output_base="* ]]; then
     module="${workspace#"$root"}"
     module="${module#/}"
-    module="${module//\//+}"
-    arguments=("--output_base=$(<"$root/.bazel-slot")/${module:-_root}" "${arguments[@]}")
+    while read -r name base; do
+        # An output base is named by 32 hexadecimal digits, never the output user root itself.
+        [[ "$name" == "${module:-.}" && "${base##*/}" =~ ^[0-9a-f]{32}$ ]] &&
+            arguments=("--output_base=$base" "${arguments[@]}") && break
+    done <"$root/.bazel-slot"
 fi
 exec "$BAZEL_REAL" "${arguments[@]}"
