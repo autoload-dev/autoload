@@ -1,0 +1,337 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Lichtpost Größenkarte</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: totals strip, a toolbar, one large zoomable treemap, then the parts table as its legend. */
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --fg: #14161b; --fg-2: #4d5260; --fg-3: #737886;
+  --line: #dfe2e8; --accent: #2a78d6;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100;
+  --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #8d919b;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Inter", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121418; --surface: #1a1d22; --fg: #eef0f3; --fg-2: #b9bdc7; --fg-3: #8a8f9b;
+    --line: #2c3038; --accent: #3987e5;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500;
+    --c5: #d55181; --c6: #0ca30c; --c7: #9085e9; --c8: #737885;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121418; --surface: #1a1d22; --fg: #eef0f3; --fg-2: #b9bdc7; --fg-3: #8a8f9b;
+  --line: #2c3038; --accent: #3987e5;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500;
+  --c5: #d55181; --c6: #0ca30c; --c7: #9085e9; --c8: #737885;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.page { max-width: 1280px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font: 500 0.78rem var(--mono); color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 3.2vw, 2.3rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { color: var(--fg-2); max-width: 74ch; margin: 0; }
+.totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.total { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.total[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.total:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.total .k { font-size: 0.8rem; color: var(--fg-2); }
+.total .v { font: 500 clamp(1.25rem, 2.6vw, 1.7rem) var(--mono); font-variant-numeric: tabular-nums; }
+.total .d { font-size: 0.78rem; color: var(--fg-3); }
+@media (max-width: 560px) { .totals { grid-template-columns: minmax(0, 1fr); } }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { font: 500 0.88rem var(--body); color: var(--fg-2); background: none; border: 0; padding: 7px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.seg button:focus-visible, .crumbs button:focus-visible, tr.zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 0.88rem; min-width: 0; }
+.crumbs button { font: inherit; color: var(--accent); background: none; border: 0; padding: 2px 4px; cursor: pointer; border-radius: 4px; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumbs button:hover { text-decoration: underline; }
+.crumbs .sep { color: var(--fg-3); }
+.crumbs .here { font-weight: 600; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hint { font: 0.82rem var(--mono); color: var(--fg-3); margin-left: auto; }
+.mapwrap { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+#map { display: block; width: 100%; height: clamp(420px, 66vh, 760px); }
+#map text { pointer-events: none; }
+#map .hdr { font: 600 12px var(--body); fill: var(--fg); }
+#map .hdr-size { font: 11px var(--mono); fill: var(--fg-2); }
+#map .lbl { font: 11px var(--body); fill: var(--fg); }
+#map .lbl-size { font: 10px var(--mono); fill: var(--fg-2); }
+#map rect.zoomable { cursor: zoom-in; }
+#map rect.cell:hover { stroke: var(--fg); stroke-width: 1.5; }
+#tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; max-width: 380px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.18); z-index: 5; }
+#tip .t-name { font-weight: 600; word-break: break-word; }
+#tip .t-row { font: 0.75rem var(--mono); opacity: 0.85; }
+.below { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .below { grid-template-columns: minmax(0, 1fr); } .hint { margin-left: 0; } }
+h2 { font-family: var(--display); font-weight: 700; font-size: 1.1rem; margin: 0 0 8px; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+th { text-align: left; font-weight: 500; color: var(--fg-3); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.cur, td.cur { color: var(--fg); font-weight: 500; }
+td:not(.cur).num { color: var(--fg-2); }
+tr.part td { font-weight: 600; border-top: 1px solid var(--line); }
+tr.sub td:first-child { padding-left: 28px; color: var(--fg-2); }
+tr.zoom { cursor: zoom-in; }
+tr.zoom:hover td { background: color-mix(in oklab, var(--accent) 7%, transparent); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+.notes { display: grid; gap: 10px; color: var(--fg-2); font-size: 0.9rem; }
+.notes p { margin: 0; max-width: 64ch; }
+.notes b { color: var(--fg); }
+.notes code { font-family: var(--mono); font-size: 0.82em; color: var(--fg); }
+#status { color: var(--fg-3); font-size: 0.9rem; padding: 40px; text-align: center; }
+</style>
+
+<div class="page">
+  <header>
+    <span class="eyebrow">Lichtpost · Web-Build R17, verlustbehaftete Hintergründe · 24.11.2026</span>
+    <h1>Woher die Größe einer Lichtpost-Playable kommt</h1>
+    <p class="lede">Alles, was eine Webseite für das Spiel ausliefert: Engine, Spieldaten, Loader und HTML. Jede Fläche ist so groß wie ihr Anteil im gewählten Maß. Klick auf eine Fläche zoomt hinein, die Pfadleiste führt zurück.</p>
+  </header>
+
+  <div class="totals" role="group" aria-label="Maß">
+    <button class="total" data-metric="0" aria-pressed="true"><span class="k">Als eine HTML-Datei</span><span class="v" id="t0">–</span><span class="d">Binärteile Base64-eingebettet (+33 %) · vorher 11,48 MB</span></button>
+    <button class="total" data-metric="1" aria-pressed="false"><span class="k">Dateien roh</span><span class="v" id="t1">–</span><span class="d">wie sie auf dem Server liegen · vorher 8,67 MB</span></button>
+    <button class="total" data-metric="2" aria-pressed="false"><span class="k">Übertragen mit Brotli</span><span class="v" id="t2">–</span><span class="d">Stufe 11, je Datei · vorher 4,95 MB</span></button>
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button id="v-bundle" aria-pressed="true">Ganzes Bundle</button>
+      <button id="v-dom" aria-pressed="false">Engine: wer hält was</button>
+    </div>
+    <nav class="crumbs" id="crumbs" aria-label="Pfad"></nav>
+    <span class="hint" id="hint"></span>
+  </div>
+
+  <div class="mapwrap">
+    <svg id="map" role="img" aria-label="Treemap der Bundle-Größe"></svg>
+    <div id="status">Lade Daten …</div>
+    <div id="tip" hidden></div>
+  </div>
+
+  <div class="below">
+    <section>
+      <h2>Bestandteile</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Teil</th><th class="num" data-col="0">HTML</th><th class="num" data-col="1">roh</th><th class="num" data-col="2">Brotli</th><th class="num">Anteil</th></tr></thead>
+          <tbody id="parts"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="notes">
+      <h2>Was auffällt</h2>
+      <p><b>Die Engine ist jetzt zwei Drittel der Übertragung.</b> 1,24 von 1,89 MB Brotli; Rendering und der Variant-Kern sind darin die größten Bereiche, der Spielcode ist ein kleiner Rest.</p>
+      <p><b>Die drei Hintergründe sind verlustbehaftetes WebP.</b> <code>gardens-far</code>, <code>gardens-near</code> und <code>sky</code> waren verlustfrei 3,68 MB, mit Qualität 0,8 sind es 0,51 MB, ohne sichtbaren Unterschied im Spiel.</p>
+      <p><b>Der Skript-Bytecode im Pack hat nur noch Köpfe.</b> Die Körper der 139 kompilierten Funktionen sind entfernt: 194 statt 268 KB roh. Was bleibt, sind vor allem die Methoden-Metadaten für Reflection.</p>
+      <p><b>Als eine HTML-Datei zählt vor allem das wasm:</b> Base64 macht aus 4,38 MB 5,84 MB. Wird die Datei komprimiert ausgeliefert oder gemessen, gilt eher die Brotli-Spalte.</p>
+      <h2>So ist gemessen</h2>
+      <p>Pack-Dateien, Loader und HTML sind einzeln gemessen. Die Engine ist aus dem LTO-Objekt vor wasm-opt aufgeschlüsselt (<code>wasm-retention/retention.py</code>) und anteilig auf die Größe des fertigen wasm skaliert. Namenlose Tabellen zählen zu der Funktion, die sie als einzige hält.</p>
+      <p><b>Engine: wer hält was</b> zeigt den Dominatorbaum: Eine Fläche enthält alles, was nur über sie erreichbar ist. Entfernt man sie, fällt der Inhalt mit weg.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(() => {
+  const svg = d3.select("#map");
+  const tip = document.getElementById("tip");
+  const METRIC_NAMES = ["in der HTML-Datei", "roh", "Brotli"];
+  const state = { view: "bundle", metric: 0, path: [], data: null, totals: [] };
+
+  const color = k => `var(--c${k || 8})`;
+  const tint = (k, amount) => `color-mix(in oklab, ${color(k)} ${amount}%, var(--surface))`;
+  const fmt = b => b >= 1e6
+    ? (b / 1e6).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " MB"
+    : (b / 1e3).toLocaleString("de-DE", { maximumFractionDigits: b < 1e4 ? 1 : 0 }) + " KB";
+  const pct = (b, of) => (b / of * 100).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
+  const val = (n, m) => n.v ? n.v[m] : n.c.reduce((s, c) => s + val(c, m), 0);
+  const rootOf = () => state.data[state.view];
+  const grand = () => val(state.data.bundle, state.metric);
+
+  function current() {
+    let n = rootOf();
+    for (const i of state.path) n = n.c[i];
+    return n;
+  }
+  function slotAbove() {
+    let n = rootOf(), k = n.k;
+    for (const i of state.path) { n = n.c[i]; if (n.k) k = n.k; }
+    return k;
+  }
+
+  function crumbs() {
+    const nav = document.getElementById("crumbs");
+    nav.replaceChildren();
+    const nodes = [rootOf()];
+    for (const i of state.path) nodes.push(nodes.at(-1).c[i]);
+    nodes.forEach((node, k) => {
+      const label = k === 0 ? (state.view === "bundle" ? "Alles" : "Engine") : node.n;
+      const el = document.createElement(k < nodes.length - 1 ? "button" : "span");
+      el.textContent = label; el.title = label;
+      if (k < nodes.length - 1) {
+        el.onclick = () => { state.path = state.path.slice(0, k); render(); };
+        nav.append(el);
+        const s = document.createElement("span"); s.className = "sep"; s.textContent = "›";
+        nav.append(s);
+      } else {
+        el.className = "here"; nav.append(el);
+      }
+    });
+  }
+
+  function fit(text, width, px) {
+    const max = Math.floor(width / (px * 0.56));
+    if (max < 3) return "";
+    return text.length > max ? text.slice(0, max - 1) + "…" : text;
+  }
+
+  function showTip(e, d) {
+    const n = d.data;
+    tip.replaceChildren();
+    const add = (cls, text) => { const el = document.createElement("div"); el.className = cls; el.textContent = text; tip.append(el); };
+    add("t-name", n.n);
+    add("t-row", `${fmt(val(n, state.metric))} ${METRIC_NAMES[state.metric]} · ${pct(val(n, state.metric), grand())} des Bundles`);
+    add("t-row", `HTML ${fmt(val(n, 0))} · roh ${fmt(val(n, 1))} · Brotli ${fmt(val(n, 2))}`);
+    tip.hidden = false;
+    moveTip(e);
+  }
+  function moveTip(e) {
+    const box = tip.parentElement.getBoundingClientRect();
+    let x = e.clientX - box.left + 14, y = e.clientY - box.top + 14;
+    if (x + tip.offsetWidth > box.width - 4) x = Math.max(4, e.clientX - box.left - tip.offsetWidth - 14);
+    if (y + tip.offsetHeight > box.height - 4) y = Math.max(4, e.clientY - box.top - tip.offsetHeight - 14);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => { tip.hidden = true; };
+
+  function zoomTo(d) {
+    const idx = [];
+    for (let n = d; n.parent; n = n.parent) idx.unshift(n.parent.data.c.indexOf(n.data));
+    state.path = state.path.concat(idx);
+    hideTip();
+    render();
+  }
+
+  function cell(layer, d, k, strength) {
+    const zoomable = !!d.data.c;
+    layer.append("rect").attr("class", "cell" + (zoomable ? " zoomable" : ""))
+      .attr("x", d.x0).attr("y", d.y0).attr("width", d.x1 - d.x0).attr("height", d.y1 - d.y0)
+      .attr("rx", d.depth === 1 ? 3 : 2).attr("fill", tint(k, strength))
+      .on("mousemove", e => showTip(e, d)).on("mouseleave", hideTip)
+      .on("click", () => { if (zoomable) zoomTo(d); else if (d.parent && d.parent.parent) zoomTo(d.parent); });
+  }
+
+  function render() {
+    const el = document.getElementById("map");
+    const W = el.clientWidth, H = el.clientHeight, m = state.metric;
+    const root = d3.hierarchy(current(), d => d.c).sum(d => d.v ? d.v[m] : 0).sort((a, b) => b.value - a.value);
+    d3.treemap().size([W, H]).paddingOuter(3).paddingTop(d => d.depth === 1 ? 19 : 3).paddingInner(2).round(true)(root);
+    svg.attr("viewBox", `0 0 ${W} ${H}`).selectAll("*").remove();
+    const layer = svg.append("g");
+    const inherited = slotAbove();
+    // At the top, each part keeps one hue; below it, the groups show their own.
+    const top = state.view === "bundle" && state.path.length === 0;
+    for (const g of root.children || []) {
+      const gk = g.data.k || inherited;
+      const w = g.x1 - g.x0, h = g.y1 - g.y0;
+      const kids = g.children || [];
+      cell(layer, g, gk, kids.length ? 16 : 58);
+      if (w > 34 && h > 15) {
+        const size = fmt(g.value);
+        const name = fit(g.data.n, w - 14 - size.length * 6.6, kids.length ? 12 : 11);
+        const t = layer.append("text").attr("x", g.x0 + 6).attr("y", g.y0 + 13);
+        t.append("tspan").attr("class", kids.length ? "hdr" : "lbl").text(name);
+        if (name || w > 60) t.append("tspan").attr("class", kids.length ? "hdr-size" : "lbl-size").attr("dx", name ? 6 : 0).text(size);
+      }
+      for (const c of kids) {
+        const cw = c.x1 - c.x0, ch = c.y1 - c.y0;
+        if (cw < 1 || ch < 1) continue;
+        cell(layer, c, top ? gk : (c.data.k || gk), c.data.c ? 58 : 40);
+        if (cw > 46 && ch > 28) {
+          layer.append("text").attr("class", "lbl").attr("x", c.x0 + 5).attr("y", c.y0 + 14).text(fit(c.data.n, cw - 10, 11));
+          layer.append("text").attr("class", "lbl-size").attr("x", c.x0 + 5).attr("y", c.y0 + 26).text(fmt(c.value));
+        } else if (cw > 40 && ch > 15) {
+          layer.append("text").attr("class", "lbl-size").attr("x", c.x0 + 4).attr("y", c.y0 + 12).text(fit(fmt(c.value), cw - 8, 10));
+        }
+      }
+    }
+    crumbs();
+    document.getElementById("hint").textContent = `${fmt(root.value)} · ${pct(root.value, grand())} des Bundles`;
+  }
+
+  function table() {
+    const tbody = document.getElementById("parts");
+    tbody.replaceChildren();
+    const m = state.metric;
+    document.querySelectorAll("th[data-col]").forEach(th => th.classList.toggle("cur", +th.dataset.col === m));
+    const bundle = state.data.bundle;
+    const row = (node, cls, path, k) => {
+      const tr = document.createElement("tr");
+      tr.className = cls + " zoom"; tr.tabIndex = 0;
+      const name = document.createElement("td");
+      const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = color(k);
+      name.append(sw, node.n);
+      tr.append(name);
+      for (const i of [0, 1, 2]) {
+        const td = document.createElement("td");
+        td.className = "num" + (i === m ? " cur" : ""); td.textContent = fmt(val(node, i));
+        tr.append(td);
+      }
+      const share = document.createElement("td"); share.className = "num"; share.textContent = pct(val(node, m), val(bundle, m));
+      tr.append(share);
+      const open = () => { setView("bundle"); state.path = path; render(); document.querySelector(".mapwrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); };
+      tr.onclick = open;
+      tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+      tbody.append(tr);
+    };
+    const parts = bundle.c.map((p, i) => [p, i]).sort((a, b) => val(b[0], m) - val(a[0], m));
+    for (const [p, i] of parts) {
+      row(p, "part", [i], p.k);
+      if (p.c.length > 1) {
+        const subs = p.c.map((s, j) => [s, j]).sort((a, b) => val(b[0], m) - val(a[0], m));
+        for (const [s, j] of subs) row(s, "sub", [i, j], s.k || p.k);
+      }
+    }
+  }
+
+  function setView(v) {
+    state.view = v; state.path = [];
+    document.getElementById("v-bundle").setAttribute("aria-pressed", String(v === "bundle"));
+    document.getElementById("v-dom").setAttribute("aria-pressed", String(v === "dominators"));
+  }
+  document.getElementById("v-bundle").onclick = () => { setView("bundle"); render(); };
+  document.getElementById("v-dom").onclick = () => { setView("dominators"); render(); };
+  document.querySelectorAll(".total").forEach(b => b.onclick = () => {
+    state.metric = +b.dataset.metric;
+    document.querySelectorAll(".total").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+    table(); render();
+  });
+
+  fetch("data.json").then(r => r.json()).then(data => {
+    state.data = data;
+    data.dominators.k = 1;
+    for (const i of [0, 1, 2]) document.getElementById("t" + i).textContent = fmt(val(data.bundle, i));
+    document.getElementById("status").remove();
+    table();
+    render();
+    let raf = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }).observe(document.getElementById("map"));
+  }).catch(() => {
+    document.getElementById("status").textContent = "Die Daten (data.json) ließen sich nicht laden.";
+  });
+})();
+</script>
+
+</body></html>
