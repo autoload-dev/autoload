@@ -8,11 +8,13 @@ py_binary(
         "$(rootpath @aspect_rules_lint//lint:ruff_bin)",
         "$(rootpath @aspect_rules_lint//lint:ty_bin)",
         "$(rootpath @buildifier_prebuilt//:buildifier)",
+        "$(rootpath @multitool//tools/jactionlint)",
     ],
     data = [
         "@aspect_rules_lint//lint:ruff_bin",
         "@aspect_rules_lint//lint:ty_bin",
         "@buildifier_prebuilt//:buildifier",
+        "@multitool//tools/jactionlint",
     ],
     tags = ["manual"],
 )

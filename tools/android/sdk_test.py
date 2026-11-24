@@ -167,11 +167,7 @@ class AndroidToolchainTest(unittest.TestCase):
         self.assertEqual(
             run.call_args.args[0],
             [
-                "mise",
-                "exec",
-                "http:android-commandlinetools",
-                "--",
-                "sdkmanager",
+                *toolchain.MANAGED_SDKMANAGER,
                 "--sdk_root=" + str(self.root),
                 "--install",
                 "ndk;29.0.14206865",
@@ -237,7 +233,7 @@ class AndroidToolchainTest(unittest.TestCase):
 
     def test_existing_sdk_manager_is_preferred_over_the_managed_fallback(self) -> None:
         installed = self.write("cmdline-tools/latest/bin/sdkmanager")
-        managed = self.write("mise/bin/sdkmanager")
+        managed = self.write("managed/bin/sdkmanager")
         installed.chmod(0o755)
         managed.chmod(0o755)
         with mock.patch.object(toolchain.shutil, "which", return_value=str(managed)):

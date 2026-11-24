@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 py_library(
     name = "android",
     srcs = ["sdk.py"],
-    data = ["//:mise.toml"],
+    data = ["sdk.json"],
 )
 
 py_library(

@@ -1,13 +1,7 @@
-exports_files(
-    ["mise.toml"],
-    visibility = [
-        "//tools/android:__pkg__",
-        "//tools/ci:__pkg__",
-    ],
-)
-
-exports_files(
-    ["hk.pkl"],
+# The Aspect CLI's tasks, which name pieces of the lanes' work.
+filegroup(
+    name = "aspect_tasks",
+    srcs = glob([".aspect/*.axl"]),
     visibility = ["//tools/ci:__pkg__"],
 )
 

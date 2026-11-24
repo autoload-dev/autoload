@@ -482,7 +482,7 @@
     "@@rules_multitool+//multitool:extension.bzl%multitool": {
       "general": {
         "bzlTransitiveDigest": "4uKHgxYOLQrrDO/QYI+1ZGbjujszGN6e1EnsCpTjYT8=",
-        "usagesDigest": "SrPW/7S5cPCFU/aBTjncJPBVfspfbKrn+DTtv5DBo1Q=",
+        "usagesDigest": "J+eZYfsbm8RGXmdZsPfWaES++v/ivJfbvoe6WsRI7Iw=",
         "recordedInputs": [
           "REPO_MAPPING:bazel_features+,bazel_features_globals bazel_features++version_extension+bazel_features_globals",
           "REPO_MAPPING:bazel_features+,bazel_features_version bazel_features++version_extension+bazel_features_version",
@@ -494,7 +494,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "linux",
               "cpu": "arm64"
@@ -505,7 +506,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "linux",
               "cpu": "x86_64"
@@ -516,7 +518,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "macos",
               "cpu": "arm64"
@@ -527,7 +530,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "macos",
               "cpu": "x86_64"
@@ -538,7 +542,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "windows",
               "cpu": "arm64"
@@ -549,7 +554,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ],
               "os": "windows",
               "cpu": "x86_64"
@@ -560,7 +566,8 @@
             "attributes": {
               "lockfiles": [
                 "@@aspect_rules_lint+//format:multitool.lock.json",
-                "@@aspect_rules_lint+//lint:multitool.lock.json"
+                "@@aspect_rules_lint+//lint:multitool.lock.json",
+                "@@//:multitool.lock.json"
               ]
             }
           }

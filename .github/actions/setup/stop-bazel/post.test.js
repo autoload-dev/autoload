@@ -42,7 +42,8 @@ function fixture(t) {
     HANGING_PID: path.join(root, "hanging.pid"),
     FUSER_LOG: path.join(root, "fuser.log"),
     CACHE_HOLDER: path.join(root, "holder"),
-    PATH: `${bin}:${process.env.PATH}`,
+    // The fixtures' `#!/usr/bin/env node` finds the Node that runs these tests.
+    PATH: `${bin}:${path.dirname(process.execPath)}:${process.env.PATH}`,
   };
   delete env.PERSISTENT_RUNNER;
   const userRoot = path.join(root, "cache/bazel/_bazel_tester");

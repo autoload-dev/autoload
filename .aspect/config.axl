@@ -1,4 +1,46 @@
-load("@aspect//bazel/trait.axl", "BazelTrait")
+"""
+The Aspect CLI's configuration of this repository: the linters of `aspect lint` and the
+environment of every task, the Bazel commands and the tools they run.
+"""
+
+# The SDK packages the repository provisions (tools/android/sdk.json).
+_ANDROID_PINS = "tools/android/sdk.json"
+
+def _env(ctx: ConfigContext, name: str) -> str:
+    return ctx.std.env.var(name) or ""
+
+def _android_sdk_root(ctx: ConfigContext) -> str:
+    """The selected SDK: the one the environment names, else the platform's usual place."""
+    for name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if _env(ctx, name):
+            return _env(ctx, name)
+    home = ctx.std.env.home_dir()
+    if ctx.std.env.os() == "macos":
+        return home + "/Library/Android/sdk"
+    for directory in ("/usr/local/lib/android/sdk", "/opt/android-sdk"):
+        if ctx.std.fs.exists(directory):
+            return directory
+    return home + "/Android/Sdk"
+
+def _android_environment(ctx: ConfigContext):
+    """
+    The Android variables of every task. The selected SDK root stays available before its
+    packages are installed, but ANDROID_HOME stays empty until the SDK has the first pinned
+    platform: rules_android accepts an empty one for host-only builds, but rejects an SDK
+    without platforms, even when building just a formatter.
+    """
+    pins = json.decode(ctx.std.fs.read_to_string(ctx.std.env.aspect_root_dir() + "/" + _ANDROID_PINS))
+    root = _android_sdk_root(ctx)
+    platform = "{}/platforms/android-{}/android.jar".format(root, pins["api_levels"][0])
+    ndk = _env(ctx, "ANDROID_NDK_HOME") or "{}/ndk/{}".format(root, pins["ndk"])
+    return {
+        "ANDROID_SDK_ROOT": root,
+        "ANDROID_HOME": root if ctx.std.fs.exists(platform) else "",
+        "ANDROID_NDK_HOME": ndk,
+        "ANDROID_NDK_ROOT": ndk,
+        # The pinned build tools, which Android work such as inspect:mobile passes to its tools.
+        "ANDROID_BUILD_TOOLS": pins["build_tools"],
+    }
 
 def config(ctx: ConfigContext):
     ctx.tasks["lint"].args.aspects = [
@@ -6,3 +48,5 @@ def config(ctx: ConfigContext):
         "//tools/lint:linters.bzl%ty",
         "//tools/lint:linters.bzl%buildifier",
     ]
+    for name, value in _android_environment(ctx).items():
+        ctx.std.env.set_var(name, value)

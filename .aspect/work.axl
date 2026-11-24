@@ -1,0 +1,135 @@
+"""
+The repository's tasks that run its Python tools: the lanes' work (tools/ci/work.py), the
+generated files, Code Health and the bootstrap. They run with Bazel's Python and the tools
+Bazel pins, so a checkout needs only Bazelisk and the Aspect CLI.
+"""
+
+# The lanes of tools/ci/work.py.
+_LANES = ["quality", "docs", "desktop", "source-engine", "android", "ios"]
+
+# rules_python's interpreter launcher, which runs the registered Python toolchain.
+_PYTHON = "@rules_python//python/bin:python"
+_PYTHON_PATH = "external/rules_python+/python/bin/python3"
+
+# The pinned CodeScene CLI, made executable (tools/code_health/BUILD.bazel).
+_CODESCENE = "//tools/code_health:cs"
+_CODESCENE_PATH = "tools/code_health/cs_bin"
+
+def _root(ctx: TaskContext) -> str:
+    return ctx.std.env.aspect_root_dir()
+
+def _bazel_output(ctx: TaskContext, *arguments) -> str:
+    """One Bazel command's output in the root module, without its progress messages."""
+    result = (
+        ctx.std.process.command("bazel")
+            .args(list(arguments))
+            .current_dir(_root(ctx))
+            .stdout("piped")
+            .stderr("piped")
+            .spawn()
+            .wait_with_output()
+    )
+    if result.status.code != 0:
+        fail("bazel {} failed:\n{}".format(" ".join(arguments), result.stderr))
+    return result.stdout.strip()
+
+def _built(ctx: TaskContext, target: str, path: str) -> str:
+    """The path of a target's output in the root module, built first."""
+    _bazel_output(ctx, "build", target)
+    return _bazel_output(ctx, "info", "bazel-bin") + "/" + path
+
+def python(ctx: TaskContext, arguments, env = {}) -> int:
+    """Run Bazel's Python in the repository root."""
+    command = ctx.std.process.command(_built(ctx, _PYTHON, _PYTHON_PATH)).args(arguments)
+    for name, value in env.items():
+        command = command.env(name, value)
+    return command.current_dir(_root(ctx)).spawn().wait().code
+
+def run_work(ctx: TaskContext, *names) -> int:
+    """Run pieces of the lanes' work by name."""
+    return python(ctx, ["-m", "tools.ci.work", "run"] + list(names))
+
+def _work_impl(ctx: TaskContext) -> int:
+    return run_work(ctx, *ctx.args.names)
+
+work = task(
+    implementation = _work_impl,
+    summary = "Run pieces of the lanes' work by name, such as test:setup; none lists them.",
+    args = {
+        "names": args.positional(minimum = 0, maximum = 512, default = []),
+    },
+)
+
+def _lane_impl(ctx: TaskContext) -> int:
+    lane = ctx.args.lane[0]
+    if lane not in _LANES:
+        return TaskConclusion(exit_code = 2, text = "No such lane: {}; one of {}".format(lane, ", ".join(_LANES)))
+    return python(ctx, ["-m", "tools.ci.work", "lane", lane])
+
+lane = task(
+    implementation = _lane_impl,
+    summary = "Run one CI lane's work on this host, as CI runs it.",
+    args = {
+        "lane": args.positional(minimum = 1, maximum = 1),
+    },
+)
+
+def _generate_impl(ctx: TaskContext) -> int:
+    flags = ["--check"] if ctx.args.check else []
+    return python(ctx, ["-m", "tools.generate.generate"] + flags + ctx.args.files)
+
+generate = task(
+    implementation = _generate_impl,
+    summary = "Regenerate the lock files; with files, those that depend on them.",
+    args = {
+        "check": args.boolean(default = False, description = "Fail instead of writing"),
+        "files": args.positional(minimum = 0, maximum = 512, default = []),
+    },
+)
+
+def _code_health_impl(ctx: TaskContext) -> int:
+    flags = []
+    for name in ("survey", "staged", "if_available"):
+        if getattr(ctx.args, name):
+            flags.append("--" + name.replace("_", "-"))
+    env = {}
+    if not ctx.std.env.var("CODESCENE_CLI"):
+        env["CODESCENE_CLI"] = _built(ctx, _CODESCENE, _CODESCENE_PATH)
+    return python(ctx, ["-m", "tools.code_health.codescene"] + flags, env = env)
+
+code_health = task(
+    implementation = _code_health_impl,
+    summary = "Review the Code Health of the change since origin/main; fails when a file declines.",
+    args = {
+        "survey": args.boolean(default = False, description = "Report the whole checkout: hotspots and the lowest scores"),
+        "staged": args.boolean(default = False, description = "Review the staged changes only"),
+        "if_available": args.boolean(default = False, description = "Pass with a note without a CodeScene sign-in"),
+    },
+)
+
+# The Git hooks, as Git's configuration-based hooks; Git runs each with its hook's stdin.
+_HOOKS = {
+    "pre-push": "bash tools/pre_push_checkout.sh && aspect check",
+}
+
+def _bootstrap_impl(ctx: TaskContext) -> int:
+    if ctx.args.hooks:
+        for event, command in _HOOKS.items():
+            name = "hook.aspect-" + event
+            for key, value in (("event", event), ("command", command)):
+                git = ctx.std.process.command("git").args(["config", name + "." + key, value])
+                if git.current_dir(_root(ctx)).spawn().wait().code != 0:
+                    return 1
+            print("Installed the {} hook: {}".format(event, command))
+    if ctx.args.android:
+        return run_work(ctx, "android:setup")
+    return 0
+
+bootstrap = task(
+    implementation = _bootstrap_impl,
+    summary = "Install the Git hooks and the pinned Android SDK and NDK packages.",
+    args = {
+        "hooks": args.boolean(default = True, description = "Install the Git hooks"),
+        "android": args.boolean(default = True, description = "Install the missing Android SDK packages"),
+    },
+)

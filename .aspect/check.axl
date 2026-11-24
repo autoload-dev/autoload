@@ -1,22 +1,26 @@
-"""The check before a push: one entry point for people, hooks and agents."""
+"""The check before a push: one entry point for people, the pre-push hook and agents."""
 
-# The modules whose fast tests a push runs, relative to the repository root.
-_MODULES = [".", "rules_godot"]
+load("./work.axl", "run_work")
 
-def _run(ctx: TaskContext, argv, directory = ".") -> int:
-    root = ctx.std.env.aspect_root_dir()
-    command = ctx.std.process.command(ctx.std.env.current_exe()).args(argv)
-    return command.current_dir(root + "/" + directory).spawn().wait().code
+def _aspect(ctx: TaskContext, *arguments) -> int:
+    """Run another Aspect task in the repository root."""
+    command = ctx.std.process.command(ctx.std.env.current_exe()).args(list(arguments))
+    return command.current_dir(ctx.std.env.aspect_root_dir()).spawn().wait().code
 
 def _check_impl(ctx: TaskContext) -> int:
-    # Each step is an Aspect task of its own, so it reports and can be run alone.
-    steps = [("format", ["format", "--severity=fail"], "."), ("lint", ["lint"], ".")]
-    steps += [("fast-test " + m, ["fast-test"], m) for m in _MODULES]
-    steps.append(("docs", ["run", "//tools/docs:check"], "rules_godot/docs"))
+    # Each step reports on its own and runs alone as well.
+    steps = [
+        ("format", lambda: _aspect(ctx, "format", "--severity=fail")),
+        ("lint", lambda: _aspect(ctx, "lint")),
+        # The whole repository's lint and generated files, the setup contracts, the setup
+        # action's tests, and the fast tests of the modules with the documentation check.
+        ("work", lambda: run_work(ctx, "lint", "generated", "test:setup", "test:actions", "test:fast")),
+        ("code-health", lambda: _aspect(ctx, "code-health", "--if-available")),
+    ]
     failed = []
-    for name, argv, directory in steps:
-        ctx.task.phase(name, description = " ".join(argv))
-        if _run(ctx, argv, directory) != 0:
+    for name, step in steps:
+        ctx.task.phase(name, description = name)
+        if step() != 0:
             failed.append(name)
             if not ctx.args.keep_going:
                 break
@@ -26,7 +30,7 @@ def _check_impl(ctx: TaskContext) -> int:
 
 check = task(
     implementation = _check_impl,
-    summary = "Format, lint and run the fast tests of the change, as before a push.",
+    summary = "Check the change before a push: format, lint, generated files, fast tests, Code Health.",
     args = {
         "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
     },

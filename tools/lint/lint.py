@@ -1,7 +1,7 @@
 """
 Lint the repository with every linter it has: Ruff and ty for Python, Buildifier's lint for
-Starlark (its warnings as .buildifier.json selects them), jactionlint for the GitHub
-workflows and `hk validate` for hk.pkl. Formatting is //tools/format's job, so no linter
+Starlark (its warnings as .buildifier.json selects them) and jactionlint for the GitHub
+workflows. Formatting is //tools/format's job, so no linter
 here reports it.
 
 With paths, as the pre-commit hook passes them, each linter checks only its own files among
@@ -30,6 +30,7 @@ class Linters:
     ruff: Path
     ty: Path
     buildifier: Path
+    jactionlint: Path
     root: Path
 
 
@@ -110,32 +111,17 @@ def workflows(linters: Linters, files: list[str]) -> int:
     selected = select(files, is_workflow)
     if not selected:
         return 0
-    command = [
-        "mise",
-        "exec",
-        "jactionlint",
-        "--",
-        "jactionlint",
-        "--shellcheck=",
-        "--pyflakes=",
-    ]
+    command = [linters.jactionlint, "--shellcheck=", "--pyflakes="]
     return run([*command, *selected], linters.root)
 
 
-def hk_config(linters: Linters, files: list[str]) -> int:
-    if "hk.pkl" not in files:
-        return 0
-    # Through mise, like jactionlint: `bazel run` gives the linter no PATH with mise's tools.
-    return run(["mise", "exec", "hk", "--", "hk", "validate"], linters.root)
-
-
 def main() -> int:
-    ruff, ty, buildifier = (Path(path).resolve() for path in sys.argv[1:4])
+    ruff, ty, buildifier, jactionlint = (Path(path).resolve() for path in sys.argv[1:5])
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    linters = Linters(ruff, ty, buildifier, root)
-    files = sys.argv[4:] or repository_files(root)
+    linters = Linters(ruff, ty, buildifier, jactionlint, root)
+    files = sys.argv[5:] or repository_files(root)
     status = 0
-    for lint in (python, starlark, workflows, hk_config):
+    for lint in (python, starlark, workflows):
         status |= lint(linters, files)
     return status
 

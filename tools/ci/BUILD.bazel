@@ -26,10 +26,7 @@ py_test(
     name = "work_test",
     size = "small",
     srcs = ["work_test.py"],
-    # The hooks and tasks that name work.
-    data = [
-        "//:hk.pkl",
-        "//:mise.toml",
-    ],
+    # The Aspect tasks that name work.
+    data = ["//:aspect_tasks"],
     deps = [":work_lib"],
 )

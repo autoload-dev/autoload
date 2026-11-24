@@ -16,6 +16,17 @@ py_library(
     ],
 )
 
+# The pinned CodeScene CLI (//:multitool.lock.json), whose archive does not mark it
+# executable; the code-health task passes it as CODESCENE_CLI.
+genrule(
+    name = "cs",
+    srcs = ["@multitool//tools/cs"],
+    outs = ["cs_bin"],
+    cmd = "cp -L $(execpath @multitool//tools/cs) $@ && chmod +x $@",
+    executable = True,
+    tags = ["manual"],
+)
+
 py_test(
     name = "batch_test",
     size = "small",
