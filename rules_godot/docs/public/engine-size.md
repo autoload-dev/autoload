@@ -1,7 +1,7 @@
 # Make the engine small
 
 Godot's official export templates contain every module, class and renderer, so the engine
-is often most of an application's download. A [source build](engine.md#build-an-engine-from-source)
+is often the largest part of an application. A [source build](engine.md#build-an-engine-from-source)
 contains only what you choose. This guide goes through the levers from the largest to the
 smallest effect. Each lever removes something your application might need, so run the
 whole game after each step.
@@ -14,17 +14,16 @@ whole game after each step.
 | 4 | [Use a build profile](#4-use-a-build-profile) | single classes the project does not use |
 | 5 | [Optimize for size](#5-optimize-for-size) | inlined and unreachable code |
 
-For one small 3D game on Godot 4.7.2, these steps took the compressed engine to about a
-third of the official template:
+For an iOS application on Godot 4.7.2 that runs GDScript and renders a 2D scene with the
+Compatibility renderer, these steps took the engine to an eighth of the official template.
+Sizes are of the device executable without symbols, as an App Store build ships it:
 
-| Engine | Brotli |
+| Engine | Size |
 | --- | ---: |
-| Official template | 7.10 MB |
-| Steps 1 and 3 | 3.79 MB |
-| Plus step 4 and step 5 (`size_min`, full LTO) | 2.63 MB |
-
-That measurement was a WebAssembly engine. With the same levers, an iOS engine that runs
-GDScript and renders a 2D scene went from 64.5 MiB to 8.1 MiB.
+| Official template | 64.5 MiB |
+| Steps 1 to 3: only `gdscript`, Compatibility renderer, features off (`-O2`) | 24.6 MiB |
+| Plus step 5: `size_min` and full LTO | 10.2 MiB |
+| Plus step 4: a build profile disabling 177 unused classes | 8.1 MiB |
 
 ## Before you start
 
@@ -72,7 +71,8 @@ Upstream dependencies follow automatically: enabling `theora` also enables `vorb
 
 `renderers` names the rendering methods the engine contains: `gl_compatibility`, `mobile`
 and `forward_plus`. With only `gl_compatibility`, the engine leaves out RenderingDevice and
-its Vulkan or Metal driver.
+its Vulkan or Metal driver. On iOS, what only Metal needs came to about 12.5 MiB of a full
+engine: the shader compilers glslang and SPIRV-Cross and the RenderingDevice renderer.
 
 ```starlark
     renderers = ["gl_compatibility"],
@@ -159,8 +159,20 @@ godot_app(
 )
 ```
 
-Smaller code can run slower. Measure frame times on your weakest target device; `size` or
-`size_extra` are steps between Godot's default and `size_min`.
+The iOS engine from the start of this guide, after steps 1 to 3:
+
+| `engine_optimize` | `engine_lto=none` | `engine_lto=full` |
+| --- | ---: | ---: |
+| `speed_trace` (`-O2`) | 24.6 MiB | |
+| `size` (`-Os`) | 21.8 MiB | |
+| `size_extra` | 18.4 MiB | 17.1 MiB |
+| `size_min` | 15.4 MiB | 10.2 MiB |
+
+`size_min` gains most from full LTO. Full LTO took that engine's build from about 33 s to
+75–95 s.
+
+Smaller code can run slower. Measure frame times on your weakest target device; `size` and
+`size_extra` lie between Godot's default and `size_min`.
 [Optimization](engine.md#optimization) lists every value.
 
 ## Check the result
