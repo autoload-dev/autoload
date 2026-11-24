@@ -7,10 +7,10 @@ from tools.conventions.test_support import RepositoryTest
 
 
 class LocalLinksTest(RepositoryTest):
-    def findings(self) -> list[str]:
+    def findings(self, files: tuple[str, ...] | None = None) -> list[str]:
         return [
             f"{item.location.path}:{item.location.line}: {item.message}"
-            for item in LocalLinks().evaluate(self.context())
+            for item in LocalLinks().evaluate(self.context(files=files))
         ]
 
     def test_links_to_existing_files_directories_and_anchors_pass(self) -> None:
@@ -73,11 +73,49 @@ class LocalLinksTest(RepositoryTest):
             ],
         )
 
-    def test_one_finding_per_line_and_target(self) -> None:
-        self.write("AGENTS.md", "[One](gone.md) [Two](gone.md)\n[Three](gone.md)\n")
+    def test_fragments_follow_github_rendering(self) -> None:
+        self.write(
+            "docs/internal/guide.md",
+            "## _Fast_ **builds**\n\n## Foo &amp; Bar\n\n"
+            '## <a id="old"></a>Title\n\nSetup\n=====\n\nUsage\n---\n\n'
+            "<!--\n## Hidden\n-->\n",
+        )
+        self.write(
+            "AGENTS.md",
+            "[A](docs/internal/guide.md#fast-builds) [B](docs/internal/guide.md#foo--bar)\n"
+            "[C](docs/internal/guide.md#title) [D](docs/internal/guide.md#old)\n"
+            "[E](docs/internal/guide.md#Setup) [F](docs/internal/guide.md#usage)\n"
+            "[G](docs/internal/guide.md?plain=1#L5)\n"
+            "[H](docs/internal/guide.md#hidden)\n",
+        )
+        self.assertEqual(
+            self.findings(),
+            ["AGENTS.md:5: no heading or anchor 'hidden' in docs/internal/guide.md"],
+        )
+
+    def test_targets_are_listed_paths_in_their_exact_case(self) -> None:
+        self.write("docs/internal/guide.md", "# Guide\n")
+        self.write("user.bazelrc", "")
+        self.write(
+            "AGENTS.md", "[Case](docs/internal/Guide.md)\n[Ignored](user.bazelrc)\n"
+        )
+        self.assertEqual(
+            self.findings(files=tuple(sorted(self.files - {"user.bazelrc"}))),
+            [
+                "AGENTS.md:1: link target does not exist: docs/internal/Guide.md",
+                "AGENTS.md:2: link target does not exist: user.bazelrc",
+            ],
+        )
+
+    def test_one_finding_per_line_and_problem_whatever_the_fragments(self) -> None:
+        self.write(
+            "AGENTS.md",
+            "[A](gone.md) [B](gone.md#x) [C](../x.md#a) [D](../x.md)\n[E](gone.md)\n",
+        )
         self.assertEqual(
             self.findings(),
             [
+                "AGENTS.md:1: link leaves the repository: ../x.md",
                 "AGENTS.md:1: link target does not exist: gone.md",
                 "AGENTS.md:2: link target does not exist: gone.md",
             ],

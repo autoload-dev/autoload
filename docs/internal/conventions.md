@@ -44,7 +44,7 @@ The [context](../../tools/conventions/context.py) exposes standard, read-only ev
 | Access | Evidence |
 |---|---|
 | `context.workspace.files` | Git-owned, non-ignored files present in the working tree; `file_set` for membership |
-| `context.workspace.entries` | Like `files`, plus symbolic links to directories |
+| `context.workspace.entries` | Like `files`, plus symbolic links to directories and dangling links |
 | `context.workspace.documents` | Markdown under `docs/` and every README, excluding AGENTS.md |
 | `context.workspace.text(path)` | A file's text, read once per run |
 | `context.workspace.strings(path)` | String literals of a BUILD, MODULE.bazel or `.bzl` file, without comments |

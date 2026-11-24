@@ -425,13 +425,15 @@ and their text without loading Bazel; it reports a stray `backends/` directory o
 ## RG016
 
 **Local links resolve.** A link in documentation, a README, an `AGENTS.md` or a skill's
-`SKILL.md` names a file or directory of the repository, and a fragment names a heading or an
-HTML `id` or `name` of the Markdown page it points to. Headings become fragments as on
-GitHub: lower case, without punctuation, spaces as hyphens and a number appended to repeats.
+`SKILL.md` names a file or directory of the repository, in its exact case, and a fragment
+names a heading or an HTML `id` or `name` of the Markdown page it points to. Headings become
+fragments as on GitHub: the rendered text in lower case, without punctuation, spaces as
+hyphens and a number appended to repeats. Ignored local files, such as `user.bazelrc`, are
+no link targets.
 
 The check reads link destinations as [RG013](#rg013) does, and ignores links in code and
-comments the same way. External URLs and fragments into files other than Markdown are outside
-automated coverage.
+comments the same way. External URLs, fragments into files other than Markdown and fragments
+after a query, such as `?plain=1#L5`, are outside automated coverage.
 
 ## RG017
 

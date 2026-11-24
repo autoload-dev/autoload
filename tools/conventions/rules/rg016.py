@@ -1,10 +1,46 @@
 """RG016: local links in documentation and agent instructions resolve."""
 
 from collections.abc import Iterable
+from pathlib import PurePosixPath
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.documents import Link, agent_instructions, anchors, local_links
 from tools.conventions.framework import Finding, RuleInfo
+
+
+class Targets:
+    """The paths of the repository and the anchors of its Markdown pages, read once."""
+
+    def __init__(self, workspace: Workspace) -> None:
+        self.workspace = workspace
+        # Listed paths, compared case-sensitively as on GitHub, and their directories;
+        # ignored local files such as user.bazelrc are no link targets.
+        self.paths = {
+            str(path)
+            for entry in workspace.entries
+            for path in (PurePosixPath(entry), *PurePosixPath(entry).parents)
+        }
+        self.fragments: dict[str, frozenset[str]] = {}
+
+    def problem(self, link: Link) -> str | None:
+        """Why a link does not resolve, if it does not."""
+        if link.path == ".." or link.path.startswith("../"):
+            return f"link leaves the repository: {link.path}"
+        if link.path not in self.paths:
+            return f"link target does not exist: {link.path}"
+        # Only Markdown pages have anchors this check can read.
+        if link.fragment and link.path.endswith(".md"):
+            return self.fragment_problem(link)
+        return None
+
+    def fragment_problem(self, link: Link) -> str | None:
+        """Why a link's fragment names nothing on its Markdown page, if it does not."""
+        if link.path not in self.fragments:
+            text = self.workspace.text(link.path)
+            self.fragments[link.path] = frozenset(a.lower() for a in anchors(text))
+        if link.fragment.lower() in self.fragments[link.path]:
+            return None
+        return f"no heading or anchor {link.fragment!r} in {link.path}"
 
 
 class LocalLinks:
@@ -15,28 +51,14 @@ class LocalLinks:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace
-        fragments: dict[str, frozenset[str]] = {}
+        targets = Targets(workspace)
         for name in sorted({*workspace.documents, *agent_instructions(workspace)}):
-            # Repeated links on one line are one finding.
-            for link in dict.fromkeys(local_links(name, workspace.text(name))):
-                problem = self._problem(context, link, fragments)
-                if problem:
-                    yield Finding(Location(name, link.line), problem)
-
-    @staticmethod
-    def _problem(
-        context: Context, link: Link, fragments: dict[str, frozenset[str]]
-    ) -> str | None:
-        workspace = context.workspace
-        if link.path == ".." or link.path.startswith("../"):
-            return f"link leaves the repository: {link.path}"
-        if not (workspace.root / link.path).exists():
-            return f"link target does not exist: {link.path}"
-        # Only Markdown pages have anchors this check can read.
-        if not link.fragment or not link.path.endswith(".md"):
-            return None
-        if link.path not in fragments:
-            fragments[link.path] = anchors(workspace.text(link.path))
-        if link.fragment not in fragments[link.path]:
-            return f"no heading or anchor {link.fragment!r} in {link.path}"
-        return None
+            links = local_links(name, workspace.text(name))
+            # Broken links on one line with the same problem are one finding.
+            problems = dict.fromkeys(
+                (link.line, problem)
+                for link in links
+                if (problem := targets.problem(link))
+            )
+            for line, problem in problems:
+                yield Finding(Location(name, line), problem)

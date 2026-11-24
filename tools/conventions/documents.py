@@ -30,8 +30,15 @@ DESTINATION = re.compile(
 ESCAPE = re.compile(r"\\([" + re.escape(punctuation) + r"])")
 LITERAL = re.compile(r"<!--.*?(?:-->|\Z)|(?<!\\)(`+)(?!`)(.*?)(?<!`)\1(?!`)", re.DOTALL)
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.MULTILINE)
+COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+# ATX headings, and setext headings: a paragraph line underlined with = or -.
+HEADING = re.compile(
+    r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$|^ {0,3}(\S.*?)[ \t]*\n {0,3}(?:=+|-+)[ \t]*$",
+    re.MULTILINE,
+)
 INLINE_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+# Markup that GitHub renders away before it derives a heading's slug.
+MARKUP = re.compile(r"<[^>]*>|(?<!\w)[*_]+|[*_]+(?!\w)")
 
 
 def internal_document(path: str) -> bool:
@@ -138,7 +145,15 @@ def local_links(name: str, text: str) -> Iterable[Link]:
             resolved = posixpath.normpath(path.lstrip("/"))
         else:
             resolved = posixpath.normpath(posixpath.join(posixpath.dirname(name), path))
-        yield Link(line, resolved, unquote(destination.fragment))
+        # With a query, as in ?plain=1#L5, the fragment names a line, not a heading.
+        fragment = "" if destination.query else unquote(destination.fragment)
+        yield Link(line, resolved, fragment)
+
+
+def slug(heading: str) -> str:
+    """GitHub's fragment for a heading's source text, before numbering repeats."""
+    text = unescape(ESCAPE.sub(r"\1", MARKUP.sub("", INLINE_LINK.sub(r"\1", heading))))
+    return re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
 
 
 def anchors(text: str) -> frozenset[str]:
@@ -148,13 +163,12 @@ def anchors(text: str) -> frozenset[str]:
     """
     seen: Counter[str] = Counter()
     result: set[str] = set()
-    # Inline code in a heading keeps its text in the slug.
-    blocks = block_source(text)
+    # Inline code in a heading keeps its text in the slug; comments render nothing.
+    blocks = COMMENT.sub(lambda match: blank(match[0]), block_source(text))
     for match in HEADING.finditer(blocks):
-        slug = re.sub(r"[^\w\- ]", "", INLINE_LINK.sub(r"\1", match[1]).lower())
-        slug = slug.replace(" ", "-")
-        result.add(f"{slug}-{seen[slug]}" if seen[slug] else slug)
-        seen[slug] += 1
+        base = slug(match[1] or match[2])
+        result.add(f"{base}-{seen[base]}" if seen[base] else base)
+        seen[base] += 1
     html = HTMLLinks()
     html.feed(LITERAL.sub(lambda match: blank(match[0]), blocks))
     return frozenset(result | set(html.ids))
