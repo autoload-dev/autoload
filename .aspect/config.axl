@@ -65,6 +65,9 @@ def config(ctx: ConfigContext):
         "@autoload_dev//tools/lint:linters.bzl%ty",
     ]
     ctx.tasks["lint"].args.strategy = "hard"
+    # Linting needs only the sources: validations would build what the linted targets
+    # reach, such as the source-built engines that some tests' applications validate.
+    ctx.tasks["lint"].args.bazel_flags = ["--norun_validations"]
 
     # The root module's formatter covers the whole tree, nested modules included.
     ctx.tasks["format"].args.formatter_target = "//tools/format:format"

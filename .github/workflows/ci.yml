@@ -45,7 +45,8 @@ jobs:
             name: Source quality
             work: quality
             runner: blacksmith-2vcpu-ubuntu-2404
-            timeout: 10
+            # Lint analyses every module's Python targets, the ruleset's applications with them.
+            timeout: 20
           - job: api-docs
             name: API documentation
             work: docs
