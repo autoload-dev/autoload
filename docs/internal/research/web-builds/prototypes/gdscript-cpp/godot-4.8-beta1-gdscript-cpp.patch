@@ -1,0 +1,665 @@
+diff --git a/modules/gdscript/SCsub b/modules/gdscript/SCsub
+index f2eb9cc..dec61d5 100644
+--- a/modules/gdscript/SCsub
++++ b/modules/gdscript/SCsub
+@@ -12,6 +12,7 @@ import os
+ if os.environ.get("GDSCRIPT_NO_COMPILER") == "1" and not env.editor_build:
+     compiler_sources = [
+         "gdscript_analyzer.cpp",
++        "gdscript_ast_dump.cpp",
+         "gdscript_byte_codegen.cpp",
+         "gdscript_compiler.cpp",
+         "gdscript_disassembler.cpp",
+diff --git a/modules/gdscript/gdscript.h b/modules/gdscript/gdscript.h
+index 12a3bbb..4db0cd2 100644
+--- a/modules/gdscript/gdscript.h
++++ b/modules/gdscript/gdscript.h
+@@ -76,6 +76,7 @@ class GDScript : public Script {
+ 	friend class GDScriptBytecode;
+ 	friend class GDScriptBytecodeSaver;
+ 	friend class GDScriptBytecodeLoader;
++	friend class GDScriptAstDump;
+ 	friend class GDScriptDocGen;
+ 	friend class GDScriptLambdaCallable;
+ 	friend class GDScriptLambdaSelfCallable;
+@@ -114,7 +115,7 @@ private:
+ 
+ public:
+ 	class UpdatableFuncPtr {
+-		friend class GDScript;
++	friend class GDScript;
+ 
+ 		GDScriptFunction *ptr = nullptr;
+ 		GDScript *script = nullptr;
+@@ -340,6 +341,7 @@ public:
+ };
+ 
+ class GDScriptInstance : public ScriptInstance {
++	friend struct GDScriptNative;
+ 	friend class GDScript;
+ 	friend class GDScriptFunction;
+ 	friend class GDScriptLambdaCallable;
+diff --git a/modules/gdscript/gdscript_ast_dump.cpp b/modules/gdscript/gdscript_ast_dump.cpp
+new file mode 100644
+index 0000000..54e3188
+--- /dev/null
++++ b/modules/gdscript/gdscript_ast_dump.cpp
+@@ -0,0 +1,355 @@
++/**************************************************************************/
++/*  gdscript_ast_dump.cpp                                                 */
++/**************************************************************************/
++/* PROTOTYPE: the analyzed syntax tree of a script, with its types, as    */
++/* JSON for an ahead-of-time compiler outside the engine.                 */
++/**************************************************************************/
++
++#include "gdscript_bytecode.h"
++
++#include "gdscript.h"
++#include "gdscript_cache.h"
++#include "gdscript_parser.h"
++
++#include "core/io/json.h"
++#include "core/variant/variant_utility.h"
++
++using P = GDScriptParser;
++
++// Reads the compiled script's member layout, which the syntax tree does not have.
++class GDScriptAstDump {
++public:
++	static GDScript *subclass(GDScript *p_script, const StringName &p_name) {
++		return p_script && p_script->subclasses.has(p_name) ? p_script->subclasses[p_name].ptr() : nullptr;
++	}
++
++	static Dictionary member_indices(GDScript *p_script) {
++		Dictionary indices;
++		if (p_script) {
++			for (const KeyValue<StringName, GDScript::MemberInfo> &kv : p_script->member_indices) {
++				indices[kv.key] = kv.value.index;
++			}
++		}
++		return indices;
++	}
++};
++
++namespace {
++
++const char *NODE_NAMES[] = {
++	"none", "annotation", "array", "assert", "assignment", "await", "binary", "break",
++	"breakpoint", "call", "cast", "class", "constant", "continue", "dictionary", "enum",
++	"for", "function", "get_node", "identifier", "if", "lambda", "literal", "match",
++	"match_branch", "parameter", "pass", "pattern", "preload", "return", "self", "signal",
++	"subscript", "suite", "ternary", "type", "type_test", "unary", "variable", "while",
++};
++
++const char *KIND_NAMES[] = { "builtin", "native", "script", "class", "enum", "variant", "resolving", "unresolved" };
++
++const char *SOURCE_NAMES[] = {
++	"undefined", "parameter", "local_variable", "local_constant", "local_iterator", "local_bind",
++	"member_variable", "member_constant", "member_function", "member_signal", "member_class",
++	"inherited_variable", "static_variable", "native_class",
++};
++
++Dictionary datatype(const P::DataType &p_type) {
++	Dictionary d;
++	d["kind"] = KIND_NAMES[p_type.kind];
++	d["hard"] = p_type.is_hard_type();
++	if (p_type.is_meta_type) {
++		d["meta"] = true;
++	}
++	if (p_type.kind == P::DataType::BUILTIN) {
++		d["builtin"] = Variant::get_type_name(p_type.builtin_type);
++	}
++	if (p_type.native_type != StringName()) {
++		d["native"] = p_type.native_type;
++	}
++	if (p_type.kind == P::DataType::CLASS && p_type.class_type) {
++		d["class"] = p_type.class_type->fqcn;
++	}
++	if (!p_type.script_path.is_empty()) {
++		d["script"] = p_type.script_path;
++	}
++	if (p_type.kind == P::DataType::ENUM) {
++		d["enum"] = p_type.enum_type;
++	}
++	if (!p_type.container_element_types.is_empty()) {
++		Array elements;
++		for (const P::DataType &e : p_type.container_element_types) {
++			elements.push_back(datatype(e));
++		}
++		d["elements"] = elements;
++	}
++	return d;
++}
++
++Dictionary value(const Variant &p_value) {
++	Dictionary d;
++	d["type"] = Variant::get_type_name(p_value.get_type());
++	if (p_value.get_type() == Variant::OBJECT) {
++		Object *obj = p_value;
++		Resource *res = Object::cast_to<Resource>(obj);
++		d["text"] = res ? res->get_path() : String(obj ? obj->get_class() : "null");
++	} else {
++		d["text"] = VariantUtilityFunctions::var_to_str(p_value);
++	}
++	return d;
++}
++
++Variant node(const P::Node *p_node);
++
++template <typename T>
++Array nodes(const T &p_list) {
++	Array a;
++	for (const P::Node *n : p_list) {
++		a.push_back(node(n));
++	}
++	return a;
++}
++
++void assignable(Dictionary &d, const P::AssignableNode *p_node) {
++	d["name"] = p_node->identifier->name;
++	d["type"] = datatype(p_node->type_constraint);
++	d["initializer"] = node(p_node->initializer);
++	d["conversion"] = p_node->use_conversion_assign;
++}
++
++void expression(Dictionary &d, const P::ExpressionNode *p_node) {
++	d["type"] = datatype(p_node->type_constraint);
++	if (p_node->is_constant && p_node->reduced) {
++		d["constant"] = value(p_node->reduced_value);
++	}
++	switch (p_node->type) {
++		case P::Node::ARRAY:
++			d["elements"] = nodes(static_cast<const P::ArrayNode *>(p_node)->elements);
++			break;
++		case P::Node::ASSIGNMENT: {
++			const P::AssignmentNode *n = static_cast<const P::AssignmentNode *>(p_node);
++			d["operator"] = n->operation == P::AssignmentNode::OP_NONE ? String() : Variant::get_operator_name(n->variant_op);
++			d["assignee"] = node(n->assignee);
++			d["value"] = node(n->assigned_value);
++			d["conversion"] = n->use_conversion_assign;
++		} break;
++		case P::Node::AWAIT:
++			d["operand"] = node(static_cast<const P::AwaitNode *>(p_node)->to_await);
++			break;
++		case P::Node::BINARY_OPERATOR: {
++			const P::BinaryOpNode *n = static_cast<const P::BinaryOpNode *>(p_node);
++			static const char *ops[] = { "+", "-", "*", "/", "%", "**", "<<", ">>", "&", "|", "^", "and", "or", "in", "==", "!=", "<", "<=", ">", ">=" };
++			d["operator"] = ops[n->operation];
++			d["left"] = node(n->left_operand);
++			d["right"] = node(n->right_operand);
++		} break;
++		case P::Node::CALL: {
++			const P::CallNode *n = static_cast<const P::CallNode *>(p_node);
++			d["function"] = n->function_name;
++			d["callee"] = node(n->callee);
++			d["arguments"] = nodes(n->arguments);
++			d["super"] = n->is_super;
++			d["static"] = n->is_static;
++		} break;
++		case P::Node::CAST:
++			d["operand"] = node(static_cast<const P::CastNode *>(p_node)->operand);
++			break;
++		case P::Node::DICTIONARY: {
++			Array pairs;
++			for (const P::DictionaryNode::Pair &pair : static_cast<const P::DictionaryNode *>(p_node)->elements) {
++				Array kv;
++				kv.push_back(node(pair.key));
++				kv.push_back(node(pair.value));
++				pairs.push_back(kv);
++			}
++			d["pairs"] = pairs;
++		} break;
++		case P::Node::GET_NODE:
++			d["path"] = static_cast<const P::GetNodeNode *>(p_node)->full_path;
++			break;
++		case P::Node::IDENTIFIER: {
++			const P::IdentifierNode *n = static_cast<const P::IdentifierNode *>(p_node);
++			d["name"] = n->name;
++			d["source"] = SOURCE_NAMES[n->source];
++		} break;
++		case P::Node::LAMBDA:
++			d["function"] = node(static_cast<const P::LambdaNode *>(p_node)->function);
++			break;
++		case P::Node::LITERAL:
++			d["value"] = value(static_cast<const P::LiteralNode *>(p_node)->value);
++			break;
++		case P::Node::PRELOAD:
++			d["path"] = static_cast<const P::PreloadNode *>(p_node)->resolved_path;
++			break;
++		case P::Node::SUBSCRIPT: {
++			const P::SubscriptNode *n = static_cast<const P::SubscriptNode *>(p_node);
++			d["base"] = node(n->base);
++			if (n->is_attribute) {
++				d["attribute"] = n->attribute->name;
++			} else {
++				d["index"] = node(n->index);
++			}
++		} break;
++		case P::Node::TERNARY_OPERATOR: {
++			const P::TernaryOpNode *n = static_cast<const P::TernaryOpNode *>(p_node);
++			d["condition"] = node(n->condition);
++			d["true"] = node(n->true_expr);
++			d["false"] = node(n->false_expr);
++		} break;
++		case P::Node::TYPE_TEST: {
++			const P::TypeTestNode *n = static_cast<const P::TypeTestNode *>(p_node);
++			d["operand"] = node(n->operand);
++			d["test"] = datatype(n->test_datatype);
++		} break;
++		case P::Node::UNARY_OPERATOR: {
++			const P::UnaryOpNode *n = static_cast<const P::UnaryOpNode *>(p_node);
++			static const char *ops[] = { "+", "-", "~", "not" };
++			d["operator"] = ops[n->operation];
++			d["operand"] = node(n->operand);
++		} break;
++		default:
++			break;
++	}
++}
++
++Dictionary function(const P::FunctionNode *p_node) {
++	Dictionary d;
++	d["name"] = p_node->identifier ? String(p_node->identifier->name) : String();
++	d["static"] = p_node->is_static;
++	d["coroutine"] = p_node->is_coroutine;
++	d["return"] = datatype(p_node->return_type_constraint);
++	d["parameters"] = nodes(p_node->parameters);
++	d["vararg"] = p_node->rest_parameter != nullptr;
++	d["body"] = node(p_node->body);
++	return d;
++}
++
++void statement(Dictionary &d, const P::Node *p_node) {
++	switch (p_node->type) {
++		case P::Node::ASSERT:
++			d["condition"] = node(static_cast<const P::AssertNode *>(p_node)->condition);
++			break;
++		case P::Node::CONSTANT:
++		case P::Node::PARAMETER:
++			assignable(d, static_cast<const P::AssignableNode *>(p_node));
++			break;
++		case P::Node::VARIABLE: {
++			const P::VariableNode *n = static_cast<const P::VariableNode *>(p_node);
++			assignable(d, n);
++			d["onready"] = n->onready;
++			d["exported"] = n->exported;
++			d["static"] = n->is_static;
++			d["property"] = n->property != P::VariableNode::PROP_NONE;
++		} break;
++		case P::Node::FOR: {
++			const P::ForNode *n = static_cast<const P::ForNode *>(p_node);
++			d["variable"] = n->variable->name;
++			d["variable_type"] = datatype(n->variable->type_constraint);
++			d["conversion"] = n->use_conversion_assign;
++			d["list"] = node(n->list);
++			d["body"] = node(n->loop);
++		} break;
++		case P::Node::FUNCTION:
++			d.merge(function(static_cast<const P::FunctionNode *>(p_node)));
++			break;
++		case P::Node::IF: {
++			const P::IfNode *n = static_cast<const P::IfNode *>(p_node);
++			d["condition"] = node(n->condition);
++			d["then"] = node(n->true_block);
++			d["else"] = node(n->false_block);
++		} break;
++		case P::Node::MATCH: {
++			const P::MatchNode *n = static_cast<const P::MatchNode *>(p_node);
++			d["test"] = node(n->test);
++			d["branches"] = nodes(n->branches);
++		} break;
++		case P::Node::MATCH_BRANCH: {
++			const P::MatchBranchNode *n = static_cast<const P::MatchBranchNode *>(p_node);
++			d["patterns"] = nodes(n->patterns);
++			d["body"] = node(n->block);
++			d["guard"] = node(n->guard_body);
++		} break;
++		case P::Node::PATTERN: {
++			const P::PatternNode *n = static_cast<const P::PatternNode *>(p_node);
++			static const char *kinds[] = { "literal", "expression", "bind", "array", "dictionary", "rest", "wildcard" };
++			d["kind"] = kinds[n->pattern_type];
++			if (n->pattern_type == P::PatternNode::PT_LITERAL) {
++				d["value"] = node(n->literal);
++			} else if (n->pattern_type == P::PatternNode::PT_EXPRESSION) {
++				d["value"] = node(n->expression);
++			}
++		} break;
++		case P::Node::RETURN: {
++			const P::ReturnNode *n = static_cast<const P::ReturnNode *>(p_node);
++			d["value"] = node(n->return_value);
++			d["type"] = datatype(n->return_type);
++			d["conversion"] = n->use_conversion;
++		} break;
++		case P::Node::SUITE: {
++			d["statements"] = nodes(static_cast<const P::SuiteNode *>(p_node)->statements);
++		} break;
++		case P::Node::WHILE: {
++			const P::WhileNode *n = static_cast<const P::WhileNode *>(p_node);
++			d["condition"] = node(n->condition);
++			d["body"] = node(n->loop);
++		} break;
++		default:
++			break;
++	}
++}
++
++Variant node(const P::Node *p_node) {
++	if (!p_node) {
++		return Variant();
++	}
++	Dictionary d;
++	d["node"] = NODE_NAMES[p_node->type];
++	d["line"] = p_node->start_line;
++	if (p_node->is_expression()) {
++		expression(d, static_cast<const P::ExpressionNode *>(p_node));
++	} else {
++		statement(d, p_node);
++	}
++	return d;
++}
++
++Dictionary klass(const P::ClassNode *p_class, GDScript *p_script) {
++	Dictionary d;
++	d["fqcn"] = p_class->fqcn;
++	d["base"] = datatype(p_class->base_type);
++	Array members;
++	for (const P::ClassNode::Member &m : p_class->members) {
++		switch (m.type) {
++			case P::ClassNode::Member::CLASS: {
++				Dictionary c = klass(m.m_class, GDScriptAstDump::subclass(p_script, m.m_class->identifier->name));
++				c["node"] = "class";
++				c["name"] = m.m_class->identifier->name;
++				members.push_back(c);
++			} break;
++			case P::ClassNode::Member::CONSTANT:
++			case P::ClassNode::Member::FUNCTION:
++			case P::ClassNode::Member::VARIABLE:
++			case P::ClassNode::Member::SIGNAL:
++				members.push_back(node(m.get_source_node()));
++				break;
++			default:
++				break;
++		}
++	}
++	d["members"] = members;
++	d["member_indices"] = GDScriptAstDump::member_indices(p_script);
++	return d;
++}
++
++} // namespace
++
++String GDScriptBytecodeWriter::ast(const String &p_path) {
++	Error err = OK;
++	bool scripting = ScriptServer::is_scripting_enabled();
++	ScriptServer::set_scripting_enabled(false);
++	Ref<GDScript> script = GDScriptCache::get_full_script(p_path, err);
++	Ref<GDScriptParserRef> ref = GDScriptCache::get_parser(p_path, GDScriptParserRef::FULLY_SOLVED, err);
++	ScriptServer::set_scripting_enabled(scripting);
++	ERR_FAIL_COND_V(err != OK || ref.is_null(), String());
++	Dictionary d = klass(ref->get_parser()->get_tree(), script.ptr());
++	d["path"] = p_path;
++	return JSON::stringify(d, "\t", false);
++}
+diff --git a/modules/gdscript/gdscript_bytecode.cpp b/modules/gdscript/gdscript_bytecode.cpp
+index a2a1af2..f732a24 100644
+--- a/modules/gdscript/gdscript_bytecode.cpp
++++ b/modules/gdscript/gdscript_bytecode.cpp
+@@ -16,6 +16,24 @@
+ #include "core/config/engine.h"
+ #include "core/object/class_db.h"
+ 
++// PROTOTYPE: functions compiled to C++ (gen_cpp.py), when generated.
++#if __has_include("gdscript_native.gen.inc")
++#include "gdscript_native.gen.inc"
++
++static GDScriptNativeFunction gdscript_native_find(const String &p_fqcn, const StringName &p_name) {
++	for (const GDScriptNativeEntry *e = gdscript_native_table; e->fqcn; e++) {
++		if (p_fqcn == e->fqcn && p_name == StringName(e->name)) {
++			return e->function;
++		}
++	}
++	return nullptr;
++}
++#else
++static GDScriptNativeFunction gdscript_native_find(const String &p_fqcn, const StringName &p_name) {
++	return nullptr;
++}
++#endif
++
+ // Buffer layout, all integers little-endian:
+ //   u32 MAGIC, u32 VERSION
+ //   u32 class count, then per class in tree pre-order: str fqcn, str local name, str owner fqcn
+@@ -647,6 +665,7 @@ public:
+ 		f->_code_size = code_size;
+ 		f->_code_ptr = code_size ? f->code.ptrw() : nullptr;
+ 		f->_aot_index = code_size ? gdscript_aot_index(f->_code_ptr, code_size) : -1;
++		f->_native = gdscript_native_find(p_script->fully_qualified_name, f->name);
+ 
+ 		uint32_t defaults = r.u32();
+ 		for (uint32_t i = 0; i < defaults; i++) {
+@@ -905,6 +924,9 @@ Error GDScriptBytecode::load(GDScript *p_script, const Vector<uint8_t> &p_buffer
+ void GDScriptBytecodeWriter::_bind_methods() {
+ 	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("compile", "path"), &GDScriptBytecodeWriter::compile);
+ 	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("disassemble", "path"), &GDScriptBytecodeWriter::disassemble);
++#ifndef GDSCRIPT_NO_COMPILER
++	ClassDB::bind_static_method("GDScriptBytecodeWriter", D_METHOD("ast", "path"), &GDScriptBytecodeWriter::ast);
++#endif
+ }
+ 
+ static void _disassemble_function(GDScriptFunction *p_function) {
+diff --git a/modules/gdscript/gdscript_bytecode.h b/modules/gdscript/gdscript_bytecode.h
+index fa688c9..d504d39 100644
+--- a/modules/gdscript/gdscript_bytecode.h
++++ b/modules/gdscript/gdscript_bytecode.h
+@@ -42,4 +42,6 @@ protected:
+ public:
+ 	static PackedByteArray compile(const String &p_path);
+ 	static void disassemble(const String &p_path);
++	// The analyzed syntax tree of a script, with types and member indices, as JSON.
++	static String ast(const String &p_path);
+ };
+diff --git a/modules/gdscript/gdscript_function.h b/modules/gdscript/gdscript_function.h
+index 557f428..84c3cb3 100644
+--- a/modules/gdscript/gdscript_function.h
++++ b/modules/gdscript/gdscript_function.h
+@@ -148,6 +148,10 @@ public:
+ 	~GDScriptDataType() {}
+ };
+ 
++class GDScriptInstance;
++// PROTOTYPE: a function compiled to C++ ahead of time (gen_cpp.py).
++typedef Variant (*GDScriptNativeFunction)(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err);
++
+ // PROTOTYPE: the index of the specialized copy of a function's code, or -1.
+ int gdscript_aot_index(const int *p_code, int p_size);
+ 
+@@ -411,6 +415,8 @@ private:
+ 	int *_code_ptr = nullptr;
+ 	// PROTOTYPE: the function's specialized code in gdscript_aot_*.gen.inc, or -1.
+ 	int _aot_index = -1;
++	// PROTOTYPE: the function compiled to C++, which runs instead of the bytecode.
++	GDScriptNativeFunction _native = nullptr;
+ 	const int *_default_arg_ptr = nullptr;
+ 	mutable Variant *_constants_ptr = nullptr;
+ 	const StringName *_global_names_ptr = nullptr;
+diff --git a/modules/gdscript/gdscript_native.h b/modules/gdscript/gdscript_native.h
+new file mode 100644
+index 0000000..7cc2a24
+--- /dev/null
++++ b/modules/gdscript/gdscript_native.h
+@@ -0,0 +1,161 @@
++/**************************************************************************/
++/*  gdscript_native.h                                                     */
++/**************************************************************************/
++/* PROTOTYPE: what GDScript compiled to C++ ahead of time (gen_cpp.py)    */
++/* needs from the runtime.                                                */
++/**************************************************************************/
++
++#pragma once
++
++#include "gdscript.h"
++#include "gdscript_function.h"
++
++#include "core/config/engine.h"
++#include "core/object/class_db.h"
++#include "core/io/resource_loader.h"
++#include "core/variant/variant_internal.h"
++#include "core/variant/variant_utility.h"
++
++#include <initializer_list>
++
++// A compiled function: script class, function name and the entry the runtime calls.
++struct GDScriptNativeEntry {
++	const char *fqcn;
++	const char *name;
++	GDScriptNativeFunction function;
++};
++
++struct GDScriptNative {
++	static Variant *members(GDScriptInstance *p_instance) { return p_instance ? p_instance->members.ptr() : nullptr; }
++
++	static Variant evaluate(Variant::Operator p_op, const Variant &p_a, const Variant &p_b) {
++		Variant result;
++		bool valid = false;
++		Variant::evaluate(p_op, p_a, p_b, result, valid);
++		ERR_FAIL_COND_V_MSG(!valid, Variant(), "Invalid operands in compiled GDScript.");
++		return result;
++	}
++
++	static Variant get_named(const Variant &p_base, const StringName &p_name) {
++		bool valid = false;
++		Variant result = p_base.get_named(p_name, valid);
++		ERR_FAIL_COND_V_MSG(!valid, Variant(), vformat("Invalid access to property '%s' in compiled GDScript.", p_name));
++		return result;
++	}
++
++	static Variant get_key(const Dictionary &p_base, const StringName &p_key) {
++		const Variant *value = p_base.getptr(p_key);
++		ERR_FAIL_NULL_V_MSG(value, Variant(), vformat("Invalid access to key '%s' in compiled GDScript.", p_key));
++		return *value;
++	}
++
++	static Variant get_indexed(const Variant &p_base, const Variant &p_index) {
++		bool valid = false;
++		Variant result = p_base.get(p_index, &valid);
++		ERR_FAIL_COND_V_MSG(!valid, Variant(), "Invalid index in compiled GDScript.");
++		return result;
++	}
++
++	static Variant construct(Variant::Type p_type, std::initializer_list<Variant> p_args) {
++		const Variant *pointers[8];
++		int count = 0;
++		for (const Variant &arg : p_args) {
++			pointers[count++] = &arg;
++		}
++		Variant result;
++		Callable::CallError err;
++		Variant::construct(p_type, result, pointers, count, err);
++		ERR_FAIL_COND_V_MSG(err.error != Callable::CallError::CALL_OK, Variant(), "Invalid construction in compiled GDScript.");
++		return result;
++	}
++
++	static Dictionary dictionary(std::initializer_list<Variant> p_pairs) {
++		Dictionary d;
++		for (const Variant *it = p_pairs.begin(); it != p_pairs.end(); it += 2) {
++			d[it[0]] = it[1];
++		}
++		return d;
++	}
++
++	static Array array(std::initializer_list<Variant> p_items) {
++		Array a;
++		for (const Variant &item : p_items) {
++			a.push_back(item);
++		}
++		return a;
++	}
++
++	// The GDScript instance of an object; the analyzer checked the object's class.
++	static GDScriptInstance *instance(const Variant &p_object) {
++		Object *object = p_object.get_validated_object();
++		ERR_FAIL_NULL_V_MSG(object, nullptr, "Compiled GDScript accessed a null or freed instance.");
++		return static_cast<GDScriptInstance *>(object->get_script_instance());
++	}
++
++	// The same for a value that may be null, such as a typed local before assignment.
++	static GDScriptInstance *instance_or_null(const Variant &p_object) {
++		Object *object = p_object.get_validated_object();
++		return object ? static_cast<GDScriptInstance *>(object->get_script_instance()) : nullptr;
++	}
++
++	static Variant owner(GDScriptInstance *p_instance) { return Variant(p_instance->owner); }
++
++	static Variant call(const Variant &p_base, const StringName &p_method, std::initializer_list<Variant> p_args) {
++		const Variant *pointers[16];
++		int count = 0;
++		for (const Variant &arg : p_args) {
++			pointers[count++] = &arg;
++		}
++		Callable::CallError err;
++		Variant result;
++		const_cast<Variant &>(p_base).callp(p_method, pointers, count, result, err);
++		ERR_FAIL_COND_V_MSG(err.error != Callable::CallError::CALL_OK, Variant(), vformat("Compiled GDScript failed to call '%s'.", p_method));
++		return result;
++	}
++
++	static Variant utility(const StringName &p_function, std::initializer_list<Variant> p_args) {
++		const Variant *pointers[16];
++		int count = 0;
++		for (const Variant &arg : p_args) {
++			pointers[count++] = &arg;
++		}
++		Callable::CallError err;
++		Variant result;
++		Variant::call_utility_function(p_function, &result, pointers, count, err);
++		return result;
++	}
++
++	static Variant resource(const char *p_path) { return ResourceLoader::load(String::utf8(p_path)); }
++
++	// A script class by its fully qualified name, inner classes included.
++	static Variant script_class(const char *p_fqcn) {
++		const String fqcn = String::utf8(p_fqcn);
++		Ref<GDScript> script = ResourceLoader::load(fqcn.get_slice("::", 0));
++		ERR_FAIL_COND_V(script.is_null(), Variant());
++		return Variant(script->find_class(fqcn));
++	}
++
++	// A method of an engine singleton (`OS.get_name()`) or a static method of a native
++	// class (`JSON.stringify()`).
++	static Variant call_native(const StringName &p_class, const StringName &p_method, std::initializer_list<Variant> p_args) {
++		Object *singleton = Engine::get_singleton()->get_singleton_object(p_class);
++		if (singleton) {
++			return call(Variant(singleton), p_method, p_args);
++		}
++		const MethodBind *method = ClassDB::get_method(p_class, p_method);
++		ERR_FAIL_NULL_V_MSG(method, Variant(), vformat("Compiled GDScript found no method %s.%s.", p_class, p_method));
++		const Variant *pointers[16];
++		int count = 0;
++		for (const Variant &arg : p_args) {
++			pointers[count++] = &arg;
++		}
++		Callable::CallError err;
++		return method->call(nullptr, pointers, count, err);
++	}
++
++	// An engine singleton, the base of calls like `OS.get_name()`.
++	static Variant native(const StringName &p_class) { return Engine::get_singleton()->get_singleton_object(p_class); }
++
++	// A constant the generator could only write as text, parsed once.
++	static Variant constant(const char *p_text) { return VariantUtilityFunctions::str_to_var(String::utf8(p_text)); }
++};
+diff --git a/modules/gdscript/gdscript_vm.cpp b/modules/gdscript/gdscript_vm.cpp
+index f91ae9e..44dd69c 100644
+--- a/modules/gdscript/gdscript_vm.cpp
++++ b/modules/gdscript/gdscript_vm.cpp
+@@ -482,6 +482,9 @@ void (*type_init_function_table[])(Variant *) = {
+ #define METHOD_CALL_ON_FREED_INSTANCE_ERROR(method_pointer) "Cannot call method '" + (method_pointer)->get_name() + "' on a previously freed instance."
+ 
+ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state) {
++	if (_native && !p_state) {
++		return _native(p_instance, p_args, p_argcount, r_err);
++	}
+ 	GodotProfileZoneScript(this, source, name, name, _initial_line);
+ 
+ 	OPCODES_TABLE;
