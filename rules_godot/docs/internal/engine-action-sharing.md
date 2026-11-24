@@ -20,11 +20,11 @@ Changes that narrow each compile's inputs:
 - the per-source feature macros (#83), a scan for `*_ENABLED` and `*_DISABLED` names;
 - include-directory pruning (#85).
 
-Status and decisions on 2026-11-24: #81, #82 and #85 have merged, #85 after the snapshot. #83 was set
-aside for a compiler-based define analysis, in prototype: `clang -E -Wunused-macros` on a
-wrapper main file that defines the macros reports those a source does not read, and a
-per-source forced-include header passes only the rest, so compiles stay `cc_library`
-actions.
+Status and decisions on 2026-11-24: #81, #82 and #85 have merged, #85 after the
+snapshot. #83 was set aside for a compiler-based define analysis, in prototype:
+`clang -E -Wunused-macros` on a wrapper main file that defines the macros reports those a
+source does not read, and a per-source forced-include header passes only the rest, so
+compiles stay `cc_library` actions.
 
 - **Preprocess split: not pursued.** Once the define analysis is in, splitting each
   compile into a preprocess and a compile action would only save header edits that leave

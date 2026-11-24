@@ -167,7 +167,7 @@ what is still open. Line references are to `main` as of 2026-11-04.
 
 ### Patch overlays and per-source Android shells
 
-- Depends on the shared tree above, deferred with it.
+- Depends on "Share compiles between source recipes" and is deferred with it.
 - Open: patched files as content-addressed overlays, so a patch does not split the tree
   (the note's open point "Patches"); one Android shell library per source and patch list
   instead of per source build.
