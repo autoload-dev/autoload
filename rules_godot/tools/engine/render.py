@@ -260,7 +260,7 @@ def object_library_name(source: str, group: int, taken: Container[str]) -> str:
 # Prototype: the C and C++ sources compiled in two actions, preprocessing and compiling.
 # "split" compiles every C and C++ source so; "shadow" keeps the one-action libraries and
 # adds an unlinked two-action twin, named <library>__split, for a sample of sources.
-_MODE = "shadow"
+_MODE = "split"
 _SAMPLE = {
     "core/math/aabb.cpp",
     "core/math/a_star.cpp",
