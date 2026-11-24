@@ -1,0 +1,87 @@
+diff --git a/modules/gdscript/gdscript_bytecode.cpp b/modules/gdscript/gdscript_bytecode.cpp
+index 2a2e396..a2a1af2 100644
+--- a/modules/gdscript/gdscript_bytecode.cpp
++++ b/modules/gdscript/gdscript_bytecode.cpp
+@@ -646,6 +646,7 @@ public:
+ 		}
+ 		f->_code_size = code_size;
+ 		f->_code_ptr = code_size ? f->code.ptrw() : nullptr;
++		f->_aot_index = code_size ? gdscript_aot_index(f->_code_ptr, code_size) : -1;
+ 
+ 		uint32_t defaults = r.u32();
+ 		for (uint32_t i = 0; i < defaults; i++) {
+diff --git a/modules/gdscript/gdscript_function.h b/modules/gdscript/gdscript_function.h
+index 06daba4..557f428 100644
+--- a/modules/gdscript/gdscript_function.h
++++ b/modules/gdscript/gdscript_function.h
+@@ -148,6 +148,9 @@ public:
+ 	~GDScriptDataType() {}
+ };
+ 
++// PROTOTYPE: the index of the specialized copy of a function's code, or -1.
++int gdscript_aot_index(const int *p_code, int p_size);
++
+ class GDScriptFunction {
+ public:
+ 	enum Opcode {
+@@ -406,6 +409,8 @@ private:
+ 	int _lambdas_count = 0;
+ 
+ 	int *_code_ptr = nullptr;
++	// PROTOTYPE: the function's specialized code in gdscript_aot_*.gen.inc, or -1.
++	int _aot_index = -1;
+ 	const int *_default_arg_ptr = nullptr;
+ 	mutable Variant *_constants_ptr = nullptr;
+ 	const StringName *_global_names_ptr = nullptr;
+diff --git a/modules/gdscript/gdscript_vm.cpp b/modules/gdscript/gdscript_vm.cpp
+index 9e5f7b4..f91ae9e 100644
+--- a/modules/gdscript/gdscript_vm.cpp
++++ b/modules/gdscript/gdscript_vm.cpp
+@@ -37,6 +37,25 @@
+ #include "core/os/os.h"
+ #include "core/profiling/profiling.h"
+ 
++// PROTOTYPE: functions specialized ahead of time (gen_aot.py), when generated.
++#if __has_include("gdscript_aot_data.gen.inc") && (defined(__GNUC__) || defined(__clang__))
++#define GDSCRIPT_AOT
++#include "gdscript_aot_data.gen.inc"
++
++int gdscript_aot_index(const int *p_code, int p_size) {
++	for (int i = 0; i < aot_count; i++) {
++		if (aot_sizes[i] == p_size && memcmp(aot_codes[i], p_code, sizeof(int) * p_size) == 0) {
++			return i;
++		}
++	}
++	return -1;
++}
++#else
++int gdscript_aot_index(const int *p_code, int p_size) {
++	return -1;
++}
++#endif
++
+ #ifdef DEBUG_ENABLED
+ 
+ static bool _profile_count_as_native(const Object *p_base_obj, const StringName &p_methodname) {
+@@ -713,6 +732,10 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
+ 	bool awaited = false;
+ 	Variant *variant_addresses[ADDR_TYPE_MAX] = { stack, _constants_ptr, p_instance ? p_instance->members.ptr() : nullptr };
+ 
++#ifdef GDSCRIPT_AOT
++#include "gdscript_aot_entry.gen.inc"
++#endif
++
+ #ifdef DEBUG_ENABLED
+ 	OPCODE_WHILE(ip < _code_size) {
+ 		int last_opcode = _code_ptr[ip];
+@@ -3953,6 +3976,10 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
+ 				OPCODE_BREAK;
+ 			}
+ 
++#ifdef GDSCRIPT_AOT
++#include "gdscript_aot_body.gen.inc"
++#endif
++
+ #if 0 // Enable for debugging.
+ 			default: {
+ 				err_text = "Illegal opcode " + itos(_code_ptr[ip]) + " at address " + itos(ip);
