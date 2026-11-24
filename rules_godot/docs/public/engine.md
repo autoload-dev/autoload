@@ -455,6 +455,9 @@ Android ABIs name the same version. Neither are compiler and toolchain flags.
 
 ## Optimization
 
+[Make the engine small](engine-size.md) combines these settings with module selection,
+renderers, feature switches and a build profile.
+
 Under `-c opt`, a source-built engine compiles at the level of
 `--@autoload_rules_godot//godot:engine_optimize`, with Godot's values and meaning plus
 one of the ruleset's own:

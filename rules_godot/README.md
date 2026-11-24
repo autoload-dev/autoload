@@ -112,6 +112,7 @@ Choose **Let's go**, then press Space to jump over gaps and pipes. The
 | Package desktop, Android or iOS applications | [Application platforms](docs/public/platforms.md) |
 | Compile and package extensions | [GDExtensions](docs/public/gdextension.md) |
 | Build an engine from source or inspect debug symbols | [Engines](docs/public/engine.md) |
+| Make a source-built engine small | [Make the engine small](docs/public/engine-size.md) |
 | Choose an engine version | [Versions](docs/public/versions.md) |
 | Look up a rule, provider or module extension | [API documentation on the Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) |
 
