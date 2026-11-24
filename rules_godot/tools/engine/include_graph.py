@@ -13,8 +13,8 @@ directives that the code of their generator writes, as literal paths or as templ
 import os
 import re
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
-from pathlib import Path
-from typing import NamedTuple
+from pathlib import Path, PurePosixPath
+from typing import NamedTuple, Protocol, Self
 
 # Includes, imports and __has_include checks, whose answer an undeclared header would
 # change, by their delimiter.
@@ -233,6 +233,46 @@ def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
     and the files of a cycle are included together anyway.
     """
     return _Components(graph).search()
+
+
+class _Union(Protocol):
+    def __or__(self, other: Self, /) -> Self: ...
+
+
+def transitive[T: _Union](
+    graph: Mapping[str, Collection[str]], own: Mapping[str, T], empty: T
+) -> dict[str, T]:
+    """Return each node of a graph mapped to the union of its value and its successors'."""
+    result: dict[str, T] = {}
+    for component in components(graph):
+        value = empty
+        for node in component:
+            value = value | own.get(node, empty)
+            for successor in graph[node]:
+                value = value | result.get(successor, empty)
+        result.update(dict.fromkeys(component, value))
+    return result
+
+
+def reached_directories(
+    graph: Mapping[str, Collection[str]], directories: Iterable[str]
+) -> dict[str, frozenset[str]]:
+    """
+    Return each file of an include graph mapped to the directories, as spelled, that hold
+    it or a file it includes, transitively, at any depth.
+
+    The scan resolves an include to every directory that has the file, so an include
+    directory that holds no file a source reaches resolves none of its includes. The
+    source root, ".", holds every file.
+    """
+    normalized = {directory: str(PurePosixPath(directory)) for directory in directories}
+    own: dict[str, frozenset[str]] = {}
+    for name in graph:
+        ancestors = {str(parent) for parent in PurePosixPath(name).parents}
+        own[name] = frozenset(
+            directory for directory, path in normalized.items() if path in ancestors
+        )
+    return transitive(graph, own, frozenset())
 
 
 class _Components:

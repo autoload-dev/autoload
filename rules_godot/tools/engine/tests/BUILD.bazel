@@ -6,3 +6,10 @@ py_test(
     srcs = ["engine_test.py"],
     deps = ["//tools/engine:support"],
 )
+
+py_test(
+    name = "include_directories_test",
+    size = "small",
+    srcs = ["include_directories_test.py"],
+    deps = ["//tools/engine:support"],
+)
