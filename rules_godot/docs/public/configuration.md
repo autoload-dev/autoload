@@ -283,7 +283,7 @@ the same slot replaces a shell file or shell asset; see
 | Operating system, CPU set and iOS environment; `binary_format/architecture` | An export platform (`godot_export_platform`) selected with `--platforms` |
 | Variant (debug or release export template, or the editor) | `--@autoload_rules_godot//godot:variant`; register a matching runtime for a template |
 | C++ optimization, debug info, stripping | Bazel `-c`, compiler/toolchain features, `--copt`, `--strip`, Apple symbol/stripping flags |
-| A source-built engine's optimization level and LTO under `-c opt` | `--@autoload_rules_godot//godot:engine_optimize` and `engine_lto`, or `godot_app.engine_optimize` and `engine_lto` per application; see [optimization](engine.md#optimization) |
+| A source-built engine's optimization level, LTO and virtual function elimination under `-c opt` | `--@autoload_rules_godot//godot:engine_optimize`, `engine_lto` and `engine_vfe`, or the `godot_app` attributes of the same names per application; see [optimization](engine.md#optimization) |
 | APK versus AAB; Godot export-format controls | `--@autoload_rules_godot//godot:android_format=apk` or `aab` |
 | Text or converted pack content | `--@autoload_rules_godot//godot:pack_conversion`; see [pack forms](resources.md#pack-forms) |
 | Embedded PCK and physical bundle/executable names | App layout derived from the public target name |

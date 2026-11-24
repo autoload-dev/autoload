@@ -168,8 +168,8 @@ def godot_android_application(
             owner. The applicationId override is added here.
         bundle: Build an unsigned Android App Bundle instead of an APK; it keeps the
             PCK uncompressed in the APKs Google Play generates from the bundle.
-        engine_settings: The application's engine_optimize and engine_lto, for the
-            runtime component it resolves.
+        engine_settings: The application's engine_optimize, engine_lto and engine_vfe,
+            for the runtime component it resolves.
         visibility: Visibility of the APK or bundle target.
         **kwargs: Remaining android_binary attributes, including signing options.
     """
