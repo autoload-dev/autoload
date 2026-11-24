@@ -6,7 +6,7 @@
     "date": "2026-11-02",
     "classification": "Reviewed ownership, not a runtime/device support certification",
     "defaults": "Not stored; obtain from selected Godot preset/probe at execution time.",
-    "effective_values": "Godot preset after authored overrides and internal destination/variant context. Early native adapters remain authoritative and conflicting authored values fail.",
+    "effective_values": "Godot preset after authored overrides and internal export platform/variant context. Early native adapters remain authoritative and conflicting authored values fail.",
     "phase": "Godot PCK/export and host generation run in actions. bazel-owned entries refer to analysis-time native graph/configuration or explicit signing/delivery workflows.",
     "columns": [
       "platform",

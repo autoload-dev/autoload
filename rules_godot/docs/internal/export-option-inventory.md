@@ -158,7 +158,7 @@ retained every 4.7.2 key with the same runtime type. Excluding the fixture's dec
 `context/marker` plugin option, the registered totals were Linux 16, macOS 238,
 Android 207 and iOS 243.
 
-| Destination | Added key | Live type | Disposition and effect |
+| Export platform | Added key | Live type | Disposition and effect |
 | --- | --- | --- | --- |
 | Linux, macOS | `debug/export_debug_symbols` | int | Bazel-owned (`native-debug-symbols`): native compiler/symbol settings and the app's symbol output group own native symbol delivery; explicit Godot requests are rejected. |
 | Android | `gradle_build/minification` | bool | Unsupported: rules_android packages the app without a Gradle build; explicit requests are rejected. |

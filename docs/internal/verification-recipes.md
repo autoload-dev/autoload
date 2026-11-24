@@ -180,8 +180,8 @@ docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.b
 
 The projects below are controlled inputs for rules_godot regressions, separate from each
 example's own tests. For area responsibilities, see the [test-area map](../../rules_godot/tests/AGENTS.md).
-They form the consumer module `rules_godot_tests` at `tests/`: run their labels from
-`tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
+They form the consumer module `rules_godot_tests` at `rules_godot/tests/`: run their labels
+from `rules_godot/tests/`, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
 
 Use these project cases to find a concrete behavior:
 
