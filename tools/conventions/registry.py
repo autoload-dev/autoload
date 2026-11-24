@@ -15,6 +15,9 @@ from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg013 import PublicDocumentationLinks
 from tools.conventions.rules.rg014 import EngineLayout
 from tools.conventions.rules.rg015 import AddonModuleLayout
+from tools.conventions.rules.rg016 import LocalLinks
+from tools.conventions.rules.rg017 import AgentInstructions
+from tools.conventions.rules.rg018 import SharedSkills
 
 RULES: tuple[Rule, ...] = (
     PackageNames(),
@@ -31,6 +34,9 @@ RULES: tuple[Rule, ...] = (
     PublicDocumentationLinks(),
     EngineLayout(),
     AddonModuleLayout(),
+    LocalLinks(),
+    AgentInstructions(),
+    SharedSkills(),
 )
 
 

@@ -22,6 +22,9 @@ authored target declarations.
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root in both areas, owned by their nearest `project.godot` | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
+| [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
+| [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
+| [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
 
 The [project layout guide](project-layout.md) shows where these conventions fit into an
 application, add-on or test project. Choosing the main entry point and useful package
@@ -418,6 +421,33 @@ module lists it. Each module:
 In every add-on, including those of `examples/`, a `backends/` directory sits in `native/`:
 the backends implement the platform-independent API beside them. The check reads the files
 and their text without loading Bazel; it reports a stray `backends/` directory once.
+
+## RG016
+
+**Local links resolve.** A link in documentation, a README, an `AGENTS.md` or a skill's
+`SKILL.md` names a file or directory of the repository, in its exact case, and a fragment
+names a heading or an HTML `id` or `name` of the Markdown page it points to. Headings become
+fragments as on GitHub: the rendered text in lower case, without punctuation, spaces as
+hyphens and a number appended to repeats. Ignored local files, such as `user.bazelrc`, are
+no link targets.
+
+The check reads link destinations as [RG013](#rg013) does, and ignores links in code and
+comments the same way. External URLs, fragments into files other than Markdown and fragments
+after a query, such as `?plain=1#L5`, are outside automated coverage.
+
+## RG017
+
+**Agent instructions live in `AGENTS.md`.** Claude Code and Codex both read `AGENTS.md`, but
+Claude Code ignores it while a `CLAUDE.md` exists in its working directory or above it. The
+check reports every `CLAUDE.md`; rules for one agent alone go into `AGENTS.md`, marked as such.
+
+## RG018
+
+**Skills live in `.agents/skills` and are linked for Claude Code.** A skill is written once,
+as a directory `.agents/skills/<name>/` with a `SKILL.md`, where Codex finds it. Claude Code
+finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a symbolic link
+to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
+skills without a counterpart.
 
 ## Run and maintain the checks
 
