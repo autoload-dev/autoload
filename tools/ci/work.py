@@ -42,6 +42,10 @@ RULESET_DIR = RULESET.as_posix()
 EXAMPLES = "//examples"
 SCENARIOS = "//scenarios"
 ANDROID_SETUP = "android:setup"
+# The variable that selects a piece of work's Bazel profile (tools/bazel).
+PROFILE = "AUTOLOAD_BAZEL_PROFILE"
+# The lanes whose Bazel configuration differs from the desktop default, each a profile.
+PROFILE_LANES = ("source-engine", "android", "ios")
 
 
 class In(NamedTuple):
@@ -60,7 +64,9 @@ class Work:
     """
     Shell commands that run in one directory, relative to the repository root, unless a
     command names its own. Android work needs the pinned SDK, NDK and Java; host-limited
-    work runs on those hosts only.
+    work runs on those hosts only. Work of a Bazel configuration other than the desktop
+    default names its profile, whose own server keeps that configuration's analysis
+    (tools/bazel).
     """
 
     name: str
@@ -71,6 +77,7 @@ class Work:
     hosts: tuple[str, ...] = ()
     env: tuple[tuple[str, str], ...] = ()
     inputs: Inputs | None = None
+    profile: str | None = None
 
     def steps(self) -> list[In]:
         """Each command with the directory it runs in and its inputs."""
@@ -182,6 +189,7 @@ def contracts(lane: str) -> Work:
         ".",
         (contracts_command(lane),),
         android=lane == "android",
+        profile=lane if lane in PROFILE_LANES else None,
     )
 
 
@@ -331,13 +339,13 @@ WORK = (
                 f"bazel build {EXAMPLES}/addons/sqlite/demo:app"
                 " --config=multi_abi --config=aab"
             ),
-            In(
-                ".",
+            (
                 f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
-                " --config=android-release --config=aab",
+                " --config=android-release --config=aab"
             ),
         ),
         android=True,
+        profile="android",
     ),
     contracts("ios"),
     Work(
@@ -346,11 +354,9 @@ WORK = (
         ".",
         (
             f"bazel test {SCENARIOS}:ios_official --config=official",
-            In(
-                ".",
-                f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
-            ),
+            f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
         ),
+        profile="ios",
     ),
     contracts("source-engine"),
     # Every source-engine case, Petri's included. CI runs it in the Source engine workflow.
@@ -366,6 +372,7 @@ WORK = (
             PETRI_TESTS,
         ),
         android=True,
+        profile="source-engine",
     ),
     # The main source-engine cases, for a quicker local run: those not tagged
     # source_engine_extended, and the patched engine with its editor.
@@ -383,8 +390,9 @@ WORK = (
             PATCHED_EDITOR,
         ),
         android=True,
+        profile="source-engine",
     ),
-    Work("test:example:petri", None, ".", (PETRI_TESTS,)),
+    Work("test:example:petri", None, ".", (PETRI_TESTS,), profile="source-engine"),
     # Running Android work provisions the SDK first.
     Work(
         ANDROID_SETUP,
@@ -431,6 +439,7 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
                 (f"python3 -m tools.addons.lanes {lane} {module.directory}",),
                 android=lane == "android",
                 hosts=hosts if lane == "desktop" else (),
+                profile=lane if lane in PROFILE_LANES else None,
             )
     yield from map(template_work, ADDON_LANES)
 
@@ -448,6 +457,7 @@ def template_work(lane: str) -> Work:
         ),
         android=lane == "android",
         hosts=("linux",) if lane == "desktop" else (),
+        profile=lane if lane in PROFILE_LANES else None,
     )
 
 
@@ -476,7 +486,10 @@ def argv(work: Work, command: str) -> list[str]:
     Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect CLI's
     environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
     """
-    exports = [f"export {name}={shlex.quote(value)}" for name, value in work.env]
+    profile = ((PROFILE, work.profile),) if work.profile is not None else ()
+    exports = [
+        f"export {name}={shlex.quote(value)}" for name, value in (*work.env, *profile)
+    ]
     if work.android:
         exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
     script = "; ".join([*exports, command])

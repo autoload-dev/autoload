@@ -106,6 +106,24 @@ class WorkTest(unittest.TestCase):
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
+        profiled = Work("z", "ios", ".", ("true",), profile="ios")
+        self.assertIn("export AUTOLOAD_BAZEL_PROFILE=ios;", argv(profiled, "true")[-1])
+        self.assertNotIn("AUTOLOAD_BAZEL_PROFILE", argv(plain, "true")[-1])
+
+    def test_mobile_and_source_engine_work_run_in_their_profiles(self) -> None:
+        work = all_work(ROOT)
+        for name, profile in (
+            ("android", "android"),
+            ("contracts:android", "android"),
+            ("ios", "ios"),
+            ("contracts:ios", "ios"),
+            ("source-engine", "source-engine"),
+            ("test:example:petri", "source-engine"),
+            ("test:bazel", None),
+            ("contracts:desktop", None),
+            ("docs", None),
+        ):
+            self.assertEqual(profile, work[name].profile, name)
 
     def test_work_runs_python_with_this_interpreter(self) -> None:
         first = environment()["PATH"].split(os.pathsep)[0]

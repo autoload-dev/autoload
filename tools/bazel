@@ -45,18 +45,47 @@ if [[ ${#flags[@]} -gt 0 ]]; then
     done
 fi
 
+# A startup option on the command line chooses the output base itself.
+[[ " ${arguments[*]} " == *" --output_base="* || " ${arguments[*]} " == *" --output_user_root="* ]] &&
+    exec "$BAZEL_REAL" "${arguments[@]}"
+
 # A worktree that leased a Bazel slot (docs/internal/agent-setup.md, "Worktrees") keeps each
 # module's output base in that slot. .bazel-slot at the worktree root, the nearest directory
-# with a .git, names each module's base; a startup option on the command line wins.
+# with a .git, names each module's base.
+base=""
 root="$workspace"
 until [[ -e "$root/.git" || -z "$root" ]]; do root="${root%/*}"; done
-if [[ -n "$root" && -f "$root/.bazel-slot" && " ${arguments[*]} " != *" --output_base="* ]]; then
+if [[ -n "$root" && -f "$root/.bazel-slot" ]]; then
     module="${workspace#"$root"}"
     module="${module#/}"
-    while read -r name base; do
+    while read -r name slot; do
         # An output base is named by 32 hexadecimal digits, never the output user root itself.
-        [[ "$name" == "${module:-.}" && "${base##*/}" =~ ^[0-9a-f]{32}$ ]] &&
-            arguments=("--output_base=$base" "${arguments[@]}") && break
+        [[ "$name" == "${module:-.}" && "${slot##*/}" =~ ^[0-9a-f]{32}$ ]] && base="$slot" && break
     done <"$root/.bazel-slot"
 fi
+
+# A profile keeps the work of one Bazel configuration, such as android, in an output base and
+# server of its own, so desktop and mobile work keep their analysis instead of discarding each
+# other's (docs/internal/verification-recipes.md#profiles). AUTOLOAD_BAZEL_PROFILE names it,
+# as the lanes' work sets it; the default profile is the workspace's own output base. A
+# profile's base lies in the same output user root, named by the MD5 of the default base or
+# workspace and the profile, so `aspect output-bases` and `aspect gc` treat it like any other.
+# Its server exits after AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS without a command.
+profile="${AUTOLOAD_BAZEL_PROFILE:-default}"
+if [[ "$profile" != default ]]; then
+    if [[ -n "$base" ]]; then
+        user_root="${base%/*}"
+    elif [[ "$(uname -s)" == Darwin ]]; then
+        user_root="$HOME/Library/Caches/bazel/_bazel_${USER:-$(id -un)}"
+    else
+        user_root="${XDG_CACHE_HOME:-$HOME/.cache}/bazel/_bazel_${USER:-$(id -un)}"
+    fi
+    key="${base:-$workspace}:$profile"
+    # md5sum on Linux, md5 in /sbin on macOS, which a test's strict PATH leaves out.
+    md5="$(command -v md5sum || command -v md5 || echo /sbin/md5)"
+    digest="$(printf '%s' "$key" | "$md5" | cut -c1-32)"
+    base="$user_root/$digest"
+    arguments=("--max_idle_secs=${AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS:-900}" "${arguments[@]}")
+fi
+[[ -n "$base" ]] && arguments=("--output_base=$base" "${arguments[@]}")
 exec "$BAZEL_REAL" "${arguments[@]}"

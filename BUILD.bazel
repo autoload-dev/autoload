@@ -15,6 +15,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+# The Bazel wrapper (tools/bazel), whose test runs it in a scratch workspace.
+exports_files(
+    ["tools/bazel"],
+    visibility = ["//tools/setup:__pkg__"],
+)
+
 # The pinned Maven installations of the examples and scenarios (MODULE.bazel).
 exports_files([
     "android_ide_common_30_1_3_install.json",

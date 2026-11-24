@@ -77,6 +77,27 @@ For API source changes, run the `docs` work, `aspect work docs`: it checks the
 inventory, the docstrings and the contracts the registry's documentation relies on. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
+## Profiles
+
+A Bazel server keeps the analysis of one configuration: a command that changes the build
+options, such as `--config=android`, discards the analysis of the previous one. So that
+desktop and mobile work keep theirs, [tools/bazel](../../tools/bazel) runs each profile in an
+output base and server of its own. `AUTOLOAD_BAZEL_PROFILE` names the profile; without it,
+Bazel uses the workspace's own output base, the `default` profile. The lanes' work sets the
+profile of the mobile and source-engine work, `android`, `ios` or `source-engine`
+([tools/ci/work.py](../../tools/ci/work.py)), so the pre-push hook and the desktop work stay
+warm in `default` while a lane builds an application:
+
+```sh
+AUTOLOAD_BAZEL_PROFILE=android aspect exec -- bazel build //examples/projects/lichtpost:app --config=android
+```
+
+A profile's output base lies beside the default one, named by the MD5 of it and the profile,
+so `aspect output-bases` and `aspect gc` treat it like any other. Its server exits after
+`AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS`, 15 minutes by default. Actions do not run twice:
+`~/.bazelrc`'s `--disk_cache`, where set, and path mapping share their results across
+profiles.
+
 ## Remote execution with BuildBuddy
 
 Every module imports [buildbuddy.bazelrc](../../buildbuddy.bazelrc). Its configs need a
