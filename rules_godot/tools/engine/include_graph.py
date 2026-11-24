@@ -14,7 +14,7 @@ import os
 import re
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple, Protocol, Self
+from typing import NamedTuple
 
 # Includes, imports and __has_include checks, whose answer an undeclared header would
 # change, by their delimiter.
@@ -235,25 +235,6 @@ def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
     return _Components(graph).search()
 
 
-class _Union(Protocol):
-    def __or__(self, other: Self, /) -> Self: ...
-
-
-def transitive[T: _Union](
-    graph: Mapping[str, Collection[str]], own: Mapping[str, T], empty: T
-) -> dict[str, T]:
-    """Return each node of a graph mapped to the union of its value and its successors'."""
-    result: dict[str, T] = {}
-    for component in components(graph):
-        value = empty
-        for node in component:
-            value = value | own.get(node, empty)
-            for successor in graph[node]:
-                value = value | result.get(successor, empty)
-        result.update(dict.fromkeys(component, value))
-    return result
-
-
 def reached_directories(
     graph: Mapping[str, Collection[str]], directories: Iterable[str]
 ) -> dict[str, frozenset[str]]:
@@ -265,14 +246,23 @@ def reached_directories(
     directory that holds no file a source reaches resolves none of its includes. The
     source root, ".", holds every file.
     """
-    normalized = {directory: str(PurePosixPath(directory)) for directory in directories}
-    own: dict[str, frozenset[str]] = {}
-    for name in graph:
-        ancestors = {str(parent) for parent in PurePosixPath(name).parents}
-        own[name] = frozenset(
-            directory for directory, path in normalized.items() if path in ancestors
-        )
-    return transitive(graph, own, frozenset())
+    spellings: dict[str, set[str]] = {}
+    for directory in directories:
+        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
+    reached: dict[str, frozenset[str]] = {}
+    # Dependencies come first, and the files of a cycle reach the same directories.
+    for component in components(graph):
+        found = {
+            spelling
+            for name in component
+            for parent in PurePosixPath(name).parents
+            for spelling in spellings.get(str(parent), ())
+        }
+        for name in component:
+            for include in graph[name]:
+                found |= reached.get(include, frozenset())
+        reached.update(dict.fromkeys(component, frozenset(found)))
+    return reached
 
 
 class _Components:

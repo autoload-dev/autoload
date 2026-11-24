@@ -287,13 +287,6 @@ def constants(
     return lines, by_source
 
 
-def used_includes(includes: Sequence[str], reached: Container[str]) -> list[str]:
-    """
-    Return the include directories of a group that hold a file a source reaches, in order.
-    """
-    return [directory for directory in includes if directory in reached]
-
-
 def object_rules(
     groups: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     graph: Mapping[str, Collection[str]],
@@ -318,7 +311,7 @@ def object_rules(
         lines.append(f"_COPTS_{index} = {list(copts)!r}")
         include_lines, source_includes = constants(
             f"_INCLUDES_{index}",
-            {source: used_includes(includes, reached[source]) for source in sources},
+            {source: [d for d in includes if d in reached[source]] for source in sources},
         )
         lines += include_lines
         rule = "objc_library" if language == "objc" else "cc_library"
