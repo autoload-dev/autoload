@@ -28,8 +28,9 @@ A local completion report can say CI/lane verification is pending. It is not a m
 claim. Do not wait for unrelated checks before asking a question. If no code or configuration
 changed, a read-only review does not require test execution.
 
-The fast tests are the `small`, analysis and `smoke` tests of the root module and the ruleset
-([test size](verification-architecture.md#test-size)). CI runs every lane on every run; to
+The fast tests are the `small`, analysis and `smoke` tests of the ruleset
+([test size](verification-architecture.md#test-size)); the root module's tests run whole, as
+in the quality lane. CI runs every lane on every run; to
 verify a lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not
 repeat a successful check merely because its changes were committed.
 
@@ -47,7 +48,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Kind | Evidence | Existing entry points |
 |---|---|---|
 | Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint`, `bazel run //tools/conventions` |
-| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, `aspect work test:actions` |
+| Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, `bazel test //tools/ci:setup_action_test` |
 | API/documentation contracts | Inventories, metadata, visibility and docstrings | `aspect work docs` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `rules_godot/tests` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |

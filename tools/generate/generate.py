@@ -3,7 +3,7 @@ Regenerate the repository's generated files, or check that they are current.
 
 | Generated files | Regenerated here | Checked here |
 |---|---|---|
-| The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | `--lockfile_mode=error` |
+| The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
 | The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
@@ -56,17 +56,39 @@ def locked_modules_shaped_by(paths: list[str]) -> list[str]:
     return [module for module in LOCKED_MODULES if module in shaped]
 
 
-def lock_files(modules: list[str], mode: str) -> int:
+def lock_files(modules: list[str]) -> int:
     status = 0
     for module in modules:
-        status |= bazel(module, "mod", "deps", f"--lockfile_mode={mode}")
+        status |= bazel(module, "mod", "deps", "--lockfile_mode=update")
     return status
 
 
+def lock_file(module: str) -> bytes | None:
+    """A module's lock file, or none before Bazel writes it."""
+    path = ROOT / module / "MODULE.bazel.lock"
+    return path.read_bytes() if path.is_file() else None
+
+
 def check_lock_files() -> int:
-    status = lock_files(list(LOCKED_MODULES), "error")
-    if status:
-        print("A MODULE.bazel.lock is stale: run `aspect generate`.", file=sys.stderr)
+    """
+    Regenerate every lock file and fail when one changes or appears. Bazel's default mode,
+    `update`, as every other command uses it, not `--lockfile_mode=error`: a server whose
+    lock file mode changes reloads every package on its next command, which later checks
+    would pay for.
+    """
+    before = {module: lock_file(module) for module in LOCKED_MODULES}
+    status = lock_files(list(LOCKED_MODULES))
+    stale = [
+        f"{module}/MODULE.bazel.lock"
+        for module, text in before.items()
+        if lock_file(module) != text
+    ]
+    if stale:
+        print(
+            f"Stale lock files, now regenerated; commit them: {', '.join(stale)}",
+            file=sys.stderr,
+        )
+        return 1
     return status
 
 
@@ -90,7 +112,7 @@ def regenerate(paths: list[str]) -> int:
     """Regenerate what depends on the paths, or everything without paths."""
     everything = not paths
     modules = list(LOCKED_MODULES) if everything else locked_modules_shaped_by(paths)
-    return lock_files(modules, "update")
+    return lock_files(modules)
 
 
 def check() -> int:
