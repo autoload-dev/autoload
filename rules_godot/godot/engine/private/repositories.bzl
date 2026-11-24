@@ -6,6 +6,7 @@ ruleset's own test fixtures also declare them directly.
 """
 
 load("//godot/engine/private:hub.bzl", "engine_hub")
+load("//godot/engine/private:shared_trees.bzl", "engine_tree_impl")
 load("//godot/engine/private:source_build_rows.bzl", "source_build_declarations")
 load(
     "//godot/engine/private:source_repositories.bzl",
@@ -220,6 +221,8 @@ godot_engine_build = repository_rule(
             """,
         ),
         "lock_key": attr.string(doc = "The recipe's key in the lock file, such as linux_x86_64_editor."),
+        "tree": attr.string(doc = "Prototype: the shared tree repository whose targets compile this recipe's shareable sources."),
+        "_shared_objects": attr.label(default = Label("//tools/engine:shared_objects.py")),
         "repin": attr.string(doc = "The target that repins the lock file, named by a stale recipe's error."),
         "_configure": attr.label(default = Label("//tools/engine:configure.py")),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
@@ -247,6 +250,22 @@ godot_engine_build = repository_rule(
         "GODOT_VERSION_STATUS",
         "SCRIPT_AES256_ENCRYPTION_KEY",
     ],
+)
+
+godot_engine_tree = repository_rule(
+    doc = "Prototype: the patched source tree, custom modules and build profiles a row's recipes share.",
+    implementation = engine_tree_impl,
+    attrs = {
+        "source": attr.label(mandatory = True, allow_single_file = [".json"]),
+        "patches": attr.label_list(allow_files = [".patch", ".diff"]),
+        "patch_strip": attr.int(default = 1),
+        "custom_modules": attr.label_keyed_string_dict(allow_files = [".py"]),
+        "build_profiles": attr.label_list(allow_files = [".gdbuild"]),
+        "recipes": attr.string_list(doc = "The recipe repositories whose shared work this tree declares."),
+        "_shared_tree": attr.label(default = Label("//tools/engine:shared_tree.py")),
+        "_build_profile": attr.label(default = Label("//tools/engine:build_profile.py")),
+        "_macros": attr.label(default = Label("//godot/engine/private:shared_objects.bzl")),
+    },
 )
 
 godot_android_shell = repository_rule(

@@ -14,6 +14,8 @@ exports_files(
         "prebuilt.bzl",
         "repositories.bzl",
         "resolution.bzl",
+        "shared_objects.bzl",
+        "shared_trees.bzl",
         "source_repositories.bzl",
     ],
     visibility = ["//visibility:public"],

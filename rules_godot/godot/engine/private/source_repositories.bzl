@@ -153,6 +153,11 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._render))
     ctx.watch(ctx.path(ctx.attr._build_profile))
     ctx.watch(ctx.path(ctx.attr._include_graph))
+    ctx.watch(ctx.path(ctx.attr._shared_objects))
+
+def _tree_environment(ctx):
+    """Prototype: rendering describes the recipe's shareable work for its tree, if any."""
+    return {"GODOT_TREE_REPOSITORY": ctx.attr.tree}
 
 def engine_build_impl(ctx, *, _fail = fail):
     """
@@ -268,7 +273,8 @@ def engine_build_impl(ctx, *, _fail = fail):
             "--pin-bzl",
             str(ctx.attr._pin_bzl),
         ])
-    result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True)
+
+    result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True, environment = _tree_environment(ctx))
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None

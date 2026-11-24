@@ -13,7 +13,9 @@ load(
     "godot_engine_build",
     "godot_engine_source",
     "godot_engine_source_build",
+    "godot_engine_tree",
 )
+load("//godot/engine/private:shared_trees.bzl", "expand_source_builds", "with_shared_trees")
 load(
     "//godot/platforms/private:android_toolchains.bzl",
     "android_toolchain_repositories",
@@ -155,12 +157,14 @@ _ENGINE_RULES = {
     "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,
     "godot_engine_source_build": godot_engine_source_build,
+    "godot_engine_tree": godot_engine_tree,
     "godot_export_templates_archive": godot_export_templates_archive,
     "http_file": http_file,
 }
 
 def _engines_impl(module_ctx):
-    for declaration in plan_engines(module_ctx.modules, tag_attributes = _ENGINE_TAG_ATTRIBUTES):
+    declarations = expand_source_builds(plan_engines(module_ctx.modules, tag_attributes = _ENGINE_TAG_ATTRIBUTES))
+    for declaration in with_shared_trees(declarations):
         _ENGINE_RULES[declaration.rule](**declaration.attrs)
     return module_ctx.extension_metadata(reproducible = True)
 
