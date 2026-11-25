@@ -150,6 +150,12 @@ generate = task(
 )
 
 def _code_health_impl(ctx: TaskContext) -> int:
+    # The change history needs Git alone, not the CodeScene CLI.
+    if ctx.args.history:
+        if ctx.args.survey or ctx.args.staged:
+            print("--history reports the history alone; leave out --survey and --staged.")
+            return 2
+        return python(ctx, ["-m", "tools.code_health.history"] + ctx.args.options)
     flags = []
     if ctx.args.survey:
         flags.append("--survey")
@@ -167,6 +173,7 @@ code_health = task(
     summary = "Review the Code Health of the change since origin/main; fails when a file declines.",
     args = {
         "survey": args.boolean(default = False, description = "Report the whole checkout: hotspots and the lowest scores"),
+        "history": args.boolean(default = False, description = "Report how often the changed files changed, and with what"),
         "staged": args.boolean(default = False, description = "Review the staged changes only"),
         "if_available": args.boolean(default = False, description = "Pass with a note without a CodeScene sign-in"),
         "options": args.trailing_var_args(),

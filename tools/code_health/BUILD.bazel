@@ -9,6 +9,7 @@ py_library(
         "change.py",
         "codescene.py",
         "documentation.py",
+        "history.py",
         "macros.py",
         "scan.py",
         "survey.py",
@@ -51,5 +52,12 @@ py_test(
     name = "translation_test",
     size = "small",
     srcs = ["translation_test.py"],
+    deps = [":codescene_lib"],
+)
+
+py_test(
+    name = "history_test",
+    size = "small",
+    srcs = ["history_test.py"],
     deps = [":codescene_lib"],
 )
