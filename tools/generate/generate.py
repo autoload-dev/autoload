@@ -5,7 +5,7 @@ Regenerate the repository's generated files, or check that they are current.
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
-| The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
+| The lock files of source-built engines, such as an application's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
 (`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
@@ -31,8 +31,17 @@ RULESET_DIR = RULESET.as_posix()
 LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
-# The source builds with a lock file, as (module, hub).
-PINNED_ENGINES = ((".", "godot_petri"),)
+# A source build's lock file, which RG014 keeps in engine/ of its project:
+# engine/<hub>.lock.json.
+LOCK_SUFFIX = ".lock.json"
+
+
+def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, str], ...]:
+    """The source builds with a lock file, as (module, hub): the applications' of examples/."""
+    return tuple(
+        (".", path.name.removesuffix(LOCK_SUFFIX))
+        for path in sorted(root.glob(f"examples/*/engine/*{LOCK_SUFFIX}"))
+    )
 
 
 def bazel(module: str, *args: str) -> int:
@@ -102,7 +111,7 @@ def check_lock_files() -> int:
 
 def pins() -> int:
     status = 0
-    for module, hub in PINNED_ENGINES:
+    for module, hub in pinned_engines():
         failed = bazel(
             module, "build", "--nobuild", "--keep_going", f"@{hub}//toolchains:all"
         )

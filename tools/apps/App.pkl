@@ -1,0 +1,15 @@
+/// What an application of examples/ declares about itself: `examples/<name>/app.pkl` amends
+/// this module (examples/AGENTS.md). The lanes' work (tools/ci/work.py) reads it as the
+/// pinned Pkl CLI evaluates it (tools/pkl/evaluate.py), with the defaults and types below.
+module App
+
+typealias Lane = "desktop" | "source-engine" | "android" | "ios"
+
+/// The lanes that verify the application: `desktop` and `source-engine` run its own tests,
+/// `android` and `ios` build its release apps with their debug symbols, for every Android
+/// ABI.
+lanes: List<Lane>(!isEmpty, isDistinct)
+
+/// The Bazel configuration every command of the application takes, such as one that
+/// registers its source-built engine.
+config: String? = null

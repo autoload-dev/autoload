@@ -114,7 +114,7 @@ def generate(
     names = Names(directory, addon)
     invalid = [name for name in (names.module, names.addon) if not NAME.fullmatch(name)]
     if invalid:
-        raise ValueError(f"{invalid[0]}: use lower snake case, such as platform_paths")
+        raise ValueError(f"{invalid[0]}: use lower snake case, such as in_app_reviews")
     module = root / module_path(directory)
     tokens = names.tokens((root / ".bazelversion").read_text().strip())
     written = []

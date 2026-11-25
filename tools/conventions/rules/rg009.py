@@ -2,9 +2,11 @@
 
 from collections.abc import Iterable
 
+from tools.apps.apps import Application
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.layout import RULESET_MODULE
+from tools.conventions.layout import EXAMPLES_ROOT, RULESET_MODULE
+from tools.pkl.evaluate import PklError
 
 
 class ProjectPlaces:
@@ -16,6 +18,23 @@ class ProjectPlaces:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         yield from self.unplaced(context.workspace)
         yield from self.incomplete(context.workspace)
+        yield from self.undeclared(context.workspace)
+
+    @staticmethod
+    def undeclared(workspace: Workspace) -> Iterable[Finding]:
+        """Report applications without an app.pkl that amends the schema and evaluates."""
+        for project in workspace.projects:
+            if project.parent != EXAMPLES_ROOT:
+                continue
+            path = project / "app.pkl"
+            try:
+                Application.load(workspace.root / path)
+            except (FileNotFoundError, KeyError, PklError) as error:
+                yield Finding(
+                    Location(path.as_posix(), 1),
+                    f"an application declares its lanes in app.pkl, which amends "
+                    f"tools/apps/App.pkl: {error}",
+                )
 
     @staticmethod
     def unplaced(workspace: Workspace) -> Iterable[Finding]:

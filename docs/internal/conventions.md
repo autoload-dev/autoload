@@ -28,6 +28,7 @@ identities, not authored target declarations.
 | [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
 | [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
 | [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
+| [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
@@ -479,6 +480,20 @@ development dependencies are not active.
 The check reports, in each add-on module but its registry test modules, every
 `project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync` or a
 test operation its `addon.pkl` declares in `testOperations`.
+
+## RG022
+
+**The Python tooling names no add-on module or application.** The tools read what is
+specific to a component from its manifest: an add-on module's `addon.pkl`
+(`tools/addons/Addon.pkl`) and an application's `app.pkl` (`tools/apps/App.pkl`), which Pkl
+evaluates. A new component then needs no change of the tooling, and what is special about
+one stays visible beside it, as a standardized option.
+
+The check reads the string literals of every Python file in `tools/`, docstrings included,
+apart from tests and their support, and reports each word that names an add-on module, by
+directory or as `autoload_<module>`, or an application of `examples/`. A word is what a
+path, label or sentence separates; a file extension such as `.dart` is none. Comments may
+name components, such as to explain an exception.
 
 ## RG023
 

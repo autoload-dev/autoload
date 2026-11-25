@@ -48,12 +48,14 @@ py_library(
         "rules/rg019.py",
         "rules/rg020.py",
         "rules/rg021.py",
+        "rules/rg022.py",
         "rules/rg023.py",
     ],
     deps = [
         ":context_lib",
         ":framework_lib",
         "//tools/addons:new_lib",
+        "//tools/apps:apps_lib",
         "//tools/pkl:evaluate_lib",
     ],
 )
@@ -79,6 +81,7 @@ py_library(
     deps = [
         ":context_lib",
         "//tools/addons:new_lib",
+        "//tools/apps:apps_lib",
     ],
 )
 
@@ -287,6 +290,16 @@ py_test(
     name = "rg021_test",
     size = "small",
     srcs = ["rules/rg021_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg022_test",
+    size = "small",
+    srcs = ["rules/rg022_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

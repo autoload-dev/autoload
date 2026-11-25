@@ -1,0 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# The applications of examples/, from their app.pkl.
+py_library(
+    name = "apps_lib",
+    srcs = ["apps.py"],
+    data = ["App.pkl"],
+    visibility = [
+        "//tools/ci:__pkg__",
+        "//tools/conventions:__pkg__",
+    ],
+    deps = ["//tools/pkl:evaluate_lib"],
+)
+
+py_test(
+    name = "apps_test",
+    size = "small",
+    srcs = ["apps_test.py"],
+    deps = [":apps_lib"],
+)

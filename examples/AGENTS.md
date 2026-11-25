@@ -16,10 +16,14 @@ bazel test --build_tests_only --config=petri //examples/petri/...
 aspect work desktop:addon:sqlite        # an add-on module with its example and e2e tests
 ```
 
-These run the chosen example's desktop tests, as the desktop lane's work does; an add-on
-module's example runs with the module's lanes ([add-on guidance](../addons/AGENTS.md#lanes)).
-Petri's builds its engine from source with `--config=petri` and belongs to the source-engine
-lane. For a more focused test, editor or sidecar command,
+These run the chosen example's tests, as the lanes' work does; an add-on module's example
+runs with the module's lanes ([add-on guidance](../addons/AGENTS.md#lanes)).
+
+An application declares how the repository verifies it in its `app.pkl`, which amends
+[tools/apps/App.pkl](../tools/apps/App.pkl): the lanes that run its tests or build its
+release apps, and a Bazel configuration that all its commands take, such as Petri's
+`--config=petri` for its source-built engine. The lanes' work reads it; no tool names an
+application (RG022). For a more focused test, editor or sidecar command,
 read that example's README. Required timing and the evidence of each lane come from the root
 verification policy, not from the existence of these commands.
 
