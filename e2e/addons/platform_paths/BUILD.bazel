@@ -5,8 +5,8 @@ package(default_testonly = True)
 exports_files(
     ["project.godot"],
     visibility = [
-        "//e2e/addons/platform_paths/integration:__pkg__",
-        "//e2e/addons/platform_paths/unit:__pkg__",
+        "//e2e/addons/platform_paths/locations:__pkg__",
+        "//e2e/addons/platform_paths/results:__pkg__",
     ],
 )
 
@@ -20,8 +20,8 @@ godot_editor(
     name = "edit",
     project = ":tests",
     deps = [
-        "//e2e/addons/platform_paths/integration:suites",
-        "//e2e/addons/platform_paths/unit:suites",
+        "//e2e/addons/platform_paths/locations:suites",
+        "//e2e/addons/platform_paths/results:suites",
     ],
 )
 
@@ -30,7 +30,7 @@ godot_metadata_sync(
     size = "small",
     project = ":tests",
     deps = [
-        "//e2e/addons/platform_paths/integration:suites",
-        "//e2e/addons/platform_paths/unit:suites",
+        "//e2e/addons/platform_paths/locations:suites",
+        "//e2e/addons/platform_paths/results:suites",
     ],
 )

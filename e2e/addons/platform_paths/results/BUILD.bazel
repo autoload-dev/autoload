@@ -6,20 +6,20 @@ package(default_testonly = True)
 godot_resources(
     name = "suites",
     srcs = [
-        "DatabaseTest.gd",
-        "DatabaseTest.gd.uid",
+        "PathContractTest.gd",
+        "PathContractTest.gd.uid",
     ],
-    prefix = "unit",
-    visibility = ["//e2e/addons/sqlite:__pkg__"],
+    prefix = "results",
+    visibility = ["//e2e/addons/platform_paths:__pkg__"],
     deps = [
         "@autoload_gdunit//gdunit",
-        "@autoload_sqlite//sqlite",
+        "@autoload_platform_paths//platform_paths",
     ],
 )
 
 gdunit_test(
-    name = "unit",
+    name = "results",
     size = "small",
-    project = "//e2e/addons/sqlite:tests",
+    project = "//e2e/addons/platform_paths:tests",
     suites = [":suites"],
 )

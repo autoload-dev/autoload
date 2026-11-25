@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
-const PROBE := "res://unit/fixtures/probe.dart"
-const PLAIN := "res://unit/fixtures/plain.dart"
+const PROBE := "res://scripts/fixtures/probe.dart"
+const PLAIN := "res://scripts/fixtures/plain.dart"
 
 
 func _probe() -> Node2D:

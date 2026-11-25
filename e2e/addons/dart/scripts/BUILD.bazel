@@ -22,7 +22,7 @@ godot_resources(
         "fixtures/probe.dart",
         "fixtures/probe.dart.uid",
     ],
-    prefix = "unit",
+    prefix = "scripts",
     visibility = ["//e2e/addons/dart:__pkg__"],
     deps = [
         "//e2e/addons/dart",
@@ -31,7 +31,7 @@ godot_resources(
 )
 
 gdunit_test(
-    name = "unit",
+    name = "scripts",
     size = "small",
     project = "//e2e/addons/dart:tests",
     suites = [":suites"],

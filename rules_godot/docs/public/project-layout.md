@@ -119,8 +119,8 @@ declaration order:
 | Platform Paths add-on | Extension `platform_paths` | `//addons/platform_paths` |
 | SQLite demo | Project `demo` | `//examples/addons/sqlite:demo` |
 | SQLite Godot test project | Project `tests` | `//e2e/addons/sqlite:tests` |
-| SQLite unit suites | Executable `unit` | `//e2e/addons/sqlite/unit` |
-| Platform Paths operating-system suites | Executable `integration` | `//e2e/addons/platform_paths/integration` |
+| SQLite database suites | Executable `database` | `//e2e/addons/sqlite/database` |
+| Platform Paths operating-system location suites | Executable `locations` | `//e2e/addons/platform_paths/locations` |
 | Lichtpost | Production project `lichtpost` | `//examples/lichtpost` |
 | Lichtpost scene content | Resources `main` | `//examples/lichtpost/main` |
 | Lichtpost gameplay suites | Executable `tests` | `//examples/lichtpost/tests` |
@@ -317,7 +317,7 @@ labels with an [export platform](platforms.md#export-platforms).
 4. Run the add-on's suites and exported content, which validates their scripts:
 
    ```sh
-   bazel test //e2e/addons/sqlite/unit //examples/addons/sqlite/tests:exported
+   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
    ```
 
 5. Export its production content:
@@ -354,7 +354,7 @@ filesystem location alone does not make a file part of an operation. See
 [resource paths](resources.md) for the complete rules.
 
 The SQLite demo's scene and extension are dependencies of its
-production pack. Its separate Godot test project's `unit/` package declares
+production pack. Its separate Godot test project's `database/` package declares
 the GdUnit suites and framework. Production does not depend on those targets.
 Its exported-pack test starts the normal demo scene headless; that scene checks
 the database result and returns a failing exit status on error.

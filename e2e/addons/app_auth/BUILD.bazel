@@ -4,7 +4,7 @@ package(default_testonly = True)
 
 exports_files(
     ["project.godot"],
-    visibility = ["//e2e/addons/app_auth/unit:__pkg__"],
+    visibility = ["//e2e/addons/app_auth/login:__pkg__"],
 )
 
 godot_project(
@@ -16,12 +16,12 @@ godot_project(
 godot_editor(
     name = "edit",
     project = ":tests",
-    deps = ["//e2e/addons/app_auth/unit:suites"],
+    deps = ["//e2e/addons/app_auth/login:suites"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":tests",
-    deps = ["//e2e/addons/app_auth/unit:suites"],
+    deps = ["//e2e/addons/app_auth/login:suites"],
 )
