@@ -5,8 +5,6 @@ const LevelDefinition = preload("res://main/run/level_definition.gd")
 const Run = preload("res://main/run/run.gd")
 const Interface = preload("res://main/ui/interface/interface.gd")
 @export var level: LevelDefinition
-@onready var run: Run = $Run
-@onready var ui: Interface = $Interface
 var mode := "title"
 var paused := false
 var best := 0
@@ -15,6 +13,8 @@ var muted := false
 var reduced_motion := false
 var result_age := 0.0
 var settings_was_paused := false
+@onready var run: Run = $Run
+@onready var ui: Interface = $Interface
 
 
 func _ready() -> void:

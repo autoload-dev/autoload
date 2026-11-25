@@ -1,0 +1,2 @@
+[global]
+enable = ["MD001", "MD041"]

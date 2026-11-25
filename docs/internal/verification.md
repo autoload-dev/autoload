@@ -47,7 +47,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 
 | Kind | Evidence | Existing entry points |
 |---|---|---|
-| Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint`, `bazel run //tools/conventions` |
+| Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint lint:gdscript lint:markdown`, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `aspect work test:setup`, `bazel test //tools/ci:setup_action_test` |
 | API/documentation contracts | Inventories, metadata, visibility and docstrings | `aspect work docs` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `e2e/rules_godot/` (the regression module's desktop set); individual owning Bazel test targets |

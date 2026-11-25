@@ -3,9 +3,9 @@ extends Control
 
 const STATS_INTERVAL := 0.5
 
+var _stats_timer := 0.0
 @onready var dish: TextureRect = $Dish
 @onready var hud: MarginContainer = $Hud
-var _stats_timer := 0.0
 
 
 func _ready() -> void:

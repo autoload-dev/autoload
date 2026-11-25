@@ -268,6 +268,16 @@ class SelectionTest(unittest.TestCase):
         ):
             self.assertEqual(list(MODULES), self.directories("lint", path))
 
+    def test_gdscript_lint_runs_for_scripts_and_its_linter(self) -> None:
+        for path in ("examples/lichtpost/main/game.gd", "tools/lint/gdscript.py"):
+            self.assertEqual(["."], self.directories("lint:gdscript", path))
+        self.assertEqual([], self.directories("lint:gdscript", "docs/a.md", "a.py"))
+
+    def test_markdown_lint_runs_for_markdown_and_its_configuration(self) -> None:
+        for path in ("rules_godot/docs/public/engine.md", ".rumdl.toml"):
+            self.assertEqual(["."], self.directories("lint:markdown", path))
+        self.assertEqual([], self.directories("lint:markdown", "a.gd", "a.py"))
+
     def test_generated_runs_for_what_shapes_a_generated_file(self) -> None:
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
         for path in (

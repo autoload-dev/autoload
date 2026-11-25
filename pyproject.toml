@@ -7,9 +7,16 @@ force-exclude = true
 per-file-target-version = { "**/tools/platforms/launch/*.py" = "py39" }
 
 [tool.ruff.lint]
-# Ruff's default rules plus required annotations.
-extend-select = ["ANN"]
+# Ruff's default rules, required annotations and a docstring on every module and package
+# but tests.
+extend-select = ["ANN", "D100", "D104"]
 ignore = ["ANN401"]
+
+# A test's name and its cases say what it covers, so test modules and packages need no
+# docstring.
+[tool.ruff.lint.per-file-ignores]
+"*_test.py" = ["D100"]
+"**/tests/**" = ["D100", "D104"]
 
 # The lint aspects (`aspect lint`, tools/lint/linters.bzl) see only the sources of one target,
 # so the first-party packages are named rather than discovered.

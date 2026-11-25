@@ -1,4 +1,35 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
+
+# The Python packages of the linters, from PyPI as @lint_pypi (MODULE.bazel). `bazel run
+# //tools/lint:requirements.update` relocks them; the resolution leaves out releases newer
+# than its date, so relocking is reproducible until the date moves.
+lock(
+    name = "requirements",
+    srcs = ["requirements.in"],
+    out = "requirements.txt",
+    args = [
+        "--universal",
+        "--exclude-newer=2026-11-10",
+    ],
+)
+
+# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py); the work
+# lint:gdscript runs it.
+py_binary(
+    name = "gdscript",
+    srcs = ["gdscript.py"],
+    deps = ["@lint_pypi//gdtoolkit"],
+)
+
+py_test(
+    name = "gdscript_test",
+    size = "small",
+    srcs = ["gdscript_test.py"],
+    args = ["$(rootpath //:.gdlintrc)"],
+    data = ["//:.gdlintrc"],
+    deps = [":gdscript"],
+)
 
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
 # Python is linted by the aspects of linters.bzl (`aspect lint`), Starlark by //tools/format.

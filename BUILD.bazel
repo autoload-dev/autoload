@@ -15,6 +15,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+# gdlint's rules, which //tools/lint:gdscript_test checks.
+exports_files(
+    [".gdlintrc"],
+    visibility = ["//tools/lint:__pkg__"],
+)
+
 # The Bazel wrapper (tools/bazel), whose test runs it in a scratch workspace.
 exports_files(
     ["tools/bazel"],

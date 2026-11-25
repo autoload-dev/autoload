@@ -36,6 +36,18 @@ python.toolchain(python_version = "3.14")
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
 
+# The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_dependency = True)
+pip.parse(
+    hub_name = "lint_pypi",
+    python_version = "3.14",
+    requirements_lock = "//tools/lint:requirements.txt",
+)
+use_repo(pip, "lint_pypi")
+
+uv = use_extension("@rules_python//python/uv:uv.bzl", "uv", dev_dependency = True)
+uv.configure(version = "0.13.5")
+
 # The ruleset, whose API documentation tools/docs extracts and checks.
 bazel_dep(name = "autoload_rules_godot", version = "0.0.0", dev_dependency = True)
 local_path_override(

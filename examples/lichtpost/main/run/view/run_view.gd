@@ -21,18 +21,18 @@ const VIEW_HEIGHT := 12.0
 const COURIER_LEAD := 0.2
 ## Height of the ground line above the bottom edge, as a share of the visible height.
 const GROUND_LINE := 0.4
-@onready var course: Node3D = $Course
-@onready var courier: Courier = $CourierRobot
-@onready var camera: Camera3D = $Camera
-@onready var greenhouse: Greenhouse = $Greenhouse
-@onready var parallax: Parallax = $Parallax
-@onready var effects: Effects = $RunEffects
 var light_nodes: Array[LightNode] = []
 ## Metres the camera shows, and the ground line's height on screen; set on resize.
 var view_size := Vector2(VIEW_WIDTH, VIEW_HEIGHT)
 var ground_y := 0.0
 var visual_time := 0.0
 var reduced_motion := false
+@onready var course: Node3D = $Course
+@onready var courier: Courier = $CourierRobot
+@onready var camera: Camera3D = $Camera
+@onready var greenhouse: Greenhouse = $Greenhouse
+@onready var parallax: Parallax = $Parallax
+@onready var effects: Effects = $RunEffects
 
 
 func _ready() -> void:

@@ -76,13 +76,14 @@ pre_commit = task(
 def _pre_push_impl(ctx: TaskContext):
     aspect = ctx.std.env.current_exe()
 
-    # Each step runs alone as well. The work covers lint, the generated files, the conventions,
-    # the setup contracts, the ruleset's fast tests, the API documentation with its contract
-    # cases, and the repository tooling's tests, the setup action's among them. Only the steps
-    # whose inputs changed since the merge base with origin/main run (tools/ci/changes.py).
+    # Each step runs alone as well. The work covers lint, GDScript and Markdown included, the
+    # generated files, the conventions, the setup contracts, the ruleset's fast tests, the API
+    # documentation with its contract cases, and the repository tooling's tests, the setup
+    # action's among them. Only the steps whose inputs changed since the merge base with
+    # origin/main run (tools/ci/changes.py).
     return _steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
-        ("work", lambda: run_work(ctx, "lint", "generated", "conventions", "test:setup", "test:fast", "docs", "test:tools", changed_since = "origin/main")),
+        ("work", lambda: run_work(ctx, "lint", "lint:gdscript", "lint:markdown", "generated", "conventions", "test:setup", "test:fast", "docs", "test:tools", changed_since = "origin/main")),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ])
 
