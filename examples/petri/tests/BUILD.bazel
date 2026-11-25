@@ -15,7 +15,6 @@ godot_resources(
         "SceneTest.gd",
         "SceneTest.gd.uid",
     ],
-    engine = "petri",
     prefix = "tests",
     visibility = ["//examples/petri:__pkg__"],
     deps = [
@@ -27,7 +26,7 @@ godot_resources(
 gdunit_test(
     name = "tests",
     size = "small",
-    engine = "petri",
+    engine = "simulation",
     project = "//examples/petri",
     suites = [":suites"],
 )

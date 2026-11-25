@@ -100,22 +100,18 @@ def _test_the_writer_and_test_list_the_file_they_place(name):
     )
 
 def _the_writer_and_test_list_the_file_they_place(env, targets):
-    derived = targets.derived
+    placed = "%s/%s.gdbuild" % (_PACKAGE, _CHECKED_IN)
     for subject, target, test in [("writer", targets.writer, False), ("test", targets.test, True)]:
         manifest = manifest_content(target, ".run.json")
         env.expect.where(target = subject, field = "test").that_bool(manifest["test"]).equals(test)
         env.expect.where(target = subject, field = "writer").that_str(manifest["writer"]).equals(
-            str(targets.writer.label).removeprefix("@@"),
+            str(targets.writer.label),
         )
-        placed = "%s/%s.gdbuild" % (_PACKAGE, _CHECKED_IN)
-        env.expect.where(target = subject).that_collection(
-            manifest["files"],
-            expr = "files",
-        ).contains_exactly([{
-            "built": "%s/%s.gdbuild" % (_PACKAGE, derived.label.name),
-            "checked_in": placed,
-            "target": placed,
-        }])
+        env.expect.where(target = subject, field = "built").that_str(manifest["built"]).equals(
+            "%s/%s.gdbuild" % (_PACKAGE, targets.derived.label.name),
+        )
+        env.expect.where(target = subject, field = "checked_in").that_str(manifest["checked_in"]).equals(placed)
+        env.expect.where(target = subject, field = "target").that_str(manifest["target"]).equals(placed)
 
 # A file nobody checked in yet is listed without its checked-in copy; the test fails for it
 # and names the writer.
@@ -128,7 +124,7 @@ def _test_a_missing_checked_in_file_is_listed_empty(name):
 
 def _a_missing_checked_in_file_is_listed_empty(env, targets):
     manifest = manifest_content(targets.test, ".run.json")
-    env.expect.that_collection([each["checked_in"] for each in manifest["files"]]).contains_exactly([""])
+    env.expect.that_str(manifest["checked_in"]).equals("")
 
 def _test_the_profile_size_and_timeout_reach_the_test(name):
     analysis_test(

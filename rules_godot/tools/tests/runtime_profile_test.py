@@ -13,10 +13,10 @@ from unittest import mock
 from tools import runtime_profile
 from tools.runtime_profile import (
     ProfileError,
-    check_files,
+    check_file,
     compose_profile,
     derive,
-    place_files,
+    place_file,
     render_profile,
 )
 
@@ -57,30 +57,6 @@ class CompositionTest(unittest.TestCase):
         )
         self.assertEqual("build_profile", profile["type"])
         self.assertEqual(["A", "B"], profile["disabled_classes"])
-
-    def test_options_the_engines_build_lacks_are_left_out(self) -> None:
-        detected = {
-            "disabled_classes": [],
-            "disabled_build_options": {"rendering_device": False, "vulkan": False},
-        }
-        profile = compose_profile(detected, keep=[], unknown_options=["rendering_device"])
-        self.assertEqual({"vulkan": False}, profile["disabled_build_options"])
-
-    def test_an_option_brings_the_options_its_build_needs(self) -> None:
-        detected = {
-            "disabled_classes": [],
-            "disabled_build_options": {"disable_physics_3d": True},
-        }
-        implied = {"disable_physics_3d": {"module_gridmap_enabled": False}}
-        profile = compose_profile(detected, keep=[], implied_options=implied)
-        self.assertEqual(
-            {"disable_physics_3d": True, "module_gridmap_enabled": False},
-            profile["disabled_build_options"],
-        )
-        # An option the detection keeps at its default brings nothing.
-        detected["disabled_build_options"] = {}
-        profile = compose_profile(detected, keep=[], implied_options=implied)
-        self.assertEqual({}, profile["disabled_build_options"])
 
     def test_a_detection_without_the_expected_fields_is_rejected(self) -> None:
         with self.assertRaises(ProfileError):
@@ -163,13 +139,9 @@ class SyncTest(unittest.TestCase):
         self.base = Path(temp.name)
         self.workspace = self.base / "workspace"
         (self.workspace / "app").mkdir(parents=True)
-        built = self.base / "built.gdbuild"
-        built.write_text("derived\n")
-        self.entry = {
-            "built": built,
-            "checked_in": None,
-            "target": "app/app.gdbuild",
-        }
+        self.built = self.base / "built.gdbuild"
+        self.built.write_text("derived\n")
+        self.checked_in = self.base / "checked.gdbuild"
 
     def capture(
         self, function: Callable[..., Any], *args: Any, **kwargs: Any
@@ -180,8 +152,16 @@ class SyncTest(unittest.TestCase):
             result = function(*args, **kwargs)
         return result, stderr.getvalue()
 
+    def place(self) -> str:
+        return self.capture(place_file, self.built, "app/app.gdbuild", self.workspace)[1]
+
+    def check(self, checked_in: Path | None) -> tuple[int, str]:
+        return self.capture(
+            check_file, self.built, checked_in, "app/app.gdbuild", "//app:profile"
+        )
+
     def test_writing_creates_the_file_and_names_it_for_commit(self) -> None:
-        _, report = self.capture(place_files, [self.entry], self.workspace)
+        report = self.place()
         self.assertEqual("derived\n", (self.workspace / "app/app.gdbuild").read_text())
         self.assertIn("wrote app/app.gdbuild; commit it", report)
 
@@ -189,39 +169,33 @@ class SyncTest(unittest.TestCase):
         target = self.workspace / "app/app.gdbuild"
         target.write_text("derived\n")
         before = target.stat().st_mtime_ns
-        _, report = self.capture(place_files, [self.entry], self.workspace)
+        report = self.place()
         self.assertEqual(before, target.stat().st_mtime_ns)
         self.assertNotIn("wrote", report)
 
     def test_a_stale_file_is_replaced(self) -> None:
         target = self.workspace / "app/app.gdbuild"
         target.write_text("old\n")
-        self.capture(place_files, [self.entry], self.workspace)
+        self.place()
         self.assertEqual("derived\n", target.read_text())
 
     def test_the_test_fails_for_a_missing_file_and_names_the_command(self) -> None:
-        status, report = self.capture(check_files, [self.entry], "//app:profile")
+        status, report = self.check(None)
         self.assertEqual(1, status)
         self.assertIn("app/app.gdbuild is missing", report)
         self.assertIn("bazel run //app:profile", report)
 
     def test_the_test_fails_for_a_stale_file_and_shows_the_difference(self) -> None:
-        checked_in = self.base / "checked.gdbuild"
-        checked_in.write_text("old\n")
-        status, report = self.capture(
-            check_files, [dict(self.entry, checked_in=checked_in)], "//app:profile"
-        )
+        self.checked_in.write_text("old\n")
+        status, report = self.check(self.checked_in)
         self.assertEqual(1, status)
         self.assertIn("app/app.gdbuild does not match", report)
         self.assertIn("-old", report)
         self.assertIn("+derived", report)
 
-    def test_the_test_passes_for_up_to_date_files(self) -> None:
-        checked_in = self.base / "checked.gdbuild"
-        checked_in.write_text("derived\n")
-        status, _ = self.capture(
-            check_files, [dict(self.entry, checked_in=checked_in)], "//app:profile"
-        )
+    def test_the_test_passes_for_an_up_to_date_file(self) -> None:
+        self.checked_in.write_text("derived\n")
+        status, _ = self.check(self.checked_in)
         self.assertEqual(0, status)
 
 

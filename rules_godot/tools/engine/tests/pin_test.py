@@ -14,6 +14,7 @@ from tools.engine.configure import (
     pin_digest,
     pinned_graph,
     prepare_custom_modules,
+    read_lock,
     stand_in_host,
 )
 from tools.engine.pin import copy_tree, extract, merge
@@ -166,18 +167,27 @@ class PinTest(unittest.TestCase):
             pin_digest(args, Path("scons"))
         self.assertEqual(
             {Path(call.args[0]).name for call in digest.call_args_list},
-            {"configure.py", "module_graph.py", "source_tree.py", "__init__.py"},
+            {
+                "configure.py",
+                "module_graph.py",
+                "source_tree.py",
+                # The build profile's helpers leave a pinned graph's class list out.
+                "build_profile.py",
+                "__init__.py",
+            },
         )
 
     def test_a_lock_entry_counts_only_for_its_digest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             lock = Path(directory) / "engine.lock.json"
             self.assertEqual(
-                pinned_graph(lock, "linux_x86_64_editor", "sha256:a"), ("missing", None)
+                pinned_graph(read_lock(lock), "linux_x86_64_editor", "sha256:a"),
+                ("missing", None),
             )
             lock.write_text("")
             self.assertEqual(
-                pinned_graph(lock, "linux_x86_64_editor", "sha256:a"), ("missing", None)
+                pinned_graph(read_lock(lock), "linux_x86_64_editor", "sha256:a"),
+                ("missing", None),
             )
             graph = {"version": "4.7.2.stable", "generators": "sha256:g"}
             lock.write_text(
@@ -191,14 +201,16 @@ class PinTest(unittest.TestCase):
                 )
             )
             self.assertEqual(
-                pinned_graph(lock, "linux_x86_64_editor", "sha256:a"),
+                pinned_graph(read_lock(lock), "linux_x86_64_editor", "sha256:a"),
                 ("pinned", graph | {"generators": [{"spec": {}, "dependencies": []}]}),
             )
             self.assertEqual(
-                pinned_graph(lock, "linux_x86_64_editor", "sha256:b"), ("stale", None)
+                pinned_graph(read_lock(lock), "linux_x86_64_editor", "sha256:b"),
+                ("stale", None),
             )
             self.assertEqual(
-                pinned_graph(lock, "macos_arm64_editor", "sha256:a"), ("missing", None)
+                pinned_graph(read_lock(lock), "macos_arm64_editor", "sha256:a"),
+                ("missing", None),
             )
 
     def test_custom_modules_are_copied_without_package_files(self) -> None:
@@ -253,7 +265,9 @@ class PinTest(unittest.TestCase):
             (reference,) = lock["generators"]
             for key in keys:
                 self.assertEqual(lock["recipes"][key]["graph"]["generators"], reference)
-                status, graph = pinned_graph(root / "engine.lock.json", key, key)
+                status, graph = pinned_graph(
+                    read_lock(root / "engine.lock.json"), key, key
+                )
                 self.assertEqual(status, "pinned")
                 assert graph is not None
                 (generator,) = graph["generators"]
@@ -284,17 +298,23 @@ class PinTest(unittest.TestCase):
             )
             lock = root / "engine.lock.json"
             key = "macos_arm64_template_release"
-            self.assertEqual(pinned_graph(lock, key, "sha256:r")[0], "pinned")
+            self.assertEqual(pinned_graph(read_lock(lock), key, "sha256:r")[0], "pinned")
             self.assertEqual(
-                pinned_graph(lock, key, "sha256:v", "@@//app:runtime.gdbuild")[0],
+                pinned_graph(read_lock(lock), key, "sha256:v", "@@//app:runtime.gdbuild")[
+                    0
+                ],
                 "pinned",
             )
             self.assertEqual(
-                pinned_graph(lock, key, "sha256:r", "@@//app:runtime.gdbuild")[0],
+                pinned_graph(read_lock(lock), key, "sha256:r", "@@//app:runtime.gdbuild")[
+                    0
+                ],
                 "stale",
             )
             self.assertEqual(
-                pinned_graph(lock, key, "sha256:v", "@@//app:other.gdbuild")[0],
+                pinned_graph(read_lock(lock), key, "sha256:v", "@@//app:other.gdbuild")[
+                    0
+                ],
                 "missing",
             )
 

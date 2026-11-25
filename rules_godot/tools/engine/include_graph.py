@@ -172,14 +172,37 @@ def _directives(text: str) -> Iterator[tuple[str, bool]]:
         yield include, False
 
 
-def _file_includes(root: Path, path: str, resolver: _Resolver) -> set[str]:
-    try:
-        text = (root / path).read_text(errors="replace")
-    except FileNotFoundError, IsADirectoryError:
-        return set()
+class TreeCache:
+    """
+    The files of a source tree and their include directives, read once.
+
+    The runtime variants of a recipe render their graphs from one tree, so they share it.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self._files: set[str] | None = None
+        self._directives: dict[str, list[tuple[str, bool]]] = {}
+
+    def files(self) -> set[str]:
+        if self._files is None:
+            self._files = tree_files(self.root)
+        return self._files
+
+    def directives(self, path: str) -> list[tuple[str, bool]]:
+        if path not in self._directives:
+            try:
+                text = (self.root / path).read_text(errors="replace")
+            except FileNotFoundError, IsADirectoryError:
+                text = ""
+            self._directives[path] = list(_directives(text))
+        return self._directives[path]
+
+
+def _file_includes(tree: TreeCache, path: str, resolver: _Resolver) -> set[str]:
     return {
         name
-        for include, quoted in _directives(text)
+        for include, quoted in tree.directives(path)
         for name in resolver.resolve(path, include, quoted)
     }
 
@@ -225,15 +248,15 @@ def _option_headers(
 
 
 def _includes(
-    root: Path, path: str, generated: Mapping[str, Generated], resolver: _Resolver
+    tree: TreeCache, path: str, generated: Mapping[str, Generated], resolver: _Resolver
 ) -> frozenset[str]:
     if path in generated:
         return frozenset(_generated_includes(path, generated[path], resolver))
-    return frozenset(_file_includes(root, path, resolver))
+    return frozenset(_file_includes(tree, path, resolver))
 
 
 def include_graph(
-    root: Path,
+    source: Path | TreeCache,
     groups: Iterable[CompileGroup],
     generated: Mapping[str, Generated],
     extra_roots: Iterable[str] = (),
@@ -242,22 +265,24 @@ def include_graph(
     Return each file that the groups' sources reach mapped to the files it includes.
 
     A source also includes the headers its options name. Extra roots, such as Swift's
-    bridging header, are followed like sources.
+    bridging header, are followed like sources. source is the tree's root, or a TreeCache
+    that shares the files the scan reads between graphs of one tree.
     """
+    tree = source if isinstance(source, TreeCache) else TreeCache(source)
     groups = list(groups)
     directories = [
         name
         for group in groups
         for name in [*group.includes, *option_includes(group.copts)[0]]
     ]
-    resolver = _Resolver(tree_files(root) | set(generated), directories)
+    resolver = _Resolver(tree.files() | set(generated), directories)
     forced = _option_headers(groups, resolver)
     graph: dict[str, frozenset[str]] = {}
     pending = [*forced, *extra_roots]
     while pending:
         path = pending.pop()
         if path not in graph:
-            graph[path] = _includes(root, path, generated, resolver) | forced.get(
+            graph[path] = _includes(tree, path, generated, resolver) | forced.get(
                 path, set()
             )
             pending.extend(graph[path])

@@ -160,20 +160,6 @@ def _test_an_application_runtime_names_its_engine(name):
 def _test_an_application_runtime_names_its_engine_impl(env, target):
     env.expect.that_str(target[GodotComponentInfo].engine).equals("custom")
 
-def _test_resources_of_an_engine_fail_under_another(name):
-    analysis_test(
-        name = name,
-        target = _NAMED_OPERATION + "default_pack",
-        impl = _test_resources_of_an_engine_fail_under_another_impl,
-        config_settings = {_ENGINE: ""},
-        expect_failure = True,
-    )
-
-def _test_resources_of_an_engine_fail_under_another_impl(env, target):
-    env.expect.that_target(target).failures().contains_predicate(matching.contains(
-        "needs the engine beta, but an operation of the default engine reaches it",
-    ))
-
 def engine_name_test_suite(name):
     test_suite(
         name = name,
@@ -187,6 +173,5 @@ def engine_name_test_suite(name):
             _test_a_forwarded_component_reports_the_forwarding_engine,
             _test_an_operation_names_its_engine,
             _test_an_application_runtime_names_its_engine,
-            _test_resources_of_an_engine_fail_under_another,
         ],
     )

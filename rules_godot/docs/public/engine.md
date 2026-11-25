@@ -16,6 +16,7 @@ engine's components.
 | Source-built engines for many slots, with one build policy | [`godot_engines.source_build`](#declare-a-source-build) |
 | Components of different sources in one engine | [`--extra_toolchains`](#replace-slots) or [`select()`](#choose-between-prepared-recipes) |
 | An engine that only the targets naming it use, such as one with your own module | [An engine name](#name-an-engine) |
+| Your own engine for every target that names none | [Replace the default engine](#replace-the-default-engine) |
 
 The supported versions are **>=4.7.2 <5.0.0**; [versions](versions.md) lists the built-in
 release pins.
@@ -167,6 +168,29 @@ analysis with the missing role, rather than taking the default engine's runtime.
 execution platform it has no editor for is skipped: Bazel resolves the actions that run the
 editor on the next execution platform with one, such as this host behind a remote Linux
 executor, and the build's other actions stay where they are.
+
+## Replace the default engine
+
+Components that name no engine form the default engine, which every target without an
+`engine` uses. To give the whole repository your own engine, declare its source build
+without `engine` and register it instead of the prebuilt hub, or ahead of it so that the
+prebuilt one fills only the slots yours lacks:
+
+```starlark
+godot_engines.source_build(
+    name = "godot_studio",
+    # no engine: these components are the default engine
+    source = "@godot_sources//:source.json",
+    custom_modules = {"//engines/studio/modules/terrain:config.py": "terrain"},
+    lock_file = "//engines/studio:godot_studio.lock.json",
+)
+register_toolchains("@godot_studio//toolchains:all", "@godot//toolchains:all")
+```
+
+Keep each engine's inputs in a directory of its own, `engines/<engine name>/`: its modules
+in `modules/<module>/`, its patches in `patches/` and its source build's lock file beside
+them. Engines are shared by the applications that name them, so they live apart from
+every project; [project layout](project-layout.md) shows the place in a repository.
 
 ## Build an engine from source
 
@@ -570,6 +594,14 @@ the recipe's `enabled_modules` names leaves that recipe without the variant: the
 applications that select it fail with the reason, and the recipe's other applications build
 as before; with a lock file, pinning that variant fails with the reason. `module_<name>_enabled` switches custom modules too, those a recipe enables
 through `default_modules`.
+
+A recipe reads a profile's options as its Godot version does. The switches the editor writes
+that the version's build lacks, such as 4.7's `rendering_device`, are left out, and an
+option whose build needs another brings it: in 4.7.0 to 4.7.2, `disable_physics_3d` turns
+`module_gridmap_enabled` off, since gridmap does not compile without 3D physics there. A
+profile that turns a rendering driver off, such as Metal for a project on the Compatibility
+renderer, leaves the methods that need it out of the recipe's `renderers`, so applications
+check their project's method against what the variant runs.
 
 ## Debug symbols
 

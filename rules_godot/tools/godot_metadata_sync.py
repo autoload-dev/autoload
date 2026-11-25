@@ -8,14 +8,14 @@ ext_resource names.
 
 import argparse
 import json
-import os
 import sys
 from collections.abc import Collection
 from pathlib import Path
 
 from tools.godot_files import sidecar_source
-from tools.godot_run import report, runfile_locator, tree_files_by_path
+from tools.godot_run import report, tree_files_by_path
 from tools.godot_staging import COMPLETIONS, open_original
+from tools.godot_sync import Runfile, sync_main
 from tools.metadata_index import lacking
 
 
@@ -184,29 +184,25 @@ def _list(arguments: list[str]) -> None:
     args.output.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
 
 
+def _check(manifest: dict, runfile: Runfile) -> int:
+    entries = json.loads(runfile(manifest["metadata"]).read_text(encoding="utf-8"))
+    return check_metadata(entries, manifest["writer"], required=manifest["required"])
+
+
+def _write(manifest: dict, runfile: Runfile, workspace: Path) -> None:
+    entries = json.loads(runfile(manifest["metadata"]).read_text(encoding="utf-8"))
+    try:
+        place_metadata(entries, workspace, write=True)
+    except OSError as error:
+        report(str(error))
+        raise SystemExit(1) from None
+
+
 def main() -> None:
     if sys.argv[1:2] == ["list"]:
         _list(sys.argv[2:])
         return
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", required=True, type=Path)
-    args = parser.parse_args()
-    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-    runfile = runfile_locator(manifest["workspace"])
-    entries = json.loads(runfile(manifest["metadata"]).read_text(encoding="utf-8"))
-    if manifest["test"]:
-        raise SystemExit(
-            check_metadata(entries, manifest["writer"], required=manifest["required"])
-        )
-    workspace = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
-    if not workspace:
-        report("write metadata with bazel run")
-        raise SystemExit(1)
-    try:
-        place_metadata(entries, Path(workspace), write=True)
-    except OSError as error:
-        report(str(error))
-        raise SystemExit(1) from None
+    sync_main(__doc__ or "", _check, _write, "metadata")
 
 
 if __name__ == "__main__":

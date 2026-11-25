@@ -38,6 +38,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolcha
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//godot/private:actions.bzl", "PATH_MAPPING")
 load("//godot/private:flags.bzl", "FlagInfo")
 
 visibility(["//godot/..."])
@@ -297,17 +298,29 @@ def _output_roots(text):
             roots.append(root)
     return roots
 
-def _root_files(label, roots, candidates):
-    """One file of each output directory, whose root path mapping rewrites."""
-    files = []
-    for root in roots:
-        matches = [file for file in candidates if file.root.path == root]
-        if not matches:
-            fail("%s: no input or output lies in %s" % (label, root))
-        files.append(matches[0])
-    return files
+def _first_by_root(files, by_root):
+    """The first of the files in each output directory, added to by_root's."""
+    result = dict(by_root)
+    for file in files:
+        result.setdefault(file.root.path, file)
+    return result
 
-def _portable_script(ctx, analyzed, candidates):
+def _root_files(label, roots, candidates, toolchain_files):
+    """
+    One file of each output directory, whose root path mapping rewrites.
+
+    The analysis' own headers and wrappers lie in the directories its sources name; only a
+    directory none of them lies in takes a file of the C++ toolchain, whose files are many.
+    """
+    by_root = _first_by_root(candidates, {})
+    if [root for root in roots if root not in by_root]:
+        by_root = _first_by_root(toolchain_files.to_list(), by_root)
+    missing = [root for root in roots if root not in by_root]
+    if missing:
+        fail("%s: no input or output lies in %s" % (label, missing[0]))
+    return [by_root[root] for root in roots]
+
+def _portable_script(ctx, analyzed, candidates, toolchain_files):
     """
     Write the analysis script with ${ROOT<n>} for each output directory it names.
 
@@ -321,7 +334,7 @@ def _portable_script(ctx, analyzed, candidates):
     content = _SCRIPT.replace("{ROOTS}\n", root_lines).replace("{CASES}", cases)
     script = ctx.actions.declare_file("_macros/{}.sh".format(ctx.label.name))
     ctx.actions.write(script, content.replace("{COUNT}", str(len(analyzed))))
-    return script, _root_files(ctx.label, roots, candidates)
+    return script, _root_files(ctx.label, roots, candidates, toolchain_files)
 
 def _analyze(ctx, analyzed):
     """
@@ -333,8 +346,8 @@ def _analyze(ctx, analyzed):
     """
     toolchain_files = find_cc_toolchain(ctx).all_files
     candidates = [header for _, header in analyzed] + [info.wrapper for info, _ in analyzed]
-    script, representatives = _portable_script(ctx, analyzed, candidates + toolchain_files.to_list())
-    env, requirements = {}, {"supports-path-mapping": "1"}
+    script, representatives = _portable_script(ctx, analyzed, candidates, toolchain_files)
+    env, requirements = {}, dict(PATH_MAPPING)
     for info, _ in analyzed:
         env |= info.env
         requirements |= info.execution_requirements

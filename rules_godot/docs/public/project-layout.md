@@ -8,8 +8,11 @@ scenarios, add-ons or configuration variants holds a project per each in subdire
 repository follows this layout: games such as Lichtpost are projects directly in `examples/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
-physical placement of a source decides which project or add-on owns it. A project's custom
-engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
+physical placement of a source decides which project or add-on owns it. A custom engine is a shared
+resource, not a part of one application: its modules live in `engines/<engine name>/modules/<module>/`,
+its patches in `engines/<engine name>/patches/` and its source build's lock file beside them, in an
+`engines/` directory anywhere in the repository, such as at the root of a consuming repository.
+A Godot project holds no engine patches or source build lock files.
 An add-on's Godot test project holds its suites in packages named after their topic; a
 condition a test needs to run, such as a real operating system, is a tag of the test, not a
 directory. An application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
@@ -173,7 +176,7 @@ a project-wide operation.
 | Application and signing targets | Product delivery | Keep a game's APK/AAB, desktop app, iOS app and signing targets with the project, or in a separate delivery package when its dependencies or ownership justify one. |
 
 Module repositories, engine components and their registration sets belong to workspace
-or shared engine infrastructure, such as an `engines/` package per set. They provide
+or shared engine infrastructure, such as an `engines/<name>/` package per set or custom engine. They provide
 engines and SDK dependencies to projects; they do not belong to a gameplay package merely
 because it uses them. An editor component supplies an executable; the core `godot_editor`
 above opens an editor view of a project.

@@ -1,5 +1,6 @@
 """Shell files and engine checks that the application rules of all operating systems share."""
 
+load("//godot/engine/private:selection.bzl", "require_pack_engine")
 load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private:release.bzl", "app_version", "build_number")
 
@@ -100,25 +101,18 @@ def _component_values(engine):
     component = engine[GodotComponentInfo] if engine and GodotComponentInfo in engine else None
     if not component:
         return {}
-    values = {"--engine": component.engine}
-    if component.kind == "prebuilt":
-        values["--assert-version"] = component.version
+    values = {"--assert-version": component.version} if component.kind == "prebuilt" else {}
     if component.renderers != None:
         values["--renderers"] = ",".join(component.renderers)
     return values
-
-def _pack_values(pack):
-    """The check_engine_version.py option naming the engine of the editor that exported a pack."""
-    component = getattr(pack, "editor_component", None) if pack else None
-    return {"--pack-engine": component.engine} if component else {}
 
 def check_engine(ctx, files, engine = None, values = {}, pack = None):
     """
     Check an engine's own facts: versions against assertions, platform slices, renderers.
 
     The version of the editor that exported the pack is not compared; editor and runtime
-    are independent builds. Their engine is: the runtime must belong to the engine whose
-    editor exported the pack. With a pack's export facts among files, see pack_facts, the
+    are independent builds. Their engine is: analysis fails unless the runtime belongs to
+    the engine whose editor exported the pack. With a pack's export facts among files, see pack_facts, the
     project's rendering method must be one a source-built engine with declared renderers
     runs.
 
@@ -137,10 +131,9 @@ def check_engine(ctx, files, engine = None, values = {}, pack = None):
     """
     stamp = ctx.actions.declare_file(ctx.label.name + ".engine_version")
     args = ctx.actions.args()
-    component = _component_values(engine)
-
-    # Only a runtime that names its component's engine is compared with the pack's.
-    values = component | (_pack_values(pack) if "--engine" in component else {}) | values
+    if engine and GodotComponentInfo in engine:
+        require_pack_engine(ctx.label, pack, engine[GodotComponentInfo])
+    values = _component_values(engine) | values
 
     # Only an engine with declared renderers needs the pack's facts.
     files = {option: depset_ for option, depset_ in files.items() if option != "--facts" or "--renderers" in values}

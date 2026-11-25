@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 load(":context.bzl", "no_project")
-load(":flags.bzl", "bool_flag", "bool_value", "string_flag")
+load(":flags.bzl", "bool_value", "string_flag")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
@@ -124,24 +124,12 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-# Whether the runtime an application packages has a build profile, which godot_app sets
-# with its build_profile. A prebuilt runtime cannot leave classes out, so where a hub
-# builds the slot from source too, its prebuilt component requires it false.
-bool_flag(
-    name = "profiled_runtime",
-    build_setting_default = False,
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
-    name = "runtime_with_profile",
-    flag_values = {":profiled_runtime": "true"},
-    visibility = ["//visibility:public"],
-)
-
+# The runtime an application packages has no build profile. A prebuilt runtime cannot
+# leave classes out, so where a hub builds the slot from source too, its prebuilt component
+# requires this and the source-built one registered after it serves the others.
 config_setting(
     name = "runtime_without_profile",
-    flag_values = {":profiled_runtime": "false"},
+    flag_values = {":build_profile_label": ""},
     visibility = ["//visibility:public"],
 )
 

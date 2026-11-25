@@ -22,6 +22,8 @@ NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 # examples/, and the ruleset's consumer scenarios with their smoke paths.
 EXAMPLES_ROOT = EXAMPLES
 REGRESSION_ROOT = Path("e2e/rules_godot")
+# The directory of custom engines, shared by the applications beside it and no project.
+ENGINES = "engines"
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
 SMOKE_ROOT = "smoke"
 
@@ -81,6 +83,11 @@ def flat_project(
     return root if root in configured else None
 
 
+def is_application_path(parts: tuple[str, ...]) -> bool:
+    """Whether a path below examples/, given by its parts, lies in an application project."""
+    return len(parts) > 1 and parts[0] != ENGINES
+
+
 def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Path | None:
     """
     The project that path lies in, below the consumer root ``root``: a project directly in
@@ -94,4 +101,6 @@ def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Pa
         return scenario_project(parts)
     if is_flat(root):
         return flat_project(root, parts, configured)
-    return root / parts[0] if root == EXAMPLES_ROOT and len(parts) > 1 else None
+    if root == EXAMPLES_ROOT and is_application_path(parts):
+        return root / parts[0]
+    return None

@@ -107,6 +107,7 @@ SUPPORT_MODULES = [
     "//godot/private:run.bzl",
     "//godot/private:runtime_profile.bzl",
     "//godot/private:symbols.bzl",
+    "//godot/private:sync.bzl",
     "//godot/private:variant.bzl",
     "//godot/private:view.bzl",
     "//godot/private:operation_addons.bzl",

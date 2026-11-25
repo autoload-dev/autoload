@@ -2,9 +2,11 @@
 
 A petri dish on a phone screen. Tap it to drop a culture of a Gray-Scott
 reaction-diffusion field and watch the culture grow into corals, fingerprints,
-rings or dividing spots. Petri shows a **source-built engine with an owned C++ module**:
-the simulation is `GrayScottField`, a class that the `reaction_diffusion` engine
-module adds, and the application packages that engine instead of the official build.
+rings or dividing spots. Petri shows an application on a **source-built engine with a C++
+module**: the simulation is `GrayScottField`, a class that the `reaction_diffusion` module of
+the engine `simulation` adds, and the application packages that engine instead of the
+official build. The engine lives apart from Petri, in
+[`examples/engines/simulation/`](../engines/simulation), where any application can name it.
 
 ```gdscript
 var field := GrayScottField.new()
@@ -28,7 +30,7 @@ top right shows the field size, the steps per frame and the frame rate.
 ## Getting started
 
 Run these commands from the repository root on macOS or Linux. Every Petri target
-names the engine `petri`, built from the Godot 4.7.2 sources with the module, so no
+names the engine `simulation`, built from the Godot 4.7.2 sources with the module, so no
 command needs a flag. The first command compiles that editor and runtime; Bazel caches
 the result. With `--config=buildbuddy`, a Mac compiles Petri's Linux editor on
 BuildBuddy's Linux executors and runs its editor actions there; the engine's lock file
@@ -48,16 +50,16 @@ pins every recipe, so no host configures one.
 
 `bazel test //examples/...` builds Petri with its engine beside the other examples on
 the prebuilt one; the prebuilt engine has no `GrayScottField`, so a Petri target without
-`engine = "petri"` would fail to parse Petri's scripts.
+`engine = "simulation"` would fail to parse Petri's scripts.
 
 ## How the parts connect
 
 | Part | Where | Role |
 | --- | --- | --- |
-| Module | `engine/modules/reaction_diffusion/` | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
+| Module | [`examples/engines/simulation/modules/reaction_diffusion/`](../engines/simulation/modules/reaction_diffusion) | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
 | Engine | `godot_engines.source_build` in [`MODULE.bazel`](../../MODULE.bazel) | One recipe per Linux and macOS slot from the pinned 4.7.2 sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
-| Lock file | [`engine/godot_petri.lock.json`](engine/godot_petri.lock.json) | Each recipe's build graph; `bazel run @godot_petri//:pin --config=buildbuddy` rewrites it |
-| Selection | `engine = "petri"` in [`BUILD.bazel`](BUILD.bazel) and [`tests/BUILD.bazel`](tests/BUILD.bazel) | Each target that runs Godot selects the engine by name; `MODULE.bazel` registers the hub beside the prebuilt one |
+| Lock file | [`examples/engines/simulation/godot_simulation.lock.json`](../engines/simulation/godot_simulation.lock.json) | Each recipe's build graph; `bazel run @godot_simulation//:pin --config=buildbuddy` rewrites it |
+| Selection | `engine = "simulation"` in [`BUILD.bazel`](BUILD.bazel) and [`tests/BUILD.bazel`](tests/BUILD.bazel) | Each target that runs Godot selects the engine by name; `MODULE.bazel` registers the hub beside the prebuilt one |
 | Dish | `main/dish/` | The only scripts that name the module's class: steps the field, maps taps into it, paints the texture |
 | HUD | `main/hud/` | Chips, buttons and stats inside the display's safe area |
 | Tests | `tests/` | GdUnit suites for the field, the dish, the layout and the composed scene |
@@ -78,10 +80,10 @@ source build extends to those platforms.
 - `bazel test --build_tests_only //examples/petri/...` from the repository root validates the scripts and runs the suites.
 - `main/petri.tscn` composes the dish, the scrims that keep the HUD legible over a
   full dish, and the HUD; `main/petri.gd` wires the HUD's requests to the dish.
-- Change the module's code under `engine/modules/reaction_diffusion/`; the next
+- Change the module's code under `examples/engines/simulation/modules/reaction_diffusion/`; the next
   Petri build recompiles the module and relinks both engines. A changed
   `SCsub` or `config.py`, or an added or removed file, needs a repin with
-  `bazel run @godot_petri//:pin --config=buildbuddy`; until then the engines fail with
+  `bazel run @godot_simulation//:pin --config=buildbuddy`; until then the engines fail with
   that command.
 - Add a preset in `main/dish/dish.gd`; the HUD builds its chips from that list.
 - For target placement, read the [project layout guide](../../rules_godot/docs/public/project-layout.md).

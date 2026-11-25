@@ -284,9 +284,13 @@ _SOURCE_RUNTIME_POLICY = {
     "configure_timeout": 600,
 }
 
-# Platform options of those runtimes. Vulkan would need the MoltenVK SDK on the configuring
-# Mac; Metal and OpenGL stay.
-_SOURCE_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}, "macos": {"vulkan": "no"}}
+# The rendering methods of those runtimes where they are not Godot's drivers. Apple's run
+# every method on Metal and OpenGL; Vulkan would need the MoltenVK SDK on the configuring
+# Mac. Declaring them lets applications check their project's method against them.
+_SOURCE_RUNTIME_RENDERERS = {
+    "ios": ["gl_compatibility", "mobile", "forward_plus"],
+    "macos": ["gl_compatibility", "mobile", "forward_plus"],
+}
 
 # The suffix of the slots and Android runtimes that serve applications with a build profile
 # where a prebuilt runtime serves the others.
@@ -302,25 +306,27 @@ def _source_rows(tag):
 
 def _profiled_slots(rows_plan, covered):
     """
-    Return the source-built slots and Android runtimes, those of covered slots profiled only.
+    Return the source-built slots, their Android runtimes and the covered slots' names.
 
     A slot that a prebuilt runtime covers takes the source-built runtime under the slot's
     name with _PROFILED, for applications with a build profile, which a prebuilt runtime
-    cannot apply.
+    cannot apply. Its name sorts after the prebuilt one's, so it is registered after it.
     """
     android = {}
     for variant, runtime in rows_plan.android.items():
         android[variant + (_PROFILED if covered.get("android_" + variant) else "")] = runtime
     slots = []
+    profiled = []
     for slot in rows_plan.slots:
         if slot["name"] in covered:
-            slot = slot | {"name": slot["name"] + _PROFILED, "build_profiles": "only"}
+            profiled.append(slot["name"])
+            slot = slot | {"name": slot["name"] + _PROFILED}
             if slot["platform"] == "android":
                 slot["payload"] += _PROFILED
         slots.append(slot)
-    return slots, android
+    return slots, android, profiled
 
-def source_runtimes(tag, plan, slots, profiles = []):
+def source_runtimes(tag, plan, slots, profiles = {}):
     """
     Return the source declarations, slots and Android runtimes of the runtimes a prebuilt builds.
 
@@ -331,7 +337,8 @@ def source_runtimes(tag, plan, slots, profiles = []):
         tag: The godot_engines.prebuilt tag of the plan.
         plan: The result of prebuilt_plan.
         slots: The prebuilt slots of the plan.
-        profiles: The engine's registered runtime profiles, as label strings.
+        profiles: The engine's registered runtime profiles: each label string's build
+            options, as runtime_profiles returns them.
 
     Returns:
         A struct of `declarations`, the source archive and recipe repositories, `slots`,
@@ -351,55 +358,53 @@ def source_runtimes(tag, plan, slots, profiles = []):
     covered = {slot["name"]: True for slot in slots}
     covered.update({"android_" + variant: True for variant in plan.android_shells})
     declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
-    for declaration in recipe_declarations(
-        name,
-        source,
-        rows_plan,
-        _SOURCE_RUNTIME_POLICY,
-        runtime_profiles = profiles,
-        engine = tag.engine,
-    ):
-        options = _SOURCE_RUNTIME_OPTIONS.get(declaration.attrs.get("platform"))
-        if options:
-            declaration.attrs["build_options"] = declaration.attrs["build_options"] | options
+    for declaration in recipe_declarations(name, source, rows_plan, _SOURCE_RUNTIME_POLICY, runtime_profiles = profiles):
+        renderers = _SOURCE_RUNTIME_RENDERERS.get(declaration.attrs.get("platform"))
+        if renderers:
+            declaration.attrs["renderers"] = renderers
         declarations.append(declaration)
-    source_slots, android = _profiled_slots(rows_plan, covered)
-    return struct(
-        declarations = declarations,
-        slots = source_slots,
-        android = android,
-        profiled = [slot["name"].removesuffix(_PROFILED) for slot in source_slots if slot["build_profiles"] == "only"],
-    )
+    source_slots, android, profiled = _profiled_slots(rows_plan, covered)
+    return struct(declarations = declarations, slots = source_slots, android = android, profiled = profiled)
 
 # ==== Runtime profiles ========================================================
 
-def _shapes_graph(text):
-    """Whether a build profile sets build options, which shape a source recipe's graph."""
+def _graph_options(text):
+    """
+    The build options of a build profile, as a JSON object with sorted keys; empty without.
+
+    Only its build options shape a source recipe's graph: Godot's configuration reads its
+    disabled_build_options, and its classes reach the class generator as an input.
+    """
     data = json.decode(text)
-    if type(data) != "dict":
-        return False
-    return any([value for key, value in data.items() if key not in ["type", "disabled_classes"]])
+    options = data.get("disabled_build_options", {}) if type(data) == "dict" else {}
+    return json.encode({key: options[key] for key in sorted(options)}) if options else ""
 
 def runtime_profiles(modules, read):
     """
     Return the registered runtime profiles with build options, by engine name.
 
     A profile that disables classes alone needs no runtime variant: applications apply its
-    classes to any source-built runtime.
+    classes to any source-built runtime. Recipes take a profile's build options, not its
+    file, so editing its classes configures no recipe again.
 
     Args:
         modules: module_ctx.modules.
         read: Returns the content of a profile's file by its label.
 
     Returns:
-        A dict of each engine name to the sorted label strings of its runtime profiles.
+        A dict of each engine name to a dict of its runtime profiles' label strings, sorted,
+        to their build options as JSON.
     """
     profiles = {}
     for mod in modules:
         for tag in mod.tags.runtime_profile:
-            if _shapes_graph(read(tag.profile)):
-                profiles.setdefault(tag.engine, {})[str(tag.profile)] = True
-    return {engine: sorted(labels) for engine, labels in profiles.items()}
+            options = _graph_options(read(tag.profile))
+            if options:
+                profiles.setdefault(tag.engine, {})[str(tag.profile)] = options
+    return {
+        engine: {label: options[label] for label in sorted(options)}
+        for engine, options in profiles.items()
+    }
 
 # ==== Tag selection ===========================================================
 
@@ -563,12 +568,12 @@ def _prebuilt_declarations(tag, profiles, _fail):
         return None
     shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
     slots = prebuilt_slots(tag, plan)
-    built = source_runtimes(tag, plan, slots, profiles.get(tag.engine, []))
+    built = source_runtimes(tag, plan, slots, profiles.get(tag.engine, {}))
     sources = []
     if built:
         sources = built.declarations
         slots = [
-            slot | {"build_profiles": "none"} if slot["name"] in built.profiled else slot
+            slot | {"without_build_profile": True} if slot["name"] in built.profiled else slot
             for slot in slots
         ] + built.slots
         android_runtimes = built.android | android_runtimes
@@ -624,7 +629,7 @@ def plan_engines(modules, *, tag_attributes, read = None, _fail = fail):
                 # The hub needs the version; a source tag of this extension knows it, so
                 # registering the hub need not fetch the source archive to read it.
                 attrs["version"] = versions.get(_repository(tag.source), "")
-                attrs["runtime_profiles"] = profiles.get(tag.engine, [])
+                attrs["runtime_profiles"] = profiles.get(tag.engine, {})
             declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
             continue
         prebuilt = _prebuilt_declarations(tag, profiles, _fail)

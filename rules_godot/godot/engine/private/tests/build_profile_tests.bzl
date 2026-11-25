@@ -18,7 +18,6 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 _BUILD_PROFILE = str(Label("//godot/private:build_profile"))
 _NO_BUILD_PROFILE = Label("//godot/private:no_build_profile")
 _PROFILE = Label("//godot/engine/private/tests:profile.gdbuild")
-_PROFILED_RUNTIME = str(Label("//godot/private:profiled_runtime"))
 _BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
 
 # The label string of the fixtures' build profile, as a runtime profile registers it.
@@ -52,12 +51,10 @@ def _attr(build_profile = None):
 def _test_the_runtime_edge_sets_the_build_profile(env):
     values = tuned_engine_settings(_settings(), _attr(_PROFILE))
     env.expect.that_str(str(values[_BUILD_PROFILE])).equals(str(_PROFILE))
-    env.expect.that_bool(values[_PROFILED_RUNTIME]).equals(True)
     env.expect.that_str(values[_BUILD_PROFILE_LABEL]).equals(str(_PROFILE))
     kept = tuned_engine_settings(_settings(_PROFILE), _attr())
     env.expect.that_str(str(kept[_BUILD_PROFILE])).equals(str(_PROFILE))
     none = tuned_engine_settings(_settings(), _attr())
-    env.expect.that_bool(none[_PROFILED_RUNTIME]).equals(False)
     env.expect.that_str(none[_BUILD_PROFILE_LABEL]).equals("")
 
 def _class_generator_arguments(target):
@@ -166,7 +163,6 @@ def _test_an_unregistered_profile_names_its_registration(name):
 
 def _test_an_unregistered_profile_names_its_registration_impl(env, target):
     arguments = _class_generator_arguments(target)
-    env.expect.that_collection(arguments).not_contains("--registered-profile")
     env.expect.that_str(arguments[arguments.index("--registration") + 1]).equals(
         'godot_engines.runtime_profile(profile = "//godot/engine/private/tests:profile.gdbuild")',
     )
@@ -180,8 +176,18 @@ def _test_a_registered_profile_may_set_build_options(name):
     )
 
 def _test_a_registered_profile_may_set_build_options_impl(env, target):
+    env.expect.that_collection(_class_generator_arguments(target)).not_contains("--registration")
+
+def _test_the_registration_names_the_selected_engine(name):
+    analysis_test(
+        name = name,
+        target = _TESTS + "class_generator",
+        impl = _test_the_registration_names_the_selected_engine_impl,
+        config_settings = {_BUILD_PROFILE: str(_PROFILE), str(Label("//godot:engine")): "petri"},
+    )
+
+def _test_the_registration_names_the_selected_engine_impl(env, target):
     arguments = _class_generator_arguments(target)
-    env.expect.that_collection(arguments).contains("--registered-profile")
     env.expect.that_str(arguments[arguments.index("--registration") + 1]).contains('engine = "petri"')
 
 # A prebuilt hub's slot leaves applications with a build profile to its source-built runtime.
@@ -231,6 +237,7 @@ def build_profile_test_suite(name):
             _test_a_config_setting_selects_the_variant_of_a_profile,
             _test_an_unregistered_profile_names_its_registration,
             _test_a_registered_profile_may_set_build_options,
+            _test_the_registration_names_the_selected_engine,
             _test_a_profiled_runtime_skips_prebuilt_components,
             _test_an_unprofiled_runtime_takes_the_prebuilt_component,
         ],

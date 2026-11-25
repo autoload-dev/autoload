@@ -1,114 +1,72 @@
 import unittest
 
+from tools.engine.build_file import Plus, Ref, Rule, Select, rule_text
 from tools.engine.variants import merge, presence_scopes, unpinned_variants
 
 
-def _merged(base: list[str], variant: list[str]) -> list[str]:
-    return merge(base, {":_variant_0": variant})
+def _library(name: str, **attrs: object) -> Rule:
+    return Rule("cc_library", name, dict(attrs))
+
+
+def _texts(rules: list[Rule]) -> list[str]:
+    return [rule_text(rule) for rule in rules]
 
 
 class MergeTest(unittest.TestCase):
     def test_a_target_the_variants_declare_alike_is_declared_once(self) -> None:
-        rule = "cc_library(name = 'a', srcs = ['a.cpp'], copts = _COPTS_0)"
-        merged = _merged(["_COPTS_0 = ['-O2']", rule], ["_COPTS_0 = ['-O2']", rule])
-        self.assertEqual(merged, ["_COPTS_0 = ['-O2']", rule])
+        rule = _library("a", srcs=["a.cpp"], copts=Ref("_COPTS_0"))
+        self.assertEqual(merge([rule], {":_variant_0": [rule]}), [rule])
 
     def test_a_differing_attribute_selects_on_the_variant(self) -> None:
-        merged = _merged(
-            ["cc_library(name = 'a', srcs = ['a.cpp'], deps = [':b'])"],
-            ["cc_library(name = 'a', srcs = ['a.cpp'], deps = [':c'])"],
+        merged = merge(
+            [_library("a", srcs=["a.cpp"], deps=[":b"])],
+            {":_variant_0": [_library("a", srcs=["a.cpp"], deps=[":c"])]},
         )
         self.assertEqual(
-            merged,
+            _texts(merged),
             [
-                (
-                    "cc_library(name = 'a', srcs = ['a.cpp'], deps = select({"
-                    "':_variant_0': [':c'], '//conditions:default': [':b']}))"
-                )
+                "cc_library(name = 'a', srcs = ['a.cpp'], deps = select({"
+                + "':_variant_0': [':c'], '//conditions:default': [':b']}))"
             ],
         )
 
-    def test_constants_merge_by_value_and_keep_their_references(self) -> None:
-        merged = _merged(
-            ["_COPTS_0 = ['-O2']", "cc_library(name = 'a', copts = _COPTS_0)"],
-            [
-                "_COPTS_0 = ['-Os']",
-                "_COPTS_1 = ['-O2']",
-                "cc_library(name = 'a', copts = _COPTS_1)",
-                "cc_library(name = 'b', copts = _COPTS_0 + ['-x'])",
-            ],
-        )
-        self.assertEqual(
-            merged,
-            [
-                "_COPTS_0 = ['-O2']",
-                "_V0_COPTS_0 = ['-Os']",
-                # The variant's _COPTS_1 has the value of the base's _COPTS_0.
-                "cc_library(name = 'a', copts = _COPTS_0)",
-                "cc_library(name = 'b', copts = _V0_COPTS_0 + ['-x'])",
-            ],
-        )
-
-    def test_constants_of_one_value_compare_alike(self) -> None:
-        base = [
-            "_COPTS_0 = ['-O2']",
-            "_COPTS_1 = ['-O2']",
-            "cc_library(name = 'a', copts = _COPTS_1)",
-        ]
-        merged = _merged(
-            base, ["_COPTS_0 = ['-O2']", "cc_library(name = 'a', copts = _COPTS_0)"]
-        )
-        self.assertEqual(merged, base)
+    def test_a_rule_only_a_variant_declares_keeps_its_values(self) -> None:
+        only = _library("b", copts=Plus((Ref("_COPTS_1"), ["-x"])))
+        merged = merge([_library("a")], {":_variant_0": [_library("a"), only]})
+        self.assertEqual(merged, [_library("a"), only])
 
     def test_an_attribute_one_variant_leaves_unset_defaults_to_empty(self) -> None:
-        merged = _merged(
-            ["cc_library(name = 'a', local_defines = ['X'])"],
-            ["cc_library(name = 'a')"],
+        merged = merge(
+            [_library("a", local_defines=["X"])], {":_variant_0": [_library("a")]}
         )
         self.assertEqual(
-            merged,
-            [
-                (
-                    "cc_library(name = 'a', local_defines = select({"
-                    "':_variant_0': [], '//conditions:default': ['X']}))"
-                )
-            ],
+            merged[0].attrs["local_defines"],
+            Select(((":_variant_0", []), ("//conditions:default", ["X"]))),
         )
 
     def test_attributes_bazel_cannot_select_must_agree(self) -> None:
-        with self.assertRaisesRegex(ValueError, "_generate__a.h.*outs"):
-            _merged(
-                ["godot_source_generator(name = '_generate__a.h', outs = ['a.h'])"],
-                [
-                    (
-                        "godot_source_generator(name = '_generate__a.h', "
-                        "outs = ['a.h', 'b.h'])"
-                    )
-                ],
+        def generator(outs: list[str]) -> Rule:
+            return Rule(
+                "godot_source_generator",
+                "_generate__a.h",
+                {"outs": outs},
+                fixed=frozenset({"outs"}),
             )
 
-    def test_loads_and_package_statements_are_declared_once(self) -> None:
-        load = 'load("@rules_cc//cc:cc_library.bzl", "cc_library")'
-        swift = 'load("@rules_swift//swift:swift_library.bzl", "swift_library")'
-        merged = _merged(["# Generated.", load], [load, swift])
-        self.assertEqual(merged, ["# Generated.", load, swift])
+        with self.assertRaisesRegex(ValueError, "_generate__a.h.*outs"):
+            merge([generator(["a.h"])], {":_variant_0": [generator(["a.h", "b.h"])]})
 
     def test_several_variants_select_their_own_values(self) -> None:
         merged = merge(
-            ["cc_library(name = 'a', deps = [':b'])"],
+            [_library("a", deps=[":b"])],
             {
-                ":_variant_0": ["cc_library(name = 'a', deps = [':b'])"],
-                ":_variant_1": ["cc_library(name = 'a', deps = [':c'])"],
+                ":_variant_0": [_library("a", deps=[":b"])],
+                ":_variant_1": [_library("a", deps=[":c"])],
             },
         )
         self.assertEqual(
-            merged,
-            [
-                (
-                    "cc_library(name = 'a', deps = select({"
-                    "':_variant_1': [':c'], '//conditions:default': [':b']}))"
-                )
-            ],
+            merged[0].attrs["deps"],
+            Select(((":_variant_1", [":c"]), ("//conditions:default", [":b"]))),
         )
 
 
@@ -130,32 +88,31 @@ class AnalysisScopeTest(unittest.TestCase):
 
 class UnpinnedVariantTest(unittest.TestCase):
     def test_an_unpinned_variant_routes_the_engine_targets_to_its_error(self) -> None:
-        statements = unpinned_variants(
+        rules = unpinned_variants(
             [
-                "cc_library(name = 'engine_library', deps = [':x'])",
-                "godot_source_binary(name = 'godot', deps = [':engine_library'])",
+                _library("engine_library", deps=[":x"]),
+                Rule("godot_source_binary", "godot", {"deps": [":engine_library"]}),
             ],
             ["engine_library", "godot"],
             {":_variant_1": "no pin for runtime profile //:p.gdbuild"},
         )
-        self.assertIn(
-            "cc_library(name = '_pinned_engine_library', deps = [':x'])", statements
-        )
+        texts = _texts(rules)
+        self.assertIn("cc_library(name = '_pinned_engine_library', deps = [':x'])", texts)
         self.assertIn(
             "godot_source_binary(name = '_pinned_godot', "
-            "deps = [':_pinned_engine_library'])",
-            statements,
+            + "deps = [':_pinned_engine_library'])",
+            texts,
         )
         self.assertIn(
             "godot_unpinned_recipe(name = '_unpinned_1_godot', "
-            "message = 'no pin for runtime profile //:p.gdbuild')",
-            statements,
+            + "message = 'no pin for runtime profile //:p.gdbuild')",
+            texts,
         )
         self.assertIn(
             "alias(name = 'godot', actual = select({"
-            "':_variant_1': ':_unpinned_1_godot', "
-            "'//conditions:default': ':_pinned_godot'}))",
-            statements,
+            + "':_variant_1': ':_unpinned_1_godot', "
+            + "'//conditions:default': ':_pinned_godot'}))",
+            texts,
         )
 
 

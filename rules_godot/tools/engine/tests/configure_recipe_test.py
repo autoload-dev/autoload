@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+from tools.engine.build_profile import class_list_spec
 from tools.engine.configure import (
     check_options,
     customizations,
@@ -18,7 +19,6 @@ from tools.engine.configure import (
     require_one_text_server,
     source_version,
     version_name,
-    without_class_list,
 )
 
 
@@ -64,9 +64,9 @@ class ConfigureRecipeTest(unittest.TestCase):
             "targets": ["core/disabled_classes.gen.h"],
             "sources": [{"value": ["Tree"]}],
         }
-        self.assertEqual(without_class_list(spec)["sources"], [{"value": []}])
+        self.assertEqual(class_list_spec(spec)["sources"], [{"value": []}])
         other = spec | {"function": "make_authors_header"}
-        self.assertEqual(without_class_list(other), other)
+        self.assertEqual(class_list_spec(other), other)
 
     def test_a_build_profile_must_agree_with_the_recipes_options(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

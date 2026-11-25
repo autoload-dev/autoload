@@ -10,8 +10,8 @@ load(
 
 package(default_visibility = ["//visibility:public"])
 
-# Every target that runs Godot names Petri's engine, the source-built one with the
-# reaction_diffusion module that MODULE.bazel declares as "petri".
+# Every target that runs Godot names the engine simulation (examples/engines/simulation),
+# Godot with the reaction_diffusion module whose class Petri's scripts use.
 
 exports_files(["project.godot"])
 
@@ -23,7 +23,7 @@ godot_project(
 
 godot_editor(
     name = "edit",
-    engine = "petri",
+    engine = "simulation",
     project = ":petri",
     deps = ["//examples/petri/main"],
 )
@@ -31,21 +31,21 @@ godot_editor(
 godot_metadata_sync(
     name = "update",
     size = "small",
-    engine = "petri",
+    engine = "simulation",
     project = ":petri",
     deps = ["//examples/petri/main"],
 )
 
 godot_pack(
     name = "pack",
-    engine = "petri",
+    engine = "simulation",
     project = ":petri",
     deps = ["//examples/petri/main"],
 )
 
 godot_run(
     name = "run",
-    engine = "petri",
+    engine = "simulation",
     headless = False,
     pack = ":pack",
 )
@@ -53,7 +53,7 @@ godot_run(
 godot_app(
     name = "app",
     application_id = "org.example.rulesgodot.petri",
-    engine = "petri",
+    engine = "simulation",
     pack = ":pack",
 )
 
@@ -67,7 +67,7 @@ godot_metadata_sync(
     name = "test_update",
     size = "small",
     testonly = True,
-    engine = "petri",
+    engine = "simulation",
     project = ":test_project",
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
@@ -76,7 +76,7 @@ godot_metadata_sync(
 godot_editor(
     name = "test_edit",
     testonly = True,
-    engine = "petri",
+    engine = "simulation",
     project = ":test_project",
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],

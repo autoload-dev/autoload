@@ -10,13 +10,28 @@ Sections: Source generator, Revision and headers, Source library and binary.
 
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//godot/private:actions.bzl", "PATH_MAPPING")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
 load(":define_analysis.bzl", _godot_define_analysis = "godot_define_analysis", _godot_source_defines = "godot_source_defines")
-load(":optimization.bzl", "EDITOR_DEBUG_OUTPUTS", "OPTIMIZATION_CHECK_ATTRS", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "check_optimization", "editor_debugging", "engine_optimization")
+load(
+    ":optimization.bzl",
+    "BUILD_PROFILE",
+    "EDITOR_DEBUG_INPUTS",
+    "EDITOR_DEBUG_OUTPUTS",
+    "NO_BUILD_PROFILE",
+    "OPTIMIZATION_CHECK_ATTRS",
+    "OPTIMIZATION_INPUTS",
+    "OPTIMIZATION_OUTPUTS",
+    "PROFILE_SETTINGS",
+    "check_optimization",
+    "editor_debugging",
+    "engine_optimization",
+    "profile_settings",
+)
 
 visibility("public")
 
@@ -53,13 +68,15 @@ def _registration(label, engine):
     return 'godot_engines.runtime_profile(%sprofile = "%s")' % (named, profile)
 
 def _add_registration(args, ctx):
-    """Say whether the application's build profile is a registered runtime profile, and how to register it."""
-    if not ctx.files.class_profile:
-        return
-    label = ctx.attr.class_profile.label
-    if str(label) in ctx.attr.runtime_profiles:
-        args.add("--registered-profile")
-    args.add("--registration", _registration(label, ctx.attr.engine))
+    """
+    Name the line that registers the application's build profile, unless it is registered.
+
+    A registered runtime profile selects its runtime variant, whose graph has its build
+    options; another profile may only disable classes.
+    """
+    if ctx.files.class_profile and not ctx.attr.registered_profile:
+        engine = ctx.attr._engine[FlagInfo].value
+        args.add("--registration", _registration(ctx.attr.class_profile.label, engine))
 
 def _generator_impl(ctx):
     outputs = ctx.outputs.outs
@@ -77,7 +94,7 @@ def _generator_impl(ctx):
         outputs = outputs,
         mnemonic = "GodotGenerate",
         # One cache key in every configuration with --experimental_output_paths=strip.
-        execution_requirements = {"supports-path-mapping": "1"},
+        execution_requirements = PATH_MAPPING,
         progress_message = "Generating %{label}",
     )
     return [DefaultInfo(files = depset(outputs))]
@@ -110,10 +127,10 @@ _godot_source_generator = rule(
             doc = "The recipe's own build profile, whose classes apply without an application's.",
             allow_single_file = [".gdbuild"],
         ),
-        "runtime_profiles": attr.string_list(
-            doc = "The engine's registered runtime profiles, whose build options an application's profile may set.",
+        "registered_profile": attr.bool(
+            doc = "Whether the application's build profile is a registered runtime profile, which may set build options; its runtime variant selects true.",
         ),
-        "engine": attr.string(doc = "The engine's name, for the line that registers an application's profile."),
+        "_engine": attr.label(default = Label("//godot:engine")),
         "_generator": attr.label(
             default = Label("//tools/engine:generator"),
             cfg = "exec",
@@ -122,7 +139,7 @@ _godot_source_generator = rule(
     },
 )
 
-def godot_source_generator(name, spec, inputs, outs, class_profile = False, recipe_profile = None, runtime_profiles = [], engine = "", **kwargs):
+def godot_source_generator(name, spec, inputs, outs, class_profile = False, recipe_profile = None, registered_profile = False, **kwargs):
     """
     Declare one upstream source generator as a hermetic Bazel action.
 
@@ -146,9 +163,8 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, reci
         class_profile: Whether the generator writes core/disabled_classes.gen.h, whose class
             list comes from the application's build profile when one is set.
         recipe_profile: The recipe's own build profile, whose classes apply otherwise.
-        runtime_profiles: The engine's registered runtime profiles, as label strings: an
-            application's profile may set build options only as one of them.
-        engine: The engine's name, which the error of an unregistered profile names.
+        registered_profile: Whether the application's build profile is a registered runtime
+            profile, which may set build options: a select() on the runtime variants.
         **kwargs: Common attributes, such as tags.
     """
     _godot_source_generator(
@@ -157,35 +173,23 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, reci
         inputs = inputs,
         outs = outs,
         logical_outputs = outs,
-        class_profile = _BUILD_PROFILE if class_profile else None,
+        class_profile = BUILD_PROFILE if class_profile else None,
         recipe_profile = recipe_profile,
-        runtime_profiles = runtime_profiles,
-        engine = engine,
+        registered_profile = registered_profile,
         visibility = ["//visibility:private"],
         **kwargs
     )
 
-_EDITOR_DEBUG = str(Label("//godot:editor_debug"))
-
-_BUILD_PROFILE = Label("//godot/private:build_profile")
-_NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
-_BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
-_PROFILED_RUNTIME = str(Label("//godot/private:profiled_runtime"))
-
 def _without_build_profile_impl(settings, attr):
-    profile = settings[str(_BUILD_PROFILE)]
-    if str(profile) in attr.runtime_profiles:
-        kept = {str(_BUILD_PROFILE): profile, _BUILD_PROFILE_LABEL: str(profile)}
-    else:
-        kept = {str(_BUILD_PROFILE): _NO_BUILD_PROFILE, _BUILD_PROFILE_LABEL: ""}
-    return kept | {_PROFILED_RUNTIME: False}
+    profile = str(settings[BUILD_PROFILE])
+    return profile_settings(profile if profile in attr.runtime_profiles else NO_BUILD_PROFILE)
 
 # Resets an application's build profile for the objects that do not read it, unless it is a
 # registered runtime profile, whose runtime variant they compile in.
 _without_build_profile = transition(
     implementation = _without_build_profile_impl,
-    inputs = [str(_BUILD_PROFILE)],
-    outputs = [str(_BUILD_PROFILE), _BUILD_PROFILE_LABEL, _PROFILED_RUNTIME],
+    inputs = [BUILD_PROFILE],
+    outputs = PROFILE_SETTINGS,
 )
 
 def _profile_independent_impl(ctx):
@@ -486,7 +490,7 @@ def _desktop_native_impl(settings, attr):
 # Editors are desktop executables, so this transition also applies editor_debug.
 _desktop_native = transition(
     implementation = _desktop_native_impl,
-    inputs = _ENGINE_INPUTS + [_EDITOR_DEBUG],
+    inputs = _ENGINE_INPUTS + EDITOR_DEBUG_INPUTS,
     outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys() + EDITOR_DEBUG_OUTPUTS,
 )
 

@@ -414,14 +414,14 @@ def _test_profiled_runtimes_build_from_the_release_sources(env):
     slots = _slots(declarations, "godot")
 
     # The prebuilt runtime serves applications without a build profile, a source-built one the others.
-    env.expect.that_str(slots["runtime_macos_arm64_release"]["build_profiles"]).equals("none")
+    env.expect.that_bool(slots["runtime_macos_arm64_release"]["without_build_profile"]).equals(True)
     profiled = slots["runtime_macos_arm64_release_profiled"]
-    env.expect.that_str(profiled["build_profiles"]).equals("only")
+    env.expect.that_bool(profiled["without_build_profile"]).equals(False)
     env.expect.that_str(profiled["payload"]).equals("@godot__source_macos_arm64_template_release//:godot")
     env.expect.that_str(slots["runtime_android_arm64_release_profiled"]["payload"]).equals("//android:release_profiled")
 
     # Slots the artifacts lack serve every application.
-    env.expect.that_str(slots["runtime_ios_arm64_simulator_release"]["build_profiles"]).equals("")
+    env.expect.that_bool(slots["runtime_ios_arm64_simulator_release"]["without_build_profile"]).equals(False)
     env.expect.that_bool("runtime_ios_arm64_simulator_release_profiled" in slots).equals(False)
     hub = _declared(declarations, "godot")[0].attrs
     env.expect.that_collection(json.decode(hub["android_runtimes"]).keys()).contains_exactly(
@@ -446,21 +446,27 @@ def _test_runtime_profiles_reach_the_runtime_recipes_of_their_engine(env):
     )])
     env.expect.that_collection(errors).contains_exactly([])
     build = _declared(declarations, "godot_source_build")[0].attrs
-    env.expect.that_collection(build["runtime_profiles"]).contains_exactly(["//app:small.gdbuild"])
-    env.expect.that_collection(_declared(declarations, "godot_petri")[0].attrs["runtime_profiles"]).contains_exactly([])
-    recipe = _declared(declarations, "godot__source_macos_arm64_template_release")[0].attrs
-    env.expect.that_collection(recipe["runtime_profiles"]).contains_exactly(["//app:small.gdbuild"])
 
+    # A recipe takes a profile's build options, so editing its classes configures nothing.
+    options = {"//app:small.gdbuild": '{"disable_3d":true}'}
+    env.expect.that_dict(build["runtime_profiles"]).contains_exactly(options)
+    env.expect.that_dict(_declared(declarations, "godot_petri")[0].attrs["runtime_profiles"]).contains_exactly({})
+    recipe = _declared(declarations, "godot__source_macos_arm64_template_release")[0].attrs
+    env.expect.that_dict(recipe["runtime_profiles"]).contains_exactly(options)
+
+# Apple's source-built runtimes declare their rendering methods, without Vulkan, which would
+# need the MoltenVK SDK on the configuring Mac; applications check their project's method.
 def _test_apple_source_runtimes_build_without_vulkan(env):
     declarations, errors = _plan(_root())
     env.expect.that_collection(errors).contains_exactly([])
     for declaration in _rules(declarations, "godot_engine_build"):
-        options = declaration.attrs["build_options"]
         platform = declaration.attrs["platform"]
-        expected = "no" if platform in ["ios", "macos"] else None
-        env.expect.where(recipe = declaration.attrs["name"]).that_str(options.get("vulkan")).equals(expected)
+        expected = ["gl_compatibility", "mobile", "forward_plus"] if platform in ["ios", "macos"] else []
+        expect = env.expect.where(recipe = declaration.attrs["name"])
+        expect.that_collection(declaration.attrs["renderers"]).contains_exactly(expected)
+        expect.that_dict(declaration.attrs["build_options"]).contains_exactly({})
 
-def _test_missing_runtimes_build_from_the_release_sources(env):
+def _test_lacking_slots_build_from_the_release_sources(env):
     declarations, errors = _plan(_root())
     env.expect.that_collection(errors).contains_exactly([])
     slots = _slots(declarations, "godot")
@@ -485,7 +491,7 @@ def _test_missing_runtimes_build_from_the_release_sources(env):
     ])
     env.expect.that_collection(_declared(declarations, "godot__source_android_shell")).has_size(1)
 
-def _test_missing_runtimes_can_be_left_unbuilt(env):
+def _test_source_runtimes_can_be_left_unbuilt(env):
     declarations, errors = _plan(_root(source_runtimes = False))
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_rules(declarations, "godot_engine_build")).contains_exactly([])
@@ -560,10 +566,10 @@ def engine_extension_test_suite(name):
             _test_source_tag_declares_engine_source,
             _test_identical_dependency_requests_share_repositories,
             _test_tags_name_the_engine_of_their_hubs,
-            _test_missing_runtimes_build_from_the_release_sources,
+            _test_lacking_slots_build_from_the_release_sources,
             _test_profiled_runtimes_build_from_the_release_sources,
             _test_runtime_profiles_reach_the_runtime_recipes_of_their_engine,
-            _test_missing_runtimes_can_be_left_unbuilt,
+            _test_source_runtimes_can_be_left_unbuilt,
             _test_pinned_runtimes_need_source_builds_only_for_build_profiles,
             _test_pinned_artifacts_build_no_upstream_runtimes,
             _test_pinned_shells_build_no_upstream_android_runtimes,

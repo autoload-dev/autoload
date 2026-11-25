@@ -10,6 +10,7 @@ load(":editor_archive_tests.bzl", "editor_archive_test_suite")
 load(":engine_build_tests.bzl", "engine_build_test_suite")
 load(":engine_extension_tests.bzl", "engine_extension_test_suite")
 load(":engine_name_tests.bzl", "engine_name_test_suite")
+load(":engine_selection_tests.bzl", "engine_selection_test_suite")
 load(":engine_source_tests.bzl", "engine_source_test_suite")
 load(":execution_tests.bzl", "execution_test_suite")
 load(":export_templates_archive_tests.bzl", "export_templates_archive_test_suite")
@@ -118,14 +119,13 @@ godot_profile_independent(
     deps = [":profile_reader"],
 )
 
-# The class generator of a recipe whose engine registers profile.gdbuild.
+# The class generator of a runtime variant, whose application's profile is registered.
 godot_source_generator(
     name = "registered_class_generator",
     outs = ["registered/core/disabled_classes.gen.h"],
     class_profile = True,
-    engine = "petri",
     inputs = {},
-    runtime_profiles = [PROFILE],
+    registered_profile = True,
     spec = "class_spec.json",
     tags = ["manual"],
 )
@@ -160,6 +160,8 @@ engine_build_test_suite(name = "engine_build_test_suite")
 engine_extension_test_suite(name = "engine_extension_test_suite")
 
 engine_name_test_suite(name = "engine_name_test_suite")
+
+engine_selection_test_suite(name = "engine_selection_test_suite")
 
 engine_source_test_suite(name = "engine_source_test_suite")
 

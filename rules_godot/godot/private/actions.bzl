@@ -2,7 +2,7 @@
 
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 
-visibility("//godot")
+visibility(["//godot", "//godot/engine/private"])
 
 # Execution requirements of actions whose manifests name files by mapped_path, so that
 # --experimental_output_paths=strip gives one unit's action one cache key in every target

@@ -74,14 +74,20 @@ func _find(node: Node, accepts: Callable) -> Array[Node]:
 	return found
 
 
+# Whether the handler is bound to exactly the action.
+func _binds(handler: Callable, action: int) -> bool:
+	var bound: Array = handler.get_bound_arguments()
+	if bound.size() != 1:
+		return false
+	return bound[0] is int and bound[0] == action
+
+
 # The button of the manager whose pressed signal calls its action handler with the action.
 func _action_button(manager: Node, action: int) -> Button:
 	var buttons: Array[Node] = _find(manager, func(node: Node) -> bool: return node is Button)
 	for node: Node in buttons:
 		var button: Button = node as Button
 		for connection: Dictionary in button.get_signal_connection_list("pressed"):
-			var handler: Callable = connection["callable"]
-			var bound: Array = handler.get_bound_arguments()
-			if bound.size() == 1 and bound[0] is int and bound[0] == action:
+			if _binds(connection["callable"], action):
 				return button
 	return null

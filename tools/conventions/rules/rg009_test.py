@@ -102,6 +102,18 @@ class ProjectPlacesTest(RepositoryTest):
             1,
         )
 
+    def test_the_engines_directory_beside_the_applications_is_no_project(self) -> None:
+        self.assertEqual(
+            [],
+            self.evaluate(
+                "examples/engines/simulation/BUILD.bazel",
+                "examples/engines/simulation/modules/field/config.py",
+                "examples/game/BUILD.bazel",
+                "examples/game/project.godot",
+                "examples/game/app.pkl",
+            ),
+        )
+
     def test_project_needs_configuration_and_own_build(self) -> None:
         findings = self.evaluate(
             "e2e/rules_godot/raw_library/native.cc",

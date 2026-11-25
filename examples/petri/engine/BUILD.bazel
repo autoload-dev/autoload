@@ -1,3 +1,0 @@
-# Petri's source-built engine: its modules and the lock file of the godot_petri source build
-# (MODULE.bazel).
-exports_files(["godot_petri.lock.json"])

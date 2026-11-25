@@ -6,7 +6,7 @@ The engine rules' transitions apply these options to the engine's native graph o
 extensions and application code keep the build's own levels.
 """
 
-load("//godot/engine/private:selection.bzl", "ENGINE", "ENGINE_DOC")
+load("//godot/engine/private:selection.bzl", "ENGINE", "ENGINE_ATTRS", "selected_engine")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
@@ -19,13 +19,30 @@ _ENGINE_VFE = str(Label("//godot:engine_vfe"))
 # The build profile of the runtime an application packages; see //godot/private:build_profile.
 BUILD_PROFILE = str(Label("//godot/private:build_profile"))
 
-_NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
+# Its value without one.
+NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
 
-# Its label as a string, which selects a runtime variant; see //godot/private:build_profile_label.
-_BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
+# Its label as a string, empty without one, which selects a runtime variant and keeps
+# prebuilt runtimes out; see //godot/private:build_profile_label.
+BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
 
-# Whether it has one, which keeps prebuilt runtimes out; see //godot/private:profiled_runtime.
-_PROFILED_RUNTIME = str(Label("//godot/private:profiled_runtime"))
+# The settings profile_settings returns, for the transitions that set them.
+PROFILE_SETTINGS = [BUILD_PROFILE, BUILD_PROFILE_LABEL]
+
+def profile_settings(profile):
+    """
+    Return the settings of a build profile.
+
+    Args:
+        profile: The label string of the build profile, or NO_BUILD_PROFILE.
+
+    Returns:
+        BUILD_PROFILE and BUILD_PROFILE_LABEL.
+    """
+    return {
+        BUILD_PROFILE: profile,
+        BUILD_PROFILE_LABEL: "" if profile == NO_BUILD_PROFILE else profile,
+    }
 
 # The compiler options of Godot's optimize levels, as its SConstruct sets them, and of
 # the ruleset's size_min.
@@ -98,6 +115,8 @@ def engine_optimization(settings, attr):
 _EDITOR_DEBUG = str(Label("//godot:editor_debug"))
 
 # The settings a source-built editor's native graph reads and resets for debugging.
+EDITOR_DEBUG_INPUTS = [_EDITOR_DEBUG]
+
 EDITOR_DEBUG_OUTPUTS = [COMPILATION_MODE, _EDITOR_DEBUG]
 
 def editor_debugging(settings, attr):
@@ -163,8 +182,7 @@ def check_optimization(ctx):
         fail("%s: %s" % (ctx.label, error))
 
 # The attributes of the rules that resolve an application's runtime component.
-ENGINE_SETTINGS_ATTRS = {
-    "engine": attr.string(doc = ENGINE_DOC),
+ENGINE_SETTINGS_ATTRS = ENGINE_ATTRS | {
     "engine_optimize": attr.string(
         doc = "The engine_optimize of this application's source-built engine; empty keeps the build's.",
         values = [""] + OPTIMIZE_VALUES,
@@ -198,14 +216,10 @@ def tuned_engine_settings(settings, attr):
     """
     vfe = attr.engine_vfe
     profile = str(attr.build_profile) if attr.build_profile else str(settings[BUILD_PROFILE])
-    return {
-        ENGINE: attr.engine or settings[ENGINE],
+    return selected_engine(settings, attr) | profile_settings(profile) | {
         _ENGINE_OPTIMIZE: attr.engine_optimize or settings[_ENGINE_OPTIMIZE],
         _ENGINE_LTO: attr.engine_lto or settings[_ENGINE_LTO],
         _ENGINE_VFE: vfe == "on" if vfe else settings[_ENGINE_VFE],
-        BUILD_PROFILE: profile,
-        _BUILD_PROFILE_LABEL: profile if profile != _NO_BUILD_PROFILE else "",
-        _PROFILED_RUNTIME: profile != _NO_BUILD_PROFILE,
     }
 
 # Sets an application's engine settings where its runtime component is resolved, so the
@@ -213,15 +227,7 @@ def tuned_engine_settings(settings, attr):
 engine_settings = transition(
     implementation = tuned_engine_settings,
     inputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE, BUILD_PROFILE],
-    outputs = [
-        ENGINE,
-        _ENGINE_OPTIMIZE,
-        _ENGINE_LTO,
-        _ENGINE_VFE,
-        BUILD_PROFILE,
-        _BUILD_PROFILE_LABEL,
-        _PROFILED_RUNTIME,
-    ],
+    outputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE] + PROFILE_SETTINGS,
 )
 
 def require_tunable_runtime(label, attr, provenance):

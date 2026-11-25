@@ -3,7 +3,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 
 # buildifier: disable=bzl-visibility
-load("//godot/engine/private:source_repositories.bzl", "engine_build_impl")
+load("//godot/engine/private:source_repositories.bzl", "engine_build_impl", "profile_options")
 
 # buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
@@ -51,6 +51,7 @@ _ATTRS = {
     "_source_tree": "tools/engine/source_tree.py",
     "_variants": "tools/engine/variants.py",
     "_generators": "tools/engine/generators.py",
+    "_build_file": "tools/engine/build_file.py",
     "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
@@ -61,8 +62,7 @@ _ATTRS = {
     "lock_file": None,
     "lock_key": "",
     "repin": "",
-    "runtime_profiles": [],
-    "engine": "",
+    "runtime_profiles": {},
 }
 
 def _build(*, which = {"python3": _PYTHON, "patch": _PATCH}, execute = {}, path = None, environ = {}, files = {}, **overrides):
@@ -132,8 +132,6 @@ _CONFIGURE_COMMAND = [
     # The settings a recipe with runtime variants selects them on, here without any.
     "--build-profile-label",
     "@@//godot/private:build_profile_label",
-    "--engine",
-    "",
 ]
 
 def _test_configure_command_carries_the_recipe(env):
@@ -145,7 +143,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 9 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        ["watch"] * 10 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "extract",
             "getenv",
             "watch",
@@ -244,7 +242,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 9,
+        ["watch"] * 10,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -253,7 +251,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 9,
+        ["watch"] * 10,
     )
 
 def _test_declared_python_runs_configure(env):
@@ -353,7 +351,9 @@ def _test_a_build_profile_reaches_configure_and_the_pin(env):
     ctx, errors = _build(build_profile = "size.gdbuild", files = {"size.gdbuild": profile})
     env.expect.that_collection(errors).contains_exactly([])
     written = {call.path: call.content for call in mocks.calls(ctx, "file")}
-    env.expect.that_str(written["_build_profile.gdbuild"]).equals(profile)
+    env.expect.that_dict(json.decode(written["_build_profile.gdbuild"])).contains_exactly(
+        {"disabled_classes": ["Node3D"], "disabled_build_options": {}},
+    )
     env.expect.that_str(_argument(_configure(ctx).args, "--build-profile")).equals("_build_profile.gdbuild")
 
     ctx, errors = _pinned(build_profile = "size.gdbuild", files = {"size.gdbuild": profile})
@@ -374,34 +374,52 @@ def _test_renderers_reach_configure(env):
 
 _PROFILES = {
     "size.gdbuild": json.encode({"disabled_build_options": {"disable_3d": True}}),
-    "app.gdbuild": json.encode({"disabled_build_options": {"disable_navigation_2d": True}}),
 }
+
+# The build options of the registered runtime profile, as the extension passes them.
+_RUNTIME_PROFILES = {"//app:app.gdbuild": json.encode({"disable_navigation_2d": True})}
 
 # A runtime variant's profile has the recipe's options and its runtime profile's.
 def _test_a_runtime_variant_configures_with_both_profiles_options(env):
-    ctx, errors = _build(build_profile = "size.gdbuild", runtime_profiles = ["app.gdbuild"], files = _PROFILES)
+    ctx, errors = _build(build_profile = "size.gdbuild", runtime_profiles = _RUNTIME_PROFILES, files = _PROFILES)
     env.expect.that_collection(errors).contains_exactly([])
     written = {call.path: call.content for call in mocks.calls(ctx, "file")}
     env.expect.that_dict(json.decode(written["_variant_0.gdbuild"])["disabled_build_options"]).contains_exactly(
         {"disable_3d": True, "disable_navigation_2d": True},
     )
 
-    # Without a lock file, the variant configures into its pin before the recipe.
-    capture, recipe = [call.args for call in mocks.calls(ctx, "execute") if call.args[0] == _PYTHON]
-    env.expect.that_str(_argument(capture, "--build-profile")).equals("_variant_0.gdbuild")
-    env.expect.that_str(_argument(capture, "--pin-output")).equals("_variant_pins/0.json")
+    # Without a lock file, the variants configure together into their pins before the recipe.
+    script = written["_variant_pins/configure.sh"]
+    env.expect.that_str(script).contains("'--build-profile' '_variant_0.gdbuild' '--pin-output' '_variant_pins/0.json'")
+    env.expect.that_str(script).contains("|| mv _variant_pins/0.log _variant_pins/0.error) &")
+    env.expect.that_collection([call.args for call in mocks.calls(ctx, "execute")]).contains(
+        ["/bin/sh", "_variant_pins/configure.sh"],
+    )
+    recipe = _configure(ctx).args
     env.expect.that_str(_argument(recipe, "--build-profile")).equals("_build_profile.gdbuild")
     env.expect.that_str(_argument(recipe, "--variant-pins")).equals("_variant_pins")
-    env.expect.that_str(_argument(recipe, "--runtime-profile")).equals("app.gdbuild")
+    env.expect.that_str(_argument(recipe, "--runtime-profile")).equals("//app:app.gdbuild")
 
 def _test_a_runtime_variant_has_its_own_pin(env):
-    ctx, errors = _pinned(build_profile = "size.gdbuild", runtime_profiles = ["app.gdbuild"], files = _PROFILES)
+    ctx, errors = _pinned(build_profile = "size.gdbuild", runtime_profiles = _RUNTIME_PROFILES, files = _PROFILES)
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_int(len([call for call in mocks.calls(ctx, "execute") if call.args[0] == _PYTHON])).equals(1)
+    env.expect.that_collection([call.args[0] for call in mocks.calls(ctx, "execute")]).not_contains("/bin/sh")
     build = _written_build(ctx)
     env.expect.that_str(build).contains('name = "pin_variant_0"')
     env.expect.that_str(build).contains('"--build-profile", "_variant_0.gdbuild"')
     env.expect.that_str(build).contains('"_build_profile.gdbuild", "_variant_*.gdbuild"])')
+
+# A recipe reads a profile's options as its Godot version does: 4.7 has no renderer
+# switches, and 4.7.0 to 4.7.2 cannot build gridmap without 3D physics.
+def _test_a_profile_takes_the_options_of_the_recipes_version(env):
+    options = {"rendering_device": False, "disable_physics_3d": True}
+    env.expect.that_dict(profile_options(options, "4.7.2")).contains_exactly(
+        {"disable_physics_3d": True, "module_gridmap_enabled": False},
+    )
+    env.expect.that_dict(profile_options(options, "4.7.3-rc")).contains_exactly({"disable_physics_3d": True})
+    env.expect.that_dict(profile_options(options, "4.8.0-beta")).contains_exactly(options)
+    explicit = {"disable_physics_3d": True, "module_gridmap_enabled": True}
+    env.expect.that_dict(profile_options(explicit, "4.7.2")).contains_exactly(explicit)
 
 def engine_build_test_suite(name):
     test_suite(
@@ -415,6 +433,7 @@ def engine_build_test_suite(name):
             _test_a_build_profile_reaches_configure_and_the_pin,
             _test_a_runtime_variant_configures_with_both_profiles_options,
             _test_a_runtime_variant_has_its_own_pin,
+            _test_a_profile_takes_the_options_of_the_recipes_version,
             _test_renderers_reach_configure,
             _test_custom_module_sources_are_watched,
             _test_custom_module_key_not_config_py_fails,

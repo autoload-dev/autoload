@@ -73,7 +73,7 @@ def _engine_pin_impl(ctx):
     for target, key in ctx.attr.recipes.items():
         args.add("--recipe", "%s=%s" % (key, target[DefaultInfo].files.to_list()[0].path))
     for target, variant in ctx.attr.variants.items():
-        key, _, profile = variant.partition(" ")
+        key, profile = json.decode(variant)
         args.add_all(["--variant", key, profile, target[DefaultInfo].files.to_list()[0]])
     ctx.actions.run(
         executable = ctx.executable._pin,
@@ -101,7 +101,7 @@ godot_engine_pin = rule(
     executable = True,
     attrs = {
         "recipes": attr.label_keyed_string_dict(doc = "Each recipe's :pin target and its key in the lock file."),
-        "variants": attr.label_keyed_string_dict(doc = "Each runtime variant's :pin target, with its recipe's key and its runtime profile, separated by a space."),
+        "variants": attr.label_keyed_string_dict(doc = "Each runtime variant's :pin target, with its recipe's key and its runtime profile as a JSON list."),
         "lock": attr.string(doc = "Path of the lock file relative to the workspace root.", mandatory = True),
         "_pin": attr.label(default = _PIN_TOOL, cfg = "exec", executable = True),
     },

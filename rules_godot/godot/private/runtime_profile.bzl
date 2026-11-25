@@ -4,13 +4,12 @@ Derive what an application's runtime leaves out from its project, and keep it in
 Sections: Derivation, Writer and test.
 """
 
-load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:macros.bzl", "common_kwargs")
 load("//godot/private:paths.bzl", "exec_paths")
-load("//godot/private:run.bzl", "launcher")
+load("//godot/private:sync.bzl", "declare_sync", "sync_launcher", "sync_rules")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 
@@ -43,8 +42,6 @@ def _derived_impl(ctx):
             "project_file": view.editor_project_file.path,
             "member_resource_paths": exec_paths(members),
             "keep_classes": sorted({name: True for name in defaults["keep_classes"] + ctx.attr.keep_classes}),
-            "unknown_options": defaults["unknown_options"],
-            "implied_options": defaults["implied_options"],
         },
         depset([view.editor_project_file] + members.values()),
         view.editor_imports,
@@ -80,75 +77,43 @@ _godot_runtime_profile_derived = rule(
 
 # ==== Writer and test =========================================================
 
-def _target_path(ctx, name):
-    """The workspace path of a checked-in file named relative to the package."""
-    return "/".join([part for part in [ctx.label.package, name] if part])
-
 def _sync_impl(ctx, test):
-    derived = ctx.attr.derived[GodotRuntimeProfileInfo]
-    checked_in = {file.short_path: file for file in ctx.files.checked_in}
-    target = _target_path(ctx, ctx.attr.profile)
-    entries = [{
-        "built": derived.profile.short_path,
-        "checked_in": checked_in[target].short_path if target in checked_in else "",
-        "target": target,
-    }]
-    executable, manifest = launcher(ctx, {
-        "workspace": ctx.workspace_name,
-        "files": entries,
-        "test": test,
-        "writer": ctx.attr.writer,
-    })
-    runfiles = ctx.runfiles(
-        files = [manifest, derived.profile, ctx.executable._runner] + ctx.files.checked_in,
+    derived = ctx.attr.derived[GodotRuntimeProfileInfo].profile
+    target = "/".join([part for part in [ctx.label.package, ctx.attr.profile] if part])
+    checked_in = ctx.file.checked_in
+    return sync_launcher(
+        ctx,
+        test,
+        {
+            "built": derived.short_path,
+            "checked_in": checked_in.short_path if checked_in else "",
+            "target": target,
+        },
+        ctx.runfiles(files = [derived] + ([checked_in] if checked_in else [])),
     )
-    runfiles = runfiles.merge(ctx.attr._runner[DefaultInfo].default_runfiles)
-    return [DefaultInfo(executable = executable, runfiles = runfiles)]
 
-def _writer_impl(ctx):
-    return _sync_impl(ctx, test = False)
-
-def _test_impl(ctx):
-    return _sync_impl(ctx, test = True)
-
-# The godot_runtime_profile macro documents these attributes.
-_SYNC_ATTRS = {
-    "derived": attr.label(mandatory = True, providers = [GodotRuntimeProfileInfo]),
-    "checked_in": attr.label_list(allow_files = True),
-    "profile": attr.string(mandatory = True),
-    "writer": attr.string(),
-    "_launcher_template": attr.label(
-        default = Label("//godot/private:run_launcher.sh.tpl"),
-        allow_single_file = True,
+_SYNC = sync_rules(
+    implementation = _sync_impl,
+    runner = Label("//tools:runtime_profile"),
+    # The godot_runtime_profile macro documents these attributes.
+    attrs = {
+        "derived": attr.label(mandatory = True, providers = [GodotRuntimeProfileInfo]),
+        "checked_in": attr.label(allow_single_file = True),
+        "profile": attr.string(mandatory = True),
+    },
+    docs = (
+        "Write a derived runtime profile into the checkout; the rule behind godot_runtime_profile.",
+        "Fail while a checked-in runtime profile differs from its derivation; the test behind godot_runtime_profile.",
     ),
-}
-
-def _runner(group):
-    """The runner, built for the execution platform of the run's or test's exec group."""
-    return {"_runner": attr.label(
-        default = Label("//tools:runtime_profile"),
-        executable = True,
-        cfg = config.exec(group),
-    )}
-
-_godot_runtime_profile_writer = rule(
-    doc = "Write a derived runtime profile into the checkout; the rule behind godot_runtime_profile.",
-    implementation = _writer_impl,
-    attrs = _SYNC_ATTRS | _runner("run"),
-    executable = True,
-    # The writer runs Python on the host; the editor ran in the derivation.
-    exec_groups = {"run": exec_group(exec_compatible_with = HOST_CONSTRAINTS)},
+    # The derivation ran the editor; the runner only compares and copies files.
+    editor = False,
 )
 
-_godot_runtime_profile_test = rule(
-    doc = "Fail while a checked-in runtime profile differs from its derivation; the test behind godot_runtime_profile.",
-    implementation = _test_impl,
-    attrs = _SYNC_ATTRS | _runner("test"),
-    test = True,
-    exec_groups = {"test": exec_group(toolchains = [
-        config_common.toolchain_type("@bazel_tools//tools/test:default_test_toolchain_type", mandatory = False),
-    ])},
-)
+_godot_runtime_profile_writer = rule(**_SYNC.writer)
+
+_godot_runtime_profile_test = rule(**_SYNC.test)
+
+_SYNC_RULES = struct(writer = _godot_runtime_profile_writer, test = _godot_runtime_profile_test)
 
 def godot_runtime_profile(
         name,
@@ -237,24 +202,15 @@ def godot_runtime_profile(
         **(common_kwargs(kwargs) | {"visibility": ["//visibility:private"]})
     )
 
-    # The label as a user types it: the main repository's `@@` prefix names no repository.
-    writer = str(native.package_relative_label(name)).removeprefix("@@")
     checked_in = native.glob([profile], allow_empty = True)
-    _godot_runtime_profile_writer(
-        name = name,
-        derived = ":" + derived,
-        checked_in = checked_in,
-        profile = profile,
-        writer = writer,
-        **kwargs
-    )
-    _godot_runtime_profile_test(
-        name = name + ".test",
-        size = size,
-        timeout = timeout,
-        derived = ":" + derived,
-        checked_in = checked_in,
-        profile = profile,
-        writer = writer,
-        **kwargs
+    declare_sync(
+        _SYNC_RULES,
+        name,
+        {
+            "derived": ":" + derived,
+            "checked_in": checked_in[0] if checked_in else None,
+            "profile": profile,
+        },
+        {"size": size, "timeout": timeout},
+        kwargs,
     )

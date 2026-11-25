@@ -6,19 +6,29 @@ visibility(["//godot/..."])
 
 EDITOR_TOOLCHAIN = "//godot:editor_toolchain_type"
 
-# bazel run starts binaries on the host, whatever executes the build's actions, so their
-# editor and runner resolve for an execution platform matching the host.
-RUN_EXEC_GROUPS = {
-    "run": exec_group(exec_compatible_with = HOST_CONSTRAINTS, toolchains = [EDITOR_TOOLCHAIN]),
-}
+# The execution group of a bazel run with the toolchains its runner needs. bazel run starts
+# binaries on the host, whatever executes the build's actions, so the runner and, with
+# EDITOR_TOOLCHAIN, the editor resolve for an execution platform matching the host.
+def _run_groups(toolchains):
+    return {"run": exec_group(exec_compatible_with = HOST_CONSTRAINTS, toolchains = toolchains)}
 
-# Tests run on the execution platform of their test action; their editor follows Bazel's
-# test exec group, which keeps its default test toolchain so the test stays on an
-# execution platform it can run on.
-TEST_EXEC_GROUPS = {"test": exec_group(toolchains = [
-    EDITOR_TOOLCHAIN,
-    config_common.toolchain_type("@bazel_tools//tools/test:default_test_toolchain_type", mandatory = False),
-])}
+# The execution group of a test with the toolchains its runner needs. Tests run on the
+# execution platform of their test action; their editor follows Bazel's test exec group,
+# which keeps its default test toolchain so the test stays on an execution platform it can
+# run on.
+def _test_groups(toolchains):
+    return {"test": exec_group(toolchains = toolchains + [
+        config_common.toolchain_type("@bazel_tools//tools/test:default_test_toolchain_type", mandatory = False),
+    ])}
+
+RUN_EXEC_GROUPS = _run_groups([EDITOR_TOOLCHAIN])
+
+TEST_EXEC_GROUPS = _test_groups([EDITOR_TOOLCHAIN])
+
+# For runners that start no editor.
+EDITORLESS_RUN_EXEC_GROUPS = _run_groups([])
+
+EDITORLESS_TEST_EXEC_GROUPS = _test_groups([])
 
 def exec_group_editor(ctx, group):
     """

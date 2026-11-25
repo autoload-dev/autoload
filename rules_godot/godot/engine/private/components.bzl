@@ -348,14 +348,9 @@ def runtime_slot_error(name, platform, environment, _fail = fail):
         _fail("%s: environment is only valid for iOS runtimes" % name)
         return
 
-# The settings a runtime component requires for each value of its build_profiles.
-_BUILD_PROFILE_SETTINGS = {
-    "all": [],
-    "none": [Label("//godot/private:runtime_without_profile")],
-    "only": [Label("//godot/private:runtime_with_profile")],
-}
+_WITHOUT_BUILD_PROFILE = Label("//godot/private:runtime_without_profile")
 
-def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, build_profiles, tags):
+def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, without_build_profile, tags):
     runtime_slot_error(name, platform, environment)
     constraints = [OPERATING_SYSTEM_CONSTRAINTS[platform], CPU_CONSTRAINTS[cpu]]
     if environment:
@@ -387,7 +382,7 @@ def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, versi
         target_settings = [
             _VARIANT_SETTINGS[variant],
             _engine_setting(name, engine, visibility, tags),
-        ] + _BUILD_PROFILE_SETTINGS[build_profiles],
+        ] + ([_WITHOUT_BUILD_PROFILE] if without_build_profile else []),
         visibility = visibility,
     )
 
@@ -482,8 +477,8 @@ godot_runtime_component = macro(
     built-in `toolchain()` `<name>.toolchain`, constrained to the target platform's operating
     system, CPU and iOS environment, with `target_settings` on
     `--@autoload_rules_godot//godot:variant` for the template variant, on
-    `--@autoload_rules_godot//godot:engine` for the engine and, with `build_profiles`, on
-    whether the application has a build profile. The runtime may be a
+    `--@autoload_rules_godot//godot:engine` for the engine and, with
+    `without_build_profile`, on the application having no build profile. The runtime may be a
     desktop template file, a target with GodotRuntimeInfo, an iOS XCFramework import or
     `:engine_library`, an Android runtime, a `select()` between prepared same-slot
     payloads, or another runtime component, whose payload and provenance are forwarded.
@@ -547,16 +542,13 @@ godot_runtime_component = macro(
             """,
             configurable = False,
         ),
-        "build_profiles": attr.string(
+        "without_build_profile": attr.bool(
             doc = """
-            Which applications' runtimes the component serves: `all`, the default; `none`,
-            only those of applications without a `build_profile`, as for a prebuilt
-            runtime, which cannot leave classes out, that a source-built component replaces
-            for the others; or `only`, only those of applications with one.
+            Serve only applications without a `build_profile`, as a prebuilt runtime does,
+            which cannot leave classes out. A source-built component of the same slot
+            registered after it then serves the applications with one.
             """,
             configurable = False,
-            default = "all",
-            values = ["all", "none", "only"],
         ),
     },
 )

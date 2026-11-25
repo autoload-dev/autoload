@@ -6,13 +6,15 @@
 		"disable_physics_2d": true,
 		"disable_physics_3d": true,
 		"disable_xr": true,
+		"forward_mobile_renderer": false,
+		"forward_plus_renderer": false,
 		"metal": false,
 		"module_godot_physics_2d_enabled": false,
 		"module_godot_physics_3d_enabled": false,
-		"module_gridmap_enabled": false,
 		"module_jolt_physics_enabled": false,
 		"module_msdfgen_enabled": false,
 		"module_openxr_enabled": false,
+		"rendering_device": false,
 		"vulkan": false
 	},
 	"disabled_classes": [

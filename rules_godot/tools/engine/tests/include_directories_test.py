@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tools.engine.build_file import Constants, rule_text
 from tools.engine.include_graph import CompileGroup, include_graph, reached_directories
-from tools.engine.render import include_rules, object_rules
+from tools.engine.render import Includes, include_rules, object_rules
 
 
 class IncludeDirectoryTest(unittest.TestCase):
@@ -51,16 +52,21 @@ class IncludeDirectoryTest(unittest.TestCase):
                 (root / name).write_text(text)
             graph = include_graph(root, [CompileGroup(sources, includes, [])], {})
             _, targets = include_rules(graph)
-            lines, _, _ = object_rules(
-                [("cpp", (), includes, sources)], graph, targets, set()
+            constants = Constants()
+            objects = object_rules(
+                [("cpp", (), includes, sources)],
+                Includes(graph, targets, set()),
+                constants,
             )
-        self.assertIn("_INCLUDES_0_0 = ['.']", lines)
-        self.assertIn("_INCLUDES_0_1 = ['_custom_modules', '.']", lines)
+        self.assertEqual(constants.values["_INCLUDES_0"], ["."])
+        self.assertEqual(constants.values["_INCLUDES_1"], ["_custom_modules", "."])
         rules = {
-            line.split("'")[1]: line for line in lines if line.startswith("cc_library")
+            rule.name: rule_text(rule)
+            for rule in objects.rules
+            if rule.kind == "cc_library"
         }
-        self.assertIn("includes = _INCLUDES_0_0,", rules["_objects__core__a.cpp"])
-        self.assertIn("includes = _INCLUDES_0_1,", rules["_objects__main__main.cpp"])
+        self.assertIn("includes = _INCLUDES_0,", rules["_objects__core__a.cpp"])
+        self.assertIn("includes = _INCLUDES_1,", rules["_objects__main__main.cpp"])
 
 
 if __name__ == "__main__":

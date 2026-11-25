@@ -4,8 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.engine.generators import generator_attributes
+from tools.engine.build_file import rule_text
+from tools.engine.generators import generator_rule
 from tools.engine.render import (
+    Includes,
     Variant,
     engine_dependencies,
     header_rules,
@@ -183,7 +185,7 @@ class RenderTest(unittest.TestCase):
             target_constraints(recipe_args("android", "unknown"))
 
     def test_each_set_of_included_files_becomes_one_header_target(self) -> None:
-        lines, targets = include_rules(
+        rules, targets = include_rules(
             {
                 "main.cpp": {"a.h"},
                 "a.h": {"b.h", "c.h"},
@@ -192,7 +194,7 @@ class RenderTest(unittest.TestCase):
             }
         )
         self.assertEqual(
-            lines,
+            [rule_text(rule) for rule in rules],
             [
                 "godot_source_headers(name = '_includes/c.h', hdrs = ['c.h'], deps = [])",
                 (
@@ -218,27 +220,14 @@ class ClassProfileRenderTest(unittest.TestCase):
             "sources": [{"value": []}],
         }
 
-        def profile_args(recipe_profile: str) -> argparse.Namespace:
-            return argparse.Namespace(
-                recipe_profile=recipe_profile, runtime_profiles=[], engine=""
-            )
-
-        attributes = generator_attributes(
-            "_generate_0001", spec, {}, profile_args("_build_profile.gdbuild")
-        )
+        attributes = generator_rule(spec, {}, "_build_profile.gdbuild").attrs
         self.assertIs(attributes["class_profile"], True)
         self.assertEqual(attributes["recipe_profile"], "_build_profile.gdbuild")
-        self.assertNotIn(
-            "recipe_profile",
-            generator_attributes("_generate_0001", spec, {}, profile_args("")),
-        )
-        other = generator_attributes(
-            "_generate_0002",
-            spec | {"function": "make_authors_header"},
-            {},
-            profile_args("x"),
-        )
-        self.assertNotIn("class_profile", other)
+        self.assertNotIn("recipe_profile", generator_rule(spec, {}, "").attrs)
+        other = generator_rule(spec | {"function": "make_authors_header"}, {}, "x")
+        self.assertNotIn("class_profile", other.attrs)
+        # Its name follows its first output, the same in every runtime variant.
+        self.assertEqual(other.name, "_generate__core__disabled_classes.gen.h")
 
     def test_objects_that_read_no_class_profile_share_one_configuration(self) -> None:
         deps, rules = engine_dependencies(
@@ -247,9 +236,10 @@ class ClassProfileRenderTest(unittest.TestCase):
         self.assertEqual(deps, [":register", ":_profile_independent_objects"])
         self.assertEqual(len(rules), 1)
         self.assertIn(
-            "godot_profile_independent(name = '_profile_independent_objects'", rules[0]
+            "godot_profile_independent(name = '_profile_independent_objects'",
+            rule_text(rules[0]),
         )
-        self.assertIn("deps = [':a', ':b']", rules[0])
+        self.assertEqual(rules[0].attrs["deps"], [":a", ":b"])
         # A fork whose class_db.h gives the profile to every source normalizes nothing.
         self.assertEqual(
             engine_dependencies([":a", ":b"], set(), scoped=False), ([":a", ":b"], [])
@@ -263,13 +253,13 @@ class PathMappingTest(unittest.TestCase):
             ("cc", ("-Wall",), (".",), ["core/a.cpp"]),
             ("objc", ("-Wall",), (".",), ["platform/ios/b.mm"]),
         ]
-        lines, _, _ = object_rules(groups, graph, {}, set())
+        objects = object_rules(groups, Includes(graph, {}, set()))
         libraries = [
-            line for line in lines if line.startswith(("cc_library(", "objc_library("))
+            rule for rule in objects.rules if rule.kind in ("cc_library", "objc_library")
         ]
         self.assertEqual(len(libraries), 2)
         for library in libraries:
-            self.assertIn("tags = ['supports-path-mapping']", library)
+            self.assertEqual(library.attrs["tags"], ["supports-path-mapping"])
 
     def test_the_package_compiles_without_module_maps(self) -> None:
         args = argparse.Namespace(
@@ -308,17 +298,29 @@ def _variant_args(**changes: object) -> argparse.Namespace:
         "renderers": [],
         "engine_renderers": [],
         "recipe_profile": "",
+        "registered_profile": False,
         "runtime_profiles": ["@@//app:small.gdbuild", "@@//app:new.gdbuild"],
-        "engine": "",
         "build_profile_label": "@rules_godot//godot/private:build_profile_label",
     }
     return argparse.Namespace(**(values | changes))
 
 
+# The class generator, which every graph has.
+_CLASS_GENERATOR = {
+    "spec": {
+        "code_file": "core/core_builders.py",
+        "function": "disabled_class_builder",
+        "targets": ["core/disabled_classes.gen.h"],
+        "sources": [{"value": []}],
+    },
+    "dependencies": [],
+}
+
+
 def _graph(groups: list[object]) -> dict[str, object]:
     return {
         "groups": groups,
-        "generators": [],
+        "generators": [_CLASS_GENERATOR],
         "swift_sources": [],
         "swift_options": None,
         "version": "4.7.2",
@@ -333,7 +335,7 @@ class RuntimeVariantRenderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "core").mkdir()
-            for name in ["a.cpp", "b.cpp"]:
+            for name in ["a.cpp", "b.cpp", "core_builders.py"]:
                 (root / "core" / name).write_text("int x;\n")
             base = _graph([["cc", ["-DX"], ["."], ["core/a.cpp"]]])
             small = _graph([["cc", ["-DX", "-DY"], ["."], ["core/a.cpp", "core/b.cpp"]]])
@@ -343,7 +345,9 @@ class RuntimeVariantRenderTest(unittest.TestCase):
                 root,
                 [
                     Variant(
-                        "@@//app:small.gdbuild", _variant_args(inputs_hash="v"), small
+                        "@@//app:small.gdbuild",
+                        _variant_args(inputs_hash="v", registered_profile=True),
+                        small,
                     ),
                     Variant("@@//app:new.gdbuild", _variant_args(), None, "no pin"),
                 ],
@@ -359,6 +363,12 @@ class RuntimeVariantRenderTest(unittest.TestCase):
             self.assertEqual(build.count("cc_library(name = '_objects__core__a.cpp'"), 1)
             self.assertIn("cc_library(name = '_objects__core__b.cpp'", build)
             self.assertIn("inputs_hash = select({':_variant_0': 'v'", build)
+            # The class generator lets a registered runtime profile set build options.
+            self.assertIn(
+                "registered_profile = select({':_variant_0': True, "
+                + "'//conditions:default': False})",
+                build,
+            )
             # Only the small variant compiles b.cpp, so its analysis is a shard of its own.
             self.assertIn("name = '_macros__core'", build)
             self.assertRegex(build, r"name = '_macros__p\d__core'")

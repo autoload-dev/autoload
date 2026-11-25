@@ -6,7 +6,7 @@ Sections: Launch manifest, Run rules, Run macros.
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("//godot:providers.bzl", "GodotPackInfo")
-load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition", "require_pack_engine")
 load("//godot/platforms/private:launch.bzl", "LAUNCH_ATTRS", application_launcher = "launcher")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN", "RUN_EXEC_GROUPS", "TEST_EXEC_GROUPS", "exec_group_editor")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_entry", "metadata_kinds")
@@ -214,6 +214,7 @@ def _executable_impl(ctx, test, tc = None, foreign = None):
         tc = exec_group_editor(ctx, "test" if test else "run")
         foreign = _foreign(ctx, test)
     pack = ctx.attr.pack[GodotPackInfo] if ctx.attr.pack else None
+    require_pack_engine(ctx.label, pack, tc.provenance)
 
     # A label attribute with a Starlark transition arrives as a list.
     project = ctx.attr.view[0][GodotViewInfo] if ctx.attr.view else pack.project

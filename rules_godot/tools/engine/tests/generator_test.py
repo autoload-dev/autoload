@@ -6,7 +6,6 @@ from pathlib import Path
 from tools.engine.configure import write_json
 from tools.engine.generator import (
     File,
-    Registration,
     run,
     safe_relative,
     with_class_profile,
@@ -178,11 +177,9 @@ class ClassProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError, r"disable_3d.*MODULE\.bazel.*runtime_profile\(profile"
             ):
-                with_class_profile(_CLASS_SPEC, app, None, Registration(registration))
+                with_class_profile(_CLASS_SPEC, app, None, registration)
             # A registered runtime profile's variant compiles its options.
             self.assertEqual(
-                with_class_profile(
-                    _CLASS_SPEC, app, None, Registration(registration, True)
-                )["sources"],
+                with_class_profile(_CLASS_SPEC, app, None)["sources"],
                 [{"value": ["Tree"]}],
             )

@@ -124,7 +124,7 @@ py_library(
     deps = [
         ":godot_run_lib",
         ":godot_staging_lib",
-        "//godot/private:project_config_lib",
+        ":godot_sync_lib",
     ],
 )
 
@@ -298,12 +298,19 @@ py_binary(
 )
 
 py_library(
+    name = "godot_sync_lib",
+    srcs = ["godot_sync.py"],
+    deps = [":godot_run_lib"],
+)
+
+py_library(
     name = "godot_metadata_sync_lib",
     srcs = ["godot_metadata_sync.py"],
     deps = [
         ":godot_files_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
+        ":godot_sync_lib",
         ":metadata_index_lib",
         ":node_ids_lib",
         ":resource_uids_lib",
@@ -349,6 +356,7 @@ py_binary(
         ":godot_files_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
+        ":godot_sync_lib",
         ":metadata_index_lib",
         ":node_ids_lib",
         ":resource_uids_lib",

@@ -10,7 +10,7 @@ Rules pass a profile to the build tools as data, so a newer Godot
 version changes one profile, not the code that writes shell files.
 
 Sections: Godot 4.7, Export options, Export hooks, Godot 4.8, Android shell, Runtime
-profile, Profile lookup.
+profile, Build profile, Profile lookup.
 """
 
 load("//godot/private:versions.bzl", "godot_series", "require_supported_source_version")
@@ -739,21 +739,32 @@ _RUNTIME_PROFILE = {
     ],
 }
 
-_GODOT_4_7["runtime_profile"] = _RUNTIME_PROFILE | {
+_GODOT_4_7["runtime_profile"] = _RUNTIME_PROFILE
+
+_GODOT_4_8["runtime_profile"] = _RUNTIME_PROFILE
+
+# ==== Build profile ===========================================================
+
+# How a source recipe reads a build profile's disabled_build_options for its version.
+_GODOT_4_7["build_profile"] = {
     # The 4.7 editor writes these renderer switches, which no 4.7 SCons option reads
     # (editor/settings/editor_build_profile.cpp: "There's no scons option to disable
-    # rendering device"); 4.8 adds them as options.
-    "unknown_options": ["forward_mobile_renderer", "forward_plus_renderer", "rendering_device"],
-    # Temporary exception: in 4.7.0 to 4.7.2, gridmap does not compile with
-    # disable_physics_3d (modules/gridmap/grid_map.cpp), which Godot's 4.7 branch fixes
-    # after 4.7.2 (godotengine/godot#122593). Remove it once the catalogue's 4.7 release
-    # contains the fix.
-    "implied_options": {"disable_physics_3d": {"module_gridmap_enabled": False}},
+    # rendering device"); 4.8 adds them as options. A recipe leaves them out.
+    "editor_only_options": ["forward_mobile_renderer", "forward_plus_renderer", "rendering_device"],
+    "implied_options": [{
+        # Temporary exception: in 4.7.0 to 4.7.2, gridmap does not compile with
+        # disable_physics_3d (modules/gridmap/grid_map.cpp), which Godot's 4.7 branch fixes
+        # after 4.7.2 (godotengine/godot#122593). Remove it once the catalogue's 4.7
+        # release contains the fix.
+        "versions": ["4.7.0", "4.7.1", "4.7.2"],
+        "option": "disable_physics_3d",
+        "implies": {"module_gridmap_enabled": False},
+    }],
 }
 
-_GODOT_4_8["runtime_profile"] = _RUNTIME_PROFILE | {
-    "unknown_options": [],
-    "implied_options": {},
+_GODOT_4_8["build_profile"] = {
+    "editor_only_options": [],
+    "implied_options": [],
 }
 
 # ==== Profile lookup ==========================================================

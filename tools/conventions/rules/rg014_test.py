@@ -1,4 +1,4 @@
-"""Engine modules and patches of a project sit under its engine/ directory."""
+"""Engine modules, patches and source build files of a consumer sit under engines/<name>/."""
 
 import unittest
 
@@ -6,7 +6,8 @@ from tools.conventions.rules.rg014 import EngineLayout
 from tools.conventions.test_support import RepositoryTest
 
 ENGINE_ENTRIES = (
-    "engine/ holds only modules/, patches/, a BUILD file, lock files and .bzl files"
+    "an engines/<name>/ directory holds only modules/, patches/, a BUILD file, lock files, "
+    ".bzl files and a README.md"
 )
 MODULE = ("config.py", "SCsub", "register_types.cpp", "register_types.h", "field.cpp")
 
@@ -31,34 +32,60 @@ class EngineLayoutTest(RepositoryTest):
     def module(self, directory: str, *files: str) -> tuple[str, ...]:
         return tuple(directory + "/" + name for name in (files or MODULE))
 
-    def test_compliant_project_with_modules_and_patches_has_no_findings(self) -> None:
-        root = "e2e/rules_godot/projects/patched"
+    def test_compliant_engine_with_modules_and_patches_has_no_findings(self) -> None:
+        engine = "e2e/rules_godot/projects/patched/engines/patched"
         self.assertEqual(
             [],
             self.evaluate(
-                *self.project(root),
-                *self.module(root + "/engine/modules/bazel_probe"),
-                *self.module(root + "/engine/modules/other", "config.py", "SCsub"),
-                root + "/engine/modules/bazel_probe/BUILD.bazel",
-                root + "/engine/patches/BUILD.bazel",
-                root + "/engine/patches/engine-name.patch",
-                root + "/engine/patches/renderer.diff",
-                root + "/engine/BUILD.bazel",
-                root + "/engine/godot_patched.lock.json",
-                root + "/engine/source_engine.bzl",
+                *self.project("e2e/rules_godot/projects/patched"),
+                *self.module(engine + "/modules/bazel_probe"),
+                *self.module(engine + "/modules/other", "config.py", "SCsub"),
+                engine + "/modules/bazel_probe/BUILD.bazel",
+                engine + "/patches/BUILD.bazel",
+                engine + "/patches/engine-name.patch",
+                engine + "/patches/renderer.diff",
+                engine + "/BUILD.bazel",
+                engine + "/README.md",
+                engine + "/godot_patched.lock.json",
+                engine + "/source_engine.bzl",
             ),
         )
 
-    def test_a_source_build_s_lock_file_lives_under_engine(self) -> None:
+    def test_an_engine_may_lie_anywhere_and_registration_sets_sit_beside_it(self) -> None:
+        self.assertEqual(
+            [],
+            self.evaluate(
+                *self.module(
+                    "examples/engines/simulation/modules/field", "config.py", "SCsub"
+                ),
+                "examples/engines/simulation/godot_simulation.lock.json",
+                "examples/engines/simulation/BUILD.bazel",
+                "e2e/rules_godot/scenario/engines/stable/BUILD.bazel",
+                "e2e/rules_godot/scenario/engines/source/components.bzl",
+            ),
+        )
+
+    def test_a_source_build_s_lock_file_in_a_project_is_reported(self) -> None:
         root = "examples/petri"
         self.assertEqual(
             [
                 (
                     f"{root}/godot_petri.lock.json: a source build's lock file must live "
-                    "under engine/ of its project"
+                    "under engines/<name>/, not in a Godot project"
                 )
             ],
             self.evaluate(*self.project(root, "godot_petri.lock.json")),
+        )
+
+    def test_lock_files_and_patches_outside_projects_are_not_engine_files(self) -> None:
+        self.assertEqual(
+            [],
+            self.evaluate(
+                "multitool.lock.json",
+                "third_party/godot_simulator.patch",
+                "tools/docs/api.patch",
+                *self.project("examples/game"),
+            ),
         )
 
     def test_project_without_engine_directory_has_no_findings(self) -> None:
@@ -70,20 +97,33 @@ class EngineLayoutTest(RepositoryTest):
             *self.project(root),
             *self.module(root + "/modules/reaction_diffusion"),
             *self.module(root + "/main/native", "config.py", "register_types.cpp"),
-            *self.module(root + "/engine/modules/ok", "config.py", "SCsub"),
+            *self.module("examples/engines/ok/modules/ok", "config.py", "SCsub"),
         )
         self.assertEqual(
             findings,
             [
                 (
                     f"{root}/main/native/config.py: engine module must live under "
-                    f"engine/modules/ of its project: {root}/main/native"
+                    f"engines/<name>/modules/: {root}/main/native"
                 ),
                 (
                     f"{root}/modules/reaction_diffusion/config.py: engine module must live "
-                    f"under engine/modules/ of its project: {root}/modules/reaction_diffusion"
+                    f"under engines/<name>/modules/: {root}/modules/reaction_diffusion"
                 ),
             ],
+        )
+
+    def test_module_beside_a_project_is_reported_too(self) -> None:
+        self.assertEqual(
+            [
+                (
+                    "examples/engine/modules/field/config.py: engine module must live "
+                    "under engines/<name>/modules/: examples/engine/modules/field"
+                )
+            ],
+            self.evaluate(
+                *self.module("examples/engine/modules/field", "config.py", "SCsub")
+            ),
         )
 
     def test_config_without_scsub_or_register_types_is_not_a_module(self) -> None:
@@ -98,102 +138,100 @@ class EngineLayoutTest(RepositoryTest):
             ),
         )
 
-    def test_patch_outside_engine_patches_is_reported(self) -> None:
+    def test_patch_in_a_project_is_reported_but_a_patch_of_an_engine_is_not(self) -> None:
         root = "e2e/rules_godot/projects/patched"
         findings = self.evaluate(
             *self.project(root),
             root + "/patches/engine-name.patch",
             root + "/main/fix.diff",
-            root + "/engine/patches/ok.patch",
+            root + "/engines/patched/patches/ok.patch",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    f"{root}/main/fix.diff: engine patch must live under engine/patches/ "
-                    "of its project"
+                    f"{root}/main/fix.diff: engine patch must live under "
+                    "engines/<name>/patches/, not in a Godot project"
                 ),
                 (
                     f"{root}/patches/engine-name.patch: engine patch must live under "
-                    "engine/patches/ of its project"
+                    "engines/<name>/patches/, not in a Godot project"
                 ),
             ],
         )
 
-    def test_stray_entries_in_engine_are_reported_once_per_entry(self) -> None:
-        root = "e2e/rules_godot/projects/patched"
+    def test_stray_entries_in_an_engine_are_reported_once_per_entry(self) -> None:
+        engine = "e2e/rules_godot/projects/patched/engines/patched"
         findings = self.evaluate(
-            *self.project(root),
-            root + "/engine/BUILD.bazel",
-            root + "/engine/notes.md",
-            root + "/engine/scripts/a.py",
-            root + "/engine/scripts/b.py",
-            root + "/engine/patches/ok.patch",
+            engine + "/BUILD.bazel",
+            engine + "/notes.txt",
+            engine + "/scripts/a.py",
+            engine + "/scripts/b.py",
+            engine + "/patches/ok.patch",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    f"{root}/engine/notes.md: {ENGINE_ENTRIES}; "
-                    "unexpected entry: engine/notes.md"
+                    f"{engine}/notes.txt: {ENGINE_ENTRIES}; "
+                    "unexpected entry: engines/patched/notes.txt"
                 ),
                 (
-                    f"{root}/engine/scripts/a.py: {ENGINE_ENTRIES}; "
-                    "unexpected entry: engine/scripts/"
+                    f"{engine}/scripts/a.py: {ENGINE_ENTRIES}; "
+                    "unexpected entry: engines/patched/scripts/"
                 ),
             ],
         )
 
     def test_non_module_directory_and_files_in_engine_modules_are_reported(self) -> None:
-        root = "examples/petri"
+        engine = "examples/engines/simulation"
         findings = self.evaluate(
-            *self.project(root),
-            *self.module(root + "/engine/modules/reaction_diffusion"),
-            root + "/engine/modules/shared/util.h",
-            root + "/engine/modules/shared/util.cpp",
-            root + "/engine/modules/half/config.py",
-            root + "/engine/modules/half/register_types.cpp",
-            root + "/engine/modules/BUILD.bazel",
+            *self.module(engine + "/modules/reaction_diffusion"),
+            engine + "/modules/shared/util.h",
+            engine + "/modules/shared/util.cpp",
+            engine + "/modules/half/config.py",
+            engine + "/modules/half/register_types.cpp",
+            engine + "/modules/BUILD.bazel",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    f"{root}/engine/modules/BUILD.bazel: engine/modules/ holds only engine "
-                    "module directories; unexpected entry: engine/modules/BUILD.bazel"
+                    f"{engine}/modules/BUILD.bazel: engines/<name>/modules/ holds only "
+                    "engine module directories; unexpected entry: "
+                    "engines/simulation/modules/BUILD.bazel"
                 ),
                 (
-                    f"{root}/engine/modules/half/config.py: engine module directory must "
-                    f"own config.py and SCsub: {root}/engine/modules/half"
+                    f"{engine}/modules/half/config.py: engine module directory must "
+                    f"own config.py and SCsub: {engine}/modules/half"
                 ),
                 (
-                    f"{root}/engine/modules/shared/util.cpp: engine module directory must "
-                    f"own config.py and SCsub: {root}/engine/modules/shared"
+                    f"{engine}/modules/shared/util.cpp: engine module directory must "
+                    f"own config.py and SCsub: {engine}/modules/shared"
                 ),
             ],
         )
 
     def test_engine_patches_holds_only_patch_files_and_a_build_file(self) -> None:
-        root = "e2e/rules_godot/projects/patched"
+        engine = "e2e/rules_godot/projects/patched/engines/patched"
         findings = self.evaluate(
-            *self.project(root),
-            root + "/engine/patches/BUILD.bazel",
-            root + "/engine/patches/ok.patch",
-            root + "/engine/patches/README.md",
-            root + "/engine/patches/nested/deep.patch",
+            engine + "/patches/BUILD.bazel",
+            engine + "/patches/ok.patch",
+            engine + "/patches/README.md",
+            engine + "/patches/nested/deep.patch",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    f"{root}/engine/patches/README.md: engine/patches/ holds only .patch "
-                    "and .diff files and a BUILD file; unexpected entry: "
-                    "engine/patches/README.md"
+                    f"{engine}/patches/README.md: engines/<name>/patches/ holds only "
+                    ".patch and .diff files and a BUILD file; unexpected entry: "
+                    "engines/patched/patches/README.md"
                 ),
                 (
-                    f"{root}/engine/patches/nested/deep.patch: engine/patches/ holds only "
-                    ".patch and .diff files and a BUILD file; unexpected entry: "
-                    "engine/patches/nested/"
+                    f"{engine}/patches/nested/deep.patch: engines/<name>/patches/ holds "
+                    "only .patch and .diff files and a BUILD file; unexpected entry: "
+                    "engines/patched/patches/nested/"
                 ),
             ],
         )
@@ -203,28 +241,25 @@ class EngineLayoutTest(RepositoryTest):
         findings = self.evaluate(
             *self.project(addon + "/demo"),
             *self.project(addon + "/tests"),
-            *self.module(addon + "/demo/engine/modules/ok", "config.py", "SCsub"),
             *self.module(addon + "/tests/modules/stray", "config.py", "SCsub"),
-            *self.module(addon + "/native", "config.py", "SCsub"),
             "third_party/godot_simulator.patch",
             "e2e/rules_godot/unit/engine/fix.patch",
             *self.module("godot/private/probe", "config.py", "SCsub"),
             *self.project("e2e/rules_godot/projects/mobile/android"),
-            *self.project("e2e/rules_godot/projects/mobile/ios"),
             "e2e/rules_godot/projects/mobile/BUILD.bazel",
             "e2e/rules_godot/projects/mobile/shared.patch",
-            "e2e/rules_godot/projects/mobile/android/engine/stray.txt",
+            "e2e/rules_godot/projects/mobile/android/patches/stray.patch",
         )
         self.assertEqual(
             findings,
             [
                 (
-                    "e2e/rules_godot/projects/mobile/android/engine/stray.txt: "
-                    f"{ENGINE_ENTRIES}; unexpected entry: engine/stray.txt"
+                    "e2e/rules_godot/projects/mobile/android/patches/stray.patch: engine "
+                    "patch must live under engines/<name>/patches/, not in a Godot project"
                 ),
                 (
                     f"{addon}/tests/modules/stray/config.py: engine module must live under "
-                    f"engine/modules/ of its project: {addon}/tests/modules/stray"
+                    f"engines/<name>/modules/: {addon}/tests/modules/stray"
                 ),
             ],
         )

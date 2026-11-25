@@ -7,9 +7,19 @@ import os
 import shutil
 import sys
 import tempfile
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any
+
+try:
+    from .build_profile import build_options, class_list_spec, read_profile
+except ImportError:
+    # Run as a binary, the tool imports its sibling modules from its own directory.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from build_profile import (  # type: ignore[no-redef]
+        build_options,
+        class_list_spec,
+        read_profile,
+    )
 
 
 class Value:
@@ -83,48 +93,34 @@ def value_of(source: dict[str, Any]) -> object:
     return value
 
 
-class Registration(NamedTuple):
-    """Whether an application's build profile is a registered runtime profile, and how to register it."""
-
-    line: str = ""
-    registered: bool = False
-
-
-def _unregistered_options(
-    data: Mapping[str, Any], application: Path | None, registration: Registration
-) -> list[str]:
-    """The build options of an application's profile that no registration allows."""
-    if application is None or registration.registered:
-        return []
-    return sorted(data.get("disabled_build_options") or {})
-
-
 def with_class_profile(
     spec: dict[str, Any],
     application: Path | None,
     recipe: Path | None,
-    registration: Registration | None = None,
+    registration: str = "",
 ) -> dict[str, Any]:
     """
     Return the class generator's specification with the disabled classes of a build profile.
 
     An application's profile replaces the recipe's own. Build options shape the engine's
     graph, so an application's profile may set them only as a registered runtime profile,
-    whose runtime variant has its own graph.
+    whose runtime variant has its own graph; registration, the MODULE.bazel line that
+    registers it, names one that is not.
     """
     profile = application or recipe
     if profile is None:
         return spec
-    registration = registration or Registration()
-    data = json.loads(profile.read_text())
-    options = _unregistered_options(data, application, registration)
+    data = read_profile(profile)
+    # The recipe's own profile and a registered runtime profile may set build options.
+    checked = application is not None and registration
+    options = sorted(build_options(data)) if checked else []
     if options:
         raise ValueError(
             f"The build profile {application} sets {', '.join(options)}, build "
             "options that need a runtime variant of the engine. Register the profile in "
-            f"MODULE.bazel: {registration.line}"
+            f"MODULE.bazel: {registration}"
         )
-    return spec | {"sources": [{"value": list(data.get("disabled_classes", []))}]}
+    return class_list_spec(spec, data.get("disabled_classes", []))
 
 
 def run(spec: dict[str, Any], inputs: dict[str, str], outputs: dict[str, str]) -> None:
@@ -193,9 +189,8 @@ def main() -> None:
     # The build profiles of the class generator: the application's, then the recipe's.
     parser.add_argument("--class-profile", type=Path)
     parser.add_argument("--recipe-profile", type=Path)
-    # Whether the application's profile is a registered runtime profile, and the
-    # MODULE.bazel line that registers it.
-    parser.add_argument("--registered-profile", action="store_true")
+    # The MODULE.bazel line that registers the application's profile, which is no
+    # registered runtime profile and so may only disable classes.
     parser.add_argument("--registration", default="")
     args = parser.parse_args()
     run(
@@ -203,7 +198,7 @@ def main() -> None:
             json.loads(Path(args.spec).read_text()),
             args.class_profile,
             args.recipe_profile,
-            Registration(args.registration, args.registered_profile),
+            args.registration,
         ),
         dict(value.split("=", 1) for value in args.input),
         dict(value.split("=", 1) for value in args.output),

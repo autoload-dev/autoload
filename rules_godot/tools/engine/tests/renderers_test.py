@@ -6,6 +6,7 @@ from pathlib import Path
 from tools.engine.configure import (
     engine_renderers,
     has_renderer_switches,
+    profile_renderers,
     renderer_options,
     require_renderer_options_unset,
     with_renderer_modules,
@@ -74,7 +75,7 @@ class RenderersTest(unittest.TestCase):
         def modules(renderers: str, environment: str = "device") -> list[str]:
             args = argparse.Namespace(
                 modules=["gdscript"],
-                renderers=renderers,
+                renderers=[method for method in renderers.split(",") if method],
                 platform="ios",
                 environment=environment,
             )
@@ -91,6 +92,28 @@ class RenderersTest(unittest.TestCase):
         require_renderer_options_unset(derived, ["disable_3d=yes"])
         with self.assertRaisesRegex(ValueError, "renderers decides metal, opengl3"):
             require_renderer_options_unset(derived, ["opengl3=yes", "metal=no"])
+
+    def test_a_build_profile_keeps_the_methods_its_drivers_leave(self) -> None:
+        methods = ["gl_compatibility", "mobile", "forward_plus"]
+        # A project on the Compatibility renderer turns RenderingDevice's driver off.
+        self.assertEqual(
+            profile_renderers(methods, {"metal": False, "vulkan": False}, "macos", False),
+            ["gl_compatibility"],
+        )
+        self.assertEqual(
+            profile_renderers(methods, {"opengl3": False}, "android", False),
+            ["mobile", "forward_plus"],
+        )
+        # Godot 4.8's switches leave out one RenderingDevice method.
+        self.assertEqual(
+            profile_renderers(
+                methods, {"forward_plus_renderer": False}, "linuxbsd", True
+            ),
+            ["gl_compatibility", "mobile"],
+        )
+        self.assertEqual(profile_renderers(methods, {}, "ios", True), methods)
+        with self.assertRaisesRegex(ValueError, "no rendering method"):
+            profile_renderers(["gl_compatibility"], {"opengl3": False}, "macos", False)
 
 
 if __name__ == "__main__":

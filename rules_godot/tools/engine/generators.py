@@ -6,28 +6,18 @@ its first output, so the runtime variants of a recipe, which share one package, 
 generator they share once.
 """
 
-import argparse
-import hashlib
-import json
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 try:
+    from .build_file import Rule
     from .include_graph import Generated
-    from .source_tree import SOURCE_SUFFIXES, relative
+    from .source_tree import SOURCE_SUFFIXES, digest_of
 except ImportError:
+    from build_file import Rule
     from include_graph import Generated
-    from source_tree import SOURCE_SUFFIXES, relative
-
-
-def multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
-    return (
-        rule
-        + "(\n"
-        + "".join(f"    {key} = {value!r},\n" for key, value in attributes.items())
-        + ")"
-    )
+    from source_tree import SOURCE_SUFFIXES, digest_of
 
 
 def spec_path(spec: Mapping[str, Any]) -> str:
@@ -37,8 +27,7 @@ def spec_path(spec: Mapping[str, Any]) -> str:
     The runtime variants of a recipe share one package, where a generator whose
     specification differs between them takes one file per specification.
     """
-    content = json.dumps(spec, sort_keys=True).encode()
-    return f"_bazel_generators/{hashlib.sha256(content).hexdigest()[:16]}.json"
+    return f"_bazel_generators/{digest_of(spec)[:16]}.json"
 
 
 def generator_name(spec: Mapping[str, Any]) -> str:
@@ -46,64 +35,62 @@ def generator_name(spec: Mapping[str, Any]) -> str:
     return "_generate__" + spec["targets"][0].replace("/", "__")
 
 
-def generator_attributes(
-    name: str,
+# The attributes of a generator that Bazel cannot select: its declared outputs and the
+# switch its macro reads.
+_FIXED = frozenset({"outs", "class_profile"})
+
+
+def generator_rule(
     spec: Mapping[str, Any],
     inputs: Mapping[str, str],
-    args: argparse.Namespace,
-) -> dict[str, object]:
+    recipe_profile: str,
+    registered: bool = False,
+) -> Rule:
     """
-    Return the attributes of one generator's rule.
+    Return one generator's rule.
 
     The generator of core/disabled_classes.gen.h reads the class list of a build profile when
     it runs: the application's, which godot_app's build_profile selects, or else the
-    recipe's own, so a profile's classes need no pin. An application's profile may set
-    build options only if it is one of the engine's registered runtime profiles.
+    recipe's own, so a profile's classes need no pin. In a runtime variant's graph the
+    application's profile is a registered runtime profile, which may set build options.
     """
     attributes: dict[str, object] = {
-        "name": name,
         "spec": spec_path(spec),
         "inputs": dict(inputs),
         "outs": spec["targets"],
     }
     if spec["function"] == "disabled_class_builder":
         attributes["class_profile"] = True
-        if args.recipe_profile:
-            attributes["recipe_profile"] = args.recipe_profile
-        attributes["runtime_profiles"] = list(args.runtime_profiles)
-        if args.engine:
-            attributes["engine"] = args.engine
-    return attributes
+        if recipe_profile:
+            attributes["recipe_profile"] = recipe_profile
+        if registered:
+            attributes["registered_profile"] = True
+    return Rule("godot_source_generator", generator_name(spec), attributes, _FIXED)
 
 
 def generator_rules(
-    args: argparse.Namespace,
-    root: Path,
     generators: Sequence[tuple[dict[str, Any], set[str]]],
-) -> tuple[list[str], list[str]]:
+    python_files: Sequence[str],
+    recipe_profile: str,
+    registered: bool = False,
+) -> tuple[list[Rule], list[str]]:
     """
     Return each generator's rule and its generated headers.
 
     A generator's inputs are its dependencies and the Python files of the source tree.
     """
-    python_files = sorted(
-        relative(path, root)
-        for path in root.rglob("*.py")
-        if "_scons" not in path.parts and "_bazel_generators" not in path.parts
-    )
-    lines: list[str] = []
+    rules: list[Rule] = []
     generated_headers: list[str] = []
     for spec, dependencies in generators:
         inputs = {source: source for source in sorted(dependencies | set(python_files))}
         # A script's SCsub is needed for inspection provenance, but its captured
         # function is executed alone by tools/engine/generator.py.
         inputs[spec["code_file"]] = spec["code_file"]
-        attributes = generator_attributes(generator_name(spec), spec, inputs, args)
-        lines.append(multiline_rule("godot_source_generator", attributes))
+        rules.append(generator_rule(spec, inputs, recipe_profile, registered))
         generated_headers.extend(
             name for name in spec["targets"] if Path(name).suffix not in SOURCE_SUFFIXES
         )
-    return lines, generated_headers
+    return rules, generated_headers
 
 
 def generated_files(
