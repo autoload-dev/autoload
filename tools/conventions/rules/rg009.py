@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable
 
-from tools.conventions.context import Context, Location
+from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.layout import RULESET_MODULE
 
@@ -14,19 +14,27 @@ class ProjectPlaces:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        workspace = context.workspace
-        configurations = workspace.godot_configurations
-        for path in sorted(configurations):
+        yield from self.unplaced(context.workspace)
+        yield from self.incomplete(context.workspace)
+
+    @staticmethod
+    def unplaced(workspace: Workspace) -> Iterable[Finding]:
+        """Report configurations outside a project at a fixed place."""
+        for path in sorted(workspace.godot_configurations):
             # The white-box fixtures of the ruleset module may live anywhere there.
-            if workspace.owner(path.as_posix()) == RULESET_MODULE:
-                continue
-            if workspace.typed_directory(path) is not None:
-                continue
-            yield Finding(
-                Location(path.as_posix(), 1),
-                "Godot configurations must belong to a project at a fixed place of their consumer",
-            )
-        for project, members in workspace.typed_directories("projects").items():
+            ruleset = workspace.owner(path.as_posix()) == RULESET_MODULE
+            if not ruleset and workspace.project(path) is None:
+                yield Finding(
+                    Location(path.as_posix(), 1),
+                    "Godot configurations must belong to a project at a fixed place "
+                    "of their consumer",
+                )
+
+    @staticmethod
+    def incomplete(workspace: Workspace) -> Iterable[Finding]:
+        """Report projects without a BUILD file or a Godot configuration."""
+        configurations = workspace.godot_configurations
+        for project, members in workspace.projects.items():
             location = Location(members[0], 1)
             if not workspace.has_build(project):
                 yield Finding(

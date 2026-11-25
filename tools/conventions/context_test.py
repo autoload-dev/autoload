@@ -368,18 +368,16 @@ escaped = "a\\"b"
         self.write("consumers/demo/MODULE.bazel", "")
         workspace = self.workspace()
         self.assertEqual(
-            ("projects", Path("examples/x")),
-            workspace.typed_directory(Path("examples/x/BUILD.bazel")),
+            Path("examples/x"),
+            workspace.project(Path("examples/x/BUILD.bazel")),
         )
         self.assertEqual(
-            ("projects", Path("e2e/rules_godot/y")),
-            workspace.typed_directory(
-                Path("e2e/rules_godot/y/tests/android/BUILD.bazel")
-            ),
+            Path("e2e/rules_godot/y"),
+            workspace.project(Path("e2e/rules_godot/y/tests/android/BUILD.bazel")),
         )
         self.assertEqual(
-            ("projects", Path("e2e/rules_godot/smoke/linux")),
-            workspace.typed_directory(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
+            Path("e2e/rules_godot/smoke/linux"),
+            workspace.project(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
         )
         for name in (
             # Consumer modules other than the registry test modules have no projects.
@@ -391,7 +389,7 @@ escaped = "a\\"b"
             "projects/root/BUILD.bazel",
         ):
             with self.subTest(name=name):
-                self.assertIsNone(workspace.typed_directory(Path(name)))
+                self.assertIsNone(workspace.project(Path(name)))
 
     def test_tools_visit_each_owning_module_once(self) -> None:
         files = (

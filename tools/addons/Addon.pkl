@@ -21,6 +21,5 @@ desktops: List<Desktop>(!isEmpty, isDistinct) = List("linux", "macos")
 testOperations: List<String> = List()
 
 /// The packages in the module's root that several of its add-ons share and that are no
-/// add-on themselves, such as Firebase's `config`. RG015 allows them beside the add-ons,
-/// `third_party/`, `tests/` and `bcr/`.
+/// add-on themselves, such as Firebase's `config`. RG015 allows them in the module's root.
 sharedPackages: List<String> = List()

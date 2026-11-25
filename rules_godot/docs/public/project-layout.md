@@ -10,10 +10,9 @@ repository follows this layout: games such as Lichtpost are projects directly in
 An application keeps its configuration in its project and its content under `main/`; the
 physical placement of a source decides which project or add-on owns it. A project's custom
 engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
-An add-on keeps its reusable implementation independent of its demo and test projects. Its
-Godot test project holds its suites in packages named after their topic; a condition a test
-needs to run, such as a real operating system, is a tag of the test, not a directory. An
-application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
+An add-on's Godot test project holds its suites in packages named after their topic; a
+condition a test needs to run, such as a real operating system, is a tag of the test, not a
+directory. An application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
 stay beside the implementation or backend code, independent of consuming Godot projects. Focused test-input
 libraries are not add-ons merely because they contain native sources. Build files of pinned
 third-party archives live in `third_party/` of the module that pins them.

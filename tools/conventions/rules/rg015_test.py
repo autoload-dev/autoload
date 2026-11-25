@@ -4,6 +4,7 @@ import unittest
 
 from tools.addons.modules import ROOT
 from tools.addons.new import generate
+from tools.conventions.context import Call, Location
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.test_support import RepositoryTest
 
@@ -11,6 +12,7 @@ from tools.conventions.test_support import RepositoryTest
 class AddonModuleLayoutTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
+        self.calls: list[Call] = []
         self.write(".bazelversion", "9.3.0\n")
         self.write(
             ".bcr/rules_godot/metadata.template.json",
@@ -18,12 +20,21 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
 
     def module(self, directory: str, addon: str | None = None) -> None:
-        """A module as the generator writes it, in the workspace inventory."""
+        """
+        A module as the generator writes it, in the workspace inventory, with the call that
+        declares its add-on.
+        """
         for path in generate(directory, addon, root=self.root):
             self.files.add(path.relative_to(self.root).as_posix())
+        name = addon or directory
+        build = f"addons/{directory}/{name}/BUILD.bazel"
+        self.calls.append(
+            Call(Location(build, 1), "godot_addon", frozenset({"name"}), name)
+        )
 
     def evaluate(self) -> list[str]:
-        return [item.message for item in AddonModuleLayout().evaluate(self.context())]
+        context = self.context(calls=tuple(self.calls))
+        return [item.message for item in AddonModuleLayout().evaluate(context)]
 
     def test_generated_modules_follow_the_layout(self) -> None:
         self.module("widget")
@@ -59,7 +70,7 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.write("addons/widget/notes.txt", "")
         pkl = (self.root / "addons/widget/addon.pkl").read_text()
         self.write("addons/widget/addon.pkl", pkl + 'sharedPackages = List("shared")\n')
-        root = "the module's root holds only its files, its add-ons, third_party/, tests/, bcr/"
+        root = "the module's root holds only its files, its add-ons, bcr/, tests/, third_party/"
         self.assertEqual(
             sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
             [
@@ -113,18 +124,6 @@ class AddonModuleLayoutTest(RepositoryTest):
             build, (self.root / build).read_text().replace('name = "edit"', 'name = "e"')
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
-
-    def test_an_example_project_keeps_its_tests_in_tests(self) -> None:
-        self.module("widget")
-        build = "examples/addons/widget/BUILD.bazel"
-        text = (self.root / build).read_text()
-        self.write(
-            build, text + 'godot_test(\n    name = "starts",\n    pack = ":pack",\n)\n'
-        )
-        self.assertEqual(
-            ["example project's tests live in examples/addons/widget/tests/: :starts"],
-            self.evaluate(),
-        )
 
     def test_a_module_without_application_lanes_needs_no_app(self) -> None:
         self.module("widget")

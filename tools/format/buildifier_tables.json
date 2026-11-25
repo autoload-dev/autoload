@@ -1,0 +1,18 @@
+{
+  "IsLabelArg": {
+    "addons": true,
+    "app": true,
+    "debug_symbols": true,
+    "editor": true,
+    "engine_manifest": true,
+    "extensions": true,
+    "inspector": true,
+    "library": true,
+    "pack": true,
+    "project": true,
+    "project_file": true,
+    "runtime": true,
+    "suites": true,
+    "view": true
+  }
+}

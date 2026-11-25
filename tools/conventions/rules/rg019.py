@@ -15,19 +15,22 @@ class ProjectTargetNames:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        workspace = context.workspace
-        projects: dict[str, set[str | None]] = defaultdict(set)
-        for module in workspace.modules:
-            for call in context.starlark.calls(module):
-                if call.kind == "godot_project":
-                    projects[call.location.path].add(call.literal_name)
-        for build, names in sorted(projects.items()):
+        configured = context.workspace.configured
+        for build, names in sorted(projects(context).items()):
             package = Path(build).parent
-            if (package / "project.godot").as_posix() not in workspace.file_set:
-                continue
-            if package.name not in names:
+            if package in configured and package.name not in names:
                 yield Finding(
                     Location(build, 1),
                     f"name the project of {package.as_posix()} like its directory: "
                     f"{package.name}",
                 )
+
+
+def projects(context: Context) -> dict[str, set[str | None]]:
+    """The names of the projects that each BUILD file declares."""
+    names: dict[str, set[str | None]] = defaultdict(set)
+    for module in context.workspace.modules:
+        for call in context.starlark.calls(module):
+            if call.kind == "godot_project":
+                names[call.location.path].add(call.literal_name)
+    return names

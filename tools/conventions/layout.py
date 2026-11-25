@@ -1,6 +1,6 @@
 """
-Where the repository's consumers keep their projects and add-ons: the consumer roots of the
-root module, the consumer modules and the typed roots measured from either.
+Where the repository's consumers keep their projects: the consumer roots of the root module,
+the consumer modules and the fixed places of projects in either.
 """
 
 from pathlib import Path
@@ -26,7 +26,7 @@ CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
 SMOKE_ROOT = "smoke"
 
 
-def scenario_directory(parts: tuple[str, ...]) -> Path | None:
+def scenario_project(parts: tuple[str, ...]) -> Path | None:
     """
     The project of the consumer scenario that a path below e2e/rules_godot/, given by its
     parts, lies in: one project per scenario, and one per operating system below smoke/.
@@ -63,9 +63,7 @@ def is_end_to_end(project: Path) -> bool:
     return project.is_relative_to(ADDON_E2E)
 
 
-def typed_directory(
-    root: Path, path: Path, configured: frozenset[Path]
-) -> tuple[str, Path] | None:
+def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Path | None:
     """
     The project that path lies in, below the consumer root ``root``: a project directly in
     examples/, one of the scenarios' projects, or a project of a flat consumer.
@@ -75,12 +73,10 @@ def typed_directory(
         return None
     parts = path.relative_to(root).parts
     if root == REGRESSION_ROOT:
-        project = scenario_directory(parts)
-    elif is_flat(root):
-        project = flat_project(root, parts, configured)
-    else:
-        project = root / parts[0] if root == EXAMPLES_ROOT and len(parts) > 1 else None
-    return None if project is None else ("projects", project)
+        return scenario_project(parts)
+    if is_flat(root):
+        return flat_project(root, parts, configured)
+    return root / parts[0] if root == EXAMPLES_ROOT and len(parts) > 1 else None
 
 
 def flat_project(

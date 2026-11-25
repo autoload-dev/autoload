@@ -23,7 +23,7 @@ from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import ADDONS as ADDON_DIRECTORY
-from tools.setup.modules import BCR
+from tools.setup.modules import BCR, is_addon_module
 
 ADDONS = Path(ADDON_DIRECTORY)
 # The files every module addons/<directory> owns: those of the generator's module template.
@@ -37,7 +37,9 @@ ROOT_FILES = frozenset(
     {*(relative for relative in REQUIRED if "/" not in relative), "MODULE.bazel.lock"}
 )
 ROOT_DIRECTORIES = frozenset({"third_party", "tests", BCR})
-ROOT_ENTRIES = "its files, its add-ons, third_party/, tests/, bcr/"
+ROOT_ENTRIES = ", ".join(
+    ["its files", "its add-ons", *(f"{name}/" for name in sorted(ROOT_DIRECTORIES))]
+)
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
 # The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
@@ -49,8 +51,6 @@ PROJECT_TARGETS = ("edit", "pack")
 APP_TARGET = "app"
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
-# A test declared directly in an example project's BUILD file, with its name.
-TEST_CALL = re.compile(r'^\w+_test\(\s*name\s*=\s*"([^"]+)"', re.MULTILINE)
 # A property an addon.pkl sets, whatever its value: the tools read only one-line Lists.
 ASSIGNMENT = re.compile(r"^(\w+)\s*(?::[^=]*)?=")
 
@@ -59,32 +59,38 @@ def at(path: Path | str) -> Location:
     return Location(Path(path).as_posix(), 1)
 
 
-def root_entries(workspace: Workspace, module: Path) -> dict[str, bool]:
+def module_root_entries(workspace: Workspace, module: Path) -> dict[str, bool]:
     """The entries of a module's root, by name, and whether each is a file."""
     entries = {}
+    prefix = f"{module.as_posix()}/"
     for name in workspace.files:
-        if workspace.owner(name) == module:
+        # The prefix test spares the owner lookup for files of other modules.
+        if name.startswith(prefix) and workspace.owner(name) == module:
             parts = Path(name).relative_to(module).parts
             entries[parts[0]] = len(parts) == 1
     return entries
 
 
+def declared_names(context: Context) -> dict[str, set[str | None]]:
+    """The names of the targets that each BUILD file declares, from its parsed calls."""
+    names: dict[str, set[str | None]] = defaultdict(set)
+    for module in context.workspace.modules:
+        for call in context.starlark.calls(module):
+            names[call.location.path].add(call.literal_name)
+    return names
+
+
 def allowed_entry(
-    workspace: Workspace, path: Path, is_file: bool, allowed: frozenset[str] | set[str]
+    path: Path, is_file: bool, allowed: frozenset[str], names: dict[str, set[str | None]]
 ) -> bool:
-    """Whether a root entry is a module file, an allowed directory or an add-on."""
+    """
+    Whether a root entry is a module file, an allowed directory or an add-on, whose BUILD
+    file declares a target named like its directory.
+    """
     if is_file:
         return path.name in ROOT_FILES
-    return path.name in allowed or is_addon(workspace, path)
-
-
-def is_addon(workspace: Workspace, directory: Path) -> bool:
-    """Whether a directory's BUILD file declares a target named like the directory."""
-    return any(
-        f'name = "{directory.name}"' in workspace.text(build.as_posix())
-        for build in (directory / name for name in BUILD_FILES)
-        if build.as_posix() in workspace.file_set
-    )
+    builds = ((path / build).as_posix() for build in BUILD_FILES)
+    return path.name in allowed or any(path.name in names[build] for build in builds)
 
 
 def backends_directory(name: str) -> Path | None:
@@ -146,11 +152,12 @@ class AddonModuleLayout:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace
         yield from self.backends(workspace)
-        modules = sorted(path for path in workspace.module_paths if path.parent == ADDONS)
+        modules = sorted(filter(is_addon_module, workspace.module_paths))
+        names = declared_names(context)
         for module in modules:
             builds_apps = self.builds_apps(workspace, module / "addon.pkl")
             yield from self.files(workspace, module)
-            yield from self.root_entries(workspace, module)
+            yield from self.root_entries(workspace, module, names)
             yield from self.registry(workspace, module)
             yield from self.imports(workspace, module)
             yield from self.addon_pkl(workspace, module / "addon.pkl")
@@ -159,16 +166,20 @@ class AddonModuleLayout:
         yield from self.orphaned_templates(workspace, modules)
 
     @staticmethod
-    def root_entries(workspace: Workspace, module: Path) -> Iterable[Finding]:
+    def root_entries(
+        workspace: Workspace, module: Path, names: dict[str, set[str | None]]
+    ) -> Iterable[Finding]:
         """
         The entries of the module's root that are none of its files, add-ons, shared
         packages or the directories every module may have.
         """
         pkl = (module / "addon.pkl").as_posix()
-        shared = addon_values(workspace.text(pkl) if pkl in workspace.file_set else "")
-        allowed = ROOT_DIRECTORIES | set(shared.get("sharedPackages", []))
-        for entry, is_file in sorted(root_entries(workspace, module).items()):
-            if not allowed_entry(workspace, module / entry, is_file, allowed):
+        manifest = addon_manifest(
+            workspace.text(pkl) if pkl in workspace.file_set else ""
+        )
+        allowed = ROOT_DIRECTORIES | frozenset(manifest["sharedPackages"])
+        for entry, is_file in sorted(module_root_entries(workspace, module).items()):
+            if not allowed_entry(module / entry, is_file, allowed, names):
                 yield Finding(
                     at(module / entry),
                     f"{module / entry}: the module's root holds only {ROOT_ENTRIES} and "
@@ -277,11 +288,6 @@ class AddonModuleLayout:
             text = workspace.text(build.as_posix())
             for target in sorted(targets - set(NAME.findall(text))):
                 yield Finding(at(build), f"example project must define :{target}")
-            for test in TEST_CALL.findall(text):
-                yield Finding(
-                    at(build),
-                    f"example project's tests live in {build.parent / 'tests'}/: :{test}",
-                )
 
     @staticmethod
     def extensions(workspace: Workspace, modules: list[Path]) -> Iterable[Finding]:

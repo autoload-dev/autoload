@@ -16,7 +16,7 @@ identities, not authored target declarations.
 | [RG004](#rg004) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
-| [RG008](#rg008) | Application content lives under `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
+| [RG008](#rg008) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
 | [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
@@ -228,6 +228,12 @@ configuration use the case root's `main/`. Contexts for one operating system may
 their configuration and `main/`. Several resource paths of one physical source produce one
 finding.
 
+An application's tests, such as the exported demo's of an add-on module, live in its
+`tests/` package, never in the project's root package. The check reports every call in the
+root package of a project in `examples/` whose kind ends in `_test` or is a declared test
+operation ([RG007](#rg007)); `godot_metadata_sync`'s `update.test` is a consistency check of
+the project and stays beside it.
+
 There is no blanket exemption for regression projects, test-only project compositions or
 macro-generated projects. Test-only suites and helpers belong in a project's `tests/` scope;
 an add-on module's end-to-end test project in `e2e/addons/<module>/` is test-only as a whole,
@@ -243,7 +249,7 @@ reusable-resource exemptions select applicability.
 ## RG009
 
 **Projects lie at the fixed places of their consumers.** Every consumer places its projects
-by path, without typed roots:
+by path:
 
 | Consumer | Projects |
 |---|---|
@@ -387,8 +393,7 @@ root module's declaration lists it. Each module:
   `android` or `ios`;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
-  defining the targets `edit` and `pack`, and `app` when the module builds applications,
-  and keeping its tests, such as the exported demo's, in its `tests/` package;
+  defining the targets `edit` and `pack`, and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 
@@ -428,7 +433,9 @@ skills without a counterpart.
 **A package's Godot project is named like its directory.** A package that holds a
 `project.godot` and declares projects names one of them like its directory, so the package's
 own label names its project: `//examples/addons/sqlite` and `//e2e/addons/sqlite`, not
-`//examples/addons/sqlite:demo`. Write that short form in labels and commands. Further
+`//examples/addons/sqlite:demo`. Write that short form in labels and commands; in BUILD
+files, `aspect format` rewrites the long form of the label attributes that
+`tools/format/buildifier_tables.json` names, such as `project` and `pack`. Further
 projects of the package, such as a test project beside an application's, take names of their
 own. This applies everywhere, the ruleset's fixtures included.
 
@@ -448,7 +455,7 @@ recognizable by its place:
 - the module's `.bazelignore` lists `bcr`, since each test module is a Bazel module of its
   own;
 - the test module is a consumer with a flat project: the test module itself is the project,
-  or each project lies directly in one of its directories, without typed roots, which
+  or each project lies directly in one of its directories, which
   [RG009](#rg009) checks.
 
 A test module registers the prebuilt engine itself, as an application does; the add-on
@@ -537,7 +544,7 @@ the rules explicitly and selects them by ID, and the [CLI](../../tools/conventio
 formats results and chooses the exit status.
 
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
-workspace files, documents, modules and typed directories, Starlark calls, Bazel rules and
+workspace files, documents, modules and projects, Starlark calls, Bazel rules and
 inspection, and the joins of them (`context.declarations`, `context.sources`). The public
 members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal, which files

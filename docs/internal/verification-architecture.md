@@ -223,7 +223,7 @@ The add-on modules follow the same split by how a test runs, with four kinds tha
 
 | Kind | Location | Form |
 |---|---|---|
-| Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only |
+| Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only: the lanes build the module from the root module, where its development dependencies are not active |
 | Add-on end-to-end test | `e2e/addons/<module>/` in the root module | Godot runs or project builds through the module's public targets, such as GdUnit suites |
 | Demo test | `examples/addons/<module>/tests/` | Checks of the example application itself, such as its exported pack running headless |
 | Registry test module | `bcr/<name>/` of every released module ([RG020](conventions.md#rg020)) | A consumer module that the registry builds from the release archive |

@@ -11,15 +11,15 @@ authored inputs inside the workspace.
 from collections.abc import Iterable
 from pathlib import Path
 
+from tools.addons.new import SUFFIX
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 
 
 def test_scope(workspace: Workspace, path: Path) -> bool:
-    if path.suffix == ".tmpl":
+    if path.suffix == SUFFIX:
         return False
-    owner = workspace.typed_directory(path)
-    root = owner[1] if owner is not None else workspace.owner(path.as_posix())
+    root = workspace.project(path) or workspace.owner(path.as_posix())
     return "tests" in path.relative_to(root).parts[:-1]
 
 

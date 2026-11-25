@@ -1,19 +1,14 @@
 """RG021: add-on modules run no Godot; their end-to-end tests live in the root module."""
 
 from collections.abc import Iterable
-from pathlib import Path
 
-from tools.addons.modules import addon_manifest
-from tools.conventions.context import Context, Location, Module
+from tools.conventions.context import Context, Location, Module, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.setup.modules import ADDONS
+from tools.conventions.rules.rg007 import declared_operations
+from tools.setup.modules import is_addon_module
 
-# The calls that make a Godot project or run Godot, besides a module's own test operations.
+# The calls that make a Godot project or run Godot, besides the declared test operations.
 GODOT_RUNS = frozenset({"godot_project", "godot_test", "godot_metadata_sync"})
-
-
-def is_addon_module(module: Path) -> bool:
-    return module.parent == Path(ADDONS)
 
 
 class NoGodotRunsInAddonModules:
@@ -23,24 +18,25 @@ class NoGodotRunsInAddonModules:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        workspace = context.workspace
-        for name in workspace.files:
-            if Path(name).name == "project.godot" and is_addon_module(
-                workspace.owner(name)
-            ):
-                yield Finding(Location(name, 1), self.message("a Godot project"))
-        for module in workspace.modules:
+        yield from self.projects(context.workspace)
+        kinds = GODOT_RUNS | declared_operations(context.workspace)
+        for module in context.workspace.modules:
             if is_addon_module(module.path):
-                yield from self.runs(context, module)
+                yield from self.runs(context, module, kinds)
 
-    def runs(self, context: Context, module: Module) -> Iterable[Finding]:
+    def projects(self, workspace: Workspace) -> Iterable[Finding]:
+        for path in sorted(workspace.godot_configurations):
+            if is_addon_module(workspace.owner(path.as_posix())):
+                yield Finding(
+                    Location(path.as_posix(), 1), self.message("a Godot project")
+                )
+
+    def runs(
+        self, context: Context, module: Module, kinds: frozenset[str]
+    ) -> Iterable[Finding]:
         workspace = context.workspace
-        path = (module.path / "addon.pkl").as_posix()
-        manifest = workspace.text(path) if path in workspace.file_set else ""
-        kinds = GODOT_RUNS | set(addon_manifest(manifest)["testOperations"])
         for call in context.starlark.calls(module):
-            owned = workspace.owner(call.location.path) == module.path
-            if owned and call.kind in kinds:
+            if call.kind in kinds and workspace.owner(call.location.path) == module.path:
                 yield Finding(call.location, self.message(call.kind))
 
     @staticmethod

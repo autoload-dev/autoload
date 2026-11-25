@@ -13,6 +13,7 @@ from tools.conventions.context import (
 from tools.conventions.framework import Finding, RuleInfo
 
 PATCH_SUFFIXES = frozenset({".patch", ".diff"})
+MODULE_FILES = frozenset({"config.py", "SCsub"})
 # A source build's lock file, as godot_engines.source_build names it: <hub>.lock.json.
 LOCK_SUFFIX = ".lock.json"
 ENGINE_ENTRIES = (
@@ -23,9 +24,6 @@ ENGINE_ENTRIES = (
 def is_engine_file(name: str) -> bool:
     """A file engine/ may hold directly: its BUILD file, a lock file or a .bzl file."""
     return name in BUILD_FILES or name.endswith((LOCK_SUFFIX, ".bzl"))
-
-
-MODULE_FILES = frozenset({"config.py", "SCsub"})
 
 
 def is_module(files: Iterable[str]) -> bool:
