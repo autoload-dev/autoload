@@ -7,7 +7,7 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
 
 godot_project(
-    name = "project",
+    name = "macos_app_from_project",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -15,7 +15,7 @@ godot_project(
 godot_pack(
     name = "pack_declared",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos_app_from_project",
     tags = ["manual"],
 )
 

@@ -14,11 +14,12 @@ py_library(
         "changes.py",
         "work.py",
     ],
-    # The add-on modules' lanes, from their addon.pkl, and the change since origin/main as
-    # Code Health reads it.
+    # The add-on modules' lanes, from their addon.pkl, the applications', from their app.pkl,
+    # and the change since origin/main as Code Health reads it.
     deps = [
         ":lanes_lib",
         "//tools/addons:new_lib",
+        "//tools/apps:apps_lib",
         "//tools/code_health:codescene_lib",
         "//tools/setup:modules_lib",
     ],
@@ -57,7 +58,10 @@ py_test(
     srcs = ["work_test.py"],
     # The Aspect tasks that name work.
     data = ["//:aspect_tasks"],
-    deps = [":work_lib"],
+    deps = [
+        ":work_lib",
+        "//tools/addons:test_support",
+    ],
 )
 
 # The setup action's shutdown of Bazel, through Node's test runner. On a GitHub Linux runner

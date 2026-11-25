@@ -23,7 +23,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "enabled",
+    name = "extension_load_probe",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -33,7 +33,7 @@ godot_project(
 godot_pack(
     name = "enabled_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":enabled",
+    project = ":extension_load_probe",
     tags = ["manual"],
     deps = [
         ":hello",

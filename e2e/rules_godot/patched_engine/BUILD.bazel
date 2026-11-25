@@ -12,14 +12,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "patched_engine",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":patched_engine",
     deps = [":main"],
 )
 

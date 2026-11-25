@@ -1,0 +1,11 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
+
+package(default_testonly = True)
+
+# Runs the exported demo headless: any engine error, such as a missing class, fails it.
+godot_test(
+    name = "exported",
+    size = "small",
+    headless = True,
+    pack = "//examples/addons/sentry:pack",
+)

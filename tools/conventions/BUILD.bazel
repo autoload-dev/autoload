@@ -28,6 +28,7 @@ py_library(
     name = "rules_lib",
     srcs = [
         "documents.py",
+        "manifests.py",
         "naming.py",
         "registry.py",
         "rules/rg001.py",
@@ -38,8 +39,6 @@ py_library(
         "rules/rg007.py",
         "rules/rg008.py",
         "rules/rg009.py",
-        "rules/rg010.py",
-        "rules/rg011.py",
         "rules/rg012.py",
         "rules/rg013.py",
         "rules/rg014.py",
@@ -47,7 +46,10 @@ py_library(
         "rules/rg016.py",
         "rules/rg017.py",
         "rules/rg018.py",
+        "rules/rg019.py",
         "rules/rg020.py",
+        "rules/rg021.py",
+        "rules/rg022.py",
         "rules/rg023.py",
         "rules/rg024.py",
         "rules/rg025.py",
@@ -56,6 +58,8 @@ py_library(
         ":context_lib",
         ":framework_lib",
         "//tools/addons:new_lib",
+        "//tools/apps:apps_lib",
+        "//tools/pkl:evaluate_lib",
     ],
 )
 
@@ -80,6 +84,7 @@ py_library(
     deps = [
         ":context_lib",
         "//tools/addons:new_lib",
+        "//tools/addons:test_support",
     ],
 )
 
@@ -193,27 +198,6 @@ py_test(
 )
 
 py_test(
-    name = "rg010_test",
-    size = "small",
-    srcs = ["rules/rg010_test.py"],
-    deps = [
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "rg011_test",
-    size = "small",
-    srcs = ["rules/rg011_test.py"],
-    deps = [
-        ":context_lib",
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
     name = "rg012_test",
     size = "small",
     srcs = ["rules/rg012_test.py"],
@@ -286,9 +270,39 @@ py_test(
 )
 
 py_test(
+    name = "rg019_test",
+    size = "small",
+    srcs = ["rules/rg019_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
     name = "rg020_test",
     size = "small",
     srcs = ["rules/rg020_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg021_test",
+    size = "small",
+    srcs = ["rules/rg021_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg022_test",
+    size = "small",
+    srcs = ["rules/rg022_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

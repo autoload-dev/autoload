@@ -11,7 +11,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tools.addons.modules import choices
+from tools.addons.test_support import copy_schemas
+from tools.apps.apps import lanes as app_lanes
 from tools.ci.changes import Changes, changes_since
+from tools.ci.lanes import LANES
 from tools.ci.work import (
     FAST_TEST_COMMAND,
     ROOT,
@@ -31,7 +35,8 @@ from tools.ci.work import (
 
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
-    """A checkout with add-on modules naming their lanes."""
+    """A checkout with add-on modules naming their lanes, and the schema they amend."""
+    copy_schemas(root)
     for module, listed in modules.items():
         (root / "addons" / module).mkdir(parents=True)
         (root / "addons" / module / "MODULE.bazel").write_text(
@@ -83,6 +88,11 @@ class WorkTest(unittest.TestCase):
         fast = all_work(self.root)["test:fast"]
         self.assertIsNone(fast.lane)
         self.assertEqual([In(RULESET_DIR, FAST_TEST_COMMAND)], fast.steps())
+
+    def test_the_manifests_name_only_lanes_ci_runs(self) -> None:
+        for named in (choices()["lanes"], app_lanes()):
+            with self.subTest(lanes=named):
+                self.assertLessEqual(set(named), set(LANES))
 
     def test_names_are_unique(self) -> None:
         names = [work.name for work in (*WORK, *addon_work(self.root))]
@@ -275,7 +285,7 @@ class SelectionTest(unittest.TestCase):
             "MODULE.bazel.lock",
             "rules_godot/godot/defs.bzl",
             "rules_godot/godot/engine/BUILD.bazel",
-            "examples/petri/godot_petri.lock.json",
+            "examples/petri/engine/godot_petri.lock.json",
             "tools/generate/generate.py",
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)

@@ -31,14 +31,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "godot_cpp_extension_project",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":godot_cpp_extension_project",
     tags = ["manual"],
     deps = [
         ":extension",

@@ -77,6 +77,6 @@ def godot_dart_extension(name, srcs, deps = [], visibility = None, **kwargs):
         entry_symbol = "dart_language_init",
         data = [name + "_snapshot"],
         visibility = visibility,
-        deps = [Label("//dart:language")],
+        deps = [Label("//dart")],
         **kwargs
     )

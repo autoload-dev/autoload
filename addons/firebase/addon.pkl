@@ -2,3 +2,7 @@
 amends "../../tools/addons/Addon.pkl"
 
 lanes = List("desktop", "android", "ios")
+
+// The Firebase configuration rule and tool, which every Firebase add-on uses and which is
+// no add-on itself.
+sharedPackages = List("config")

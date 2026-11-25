@@ -8,5 +8,6 @@
     "+function-docstring-return",
     "+module-docstring",
     "+provider-params"
-  ]
+  ],
+  "addTables": "tools/format/buildifier_tables.json"
 }

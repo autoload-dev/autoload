@@ -5,7 +5,7 @@ load("//godot:defs.bzl", "godot_project", "godot_resources")
 package(default_visibility = ["//godot/private/tests/strict_warnings:__pkg__"])
 
 godot_project(
-    name = "project",
+    name = "project_with_strict_warnings",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],

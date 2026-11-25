@@ -17,14 +17,14 @@ godot_package_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_generated_declarations",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_resource_graph(
     name = "graph",
-    project = ":project",
+    project = ":project_with_generated_declarations",
     require_declared = True,
     tags = ["manual"],
     deps = [":sources"],

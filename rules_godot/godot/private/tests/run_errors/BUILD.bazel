@@ -8,7 +8,7 @@ godot_test(
     name = "reported_error_keeps_the_exit_status_test",
     size = "medium",
     engine_errors = "report",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [_FIXTURE + ":main"],
 )
 
@@ -16,7 +16,7 @@ godot_test(
 godot_test(
     name = "failing_test",
     size = "medium",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     tags = ["manual"],
     deps = [_FIXTURE + ":main"],
 )

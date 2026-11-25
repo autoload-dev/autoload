@@ -83,7 +83,7 @@ godot_extension(
 ]
 
 godot_project(
-    name = "android_collision_project",
+    name = "extension_library_declarations",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -108,7 +108,7 @@ godot_project(
 
 godot_pack(
     name = "android_collision_pack",
-    project = ":android_collision_project",
+    project = ":extension_library_declarations",
     tags = ["manual"],
     deps = [
         ":collision_a",

@@ -40,14 +40,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "vendored_release",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":vendored_release",
     tags = ["manual"],
     deps = [":main"],
 )

@@ -17,7 +17,7 @@ def _test_operation_of_one_package_reads_nothing_of_another(name):
     godot_test(
         name = name + "_test",
         size = "small",
-        project = _CONTEXT + ":configured_project",
+        project = _CONTEXT,
         tags = ["manual"],
         deps = [_CONTEXT + "/main/shared"],
     )

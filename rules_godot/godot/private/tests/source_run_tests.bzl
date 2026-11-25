@@ -13,7 +13,7 @@ load(":manifests.bzl", "manifest_content")
 load(":mocks.bzl", "mocks")
 
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
-_PROJECT = _FIXTURE + ":configured_project"
+_PROJECT = _FIXTURE
 
 # The resources holding the configured project's main scene, which a run needs.
 _DEPS = [_FIXTURE + ":configured_check", _FIXTURE + ":configured_resources"]

@@ -5,29 +5,29 @@ package(default_testonly = True)
 exports_files(
     ["project.godot"],
     visibility = [
-        "//e2e/addons/sqlite/unit:__pkg__",
+        "//e2e/addons/sqlite/database:__pkg__",
     ],
 )
 
 godot_project(
-    name = "tests",
+    name = "sqlite",
     project_file = "project.godot",
     visibility = ["//e2e/addons/sqlite:__subpackages__"],
 )
 
 godot_editor(
     name = "edit",
-    project = ":tests",
+    project = ":sqlite",
     deps = [
-        "//e2e/addons/sqlite/unit:suites",
+        "//e2e/addons/sqlite/database:suites",
     ],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":tests",
+    project = ":sqlite",
     deps = [
-        "//e2e/addons/sqlite/unit:suites",
+        "//e2e/addons/sqlite/database:suites",
     ],
 )

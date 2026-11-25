@@ -109,7 +109,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "configured_project",
+    name = "import_context",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     setting_overrides = {"application/config/name": '"Configured"'},
@@ -120,7 +120,7 @@ godot_project(
 godot_pack(
     name = "members_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":configured_project",
+    project = ":import_context",
     tags = ["manual"],
     deps = [
         ":configured_check",

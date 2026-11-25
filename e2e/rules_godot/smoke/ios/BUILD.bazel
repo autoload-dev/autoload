@@ -12,7 +12,7 @@ load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_t
 # --config=official.
 
 godot_project(
-    name = "project",
+    name = "ios",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],
@@ -45,7 +45,7 @@ godot_resources(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":ios",
     tags = ["manual"],
     deps = [
         ":counter",
@@ -88,7 +88,7 @@ godot_resources(
 godot_pack(
     name = "static_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":ios",
     tags = ["manual"],
     deps = [
         ":static_counter",

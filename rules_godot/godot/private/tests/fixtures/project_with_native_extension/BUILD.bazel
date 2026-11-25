@@ -26,7 +26,7 @@ godot_cc_extension(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_native_extension",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],
@@ -34,7 +34,7 @@ godot_project(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":project_with_native_extension",
     tags = ["manual"],
     deps = [
         ":hello",

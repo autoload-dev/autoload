@@ -3,20 +3,23 @@ RG012: production targets do not consume test-owned inputs.
 
 A test scope is a tests/ directory below the root of a project or add-on, or elsewhere
 below the root of its module. Paths are measured from the owning module, so a consumer
-module's directory name, such as tests/, never makes a scope. Coverage is limited to
-direct authored inputs inside the workspace.
+module's directory name, such as tests/, never makes a scope. A generator's template, a
+`.tmpl` file, is no input of the scope it will become. Coverage is limited to direct
+authored inputs inside the workspace.
 """
 
 from collections.abc import Iterable
 from pathlib import Path
 
+from tools.addons.new import SUFFIX
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 
 
 def test_scope(workspace: Workspace, path: Path) -> bool:
-    owner = workspace.typed_directory(path)
-    root = owner[1] if owner is not None else workspace.owner(path.as_posix())
+    if path.suffix == SUFFIX:
+        return False
+    root = workspace.project(path) or workspace.owner(path.as_posix())
     return "tests" in path.relative_to(root).parts[:-1]
 
 

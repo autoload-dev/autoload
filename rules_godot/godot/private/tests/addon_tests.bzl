@@ -19,7 +19,7 @@ load(":manifests.bzl", "manifest_content")
 load(":views.bzl", "run_view")
 
 _FIXTURE = "//godot/private/tests/fixtures/project_with_addons"
-_PROJECT = _FIXTURE + ":project"
+_PROJECT = _FIXTURE
 _CONTEXT = str(Label("//godot/private:project"))
 
 def _label(name):
@@ -214,7 +214,7 @@ def _test_conflicting_autoloads_need_an_override(name):
     )
     failure_test(
         name,
-        run_view(name + "_run", _FIXTURE + ":project", [name + "_resources"]),
+        run_view(name + "_run", _FIXTURE, [name + "_resources"]),
         'Conflicting Godot configuration "Inventory"*declare an explicit override',
     )
 

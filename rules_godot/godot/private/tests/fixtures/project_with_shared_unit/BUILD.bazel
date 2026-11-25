@@ -70,7 +70,7 @@ godot_addon(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_shared_unit",
     autoloads = {"State": "*res://main/state.gd"},
     main_scene = "main/main.tscn",
     project_file = "project.godot",
@@ -86,7 +86,7 @@ godot_project(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":project_with_shared_unit",
     tags = ["manual"],
     deps = [":main"],
 )
@@ -102,7 +102,7 @@ godot_pack(
 godot_test(
     name = "test",
     size = "medium",
-    project = ":project",
+    project = ":project_with_shared_unit",
     tags = ["manual"],
     deps = [":main"],
 )
@@ -110,7 +110,7 @@ godot_test(
 godot_test(
     name = "home_test",
     size = "medium",
-    project = ":project",
+    project = ":project_with_shared_unit",
     tags = ["manual"],
     deps = [":home"],
 )

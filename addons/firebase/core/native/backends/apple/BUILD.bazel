@@ -12,6 +12,6 @@ objc_library(
     target_compatible_with = ["@platforms//os:ios"],
     deps = [
         "//core/native:backend_api",
-        "//ios:core",
+        "//third_party/ios:core",
     ],
 )

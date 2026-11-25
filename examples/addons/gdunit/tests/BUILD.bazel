@@ -16,6 +16,6 @@ godot_resources(
 gdunit_test(
     name = "unit_tests",
     size = "small",
-    project = "//examples/addons/gdunit:project",
+    project = "//examples/addons/gdunit",
     suites = [":suites"],
 )

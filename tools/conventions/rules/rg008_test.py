@@ -2,6 +2,7 @@
 
 import unittest
 
+from tools.conventions.context import Call, Location
 from tools.conventions.rules.rg008 import ApplicationContent
 from tools.conventions.test_support import Record, RepositoryTest
 
@@ -29,6 +30,25 @@ class ApplicationContentTest(RepositoryTest):
             self.write(name, "")
         context = self.context(records=records, sources=sources)
         return [item.location.path for item in ApplicationContent().evaluate(context)]
+
+    def test_an_application_keeps_its_tests_in_tests(self) -> None:
+        self.write("MODULE.bazel", "")
+        self.write("examples/game/project.godot", "")
+        self.write("examples/game/BUILD.bazel", "")
+        self.write("examples/game/tests/BUILD.bazel", "")
+        calls = tuple(
+            Call(Location(path, 1), kind, frozenset({"name"}), name)
+            for path, kind, name in (
+                ("examples/game/BUILD.bazel", "godot_test", "starts"),
+                ("examples/game/BUILD.bazel", "godot_metadata_sync", "update"),
+                ("examples/game/tests/BUILD.bazel", "gdunit_test", "suites"),
+            )
+        )
+        context = self.context(calls=calls)
+        self.assertEqual(
+            ["an application's tests live in examples/game/tests/: :starts"],
+            [item.message for item in ApplicationContent().evaluate(context)],
+        )
 
     def test_physical_paths_are_checked_independently_of_resource_paths(self) -> None:
         self.assertEqual(
@@ -66,13 +86,18 @@ class ApplicationContentTest(RepositoryTest):
             self.evaluate([unit], {"//:counter.gd": APP + "/counter.gd"}),
         )
 
-    def test_typed_addon_implementation_does_not_belong_to_its_consumer(self) -> None:
+    def test_an_end_to_end_project_s_suites_may_lie_anywhere_in_it(self) -> None:
+        self.write("addons/counter/MODULE.bazel", "")
+        sources = {
+            "//:config": "e2e/addons/counter/project.godot",
+            "//:suite": "e2e/addons/counter/database/Suite.gd",
+        }
+        suite = resources(["//:suite"])
+        suite["booleans"] = {"testonly": True}
+        self.assertEqual([], self.evaluate([suite], sources))
         self.assertEqual(
-            [],
-            self.evaluate(
-                [resources(["//:counter.gd"])],
-                {"//:counter.gd": "e2e/rules_godot/shared_addon/runtime/counter.gd"},
-            ),
+            ["e2e/addons/counter/database/Suite.gd"],
+            self.evaluate([resources(["//:suite"])], sources),
         )
 
     def test_test_only_or_generated_project_contexts_do_not_exempt_application_content(
@@ -119,8 +144,7 @@ class ApplicationContentTest(RepositoryTest):
     def test_test_scope_requires_every_resources_target_to_be_test_only(self) -> None:
         for path in (
             APP + "/tests/Suite.gd",
-            "e2e/rules_godot/shared_addon/tests/unit/Suite.gd",
-            "examples/addons/counter/tests/integration/Suite.gd",
+            "e2e/rules_godot/scenario/tests/unit/Suite.gd",
         ):
             with self.subTest(path=path):
                 suite = resources(["//:suite"])

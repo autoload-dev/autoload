@@ -25,7 +25,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "macos_app_with_extension",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -33,7 +33,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos_app_with_extension",
     tags = ["manual"],
     deps = [
         ":hello",

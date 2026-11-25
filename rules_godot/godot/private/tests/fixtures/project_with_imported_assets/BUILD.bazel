@@ -28,7 +28,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_imported_assets",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -36,7 +36,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_imported_assets",
     tags = ["manual"],
     deps = [
         ":icon",

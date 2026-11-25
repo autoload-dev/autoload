@@ -16,22 +16,29 @@ identities, not authored target declarations.
 | [RG004](#rg004) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
-| [RG008](#rg008) | Application content lives under `main/` | Required | Production-eligible resource inputs physically owned by typed application or add-on demo/test scopes | Error; unresolved membership is reported as not checked |
-| [RG009](#rg009) | Applications and add-ons use their typed roots | Required | Project and add-on directories and authored Godot configurations of every consumer module | Error |
-| [RG010](#rg010) | Add-ons separate demo and Godot test projects | Required | Every add-on under a typed add-on root | Error |
-| [RG011](#rg011) | Reusable add-on implementation is independent of its demo | Required | Direct authored workspace inputs of production-eligible implementation declarations, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG008](#rg008) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
+| [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
-| [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
+| [RG014](#rg014) | Engine modules, patches and source build files live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
+| [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
+| [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
+| [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
+| [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
+| [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
 | [RG024](#rg024) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [RG025](#rg025) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
-[boundary rules](verification-architecture.md#boundary-rules)). Choosing the main entry point
+[boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
+required add-ons to keep a demo and a test project inside their own directory and their
+implementation independent of that demo, are retired with that layout: add-ons live in
+add-on modules, which hold no project ([RG021](#rg021)), and their demos and end-to-end tests
+are projects of the root module ([RG009](#rg009)). Choosing the main entry point
 and useful package boundaries still requires judgment; the checks do not elect a primary target.
 
 ## RG001
@@ -194,12 +201,11 @@ policy. Loading-time flags do not establish configured resource membership or ru
 
 ## RG008
 
-**Application content lives under `main/` of its physical project.** The location of the
-project or add-on establishes ownership in every consumer module, following
-[typed roots](#rg009). Application cases own their scenes, scripts and exclusively used
-assets below `main/`. An add-on's implementation retains its own layout; its `demo/` and
-`tests/` project scopes apply the same application-content rule. Keep authored UID/import
-sidecars beside sources.
+**Application content lives under `main/` of its physical project.** The place of a project
+establishes ownership in every consumer, following [RG009](#rg009). Application cases own
+their scenes, scripts and exclusively used assets below `main/`; an add-on a project keeps
+for itself lives there too, such as `main/addons/<name>/`. Keep authored UID/import sidecars
+beside sources.
 
 For example:
 
@@ -225,12 +231,19 @@ configuration use the case root's `main/`. Contexts for one operating system may
 their configuration and `main/`. Several resource paths of one physical source produce one
 finding.
 
+An application's tests, such as the exported demo's of an add-on module, live in its
+`tests/` package, never in the project's root package. The check reports every call in the
+root package of a project in `examples/` whose kind ends in `_test` or is a declared test
+operation ([RG007](#rg007)); `godot_metadata_sync`'s `update.test` is a consistency check of
+the project and stays beside it.
+
 There is no blanket exemption for regression projects, test-only project compositions or
-macro-generated projects. Test-only suites and helpers belong in an application's `tests/`
-scope, or in `unit/` or `integration/` of an add-on's Godot test project. Both the physical
-test scope and the `godot_resources` target's effective test-only flag establish that
-ownership; the flag alone does not waive application layout. Generated outputs and the build
-and delivery inputs of extension and platform libraries are outside this declared
+macro-generated projects. Test-only suites and helpers belong in a project's `tests/` scope;
+an add-on module's end-to-end test project in `e2e/addons/<module>/` is test-only as a whole,
+so its test-only inputs may lie anywhere in it, in packages named after their topic. Both the
+physical test scope and the `godot_resources` target's effective test-only flag establish
+that ownership; the flag alone does not waive application layout. Generated outputs and the
+build and delivery inputs of extension and platform libraries are outside this declared
 Godot-resource subset. Missing role/membership facts and unresolved aggregate inputs are
 reported as not checked. The check does not classify undeclared files or require an empty
 `main/` where no application-owned resources exist. No manually listed application roots or
@@ -238,73 +251,29 @@ reusable-resource exemptions select applicability.
 
 ## RG009
 
-**Applications and add-ons use their typed roots.** Every consumer in the repository's root
-module places its projects and add-ons by path:
+**Projects lie at the fixed places of their consumers.** Every consumer places its projects
+by path:
 
-| Consumer | Application projects | Add-ons |
-|---|---|---|
-| Applications, `examples/` | `examples/<name>/` | none |
-| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or `examples/addons/<module>/<scenario>/` per scenario | none: the add-ons are in the module |
-| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
-| Add-on end-to-end tests, `e2e/addons/<module>/` | any layout: white-box fixtures | none |
+| Consumer | Projects |
+|---|---|
+| Applications, `examples/` | `examples/<name>/` |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, and one directory of it per scenario |
+| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, and `e2e/rules_godot/<scenario>/` for every other scenario |
+| Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, and one directory of it per scenario or configuration variant that needs other settings |
+| Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
 
-A consumer module outside the root module measures `projects/<name>/` and `addons/<name>/`
-from its module root.
+A project owns a BUILD file and at least one authored Godot configuration; an application,
+a project directly in `examples/`, also has an `app.pkl` that amends `tools/apps/App.pkl`
+and evaluates, which tells the lanes' work how to verify it
+([example guidance](../../examples/AGENTS.md#common-workflows)). Related
+operating-system contexts can share one project. No other module holds projects: an add-on
+module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
+are outside this check. There is no per-directory admission list.
 
-The path determines whether a directory is a project or an add-on, and which rules apply.
-A project case owns a BUILD file and at least one authored Godot configuration; related
-operating-system contexts can share one named case. Add-on project structure follows
-[the add-on layout rule](#rg010). There is no per-directory admission list and no exemption
-based on a mobile module root.
-
-Focused unit/analysis packages and their C++/provider fixture inputs remain with their
-owning test domain when they are not independently reusable add-ons. C++ source files alone
-do not establish an add-on.
-
-The check inventories project and add-on directories and authored `project.godot` files in
-every consumer; the white-box fixture projects of the ruleset module, of an add-on module's
-own `tests/` and of its end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
-Temporary projects constructed inside source strings and generated configuration templates
-are outside the inventory. The check does not require a project or BUILD package for each
-assertion.
-
-## RG010
-
-**Add-ons separate implementation, demo and Godot tests.** Every add-on under a typed add-on
-root, such as the scenario add-on `e2e/rules_godot/shared_addon/`, owns its reusable
-implementation, a normal-use project under `demo/` and a Godot test
-project under `tests/`. Each of those three scopes owns a BUILD file. The two projects own
-`project.godot` directly; do not add another project at the add-on root or inside a suite
-category. Native backend unit tests do not require a Godot configuration.
-
-The add-on roots are discovered from the shared workspace inventory, so a new add-on is
-checked without editing a list. Reuse the test root configuration for `unit/` and
-`integration/` packages, which
-[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership) creates only
-for the behavior actually present. The inventory establishes project and BUILD locations, not suite
-classification or every configured composition input.
-
-## RG011
-
-**Reusable add-on implementation is independent of its demo.** The location under a typed
-add-on root selects this rule automatically. Implementation declarations must
-not consume targets or source files owned by the add-on's `demo/`. The demo depends on the
-reusable implementation; production dependency direction must not return to it. Test inputs
-are covered for every production target by [RG012](#rg012).
-
-For production-eligible implementation declarations, the check examines authored label,
-label-list and label-keyed-string inputs; implicit attributes from the rule definition are
-not inputs the declaration chose. Bazel resolves each input to its defining target or source
-file, including source symlinks and labels of the workspace's other modules. External
-repositories cannot be a demo and are not resolved. Resource paths and name suffixes do not
-establish whether a directory is a project or an add-on. Generated helpers sharing an
-authored input produce one finding at that call. Test-only declarations are outside this
-rule, and visibility grants are not implementation dependencies.
-
-This is a loading-time direct-input check over conditional branches reported by Bazel query,
-not one selected configuration. Missing effective role flags are reported as not checked.
-Indirect paths through helper packages remain outside this automated subset; review them
-separately. Passing alone does not prove the complete configured dependency closure.
+The check inventories the projects and the authored `project.godot` files of every consumer.
+Configurations must belong to a project at a fixed place. Temporary projects constructed
+inside source strings and generated configuration templates are outside the inventory. The
+check does not require a project or BUILD package for each assertion.
 
 ## RG012
 
@@ -319,8 +288,9 @@ A test scope is a `tests/` directory below the root of a project or add-on, such
 `<project>/tests/`, `<addon>/tests/`, a demo's `examples/addons/<name>/tests/` or a backend's
 `<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
 directory below the module root, such as the ruleset's white-box packages
-`godot/private/tests/`, or an add-on module's white-box tests in its `tests/`. Paths are
-measured from the owning module.
+`godot/private/tests/`, or an add-on module's module-wide unit tests in its `tests/`. Paths
+are measured from the owning module. A generator's template of a `tests/` package, a `.tmpl`
+file, is no member of a test scope.
 
 ```starlark
 # game/main/BUILD.bazel
@@ -331,7 +301,7 @@ godot_resources(
 )
 ```
 
-The check uses the same input resolution as [RG011](#rg011): authored label, label-list and
+The check resolves inputs from authored label, label-list and
 label-keyed-string attributes, resolved by Bazel to their defining target or source file
 across the workspace's modules. Declarations inside a test scope and test-only targets are
 consumers, not subjects. Missing effective role flags are reported as not checked. Bazel's
@@ -360,17 +330,21 @@ and destinations containing whitespace or nested parentheses need review.
 
 ## RG014
 
-**Engine modules and patches live under `engine/`.** A Godot project that builds its engine
-from sources keeps each custom engine module in `engine/modules/<name>/` and each engine
-patch as a `.patch` or `.diff` file directly in `engine/patches/`. Readers and source
-recipes then find a project's engine inputs in one place, separate from its application
-content under `main/`.
+**Engine modules, patches and source build files live under `engine/`.** A Godot project
+that builds its engine from sources keeps each custom engine module in
+`engine/modules/<name>/`, each engine patch as a `.patch` or `.diff` file directly in
+`engine/patches/`, and its source build's lock file, `<hub>.lock.json`, with the `.bzl`
+files of its engine, such as a gate that keeps its targets out of builds with another
+engine, directly in `engine/`. Readers and source recipes then find a project's engine
+inputs in one place, separate from its application content under `main/`.
 
 ```text
 <project>/
   project.godot
   main/
   engine/
+    BUILD.bazel
+    <hub>.lock.json           # the source build's lock file
     modules/
       <module>/               # config.py, SCsub, register_types.cpp, sources, BUILD.bazel
     patches/
@@ -382,14 +356,15 @@ The check inventories the files of every project root of a consumer module; a
 `project.godot` marks a root, and a nested project owns its own files. In each project it
 reports:
 
-- any entry of `engine/` other than `modules/` and `patches/`;
+- any entry of `engine/` other than `modules/`, `patches/`, a BUILD file, lock files and
+  `.bzl` files;
 - any file directly in `engine/modules/`, and any directory there without both `config.py`
   and `SCsub`;
 - any entry of `engine/patches/` other than `.patch`/`.diff` files and a BUILD file,
   including subdirectories;
 - any engine module directory outside `engine/` (a directory owning `config.py` together
-  with `SCsub` or `register_types.*`) and any `.patch`/`.diff` file outside
-  `engine/patches/`.
+  with `SCsub` or `register_types.*`), any `.patch`/`.diff` file outside
+  `engine/patches/` and any `.lock.json` file outside `engine/`.
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project
@@ -404,23 +379,30 @@ repository's add-on modules in `addons/<module>/` follow the layout of the add-o
 template, so that the same tasks build, test and release every module and nothing but the
 root module's declaration lists it. Each module:
 
-- is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
-  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes` and
-  `addon.pkl`;
+- is named `autoload_<module>` and owns the files of the generator's module template, such
+  as `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.bazelrc`, `.bazelignore`,
+  `addon.pkl` and its registry test module `bcr/smoke`;
+- holds in its root only those files and its lock file, its add-ons, `third_party/` with
+  what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and the
+  packages its `addon.pkl` declares in `sharedPackages`, such as Firebase's `config`. An
+  add-on is a directory whose BUILD file declares a target named like it, as the generator
+  writes it;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
-- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
-  properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
-  of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
-  types, so this rule checks the values. A module builds applications when its lanes include
-  `android` or `ios`;
+- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and that the pinned Pkl
+  CLI evaluates: Pkl rejects a property the schema does not declare and a value outside its
+  type, such as a lane other than `desktop`, `android` and `ios`. A module builds
+  applications when its lanes include `android` or `ios`;
+- lists in `addon.pkl`'s `testDependencies` exactly the regular dependencies that only its
+  `tests/` packages load from. The lanes build the module from the root module, where its
+  development dependencies are not active, so a unit test's library is a regular
+  dependency; the list keeps that exception visible;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
-  defining the targets `edit` and `pack`,
-  and `app` when the module builds applications;
+  defining the targets `edit` and `pack`, and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 
@@ -455,6 +437,21 @@ finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a 
 to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
 skills without a counterpart.
 
+## RG019
+
+**A package's Godot project is named like its directory.** A package that holds a
+`project.godot` and declares projects names one of them like its directory, so the package's
+own label names its project: `//examples/addons/sqlite` and `//e2e/addons/sqlite`, not
+`//examples/addons/sqlite:demo`. Write that short form in labels and commands; in BUILD
+files, `aspect format` rewrites the long form of the label attributes that
+`tools/format/buildifier_tables.json` names, such as `project` and `pack`. Further
+projects of the package, such as a test project beside an application's, take names of their
+own. This applies everywhere, the ruleset's fixtures included.
+
+The check reads the `godot_project` calls of every module and reports each package with a
+`project.godot` whose projects include none named like its directory. A package without a
+`project.godot`, whose project reads its configuration from elsewhere, is outside the check.
+
 ## RG020
 
 **Released modules have a registry test module in `bcr/`.** The Bazel Central Registry
@@ -467,13 +464,41 @@ recognizable by its place:
 - the module's `.bazelignore` lists `bcr`, since each test module is a Bazel module of its
   own;
 - the test module is a consumer with a flat project: the test module itself is the project,
-  or each project lies directly in one of its directories, without typed roots, which
+  or each project lies directly in one of its directories, which
   [RG009](#rg009) checks.
 
 A test module registers the prebuilt engine itself, as an application does; the add-on
 modules register none for consumers. The add-on generator writes `bcr/smoke` with every new
 module. `python3 -m tools.ci.release_archive` runs each test module from its module's release
 archive, as the release workflow and the registry do.
+
+## RG021
+
+**Add-on modules run no Godot; their end-to-end tests live in the root module.** An add-on
+module holds its add-ons and the unit tests of their code. A test that uses an add-on as an
+application does, by running Godot or building a project, is an end-to-end test and lives in
+`e2e/addons/<module>/`. There the root module declares what the test uses as development
+dependencies, which an add-on module could only declare as regular dependencies that every
+consumer inherits: the lanes build add-on modules from the root module, where their own
+development dependencies are not active.
+
+The check reports, in each add-on module but its registry test modules, every
+`project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync` or a
+test operation its `addon.pkl` declares in `testOperations`.
+
+## RG022
+
+**The Python tooling names no add-on module or application.** The tools read what is
+specific to a component from its manifest: an add-on module's `addon.pkl`
+(`tools/addons/Addon.pkl`) and an application's `app.pkl` (`tools/apps/App.pkl`), which Pkl
+evaluates. A new component then needs no change of the tooling, and what is special about
+one stays visible beside it, as a standardized option.
+
+The check reads the string literals of every Python file in `tools/`, docstrings included,
+apart from tests and their support, and reports each that names an add-on module or an
+application of `examples/` as a word, also inside a flag or label, such as `--config=<name>`
+or `@autoload_<module>//`; a file extension such as `.dart` names none. Comments may name
+components, such as to explain an exception.
 
 ## RG023
 
@@ -579,7 +604,7 @@ the rules explicitly and selects them by ID, and the [CLI](../../tools/conventio
 formats results and chooses the exit status.
 
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
-workspace files, documents, modules and typed directories, Starlark calls, Bazel rules and
+workspace files, documents, modules and projects, Starlark calls, Bazel rules and
 inspection, and the joins of them (`context.declarations`, `context.sources`). The public
 members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal, which files

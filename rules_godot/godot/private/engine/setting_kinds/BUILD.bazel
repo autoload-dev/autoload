@@ -12,14 +12,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "setting_kinds",
     project_file = "project.godot",
 )
 
 godot_run(
     name = "list",
     main = "setting_kinds.gd",
-    project = ":project",
+    project = ":setting_kinds",
     deps = [":script"],
 )
 
@@ -45,6 +45,6 @@ godot_test(
     ],
     data = [":tables"],
     main = "setting_kinds.gd",
-    project = ":project",
+    project = ":setting_kinds",
     deps = [":script"],
 )

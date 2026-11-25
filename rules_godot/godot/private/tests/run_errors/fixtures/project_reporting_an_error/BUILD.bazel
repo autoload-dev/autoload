@@ -13,7 +13,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_reporting_an_error",
     project_file = "project.godot",
     tags = ["manual"],
 )

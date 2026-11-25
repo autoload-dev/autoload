@@ -17,7 +17,7 @@ _CONFIGURED = [_FIXTURE + ":configured_check", _FIXTURE + ":configured_resources
 _NATIVE = "//godot/private/tests/fixtures/project_with_native_extension"
 
 def _configured_view(name):
-    return run_view(name + "_run", _FIXTURE + ":configured_project", _CONFIGURED)
+    return run_view(name + "_run", _FIXTURE, _CONFIGURED)
 
 # The view composes project.godot once per purpose, each named after the view; the authored
 # file stays the declared source.
@@ -82,7 +82,7 @@ def _test_extension_reaches_exports_and_the_runtime(name):
     analysis_test(
         name = name,
         targets = {
-            "view": run_view(name + "_run", _NATIVE + ":project", [_NATIVE + ":hello", _NATIVE + ":main"]),
+            "view": run_view(name + "_run", _NATIVE, [_NATIVE + ":hello", _NATIVE + ":main"]),
             "extension": _NATIVE + ":hello",
         },
         impl = _extension_reaches_exports_and_the_runtime,

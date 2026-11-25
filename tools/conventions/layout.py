@@ -1,48 +1,39 @@
 """
-Where the repository's consumers keep their projects and add-ons: the consumer roots of the
-root module, the consumer modules and the typed roots measured from either.
+Where the repository's consumers keep their projects: the consumer roots of the root module,
+the consumer modules and the fixed places of projects in either.
 """
 
 from pathlib import Path
 
-from tools.addons.modules import example_projects
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
     ADDONS,
+    EXAMPLES,
     RULESET,
     is_registry_test_module,
 )
 
-# The typed roots of a consumer, below its root: projects/ and addons/.
-TYPED_ROOTS = frozenset({"projects", "addons"})
-# The ruleset's module and documentation; the root and the ruleset are no consumer modules
-# and have no typed roots of their own.
+# The ruleset's module and documentation; the root and the ruleset are no consumer modules.
 RULESET_MODULE = RULESET
 DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
 NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 # The consumers in the root module: its examples, each application a project directly in
 # examples/, and the ruleset's consumer scenarios with their smoke paths.
-EXAMPLES_ROOT = Path("examples")
+EXAMPLES_ROOT = EXAMPLES
 REGRESSION_ROOT = Path("e2e/rules_godot")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
 SMOKE_ROOT = "smoke"
-ADDON_SCENARIO = "shared_addon"
 
 
-def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
+def scenario_project(parts: tuple[str, ...]) -> Path | None:
     """
-    The kind and root of the consumer scenario that a path below e2e/rules_godot/, given by its
-    parts, lies in: one project package per scenario and per operating system below smoke/;
-    the shared add-on scenario is an add-on.
+    The project of the consumer scenario that a path below e2e/rules_godot/, given by its
+    parts, lies in: one project per scenario, and one per operating system below smoke/.
     """
-    if parts[0] == SMOKE_ROOT and len(parts) > 2:
-        return "projects", REGRESSION_ROOT / Path(*parts[:2])
-    if parts[0] == ADDON_SCENARIO and len(parts) > 1:
-        return "addons", REGRESSION_ROOT / ADDON_SCENARIO
-    if parts[0] not in {SMOKE_ROOT, ADDON_SCENARIO} and len(parts) > 1:
-        return "projects", REGRESSION_ROOT / parts[0]
-    return None
+    if parts[0] == SMOKE_ROOT:
+        return REGRESSION_ROOT / Path(*parts[:2]) if len(parts) > 2 else None
+    return REGRESSION_ROOT / parts[0] if len(parts) > 1 else None
 
 
 def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
@@ -59,9 +50,22 @@ def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
     return next((root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None)
 
 
-def is_addon_test(root: Path | None) -> bool:
-    """Whether a consumer is an add-on module's end-to-end tests, which have no typed roots."""
-    return root is not None and root.parent == ADDON_E2E
+def is_flat(root: Path) -> bool:
+    """
+    Whether a consumer is flat, one project or one per directory: an add-on module's
+    examples or end-to-end tests, or a registry test module.
+    """
+    return root.parent in (ADDON_EXAMPLES, ADDON_E2E) or is_registry_test_module(root)
+
+
+def is_application(project: Path) -> bool:
+    """Whether a project is an application, a project directly in examples/."""
+    return project.parent == EXAMPLES_ROOT
+
+
+def is_end_to_end(project: Path) -> bool:
+    """Whether a project is an add-on module's end-to-end test project, test-only as a whole."""
+    return project.is_relative_to(ADDON_E2E)
 
 
 def flat_project(
@@ -69,37 +73,25 @@ def flat_project(
 ) -> Path | None:
     """
     The project of a flat consumer, such as an add-on module's examples or a registry test
-    module: the consumer itself, or a project directly in one of its directories.
+    module: a project directly in one of its directories, such as a scenario or a
+    configuration variant, or else the consumer itself.
     """
-    projects = example_projects(root, configured)
-    candidate = root if root in projects else root / parts[0]
-    return candidate if candidate in projects else None
+    if len(parts) > 1 and root / parts[0] in configured:
+        return root / parts[0]
+    return root if root in configured else None
 
 
-def consumer_directory(root: Path, parts: tuple[str, ...]) -> tuple[str, Path] | None:
-    """A project directly in examples/, or a directory of a consumer module's typed roots."""
-    if len(parts) > 2 and parts[0] in TYPED_ROOTS:
-        return parts[0], root / Path(*parts[:2])
-    if root == EXAMPLES_ROOT and len(parts) > 1:
-        return "projects", root / parts[0]
-    return None
-
-
-def typed_directory(
-    root: Path, path: Path, configured: frozenset[Path]
-) -> tuple[str, Path] | None:
+def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Path | None:
     """
-    The kind and root of the project or add-on that path lies in, below the consumer root
-    ``root``: a project directly in examples/ or an add-on module's examples, one of the
-    scenarios' packages, or a directory of a consumer module's typed roots. ``configured``
-    holds the directories with a project.godot.
+    The project that path lies in, below the consumer root ``root``: a project directly in
+    examples/, one of the scenarios' projects, or a project of a flat consumer.
+    ``configured`` holds the directories with a project.godot.
     """
-    if path == root or is_addon_test(root):
+    if path == root:
         return None
     parts = path.relative_to(root).parts
     if root == REGRESSION_ROOT:
-        return scenario_directory(parts)
-    if root.parent == ADDON_EXAMPLES or is_registry_test_module(root.as_posix()):
-        project = flat_project(root, parts, configured)
-        return None if project is None else ("projects", project)
-    return consumer_directory(root, parts)
+        return scenario_project(parts)
+    if is_flat(root):
+        return flat_project(root, parts, configured)
+    return root / parts[0] if root == EXAMPLES_ROOT and len(parts) > 1 else None

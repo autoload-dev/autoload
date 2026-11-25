@@ -33,7 +33,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "android",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],
@@ -42,7 +42,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":android",
     # The 2D counter must render on emulators without Vulkan presentation.
     settings = {"rendering/renderer/rendering_method.mobile": '"gl_compatibility"'},
     tags = ["manual"],
