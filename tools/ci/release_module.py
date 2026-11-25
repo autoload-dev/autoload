@@ -8,7 +8,8 @@ Print the module that a release tag `<module>-v<version>` releases, one `key=val
 - bcr: whether the Bazel Central Registry gets the release, which its templates in
   .bcr/<root>/ decide;
 - test: the command that tests the release in a checkout of the tag: the registry test
-  module, run in the module's release archive (tools/ci/release_archive.py).
+  module, run in the module's release archive with the ruleset release the module declares
+  (tools/ci/release_archive.py).
 
 No table lists the modules: a new add-on module is releasable as soon as it exists.
 Run it from the repository root: `python3 -m tools.ci.release_module <tag>`.
@@ -45,7 +46,7 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
         raise ValueError(f"Release tags are named <module>-v<version>, not {tag}")
     name, version = match.groups()
     directory = module_root(name, root)
-    test = f"python3 -m tools.ci.release_archive {directory.as_posix()}"
+    test = f"python3 -m tools.ci.release_archive --registry {directory.as_posix()}"
     return {
         "name": name,
         "version": version,

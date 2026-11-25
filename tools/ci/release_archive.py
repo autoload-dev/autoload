@@ -7,12 +7,15 @@ and runs the registry test module its presubmit.yml names (RG020) with `bazel te
 inside the extracted archive. Without directories, it tests the ruleset and every add-on
 module. It is also how to run a registry test module in this repository.
 
-An add-on module's archive resolves autoload_rules_godot from the registry; here it uses the
-ruleset of this checkout instead, since an add-on may need rules that are not released yet.
-Each module extracts to the same directory every time, with its Bazel output base beside it.
+An add-on module's archive resolves autoload_rules_godot from the registry. In this
+repository it uses the ruleset of this checkout instead, since an add-on may need rules that
+are not released yet; `--registry`, as the release workflow passes it, keeps the version
+the module declares, which its consumers get. Each module of a checkout extracts to the
+same directory every time, with its Bazel output base beside it.
 """
 
 import argparse
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -59,21 +62,31 @@ def extract(directory: str, destination: Path, root: Path = ROOT) -> Path:
     return destination / PREFIX
 
 
-def command(directory: str, output_base: Path, root: Path = ROOT) -> list[str]:
-    """The registry's test command, with this checkout's ruleset for an add-on module."""
+def command(
+    directory: str, output_base: Path, root: Path = ROOT, registry: bool = False
+) -> list[str]:
+    """
+    The registry's test command; an add-on module uses this checkout's ruleset unless the
+    registry's is asked for.
+    """
+    local = not registry and directory != RULESET.as_posix()
     overrides = (
-        []
-        if directory == RULESET.as_posix()
-        else [f"--override_module=autoload_rules_godot={root / RULESET}"]
+        [f"--override_module=autoload_rules_godot={root / RULESET}"] if local else []
     )
     return ["bazel", f"--output_base={output_base}", "test", *overrides, "//..."]
 
 
-def test(directory: str, root: Path = ROOT) -> int:
+def workspace(directory: str, root: Path = ROOT) -> Path:
+    """Where a checkout extracts a module's archive and keeps its output base."""
+    checkout = hashlib.sha256(str(root).encode()).hexdigest()[:12]
+    return ARCHIVES / checkout / directory.replace("/", "_")
+
+
+def test(directory: str, root: Path = ROOT, registry: bool = False) -> int:
     """Test one module's archive; the result is Bazel's exit status."""
-    workspace = ARCHIVES / directory.replace("/", "_")
-    cwd = extract(directory, workspace / "archive", root) / test_module(directory, root)
-    argv = command(directory, workspace / "output_base", root)
+    extracted = workspace(directory, root)
+    cwd = extract(directory, extracted / "archive", root) / test_module(directory, root)
+    argv = command(directory, extracted / "output_base", root, registry)
     print(f"+ {cwd}$ {' '.join(argv)}", flush=True)
     status = subprocess.run(argv, cwd=cwd, check=False).returncode
     subprocess.run([*argv[:2], "shutdown"], cwd=cwd, check=False, capture_output=True)
@@ -85,10 +98,16 @@ def main() -> int:
     parser.add_argument(
         "directories", nargs="*", help="such as rules_godot or addons/sqlite"
     )
-    directories = parser.parse_args().directories or [
+    parser.add_argument(
+        "--registry",
+        action="store_true",
+        help="resolve autoload_rules_godot as the module declares it, as a release does",
+    )
+    args = parser.parse_args()
+    directories = args.directories or [
         module for module in module_paths(ROOT) if is_released(module)
     ]
-    failed = [directory for directory in directories if test(directory) != 0]
+    failed = [d for d in directories if test(d, registry=args.registry) != 0]
     if failed:
         print(f"Release archives that fail their test module: {', '.join(failed)}")
     return 1 if failed else 0

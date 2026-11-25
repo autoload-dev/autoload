@@ -4,7 +4,7 @@ import ast
 from collections.abc import Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
-from tools.conventions.context import Context, Location, Workspace
+from tools.conventions.context import Context, EvidenceError, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import released_modules
 
@@ -80,10 +80,14 @@ def _docstring(node: ast.AST) -> bool:
 
 
 def _loaded_children(node: ast.AST) -> Iterator[ast.AST]:
-    """A node's children that may be loaded: not visibility arguments, not docstrings."""
+    """
+    A node's children that may be loaded: not visibility arguments, not a glob's excludes,
+    which may name what the archive leaves out, and not docstrings.
+    """
     if isinstance(node, ast.Call):
+        skipped = VISIBILITY | ({"exclude"} if _name(node.func) == "glob" else set())
         yield from node.args
-        yield from (k.value for k in node.keywords if k.arg not in VISIBILITY)
+        yield from (k.value for k in node.keywords if k.arg not in skipped)
     elif not _docstring(node):
         yield from ast.iter_child_nodes(node)
 
@@ -102,9 +106,12 @@ def _loaded_strings(node: ast.AST, dev: frozenset[str]) -> Iterator[ast.Constant
         yield from _loaded_strings(child, dev)
 
 
-def references(text: str) -> Iterator[tuple[int, str]]:
+def references(name: str, text: str) -> Iterator[tuple[int, str]]:
     """The lines and values of the strings in Starlark that name something in tests/."""
-    tree = ast.parse(text)
+    try:
+        tree = ast.parse(text, name)
+    except SyntaxError as error:
+        raise EvidenceError(f"{name}: cannot parse as Starlark: {error.msg}") from error
     dev = _dev_proxies(tree)
     for constant in _loaded_strings(tree, dev):
         value = constant.value
@@ -137,7 +144,7 @@ class ReleasedWithoutTests:
 
     @staticmethod
     def uses(workspace: Workspace, name: str) -> Iterable[Finding]:
-        for line, value in references(workspace.text(name)):
+        for line, value in references(name, workspace.text(name)):
             yield Finding(
                 Location(name, line),
                 f"{value} is in a tests/ directory, which the release archive leaves out; "

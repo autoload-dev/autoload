@@ -41,7 +41,7 @@ class ReleaseModuleTest(unittest.TestCase):
                 "version": "0.2.0",
                 "root": "rules_godot",
                 "bcr": "true",
-                "test": "python3 -m tools.ci.release_archive rules_godot",
+                "test": "python3 -m tools.ci.release_archive --registry rules_godot",
             },
         )
 
@@ -51,7 +51,7 @@ class ReleaseModuleTest(unittest.TestCase):
         self.assertEqual(widget["version"], "1.0.0-rc.1")
         self.assertEqual(widget["bcr"], "true")
         self.assertEqual(
-            widget["test"], "python3 -m tools.ci.release_archive addons/widget"
+            widget["test"], "python3 -m tools.ci.release_archive --registry addons/widget"
         )
         self.assertEqual(describe("autoload_gadget-v0.1.0", self.root)["bcr"], "false")
 

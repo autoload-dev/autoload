@@ -1,5 +1,5 @@
 # The Bazel Central Registry's checks of a release of autoload_platform_paths: bcr/smoke, a consumer
-# that packs the module's add-ons with the prebuilt engine (RG020).
+# of the module's add-ons that registers the prebuilt engine (RG020).
 bcr_test_module:
   module_path: "bcr/smoke"
   matrix:

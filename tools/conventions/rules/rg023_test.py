@@ -2,6 +2,7 @@
 
 import unittest
 
+from tools.conventions.context import EvidenceError
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 from tools.conventions.test_support import RepositoryTest
 
@@ -69,6 +70,18 @@ class ReleasedWithoutTestsTest(RepositoryTest):
             "rules_godot/godot/defs.bzl", '"""See the tests/ of each package."""\n'
         )
         self.assertEqual(self.findings(), [])
+
+    def test_a_glob_may_exclude_tests(self) -> None:
+        self.write(
+            "addons/widget/BUILD.bazel",
+            'filegroup(name = "f", srcs = glob(["**/*.py"], exclude = ["tests/**"]))\n',
+        )
+        self.assertEqual(self.findings(), [])
+
+    def test_unparsable_starlark_is_evidence_error(self) -> None:
+        self.write("addons/widget/BUILD.bazel", "filegroup(\n")
+        with self.assertRaises(EvidenceError):
+            self.findings()
 
     def test_the_release_archive_leaves_out_tests(self) -> None:
         self.write("rules_godot/.gitattributes", "docs export-ignore\n")

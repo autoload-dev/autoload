@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.ci.release_archive import archive, command, test_module
+from tools.ci.release_archive import archive, command, test_module, workspace
 
 
 class ReleaseArchiveTest(unittest.TestCase):
@@ -40,6 +40,17 @@ class ReleaseArchiveTest(unittest.TestCase):
                 "--add-file=LICENSE",
                 "autoload_widget-v1.0.0:addons/widget",
             ],
+        )
+
+    def test_a_release_uses_the_ruleset_its_module_declares(self) -> None:
+        released = command(
+            "addons/widget", Path("/tmp/base"), Path("/repo"), registry=True
+        )
+        self.assertFalse(any(a.startswith("--override_module") for a in released))
+
+    def test_each_checkout_extracts_to_a_directory_of_its_own(self) -> None:
+        self.assertNotEqual(
+            workspace("addons/widget", Path("/a")), workspace("addons/widget", Path("/b"))
         )
 
 
