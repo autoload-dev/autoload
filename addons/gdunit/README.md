@@ -7,8 +7,8 @@ and JUnit reports. The module `autoload_gdunit` brings
 
 | Target | What it is |
 | --- | --- |
-| `@autoload_gdunit//:gdunit` | The GdUnit4 add-on at `addons/gdUnit4`, test-only. Its editor part is the editor plugin and the scenes it docks. |
-| `@autoload_gdunit//:defs.bzl%gdunit_test` | A `godot_test` whose main script is this module's GdUnit test adapter. |
+| `@autoload_gdunit//gdunit` | The GdUnit4 add-on at `addons/gdUnit4`, test-only. Its editor part is the editor plugin and the scenes it docks. |
+| `@autoload_gdunit//gdunit:defs.bzl%gdunit_test` | A `godot_test` whose main script is this module's GdUnit test adapter. |
 
 ## Setup
 
@@ -22,14 +22,14 @@ Give the suites their own `godot_resources`, with GdUnit among their deps, and r
 `gdunit_test`:
 
 ```starlark
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 godot_resources(
     name = "unit_suites",
     testonly = True,
     srcs = glob(["test/**/*_test.gd"]),
-    deps = [":game", "@autoload_gdunit//:gdunit"],
+    deps = [":game", "@autoload_gdunit//gdunit"],
 )
 
 gdunit_test(
@@ -73,7 +73,7 @@ godot_resources(
     name = "test_support",
     testonly = True,
     srcs = glob(["test/support/**/*.gd"]),
-    deps = [":game", "@autoload_gdunit//:gdunit"],
+    deps = [":game", "@autoload_gdunit//gdunit"],
 )
 
 godot_resources(
@@ -112,12 +112,12 @@ it works with. Use a rules_godot at least that new.
 GdUnit4 is a GDScript add-on without native code, so the module has no backends; this
 repository verifies it on the host only.
 `third_party/gdunit4.BUILD.bazel` splits GdUnit's sources into the runtime part and the
-editor part, and `//:gdunit` assembles them into the add-on. `gdunit_test` is a macro over
-rules_godot's test adapter: the adapter lists the suites, and `private/run.gd` runs them with
+editor part, and `//gdunit` assembles them into the add-on. `gdunit_test` is a macro over
+rules_godot's test adapter: the adapter lists the suites, and `gdunit/private/run.gd` runs them with
 GdUnit and reports to Bazel.
 
-The example application in `examples/` consumes the module as applications do: the project
-`projects/scores` tests its scripts with GdUnit. `examples/tests/` holds the module's own
-tests: GdUnit runs that pass, fail, shard, filter and report the way Bazel's test
-encyclopedia requires, a pack with GdUnit, and a GdUnit run in a project with strict
-warnings. `python3 -m tools.addons.lanes desktop gdunit` runs both.
+The example application in `examples/addons/gdunit/` at the repository root consumes the
+module as applications do: the project tests its scripts with GdUnit. The module's own
+white-box tests in `tests/` check `gdunit_test` itself: GdUnit runs that pass, fail, shard,
+filter and report the way Bazel's test encyclopedia requires, a pack with GdUnit, and a
+GdUnit run in a project with strict warnings. `aspect work desktop:addon:gdunit` runs both.

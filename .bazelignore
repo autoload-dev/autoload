@@ -1,3 +1,6 @@
 rules_godot
 addons
 .claude
+.godot-editor
+examples/.godot-editor
+e2e/rules_godot/.godot-editor

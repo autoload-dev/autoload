@@ -12,16 +12,19 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tools.android.requirements import sdk_requirements
 from tools.digest import digest
 from tools.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 
-# The consumer module's smoke applications whose artifacts this check validates, and the
-# godot-cpp extension each one packages.
-ANDROID_APP = "//smoke/android:app"
-IOS_APP = "//smoke/ios:app"
-MACOS_APP = "//smoke/macos:app"
+# The consumer scenarios' smoke applications whose artifacts this check validates, in the
+# repository's root module, and the godot-cpp extension each one packages.
+ANDROID_APP = "//e2e/rules_godot/smoke/android:app"
+# The iOS application that links the extension statically, whose executable exports its
+# entry symbol; the smoke's other iOS application embeds the extension as a framework.
+IOS_APP = "//e2e/rules_godot/smoke/ios:static_app"
+# Its bundle, executable and pack, named after the target.
+IOS_EXECUTABLE = "static_app"
+MACOS_APP = "//e2e/rules_godot/smoke/macos:app"
 ANDROID_LIBRARY = "lib/arm64-v8a/libcounter_native.so"
 ENTRY_SYMBOL = "native_counter_init"
 
@@ -58,13 +61,16 @@ def main() -> None:
     )
     parser.add_argument("--android-sdk", type=Path, required=True)
     parser.add_argument("--android-ndk", type=Path, required=True)
+    # The API level the root module configures for its SDK, which the repository's tooling
+    # reads from its MODULE.bazel (tools/android/requirements.py).
+    parser.add_argument("--android-api-level", required=True)
     parser.add_argument("--java", type=Path, required=True)
     parser.add_argument("--build-tools", required=True)
     parser.add_argument("--output", type=Path, help="Write the result to this path")
     args = parser.parse_args()
     root = args.root.resolve()
-    consumer = root / "tests"
-    sdk = sdk_requirements((consumer / "MODULE.bazel").read_text())
+    # The repository's root module, which holds the scenarios.
+    consumer = root.parent
     apk = configured_output(
         consumer,
         ANDROID_APP,
@@ -72,12 +78,7 @@ def main() -> None:
         "/app.apk",
     )
     # A Simulator build keeps the application a directory.
-    bundle = configured_output(
-        consumer,
-        IOS_APP,
-        "official",
-        "/app.app",
-    )
+    bundle = configured_output(consumer, IOS_APP, "official", f"/{IOS_EXECUTABLE}.app")
     android_tools = args.android_sdk / "build-tools" / args.build_tools
     evidence = {
         "validated_at_utc": datetime.now(UTC).isoformat(),
@@ -85,7 +86,7 @@ def main() -> None:
         "toolchains": {
             "bazel": (root / ".bazelversion").read_text().strip(),
             "godot": "4.7.2.stable",
-            "android_sdk": str(sdk["api_level"]),
+            "android_sdk": args.android_api_level,
             "android_build_tools": args.build_tools,
             "android_ndk": (args.android_ndk / "source.properties").read_text().strip(),
             "java_build_runtime_and_language": "21",
@@ -164,10 +165,11 @@ def main() -> None:
             }
         app = application_bundle(bundle, temporary / "ios")
         command(["/usr/bin/codesign", "--verify", "--deep", "--strict", app])
-        exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", app / "app"])
+        executable = app / IOS_EXECUTABLE
+        exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
         if f"_{ENTRY_SYMBOL}" not in exported:
             raise ValueError("iOS static extension entry is absent from Mach-O exports")
-        pack = pck_contents((app / "app.pck").read_bytes())
+        pack = pck_contents((app / f"{IOS_EXECUTABLE}.pck").read_bytes())
         descriptor = "\n".join(pack["extension_descriptors"].values())
         if not re.search(r'ios[^=]*=\s*"res://[^"\n]+\.a"', descriptor):
             raise ValueError("iOS pack must retain a nonempty static .a descriptor path")
@@ -177,7 +179,7 @@ def main() -> None:
             "sha256": sha256,
             "size_bytes": size,
             "signature_verification": "codesign --verify --deep --strict passed",
-            "cpu": command(["/usr/bin/file", "-b", app / "app"]),
+            "cpu": command(["/usr/bin/file", "-b", executable]),
             "gdextension_entry_exported": f"_{ENTRY_SYMBOL}",
             "pck": pack,
             "official_template_caveat": "4.7.2 simulator archive is x86_64 despite arm64+x86_64 XCFramework metadata",

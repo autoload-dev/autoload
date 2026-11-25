@@ -199,7 +199,7 @@ binary and scripts to tokens.
 |---|---|
 | `bazel build //:app` | written |
 | `bazel build -c dbg //:app` | written |
-| `bazel build -c opt //:app`, or a release config that sets it, such as `--config=ios-release` or `--config=android-release` in the [examples' `.bazelrc`](../../examples/.bazelrc) | Godot's export |
+| `bazel build -c opt //:app`, or a release config that sets it, such as `--config=ios-release` or `--config=android-release` in the [examples' `.bazelrc`](../../../.bazelrc) | Godot's export |
 | `bazel build --@autoload_rules_godot//godot:pack_conversion=godot //:app` | Godot's export |
 | `bazel build -c opt --@autoload_rules_godot//godot:pack_conversion=none //:app` | fails: text packs are for development builds |
 
@@ -296,7 +296,7 @@ godot_resources(
     name = "inventory_suites",
     testonly = True,
     srcs = glob(["tests/*_test.gd"]),
-    deps = [":inventory", "@autoload_gdunit//:gdunit"],
+    deps = [":inventory", "@autoload_gdunit//gdunit"],
 )
 
 godot_project(

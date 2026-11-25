@@ -21,8 +21,8 @@ decide. No list names the modules. Pushing a tag runs
    `<module>-X.Y.Z.tar.gz` with `git archive` of the module's directory and, for the
    ruleset, the API documentation archive `autoload_rules_godot-X.Y.Z.docs.tar.gz`, attests
    them and opens a draft GitHub release with the archives and the `bazel_dep` snippet. The
-   documentation archive holds the curated Stardoc metadata of `//public/api:bcr_docs` in
-   `rules_godot/docs/` ([API documentation
+   documentation archive holds the curated Stardoc metadata of `//tools/docs/api:bcr_docs` in
+   the repository's root module ([API documentation
    maintenance](../../rules_godot/docs/internal/api-reference.md#metadata-for-the-bcr-documentation-archive));
    the registry renders it from the `docs_url` of the registry entry.
 2. **Publish**, for a module with templates in `.bcr` (every module has them):

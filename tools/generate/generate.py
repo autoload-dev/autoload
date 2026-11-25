@@ -3,6 +3,7 @@ Regenerate the repository's generated files, or check that they are current.
 
 | Generated files | Regenerated here | Checked here |
 |---|---|---|
+| The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
 | The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
@@ -18,7 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tools.setup.modules import RULESET, module_paths
+from tools.addons import declarations
+from tools.setup.modules import ADDONS, RULESET, module_paths
 
 ROOT = Path(__file__).resolve().parents[2]
 RULESET_DIR = RULESET.as_posix()
@@ -30,7 +32,7 @@ LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
 # The source builds with a lock file, as (module, hub).
-PINNED_ENGINES = ((f"{RULESET_DIR}/examples", "godot_petri"),)
+PINNED_ENGINES = ((".", "godot_petri"),)
 
 
 def bazel(module: str, *args: str) -> int:
@@ -43,16 +45,22 @@ def is_ruleset_code(path: str) -> bool:
     return in_ruleset and path.endswith(".bzl") and "/tests/" not in path
 
 
+def is_addon_manifest(path: str) -> bool:
+    """An add-on module's MODULE.bazel, which the root module's declarations include."""
+    return Path(path).parent.parent == Path(ADDONS) and Path(path).name == "MODULE.bazel"
+
+
 def locked_modules_shaped_by(paths: list[str]) -> list[str]:
     """
     The locked modules whose lock files the changed files can change: a module through
-    its MODULE.bazel, the ruleset's modules through the ruleset's code.
+    its MODULE.bazel or segments, the root module through the add-on modules it declares,
+    and the ruleset and the root module, which consumes it, through the ruleset's code.
     """
-    shaped = {
-        str(Path(path).parent) for path in paths if Path(path).name == "MODULE.bazel"
-    }
+    shaped = {str(Path(path).parent) for path in paths if path.endswith("MODULE.bazel")}
+    if any(map(is_addon_manifest, paths)):
+        shaped.add(".")
     if any(map(is_ruleset_code, paths)):
-        shaped.update(m for m in LOCKED_MODULES if m.startswith(RULESET_DIR))
+        shaped.update((".", RULESET_DIR))
     return [module for module in LOCKED_MODULES if module in shaped]
 
 
@@ -108,16 +116,30 @@ def pins() -> int:
     return status
 
 
+def segment(check: bool = False) -> int:
+    """Write the root module's declarations of the add-on modules, or check them."""
+    if not check:
+        declarations.write(ROOT)
+        return 0
+    if declarations.is_current(ROOT):
+        return 0
+    print(
+        f"Stale {declarations.SEGMENT}; regenerate it with `aspect generate`.",
+        file=sys.stderr,
+    )
+    return 1
+
+
 def regenerate(paths: list[str]) -> int:
     """Regenerate what depends on the paths, or everything without paths."""
     everything = not paths
     modules = list(LOCKED_MODULES) if everything else locked_modules_shaped_by(paths)
-    return lock_files(modules)
+    return segment() | lock_files(modules)
 
 
 def check() -> int:
     """Check every generated file."""
-    return check_lock_files() | pins()
+    return segment(check=True) | check_lock_files() | pins()
 
 
 def main() -> int:

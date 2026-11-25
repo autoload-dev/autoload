@@ -8,6 +8,7 @@ from pathlib import Path
 from tools.android.requirements import (
     LINUX_TOOLCHAINS,
     PINS,
+    api_level,
     application_modules,
     configuration_errors,
 )
@@ -46,29 +47,28 @@ class RequirementsTest(unittest.TestCase):
     def test_repository_requirements_are_provisioned(self) -> None:
         self.assertEqual(module_paths(ROOT), module_paths(self.root))
         self.assertLessEqual(
-            {".", "rules_godot", "rules_godot/examples", "rules_godot/tests"},
+            {".", "rules_godot"},
             set(module_paths(self.root)),
         )
         self.assertEqual(configuration_errors(self.root), [])
+
+    def test_reads_the_api_level_the_root_module_configures(self) -> None:
+        self.assertEqual(api_level(self.root), "35")
+        self.replace("MODULE.bazel", "api_level = 35", "api_level = 36")
+        self.assertEqual(api_level(self.root), "36")
 
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
         self.replace("rules_godot/MODULE.bazel", "api_level = 35", "api_level = 999")
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
         self.assertIn("rules_godot/MODULE.bazel: Android api_level 999", errors[0])
-        self.assertFalse(
-            errors[0].startswith(("rules_godot/examples/", "rules_godot/tests/"))
-        )
+        self.assertFalse(errors[0].startswith("MODULE.bazel"))
 
     def test_detects_an_unprovisioned_module_api(self) -> None:
-        self.replace(
-            "rules_godot/examples/MODULE.bazel", "api_level = 35", "api_level = 999"
-        )
+        self.replace("MODULE.bazel", "api_level = 35", "api_level = 999")
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
-        self.assertIn(
-            "rules_godot/examples/MODULE.bazel: Android api_level 999", errors[0]
-        )
+        self.assertIn("MODULE.bazel: Android api_level 999", errors[0])
 
     def test_detects_a_build_tools_bump_missing_from_a_consumer(self) -> None:
         self.replace(
@@ -101,11 +101,11 @@ class RequirementsTest(unittest.TestCase):
         self.assertIn(f"{LINUX_TOOLCHAINS}: Linux api levels ['35', '36']", errors[0])
 
     def test_detects_an_unprovisioned_config_override(self) -> None:
-        with (self.root / "rules_godot/tests/.bazelrc").open("a") as bazelrc:
+        with (self.root / ".bazelrc").open("a") as bazelrc:
             bazelrc.write("build:x --@androidsdk//:api_level=999\n")
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
-        self.assertIn("rules_godot/tests/.bazelrc:", errors[0])
+        self.assertIn(".bazelrc:", errors[0])
         self.assertIn("api_level '999'", errors[0])
 
     def test_detects_an_unprovisioned_override_in_an_imported_bazelrc(self) -> None:
@@ -117,30 +117,26 @@ class RequirementsTest(unittest.TestCase):
         self.assertIn("api_level '999'", errors[0])
 
     def test_finds_the_sdk_by_its_extension_under_any_proxy_name(self) -> None:
-        self.replace("rules_godot/examples/MODULE.bazel", "android_sdk = ", "sdk = ")
+        self.replace("MODULE.bazel", "android_sdk = ", "sdk = ")
         self.replace(
-            "rules_godot/examples/MODULE.bazel",
+            "MODULE.bazel",
             "android_sdk.configure(",
             "sdk.configure(",
         )
-        self.replace(
-            "rules_godot/examples/MODULE.bazel", "api_level = 35", "api_level = 999"
-        )
+        self.replace("MODULE.bazel", "api_level = 35", "api_level = 999")
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
-        self.assertIn(
-            "rules_godot/examples/MODULE.bazel: Android api_level 999", errors[0]
-        )
+        self.assertIn("MODULE.bazel: Android api_level 999", errors[0])
 
     def test_does_not_silently_skip_a_computed_requirement(self) -> None:
         self.replace(
-            "rules_godot/examples/MODULE.bazel",
+            "MODULE.bazel",
             "api_level = 35",
             "api_level = selected_api",
         )
         errors = configuration_errors(self.root)
         self.assertEqual(len(errors), 1)
-        self.assertIn("rules_godot/examples/MODULE.bazel:", errors[0])
+        self.assertIn("MODULE.bazel:", errors[0])
 
 
 if __name__ == "__main__":

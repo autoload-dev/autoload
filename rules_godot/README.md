@@ -96,13 +96,12 @@ and the [Aspect CLI](https://docs.aspect.build/cli):
 git clone https://github.com/autoload-dev/autoload.git
 cd autoload
 ./bootstrap.sh --hooks=false --android=false
-cd rules_godot/examples
-aspect exec -- bazel run //projects/lichtpost:run
+aspect exec -- bazel run //examples/lichtpost:run
 ```
 
 Choose **Let's go**, then press Space to jump over gaps and pipes. The
-[Lichtpost guide](examples/projects/lichtpost/README.md) walks through the project; the
-[examples](examples/README.md) list the other projects and add-ons.
+[Lichtpost guide](../examples/lichtpost/README.md) walks through the project; the
+[examples](../examples/README.md) list the other projects and add-ons.
 
 ## Documentation
 

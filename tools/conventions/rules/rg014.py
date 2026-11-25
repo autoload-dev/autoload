@@ -6,7 +6,6 @@ from pathlib import Path
 
 from tools.conventions.context import (
     BUILD_FILES,
-    NON_CONSUMER_MODULES,
     Context,
     Location,
     nearest,
@@ -39,7 +38,7 @@ class EngineLayout:
         roots = sorted(
             config.parent
             for config in workspace.godot_configurations
-            if workspace.owner(config.as_posix()) not in NON_CONSUMER_MODULES
+            if workspace.consumer_root(config) is not None
         )
         members: dict[Path, list[Path]] = defaultdict(list)
         for name in workspace.files:

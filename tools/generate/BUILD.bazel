@@ -5,7 +5,10 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 py_library(
     name = "generate_lib",
     srcs = ["generate.py"],
-    deps = ["//tools/setup:modules_lib"],
+    deps = [
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
+    ],
 )
 
 py_test(

@@ -90,24 +90,22 @@ class AddonModuleLayoutTest(RepositoryTest):
 
     def test_example_projects_define_the_targets_the_lanes_build(self) -> None:
         self.module("widget")
-        build = "addons/widget/examples/projects/demo/BUILD.bazel"
+        build = "examples/addons/widget/BUILD.bazel"
         self.write(
             build, (self.root / build).read_text().replace('name = "edit"', 'name = "e"')
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
 
-    def test_a_module_without_application_lanes_needs_no_app_or_maven_graph(self) -> None:
+    def test_a_module_without_application_lanes_needs_no_app(self) -> None:
         self.module("widget")
         self.write(
             "addons/widget/addon.pkl",
             'amends "../../tools/addons/Addon.pkl"\nlanes = List("desktop")\n',
         )
-        build = "addons/widget/examples/projects/demo/BUILD.bazel"
+        build = "examples/addons/widget/BUILD.bazel"
         self.write(
             build, (self.root / build).read_text().replace('name = "app"', 'name = "a"')
         )
-        for relative in ("examples/BUILD.bazel", "examples/maven_install.json"):
-            self.files.discard(f"addons/widget/{relative}")
         self.assertEqual([], self.evaluate())
 
     def test_extension_names_are_unique_across_modules(self) -> None:

@@ -3,19 +3,23 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import RULESET_MODULE, Context, Location
+from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.layout import RULESET_MODULE, is_addon_test
+from tools.setup.modules import ADDONS
 
 
-def _white_box(path: Path, module: Path) -> bool:
-    """Whether a configuration is a fixture: the ruleset's, or of an add-on module's tests."""
-    if module == RULESET_MODULE:
+def _white_box(workspace: Workspace, path: Path) -> bool:
+    """
+    Whether a configuration is a fixture: the ruleset's, one of an add-on module's own tests
+    in its tests/, or of an add-on module's end-to-end tests.
+    """
+    owner = workspace.owner(path.as_posix())
+    if owner == RULESET_MODULE:
         return True
-    return (
-        module.parent.parent == Path("addons")
-        and module.name == "examples"
-        and path.relative_to(module).parts[0] == "tests"
-    )
+    if owner.parent == Path(ADDONS) and path.relative_to(owner).parts[:1] == ("tests",):
+        return True
+    return is_addon_test(workspace.consumer_root(path))
 
 
 class TypedRootLayout:
@@ -31,14 +35,13 @@ class TypedRootLayout:
             # Consumer modules keep Godot configurations in their typed roots; white-box
             # fixtures of the ruleset module, and the fixtures of an add-on module's tests in
             # its examples/tests/, may live anywhere there.
-            if _white_box(path, workspace.owner(path.as_posix())):
+            if _white_box(workspace, path):
                 continue
             if workspace.typed_directory(path) is not None:
                 continue
             yield Finding(
                 Location(path.as_posix(), 1),
-                "Godot configurations must belong to a named project or add-on below projects/ or "
-                "addons/ of their consumer module",
+                "Godot configurations must belong to a named project or add-on of their consumer",
             )
         for project, members in workspace.typed_directories("projects").items():
             location = Location(members[0], 1)

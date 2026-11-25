@@ -1,0 +1,73 @@
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load(
+    "@autoload_rules_godot//godot:defs.bzl",
+    "godot_editor",
+    "godot_metadata_sync",
+    "godot_pack",
+    "godot_project",
+    "godot_run",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["project.godot"])
+
+godot_project(
+    name = "lichtpost",
+    main_scene = "main/game.tscn",
+    project_file = "project.godot",
+)
+
+godot_editor(
+    name = "edit",
+    project = ":lichtpost",
+    deps = ["//examples/lichtpost/main"],
+)
+
+godot_metadata_sync(
+    name = "update",
+    size = "small",
+    project = ":lichtpost",
+    deps = ["//examples/lichtpost/main"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":lichtpost",
+    deps = ["//examples/lichtpost/main"],
+)
+
+godot_run(
+    name = "run",
+    headless = False,
+    pack = ":pack",
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.rulesgodot.lichtpost",
+    pack = ":pack",
+)
+
+godot_project(
+    name = "test_project",
+    project_file = "project.godot",
+    visibility = ["//visibility:private"],
+)
+
+godot_metadata_sync(
+    name = "test_update",
+    size = "small",
+    testonly = True,
+    project = ":test_project",
+    visibility = ["//visibility:private"],
+    deps = ["//examples/lichtpost/tests:suites"],
+)
+
+godot_editor(
+    name = "test_edit",
+    testonly = True,
+    project = ":test_project",
+    visibility = ["//visibility:private"],
+    deps = ["//examples/lichtpost/tests:suites"],
+)

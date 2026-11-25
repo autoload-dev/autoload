@@ -341,13 +341,13 @@ signer analysis, including in certificate mode without an identity.
 
 ## Android
 
-Use the standalone [examples module](../../examples/MODULE.bazel) as a
+Use the [repository's root module](../../../MODULE.bazel), which builds the examples, as a
 setup template: it declares the SDK/NDK toolchains, the registered engines and the
 Maven lock file. Its
-[SQLite project BUILD file](../../examples/addons/sqlite/demo/BUILD.bazel)
+[SQLite project BUILD file](../../../examples/addons/sqlite/BUILD.bazel)
 declares one app for every operating system, packaged as APK or
 [App Bundle](#app-bundles-for-store-upload);
-[`.bazelrc`](../../examples/.bazelrc) supplies build configurations.
+[`.bazelrc`](../../../.bazelrc) supplies build configurations.
 For your own module, adapt `local_path_override` to your rules_godot source
 and use your project's targets in the BUILD declarations.
 
@@ -360,8 +360,7 @@ Bazel unless `JAVA_HOME` is set). From the repository root:
 
 ```sh
 aspect work android:setup
-cd rules_godot/examples
-aspect exec -- bazel build //addons/sqlite/demo:app --config=android
+aspect exec -- bazel build //examples/addons/sqlite:app --config=android
 ```
 
 The setup reuses an existing SDK and installs only missing pinned components.
@@ -421,7 +420,7 @@ manifest, themes, icons and splash. The rules provision the template activity's 
 dependencies through the **shared Maven installation**; applications do not repeat their
 labels. Consumers
 contribute their Maven artifacts and allowlist to the module extension, retaining root
-version/lock precedence, as in [MODULE.bazel](../../examples/MODULE.bazel). Do not create
+version/lock precedence, as in [MODULE.bazel](../../../MODULE.bazel). Do not create
 an unrelated private Maven graph. Refresh the shared lock when dependencies change.
 
 Set the SDK versions, signing and platform libraries with the
@@ -479,12 +478,12 @@ Select the same app with `--@autoload_rules_godot//godot:android_format=aab`; th
 The delivered AAB is unsigned and contains no alternate delivery APK. Sign the AAB outside Bazel before upload.
 Changing only format reuses content export and native compilation.
 
-From `rules_godot/examples`, with the Android SDK configured:
+From `examples/`, with the Android SDK configured:
 
 ```sh
-bazel build //addons/sqlite/demo:app --config=android
-bazel build //addons/sqlite/demo:app --config=android --config=aab
-bazel build //addons/sqlite/demo:app --config=multi_abi --config=aab
+bazel build //examples/addons/sqlite:app --config=android
+bazel build //examples/addons/sqlite:app --config=android --config=aab
+bazel build //examples/addons/sqlite:app --config=multi_abi --config=aab
 ```
 
 The `multi_abi` export platform requests arm64 and x86_64. Both platform slices receive a
@@ -515,15 +514,14 @@ platform 36; install it alongside the stable platform and select it with
 
 ## iOS
 
-Use macOS with Xcode selected and an installed iOS SDK. The standalone
-[examples module](../../examples/MODULE.bazel),
-[SQLite project BUILD file](../../examples/addons/sqlite/demo/BUILD.bazel) and
-[`.bazelrc`](../../examples/.bazelrc) provide the complete engine, editor,
+Use macOS with Xcode selected and an installed iOS SDK. The
+[repository's root module](../../../MODULE.bazel), which builds the examples, the
+[SQLite project BUILD file](../../../examples/addons/sqlite/BUILD.bazel) and the root's
+[`.bazelrc`](../../../.bazelrc) provide the complete engine, editor,
 export platform and application setup. From the repository root:
 
 ```sh
-cd rules_godot/examples
-bazel build //addons/sqlite/demo:app --config=official
+bazel build //examples/addons/sqlite:app --config=official
 ```
 
 `official` selects x86_64 Simulator, the CPU of the official templates' Simulator
@@ -615,10 +613,10 @@ the executable, while their descriptors remain in the PCK. A prebuilt static XCF
 ## Version and build number
 
 A release pipeline sets the version and build number on the command line,
-without editing BUILD files. For the Android example, from `rules_godot/examples`:
+without editing BUILD files. For the Android example, from `examples/`:
 
 ```sh
-bazel build //addons/sqlite/demo:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
+bazel build //examples/addons/sqlite:app --config=android --@autoload_rules_godot//godot:app_version=2.3.4 --@autoload_rules_godot//godot:build_number=57
 ```
 
 | Consumer | `app_version` | `build_number` |
@@ -699,16 +697,16 @@ since App Bundles do not embed it.
 On Android, add `--copt=-fdebug-compilation-dir=.` so the NDK does not record
 the sandbox directory in debug information and make compilation bytes differ.
 The `android-release` and `ios-release` configurations in the examples'
-linked `.bazelrc` provide these flags. From `rules_godot/examples`:
+linked `.bazelrc` provide these flags. From `examples/`:
 
 ```sh
-bazel build //addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols --config=android-release --config=aab
+bazel build //examples/addons/sqlite:app //examples/addons/sqlite:app.debug_symbols --config=android-release --config=aab
 ```
 
 For iOS:
 
 ```sh
-bazel build //addons/sqlite/demo:app //addons/sqlite/demo:app.debug_symbols --config=ios-release
+bazel build //examples/addons/sqlite:app //examples/addons/sqlite:app.debug_symbols --config=ios-release
 ```
 
 Match the packaged library and its symbols by build ID on Android or UUID on
@@ -794,7 +792,7 @@ libraries its native code needs the same way.
   default. An SDK activity that extends `AppCompatActivity` then fails to start with
   "You need to use a Theme.AppCompat theme". Give such an activity a theme in the
   add-on's manifest; the merge adds it to the SDK's entry. The
-  [AppAuth add-on](../../examples/addons/app_auth/native/backends/android/AndroidManifest.xml)
+  [AppAuth add-on](../../../addons/app_auth/app_auth/native/backends/android/AndroidManifest.xml)
   does this for AppAuth's redirect activity with the SDK's own AppCompat theme.
 - **Info.plist entries:** rules_apple has no library-level Info.plist, so an
   add-on's fragments go in its `infoplists`, and those an extension's native code needs
@@ -872,7 +870,8 @@ godot_addon(
 
 These are consumer templates with placeholder vendor inputs, not repository
 targets. Declare `rules_android`, `rules_cc` and `rules_swift` directly in the
-consuming module, as the [examples module](../../examples/MODULE.bazel) does.
+consuming module, as the [repository's root module](../../../MODULE.bazel) does for the
+examples.
 The `select` keeps each library out of applications for other operating systems; an
 add-on supporting both mobile operating systems combines both branches, as in the first
 example. Imports, which run on the execution platform, also need a portable script or
@@ -1020,13 +1019,13 @@ mix of both kinds.
 
 ## Inspect the result
 
-Build the SQLite APK and Simulator IPA from `rules_godot/examples`:
+Build the SQLite APK and Simulator IPA from the repository root:
 
 ```sh
-bazel build //addons/sqlite/demo:app --config=android
-bazel cquery //addons/sqlite/demo:app --config=android --output=files
-bazel build //addons/sqlite/demo:app --config=official
-bazel cquery //addons/sqlite/demo:app --config=official --output=files
+bazel build //examples/addons/sqlite:app --config=android
+bazel cquery //examples/addons/sqlite:app --config=android --output=files
+bazel build //examples/addons/sqlite:app --config=official
+bazel cquery //examples/addons/sqlite:app --config=official --output=files
 ```
 
 Inspect the APK/IPA paths reported by Bazel with `unzip -l`; use your SDK's

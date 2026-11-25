@@ -31,14 +31,6 @@ MAVEN = "maven.install"
 # Each consumer module overrides the ruleset with its checkout, so its version is no pin.
 # An add-on module declares the release it needs instead.
 UNPINNED = {"bazel_dep:autoload_rules_godot"}
-# Deliberate drifts: module -> keys, such as "addons/<name>": {"bazel_dep:<module>"}, with
-# the reason beside the entry. Remove an entry once its reason no longer holds.
-EXCEPTIONS: dict[str, set[str]] = {
-    # The repository's tooling pins the rules_go the ruleset's graph resolves, which the
-    # ruleset sees through its development dependency on the root module (MODULE.bazel);
-    # the examples' newer one stays theirs.
-    ".": {"bazel_dep:rules_go"},
-}
 
 
 def _key(kind: str, name: str | None, attribute: str) -> str:
@@ -78,11 +70,10 @@ def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
         "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
         ".bazelversion": {"bazelversion": (path / ".bazelversion").read_text().strip()},
     }
-    skipped = UNPINNED | EXCEPTIONS.get(module, set())
     for file, pins in locations.items():
         location = (Path(module) / file).as_posix()
         for key, value in pins.items():
-            if key not in skipped:
+            if key not in UNPINNED:
                 yield key, location, value
 
 

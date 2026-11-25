@@ -7,7 +7,7 @@ from tools.conventions.context import Call, Context, Location
 from tools.conventions.rules.rg011 import AddonIndependence
 from tools.conventions.test_support import Record, RepositoryTest
 
-ROOT = "rules_godot/examples/addons/widget"
+ROOT = "examples/addons/widget"
 BUILD = ROOT + "/BUILD.bazel"
 
 
@@ -113,7 +113,7 @@ class AddonIndependenceTest(RepositoryTest):
         }
         context = self.context_for(
             [unit],
-            ("rules_godot/examples/MODULE.bazel",),
+            ("examples/MODULE.bazel",),
             {"//addons/widget:demo/image.svg": ROOT + "/demo/image.svg"},
         )
         findings = list(AddonIndependence().evaluate(context))
@@ -134,7 +134,7 @@ class AddonIndependenceTest(RepositoryTest):
         self.assertIn("@consumer//:fixture.gd", findings[0].message)
 
     def test_regression_addons_get_the_same_boundary_check_without_opt_in(self) -> None:
-        root = "rules_godot/tests/shared_addon/widget"
+        root = "e2e/rules_godot/shared_addon/widget"
         unit: Record = {
             "name": "//tests/shared_addon/widget:widget",
             "path": root + "/BUILD.bazel",

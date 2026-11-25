@@ -141,7 +141,6 @@ py_binary(
         ":apple_bundle_lib",
         "//tools:digest_lib",
         "//tools:pck_lib",
-        "@autoload_dev//tools/android:requirements_lib",
     ],
 )
 
@@ -152,7 +151,6 @@ py_library(
         ":apple_bundle_lib",
         "//tools:digest_lib",
         "//tools:pck_lib",
-        "@autoload_dev//tools/android:requirements_lib",
     ],
 )
 

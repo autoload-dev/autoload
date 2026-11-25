@@ -318,19 +318,19 @@ changes, and add or delete rows with it. Keep an ID when a row is renamed. Relat
 their leading entry instead of repeating its support.
 
 [ROOT]: ../../../README.md
-[API]: ../public/api/modules.bzl
+[API]: ../../../tools/docs/api/modules.bzl
 [RES]: ../public/resources.md
 [DEV]: ../public/development.md
 [PLAT]: ../public/platforms.md
 [ENG]: ../public/engine.md
 [EXT]: ../public/gdextension.md
 [VERS]: ../public/versions.md
-[EXAMPLES]: ../../examples/README.md
-[PATHS]: ../../examples/addons/platform_paths/README.md
+[EXAMPLES]: ../../../examples/README.md
+[PATHS]: ../../../addons/platform_paths/README.md
 [LAYOUT]: ../public/project-layout.md
-[TESTS]: ../../tests/AGENTS.md
+[TESTS]: ../../../e2e/rules_godot/AGENTS.md
 [ARCH]: architecture.md
 [CAT]: godot-pipeline/README.md
 [SENTRY]: ../../../addons/sentry/README.md
 [ADAPTER]: ../../godot/private/adapter.bzl
-[PATHS-BUILD]: ../../examples/addons/platform_paths/BUILD.bazel
+[PATHS-BUILD]: ../../../examples/addons/platform_paths/BUILD.bazel

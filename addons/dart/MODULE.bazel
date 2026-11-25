@@ -1,0 +1,83 @@
+"""Dart: a Godot add-on of autoload-dev that scripts Godot projects in Dart, compiled ahead of time."""
+
+module(
+    name = "autoload_dart",
+    version = "0.1.0",
+    bazel_compatibility = [">=9.0.0"],
+)
+
+# The release of rules_godot the add-ons need. Builds in this repository use the rules beside
+# them instead (addons/module.bazelrc and the root MODULE.bazel).
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+
+# The Python that generates the Dart runtime's version file.
+bazel_dep(name = "rules_python", version = "2.5.1")
+
+# rules_dart compiles scripts with the SDK release whose sources build the add-on's embedded
+# runtime; an AOT snapshot runs only on the runtime of its own release.
+bazel_dep(name = "rules_dart", version = "0.10.0")
+
+dart = use_extension("@rules_dart//dart:extensions.bzl", "dart")
+dart.toolchain(dart_version = "3.14.1")
+use_repo(dart, "dart_toolchains")
+
+register_toolchains("@dart_toolchains//:all")
+
+bazel_dep(name = "icu", version = "78.2.bcr.3")
+bazel_dep(name = "zlib", version = "1.4")
+
+# The Dart SDK's sources, which build the add-on's embedded runtime. Bazel loads the runtime's
+# source lists from .bzl copies of GN's *_sources.gni files. The patch drops the embedder API's
+# unused SecureSocket include, which needs BoringSSL, and corrects the macOS version the
+# runtime derives from Darwin 25 and newer, which it compares with the deployment target
+# before it starts an isolate.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "dart_sdk_source",
+    build_file = "//third_party:dart_sdk.BUILD.bazel",
+    patch_cmds = [
+        "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
+    ],
+    patch_strip = 1,
+    patches = ["//third_party:dart_sdk.patch"],
+    sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
+    strip_prefix = "sdk-3.14.1",
+    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],
+)
+
+# The add-ons' own godot-cpp, with the classes their native code uses.
+godot_cpp_bindings = use_repo_rule(
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    enabled_classes = [
+        "ClassDB",
+        "Engine",
+        "FileAccess",
+        "JSON",
+        "ProjectSettings",
+        "RefCounted",
+        "ResourceFormatLoader",
+        "ResourceFormatSaver",
+        "ResourceLoader",
+        "ResourceSaver",
+        "ScriptExtension",
+        "ScriptLanguageExtension",
+    ],
+)
+
+# The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
+# never see it.
+bazel_dep(name = "autoload_dev", dev_dependency = True)
+local_path_override(
+    module_name = "autoload_dev",
+    path = "../..",
+)

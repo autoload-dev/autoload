@@ -1,0 +1,93 @@
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@rules_python//python:defs.bzl", "py_test")
+
+# The Linux smoke path: build, inspect and boot a Linux application whose C ABI and
+# godot-cpp extensions load and whose imported texture is usable. Linux hosts only.
+_LINUX = ["@platforms//os:linux"]
+
+# The extensions build their editor libraries for the host too, where the host constraint
+# would fail them; they are manual instead, and the project carries the constraint.
+godot_cc_extension(
+    name = "hello",
+    srcs = ["native/hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_cc_extension(
+    name = "cpp_example",
+    srcs = ["native/cpp_example.cc"],
+    entry_symbol = "example_library_init",
+    resource_path = "native/cpp_example.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/icon.svg",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
+    target_compatible_with = _LINUX,
+)
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+    target_compatible_with = _LINUX,
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":project",
+    target_compatible_with = _LINUX,
+    deps = [
+        ":cpp_example",
+        ":hello",
+        ":main",
+    ],
+)
+
+# debug_symbols/ shows that the application's debug symbols target is visible to another
+# package.
+godot_app(
+    name = "app",
+    application_id = "org.example.smoke.linux",
+    pack = ":pack",
+    target_compatible_with = _LINUX,
+    visibility = ["//e2e/rules_godot/smoke/linux:__subpackages__"],
+)
+
+[
+    filegroup(
+        name = "app_" + group,
+        srcs = [":app"],
+        output_group = group,
+        target_compatible_with = _LINUX,
+    )
+    for group in [
+        "archive",
+        "bundle",
+    ]
+]
+
+py_test(
+    name = "app_boots_with_extensions_test",
+    size = "small",
+    srcs = ["app_boots_with_extensions_test.py"],
+    args = [
+        "$(rlocationpath :app_bundle)",
+        "$(rlocationpath :app_archive)",
+    ],
+    data = [
+        ":app_archive",
+        ":app_bundle",
+    ],
+    target_compatible_with = _LINUX,
+)

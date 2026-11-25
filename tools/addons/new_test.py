@@ -1,18 +1,10 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
-import subprocess
-from unittest import mock
-
-from tools.addons.new import (
-    PIN_ATTEMPTS,
-    PIN_RETRY_SECONDS,
-    TOKEN,
-    Names,
-    generate,
-    pin,
-)
+from tools.addons.declarations import SEGMENT
+from tools.addons.new import TOKEN, Names, generate
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
+from tools.setup.modules import SELFTEST, addon_modules
 
 
 class NamesTest(RepositoryTestCase):
@@ -28,9 +20,6 @@ class NamesTest(RepositoryTestCase):
         self.assertEqual(tokens["extension"], "firebase_core")
         self.assertEqual(tokens["class"], "FirebaseCore")
         self.assertEqual(tokens["title"], "Firebase Core")
-
-    def test_the_self_test_module_drops_its_dot(self) -> None:
-        self.assertEqual(Names(".selftest").tokens("9.3.0")["module"], "selftest")
 
     def test_resource_uids_are_stable_and_godot_reads_them(self) -> None:
         first, again = Names("widget").tokens("9"), Names("widget").tokens("9")
@@ -58,8 +47,9 @@ class GenerateTest(RepositoryTestCase):
         )
         plugin = "widget/widget/native/backends/android/dev/autoload/widget/widget/WidgetPlugin.java"
         self.assertIn("package dev.autoload.widget.widget;", self.read(plugin))
-        scene = self.read("widget/examples/projects/demo/main/demo.tscn")
-        uid = self.read("widget/examples/projects/demo/main/demo.gd.uid").strip()
+        examples = self.root / "examples/addons/widget"
+        scene = (examples / "main/demo.tscn").read_text()
+        uid = (examples / "main/demo.gd.uid").read_text().strip()
         self.assertRegex(uid, r"^uid://[a-z0-9]+$")
         self.assertIn(f'uid="{uid}" path="res://main/demo.gd"', scene)
         source = (self.root / ".bcr/addons/widget/source.template.json").read_text()
@@ -68,9 +58,14 @@ class GenerateTest(RepositoryTestCase):
             "@autoload_widget//...",
             (self.root / ".bcr/addons/widget/presubmit.yml").read_text(),
         )
+        self.assertIn(
+            "//examples/addons/widget/main",
+            (examples / "BUILD.bazel").read_text(),
+        )
+        self.assertFalse((self.root / "addons/widget/examples").exists())
         generated = [
             path
-            for tree in ("addons/widget", ".bcr/addons/widget")
+            for tree in ("addons/widget", ".bcr/addons/widget", "examples/addons/widget")
             for path in (self.root / tree).rglob("*")
             if path.is_file()
         ]
@@ -99,35 +94,21 @@ class GenerateTest(RepositoryTestCase):
                 generate(module, addon, root=self.root)
 
 
-class PinTest(RepositoryTestCase):
-    def pin_with(self, returncodes: list[int]) -> tuple[mock.Mock, list[float]]:
-        waits: list[float] = []
-        codes = iter(returncodes)
+class DeclarationTest(RepositoryTestCase):
+    def test_a_new_module_is_declared_in_the_root_s_segment(self) -> None:
+        generate("widget", root=self.root)
+        generate("gadget", root=self.root)
+        text = (self.root / SEGMENT).read_text()
+        self.assertLess(
+            text.index('module_name = "autoload_gadget"'),
+            text.index('module_name = "autoload_widget"'),
+        )
+        self.assertIn('    path = "addons/widget",\n', text)
+        generate("widget", "extra", root=self.root)
+        self.assertEqual((self.root / SEGMENT).read_text(), text)
 
-        def fake_run(
-            command: list[str], check: bool, **_: object
-        ) -> subprocess.CompletedProcess[bytes]:
-            result = subprocess.CompletedProcess(command, next(codes))
-            if check:
-                result.check_returncode()
-            return result
-
-        with mock.patch("tools.addons.new.subprocess.run", side_effect=fake_run) as run:
-            pin("widget", root=self.root, wait=waits.append)
-        return run, waits
-
-    def test_the_examples_repin(self) -> None:
-        run, waits = self.pin_with([0])
-        self.assertEqual(waits, [])
-        self.assertEqual(run.call_args.kwargs["env"]["REPIN"], "1")
-        self.assertEqual(run.call_args.kwargs["cwd"].name, "examples")
-
-    def test_a_failed_pin_runs_again_after_a_growing_wait(self) -> None:
-        run, waits = self.pin_with([1, 1, 0])
-        self.assertEqual(run.call_count, 3)
-        self.assertEqual(waits, [PIN_RETRY_SECONDS, 2 * PIN_RETRY_SECONDS])
-
-    def test_a_pin_that_keeps_failing_fails_after_its_last_attempt(self) -> None:
-        with self.assertRaises(subprocess.CalledProcessError) as raised:
-            self.pin_with([3] * PIN_ATTEMPTS)
-        self.assertEqual(raised.exception.returncode, 3)
+    def test_the_self_test_module_is_no_add_on_module(self) -> None:
+        generate(SELFTEST, root=self.root, release=False)
+        self.assertTrue((self.root / "examples/addons/selftest/project.godot").is_file())
+        self.assertNotIn(f"addons/{SELFTEST}", addon_modules(self.root))
+        self.assertNotIn("autoload_selftest", (self.root / SEGMENT).read_text())

@@ -3,7 +3,7 @@
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo")
 load("@rules_java//java/common:java_common.bzl", "java_common")
 
-# The tests module loads it; it is not supported API.
+# The repository's consumer scenarios load it; it is not supported API.
 visibility("public")
 
 def _quote(value):

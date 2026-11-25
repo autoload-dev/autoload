@@ -130,8 +130,8 @@ loading stop the audit with an error rather than silently passing.
 ## RG004
 
 **Public documentation does not reference test fixtures.** Public guides and READMEs show
-runnable examples, which users can copy, instead of named scenarios of the regression module.
-The check reports each line with a concrete path such as `tests/smoke/linux` in Markdown under
+runnable examples, which users can copy, instead of named consumer scenarios.
+The check reports each line with a concrete path such as `e2e/rules_godot/smoke/linux` in Markdown under
 `docs/` and in every README, except internal documentation (the `docs/internal/` directories
 of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
 `tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
@@ -148,10 +148,10 @@ Markdown under `docs/` and in every README, except `AGENTS.md` files. Arguments 
 Each label resolves in exactly one module that contains its package:
 
 - `@autoload_rules_godot//` labels resolve in the ruleset module, `rules_godot/`.
-- A document inside a consumer module, such as `rules_godot/examples/`, resolves labels in
-  its own module first.
-- `//:target` labels in documents of the root module, the ruleset module and its
-  documentation module are consumer templates and are not checked.
+- A document inside a module resolves labels in its own module first; a document in the
+  root module's consumers, such as one in `examples/`, resolves them in the root module.
+- `//:target` labels in documents of the root module and the ruleset module are consumer
+  templates and are not checked.
 
 The named rule must exist in that package; `:all`, `:*` and `:all-targets` only require the
 package. A label is reported at its command's line when no module or several modules
@@ -236,14 +236,18 @@ reusable-resource exemptions select applicability.
 
 ## RG009
 
-**Applications and add-ons use their typed roots.** Every consumer module of this
-repository uses the same layout of projects and add-ons, measured from its module root:
+**Applications and add-ons use their typed roots.** Every consumer in the repository's root
+module places its projects and add-ons by path:
 
-| Module | Application projects | Add-ons |
+| Consumer | Application projects | Add-ons |
 |---|---|---|
-| Examples, `rules_godot/examples/` | `rules_godot/examples/projects/<name>/` | `rules_godot/examples/addons/<name>/` |
-| Regression tests, `rules_godot/tests/` | `rules_godot/tests/smoke/<operating_system>/`, `rules_godot/tests/script_run/`, `rules_godot/tests/patched_engine/` | `rules_godot/tests/shared_addon/` |
-| Add-on examples, `addons/<module>/examples/` | `addons/<module>/examples/projects/<name>/` | none: the add-ons are in the module |
+| Applications, `examples/` | `examples/<name>/` | none |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or `examples/addons/<module>/<scenario>/` per scenario | none: the add-ons are in the module |
+| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
+| Add-on end-to-end tests, `e2e/addons/<module>/` | any layout: white-box fixtures | none |
+
+A consumer module outside the root module measures `projects/<name>/` and `addons/<name>/`
+from its module root.
 
 The path determines whether a directory is a project or an add-on, and which rules apply.
 A project case owns a BUILD file and at least one authored Godot configuration; related
@@ -256,8 +260,8 @@ owning test domain when they are not independently reusable add-ons. C++ source 
 do not establish an add-on.
 
 The check inventories project and add-on directories and authored `project.godot` files in
-every consumer module; the white-box fixture projects of the ruleset module and of an add-on
-module's `tests/` are outside it. Configurations must belong to a named project or add-on.
+every consumer; the white-box fixture projects of the ruleset module, of an add-on module's
+own `tests/` and of its end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
 Temporary projects constructed inside source strings and generated configuration templates
 are outside the inventory. The check does not require a project or BUILD package for each
 assertion.
@@ -265,7 +269,8 @@ assertion.
 ## RG010
 
 **Add-ons separate implementation, demo and Godot tests.** Every add-on under a typed add-on
-root owns its reusable implementation, a normal-use project under `demo/` and a Godot test
+root, such as the scenario add-on `e2e/rules_godot/shared_addon/`, owns its reusable
+implementation, a normal-use project under `demo/` and a Godot test
 project under `tests/`. Each of those three scopes owns a BUILD file. The two projects own
 `project.godot` directly; do not add another project at the add-on root or inside a suite
 category. Native backend unit tests do not require a Godot configuration.
@@ -309,12 +314,11 @@ following
 [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
 A test scope is a `tests/` directory below the root of a project or add-on, such as
-`<project>/tests/`, `<addon>/tests/`, `<addon>/demo/tests/` or a backend's
+`<project>/tests/`, `<addon>/tests/`, a demo's `examples/addons/<name>/tests/` or a backend's
 `<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
 directory below the module root, such as the ruleset's white-box packages
-`godot/private/tests/`. Paths are measured from the owning module, so the regression
-module's directory `tests/` is not itself a test scope: a regression project's `main/` may
-use the module's `support/` fixtures, but not its own `tests/` suites.
+`godot/private/tests/`, or an add-on module's white-box tests in its `tests/`. Paths are
+measured from the owning module.
 
 ```starlark
 # game/main/BUILD.bazel
@@ -361,7 +365,7 @@ recipes then find a project's engine inputs in one place, separate from its appl
 content under `main/`.
 
 ```text
-<module>/projects/<name>/
+<project>/
   project.godot
   main/
   engine/
@@ -387,7 +391,7 @@ reports:
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project
-root, such as dependency patches in `rules_godot/examples/deps/`, are outside this rule.
+root, such as dependency patches in `third_party/`, are outside this rule.
 The check does not read module or patch contents and does not prove that a recipe consumes
 them.
 
@@ -395,27 +399,26 @@ them.
 
 **Add-on modules share one layout, and backends live in `native/backends/`.** This
 repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
-template, so that the same tasks build, test and release every module and nothing outside a
-module lists it. Each module:
+template, so that the same tasks build, test and release every module and nothing but the
+root module's declaration lists it. Each module:
 
 - is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
-  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes`, `addon.pkl`
-  and an `examples/` module with `MODULE.bazel`, `REPO.bazel`, `.bazelrc`
-  and `.bazelversion`, and, when it builds applications, `BUILD.bazel` and
-  `maven_install.json`;
+  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes` and
+  `addon.pkl`;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
-- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`, and
-  `examples/.bazelrc` imports `addons/examples.bazelrc`;
+- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
   properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
   of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
-- has at least one example project in `examples/projects/<name>/`, each defining the targets
-  `edit` and `pack`, and `app` when the module builds applications;
+- has at least one example project in the root module's
+  `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
+  defining the targets `edit` and `pack`,
+  and `app` when the module builds applications;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 

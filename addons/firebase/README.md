@@ -24,7 +24,7 @@ maven.install(
     name = "maven",
     # The add-ons add their Android libraries to the application's Maven graph.
     known_contributing_modules = ["autoload_firebase", "autoload_rules_godot", "protobuf"],
-    lock_file = "//:maven_install.json",
+    lock_file = "//third_party/maven:maven_install.json",
     # rules_godot checks the graph against Godot's minimums, which need Gradle's resolution.
     resolver = "gradle",
     ...
@@ -131,7 +131,7 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
 ## Development
 
 `bazel test //...` in this directory runs the `firebase_config` tests. The example
-application in [`examples/`](examples) builds the add-ons for every platform; its headless
+application in [`examples/addons/firebase/`](../../examples/addons/firebase) builds the add-ons for every platform; its headless
 test checks that they load and do nothing on desktop, and its iOS lane test
 (`app_embeds_firebase_frameworks_test`) that the iOS application embeds the extensions'
 frameworks and the Firebase frameworks they link. Its Firestore part talks to the

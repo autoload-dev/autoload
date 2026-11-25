@@ -19,17 +19,15 @@ class ModulePathsTest(unittest.TestCase):
             (root / ".godot-editor").mkdir()
             self.assertEqual((".", "examples", "other"), module_paths(root))
 
-    def test_each_add_on_module_with_its_examples(self) -> None:
+    def test_each_add_on_module(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / ".bazelignore").write_text("addons\n")
-            for module in (".", "addons/b", "addons/a", "addons/a/examples", "addons/.c"):
+            for module in (".", "addons/b", "addons/a", "addons/selftest"):
                 (root / module).mkdir(parents=True, exist_ok=True)
                 (root / module / "MODULE.bazel").write_text("")
             (root / "addons/d").mkdir()
-            self.assertEqual(
-                (".", "addons/a", "addons/a/examples", "addons/b"), module_paths(root)
-            )
+            self.assertEqual((".", "addons/a", "addons/b"), module_paths(root))
 
 
 class DeclarationsTest(unittest.TestCase):

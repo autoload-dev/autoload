@@ -9,12 +9,7 @@ from unittest import mock
 
 from tools.generate import generate
 
-RULESET_MODULES = (
-    "rules_godot",
-    "rules_godot/examples",
-    "rules_godot/tests",
-    "rules_godot/docs",
-)
+RULESET_MODULES = ("rules_godot",)
 
 
 class GenerateTest(unittest.TestCase):
@@ -22,6 +17,7 @@ class GenerateTest(unittest.TestCase):
         """The Bazel commands one call of generate runs, each as (module, *arguments)."""
         with (
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
+            mock.patch.object(generate, "segment", return_value=0),
             contextlib.redirect_stderr(io.StringIO()),
         ):
             getattr(generate, call)(*args)
@@ -40,20 +36,34 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["MODULE.bazel"]),
         )
 
-    def test_ruleset_code_regenerates_its_modules_locks(self) -> None:
+    def test_an_add_on_module_file_regenerates_the_root_s_lock_file(self) -> None:
         self.assertEqual(
-            [(m, "mod", "deps", "--lockfile_mode=update") for m in RULESET_MODULES],
+            [(".", "mod", "deps", "--lockfile_mode=update")],
+            self.runs("regenerate", ["addons/sqlite/MODULE.bazel"]),
+        )
+
+    def test_the_segment_is_written_and_checked(self) -> None:
+        with mock.patch.object(generate, "bazel", return_value=0):
+            for call, args in (("regenerate", (["tools/ci/work.py"],)), ("check", ())):
+                with (
+                    self.subTest(call=call),
+                    mock.patch.object(generate, "segment", return_value=0) as segment,
+                ):
+                    getattr(generate, call)(*args)
+                    segment.assert_called_once()
+
+    def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
+        self.assertEqual(
+            [(m, "mod", "deps", "--lockfile_mode=update") for m in (".", "rules_godot")],
             self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
         )
 
     def test_the_check_covers_lock_files_and_pins(self) -> None:
         commands = self.runs("check")
-        self.assertIn(
-            ("rules_godot/tests", "mod", "deps", "--lockfile_mode=update"), commands
-        )
+        self.assertIn(("rules_godot", "mod", "deps", "--lockfile_mode=update"), commands)
         self.assertIn(
             (
-                "rules_godot/examples",
+                ".",
                 "build",
                 "--nobuild",
                 "--keep_going",

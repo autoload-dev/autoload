@@ -4,13 +4,9 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.conventions.context import (
-    NON_CONSUMER_MODULES,
-    RULESET_MODULE,
-    Context,
-    Location,
-)
+from tools.conventions.context import Context, Location
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.layout import NON_CONSUMER_MODULES, RULESET_MODULE
 
 # The apparent repository consumers write for the ruleset, as in @autoload_rules_godot//godot.
 REPO = "@autoload_rules_godot"

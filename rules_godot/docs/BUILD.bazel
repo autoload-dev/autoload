@@ -1,2 +1,0 @@
-# The root package of the rules_godot_docs module. It declares no targets: the API metadata
-# is in //public/api and its checks in //tools/docs.

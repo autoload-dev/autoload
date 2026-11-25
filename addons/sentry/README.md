@@ -19,7 +19,7 @@ maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     name = "maven",
     known_contributing_modules = ["autoload_rules_godot", "autoload_sentry", "protobuf"],
-    lock_file = "//:maven_install.json",
+    lock_file = "//third_party/maven:maven_install.json",
     ...
 )
 ```
@@ -56,5 +56,6 @@ SentrySDK.capture_message("Hello from Godot")
   module places its user-feedback UI.
 - Windows and the web are not wired, since rules_godot builds no applications for them.
 
-The example application in `examples/` consumes the module as applications do. Its headless
+The example application in `examples/addons/sentry/` at the repository root consumes the
+module as applications do. Its headless
 test initializes Sentry and captures a message.

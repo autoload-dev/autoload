@@ -2,7 +2,7 @@
 
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
 
-# The tests module loads it; it is not supported API.
+# The repository's consumer scenarios load it; it is not supported API.
 visibility("public")
 
 def _runfile(ctx, path):

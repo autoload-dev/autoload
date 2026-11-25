@@ -15,6 +15,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+# The Bazel wrapper (tools/bazel), whose test runs it in a scratch workspace.
+exports_files(
+    ["tools/bazel"],
+    visibility = ["//tools/setup:__pkg__"],
+)
+
 # The ruleset's registry metadata template, which the add-on generator's tests start from.
 filegroup(
     name = "bcr_metadata",

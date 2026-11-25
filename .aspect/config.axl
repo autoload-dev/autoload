@@ -57,7 +57,7 @@ def config(ctx: ConfigContext):
         ctx: the configuration's context, which the Aspect CLI passes.
     """
 
-    # The root module's linters, which the ruleset and its documentation module reach as
+    # The root module's linters, which the other modules reach as
     # @autoload_dev too. Every finding fails a lint, as in CI, not only those on
     # changed lines.
     ctx.tasks["lint"].args.aspects = [

@@ -1,14 +1,13 @@
 """Check that repository provisioning covers the consuming Bazel modules."""
 
+import argparse
 import ast
 import json
 import sys
 from pathlib import Path
 
-from tools.addons.modules import all_modules
 from tools.setup.modules import (
     RULESET,
-    RULESET_DOCS,
     bazelrc_options,
     declarations,
     ignored_modules,
@@ -32,6 +31,11 @@ def sdk_requirements(source: str) -> dict[str, str | int]:
         for keyword, value in calls[0].keywords.items()
         if keyword in ("api_level", "build_tools_version")
     }
+
+
+def api_level(root: Path) -> str:
+    """The Android API level the root module's MODULE.bazel configures for its SDK."""
+    return str(sdk_requirements((root / "MODULE.bazel").read_text())["api_level"])
 
 
 def linux_pins(source: str) -> tuple[str, str, list[str]]:
@@ -62,25 +66,13 @@ def linux_pins(source: str) -> tuple[str, str, list[str]]:
 
 def application_modules(root: Path) -> list[str]:
     """
-    The modules that build applications, each of which must configure its SDK: the ruleset
-    with the modules nested in it but its documentation module, and the examples of every add-on module whose addon.pkl
-    names an application lane. The root's tooling and the add-on modules themselves, which
-    use their examples' SDK, build none.
+    The modules that build applications, each of which must configure its SDK: the root
+    module with its examples, the add-on modules' among them, and its consumer scenarios,
+    and the ruleset with the modules nested in it. The add-on modules themselves, whose
+    examples the root module builds, build none.
     """
     ruleset = RULESET.as_posix()
-    return [
-        ruleset,
-        *(
-            module
-            for module in ignored_modules(root, ruleset)
-            if module != RULESET_DOCS.as_posix()
-        ),
-        *(
-            f"{module.path.as_posix()}/examples"
-            for module in all_modules(root)
-            if module.builds_apps
-        ),
-    ]
+    return [".", ruleset, *ignored_modules(root, ruleset)]
 
 
 def configuration_errors(root: Path) -> list[str]:
@@ -136,7 +128,18 @@ def configuration_errors(root: Path) -> list[str]:
 
 
 def main() -> int:
-    errors = configuration_errors(Path(__file__).resolve().parents[2])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--api-level",
+        action="store_true",
+        help="print the API level the root module configures, and exit",
+    )
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[2]
+    if args.api_level:
+        print(api_level(root))
+        return 0
+    errors = configuration_errors(root)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

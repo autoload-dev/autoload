@@ -13,7 +13,6 @@ from unittest import mock
 
 from tools.ci.changes import Changes, changes_since
 from tools.ci.work import (
-    DOCS,
     FAST_TEST_COMMAND,
     ROOT,
     RULESET_DIR,
@@ -57,19 +56,30 @@ class WorkTest(unittest.TestCase):
         planned = lanes(all_work(self.root))
         self.assertEqual(planned["docs"], ["docs"])
         self.assertIn("test:bazel", planned["desktop"])
+        # One piece runs every module of a lane; the pieces per module run when named.
         self.assertEqual(
-            planned["desktop"][-3:],
-            ["desktop:addon:gadget", "desktop:addon:widget", "desktop:addon-template"],
+            planned["desktop"][-2:], ["desktop:addons", "desktop:addon-template"]
         )
         self.assertEqual(
-            planned["android"][-2:], ["android:addon:gadget", "android:addon-template"]
+            planned["android"][-2:], ["android:addons", "android:addon-template"]
         )
-        self.assertEqual(planned["ios"][-2:], ["ios:addon:widget", "ios:addon-template"])
+        self.assertEqual(planned["ios"][-2:], ["ios:addons", "ios:addon-template"])
+        self.assertEqual(
+            all_work(self.root)["ios:addons"].steps()[0].command,
+            "python3 -m tools.addons.lanes ios",
+        )
         # Work without a lane runs only when named.
-        self.assertFalse(any("inspect:mobile" in names for names in planned.values()))
+        for name in ("inspect:mobile", "desktop:addon:widget", "ios:addon:widget"):
+            self.assertFalse(any(name in names for names in planned.values()), name)
+
+    def test_a_module_s_own_work_runs_in_its_lane_s_profile(self) -> None:
+        work = all_work(self.root)
+        self.assertEqual("ios", work["ios:addon:widget"].bazel_profile)
+        self.assertIsNone(work["desktop:addon:widget"].bazel_profile)
+        self.assertTrue(work["android:addon:gadget"].android)
 
     def test_fast_tests_run_in_the_ruleset_only_when_named(self) -> None:
-        # The root module's tests are test:tools, the documentation module's are docs.
+        # The root module's tests are test:tools, the API documentation's are docs.
         fast = all_work(self.root)["test:fast"]
         self.assertIsNone(fast.lane)
         self.assertEqual([In(RULESET_DIR, FAST_TEST_COMMAND)], fast.steps())
@@ -86,11 +96,8 @@ class WorkTest(unittest.TestCase):
         )
         self.assertTrue(runs_on(template, "linux"))
         self.assertFalse(runs_on(template, "macos"))
-        # A module whose desktop lane covers every desktop system has no host-limited work.
-        (self.root / "other").mkdir()
-        checkout(self.root / "other", {"anywhere": '"desktop"'})
-        anywhere = next(addon_work(self.root / "other"))
-        self.assertEqual((anywhere.name, anywhere.hosts), ("desktop:addon:anywhere", ()))
+        # The modules' desktop lanes choose their desktop systems themselves.
+        self.assertEqual((), all_work(self.root)["desktop:addons"].hosts)
 
     def test_commands_run_with_their_own_variables(self) -> None:
         plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))
@@ -107,6 +114,29 @@ class WorkTest(unittest.TestCase):
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
+        profiled = Work("z", "ios", ".", ("true",))
+        self.assertIn("export AUTOLOAD_BAZEL_PROFILE=ios;", argv(profiled, "true")[-1])
+        # The ruleset's steps keep its default server.
+        self.assertNotIn(
+            "AUTOLOAD_BAZEL_PROFILE", argv(profiled, "true", "rules_godot")[-1]
+        )
+        self.assertNotIn("AUTOLOAD_BAZEL_PROFILE", argv(plain, "true")[-1])
+
+    def test_mobile_and_source_engine_work_run_in_their_profiles(self) -> None:
+        work = all_work(ROOT)
+        for name, profile in (
+            ("android", "android"),
+            # The checker picks the lane's profile for its cases' configured queries.
+            ("contracts:android", "default"),
+            ("ios", "ios"),
+            ("contracts:ios", "default"),
+            ("source-engine", "source-engine"),
+            ("test:example:petri", "source-engine"),
+            ("test:bazel", None),
+            ("contracts:desktop", "default"),
+            ("docs", None),
+        ):
+            self.assertEqual(profile, work[name].bazel_profile, name)
 
     def test_work_runs_python_with_this_interpreter(self) -> None:
         first = environment()["PATH"].split(os.pathsep)[0]
@@ -174,11 +204,7 @@ class CallersTest(unittest.TestCase):
 MODULES = (
     ".",
     "rules_godot",
-    "rules_godot/examples",
-    "rules_godot/tests",
-    "rules_godot/docs",
     "addons/sentry",
-    "addons/sentry/examples",
 )
 
 
@@ -211,14 +237,11 @@ class SelectionTest(unittest.TestCase):
             ["addons/sentry"], self.directories("lint", "addons/sentry/a.py")
         )
         self.assertEqual(
-            ["rules_godot/docs"], self.directories("lint", "rules_godot/docs/BUILD.bazel")
+            ["rules_godot"], self.directories("lint", "rules_godot/tools/BUILD.bazel")
         )
         self.assertEqual(["."], self.directories("lint", "tools/BUILD.bazel"))
-        # The ruleset's modules import the root module's Python.
-        self.assertEqual(
-            [".", "rules_godot", "rules_godot/docs"],
-            self.directories("lint", "tools/addons/new.py"),
-        )
+        # No other module imports the root module's Python.
+        self.assertEqual(["."], self.directories("lint", "tools/addons/new.py"))
         self.assertEqual([], self.directories("lint"))
 
     def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
@@ -239,10 +262,10 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
         for path in (
             "rules_godot/MODULE.bazel",
-            "rules_godot/tests/MODULE.bazel.lock",
+            "MODULE.bazel.lock",
             "rules_godot/godot/defs.bzl",
             "rules_godot/godot/engine/BUILD.bazel",
-            "rules_godot/examples/engines/godot_petri.lock.json",
+            "examples/petri/godot_petri.lock.json",
             "tools/generate/generate.py",
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)
@@ -264,13 +287,13 @@ class SelectionTest(unittest.TestCase):
 
     def test_the_contract_checker_runs_its_own_test(self) -> None:
         for path in (
-            "rules_godot/docs/tools/docs/contracts.py",
+            "tools/docs/contracts.py",
             "rules_godot/godot/tests/api_contracts/cases.bzl",
             "tools/conventions/check.py",
         ):
             steps = self.run_steps("docs", path)
             self.assertEqual(
-                (DOCS, "bazel run //tools/docs:evaluated_mismatch_test"),
+                (".", "bazel run //tools/docs:evaluated_mismatch_test"),
                 steps[-1][:2],
                 path,
             )
@@ -288,8 +311,7 @@ class SelectionTest(unittest.TestCase):
         with contextlib.redirect_stdout(printed):
             selected(all_work(ROOT)["docs"], changed("addons/sentry/a.py"))
         self.assertIn(
-            "[docs] rules_godot/docs$ bazel run //tools/docs:check skipped:"
-            " no change since abc1234",
+            "[docs] .$ bazel run //tools/docs:check skipped: no change since abc1234",
             printed.getvalue(),
         )
         printed = io.StringIO()
@@ -297,7 +319,7 @@ class SelectionTest(unittest.TestCase):
         with contextlib.redirect_stdout(printed):
             selected(lint, changed("addons/sentry/a.py"))
         self.assertIn(
-            "[lint] addons/sentry/examples skipped: no change since abc1234",
+            "[lint] rules_godot skipped: no change since abc1234",
             printed.getvalue(),
         )
 
@@ -394,7 +416,7 @@ class ChangesTest(unittest.TestCase):
             "shared.bazelrc",
             ".bazelversion",
             "tools/bazel",
-            "rules_godot/docs/tools/bazel",
+            "rules_godot/tools/bazel",
         ):
             self.write(path)
             self.assertIsNone(self.changes(), path)

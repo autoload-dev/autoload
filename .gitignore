@@ -1,5 +1,5 @@
-# Bazel convenience symlinks of the root module and of rules_godot/. Standalone examples have
-# their own ignore files; MODULE.bazel.lock and maven_install.json remain versioned.
+# Bazel convenience symlinks of the root module and of rules_godot/; MODULE.bazel.lock and
+# the Maven locks remain versioned.
 /bazel-*
 /rules_godot/bazel-*
 /rules_godot/e2e/*/bazel-*
@@ -42,8 +42,9 @@ xcuserdata/
 # Diagnostic logs of the last Bazel invocation (shared.bazelrc).
 bazel-remote-grpc.log
 /execution_log.binpb.zst
-# Swift Package Manager's scratch directory beside examples/Package.swift.
-/rules_godot/examples/.build/
+# The add-on examples' local iOS provisioning profiles.
+/examples/addons/*/signing/
 
 # The add-on generator's self-test module (aspect work <lane>:addon-template).
-/addons/.selftest/
+/addons/selftest/
+/examples/addons/selftest/

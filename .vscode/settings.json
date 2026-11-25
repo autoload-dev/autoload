@@ -1,0 +1,12 @@
+{
+  "files.associations": {
+    "*.axl": "starlark",
+    "*.bzl": "starlark",
+    "BUILD": "starlark",
+    "BUILD.bazel": "starlark",
+    "MODULE.bazel": "starlark",
+    "REPO.bazel": "starlark",
+    "WORKSPACE": "starlark",
+    "WORKSPACE.bazel": "starlark"
+  }
+}

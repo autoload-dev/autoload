@@ -1,6 +1,6 @@
 """
-The repository's linters as rules_lint aspects, which `aspect lint` applies in the root module,
-the ruleset and its documentation module; those load them from here as @autoload_dev.
+The repository's linters as rules_lint aspects, which `aspect lint` applies in every module of
+the repository; the others load them from here as @autoload_dev.
 Configured once: Ruff in pyproject.toml, ty in ty.toml. Buildifier lints Starlark in //tools/format, and jactionlint
 the workflows in //tools/lint:workflows_test.
 """

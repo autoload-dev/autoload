@@ -1,7 +1,0 @@
-load("@bazel_skylib//rules:build_test.bzl", "build_test")
-
-# Another package than the application's: its public debug symbols target is visible here.
-build_test(
-    name = "app_debug_symbols_are_visible_test",
-    targets = ["//smoke/linux:app.debug_symbols"],
-)

@@ -116,17 +116,16 @@ class RepositoryTest(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         # Every written file; the default workspace inventory.
         self.files: set[str] = set()
-        self.write("MODULE.bazel", "")
+        # The root module, which includes the add-on generator's declarations.
+        self.write("MODULE.bazel", 'include("//:addons.MODULE.bazel")\n')
         self.write("BUILD.bazel", "")
 
     def write_consumer_modules(self) -> None:
         """
-        Make rules_godot/ the ruleset's module and its examples/ and tests/ consumer modules,
-        as in the repository.
+        Make rules_godot/ the ruleset's module, as in the repository, whose root module holds
+        the consumers examples/ and e2e/rules_godot/.
         """
         self.write("rules_godot/MODULE.bazel", "")
-        self.write("rules_godot/examples/MODULE.bazel", "")
-        self.write("rules_godot/tests/MODULE.bazel", "")
 
     def write(self, name: str, text: str) -> None:
         path = self.root / name

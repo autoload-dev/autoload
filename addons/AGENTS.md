@@ -22,24 +22,27 @@ be versioned with others, such as products that share one SDK.
 The conventions check enforces it (RG015, [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
-- `.bazelrc` imports [module.bazelrc](module.bazelrc) and `examples/.bazelrc` imports
-  [examples.bazelrc](examples.bazelrc); each adds only its BuildBuddy tag. Settings for all
-  modules go in those two files.
+- `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
+  Settings for all modules go in that file.
 - `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
   documents what a module declares: the lanes that verify it, the desktop systems of its desktop lane
   and its test operations, such as `lanes = List("desktop")` and `desktops = List("macos")`. A module
-  without the `android` and `ios` lanes builds no application: its examples have no `app`,
-  no Android SDK and no Maven graph. The lanes' work, the lanes and the conventions read it;
+  without the `android` and `ios` lanes builds no application: its examples have no `app`. The lanes' work, the lanes and the conventions read it;
   nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
-- `examples/`: an independent root module with the module's example applications in
-  `projects/<name>/`, each with the targets `edit`, `pack` and, for a module that builds
-  applications, `app`. It consumes the module
-  like an external application (`local_path_override` to `..`) and the rules of this
-  repository (`local_path_override` to `../../../rules_godot`), so an add-on always builds
-  against the rules it is changed with.
+- [`examples/addons/<module>/`](../examples/AGENTS.md) in the repository's root module, outside
+  the module: its example application, the directory itself or one per scenario in
+  subdirectories, each with the targets `edit`,
+  `pack` and, for a module that builds applications, `app`. The root module consumes the
+  module like an external application, through a `local_path_override` in
+  `addons.MODULE.bazel`, which `aspect generate` and the generator write from `addons/`
+  (`tools/addons/declarations.py`), and the rules of this repository the same way, so an add-on always builds against
+  the rules it is changed with.
+- Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
+  root; the root holds only the module's files, `third_party/` with the build files of
+  pinned archives, `tests/` and packages several add-ons share, such as Firebase's `config/`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -52,33 +55,45 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   target name becomes the framework or library name, and those share one directory. The
   generator names it `<module>_<addon>`, or `<module>_extension` for an add-on named like
   its module.
-- Android dependencies come from Maven: a module's `maven.install` merges into the
-  examples' `@maven`, which lists the module in `known_contributing_modules`. After changing
-  artifacts, repin from the module's `examples/` with `REPIN=1 bazel run @maven//:pin`.
+- Android dependencies come from Maven: a module's `maven.install` merges into the root
+  module's `@maven`, pinned in `third_party/maven/`, which lists the module in
+  `known_contributing_modules`. After changing
+  artifacts, repin from the repository root with `REPIN=1 bazel run @maven//:pin`.
 - Never commit or print secrets, signing material or real service configurations; local
-  provisioning profiles stay in the gitignored `<module>/examples/signing/`.
+  provisioning profiles stay in the gitignored `examples/addons/<module>/signing/`.
 
 # Lanes
 
-The same commands verify every module, from its `examples/` (`tools/addons/lanes.py`), as
-the lanes' work (`tools/ci/work.py`), which provisions the Android SDK first:
+The same commands verify every module, from the repository root over its
+`examples/addons/<module>/` (`tools/addons/lanes.py`), as the lanes' work
+(`tools/ci/work.py`), which provisions the Android SDK first. A lane runs every module that
+names it with one Bazel command, `<lane>:addons`; one module alone runs as
+`<lane>:addon:<module>`:
 
 ```sh
 aspect work desktop:addon:<module>      # module tests and example targets but apps
 aspect work android:addon:<module>   # each example project's app for Android
 aspect work ios:addon:<module>       # each example project's app for the iOS Simulator
+aspect work desktop:addons              # every module's desktop lane at once
 ```
 
 `android` and `ios` also run the example projects' tests tagged with the lane's name, such as
-an `ios_app_test` of the app (`rules_godot/tests/AGENTS.md`, "Artifact test rules"); the tag
+an `ios_app_test` of the app (`e2e/rules_godot/AGENTS.md`, "Artifact test rules"); the tag
 `manual` keeps them out of `desktop`.
 
-`desktop` runs `bazel test` over `@autoload_<module>//...` and all of `examples/`, so tests in
-the module or its examples need no registration. Tests that need more than the module's own
-dependencies, such as Python, live in `examples/tests/`, where the examples' module declares
-what they use; the release archive leaves them out with the examples. CI runs every module's
+`desktop` runs `bazel test` over `@autoload_<module>//...`, all of
+`examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a
+test lives follows what it checks:
+
+- Native unit tests beside the code they test, such as `<addon>/native/backends/linux/tests/`.
+- White-box tests of the module's own machinery, such as `gdunit_test` or a third-party
+  build, in the module's `tests/`. They use only the module's dependencies, which therefore
+  include what the tests need, such as rules_python; the release archive leaves `tests/` out.
+- End-to-end tests that use an add-on as an application does, such as GdUnit suites of its
+  GDScript API, in `e2e/addons/<module>/`, where the root module declares what they use. CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
-`aspect work <lane>:addon-template` checks the template the same way.
+`aspect work <lane>:addon-template` checks the template the same way
+(`tools/addons/selftest.py`).
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
-`examples/signing/`, install with `xcrun devicectl` and check the log for crashes.
+`examples/addons/<module>/signing/`, install with `xcrun devicectl` and check the log for crashes.

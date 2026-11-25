@@ -3,31 +3,28 @@ Create an add-on module in addons/ from the template, or add an add-on to a modu
 
 `python3 -m tools.addons.new <module> [--addon <addon>]` (`bazel run //tools/addons:new --`) writes
 tools/addons/template/module/ to addons/<module>/ for a new module, with
-tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases, and
+tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases,
+tools/addons/template/examples/ to examples/addons/<module>/ for its example applications
+in the root module, regenerating the root's declarations of the add-on modules
+(tools/addons/declarations.py), and
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
-named like the module unless --addon names it. In both trees, `{{token}}` in file names and
-contents stands for a name derived from the two, and every file name ends in `.tmpl`. A new
-module's examples then pin their Maven graph, which needs Bazel and the network. The
+named like the module unless --addon names it. In these trees, `{{token}}` in file names and
+contents stands for a name derived from the two, and every file name ends in `.tmpl`. The
 written files belong to the module from then on: nothing regenerates them.
 
-`addons/.selftest` (gitignored) is the self-test's module (`aspect work <lane>:addon-template`): it is
-regenerated from scratch each time.
+`addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
+(`aspect work <lane>:addon-template`, tools/addons/selftest.py): it is regenerated from scratch
+each time and removed afterwards, with its declaration.
 """
 
 import argparse
 import hashlib
-import os
 import re
-import shutil
-import subprocess
-import sys
-import time
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.addons import registry
-from tools.addons.modules import ROOT, module_name, module_path
+from tools.addons import declarations, registry
+from tools.addons.modules import ROOT, examples_path, module_name, module_path
 from tools.addons.uids import id_to_uid
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
@@ -35,11 +32,6 @@ TEMPLATE = Path(__file__).resolve().parent / "template"
 SUFFIX = ".tmpl"
 NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
-SELFTEST = ".selftest"
-# How often pin() runs the examples' pin, and the wait before the second run; later
-# waits grow linearly.
-PIN_ATTEMPTS = 3
-PIN_RETRY_SECONDS = 20
 
 
 def words(name: str) -> list[str]:
@@ -61,7 +53,7 @@ class Names:
 
     @property
     def module(self) -> str:
-        return self.directory.removeprefix(".")
+        return self.directory
 
     @property
     def addon(self) -> str:
@@ -128,6 +120,8 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
+        written += copy_tree("examples", root / examples_path(directory), tokens)
+        written.append(declarations.write(root))
         if release:
             written += registry_templates(directory, root, tokens)
     return written + copy_tree("addon", module / names.addon, tokens)
@@ -142,72 +136,19 @@ def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> li
     return [*written, metadata]
 
 
-def pin(
-    directory: str, root: Path = ROOT, wait: Callable[[float], None] = time.sleep
-) -> None:
-    """
-    Pin the examples' Maven graph, which starts from the template's empty lock file.
-
-    Gradle, which resolves the graph, tries a failing repository request three times in
-    quick succession and then disables that repository for the rest of the resolution, so
-    one burst of 429 or 5xx responses from Maven Central fails every module still to be
-    resolved there as `(INTERNAL)`. A new pin resolves afresh: a failed pin is run again,
-    after a growing wait, up to PIN_ATTEMPTS times in all.
-    """
-    # Under `bazel run //tools/addons:new`, the generator's own runfiles variables would
-    # point the pin's launcher at the wrong runfiles tree.
-    runfiles = {"RUNFILES_DIR", "RUNFILES_MANIFEST_FILE", "JAVA_RUNFILES"}
-    environment = {
-        name: value for name, value in os.environ.items() if name not in runfiles
-    }
-
-    def run(check: bool) -> int:
-        return subprocess.run(
-            ["bazel", "run", "@maven//:pin"],
-            cwd=root / module_path(directory) / "examples",
-            env={**environment, "REPIN": "1"},
-            check=check,
-        ).returncode
-
-    for attempt in range(1, PIN_ATTEMPTS):
-        if run(check=False) == 0:
-            return
-        delay = PIN_RETRY_SECONDS * attempt
-        print(
-            f"Pinning failed (attempt {attempt} of {PIN_ATTEMPTS}); "
-            f"pinning again in {delay} s.",
-            file=sys.stderr,
-            flush=True,
-        )
-        wait(delay)
-    run(check=True)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("module", help="the module's directory below addons/")
     parser.add_argument(
         "--addon", default="", help="the add-on's directory in the module"
     )
-    parser.add_argument(
-        "--no-pin",
-        action="store_true",
-        help="leave a new module's examples/maven_install.json unpinned",
-    )
     args = parser.parse_args()
-    if args.module == SELFTEST:
-        shutil.rmtree(ROOT / module_path(SELFTEST), ignore_errors=True)
-    # The self-test module is never released.
-    written = generate(args.module, args.addon or None, release=args.module != SELFTEST)
-    for path in written:
+    for path in generate(args.module, args.addon or None):
         print(path.relative_to(ROOT))
-    if any(path.name == "MODULE.bazel" for path in written) and not args.no_pin:
-        pin(args.module)
-    if args.module != SELFTEST:
-        print(
-            "\nNext: describe the module in its README and verify it with "
-            f"`aspect work desktop:addon:{args.module}`."
-        )
+    print(
+        "\nNext: describe the module in its README and verify it with "
+        f"`aspect work desktop:addon:{args.module}`."
+    )
 
 
 if __name__ == "__main__":

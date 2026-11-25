@@ -5,6 +5,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 py_library(
     name = "new_lib",
     srcs = [
+        "declarations.py",
         "modules.py",
         "new.py",
         "registry.py",
@@ -15,6 +16,7 @@ py_library(
         "//tools/android:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
+        "//tools/generate:__pkg__",
     ],
     deps = [
         "//tools/setup:modules_lib",
@@ -30,10 +32,14 @@ py_binary(
     deps = [":new_lib"],
 )
 
-# A module's lane work, which tools/ci/work.py runs for each add-on module.
+# A module's lane work, which tools/ci/work.py runs for each add-on module, and the
+# generator's self-test, which runs a lane of a fresh module.
 py_library(
     name = "lanes_lib",
-    srcs = ["lanes.py"],
+    srcs = [
+        "lanes.py",
+        "selftest.py",
+    ],
     deps = [":new_lib"],
 )
 
@@ -47,6 +53,16 @@ py_library(
         "//:bcr_metadata",
     ],
     deps = [":new_lib"],
+)
+
+py_test(
+    name = "declarations_test",
+    size = "small",
+    srcs = ["declarations_test.py"],
+    deps = [
+        ":new_lib",
+        ":test_support",
+    ],
 )
 
 py_test(
@@ -64,4 +80,14 @@ py_test(
     size = "small",
     srcs = ["lanes_test.py"],
     deps = [":lanes_lib"],
+)
+
+py_test(
+    name = "selftest_test",
+    size = "small",
+    srcs = ["selftest_test.py"],
+    deps = [
+        ":lanes_lib",
+        ":test_support",
+    ],
 )

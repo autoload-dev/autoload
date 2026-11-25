@@ -1,0 +1,27 @@
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+
+package(default_visibility = ["//visibility:private"])
+
+godot_cc_extension(
+    name = "platform_paths",
+    srcs = ["//platform_paths/native:registration"],
+    entry_symbol = "platform_paths_addon_init",
+    platform_deps = select({
+        "@platforms//os:android": ["//platform_paths/native/backends/android:plugin"],
+        "//conditions:default": [],
+    }),
+    target_compatible_with = select({
+        "@platforms//os:osx": [],
+        "@platforms//os:ios": [],
+        "@platforms//os:linux": [],
+        "@platforms//os:android": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = ["//platform_paths/native"] + select({
+        "@platforms//os:osx": ["//platform_paths/native/backends/apple"],
+        "@platforms//os:android": ["//platform_paths/native/backends/android"],
+        "@platforms//os:ios": ["//platform_paths/native/backends/apple"],
+        "//conditions:default": ["//platform_paths/native/backends/linux"],
+    }),
+)

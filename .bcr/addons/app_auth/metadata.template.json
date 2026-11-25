@@ -1,0 +1,16 @@
+{
+  "homepage": "https://github.com/autoload-dev/autoload/tree/main/addons/app_auth",
+  "maintainers": [
+    {
+      "name": "Gabriel Terwesten",
+      "github": "blaugold",
+      "github_user_id": 5929595
+    }
+  ],
+  "repository": [
+    "github:autoload-dev/autoload",
+    "github:autoload-dev/rules_godot"
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}

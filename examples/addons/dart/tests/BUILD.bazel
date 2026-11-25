@@ -1,0 +1,11 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
+
+package(default_testonly = True)
+
+# Runs the exported demo; Godot's errors, such as a script that does not load, fail it.
+godot_test(
+    name = "exported",
+    size = "small",
+    headless = True,
+    pack = "//examples/addons/dart:pack",
+)

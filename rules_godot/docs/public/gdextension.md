@@ -283,7 +283,7 @@ godot_cc_extension(
 
 The editor then still knows the extension's classes for scripts, checks and completion,
 while source runs and applications load the library with the SDK, and editor builds never
-fetch or compile the SDK. The [AppAuth add-on](../../examples/addons/app_auth/BUILD.bazel)
+fetch or compile the SDK. The [AppAuth add-on](../../../examples/addons/app_auth/BUILD.bazel)
 shows this.
 
 ## iOS frameworks
@@ -315,8 +315,8 @@ With `ios_linkage = "static"`, `godot_cc_extension` selects a static archive on 
 instead. Include the extension
 in the project's `deps`, or those of resources it contains. The iOS application
 links its archive and transitive C++ dependencies from the pack's project.
-The [SQLite extension](../../examples/addons/sqlite/BUILD.bazel) and its
-[project BUILD file](../../examples/addons/sqlite/demo/BUILD.bazel) show the
+The [SQLite extension](../../../examples/addons/sqlite/BUILD.bazel) and its
+[project BUILD file](../../../examples/addons/sqlite/BUILD.bazel) show the
 extension, project, pack and application together; follow the
 [iOS setup and build commands](platforms.md#ios) to build it.
 
