@@ -1,9 +1,13 @@
-"""RG008: application-owned resource inputs live under their physical project's main/."""
+"""
+RG008: application-owned resource inputs live under their physical project's main/, and its
+tests in its tests/ package.
+"""
 
 from collections.abc import Iterable
 from pathlib import Path
 
 from tools.conventions.context import (
+    BUILD_FILES,
     Context,
     GeneratedFile,
     Location,
@@ -12,18 +16,45 @@ from tools.conventions.context import (
     Workspace,
 )
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.layout import EXAMPLES_ROOT, is_end_to_end
+from tools.conventions.rules.rg007 import declared_operations
 
-# Godot test suite categories of an add-on's tests/ project.
-SUITE_CATEGORIES = frozenset({"unit", "integration"})
+
+def root_tests(context: Context) -> Iterable[Finding]:
+    """Report the tests an application project's root package declares."""
+    workspace = context.workspace
+    kinds = declared_operations(workspace)
+    roots = {
+        (project / build).as_posix(): project
+        for project in workspace.projects
+        if project.is_relative_to(EXAMPLES_ROOT)
+        for build in BUILD_FILES
+    }
+    calls = {
+        call for module in workspace.modules for call in context.starlark.calls(module)
+    }
+    for call in sorted(calls, key=lambda call: (call.location.path, call.location.line)):
+        project = roots.get(call.location.path)
+        if project is not None and is_test(call.kind, kinds):
+            yield Finding(
+                call.location,
+                f"an application's tests live in {project / 'tests'}/: :{call.literal_name}",
+            )
+
+
+def is_test(kind: str, operations: frozenset[str]) -> bool:
+    """Whether a call declares a test: a test operation or a rule named like one."""
+    return kind in operations or kind.endswith("_test")
 
 
 class ApplicationContent:
     info = RuleInfo(
         "RG008",
-        "Application content lives under main",
+        "Application content lives under main, its tests under tests",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
+        yield from root_tests(context)
         workspace = context.workspace
         configurations = {path.parent for path in workspace.godot_configurations}
         sources: dict[Path, bool] = {}
@@ -84,11 +115,7 @@ class ApplicationContent:
             if path.name == "project.godot":
                 continue
             owner = self._owner(workspace, path, configurations)
-            if (
-                owner is not None
-                and test_only
-                and self._test_input(workspace, path, owner)
-            ):
+            if owner is not None and test_only and self._test_input(path, owner):
                 continue
             if owner is not None and not path.is_relative_to(owner / "main"):
                 yield Finding(
@@ -97,32 +124,21 @@ class ApplicationContent:
                 )
 
     @staticmethod
-    def _test_input(workspace: Workspace, path: Path, owner: Path) -> bool:
+    def _test_input(path: Path, owner: Path) -> bool:
+        """
+        Whether a test-only input lies where tests may: in its project's tests/, or
+        anywhere in an end-to-end test project, whose suites have no prescribed place.
+        """
         parts = path.relative_to(owner).parts
-        if len(parts) < 2:
-            return False
-        if parts[0] == "tests":
-            return True
-        kind = workspace.typed_directory(owner)
-        return (
-            kind is not None
-            and kind[0] == "addons"
-            and owner.name == "tests"
-            and parts[0] in SUITE_CATEGORIES
-        )
+        return is_end_to_end(owner) or (len(parts) > 1 and parts[0] == "tests")
 
     @staticmethod
     def _owner(
         workspace: Workspace, path: Path, configurations: set[Path]
     ) -> Path | None:
-        owner = workspace.typed_directory(path)
-        if owner is None:
+        root = workspace.project(path)
+        if root is None:
             return None
-        kind, root = owner
-        if kind == "addons":
-            scope = path.relative_to(root).parts[0]
-            # Typed add-on implementation keeps its own resource ownership.
-            return root / scope if scope in {"demo", "tests"} else None
         candidates = [
             config
             for config in configurations

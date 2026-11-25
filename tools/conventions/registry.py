@@ -8,9 +8,7 @@ from tools.conventions.rules.rg004 import FixtureReferences
 from tools.conventions.rules.rg006 import CommandLabels
 from tools.conventions.rules.rg007 import TestOnlyOperations
 from tools.conventions.rules.rg008 import ApplicationContent
-from tools.conventions.rules.rg009 import TypedRootLayout
-from tools.conventions.rules.rg010 import AddonProjects
-from tools.conventions.rules.rg011 import AddonIndependence
+from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg013 import PublicDocumentationLinks
 from tools.conventions.rules.rg014 import EngineLayout
@@ -18,7 +16,10 @@ from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.rules.rg016 import LocalLinks
 from tools.conventions.rules.rg017 import AgentInstructions
 from tools.conventions.rules.rg018 import SharedSkills
+from tools.conventions.rules.rg019 import ProjectTargetNames
 from tools.conventions.rules.rg020 import RegistryTestModules
+from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
+from tools.conventions.rules.rg022 import NoComponentNames
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 
 RULES: tuple[Rule, ...] = (
@@ -29,9 +30,7 @@ RULES: tuple[Rule, ...] = (
     CommandLabels(),
     TestOnlyOperations(),
     ApplicationContent(),
-    TypedRootLayout(),
-    AddonProjects(),
-    AddonIndependence(),
+    ProjectPlaces(),
     ProductionIsolation(),
     PublicDocumentationLinks(),
     EngineLayout(),
@@ -39,7 +38,10 @@ RULES: tuple[Rule, ...] = (
     LocalLinks(),
     AgentInstructions(),
     SharedSkills(),
+    ProjectTargetNames(),
     RegistryTestModules(),
+    NoGodotRunsInAddonModules(),
+    NoComponentNames(),
     ReleasedWithoutTests(),
 )
 

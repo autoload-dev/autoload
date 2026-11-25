@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import functools
 import platform
-import re
 from collections.abc import Collection
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from tools.pkl.evaluate import PklError, evaluate, manifest
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
@@ -18,46 +19,25 @@ from tools.setup.modules import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-# The schema every addons/<module>/addon.pkl amends. This module applies its defaults but
-# not its types, so RG015 checks the values against it.
+# The schema every addons/<module>/addon.pkl amends. Pkl evaluates each addon.pkl against it,
+# with its defaults and types.
 SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
 # The line an addon.pkl starts with, after comments, relative to its module directory.
 AMENDS = 'amends "../../tools/addons/Addon.pkl"'
-_LIST = re.compile(r"^(\w+)\s*(?::[^=]*)?=\s*List\(([^)]*)\)")
-_ALIAS = re.compile(r"^typealias (\w+) = (.+)$")
-_PROPERTY = re.compile(r"^(\w+):")
 
 
-def addon_values(text: str) -> dict[str, list[str]]:
-    """The `name = List(...)` properties of an addon.pkl, without its comments."""
-    values = {}
-    for line in text.splitlines():
-        if (match := _LIST.match(line.split("//")[0].strip())) is not None:
-            values[match[1]] = re.findall(r'"([^"]*)"', match[2])
-    return values
+@functools.cache
+def choices() -> dict[str, tuple[str, ...]]:
+    """The members of the schema's unions, such as the lanes CI runs and the desktops."""
+    return {name: tuple(members) for name, members in evaluate(SCHEMA, "choices").items()}
 
 
-def _schema_aliases(text: str) -> dict[str, tuple[str, ...]]:
-    """The string union type aliases of the schema, such as Lane, with their members."""
-    return {
-        match[1]: tuple(re.findall(r'"([^"]*)"', match[2]))
-        for line in text.splitlines()
-        if (match := _ALIAS.match(line)) is not None
-    }
-
-
-_SCHEMA_TEXT = SCHEMA.read_text()
-_ALIASES = _schema_aliases(_SCHEMA_TEXT)
-# The lanes CI runs and the desktop systems of the desktop lane, as the schema names them.
-LANES = _ALIASES["Lane"]
-DESKTOPS = _ALIASES["Desktop"]
-# What an addon.pkl may set, and the defaults of what it may leave out.
-PROPERTIES = tuple(
-    match[1]
-    for line in _SCHEMA_TEXT.splitlines()
-    if (match := _PROPERTY.match(line)) is not None
-)
-DEFAULTS = addon_values(_SCHEMA_TEXT)
+def addon_manifest(path: Path) -> dict[str, tuple[str, ...]]:
+    """
+    An addon.pkl's properties, as Pkl evaluates it with the schema's defaults; one that does
+    not amend the schema does not evaluate.
+    """
+    return {name: tuple(values) for name, values in manifest(path, AMENDS).items()}
 
 
 def host() -> str:
@@ -82,15 +62,6 @@ def module_attributes(manifest: str) -> dict[str, object]:
     return {}
 
 
-def addon_manifest(text: str) -> dict[str, tuple[str, ...]]:
-    """An addon.pkl's properties, with the schema's defaults for those it leaves out."""
-    return {
-        name: tuple(values)
-        for name, values in (DEFAULTS | addon_values(text)).items()
-        if name in PROPERTIES
-    }
-
-
 @dataclass(frozen=True)
 class AddonModule:
     """One module `addons/<directory>`, read from its own files."""
@@ -98,8 +69,8 @@ class AddonModule:
     path: Path
     name: str
     projects: tuple[str, ...]
-    desktops: tuple[str, ...] = DESKTOPS
-    lanes: tuple[str, ...] = LANES
+    desktops: tuple[str, ...] = field(default_factory=lambda: choices()["desktops"])
+    lanes: tuple[str, ...] = field(default_factory=lambda: choices()["lanes"])
     test_operations: tuple[str, ...] = ()
     end_to_end: bool = False
 
@@ -137,8 +108,12 @@ class AddonModule:
         attributes = module_attributes((module / "MODULE.bazel").read_text())
         if "name" not in attributes:
             raise ValueError(f"{path}/MODULE.bazel: no module() name")
-        addon = module / "addon.pkl"
-        manifest = addon_manifest(addon.read_text() if addon.is_file() else "")
+        try:
+            manifest = addon_manifest(module / "addon.pkl")
+        except (FileNotFoundError, PklError) as error:
+            raise ValueError(
+                f"{path}/addon.pkl: {error}; `aspect work conventions` says more"
+            ) from error
         examples = root / examples_path(path.name)
         configured = {p.parent for p in examples.glob("**/project.godot")}
         return cls(
@@ -149,7 +124,7 @@ class AddonModule:
                 for project in example_projects(examples, configured)
             ),
             desktops=manifest["desktops"],
-            lanes=manifest.get("lanes", LANES),
+            lanes=manifest["lanes"],
             test_operations=manifest["testOperations"],
             end_to_end=(root / e2e_path(path.name)).is_dir(),
         )

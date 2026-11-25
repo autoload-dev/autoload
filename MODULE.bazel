@@ -262,7 +262,7 @@ godot_engines.source_build(
     engine = "petri",
     # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
     # build any recipe, such as a Mac with remote execution the Linux editor.
-    lock_file = "//examples/petri:godot_petri.lock.json",
+    lock_file = "//examples/petri/engine:godot_petri.lock.json",
     platforms = [
         "linux",
         "macos",

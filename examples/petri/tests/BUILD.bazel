@@ -1,6 +1,6 @@
 load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
-load("//examples/petri:source_engine.bzl", "SOURCE_ENGINE_ONLY")
+load("//examples/petri/engine:source_engine.bzl", "SOURCE_ENGINE_ONLY")
 
 package(default_testonly = True)
 
@@ -27,7 +27,7 @@ godot_resources(
 gdunit_test(
     name = "tests",
     size = "small",
-    project = "//examples/petri:petri",
+    project = "//examples/petri",
     suites = [":suites"],
     target_compatible_with = SOURCE_ENGINE_ONLY,
 )

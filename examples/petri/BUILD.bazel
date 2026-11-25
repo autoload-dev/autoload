@@ -7,13 +7,13 @@ load(
     "godot_project",
     "godot_run",
 )
-load(":source_engine.bzl", "SOURCE_ENGINE_ONLY")
+load("//examples/petri/engine:source_engine.bzl", "SOURCE_ENGINE_ONLY")
 
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["project.godot"])
 
-# Petri's engine is the build's, as --config=petri selects; source_engine.bzl turns it into
+# Petri's engine is the build's, as --config=petri selects; engine/source_engine.bzl turns it into
 # the targets' gate.
 config_setting(
     name = "with_source_engine",

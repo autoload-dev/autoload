@@ -2,7 +2,7 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 package(default_visibility = ["//examples/addons/dart:__subpackages__"])
 
-# The demo's Dart scripts: resources of the scene, and what //examples/addons/dart:dart compiles.
+# The demo's Dart scripts: resources of the scene, and what //examples/addons/dart:dart_extension compiles.
 SCRIPTS = [
     "counter.dart",
     "dart_demo.dart",
@@ -19,5 +19,5 @@ godot_resources(
     name = "main",
     srcs = ["dart_demo.tscn"] + SCRIPTS + [script + ".uid" for script in SCRIPTS],
     prefix = "main",
-    deps = ["//examples/addons/dart"],
+    deps = ["//examples/addons/dart:dart_extension"],
 )

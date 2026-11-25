@@ -56,7 +56,7 @@ godot_resources(
 gdunit_test(
     name = "tests",
     size = "small",
-    project = "//examples/lichtpost:lichtpost",
+    project = "//examples/lichtpost",
     suites = [":suites"],
 )
 
@@ -73,7 +73,7 @@ godot_resources(
 godot_test(
     name = "record",
     main = "tests/record.gd",
-    project = "//examples/lichtpost:lichtpost",
+    project = "//examples/lichtpost",
     tags = ["manual"],
     deps = [":recorder"],
 )

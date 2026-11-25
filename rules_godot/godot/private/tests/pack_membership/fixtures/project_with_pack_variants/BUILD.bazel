@@ -55,7 +55,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_pack_variants",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],
@@ -71,7 +71,7 @@ godot_project(
 godot_pack(
     name = "blue_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_pack_variants",
     tags = ["manual"],
     deps = [
         ":blue",
@@ -83,7 +83,7 @@ godot_pack(
 godot_pack(
     name = "red_pack",
     preset_settings = {"script_export_mode": "2"},
-    project = ":project",
+    project = ":project_with_pack_variants",
     tags = ["manual"],
     deps = [
         ":levels",
@@ -117,7 +117,7 @@ godot_pack(
     entry_points = [],
     packing = "reachable",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_pack_variants",
     tags = ["manual"],
     deps = [
         ":blue",
@@ -131,7 +131,7 @@ godot_pack(
     entry_points = ["main/dlc/level.tscn"],
     packing = "reachable",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_pack_variants",
     required_packs = [":base_pack"],
     tags = ["manual"],
     deps = [

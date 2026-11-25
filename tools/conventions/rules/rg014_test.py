@@ -5,6 +5,9 @@ import unittest
 from tools.conventions.rules.rg014 import EngineLayout
 from tools.conventions.test_support import RepositoryTest
 
+ENGINE_ENTRIES = (
+    "engine/ holds only modules/, patches/, a BUILD file, lock files and .bzl files"
+)
 MODULE = ("config.py", "SCsub", "register_types.cpp", "register_types.h", "field.cpp")
 
 
@@ -40,7 +43,22 @@ class EngineLayoutTest(RepositoryTest):
                 root + "/engine/patches/BUILD.bazel",
                 root + "/engine/patches/engine-name.patch",
                 root + "/engine/patches/renderer.diff",
+                root + "/engine/BUILD.bazel",
+                root + "/engine/godot_patched.lock.json",
+                root + "/engine/source_engine.bzl",
             ),
+        )
+
+    def test_a_source_build_s_lock_file_lives_under_engine(self) -> None:
+        root = "examples/petri"
+        self.assertEqual(
+            [
+                (
+                    f"{root}/godot_petri.lock.json: a source build's lock file must live "
+                    "under engine/ of its project"
+                )
+            ],
+            self.evaluate(*self.project(root, "godot_petri.lock.json")),
         )
 
     def test_project_without_engine_directory_has_no_findings(self) -> None:
@@ -116,15 +134,11 @@ class EngineLayoutTest(RepositoryTest):
             findings,
             [
                 (
-                    f"{root}/engine/BUILD.bazel: engine/ holds only modules/ and patches/; "
-                    "unexpected entry: engine/BUILD.bazel"
-                ),
-                (
-                    f"{root}/engine/notes.md: engine/ holds only modules/ and patches/; "
+                    f"{root}/engine/notes.md: {ENGINE_ENTRIES}; "
                     "unexpected entry: engine/notes.md"
                 ),
                 (
-                    f"{root}/engine/scripts/a.py: engine/ holds only modules/ and patches/; "
+                    f"{root}/engine/scripts/a.py: {ENGINE_ENTRIES}; "
                     "unexpected entry: engine/scripts/"
                 ),
             ],
@@ -205,8 +219,8 @@ class EngineLayoutTest(RepositoryTest):
             findings,
             [
                 (
-                    "e2e/rules_godot/projects/mobile/android/engine/stray.txt: engine/ holds only "
-                    "modules/ and patches/; unexpected entry: engine/stray.txt"
+                    "e2e/rules_godot/projects/mobile/android/engine/stray.txt: "
+                    f"{ENGINE_ENTRIES}; unexpected entry: engine/stray.txt"
                 ),
                 (
                     f"{addon}/tests/modules/stray/config.py: engine module must live under "

@@ -19,7 +19,7 @@ _FIXTURE = "//godot/private/tests/fixtures/project_with_addons"
 def _test_shell_probe_names_no_autoload_it_does_not_stage(name):
     godot_pack(
         name = name + "_pack",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":main"],
     )
@@ -70,26 +70,26 @@ def _shell_probe_names_no_autoload_it_does_not_stage(env, target):
 def _test_program_entry_checks_authored_entries(name):
     godot_pack(
         name = name + "_pack",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":main"],
     )
     godot_pack(
         name = name + "_dlc",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         required_packs = select({"//conditions:default": [name + "_pack"]}),
         tags = ["manual"],
         deps = [_FIXTURE + ":other"],
     )
     godot_run(
         name = name + "_run",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":main"],
     )
     godot_test(
         name = name + "_test",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":main"],
     )

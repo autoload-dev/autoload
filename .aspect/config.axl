@@ -71,7 +71,7 @@ def config(ctx: ConfigContext):
     ctx.tasks["lint"].args.bazel_flags = ["--norun_validations"]
 
     # The root module's formatter covers the whole tree, nested modules included.
-    ctx.tasks["format"].args.formatter_target = "//tools/format:format"
+    ctx.tasks["format"].args.formatter_target = "//tools/format"
     for feature in _UNUSED_FEATURES:
         ctx.features[feature].enabled = False
     for name, value in _android_environment(ctx).items():

@@ -7,7 +7,7 @@ var _count := 0
 
 func _ready() -> void:
 	%Platform.text = "Firebase · %s" % OS.get_name()
-	# The headless test (BUILD.bazel) checks the add-ons where Firebase is unsupported.
+	# The headless test (tests/BUILD.bazel) checks the add-ons where Firebase is unsupported.
 	if DisplayServer.get_name() == "headless":
 		await _check_unsupported()
 		get_tree().quit()

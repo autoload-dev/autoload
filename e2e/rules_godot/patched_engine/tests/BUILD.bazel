@@ -25,7 +25,7 @@ py_test(
 # The editor runs the same probe scene, so the module and patch exist in the editor role.
 godot_test(
     name = "source_built_editor_test",
-    project = "//e2e/rules_godot/patched_engine:project",
+    project = "//e2e/rules_godot/patched_engine",
     tags = ["manual"],
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//e2e/rules_godot/patched_engine:main"],

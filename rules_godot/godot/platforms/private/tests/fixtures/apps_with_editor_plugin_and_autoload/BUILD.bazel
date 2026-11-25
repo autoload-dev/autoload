@@ -27,7 +27,7 @@ godot_addon(
 )
 
 godot_project(
-    name = "project",
+    name = "apps_with_editor_plugin_and_autoload",
     autoloads = {"State": "*res://main/configuration.gd"},
     project_file = "project.godot",
     tags = ["manual"],
@@ -35,7 +35,7 @@ godot_project(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":apps_with_editor_plugin_and_autoload",
     tags = ["manual"],
     deps = [
         ":export_context",

@@ -7,11 +7,7 @@ load(
     "godot_pack",
     "godot_project",
     "godot_run",
-    "godot_test",
 )
-
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -22,21 +18,21 @@ exports_files(["project.godot"])
 # Placeholder configuration of a Firebase project: replace both files with those of your
 # Firebase apps, downloaded from the Firebase console.
 firebase_config(
-    name = "firebase",
+    name = "firebase_config",
     application_id = _APPLICATION_ID,
     google_service_info_plist = "GoogleService-Info.plist",
     google_services_json = "google-services.json",
 )
 
 godot_project(
-    name = "demo",
+    name = "firebase",
     main_scene = "main/demo.tscn",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 
@@ -46,25 +42,16 @@ godot_run(
     pack = ":pack",
 )
 
-# Runs the demo headless, where Firebase is unsupported: any engine error, such as a missing
-# class or a failed check of demo.gd, fails it.
-godot_test(
-    name = "headless",
-    size = "small",
-    headless = True,
-    pack = ":pack",
-)
-
 godot_editor(
     name = "edit",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 
@@ -81,33 +68,10 @@ godot_app(
     pack = ":pack",
     # rules_godot rejects any non-empty platform_resources on desktop platforms.
     platform_resources = select({
-        "@platforms//os:android": [":firebase"],
-        "@platforms//os:ios": [":firebase"],
+        "@platforms//os:android": [":firebase_config"],
+        "@platforms//os:ios": [":firebase_config"],
         "//conditions:default": [],
     }),
-)
-
-# The iOS lane tests it: the application embeds each extension's framework and the Firebase
-# frameworks they link, which their extensions do not list.
-ios_app_test(
-    name = "app_embeds_firebase_frameworks_test",
-    size = "small",
-    app = ":app",
-    files = [
-        "Frameworks/%s.framework/%s" % (framework, framework)
-        for framework in [
-            "FirebaseAnalytics",
-            "FirebaseCore",
-            "FirebaseFirestore",
-            "firebase_analytics",
-            "firebase_core",
-            "firebase_firestore",
-        ]
-    ],
-    tags = [
-        "ios",
-        "manual",
-    ],
 )
 
 config_setting(

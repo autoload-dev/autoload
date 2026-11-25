@@ -64,7 +64,7 @@ def _program_entries_and_native_sources_reach_no_import(env, targets):
                 "/native/" in path or path.endswith(".cc"),
                 expr = "an extension file staged by an import",
             ).equals(False)
-        configurations = written_manifests(target, "project.import.config.json").values()
+        configurations = written_manifests(target, "project_with_shared_unit.import.config.json").values()
         env.expect.where(operation = subject).that_collection(configurations).has_size(1)
         for configuration in configurations:
             env.expect.where(operation = subject).that_dict(configuration["autoloads"]).contains_exactly({})

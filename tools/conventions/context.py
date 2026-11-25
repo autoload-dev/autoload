@@ -19,8 +19,8 @@ from tools.conventions.environment import nested_tool_environment
 from tools.conventions.layout import (
     DOCS,
     NON_CONSUMER_MODULES,
+    project_directory,
     root_consumer,
-    typed_directory,
 )
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
@@ -199,7 +199,6 @@ class Workspace:
         self.entries = tuple(sorted(n for n in set(files) if os.path.lexists(root / n)))
         self._texts: dict[str, str] = {}
         self._strings: dict[str, tuple[StringLiteral, ...]] = {}
-        self._typed_directories: dict[str, Mapping[Path, tuple[str, ...]]] = {}
 
     @cached_property
     def file_set(self) -> frozenset[str]:
@@ -242,26 +241,22 @@ class Workspace:
             return root_consumer(path, self.module_paths)
         return None if module in NON_CONSUMER_MODULES else module
 
-    def typed_directory(self, path: Path) -> tuple[str, Path] | None:
-        """
-        Return the kind and root of the project or add-on directory that path lies in;
-        outside consumers there are no typed roots.
-        """
+    def project(self, path: Path) -> Path | None:
+        """The project at a fixed place of a consumer that path lies in, if any."""
         root = self.consumer_root(path)
-        return None if root is None else typed_directory(root, path, self.configured)
+        return None if root is None else project_directory(root, path, self.configured)
 
-    def typed_directories(self, kind: str) -> Mapping[Path, tuple[str, ...]]:
-        """Map each project or add-on directory ``<module>/<kind>/<name>`` to its files."""
-        if kind not in self._typed_directories:
-            members: dict[Path, list[str]] = defaultdict(list)
-            for name in self.files:
-                owner = self.typed_directory(Path(name))
-                if owner is not None and owner[0] == kind:
-                    members[owner[1]].append(name)
-            self._typed_directories[kind] = MappingProxyType(
-                {root: tuple(files) for root, files in sorted(members.items())}
-            )
-        return self._typed_directories[kind]
+    @cached_property
+    def projects(self) -> Mapping[Path, tuple[str, ...]]:
+        """Map each project at a fixed place of a consumer to its files."""
+        members: dict[Path, list[str]] = defaultdict(list)
+        for name in self.files:
+            project = self.project(Path(name))
+            if project is not None:
+                members[project].append(name)
+        return MappingProxyType(
+            {root: tuple(files) for root, files in sorted(members.items())}
+        )
 
     def _roots(self, marker: str) -> tuple[Path, ...]:
         """Directories holding a file named marker, such as MODULE.bazel."""

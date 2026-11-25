@@ -17,7 +17,11 @@ from typing import Any
 ADDONS = "addons"
 # Where the root module keeps each add-on module's example application, examples/addons/<module>/
 # (one project, or one per scenario), and its end-to-end tests, e2e/addons/<module>/.
-ADDON_EXAMPLES = Path("examples/addons")
+EXAMPLES = Path("examples")
+ADDON_EXAMPLES = EXAMPLES / "addons"
+# A source build's lock file, as godot_engines.source_build names it: <hub>.lock.json, which
+# RG014 keeps in engine/ of its project.
+LOCK_SUFFIX = ".lock.json"
 ADDON_E2E = Path("e2e/addons")
 # The directory of a released module's registry test modules, bcr/<name>/ (RG020), which its
 # .bazelignore lists.
@@ -65,9 +69,14 @@ def bazelignore_entries(text: str) -> tuple[str, ...]:
     return tuple(line for line in lines if line and not line.startswith("#"))
 
 
+def is_addon_module(module: str | Path) -> bool:
+    """Whether a module directory is an add-on module, `addons/<module>`."""
+    return Path(module).parent == Path(ADDONS)
+
+
 def is_released(module: str | Path) -> bool:
     """Whether a module has release archives: the ruleset and every add-on module."""
-    return Path(module) == RULESET or Path(module).parent == Path(ADDONS)
+    return Path(module) == RULESET or is_addon_module(module)
 
 
 def released_modules(modules: Iterable[Path]) -> tuple[Path, ...]:

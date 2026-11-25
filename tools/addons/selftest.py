@@ -15,7 +15,7 @@ import subprocess
 from pathlib import Path
 
 from tools.addons import declarations, lanes
-from tools.addons.modules import LANES, ROOT, AddonModule, examples_path, module_path
+from tools.addons.modules import ROOT, AddonModule, choices, examples_path, module_path
 from tools.addons.new import generate
 from tools.setup.modules import BCR, SELFTEST
 
@@ -61,7 +61,7 @@ def run(lane: str, root: Path = ROOT) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("lane", choices=LANES)
+    parser.add_argument("lane", choices=choices()["lanes"])
     run(parser.parse_args().lane)
 
 

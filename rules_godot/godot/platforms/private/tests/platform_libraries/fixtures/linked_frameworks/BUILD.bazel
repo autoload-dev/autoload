@@ -40,14 +40,14 @@ dynamic_xcframework_fixture(
 ]
 
 godot_project(
-    name = "project",
+    name = "linked_frameworks",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":linked_frameworks",
     tags = ["manual"],
     deps = [
         ":analytics_extension",

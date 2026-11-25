@@ -12,6 +12,6 @@ objc_library(
     target_compatible_with = ["@platforms//os:ios"],
     deps = [
         "//firestore/native:backend_api",
-        "//ios:firestore",
+        "//third_party/ios:firestore",
     ],
 )

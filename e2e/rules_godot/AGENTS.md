@@ -11,7 +11,7 @@ builds them as a consumer builds: through the root module's `MODULE.bazel`, with
 | Location | Responsibility |
 |---|---|
 | `smoke/<operating_system>/` | The smoke path of one platform: its own project, extensions and checks, through public labels only |
-| `shared_addon/`, `script_run/`, `patched_engine/` | A focused consumer scenario named after what the user does, with its own project files and native fixtures |
+| `script_run/`, `patched_engine/` | A focused consumer scenario named after what the user does, with its own project files and native fixtures |
 | `BUILD.bazel` | The configuration suites |
 
 ## Common workflows

@@ -10,11 +10,16 @@ _PYTHON = "@rules_python//python/bin:python"
 # The pinned CodeScene CLI, made executable (tools/code_health/BUILD.bazel).
 _CODESCENE = "//tools/code_health:codescene_cli"
 
+# The pinned Pkl CLI, which the Python tools evaluate addon.pkl and app.pkl with
+# (tools/pkl/evaluate.py).
+_PKL = "@multitool//tools/pkl"
+
 # Where a task's process tree keeps the built tools' paths, so a task and the tasks it starts
 # build and query each tool once.
 _BUILT = {
     _PYTHON: "AUTOLOAD_PYTHON",
     _CODESCENE: "CODESCENE_CLI",
+    _PKL: "PKL_CLI",
 }
 
 def run(ctx: TaskContext, program: str, arguments, env = {}) -> int:
@@ -81,6 +86,19 @@ def python(ctx: TaskContext, arguments) -> int:
     """
     return run(ctx, _built(ctx, _PYTHON), arguments)
 
+def run_work_tool(ctx: TaskContext, arguments) -> int:
+    """Run the lanes' work (tools/ci/work.py), with the Pkl CLI it reads the manifests with.
+
+    Args:
+        ctx: the running task's context.
+        arguments: the arguments of tools/ci/work.py.
+
+    Returns:
+        Its exit code.
+    """
+    _built(ctx, _PKL)
+    return python(ctx, ["-m", "tools.ci.work"] + arguments)
+
 def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
     """Run pieces of the lanes' work by name.
 
@@ -94,7 +112,7 @@ def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
         The work's exit code.
     """
     selection = ["--changed-since", changed_since] if changed_since else []
-    return python(ctx, ["-m", "tools.ci.work", "run"] + selection + list(names))
+    return run_work_tool(ctx, ["run"] + selection + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
     return run_work(ctx, *ctx.args.names)
@@ -108,7 +126,7 @@ work = task(
 )
 
 def _lane_impl(ctx: TaskContext) -> int:
-    return python(ctx, ["-m", "tools.ci.work", "lane"] + ctx.args.lane)
+    return run_work_tool(ctx, ["lane"] + ctx.args.lane)
 
 lane = task(
     implementation = _lane_impl,

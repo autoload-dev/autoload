@@ -124,6 +124,8 @@ class ProductionIsolationTest(RepositoryTest):
                 "examples/addons/widget/native/backends/linux/tests/fixture.gd",
                 True,
             ),
+            # A generator's template of a tests/ package is no test input.
+            ("tools/addons/template/examples/tests/BUILD.bazel.tmpl", False),
         ):
             with self.subTest(name=name):
                 self.assertEqual(expected, test_scope(workspace, Path(name)))

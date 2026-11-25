@@ -35,20 +35,20 @@ godot_test(
     name = "source_run_reads_ignored_files_test",
     size = "medium",
     main = "main/reader.gd",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [_FIXTURE + ":reader"],
 )
 
 # Its update.test asks for no sidecar of a Godot-ignored file, which Godot never writes.
 godot_metadata_sync(
     name = "update",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [_FIXTURE + ":reader"],
 )
 
 godot_resource_graph(
     name = "graph",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [_FIXTURE + ":reader"],
 )
 

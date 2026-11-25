@@ -59,7 +59,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_import_and_export_plugins",
     project_file = "project.godot",
     tags = ["manual"],
     deps = [":greeting_importer"],
@@ -68,7 +68,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_import_and_export_plugins",
     tags = ["manual"],
     deps = [
         ":authored_hook",
@@ -125,7 +125,7 @@ godot_pack(
 godot_pack(
     name = "android_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_import_and_export_plugins",
     tags = ["manual"],
     deps = [
         ":authored_hook",
@@ -140,7 +140,7 @@ godot_pack(
 godot_pack(
     name = "ios_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_import_and_export_plugins",
     tags = ["manual"],
     deps = [
         ":authored_hook",
@@ -155,7 +155,7 @@ godot_pack(
 godot_pack(
     name = "macos_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":project_with_import_and_export_plugins",
     tags = ["manual"],
     deps = [
         ":authored_hook",
