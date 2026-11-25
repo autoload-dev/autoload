@@ -4,6 +4,9 @@ Bounded static Godot reference analysis; never discovers Bazel action inputs.
 Graph paths are res:// identities, not execroot paths. The scanner deliberately
 does not execute Godot, scripts, importers, or addon code. Unknown dynamic loads
 remain diagnostics and must be covered by explicit declarations.
+
+Sections: Diagnostics, Lexer, Project files, Scan, Script scanning, Graph, Pack
+selection, Command line.
 """
 
 import argparse
@@ -102,6 +105,9 @@ _PROJECT_FILE = "res://project.godot"
 
 _UID = re.compile(r"uid://[a-z0-9]+")
 _IMPORT_UID = re.compile(r'^\s*uid\s*=\s*"(uid://[a-z0-9]+)"', re.MULTILINE)
+
+
+# ==== Diagnostics =============================================================
 
 
 def portable_identity(path: str) -> str:
@@ -206,6 +212,9 @@ def res_path(value: str, source: str = _PROJECT_FILE) -> str:
     if value in ("", ".", "..") or value.startswith("../"):
         raise ValueError("resource path escapes the project")
     return "res://" + value
+
+
+# ==== Lexer ===================================================================
 
 
 class Token(NamedTuple):
@@ -355,6 +364,9 @@ def _literal_argument(
         return None
     literal, closer = _at(script, paren + 1), _at(script, paren + 2)
     return literal[1] if literal[0] == "string" and closer[1] in closers else None
+
+
+# ==== Project files ===========================================================
 
 
 _SECTION = re.compile(r"^[ \t]*\[([a-z_]+)\b", re.MULTILINE)
@@ -579,6 +591,9 @@ def validate_identities(resource_paths: dict[str, Path]) -> None:
     for uid, paths in identities:
         _check_authored(uid, paths)
     _check_conflicting(_uids_by_resource(identities))
+
+
+# ==== Scan ====================================================================
 
 
 class _Findings:
@@ -962,6 +977,9 @@ def _directories(nodes: Iterable[str]) -> set[str]:
     return directories
 
 
+# ==== Script scanning =========================================================
+
+
 _LOADERS = frozenset({"load", "preload", "load_threaded_request"})
 _SHADER_FORMATS = (".gdshader", ".gdshaderinc", ".shader", ".shaderinc")
 
@@ -1187,6 +1205,9 @@ def _scan_references(scan: _Scan) -> None:
             _scan_gltf(scan, path, text)
         elif path == _PROJECT_FILE:
             _scan_project(scan, path, text)
+
+
+# ==== Graph ===================================================================
 
 
 _IMPORT_KINDS = frozenset({"gltf_buffers", "gltf_images", "import_settings"})
@@ -1610,6 +1631,9 @@ def query_graph(
     }
 
 
+# ==== Pack selection ==========================================================
+
+
 class SelectionError(ValueError):
     """A pack whose references are unavailable or not fully declared."""
 
@@ -1930,6 +1954,9 @@ def select_from_manifest(
         "pack": manifest["pack"],
         "resources": resources,
     }
+
+
+# ==== Command line ============================================================
 
 
 def _run_scan(args: argparse.Namespace) -> int:

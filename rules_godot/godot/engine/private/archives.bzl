@@ -1,10 +1,16 @@
-"""Checksum-pinned acquisition of prebuilt editor and export-template archives."""
+"""
+Checksum-pinned acquisition of prebuilt editor and export-template archives.
+
+Sections: Archive helpers, Editor archive, Templates archive, Repository rules.
+"""
 
 load("//godot/private:repository_templates.bzl", "fill_template", "starlark_list")
 load("//godot/private:versions.bzl", "require_supported_godot_version")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
+
+# ==== Archive helpers =========================================================
 
 _VERSION_ATTR = attr.string(
     doc = "Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.",
@@ -92,6 +98,8 @@ def _ios_xcframework(name):
 def _ios_engine(variant):
     return _ios_xcframework("libgodot.ios." + variant)
 
+# ==== Editor archive ==========================================================
+
 def editor_archive_impl(ctx, *, _fail = fail):
     """
     Download one editor archive and generate its BUILD file.
@@ -124,6 +132,8 @@ EDITOR_ARCHIVE_RULE_ATTRS = EDITOR_ARCHIVE_ATTRS | {
     "_prebuilt_bzl": attr.label(default = Label("//godot/engine/private:prebuilt.bzl")),
     "_build_template": attr.label(default = Label("//godot/engine/private:editor_archive.BUILD.tpl")),
 }
+
+# ==== Templates archive =======================================================
 
 def _runtimes(ctx, platform, cpu, binary):
     """Return the release and, when present, debug runtime declarations of the binary `binary(variant, cpu)` names."""
@@ -351,6 +361,8 @@ TEMPLATES_ARCHIVE_RULE_ATTRS = TEMPLATES_ARCHIVE_ATTRS | {
     "_ios_accesskit_template": attr.label(default = Label("//godot/engine/private:ios_accesskit.BUILD.tpl")),
     "_ios_camera_template": attr.label(default = Label("//godot/engine/private:ios_camera.BUILD.tpl")),
 }
+
+# ==== Repository rules ========================================================
 
 # The repository rules godot_engines.prebuilt declares for catalogued and declared releases.
 

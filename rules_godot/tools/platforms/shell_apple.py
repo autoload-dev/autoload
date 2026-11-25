@@ -1,4 +1,8 @@
-"""Write the shell files of iOS and macOS applications as Godot's Apple exporters do."""
+"""
+Write the shell files of iOS and macOS applications as Godot's Apple exporters do.
+
+Sections: Plist merging, Info plists, Localization.
+"""
 
 import json
 import plistlib
@@ -8,6 +12,8 @@ from typing import Any
 from xml.etree import ElementTree
 
 from tools.platforms.shell_common import Facts, fill, release_value, xml
+
+# ==== Plist merging ===========================================================
 
 
 def _plist_bool(value: object) -> str:
@@ -90,6 +96,9 @@ def merge_plists(base: str, fragments: list[str]) -> str:
     for fragment in fragments:
         _merge(values, _strict_plist(fragment))
     return plistlib.dumps(values, sort_keys=True).decode("utf-8")
+
+
+# ==== Info plists =============================================================
 
 
 def _checked(
@@ -312,6 +321,9 @@ def privacy_manifest(facts: Facts, values: Mapping[str, Any]) -> str:
         ),
         "privacy manifest",
     )
+
+
+# ==== Localization ============================================================
 
 
 def localizations(

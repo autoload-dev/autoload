@@ -3,88 +3,239 @@
 visibility(["//godot/..."])
 
 _FIELDS = ["key", "owner", "authored", "placement", "when", "derive"]
-_OPERANDS = {
-    "constant": ["value"],
-    "first_cpu": [],
-    "cpu_member": ["cpu"],
-    "application_value": ["source"],
-    "application_enum": ["source", "choices"],
-    "android_sdk": ["sdk"],
+
+# Each policy field the vocabulary bounds, its allowed values and the diagnostic, in check order.
+_VOCABULARY = [
+    ("authored", ["reject", "match", "live"], "unknown authored mode or placement"),
+    ("placement", ["pack", "preset", "prelude"], "unknown authored mode or placement"),
+    (
+        "when",
+        [
+            "always",
+            "application_identity",
+            "macos_application",
+            "ios_application",
+            "android_application",
+        ],
+        "unknown applicability guard",
+    ),
+]
+_LIVE_EXCEPTION = {"key": "binary_format/embed_pck", "derive": "constant", "placement": "prelude"}
+_IOS_FAMILY_CHOICES = ["ipad", "ipad,iphone", "iphone"]
+
+def _policy_error(where, message):
+    fail("Godot %s / %s / %s: %s" % (where.version, where.operating_system, where.key, message))
+
+def _application_value(application_values, source, expected_type, where):
+    if source not in application_values or type(application_values[source]) != expected_type:
+        _policy_error(where, "missing or invalid application context value " + source)
+    return application_values[source]
+
+def _constant_problem(row, _scope):
+    if type(row["value"]) not in ["bool", "int", "string"]:
+        return "constant must be a typed scalar"
+    return None
+
+def _constant_value(row, _context, _profile, _where):
+    return row["value"]
+
+def _first_cpu_problem(_row, scope):
+    if scope.operating_system not in ["linux", "macos"]:
+        return "first_cpu requires a desktop exporter"
+    return None
+
+def _first_cpu_value(_row, context, _profile, where):
+    if len(context.cpus) != 1:
+        _policy_error(where, "desktop CPU selection must be a singleton")
+    return context.cpus[0]
+
+def _cpu_member_problem(row, scope):
+    profile = scope.profile
+    cpus = {
+        "android": profile["android"]["abis"],
+        "ios": profile["ios"]["cpus"],
+    }.get(scope.operating_system, [])
+    if type(row["cpu"]) != "string" or row["cpu"] not in cpus:
+        return "cpu must name a profile CPU tag"
+    return None
+
+def _cpu_member_value(row, context, _profile, _where):
+    return row["cpu"] in context.cpus
+
+def _application_value_problem(row, _scope):
+    sources = ["application_id", "macos_minimum_os_version", "ios_minimum_os_version"]
+    if row["source"] not in sources:
+        return "unsupported application context value"
+    return None
+
+def _application_value_value(row, context, _profile, where):
+    return _application_value(context.application_context, row["source"], "string", where)
+
+def _is_family_choices(choices):
+    if type(choices) != "dict" or any([type(choice) != "string" for choice in choices]):
+        return False
+    values = choices.values()
+    return sorted(choices) == _IOS_FAMILY_CHOICES and all([type(value) == "int" for value in values])
+
+def _application_enum_problem(row, _scope):
+    if row["source"] != "ios_families" or not _is_family_choices(row["choices"]):
+        return "expected normalized iOS family choices with integer values"
+    return None
+
+def _application_enum_value(row, context, _profile, where):
+    families = _application_value(context.application_context, row["source"], "list", where)
+    if any([type(family) != "string" for family in families]):
+        _policy_error(where, "invalid iOS family set")
+    normalized = ",".join(sorted(families))
+    if normalized not in row["choices"]:
+        _policy_error(where, "invalid iOS family set")
+    return row["choices"][normalized]
+
+def _android_sdk_problem(row, scope):
+    if scope.operating_system != "android" or row["sdk"] not in ["min", "target"]:
+        return "a derived SDK value requires android and min or target"
+    return None
+
+def _android_sdk_value(row, context, profile, where):
+    application_values = context.application_context
+    minimum = _application_value(application_values, "android_min_sdk_version", "int", where)
+    target = _application_value(application_values, "android_target_sdk_version", "int", where)
+    minimum = minimum or int(profile["android"]["min_sdk"])
+    target = target or int(profile["android"]["target_sdk"])
+    if target < minimum or minimum < int(profile["android"]["min_sdk"]):
+        _policy_error(
+            where,
+            "Android target SDK must be >= minimum SDK, and minimum must support the selected engine",
+        )
+    return str(minimum if row["sdk"] == "min" else target)
+
+# Each derivation's operands, the policy check of its row and the value it derives.
+_OPERATIONS = {
+    "constant": struct(operands = ["value"], problem = _constant_problem, value = _constant_value),
+    "first_cpu": struct(operands = [], problem = _first_cpu_problem, value = _first_cpu_value),
+    "cpu_member": struct(
+        operands = ["cpu"],
+        problem = _cpu_member_problem,
+        value = _cpu_member_value,
+    ),
+    "application_value": struct(
+        operands = ["source"],
+        problem = _application_value_problem,
+        value = _application_value_value,
+    ),
+    "application_enum": struct(
+        operands = ["source", "choices"],
+        problem = _application_enum_problem,
+        value = _application_enum_value,
+    ),
+    "android_sdk": struct(
+        operands = ["sdk"],
+        problem = _android_sdk_problem,
+        value = _android_sdk_value,
+    ),
 }
 
-def _policy_error(version, operating_system, key, message):
-    fail("Godot %s / %s / %s: %s" % (version, operating_system, key, message))
+def _field_problem(row, _scope):
+    if any([field not in row for field in _FIELDS]):
+        return "missing required policy fields"
+    if any([type(row[field]) != "string" or not row[field] for field in _FIELDS]):
+        return "policy fields must be nonempty strings"
+    return None
+
+def _identity_problem(row, scope):
+    if row["key"] in scope.seen:
+        return "duplicate owned option"
+    if row["owner"] not in scope.owners:
+        return "unknown diagnostic owner"
+    return None
+
+def _vocabulary_problem(row, _scope):
+    for field, allowed, problem in _VOCABULARY:
+        if row[field] not in allowed:
+            return problem
+    if row["derive"] not in _OPERATIONS:
+        return "unknown derivation"
+    return None
+
+def _is_reason(value):
+    return type(value) == "string" and bool(value.strip())
+
+def _operand_problem(row, _scope):
+    operands = _OPERATIONS[row["derive"]].operands
+    allowed = _FIELDS + operands + ["exception"]
+    missing = [field for field in operands if field not in row]
+    if missing or any([field not in allowed for field in row]):
+        return "missing or unexpected operation operands"
+    if "exception" in row and not _is_reason(row["exception"]):
+        return "exception must document its reason and removal condition"
+    return None
+
+def _is_live_exception(row, operating_system):
+    if operating_system != "macos" or "exception" not in row:
+        return False
+    return all([row[field] == value for field, value in _LIVE_EXCEPTION.items()])
+
+def _placement_problem(row, scope):
+    if row["authored"] == "match" and row["placement"] != "pack":
+        return "matched mirrors must be pack values"
+    if row["authored"] == "live" and not _is_live_exception(row, scope.operating_system):
+        return "a live derived value requires a documented prelude exception"
+    if row["derive"] in ["first_cpu", "cpu_member"] and row["placement"] == "pack":
+        return "derived CPU values cannot be pack mirrors"
+    return None
+
+def _operation_problem(row, scope):
+    return _OPERATIONS[row["derive"]].problem(row, scope)
+
+def _overlap_problem(row, scope):
+    if row["key"] in scope.rejected:
+        return "overlap with the rejected export options"
+    return None
+
+# The checks of an owned option row, in diagnostic order; each returns the first problem or None.
+_ROW_CHECKS = [
+    _field_problem,
+    _identity_problem,
+    _vocabulary_problem,
+    _operand_problem,
+    _placement_problem,
+    _operation_problem,
+    _overlap_problem,
+]
+
+def _row_problem(row, scope):
+    if type(row) != "dict":
+        return "missing required policy fields"
+    for check in _ROW_CHECKS:
+        problem = check(row, scope)
+        if problem:
+            return problem
+    return None
 
 def _validate_policy(profile, operating_system, version):
     rows = profile.get("owned_export_options", {}).get(operating_system)
     if type(rows) != "list":
-        _policy_error(version, operating_system, "<policy>", "expected an owned option row list")
-    seen = {}
-    rejected = dict(profile["rejected_export_options"].get(operating_system, {}))
-    owners = profile["option_owners"]
+        _policy_error(
+            struct(version = version, operating_system = operating_system, key = "<policy>"),
+            "expected an owned option row list",
+        )
+    scope = struct(
+        operating_system = operating_system,
+        profile = profile,
+        seen = {},
+        rejected = dict(profile["rejected_export_options"].get(operating_system, {})),
+        owners = profile["option_owners"],
+    )
     for row in rows:
         key = row.get("key", "<missing>") if type(row) == "dict" else "<row>"
-        if type(row) != "dict" or any([field not in row for field in _FIELDS]):
-            _policy_error(version, operating_system, key, "missing required policy fields")
-        if any([type(row[field]) != "string" or not row[field] for field in _FIELDS]):
-            _policy_error(version, operating_system, key, "policy fields must be nonempty strings")
-        if key in seen:
-            _policy_error(version, operating_system, key, "duplicate owned option")
-        seen[key] = True
-        if row["owner"] not in owners:
-            _policy_error(version, operating_system, key, "unknown diagnostic owner")
-        if (row["authored"] not in ["reject", "match", "live"] or
-            row["placement"] not in ["pack", "preset", "prelude"]):
-            _policy_error(version, operating_system, key, "unknown authored mode or placement")
-        if row["when"] not in ["always", "application_identity", "macos_application", "ios_application", "android_application"]:
-            _policy_error(version, operating_system, key, "unknown applicability guard")
-        operation = row["derive"]
-        if operation not in _OPERANDS:
-            _policy_error(version, operating_system, key, "unknown derivation")
-        operands = _OPERANDS[operation]
-        allowed = _FIELDS + operands + ["exception"]
-        if (any([field not in row for field in operands]) or
-            any([field not in allowed for field in row])):
-            _policy_error(version, operating_system, key, "missing or unexpected operation operands")
-        if "exception" in row and (type(row["exception"]) != "string" or not row["exception"].strip()):
-            _policy_error(version, operating_system, key, "exception must document its reason and removal condition")
-        if row["authored"] == "match" and row["placement"] != "pack":
-            _policy_error(version, operating_system, key, "matched mirrors must be pack values")
-        if row["authored"] == "live" and (
-            operating_system != "macos" or
-            key != "binary_format/embed_pck" or
-            operation != "constant" or
-            row["placement"] != "prelude" or
-            "exception" not in row
-        ):
-            _policy_error(version, operating_system, key, "a live derived value requires a documented prelude exception")
-        if operation in ["first_cpu", "cpu_member"] and row["placement"] == "pack":
-            _policy_error(version, operating_system, key, "derived CPU values cannot be pack mirrors")
-        if operation == "constant" and type(row["value"]) not in ["bool", "int", "string"]:
-            _policy_error(version, operating_system, key, "constant must be a typed scalar")
-        if operation == "first_cpu" and operating_system not in ["linux", "macos"]:
-            _policy_error(version, operating_system, key, "first_cpu requires a desktop exporter")
-        if operation == "cpu_member":
-            cpus = {"android": profile["android"]["abis"], "ios": profile["ios"]["cpus"]}.get(operating_system, [])
-            if type(row["cpu"]) != "string" or row["cpu"] not in cpus:
-                _policy_error(version, operating_system, key, "cpu must name a profile CPU tag")
-        if operation == "application_value" and row["source"] not in ["application_id", "macos_minimum_os_version", "ios_minimum_os_version"]:
-            _policy_error(version, operating_system, key, "unsupported application context value")
-        if operation == "application_enum":
-            choices = row["choices"]
-            if (row["source"] != "ios_families" or
-                type(choices) != "dict" or
-                any([type(choice) != "string" for choice in choices]) or
-                sorted(choices) != ["ipad", "ipad,iphone", "iphone"] or
-                any([type(value) != "int" for value in choices.values()])):
-                _policy_error(version, operating_system, key, "expected normalized iOS family choices with integer values")
-        if operation == "android_sdk" and (operating_system != "android" or row["sdk"] not in ["min", "target"]):
-            _policy_error(version, operating_system, key, "a derived SDK value requires android and min or target")
-        if key in rejected:
-            _policy_error(version, operating_system, key, "overlap with the rejected export options")
+        problem = _row_problem(row, scope)
+        if problem:
+            where = struct(version = version, operating_system = operating_system, key = key)
+            _policy_error(where, problem)
+        scope.seen[key] = True
         if row["authored"] == "reject":
-            rejected[key] = row["owner"]
-    return rows, rejected
+            scope.rejected[key] = row["owner"]
+    return rows, scope.rejected
 
 def _active(guard, application_values):
     if guard == "application_identity":
@@ -97,41 +248,11 @@ def _active(guard, application_values):
         return "android_min_sdk_version" in application_values
     return True
 
-def _application_value(application_values, source, expected_type, version, operating_system, key):
-    if source not in application_values or type(application_values[source]) != expected_type:
-        _policy_error(version, operating_system, key, "missing or invalid application context value " + source)
-    return application_values[source]
-
-def _derive(row, context, profile, version):
-    operation = row["derive"]
-    application_values = context.application_context
-    operating_system = context.operating_system
+def _conflicts_with_authored(row, authored, value):
     key = row["key"]
-    if operation == "constant":
-        return row["value"]
-    if operation == "first_cpu":
-        if len(context.cpus) != 1:
-            _policy_error(version, operating_system, key, "desktop CPU selection must be a singleton")
-        return context.cpus[0]
-    if operation == "cpu_member":
-        return row["cpu"] in context.cpus
-    if operation == "application_value":
-        return _application_value(application_values, row["source"], "string", version, operating_system, key)
-    if operation == "application_enum":
-        families = _application_value(application_values, row["source"], "list", version, operating_system, key)
-        if any([type(family) != "string" for family in families]):
-            _policy_error(version, operating_system, key, "invalid iOS family set")
-        normalized = ",".join(sorted(families))
-        if normalized not in row["choices"]:
-            _policy_error(version, operating_system, key, "invalid iOS family set")
-        return row["choices"][normalized]
-    minimum = _application_value(application_values, "android_min_sdk_version", "int", version, operating_system, key)
-    target = _application_value(application_values, "android_target_sdk_version", "int", version, operating_system, key)
-    minimum = minimum or int(profile["android"]["min_sdk"])
-    target = target or int(profile["android"]["target_sdk"])
-    if target < minimum or minimum < int(profile["android"]["min_sdk"]):
-        _policy_error(version, operating_system, key, "Android target SDK must be >= minimum SDK, and minimum must support the selected engine")
-    return str(minimum if row["sdk"] == "min" else target)
+    if row["authored"] != "match" or key not in authored:
+        return False
+    return json.decode(authored[key]) != value
 
 def resolve_export_options(authored, context, profile, version):
     """
@@ -152,15 +273,13 @@ def resolve_export_options(authored, context, profile, version):
     for row in rows:
         if not _active(row["when"], context.application_context):
             continue
-        value = _derive(row, context, profile, version)
         key = row["key"]
+        where = struct(version = version, operating_system = context.operating_system, key = key)
+        value = _OPERATIONS[row["derive"]].value(row, context, profile, where)
         literal = json.encode(value)
-        if (row["authored"] == "match" and key in authored and
-            json.decode(authored[key]) != value):
+        if _conflicts_with_authored(row, authored, value):
             _policy_error(
-                version,
-                context.operating_system,
-                key,
+                where,
                 "authored %s conflicts with authoritative godot_app value %s; %s owns it: %s" % (
                     authored[key],
                     literal,

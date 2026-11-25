@@ -1,4 +1,8 @@
-"""Strip native code or extract its dSYM; other files, such as launcher scripts, pass."""
+"""
+Strip native code or extract its dSYM; other files, such as launcher scripts, pass.
+
+Sections: Native formats, Stripping, Slices.
+"""
 
 import argparse
 import mmap
@@ -17,6 +21,9 @@ _MACHO_UNIVERSAL = {"cafebabe", "cafebabf"}
 
 # A whole file's bytes or a read-only map of it, which reads only what is parsed.
 type Binary = bytes | mmap.mmap
+
+
+# ==== Native formats ==========================================================
 
 
 def native_format(path: str | Path) -> str | None:
@@ -139,6 +146,9 @@ def macho_uuids(data: Binary) -> list[str]:
     return uuids
 
 
+# ==== Stripping ===============================================================
+
+
 def strip(tool: str, options: list[str], source: str, output: str) -> None:
     form = native_format(source)
     if form:
@@ -194,6 +204,9 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# ==== Slices ==================================================================
 
 
 # ELF e_machine values by Godot's CPU tag; the class (32- or 64-bit) follows the CPU.

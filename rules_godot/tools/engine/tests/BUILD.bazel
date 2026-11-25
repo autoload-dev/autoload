@@ -1,9 +1,99 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Writes Godot source files for the tests of the include graph and the build profile.
+py_library(
+    name = "source_files",
+    testonly = True,
+    srcs = ["source_files.py"],
+)
 
 py_test(
-    name = "engine_test",
+    name = "build_profile_test",
     size = "small",
-    srcs = ["engine_test.py"],
+    srcs = ["build_profile_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
+    name = "compile_options_test",
+    size = "small",
+    srcs = ["compile_options_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "configure_recipe_test",
+    size = "small",
+    srcs = ["configure_recipe_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "generator_capture_test",
+    size = "small",
+    srcs = ["generator_capture_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "generator_test",
+    size = "small",
+    srcs = ["generator_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "include_graph_test",
+    size = "small",
+    srcs = ["include_graph_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
+    name = "module_graph_test",
+    size = "small",
+    srcs = ["module_graph_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "pin_test",
+    size = "small",
+    srcs = ["pin_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "render_test",
+    size = "small",
+    srcs = ["render_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "renderers_test",
+    size = "small",
+    srcs = ["renderers_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "revision_test",
+    size = "small",
+    srcs = ["revision_test.py"],
+    deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "swift_module_test",
+    size = "small",
+    srcs = ["swift_module_test.py"],
     deps = ["//tools/engine:support"],
 )
 

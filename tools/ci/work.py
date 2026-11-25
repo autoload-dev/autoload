@@ -12,6 +12,8 @@ source-engine lane runs in its own scheduled workflow, the others in CI.
 A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook runs it, skips
 the steps whose inputs did not change since the merge base with the reference
 (tools/ci/changes.py). Lanes and named work without the option run every step.
+
+Sections: Examples, Checks, Work table, Selection, Execution.
 """
 
 import argparse
@@ -93,6 +95,9 @@ class Work:
         ]
 
 
+# ==== Examples ================================================================
+
+
 # The applications of examples/, by their app.pkl; add-on modules have lanes of their own.
 APPLICATIONS = applications(ROOT)
 
@@ -114,6 +119,9 @@ def example_work() -> Iterator[Work]:
             yield Work(name, "desktop", ".", command)
         elif "source-engine" in app.lanes:
             yield Work(name, None, ".", command, profile="source-engine")
+
+
+# ==== Checks ==================================================================
 
 
 # The API documentation's tests, all of them fast, with the API inventory's discovery
@@ -268,6 +276,9 @@ def release_builds(lane: str, flags: str) -> str:
         *addon_app_packages(lane),
     )
     return f"bazel build {apps(packages)}{flags}"
+
+
+# ==== Work table ==============================================================
 
 
 # The repository's own work, in the order a lane runs it. A piece without a lane runs only
@@ -543,6 +554,9 @@ def all_work(root: Path = ROOT) -> dict[str, Work]:
     return {work.name: work for work in (*WORK, *addon_work(root))}
 
 
+# ==== Selection ===============================================================
+
+
 def runs_on(work: Work, host: str) -> bool:
     """Whether a host may run this work: host-limited work runs on its hosts only."""
     return not work.hosts or host in work.hosts
@@ -605,6 +619,9 @@ def selected(work: Work, changes: Changes | None) -> list[In]:
                 f"[{work.name}] {where(step, steps)} skipped: no change since {changes.base}"
             )
     return chosen
+
+
+# ==== Execution ===============================================================
 
 
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:

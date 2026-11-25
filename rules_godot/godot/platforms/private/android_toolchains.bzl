@@ -6,6 +6,8 @@ rules_android's `//toolchains/android_sdk:android_sdk_tools` and
 carry no execution constraints and resolve this host's tools, so the hub registers its own
 with `--extra_toolchains` priority. The repositories reuse the BUILD templates of
 rules_android and rules_android_ndk.
+
+Sections: Linux SDK, Linux NDK, Toolchain hub, Planning.
 """
 
 load("@rules_android_ndk//:rules.bzl", "android_ndk_repository")
@@ -42,6 +44,8 @@ _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 
 _SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 _NDK_TEMPLATES = "@rules_android_ndk//:"
+
+# ==== Linux SDK ===============================================================
 
 def _require_revision(ctx, directory, expected, _fail):
     """Fail unless an extracted package's source.properties names the pinned revision."""
@@ -105,6 +109,8 @@ _linux_sdk = repository_rule(
     doc = "The pinned Linux build tools and platforms, as rules_android's SDK repository.",
     implementation = _linux_sdk_impl,
 )
+
+# ==== Linux NDK ===============================================================
 
 def linux_ndk_impl(ctx, *, _fail = fail):
     """
@@ -170,6 +176,8 @@ _linux_ndk = repository_rule(
         ),
     },
 )
+
+# ==== Toolchain hub ===========================================================
 
 def _ndk_toolchains(ctx, name, clang, constraints):
     return fill_template(ctx, ctx.attr._ndk_template, {
@@ -244,6 +252,8 @@ _hub = repository_rule(
         ),
     },
 )
+
+# ==== Planning ================================================================
 
 def plan_android_toolchains(modules, *, _fail = fail):
     """

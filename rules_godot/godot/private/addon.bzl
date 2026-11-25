@@ -1,4 +1,8 @@
-"""Add-ons: a runtime part, an editor part with its roles, extensions, platform libraries and contributions, declared once."""
+"""
+Add-ons: a runtime part, an editor part with its roles, extensions, platform libraries and contributions, declared once.
+
+Sections: Platform libraries, Add-on parts, godot_addon.
+"""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
@@ -13,6 +17,8 @@ load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "G
 load("//godot/private:resources.bzl", "addon_closure", "configuration_contributions", "import_staged", "unique_extensions", "unique_platform_libraries")
 
 visibility(["//godot/..."])
+
+# ==== Platform libraries ======================================================
 
 _PlatformLibrariesInfo = provider(
     doc = "The platform libraries of an add-on, reached through its <name>.platform_libraries helper.",
@@ -32,6 +38,8 @@ _addon_platform_libraries = rule(
         "deps": attr.label_list(providers = [[JavaInfo], [CcInfo]], aspects = [manifest_graph_aspect]),
     } | TRANSITION_ATTRS,
 )
+
+# ==== Add-on parts ============================================================
 
 def _part(owner, files, imports = depset(), resource_path_manifests = depset(), relationships = [], deps = [], class_fragments = depset(), interfaces = depset(), interfaced = depset(), validations = depset(), ignored = None):
     """The GodotResourcesInfo of one part: its files as one import unit, and those of them Godot ignores."""
@@ -381,6 +389,8 @@ def _import_parts(ctx, context, parts, used):
         runs_in_editor = True,
     ))
     return runtime, editor
+
+# ==== godot_addon =============================================================
 
 def _addon_impl(ctx):
     owner = str(ctx.label)

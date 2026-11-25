@@ -1,4 +1,8 @@
-"""Godot resources as import units: their composition, staging and import under an operation's project."""
+"""
+Godot resources as import units: their composition, staging and import under an operation's project.
+
+Sections: Target classification, Composition, godot_resources.
+"""
 
 load("//godot/private:actions.bzl", "write_manifest")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
@@ -16,6 +20,8 @@ load("//godot/private:paths.bzl", "collect_resource_paths", "godot_ignore_marker
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 
 visibility(["//godot", "//godot/private/config"])
+
+# ==== Target classification ===================================================
 
 def unique_extensions(extensions):
     by_descriptor = {}
@@ -77,6 +83,8 @@ def addon_closure(direct, transitive = []):
         A postorder depset of GodotAddonInfo, so every add-on comes after those it needs.
     """
     return depset(direct, transitive = [addon.addons for addon in direct] + transitive, order = "postorder")
+
+# ==== Composition =============================================================
 
 def _edges(kind, paths, owner):
     return [("", path, kind, owner) for path in sorted(paths)]
@@ -248,6 +256,8 @@ def _validate_ignored(composition, owners):
                     "res://%s is in a directory Godot ignores; declare it in %s with " +
                     "res://%s, or move it out of that directory"
                 ) % (path, owners[marker], marker))
+
+# ==== godot_resources =========================================================
 
 def dependency_units(dependencies):
     """

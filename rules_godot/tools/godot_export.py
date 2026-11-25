@@ -3,6 +3,8 @@ Isolated Godot exports of packs and their applications' shell files.
 
 The action manifest is the entire input set. The staging and editor runs are
 shared with the project actions through godot_staging.py.
+
+Sections: Export lock, Export presets, Pack assembly.
 """
 
 import argparse
@@ -82,6 +84,9 @@ def _absolute(execroot: Path, source: str | list) -> str | list:
     return source
 
 
+# ==== Export lock =============================================================
+
+
 def export_lock() -> Path | None:
     """Return the lock file of exports that share a temporary directory, if any."""
     directory = os.confstr(_CS_DARWIN_USER_TEMP_DIR) if sys.platform == "darwin" else None
@@ -131,6 +136,9 @@ def export_pack(
             work,
             [*debug_arguments, "--export-pack", "Bazel", str(output)],
         )
+
+
+# ==== Export presets ==========================================================
 
 
 # The one message Godot prints when the export loads a scene or resource of a class it does
@@ -254,6 +262,9 @@ def _export_nothing(manifest: dict, root: Path) -> None:
         export_presets(manifest, export_only=f"res://{_SHELL_RESOURCE}"),
         encoding="utf-8",
     )
+
+
+# ==== Pack assembly ===========================================================
 
 
 def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:

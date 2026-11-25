@@ -8,11 +8,16 @@ rest: the owned export options and the tables and constants Godot's
 exporters use to write shell files, such as Android categories or iOS icon sizes.
 Rules pass a profile to the build tools as data, so a newer Godot
 version changes one profile, not the code that writes shell files.
+
+Sections: Godot 4.7, Owned options, Rejected options, Export hooks, Godot 4.8, Android
+shell, Profile lookup.
 """
 
 load("//godot/private:versions.bzl", "godot_series", "require_supported_source_version")
 
 visibility(["//godot/..."])
+
+# ==== Godot 4.7 ===============================================================
 
 _LEFT = "UIInterfaceOrientationLandscapeLeft"
 _RIGHT = "UIInterfaceOrientationLandscapeRight"
@@ -287,6 +292,8 @@ _GODOT_4_7 = {
     },
 }
 
+# ==== Owned options ===========================================================
+
 # One row owns the value, applicability and authoring policy together. CPU
 # rows reuse exporter maps above; Android SDK fallbacks stay in the Android shell policy.
 def _owned(key, owner, derive, placement, when, authored, **operands):
@@ -403,6 +410,8 @@ def _owned_options(profile):
     }
 
 _GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7)
+
+# ==== Rejected options ========================================================
 
 # Export options a pack must not author, by exporter, with the owner ID of what
 # replaces them: option_owners names a Bazel equivalent; other owners have no
@@ -548,6 +557,8 @@ _GODOT_4_7["option_owners"] = {
     "android-compression": "rules_android's packaging of JNI libraries",
 }
 
+# ==== Export hooks ============================================================
+
 def _hook(kind, disposition, operating_systems = [], counterpart = None, aliases = []):
     """
     Classify an export hook.
@@ -627,6 +638,8 @@ _EXPORT_HOOKS_4_7 = {
 }
 _GODOT_4_7["export_hooks"] = _EXPORT_HOOKS_4_7
 
+# ==== Godot 4.8 ===============================================================
+
 # Live 4.8-beta1 inventory comparison: the retained per-minor tables are unchanged;
 # only these three registered options differ from the bounded 4.7.2 inventory.
 # Defaults and actual types are still read from the configured editor's probe.
@@ -659,6 +672,8 @@ _GODOT_4_8["export_hooks"] = _EXPORT_HOOKS_4_7 | {
     "add_apple_embedded_platform_spm_package": _hook("method", "counterpart", ["ios"], "swift_package"),
 }
 
+# ==== Android shell ===========================================================
+
 # Godot's Android shell library, a Java/Kotlin library
 # (platform/android/java/lib/build.gradle and app/config.gradle). The Maven coordinates
 # are rules_godot's contribution to the shared maven repository in MODULE.bazel; their
@@ -687,6 +702,8 @@ _GODOT_4_8["android_shell"] = _ANDROID_SHELL
 # Every supported minor shares one shell library; godot_android_runtime's shell AAR names
 # no version.
 ANDROID_SHELL_DEPS = _ANDROID_SHELL["deps"]
+# ==== Profile lookup ==========================================================
+
 _PROFILES = {
     "4.7": _GODOT_4_7,
     "4.8": _GODOT_4_8,

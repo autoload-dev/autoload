@@ -1,4 +1,8 @@
-"""Run a declared project or PCK with isolated writable state; report its exit code."""
+"""
+Run a declared project or PCK with isolated writable state; report its exit code.
+
+Sections: Runfiles, Execution, Staging, Logger, Run.
+"""
 
 import argparse
 import contextlib
@@ -31,6 +35,8 @@ from tools.godot_staging import (
     tree_files,
 )
 from tools.pck import add_pck_files, pck_file_contents
+
+# ==== Runfiles ================================================================
 
 
 class ExecutionError(RuntimeError):
@@ -72,6 +78,9 @@ def locate(key: str) -> Path:
     if found is None:
         raise FileNotFoundError(f"Runfile {key} was not found")
     return found
+
+
+# ==== Execution ===============================================================
 
 
 # The autoload that records the errors Godot reports while the game runs.
@@ -157,6 +166,9 @@ def execute(
     if interrupted_by:
         raise ExecutionError(f"Godot interrupted by {interrupted_by}")
     return process.returncode
+
+
+# ==== Staging =================================================================
 
 
 def runfile_key(short_path: str, workspace: str) -> str:
@@ -338,6 +350,9 @@ def stage_project(project: dict, root: Path, runfile: Callable[[str], Path]) -> 
         apply_metadata(root, index, metadata["assign"], staged)
 
 
+# ==== Logger ==================================================================
+
+
 # Bazel's test contract and the target's env reach the running project.
 _TEST_ENVIRONMENT = (
     "TEST_SRCDIR",
@@ -435,6 +450,9 @@ def recorded_errors(errors: Path) -> list[dict]:
 def _exit_status(code: int) -> int:
     """Godot's exit code; a signal ending Godot maps to the shell's exit status."""
     return code if code >= 0 else 128 - code
+
+
+# ==== Run =====================================================================
 
 
 def _stage_pack(manifest: dict, root: Path, runfile: Callable[[str], Path]) -> Path:

@@ -1,4 +1,8 @@
-"""Extensions, and the extension libraries rules_cc builds for them."""
+"""
+Extensions, and the extension libraries rules_cc builds for them.
+
+Sections: Library placement, godot_extension, godot_cc_extension.
+"""
 
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFrameworkImportInfo", "apple_provider")
@@ -18,6 +22,8 @@ load("//godot/private:variant.bzl", "VARIANT_ATTRS", "variant")
 load("//godot/private:versions.bzl", "dotted_version", "require_supported_godot_minimum")
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "OPERATING_SYSTEM_CONSTRAINTS", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/config:transitions.bzl", "tool_transition")
+
+# ==== Library placement =======================================================
 
 _SHARED = "a shared library (cc_shared_library, cc_import(shared_library), cc_binary(linkshared), one .%s)"
 _FRAMEWORK = "a dynamic framework (apple_dynamic_xcframework_import, apple_dynamic_framework_import)"
@@ -486,6 +492,8 @@ def _library_providers(ctx, library):
         ]))
     return providers
 
+# ==== godot_extension =========================================================
+
 def _extension_impl(ctx):
     require_supported_godot_minimum(ctx.attr.compatibility_minimum)
     resource = _resource_path(ctx.attr.resource_path)
@@ -767,6 +775,8 @@ godot_extension = macro(
     },
     implementation = _godot_extension_impl,
 )
+
+# ==== godot_cc_extension ======================================================
 
 def godot_cc_extension(
         name,

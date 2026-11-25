@@ -1,3 +1,6 @@
+# Sections: Python, Documentation, Consumer dependencies, Android and Godot, Supporting
+# repositories, Tooling.
+
 """
 The repository's own tooling: formatting, linting, conventions, the lanes' work, add-on
 scaffolding and setup checks across every component. It is never published; the components
@@ -28,6 +31,8 @@ single_version_override(
     version = "0.65.0",
 )
 
+# ==== Python ==================================================================
+
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.14")
 
@@ -47,6 +52,8 @@ use_repo(pip, "lint_pypi")
 
 uv = use_extension("@rules_python//python/uv:uv.bzl", "uv", dev_dependency = True)
 uv.configure(version = "0.13.5")
+
+# ==== Documentation ===========================================================
 
 # The ruleset, whose API documentation tools/docs extracts and checks.
 bazel_dep(name = "autoload_rules_godot", version = "0.0.0", dev_dependency = True)
@@ -86,6 +93,8 @@ single_version_override(
     patch_strip = 1,
     patches = ["//tools/docs:rules_android_ndk_doc_visibility.patch"],
 )
+
+# ==== Consumer dependencies ===================================================
 
 # The repository's Godot applications (examples/) and the ruleset's consumer scenarios
 # (e2e/rules_godot/), built as a consumer builds them: every ruleset label is public, and every
@@ -169,6 +178,8 @@ maven.install(
     ],
     resolver = "maven",
 )
+
+# ==== Android and Godot =======================================================
 
 android_sdk = use_extension(
     "@rules_android//rules/android_sdk_repository:rule.bzl",
@@ -357,6 +368,8 @@ register_toolchains(
     dev_dependency = True,
 )
 
+# ==== Supporting repositories =================================================
+
 # rules_android's deploy_info tool uses Gazelle's Go repositories; Gazelle 0.50.0 and newer
 # build their tools with Go 1.24.12 or newer, while the first
 # registered SDK, rules_android's 1.22.4, is older. The root module's SDK takes precedence.
@@ -396,6 +409,8 @@ http_file(
     sha256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
     urls = ["https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"],
 )
+
+# ==== Tooling =================================================================
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
 # --config=buildbuddy selects (buildbuddy.bazelrc); inert without it.

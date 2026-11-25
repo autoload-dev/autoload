@@ -1,4 +1,8 @@
-"""The lanes' work: the repository's own, the add-on modules' from their addon.pkl."""
+"""
+The lanes' work: the repository's own, the add-on modules' from their addon.pkl.
+
+Sections: Work and callers, Selection, Changes.
+"""
 
 import contextlib
 import io
@@ -45,6 +49,9 @@ def checkout(root: Path, modules: dict[str, str]) -> None:
         (root / "addons" / module / "addon.pkl").write_text(
             f'amends "../../tools/addons/Addon.pkl"\nlanes = List({listed})\n'
         )
+
+
+# ==== Work and callers ========================================================
 
 
 class WorkTest(unittest.TestCase):
@@ -210,6 +217,9 @@ class CallersTest(unittest.TestCase):
         self.assertLessEqual(names, set(all_work(ROOT)))
 
 
+# ==== Selection ===============================================================
+
+
 # The modules of a checkout with one add-on module, as `tools/setup/modules.py` finds them.
 MODULES = (
     ".",
@@ -342,6 +352,9 @@ class SelectionTest(unittest.TestCase):
             "[lint] rules_godot skipped: no change since abc1234",
             printed.getvalue(),
         )
+
+
+# ==== Changes =================================================================
 
 
 def git(root: Path, *args: str) -> str:

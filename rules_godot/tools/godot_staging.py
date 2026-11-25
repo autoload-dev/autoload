@@ -3,6 +3,8 @@ Staging and editor runs shared by the Godot project actions and exports.
 
 Neither tool's own code or data is an input of the other's actions, so a change
 to one reruns only that tool's actions.
+
+Sections: Resource paths, Staged files, Actions, Manifest.
 """
 
 import argparse
@@ -32,6 +34,8 @@ from tools.node_ids import with_node_ids
 from tools.pck import EXTENSION_LIST
 from tools.resource_graph import portable_identity, validate_identities
 from tools.resource_uids import with_resource_uids
+
+# ==== Resource paths ==========================================================
 
 
 def _is_resource_path(value: str) -> bool:
@@ -78,6 +82,9 @@ def validate_staged_paths(resource_paths: dict[str, str]) -> None:
     files = {portable_identity(path): path for path in resource_paths}
     for path in resource_paths:
         _check_prefixes(path, files, prefixes)
+
+
+# ==== Staged files ============================================================
 
 
 # Where a staged file's bytes came from: a file, an archive member or content.
@@ -412,6 +419,9 @@ def gd_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+# ==== Actions =================================================================
+
+
 # Godot runs in its own process group, so stopping it reaches its descendants.
 NEW_SESSION = os.name != "nt"
 
@@ -617,6 +627,9 @@ def run_action(
     result["stopped"] = stopped
     _note_ending(stopped, process.returncode, operation)
     return result
+
+
+# ==== Manifest ================================================================
 
 
 def add_manifest_arguments(parser: argparse.ArgumentParser) -> None:

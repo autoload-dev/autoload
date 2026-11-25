@@ -1,3 +1,5 @@
+// Sections: Dart helpers, Callables, Natives and messages, Runtime, Conversion, Scope.
+
 #include "runtime.h"
 
 #include <cstring>
@@ -24,6 +26,9 @@ namespace {
 // The snapshot of a project's scripts, beside the extension library. Android applications
 // deliver only lib*.so files beside it, so every platform uses that name.
 constexpr const char *SNAPSHOT_NAME = "libdart_scripts.so";
+
+// ==== Dart helpers ===========================================================
+
 
 Dart_Handle lookup_library(const char *p_url) {
 	return Dart_LookupLibrary(Dart_NewStringFromCString(p_url));
@@ -116,6 +121,9 @@ bool scalar_to_variant(Dart_Handle p_value, Variant &r_value) {
 	return true;
 }
 
+// ==== Callables ==============================================================
+
+
 // A Dart function that Godot calls as a Callable, such as a signal's target. Two are equal
 // when their functions are equal in Dart, as two tear-offs of one object's method are, so
 // Dart code can disconnect what it connected.
@@ -187,6 +195,9 @@ private:
 	Dart_PersistentHandle function;
 	uint32_t function_hash;
 };
+
+// ==== Natives and messages ===================================================
+
 
 // The functions package:godot/src/natives.dart declares.
 
@@ -270,6 +281,9 @@ void report_message_error(Dart_Handle p_error, Dart_Isolate) {
 }
 
 } // namespace
+
+// ==== Runtime ================================================================
+
 
 Runtime &Runtime::get() {
 	static Runtime runtime;
@@ -373,6 +387,9 @@ bool Runtime::report(Dart_Handle p_handle, const char *p_context) {
 	UtilityFunctions::push_error("Dart: error ", p_context, ": ", Dart_GetError(p_handle));
 	return true;
 }
+
+// ==== Conversion =============================================================
+
 
 Dart_Handle Runtime::object_to_dart(Object *p_object) {
 	if (p_object == nullptr) {
@@ -504,6 +521,9 @@ Dictionary Runtime::map_to_variant(Dart_Handle p_map) {
 	}
 	return dictionary;
 }
+
+// ==== Scope ==================================================================
+
 
 Scope::Scope() {
 	Dart_Isolate isolate = Runtime::get().get_isolate();

@@ -1,4 +1,8 @@
-"""Godot Android applications built by rules_android, without a nested Gradle build."""
+"""
+Godot Android applications built by rules_android, without a nested Gradle build.
+
+Sections: godot_android_runtime, godot_android_application.
+"""
 
 load("@rules_android//rules:rules.bzl", "aar_import", "android_application", "android_binary", "android_library")
 load("//godot/private:macros.bzl", "common_kwargs", "filegroup_kwargs")
@@ -24,6 +28,8 @@ _ACTIVITY_DEPS = [
 ]
 
 _PRIVATE = ["//visibility:private"]
+
+# ==== godot_android_runtime ===================================================
 
 def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     """
@@ -70,6 +76,8 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
         )
         aar = ":" + name + ".engine_aar"
     aar_import(name = name, aar = aar, deps = _SHELL_DEPS, **kwargs)
+
+# ==== godot_android_application ===============================================
 
 def godot_android_application(
         name,

@@ -1,4 +1,9 @@
-"""Compose explicit Godot settings without evaluating arbitrary expressions."""
+"""
+Compose explicit Godot settings without evaluating arbitrary expressions.
+
+Sections: Literals, Statements, Settings, Overrides, Composition, Write back, Command
+line.
+"""
 
 import argparse
 import dataclasses
@@ -11,6 +16,9 @@ from pathlib import Path
 _SECTION = re.compile(r"^\s*\[([^]\r\n]+)\]\s*(?:;.*)?$")
 # A comment line, such as Godot's "; param=value" header, assigns nothing.
 _ASSIGNMENT = re.compile(r'^\s*(?!;)("(?:[^"\\\r\n]|\\.)*"|[^=\r\n]+?)\s*=')
+# ==== Literals ================================================================
+
+
 _CONSTRUCTORS = {
     "Color",
     "Vector2",
@@ -144,6 +152,9 @@ def validate_literal(value: str) -> str:
     return value
 
 
+# ==== Statements ==============================================================
+
+
 class _Scan:
     """Track the string literals and bracket depth of Godot text across lines."""
 
@@ -218,6 +229,9 @@ def statement_groups(text: str) -> list[tuple[str, str | None, str | None]]:
     if pending:
         raise ValueError("Unterminated statement in base project.godot")
     return groups
+
+
+# ==== Settings ================================================================
 
 
 # The purposes of a project.godot: the game's, the context every import reads, the
@@ -406,6 +420,9 @@ def setting_key(section: str | None, key: str) -> str:
     return f"{section}/{key}" if section else key
 
 
+# ==== Overrides ===============================================================
+
+
 def left_out(
     base: str,
     kinds: dict[str, dict],
@@ -520,6 +537,9 @@ def enable_plugins(text: str, plugins: Iterable[str]) -> str:
         return text
     paths = ", ".join(json.dumps(path) for path in sorted(enabled))
     return text.rstrip() + f"\n\n[editor_plugins]\nenabled=PackedStringArray({paths})\n"
+
+
+# ==== Composition =============================================================
 
 
 @dataclasses.dataclass(frozen=True)
@@ -712,6 +732,9 @@ def shadowed(base: str, flag_keys: dict[str, str]) -> list[str]:
     return found
 
 
+# ==== Write back ==============================================================
+
+
 def _statements(text: str) -> dict[str, str]:
     """Map each setting to its statement, ending in a newline; the last one wins."""
     return {
@@ -814,6 +837,9 @@ def write_back(
         authored = _replace(authored, setting, after.get(setting))
         written.append(setting)
     return WriteBack(authored, written, reported)
+
+
+# ==== Command line ============================================================
 
 
 def _compose(arguments: list[str]) -> None:

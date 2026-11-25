@@ -1,4 +1,8 @@
-"""Engine components: one editor or runtime slot with its provenance and toolchain registration."""
+"""
+Engine components: one editor or runtime slot with its provenance and toolchain registration.
+
+Sections: Component provenance, Editor component, Runtime component, Component macros.
+"""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
@@ -13,6 +17,8 @@ load("//godot/private:versions.bzl", "require_supported_godot_version", "require
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "CPU_TABLE", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 
 visibility(["//godot/..."])
+
+# ==== Component provenance ====================================================
 
 _VARIANT_SETTINGS = {
     "debug": Label("//godot:debug"),
@@ -106,6 +112,8 @@ def _provenance(ctx, role, version, kind, origin, producer = None, artifact_dige
         renderers = producer.renderers if producer else None,
     )
 
+# ==== Editor component ========================================================
+
 def _editor_component_impl(ctx):
     target = ctx.attr.editor
     godot = _forwarded(target, "editor", ctx.label, ctx.attr.engine)
@@ -143,6 +151,8 @@ _editor_component = rule(
         "engine": attr.string(),
     },
 )
+
+# ==== Runtime component =======================================================
 
 def _declared_runtime(ctx, target):
     """GodotRuntimeInfo for a plain desktop template file without producer metadata."""
@@ -257,6 +267,8 @@ _ios_runtime_component = rule(
         "runtime": attr.label(mandatory = True, allow_files = True, aspects = IOS_PAYLOAD_ASPECTS),
     },
 )
+
+# ==== Component macros ========================================================
 
 def _engine_setting(name, engine, visibility, tags):
     """

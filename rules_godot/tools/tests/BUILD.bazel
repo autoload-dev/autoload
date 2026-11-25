@@ -1,4 +1,11 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Writes empty Godot PCKs for the tests of the tools that write and read packs.
+py_library(
+    name = "empty_pck",
+    testonly = True,
+    srcs = ["empty_pck.py"],
+)
 
 py_test(
     name = "common_content_test",
@@ -77,15 +84,70 @@ py_test(
 )
 
 py_test(
-    name = "actions_test",
+    name = "action_plugin_test",
     size = "small",
-    srcs = ["actions_test.py"],
+    srcs = ["action_plugin_test.py"],
+    deps = [
+        # Carries the action plugin, data of the tools that run editor actions only.
+        "//tools:godot_actions_lib",
+        "//tools:godot_staging_lib",
+    ],
+)
+
+py_test(
+    name = "godot_actions_test",
+    size = "small",
+    srcs = ["godot_actions_test.py"],
     deps = [
         "//tools:godot_actions_lib",
+        "//tools:godot_staging_lib",
+    ],
+)
+
+py_test(
+    name = "godot_export_test",
+    size = "small",
+    srcs = ["godot_export_test.py"],
+    deps = [
+        ":empty_pck",
         "//tools:godot_export_lib",
+        "//tools:node_ids_lib",
+    ],
+)
+
+py_test(
+    name = "godot_staging_test",
+    size = "small",
+    srcs = ["godot_staging_test.py"],
+    deps = [
         "//tools:godot_staging_lib",
         "//tools:mapped_paths_lib",
+    ],
+)
+
+py_test(
+    name = "mapped_paths_test",
+    size = "small",
+    srcs = ["mapped_paths_test.py"],
+    deps = ["//tools:mapped_paths_lib"],
+)
+
+py_test(
+    name = "pack_contents_test",
+    size = "small",
+    srcs = ["pack_contents_test.py"],
+    deps = [
+        "//tools:godot_export_lib",
         "//tools:pack_contents_lib",
+    ],
+)
+
+py_test(
+    name = "pck_test",
+    size = "small",
+    srcs = ["pck_test.py"],
+    deps = [
+        ":empty_pck",
         "//tools:pck_lib",
     ],
 )

@@ -8,6 +8,8 @@ sandbox or on a remote executor.
 
 Generated files do not exist when the graph is rendered. Their includes are the include
 directives that the code of their generator writes, as literal paths or as templates.
+
+Sections: Inputs, Include resolution, Components.
 """
 
 import os
@@ -49,6 +51,9 @@ _OPTION_HEADER = re.compile(r'^-D\w+=\\?[<"](.+?)\\?[>"]$')
 _INCLUDE_OPTIONS = ("-isystem", "-iquote", "-I")
 _PLACEHOLDER = re.compile(r"\{[^}]*\}")
 _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
+
+
+# ==== Inputs ==================================================================
 
 
 class Generated(NamedTuple):
@@ -101,6 +106,9 @@ def option_includes(copts: Iterable[str]) -> tuple[list[str], list[str]]:
     ]
     directories = [name for option in copts if (name := _include_directory(option))]
     return directories, headers
+
+
+# ==== Include resolution ======================================================
 
 
 class _Resolver:
@@ -249,6 +257,9 @@ def include_graph(
             )
             pending.extend(graph[path])
     return graph
+
+
+# ==== Components ==============================================================
 
 
 class _Components:

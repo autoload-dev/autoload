@@ -4,6 +4,8 @@ The tag evaluation of the godot_engines module extension.
 The planner takes the extension's modules and returns the repositories to declare; the
 extension instantiates them. Errors go through `_fail`, so a Starlark unit test with mocked
 modules collects them; the planner returns None after an error.
+
+Sections: Prebuilt plan, Prebuilt slots, Missing runtimes, Tag selection, Declarations.
 """
 
 load("//godot/engine/private:archives.bzl", "template_target")
@@ -13,6 +15,8 @@ load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recip
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
+
+# ==== Prebuilt plan ===========================================================
 
 def _release_urls(tag, slug):
     """Godot's CDN URL, then the GitHub release URL, of Godot_v<tag>_<slug>."""
@@ -159,6 +163,8 @@ def _missing_runtime_source(tag, release):
         return None
     return (release or {}).get("source")
 
+# ==== Prebuilt slots ==========================================================
+
 def prebuilt_slots(tag, plan):
     """
     Return the hub slots of a prebuilt plan.
@@ -256,6 +262,8 @@ def _android_runtime_slots(tag, plan):
         for cpu in plan.android_cpus
     ]
 
+# ==== Missing runtimes ========================================================
+
 # The build policy of the runtimes a prebuilt engine builds from its release's sources: the
 # modules of Godot's official builds.
 _MISSING_RUNTIME_POLICY = {
@@ -321,6 +329,8 @@ def missing_runtimes(tag, plan, slots):
         android = rows_plan.android,
     )
 
+# ==== Tag selection ===========================================================
+
 def _scalar(value):
     return str(value) if type(value) == "Label" else value
 
@@ -385,6 +395,8 @@ def _requests(modules, tag_attributes):
         for kind in ["prebuilt", "source", "source_build"]
         for tag in getattr(mod.tags, kind)
     ]
+
+# ==== Declarations ============================================================
 
 def _declaration(rule, **attrs):
     return struct(rule = rule, attrs = attrs)

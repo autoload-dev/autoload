@@ -4,6 +4,8 @@ Internal source-generation contract used by generated engine repositories.
 Consumer BUILD files should use godot/engine:defs.bzl and repositories.bzl.
 Generated repositories with consumer-chosen names load it, so its load visibility
 is public.
+
+Sections: Source generator, Revision and headers, Source library and binary.
 """
 
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
@@ -21,6 +23,8 @@ visibility("public")
 # The macro definition analysis, for generated engine BUILD files.
 godot_define_analysis = _godot_define_analysis
 godot_source_defines = _godot_source_defines
+
+# ==== Source generator ========================================================
 
 def _generator_impl(ctx):
     outputs = ctx.outputs.outs
@@ -101,6 +105,8 @@ def godot_source_generator(name, spec, inputs, outs):
         logical_outputs = outs,
         visibility = ["//visibility:private"],
     )
+
+# ==== Revision and headers ====================================================
 
 def _revision_impl(ctx):
     args = ctx.actions.args()
@@ -199,6 +205,8 @@ godot_source_headers = rule(
     },
     provides = [CcInfo],
 )
+
+# ==== Source library and binary ===============================================
 
 GodotEngineVersionInfo = provider(
     doc = "The version a source-built engine names, carried by the recipe outputs that declare it.",

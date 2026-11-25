@@ -1,4 +1,8 @@
-"""Configuration preservation, strict literal handling and the project.godot of each purpose."""
+"""
+Configuration preservation, strict literal handling and the project.godot of each purpose.
+
+Sections: Compose project, Write back.
+"""
 
 import functools
 import json
@@ -32,6 +36,9 @@ def _runfile(name: str) -> str:
         / "godot/private/tests"
         / name
     ).read_text(encoding="utf-8")
+
+
+# ==== Compose project =========================================================
 
 
 # The setting kinds and sections of Godot 4.7, from godot/private/engine/setting_kinds.bzl.
@@ -592,6 +599,9 @@ class ProjectConfigTest(unittest.TestCase):
                 )
                 self.assertIn(event, text)
                 self.assertIn(typed_array, text)
+
+
+# ==== Write back ==============================================================
 
 
 _AUTHORED = """; authored comment

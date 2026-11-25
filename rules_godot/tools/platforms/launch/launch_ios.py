@@ -5,6 +5,8 @@ rules_apple builds the bundle; this launcher installs it with simctl or devicect
 rules_apple's own runner copies the bundle with the host's rsync, whose openrsync on
 macOS ignores --chmod=u+w, so its copy stays read-only and `simctl install` fails with
 NSPOSIXErrorDomain 13. This launcher makes its copy writable itself.
+
+Sections: Device listing, Simulator launch, Device launch.
 """
 
 from __future__ import annotations
@@ -103,6 +105,9 @@ def writable_copy(bundle: Bundle, directory: str) -> str:
         shutil.copytree(bundle.source, path, symlinks=True)
     launch_common.run(["chmod", "-R", "u+w", path])
     return path
+
+
+# ==== Device listing ==========================================================
 
 
 def xcrun(
@@ -222,6 +227,9 @@ class Simulators:
     def newness(self, identifier: str) -> tuple[int, int]:
         index, entry = self.types.get(identifier, (-1, {}))
         return entry.get("minRuntimeVersion", 0), index
+
+
+# ==== Simulator launch ========================================================
 
 
 def _suits(
@@ -453,6 +461,9 @@ def launch_on_simulator(
             "simctl", "terminate", simulator.udid, bundle.bundle_id, check=False
         ),
     )
+
+
+# ==== Device launch ===========================================================
 
 
 def select_device(options: launch_common.Options, found: Sequence[Device]) -> Device:

@@ -3,6 +3,9 @@ Translate Godot's configure-only SCons graph to rules_cc targets.
 
 SCons is used to evaluate the upstream feature logic, not to execute a compiler,
 linker, source generator, or build cache. Compiler actions belong to Bazel.
+
+Sections: Version and profile, Renderer, Compile options, Environment reads, Swift
+modules, Capture, Options and modules, Pinning, Command line.
 """
 
 import argparse
@@ -39,6 +42,9 @@ except ImportError:
     from module_graph import module_closure, module_dependencies
     from render import render, render_unpinned
     from source_tree import SOURCE_SUFFIXES, relative, write_json
+
+
+# ==== Version and profile =====================================================
 
 
 _VERSION_FIELDS = ("major", "minor", "patch", "status")
@@ -183,6 +189,9 @@ def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
             "The build profile contradicts the recipe's build_options: "
             + ", ".join(conflicts)
         )
+
+
+# ==== Renderer ================================================================
 
 
 # Godot's rendering methods, as project settings name them, and the RenderingDevice ones.
@@ -358,6 +367,9 @@ def is_directory_action(actions: Sequence[Any]) -> bool:
         and getattr(getattr(actions[0], "execfunction", None), "__name__", "")
         == "MkdirFunc"
     )
+
+
+# ==== Compile options =========================================================
 
 
 _APPLE_TOOLCHAIN_WARNINGS = [
@@ -538,6 +550,9 @@ def normalize_command(
         else:
             copts.append(option)
     return copts, includes
+
+
+# ==== Environment reads =======================================================
 
 
 _ALLOWED_ENV_METHODS = ("get", "NoCache", "Detect")
@@ -853,6 +868,9 @@ def include_closure(root: Path, sources: Collection[str]) -> set[str]:
     return found
 
 
+# ==== Swift modules ===========================================================
+
+
 _SWIFT_VALUE_OPTIONS = {
     "-import-objc-header": "bridging_header",
     "-emit-objc-header-path": "generated_header",
@@ -971,6 +989,9 @@ def merge_swift_module_options(
                 "generated_header": superset["generated_header"] or generated_header,
             }
     raise ValueError("Upstream Swift bridging headers have no common declared superset")
+
+
+# ==== Capture =================================================================
 
 
 _OBJECT_SUFFIXES = (".o", ".os")
@@ -1296,6 +1317,9 @@ def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any
     return capture.graph(args.selected_modules)
 
 
+# ==== Options and modules =====================================================
+
+
 PROTECTED_OPTIONS = {
     "platform",
     "arch",
@@ -1424,6 +1448,9 @@ def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]
     return names
 
 
+# ==== Pinning =================================================================
+
+
 # The files whose behavior a pinned graph depends on: the capture and its translation.
 # Rendering a graph, render.py and include_graph.py, changes no pin.
 _PIN_TOOLS = (
@@ -1533,6 +1560,9 @@ def stand_in_host(root: Path, platform: str, directory: Path) -> None:
 def write_pin(path: Path, digest: str, graph: Mapping[str, Any]) -> None:
     """Write one recipe's pin, the entry a lock file holds for it."""
     write_json(path, {"digest": digest, "graph": graph})
+
+
+# ==== Command line ============================================================
 
 
 def _argument_parser() -> argparse.ArgumentParser:

@@ -1,4 +1,8 @@
-"""Import units: the import of one unit's own files, its class fragment, interface and validation."""
+"""
+Import units: the import of one unit's own files, its class fragment, interface and validation.
+
+Sections: Unit import, Class fragment and interface, Validation.
+"""
 
 load("//godot/private:actions.bzl", "PATH_MAPPING", "add_output_roots", "editor_manifest", "write_manifest")
 load("//godot/private:configuration.bzl", "merge_configuration")
@@ -8,6 +12,8 @@ load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_modes")
 load("//godot/private:paths.bzl", "mapped_path", "mapped_paths", "merge_resource_paths", "with_extensions_for")
 
 visibility(["//godot", "//godot/private/config"])
+
+# ==== Unit import =============================================================
 
 # Script and scene members that only the exported game runs; no import reads them.
 GAME_ONLY = (".gd", ".tscn", ".scn")
@@ -143,6 +149,8 @@ def import_unit(ctx, context, unit, staging):
     )
     return out
 
+# ==== Class fragment and interface ============================================
+
 def _scripts(files, ignored):
     """The GDScript files among a unit's own that Godot does not ignore."""
     return {path: file for path, file in files.items() if path.endswith(".gd") and path not in ignored}
@@ -236,6 +244,8 @@ def unit_interface(ctx, unit, own_import):
         execution_requirements = PATH_MAPPING,
     )
     return struct(interface = out, interfaced = interfaced.keys())
+
+# ==== Validation ==============================================================
 
 def _closure_files(own, uses):
     """

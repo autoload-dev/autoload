@@ -4,6 +4,8 @@ Install an APK or App Bundle on an Android device or emulator, launch it, stream
 The launcher uses the host's Android SDK tools, from ANDROID_SDK_ROOT, ANDROID_HOME or
 PATH, because an adb client must match the adb server already serving the host's
 devices.
+
+Sections: SDK tools, Virtual devices, Emulator, App launch.
 """
 
 from __future__ import annotations
@@ -75,6 +77,9 @@ _FAILURE = re.compile(r"\b(INSTALL_[A-Z_]+|DELETE_FAILED_[A-Z_]+)")
 _IMAGE_TAGS = ("google_apis_playstore", "google_apis", "default")
 
 
+# ==== SDK tools ===============================================================
+
+
 @dataclasses.dataclass(frozen=True)
 class Device:
     """A device adb lists."""
@@ -143,6 +148,9 @@ class Adb:
         """Run a command in the device's shell, which receives it as one string."""
         command = " ".join(shlex.quote(word) for word in words)
         return self.run("shell", command, check=check).stdout.strip()
+
+
+# ==== Virtual devices =========================================================
 
 
 def devices(adb: Adb) -> list[Device]:
@@ -362,6 +370,9 @@ def choose_avd(emulator: str, apk: str | None) -> str:
     return create_avd(abi or host_abi(), apk)
 
 
+# ==== Emulator ================================================================
+
+
 def _wait_for_boot(
     device: Adb, deadline: float, check: Callable[[], None] | None = None
 ) -> None:
@@ -485,6 +496,9 @@ def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> 
         raise LaunchError("no device runs; connect one or start an emulator")
     emulator = host_tool("emulator", "emulator")
     return start_emulator(adb, emulator, choose_avd(emulator, apk), options)
+
+
+# ==== App launch ==============================================================
 
 
 def install(device: Adb, apk: str, package: str, options: launch_common.Options) -> None:

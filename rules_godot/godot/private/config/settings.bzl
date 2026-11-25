@@ -1,4 +1,9 @@
-"""Export platform state and validation; not independent consumer flags."""
+"""
+Export platform state and validation; not independent consumer flags.
+
+Sections: Settings, CPU table and errors, Constraints and tags, Platform slices,
+Dispatch conditions, Configured context.
+"""
 
 load("//godot/private:flags.bzl", "FlagInfo", "string_flag")
 
@@ -24,6 +29,8 @@ MERGE_ANDROID_MANIFEST_PERMISSIONS = "//command_line_option:merge_android_manife
 TOOL = str(Label("//godot/private/config:tool"))
 VARIANT = str(Label("//godot:variant"))
 
+# ==== Settings ================================================================
+
 export_platform_setting = string_flag
 
 def _setting_impl(ctx):
@@ -40,6 +47,8 @@ tool_setting = rule(
     implementation = _setting_impl,
     build_setting = config.bool(flag = False),
 )
+
+# ==== CPU table and errors ====================================================
 
 # The CPUs Godot can express, keyed by Godot's CPU feature tag, the CPU name rules_godot
 # uses internally. `constraint` is the canonical @platforms//cpu value and `aliases` the
@@ -153,6 +162,8 @@ def export_platform_error(operating_system, cpus, environment, parents = []):
         _operating_system_error(operating_system, cpus, environment)
     )
 
+# ==== Constraints and tags ====================================================
+
 OPERATING_SYSTEM_CONSTRAINTS = {operating_system: Label("@platforms//os:" + operating_system) for operating_system in ["linux", "macos", "android", "ios"]}
 CPU_CONSTRAINTS = {cpu: row.constraint for cpu, row in CPU_TABLE.items()}
 
@@ -224,6 +235,8 @@ def ios_cpu(environment, cpu):
         The CPU without the ios_ prefix, as --ios_multi_cpus spells it.
     """
     return CPU_TABLE[cpu].apple_cpus[environment]
+
+# ==== Platform slices =========================================================
 
 _APPLE = Label("@apple_support//constraints:apple")
 
@@ -410,6 +423,8 @@ def export_platform_declarations(
     })
     return declarations
 
+# ==== Dispatch conditions =====================================================
+
 # The flag values of a desktop target platform without an export platform.
 _UNEXPORTED = {
     ":operating_system": "",
@@ -462,6 +477,8 @@ def _dispatch_conditions():
 # effective operating system/CPU/environment contradictions before an application backend
 # enters analysis; configured_context validates the declared CPU set.
 DISPATCH_CONDITIONS = _dispatch_conditions()
+
+# ==== Configured context ======================================================
 
 # The constraint values target_platform() reads, as private rule attributes.
 PLATFORM_ATTRS = {

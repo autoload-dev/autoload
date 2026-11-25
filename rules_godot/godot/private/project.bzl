@@ -1,4 +1,8 @@
-"""Projects as configuration contexts: their configuration files and the add-ons they name."""
+"""
+Projects as configuration contexts: their configuration files and the add-ons they name.
+
+Sections: Configuration files, Named add-ons, godot_project.
+"""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
@@ -14,6 +18,8 @@ load("//godot/private/config:settings.bzl", "ENGINE_FEATURE_TAGS", "entry_featur
 load("//godot/private/engine:setting_kinds.bzl", "engine_sections", "setting_kinds")
 
 visibility("//godot")
+
+# ==== Configuration files =====================================================
 
 _PURPOSE_MNEMONICS = {
     "runtime": "GodotProjectConfig",
@@ -171,6 +177,8 @@ def configuration_kinds(ctx):
     version = ctx.toolchains[EDITOR_TOOLCHAIN].godot.version
     return struct(kinds = setting_kinds(version), sections = engine_sections(version))
 
+# ==== Named add-ons ===========================================================
+
 def _importer_index(named):
     """
     Index the importers of named add-ons by the suffixes their importer roles declare.
@@ -225,6 +233,8 @@ _named_addons = rule(
 def named_addons_label(project):
     """The label of the helper that holds the add-ons the project with this label names."""
     return project.same_package_label(project.name + ".named_addons")
+
+# ==== godot_project ===========================================================
 
 def _custom_features(settings):
     """

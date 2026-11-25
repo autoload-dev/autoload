@@ -1,6 +1,12 @@
-"""Stable resource paths without leaking Bazel output directory names."""
+"""
+Stable resource paths without leaking Bazel output directory names.
+
+Sections: Resource paths, Sidecars and ignores, Namespace validation, Path resolution.
+"""
 
 visibility(["//godot/engine/private", "//godot/extension", "//godot/platforms/private", "//godot/private/tests"])
+
+# ==== Resource paths ==========================================================
 
 def runfile_key(ctx, file):
     """
@@ -181,6 +187,8 @@ def merge_resource_paths(
         if owners != None and path not in owners:
             owners[path] = origin
 
+# ==== Sidecars and ignores ====================================================
+
 # The files Godot writes beside a file, its import settings and its UID, which it never
 # treats as resources of their own, in any case; tools/godot_files.py holds the same rule.
 _SIDECAR_SUFFIXES = (".import", ".uid")
@@ -236,6 +244,8 @@ def godot_ignored(paths):
         for path in paths
         if path.startswith(".") or "/." in path or (directories and path.startswith(directories))
     }
+
+# ==== Namespace validation ====================================================
 
 def _portable_paths(resource_paths, owners):
     """Fail for two paths that differ only by case; return the paths by their folded case."""
@@ -299,6 +309,8 @@ def validate_namespace(resource_paths, owners = None):
                     "use different directory capitalization (from %s)"
                 ) % (spelling, ancestor, child))
             portable_directories[folded] = ancestor
+
+# ==== Path resolution =========================================================
 
 def collect_resource_paths(ctx):
     """

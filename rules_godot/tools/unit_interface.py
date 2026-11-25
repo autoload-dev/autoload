@@ -25,6 +25,8 @@ yields the same interface and Bazel reruns no dependent validation:
 
 Every other file of the unit, such as a scene, a resource or a script that is no UTF-8 text,
 is its own interface and dependents stage it as it is.
+
+Sections: Script interface, Asset interface.
 """
 
 import argparse
@@ -72,6 +74,9 @@ IMPORTED_CLASSES = {
     "wav": "AudioStreamWAV",
     "wavefront_obj": "ArrayMesh",
 }
+
+
+# ==== Script interface ========================================================
 
 
 def _logical_lines(tokens: list[Token]) -> list[list[Token]]:
@@ -234,6 +239,9 @@ def script_interface(source: str) -> str:
         pieces += [source[last:start], " ", statement]
         last = end
     return "".join(pieces) + source[last:]
+
+
+# ==== Asset interface =========================================================
 
 
 class AssetInterface(NamedTuple):

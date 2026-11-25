@@ -6,6 +6,8 @@ action's declared inputs or arguments; an unrelated edit leaves the action cache
 not. The `godot_actions` aspect collects the Godot actions a target reaches through its
 dependency graph, so a test can assert both sides for the action a change must or must not
 rerun.
+
+Sections: Action aspect, Built graph, Path mapping.
 """
 
 load("//godot/private:paths.bzl", "mapped_path")
@@ -17,6 +19,8 @@ visibility([
     "//godot/private/config/tests/...",
     "//godot/private/tests/...",
 ])
+
+# ==== Action aspect ===========================================================
 
 GodotActionsInfo = provider(
     doc = "Godot actions a target reaches through its dependencies, by owner label.",
@@ -143,6 +147,8 @@ def expect_mentions(env, target, mnemonic, text, *, mentioned = True):
     env.expect.where(mnemonic = mnemonic).that_int(len(actions)).is_greater_than(0)
     for action in actions:
         env.expect.where(mnemonic = mnemonic, text = text).that_bool(_mentions(action, text)).equals(mentioned)
+
+# ==== Built graph =============================================================
 
 # The import of each unit is a directory template (`map_directory`), which analysis does
 # not show: no target lists it among its actions. A build that needs a unit's import
@@ -405,6 +411,8 @@ def expect_not_built(env, graph, mnemonic, *, owner = None):
     env.expect.where(mnemonic = mnemonic, owner = owner).that_collection(
         [_describe(entry) for entry in _selected(graph, mnemonic, owner, None)],
     ).contains_exactly([])
+
+# ==== Path mapping ============================================================
 
 def _mapped(text):
     """Remove the configuration from each output path in text, as path mapping does."""

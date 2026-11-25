@@ -15,6 +15,8 @@ the manifest names them.
 An engine also has to contain the code of the CPU it is linked or packaged
 for: an Android AAR its engine library for the ABI, and the static libraries of an
 iOS engine objects of the CPU and SDK.
+
+Sections: Versions, Native libraries, Platform checks, Command line.
 """
 
 import argparse
@@ -35,6 +37,9 @@ _LIBRARY_VERSION = re.compile(
     rb"Godot Engine v(\d+\.\d+(?:\.\d+)?\.[a-z]+\d*(?:\.[\w-]+)*)"
 )
 _ENGINE_LIBRARY = "libgodot_android.so"
+
+
+# ==== Versions ================================================================
 
 
 @dataclass(frozen=True)
@@ -70,6 +75,9 @@ def manifest_versions(path: Path) -> set[str]:
         for element in ElementTree.parse(path).getroot().iter("meta-data")
         if element.get(ANDROID + "name") == "org.godotengine.library.version"
     }
+
+
+# ==== Native libraries ========================================================
 
 
 _CHUNK = 1 << 24
@@ -169,6 +177,9 @@ def engine_abis(path: Path) -> set[str]:
         }
 
 
+# ==== Platform checks =========================================================
+
+
 _IOS_ENVIRONMENTS = {"ios_device": "device", "ios_simulator": "Simulator"}
 _IOS_EXPORT_PLATFORMS = {
     ("arm64", "ios_device"): "ios_arm64",
@@ -255,6 +266,9 @@ def _check_rendering_method(args: argparse.Namespace) -> None:
         [method for method in args.renderers.split(",") if method],
         "mobile" if mobile else "forward_plus",
     )
+
+
+# ==== Command line ============================================================
 
 
 def _parser() -> argparse.ArgumentParser:
