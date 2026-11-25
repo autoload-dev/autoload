@@ -1,3 +1,5 @@
+"""The options the define analysis treats as definitions, and the rules it renders."""
+
 import unittest
 
 from tools.engine.define_analysis import Library, analysis_rules, is_definition

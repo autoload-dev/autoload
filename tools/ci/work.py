@@ -259,6 +259,29 @@ WORK = (
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
     # The lint aspects in every module; the workflows' lint is a test.
     Work("lint", "quality", ".", every_module(LINT_COMMAND, inputs=LINT_INPUTS)),
+    # The files no lint aspect sees, across the tree: GDScript's declaration order through
+    # gdlint (.gdlintrc), and the heading structure of Markdown through rumdl (.rumdl.toml).
+    # Both read the checkout's files, which a test's sandbox does not hold.
+    Work(
+        "lint:gdscript",
+        "quality",
+        ".",
+        ("bazel run //tools/lint:gdscript",),
+        inputs=files(
+            "*.gd",
+            ".gdlintrc",
+            "tools/lint/gdscript*",
+            "tools/lint/requirements.txt",
+            "tools/lint/BUILD.bazel",
+        ),
+    ),
+    Work(
+        "lint:markdown",
+        "quality",
+        ".",
+        ("bazel run @multitool//tools/rumdl:workspace_root -- check",),
+        inputs=files("*.md", ".rumdl.toml", "multitool.lock.json"),
+    ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     # The generated files: lock files and the source-built engines' pins.
     Work(

@@ -48,6 +48,7 @@ From the repository root:
 aspect doctor                             # check the setup and say what is missing
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
 aspect lint                               # lint the current module's Python with Ruff and ty
+aspect work lint:gdscript lint:markdown   # lint GDScript's declaration order and Markdown's headings
 aspect generate                           # regenerate lock files
 aspect work docs                          # after changing the ruleset's public API
 aspect code-health                        # Code Health of the change since origin/main

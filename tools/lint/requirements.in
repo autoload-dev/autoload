@@ -1,0 +1,2 @@
+# The Python packages of the repository's linters; requirements.txt locks them.
+gdtoolkit==4.5.0

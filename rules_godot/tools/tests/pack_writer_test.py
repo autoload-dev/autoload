@@ -1,3 +1,5 @@
+"""The pack writer: exported imports, raw paths and the PCK it writes."""
+
 import json
 import struct
 import tempfile

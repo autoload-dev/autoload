@@ -1,0 +1,33 @@
+# gdlint (//tools/lint:gdscript) checks GDScript's declaration order of Godot's style guide,
+# class-definitions-order, with its default order; the repository adopts no other rule.
+disable:
+  - class-load-variable-name
+  - class-name
+  - class-variable-name
+  - comparison-with-itself
+  - constant-name
+  - duplicated-load
+  - enum-element-name
+  - enum-name
+  - expression-not-assigned
+  - function-argument-name
+  - function-arguments-number
+  - function-name
+  - function-preload-variable-name
+  - function-variable-name
+  - load-constant-name
+  - loop-variable-name
+  - max-file-lines
+  - max-line-length
+  - max-public-methods
+  - max-returns
+  - mixed-tabs-and-spaces
+  - no-elif-return
+  - no-else-return
+  - private-method-call
+  - signal-name
+  - sub-class-name
+  - tab-characters
+  - trailing-whitespace
+  - unnecessary-pass
+  - unused-argument

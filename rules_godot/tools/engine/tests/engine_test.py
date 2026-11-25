@@ -1,3 +1,8 @@
+"""
+The engine tools: build profiles, configuration, generators, include and module graphs,
+pins and rendering.
+"""
+
 import argparse
 import json
 import os

@@ -1,3 +1,5 @@
+"""The add-on modules' declarations in the root module."""
+
 import unittest
 
 from tools.addons import declarations

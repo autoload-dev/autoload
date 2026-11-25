@@ -1,3 +1,5 @@
+"""Godot's file naming: sidecars, UID files and hidden paths."""
+
 import unittest
 
 from tools.godot_files import (

@@ -2,13 +2,13 @@ extends VBoxContainer
 
 signal pause_requested
 signal options_requested
+var feedback_time := 0.0
+var feedback_tween: Tween
 @onready var pause_button: Button = $TopBar/PauseButton
 @onready var options_button: Button = $TopBar/OptionsButton
 @onready var points: Label = $Points
 @onready var progress_bar: ProgressBar = $Progress
 @onready var feedback: Label = $Feedback
-var feedback_time := 0.0
-var feedback_tween: Tween
 
 
 func _ready() -> void:

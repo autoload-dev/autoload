@@ -7,13 +7,13 @@ const LevelDefinition = preload("res://main/run/level_definition.gd")
 const BAND_ASPECT := 1.2
 ## Height in the garden textures where the islands' tops sit, as a share of the band.
 const ISLAND_LINE := 0.6
-@onready var sky: TextureRect = $Sky
 var layers: Array[TextureRect] = []
 var tile_count := 0
 
 
 var far_texture: Texture2D
 var near_texture: Texture2D
+@onready var sky: TextureRect = $Sky
 
 
 func configure(level: LevelDefinition) -> void:

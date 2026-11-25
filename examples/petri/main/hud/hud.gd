@@ -9,6 +9,7 @@ signal clear_requested
 const BASE_INSETS := Vector4(20, 16, 20, 16)
 const CHIP_HEIGHT := 46
 
+var _preset_group := ButtonGroup.new()
 @onready var title_panel: PanelContainer = $Layout/Top/TitlePanel
 @onready var stats_label: RichTextLabel = $Layout/Top/StatsPanel/Stats
 @onready var hint: Label = $Layout/Bottom/Hint
@@ -16,7 +17,6 @@ const CHIP_HEIGHT := 46
 @onready var actions: HBoxContainer = $Layout/Bottom/Actions
 @onready var pause_button: Button = $Layout/Bottom/Actions/Pause
 @onready var clear_button: Button = $Layout/Bottom/Actions/Clear
-var _preset_group := ButtonGroup.new()
 
 
 func _ready() -> void:

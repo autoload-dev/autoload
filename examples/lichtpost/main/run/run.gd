@@ -10,8 +10,6 @@ const RunView = preload("res://main/run/view/run_view.gd")
 const Sound = preload("res://main/components/sound/sound.gd")
 ## Seconds per rule tick: the route model runs at a fixed 60 Hz.
 const TICK := 1.0 / 60.0
-@onready var view: RunView = $View
-@onready var sound: Sound = $SoundCues
 var model: Route = Route.new()
 var level: LevelDefinition
 var replay: Replay = null
@@ -25,6 +23,8 @@ var active := false
 var view_ready := false
 ## Model position before the latest tick; the view blends towards the current one.
 var previous := Vector2.ZERO
+@onready var view: RunView = $View
+@onready var sound: Sound = $SoundCues
 
 
 func load_replay(path: String) -> bool:
