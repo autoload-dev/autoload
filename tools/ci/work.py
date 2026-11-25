@@ -395,7 +395,9 @@ WORK = (
         ("python3 -m tools.android.requirements", "python3 tools/android/sdk.py"),
         android=True,
     ),
-    # Already built Android and iOS artifacts, inspected on macOS.
+    # The smoke applications' Android and iOS artifacts, inspected on macOS. They must be built
+    # in the default profile first, as the recipe builds them
+    # (docs/internal/verification-recipes.md); the lanes build theirs in their own profiles.
     Work(
         "inspect:mobile",
         None,

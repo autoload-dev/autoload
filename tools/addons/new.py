@@ -143,9 +143,14 @@ def declaration(directory: str) -> str:
 
 
 def declare(directory: str, root: Path) -> Path:
-    """Declare a new add-on module in the root's MODULE.bazel, after the others."""
+    """
+    Declare a new add-on module in the root's MODULE.bazel, after the others, unless a run
+    that ended before its cleanup, such as the self-test's, left it declared.
+    """
     manifest = root / "MODULE.bazel"
     text = manifest.read_text()
+    if declaration(directory) in text:
+        return manifest
     start = text.index(DECLARATIONS)
     # After the last add-on module's override, or else the comment that introduces them.
     overrides = list(re.finditer(r'\n    path = "addons/[^"]+",\n\)\n', text))

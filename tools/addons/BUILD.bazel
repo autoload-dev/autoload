@@ -69,3 +69,13 @@ py_test(
     srcs = ["lanes_test.py"],
     deps = [":lanes_lib"],
 )
+
+py_test(
+    name = "selftest_test",
+    size = "small",
+    srcs = ["selftest_test.py"],
+    deps = [
+        ":lanes_lib",
+        ":test_support",
+    ],
+)

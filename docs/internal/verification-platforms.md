@@ -72,7 +72,7 @@ the [verification policy](verification.md#when-to-verify) describes.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
-as `test:example:sqlite`, uses `--build_tests_only` over its example subtree, so new test
+as `test:example:lichtpost`, uses `--build_tests_only` over its example subtree, so new test
 targets are discovered automatically without building unrelated app targets. Bazel still
 respects manual tags and platform compatibility.
 

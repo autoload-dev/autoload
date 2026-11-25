@@ -48,7 +48,7 @@ def lane_tests_query(lane: str, module: AddonModule) -> list[str]:
 def command(lane: str, module: AddonModule, tests: list[str] | None = None) -> list[str]:
     """The Bazel command of one lane, run in the root module, with a mobile lane's tests."""
     if not module.projects:
-        raise ValueError(f"{module.path}: no example project in examples/")
+        raise ValueError(f"{module.path}: no example project in {module.examples}/")
     if lane == "desktop":
         apps = (
             [f"-{project_package(module, project)}:app" for project in module.projects]

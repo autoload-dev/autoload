@@ -65,14 +65,14 @@ bundle and archive without fetching any AppAuth artifact.
 
      ```sh
      bazel build //examples/addons/app_auth:app --config=android
-     adb install -r bazel-bin/addons/app_auth/demo/app.android_apk/app/app.apk
+     adb install -r bazel-bin/examples/addons/app_auth/app.android_apk/app/app.apk
      ```
 
    - iOS Simulator, on a booted Simulator:
 
      ```sh
      bazel build //examples/addons/app_auth:app --config=simulator
-     xcrun simctl install booted bazel-bin/addons/app_auth/demo/app.ios/app.app
+     xcrun simctl install booted bazel-bin/examples/addons/app_auth/app.ios/app.app
      xcrun simctl launch booted org.example.appauth
      ```
 
@@ -80,7 +80,7 @@ bundle and archive without fetching any AppAuth artifact.
 
      ```sh
      bazel build //examples/addons/app_auth:app --platforms=@autoload_rules_godot//godot/platforms:macos_arm64 --@autoload_rules_godot//godot:macos_signing=adhoc
-     open bazel-bin/addons/app_auth/demo/app.macos_signed/app.app
+     open bazel-bin/examples/addons/app_auth/app.macos_signed/app.app
      ```
 
    Tap **Log in**. The login page opens in the system browser on Android and in the system
@@ -101,7 +101,7 @@ bundle and archive without fetching any AppAuth artifact.
    exported demo, none of which uses the network:
 
    ```sh
-   bazel test --build_tests_only //app_auth/...
+   bazel test --build_tests_only @autoload_app_auth//... //examples/addons/app_auth/... //e2e/addons/app_auth/...
    ```
 
 
@@ -191,7 +191,7 @@ bazel run //examples/addons/app_auth:edit     # open the demo in the editor
 bazel run //e2e/addons/app_auth:edit    # open the test project
 bazel run //examples/addons/app_auth:update   # write UIDs and node IDs into the checkout
 bazel run //e2e/addons/app_auth:update
-bazel test //app_auth/native/tests # only validation and ID-token decoding
+bazel test @autoload_app_auth//app_auth/native/tests # only validation and ID-token decoding
 bazel test //e2e/addons/app_auth/unit   # only the GdUnit contract suite
 ```
 

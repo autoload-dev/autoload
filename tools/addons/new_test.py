@@ -1,6 +1,6 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
-from tools.addons.new import TOKEN, Names, declaration, generate
+from tools.addons.new import TOKEN, Names, declaration, declare, generate
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
 
@@ -113,6 +113,14 @@ class DeclarationTest(RepositoryTestCase):
             text.replace(declaration("widget"), "").replace(declaration("gadget"), ""),
             before,
         )
+
+    def test_a_module_declared_already_is_not_declared_again(self) -> None:
+        # Such as the self-test's module after a run that ended before its cleanup.
+        manifest = self.root / "MODULE.bazel"
+        declare(".selftest", self.root)
+        declared = manifest.read_text()
+        generate(".selftest", root=self.root, release=False)
+        self.assertEqual(manifest.read_text(), declared)
 
     def test_the_self_test_module_drops_its_dot_in_its_examples(self) -> None:
         generate(".selftest", root=self.root, release=False)

@@ -70,9 +70,11 @@ fi
 # as the lanes' work sets it; the default profile is the workspace's own output base. A
 # profile's base lies in the same output user root, named by the MD5 of the default base or
 # workspace and the profile, so `aspect output-bases` and `aspect gc` treat it like any other.
-# Its server exits after AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS without a command.
+# Its server exits after AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS without a command. Profiles
+# belong to the root module: the nested modules' commands that its work starts, such as the
+# contract checker's in the ruleset, keep their module's own server.
 profile="${AUTOLOAD_BAZEL_PROFILE:-default}"
-if [[ "$profile" != default ]]; then
+if [[ "$profile" != default && "$workspace" == "$root" ]]; then
     # Bazel's default output user root and MD5 tool of this system; macOS keeps md5 in /sbin,
     # which a test's strict PATH leaves out.
     if [[ "$OSTYPE" == darwin* ]]; then

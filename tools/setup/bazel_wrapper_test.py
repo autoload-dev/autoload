@@ -26,7 +26,9 @@ class BazelWrapperTest(unittest.TestCase):
         self.bazel.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n')
         self.bazel.chmod(0o755)
 
-    def run_wrapper(self, *arguments: str, **env: str) -> list[str]:
+    def run_wrapper(
+        self, *arguments: str, module: Path | None = None, **env: str
+    ) -> list[str]:
         variables = {
             key: value
             for key, value in os.environ.items()
@@ -34,8 +36,8 @@ class BazelWrapperTest(unittest.TestCase):
         }
         variables.update(BAZEL_REAL=str(self.bazel), HOME=str(self.root), **env)
         result = subprocess.run(
-            [str(self.root / "tools/bazel"), *arguments],
-            cwd=self.root,
+            [str((module or self.root) / "tools/bazel"), *arguments],
+            cwd=module or self.root,
             env=variables,
             check=True,
             capture_output=True,
@@ -75,6 +77,18 @@ class BazelWrapperTest(unittest.TestCase):
         base = next(a for a in profiled if a.startswith("--output_base="))
         self.assertEqual(Path(base.removeprefix("--output_base=")).parent, slot.parent)
         self.assertNotEqual(base, f"--output_base={slot}")
+
+    def test_a_nested_module_keeps_its_own_output_base_under_a_profile(self) -> None:
+        # The ruleset's commands that root-module work starts, such as the contract
+        # checker's, keep the ruleset's default server.
+        ruleset = self.root / "rules_godot"
+        (ruleset / "tools").mkdir(parents=True)
+        (ruleset / "MODULE.bazel").write_text("")
+        (ruleset / "tools/bazel").symlink_to("../../tools/bazel")
+        self.assertEqual(
+            ["build"],
+            self.run_wrapper("build", module=ruleset, AUTOLOAD_BAZEL_PROFILE="android"),
+        )
 
     def test_an_explicit_output_base_wins(self) -> None:
         self.assertEqual(

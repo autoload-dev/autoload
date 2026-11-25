@@ -117,13 +117,13 @@ declaration order:
 |---|---|---|
 | SQLite add-on | Extension `sqlite` | `//addons/sqlite` |
 | Platform Paths add-on | Extension `platform_paths` | `//addons/platform_paths` |
-| SQLite demo | Project `demo` | `//addons/sqlite/demo` |
-| SQLite Godot test project | Project `tests` | `//addons/sqlite/tests` |
-| SQLite unit suites | Executable `unit` | `//addons/sqlite/tests/unit` |
-| Platform Paths operating-system suites | Executable `integration` | `//addons/platform_paths/tests/integration` |
-| Lichtpost | Production project `lichtpost` | `//projects/lichtpost` |
-| Lichtpost scene content | Resources `main` | `//projects/lichtpost/main` |
-| Lichtpost gameplay suites | Executable `tests` | `//projects/lichtpost/tests` |
+| SQLite demo | Project `demo` | `//examples/addons/sqlite:demo` |
+| SQLite Godot test project | Project `tests` | `//e2e/addons/sqlite:tests` |
+| SQLite unit suites | Executable `unit` | `//e2e/addons/sqlite/unit` |
+| Platform Paths operating-system suites | Executable `integration` | `//e2e/addons/platform_paths/integration` |
+| Lichtpost | Production project `lichtpost` | `//examples/lichtpost` |
+| Lichtpost scene content | Resources `main` | `//examples/lichtpost/main` |
+| Lichtpost gameplay suites | Executable `tests` | `//examples/lichtpost/tests` |
 
 Keep meaningful secondary names: `edit`, `update`, `run`, `pack`, `suites`,
 `fixtures`, `test_project` and operating-system/signing qualifiers describe different workflows or

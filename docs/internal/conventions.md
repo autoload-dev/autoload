@@ -314,12 +314,11 @@ following
 [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
 A test scope is a `tests/` directory below the root of a project or add-on, such as
-`<project>/tests/`, `<addon>/tests/`, `<addon>/demo/tests/` or a backend's
+`<project>/tests/`, `<addon>/tests/`, a demo's `examples/addons/<name>/tests/` or a backend's
 `<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
 directory below the module root, such as the ruleset's white-box packages
-`godot/private/tests/`. Paths are measured from the owning module, so the regression
-module's directory `tests/` is not itself a test scope: a regression project's `main/` may
-use the module's `support/` fixtures, but not its own `tests/` suites.
+`godot/private/tests/`, or an add-on module's white-box tests in its `tests/`. Paths are
+measured from the owning module.
 
 ```starlark
 # game/main/BUILD.bazel

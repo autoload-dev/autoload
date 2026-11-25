@@ -96,7 +96,8 @@ A profile's output base lies beside the default one, named by the MD5 of it and 
 so `aspect output-bases` and `aspect gc` treat it like any other. Its server exits after
 `AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS`, 15 minutes by default. Actions do not run twice:
 `~/.bazelrc`'s `--disk_cache`, where set, and path mapping share their results across
-profiles.
+profiles. Profiles belong to the root module: the ruleset and the add-on modules keep their
+own server, also for the commands that root-module work starts there.
 
 ## Remote execution with BuildBuddy
 

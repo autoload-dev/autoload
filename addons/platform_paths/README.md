@@ -34,7 +34,7 @@ else:
    ```sh
    bazel run //examples/addons/platform_paths:update
    bazel run //e2e/addons/platform_paths:update
-   bazel test //e2e/addons/platform_paths/unit //platform_paths/native/backends/linux/tests //e2e/addons/platform_paths:update.test
+   bazel test //e2e/addons/platform_paths/unit @autoload_platform_paths//platform_paths/native/backends/linux/tests //e2e/addons/platform_paths:update.test
    bazel test //e2e/addons/platform_paths/integration //examples/addons/platform_paths/tests:exported //examples/addons/platform_paths:update.test //e2e/addons/platform_paths:update.test
    ```
 
@@ -53,7 +53,7 @@ else:
    bazel build //examples/addons/platform_paths:pack
    ```
 
-   The output is `bazel-bin/addons/platform_paths/demo/pack.pck` within this module.
+   The output is `bazel-bin/examples/addons/platform_paths/pack.pck`.
    It packages the demo's production content without test suites or their frameworks.
    The PCK does not include the Godot engine; use the application targets below to
    package content together with its runtime.

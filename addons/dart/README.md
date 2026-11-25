@@ -34,7 +34,7 @@ final script = Script(Spinner.new);
 3. Run the add-on's own tests without a graphical display:
 
    ```sh
-   bazel test //dart/...
+   bazel test @autoload_dart//... //examples/addons/dart/... //e2e/addons/dart/...
    ```
 
    They run the exported demo, GdUnit suites that check callbacks, values in both
@@ -94,7 +94,7 @@ use the scripts. A script's resource path is its path below that package, so dec
 scripts' resources with the `prefix` of their directory:
 
 ```starlark
-load("//dart:defs.bzl", "godot_dart_extension")
+load("@autoload_dart//dart:defs.bzl", "godot_dart_extension")
 
 godot_dart_extension(
     name = "dart",

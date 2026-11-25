@@ -13,7 +13,7 @@ from pathlib import Path
 
 from tools.addons import lanes
 from tools.addons.modules import LANES, ROOT, AddonModule, examples_path, module_path
-from tools.addons.new import generate
+from tools.addons.new import declaration, generate
 
 # The self-test's module, which the leading dot keeps out of the add-on modules; it is never
 # released.
@@ -30,6 +30,9 @@ def remove(root: Path) -> None:
 
 
 def run(lane: str, root: Path = ROOT) -> None:
+    # A run that ended before its cleanup may have left the module declared.
+    manifest = root / "MODULE.bazel"
+    manifest.write_text(manifest.read_text().replace(declaration(SELFTEST), ""))
     saved = {
         name: (root / name).read_bytes()
         for name in DECLARATIONS

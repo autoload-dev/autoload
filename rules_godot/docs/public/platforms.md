@@ -1019,13 +1019,13 @@ mix of both kinds.
 
 ## Inspect the result
 
-Build the SQLite APK and Simulator IPA from `examples/`:
+Build the SQLite APK and Simulator IPA from the repository root:
 
 ```sh
 bazel build //examples/addons/sqlite:app --config=android
-bazel cquery //addons/sqlite/demo:app --config=android --output=files
+bazel cquery //examples/addons/sqlite:app --config=android --output=files
 bazel build //examples/addons/sqlite:app --config=official
-bazel cquery //addons/sqlite/demo:app --config=official --output=files
+bazel cquery //examples/addons/sqlite:app --config=official --output=files
 ```
 
 Inspect the APK/IPA paths reported by Bazel with `unzip -l`; use your SDK's
