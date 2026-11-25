@@ -15,8 +15,10 @@ decide. No list names the modules. Pushing a tag runs
 
 1. **Release:** bazel-contrib's
    [release_ruleset](https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml)
-   workflow runs the module's release test (for the ruleset, the
-   [registry test module](../../rules_godot/e2e/smoke)), runs
+   workflow runs the module's release test: its registry test module in `bcr/`, such as
+   the ruleset's [bcr/smoke](../../rules_godot/bcr/smoke), run inside the module's release
+   archive as the registry runs it (`python3 -m tools.ci.release_archive <module directory>`,
+   or `aspect work release:archives` for every module); then it runs
    [release_prep.sh](../../.github/workflows/release_prep.sh) to build
    `<module>-X.Y.Z.tar.gz` with `git archive` of the module's directory and, for the
    ruleset, the API documentation archive `autoload_rules_godot-X.Y.Z.docs.tar.gz`, attests
@@ -57,11 +59,12 @@ first when an add-on needs rules that are not released yet.
 ## What the archive contains
 
 Every archive holds its module's directory at its root, under `<module>-X.Y.Z/`, with the
-repository's `LICENSE`. The ruleset's [.gitattributes](../../rules_godot/.gitattributes)
-keeps its development-only directories, `examples/` and `tests/`, and the link to the
-repository's Bazelisk wrapper out of it. `e2e/` stays in, because the registry's presubmit
-builds `e2e/smoke` from the archive. An add-on's archive leaves its `examples/` out through
-the module's own `.gitattributes`.
+repository's `LICENSE`. Each module's `.gitattributes` leaves every `tests/` directory out
+of it (RG023); the ruleset's also leaves out its guides in `docs/` and the link to the
+repository's Bazelisk wrapper. `bcr/` stays in, because the registry's presubmit builds the
+module's registry test module, `bcr/<name>/`, from the archive (RG020). Each test module is
+a consumer of its module with a flat project, which registers the prebuilt engine itself;
+the add-on modules register none for consumers.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
 module by `bazel run //tools/addons:new --` and checked by the conventions (RG015), so a module is ready to

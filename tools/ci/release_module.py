@@ -7,7 +7,8 @@ Print the module that a release tag `<module>-v<version>` releases, one `key=val
   the add-on module `autoload_<directory>` (RG015);
 - bcr: whether the Bazel Central Registry gets the release, which its templates in
   .bcr/<root>/ decide;
-- test: the command that tests the release in a checkout of the tag.
+- test: the command that tests the release in a checkout of the tag: the registry test
+  module, run in the module's release archive (tools/ci/release_archive.py).
 
 No table lists the modules: a new add-on module is releasable as soon as it exists.
 Run it from the repository root: `python3 -m tools.ci.release_module <tag>`.
@@ -22,9 +23,6 @@ from tools.setup.modules import RULESET
 
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
 RULESET_NAME = module_name(RULESET.name)
-# The ruleset's release test: the registry's test module, as its presubmit.yml runs it. Its
-# own //... builds engines and mobile packages.
-RULESET_TEST = f"cd {RULESET}/e2e/smoke && bazel test //..."
 
 
 def module_root(name: str, root: Path = ROOT) -> Path:
@@ -47,11 +45,7 @@ def describe(tag: str, root: Path = ROOT) -> dict[str, str]:
         raise ValueError(f"Release tags are named <module>-v<version>, not {tag}")
     name, version = match.groups()
     directory = module_root(name, root)
-    test = (
-        RULESET_TEST
-        if name == RULESET_NAME
-        else f"python3 -m tools.addons.lanes desktop {directory.name}"
-    )
+    test = f"python3 -m tools.ci.release_archive {directory.as_posix()}"
     return {
         "name": name,
         "version": version,

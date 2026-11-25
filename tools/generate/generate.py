@@ -20,16 +20,19 @@ import sys
 from pathlib import Path
 
 from tools.addons import declarations
-from tools.setup.modules import ADDONS, RULESET, module_paths
+from tools.setup.modules import ADDONS, RULESET, is_registry_test_module, module_paths
 
 ROOT = Path(__file__).resolve().parents[2]
 RULESET_DIR = RULESET.as_posix()
 # The add-on modules' lock files are left out until all of them regenerate: rules_jvm_external's
 # maven extension fails to evaluate in autoload_gdunit and its examples, whose root modules
 # declare no `maven` of their own to choose between the lock files rules_godot and protobuf
-# give it (rules_jvm_external 7.2).
+# give it (rules_jvm_external 7.2). The registry test modules have none: the registry tests
+# each against new releases, which a lock file would pin.
 LOCKED_MODULES = tuple(
-    module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
+    module
+    for module in map(str, module_paths(ROOT))
+    if not module.startswith("addons") and not is_registry_test_module(module)
 )
 # The source builds with a lock file, as (module, hub).
 PINNED_ENGINES = ((".", "godot_petri"),)

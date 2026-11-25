@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+config/name="autoload_platform_paths BCR smoke"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

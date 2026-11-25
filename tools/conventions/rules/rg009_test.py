@@ -74,6 +74,29 @@ class TypedRootLayoutTest(RepositoryTest):
             1,
         )
 
+    def test_a_registry_test_module_is_one_project_or_one_per_directory(self) -> None:
+        self.assertEqual(
+            [],
+            self.evaluate(
+                "rules_godot/bcr/smoke/MODULE.bazel",
+                "rules_godot/bcr/smoke/BUILD.bazel",
+                "rules_godot/bcr/smoke/project.godot",
+                "addons/widget/MODULE.bazel",
+                "addons/widget/bcr/apps/MODULE.bazel",
+                "addons/widget/bcr/apps/desktop/BUILD.bazel",
+                "addons/widget/bcr/apps/desktop/project.godot",
+            ),
+        )
+        self.assertEqual(
+            len(
+                self.evaluate(
+                    "rules_godot/bcr/deep/MODULE.bazel",
+                    "rules_godot/bcr/deep/projects/smoke/project.godot",
+                )
+            ),
+            1,
+        )
+
     def test_project_needs_configuration_and_own_build(self) -> None:
         findings = self.evaluate(
             "e2e/rules_godot/raw_library/native.cc",

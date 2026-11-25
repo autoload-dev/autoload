@@ -24,6 +24,23 @@ py_library(
     ],
 )
 
+# A module's release test: its registry test module, run in its release archive.
+py_library(
+    name = "release_archive_lib",
+    srcs = ["release_archive.py"],
+    deps = [
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
+    ],
+)
+
+py_test(
+    name = "release_archive_test",
+    size = "small",
+    srcs = ["release_archive_test.py"],
+    deps = [":release_archive_lib"],
+)
+
 py_test(
     name = "release_module_test",
     size = "small",

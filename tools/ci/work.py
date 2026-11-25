@@ -35,7 +35,7 @@ from tools.ci.changes import (
     module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
-from tools.setup.modules import RULESET, module_paths
+from tools.setup.modules import RULESET, is_registry_test_module, module_paths
 
 RULESET_DIR = RULESET.as_posix()
 # The root module's Godot applications and the ruleset's consumer scenarios, by package.
@@ -117,8 +117,15 @@ PETRI_TESTS = example_tests("petri", config="petri")
 def every_module(
     command: str, root: Path = ROOT, inputs: Inputs | None = None
 ) -> tuple[In, ...]:
-    """A command for each module of the checkout, as the setup checks discover them."""
-    return tuple(In(module, command, inputs) for module in module_paths(root))
+    """
+    A command for each module of the checkout, as the setup checks discover them, but the
+    registry test modules, which hold only a small consumer project.
+    """
+    return tuple(
+        In(module, command, inputs)
+        for module in module_paths(root)
+        if not is_registry_test_module(module)
+    )
 
 
 # A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
@@ -409,6 +416,10 @@ WORK = (
         ("python3 -m tools.android.requirements", "python3 tools/android/sdk.py"),
         android=True,
     ),
+    # Each module's registry test module, run in its release archive as the registry runs it,
+    # and as the release workflow tests a release (tools/ci/release_archive.py). Each module
+    # is a Bazel workspace of its own, so it runs only when named.
+    Work("release:archives", None, ".", ("python3 -m tools.ci.release_archive",)),
     # The smoke applications' Android and iOS artifacts, inspected on macOS. They must be built
     # in the default profile first, as the recipe builds them
     # (docs/internal/verification-recipes.md); the lanes build theirs in their own profiles.

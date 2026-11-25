@@ -2,7 +2,8 @@
 # the Maven locks remain versioned.
 /bazel-*
 /rules_godot/bazel-*
-/rules_godot/e2e/*/bazel-*
+/rules_godot/bcr/*/bazel-*
+/addons/*/bcr/*/bazel-*
 # Personal Bazel settings every module of this repository imports.
 /user.bazelrc
 # The Bazel slot a Codex worktree leased (tools/codex/worktree.sh).

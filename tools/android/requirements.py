@@ -11,6 +11,7 @@ from tools.setup.modules import (
     bazelrc_options,
     declarations,
     ignored_modules,
+    is_registry_test_module,
 )
 
 # Provisioning must cover the SDK and .bazelrc overrides of every module that builds
@@ -69,10 +70,12 @@ def application_modules(root: Path) -> list[str]:
     The modules that build applications, each of which must configure its SDK: the root
     module with its examples, the add-on modules' among them, and its consumer scenarios,
     and the ruleset with the modules nested in it. The add-on modules themselves, whose
-    examples the root module builds, build none.
+    examples the root module builds, build none, nor do the registry test modules, which
+    register only the prebuilt desktop engine.
     """
     ruleset = RULESET.as_posix()
-    return [".", ruleset, *ignored_modules(root, ruleset)]
+    nested = ignored_modules(root, ruleset)
+    return [".", ruleset, *(m for m in nested if not is_registry_test_module(m))]
 
 
 def configuration_errors(root: Path) -> list[str]:

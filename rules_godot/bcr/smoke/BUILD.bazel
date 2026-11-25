@@ -12,13 +12,13 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "smoke",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":smoke",
     deps = [":main"],
 )
 

@@ -18,6 +18,7 @@ from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.rules.rg016 import LocalLinks
 from tools.conventions.rules.rg017 import AgentInstructions
 from tools.conventions.rules.rg018 import SharedSkills
+from tools.conventions.rules.rg020 import RegistryTestModules
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 
 RULES: tuple[Rule, ...] = (
@@ -38,6 +39,7 @@ RULES: tuple[Rule, ...] = (
     LocalLinks(),
     AgentInstructions(),
     SharedSkills(),
+    RegistryTestModules(),
     ReleasedWithoutTests(),
 )
 

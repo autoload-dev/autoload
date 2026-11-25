@@ -1,0 +1,22 @@
+"""The Bazel Central Registry's test module of autoload_platform_paths: a consumer that packs its add-ons."""
+
+module(name = "autoload_platform_paths_bcr_smoke")
+
+bazel_dep(name = "autoload_platform_paths", version = "0.0.0")
+local_path_override(
+    module_name = "autoload_platform_paths",
+    path = "../..",
+)
+
+bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+
+# An application registers its engine; the add-on modules register none for consumers.
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+use_repo(godot_engines, "godot")
+
+register_toolchains("@godot//toolchains:all")

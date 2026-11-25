@@ -5,7 +5,13 @@ root module, the consumer modules and the typed roots measured from either.
 
 from pathlib import Path
 
-from tools.setup.modules import ADDON_E2E, ADDON_EXAMPLES, ADDONS, RULESET
+from tools.setup.modules import (
+    ADDON_E2E,
+    ADDON_EXAMPLES,
+    ADDONS,
+    RULESET,
+    is_registry_test_module,
+)
 
 # The typed roots of a consumer, below its root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
@@ -71,16 +77,23 @@ def typed_directory(
     parts = path.relative_to(root).parts
     if root == REGRESSION_ROOT:
         return scenario_directory(parts)
-    if root.parent == ADDON_EXAMPLES:
-        return "projects", example_project(root, parts, configured)
+    if root.parent == ADDON_EXAMPLES or is_registry_test_module(root.as_posix()):
+        project = flat_project(root, parts, configured)
+        return None if project is None else ("projects", project)
     return consumer_directory(root, parts)
 
 
-def example_project(
+def flat_project(
     root: Path, parts: tuple[str, ...], configured: frozenset[Path]
-) -> Path:
-    """An add-on module's example project: its examples themselves, or one per scenario."""
-    return root if root in configured or len(parts) == 1 else root / parts[0]
+) -> Path | None:
+    """
+    The project of a flat consumer, such as an add-on module's examples or a registry test
+    module: the consumer itself, or a project directly in one of its directories.
+    """
+    if root in configured:
+        return root
+    candidate = root / parts[0]
+    return candidate if len(parts) > 1 and candidate in configured else None
 
 
 def consumer_directory(root: Path, parts: tuple[str, ...]) -> tuple[str, Path] | None:

@@ -19,6 +19,9 @@ ADDONS = "addons"
 # (one project, or one per scenario), and its end-to-end tests, e2e/addons/<module>/.
 ADDON_EXAMPLES = Path("examples/addons")
 ADDON_E2E = Path("e2e/addons")
+# The directory of a released module's registry test modules, bcr/<name>/ (RG020), which its
+# .bazelignore lists.
+BCR = "bcr"
 # The add-on generator's self-test module (tools/addons/selftest.py), addons/selftest/ with
 # examples/addons/selftest/ while it runs: never released, and none of the add-on modules.
 SELFTEST = "selftest"
@@ -53,17 +56,42 @@ def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
     return tuple(
         found
         for path in nested
-        if (root / path / "MODULE.bazel").is_file()
-        for found in (path, *ignored_modules(root, path))
+        for candidate in _modules_at(root, path)
+        for found in (candidate, *ignored_modules(root, candidate))
     )
+
+
+def _modules_at(root: Path, path: str) -> tuple[str, ...]:
+    """
+    The module an ignored directory is, or, for a released module's bcr/, the registry test
+    modules directly in it.
+    """
+    if (root / path / "MODULE.bazel").is_file():
+        return (path,)
+    if Path(path).name != BCR:
+        return ()
+    return tuple(
+        (Path(path) / found.parent.name).as_posix()
+        for found in sorted((root / path).glob("*/MODULE.bazel"))
+    )
+
+
+def is_registry_test_module(module: str) -> bool:
+    """Whether a module is a registry test module, bcr/<name>/ of a released module."""
+    return Path(module).parent.name == BCR
 
 
 def module_paths(root: Path) -> tuple[str, ...]:
     """
     The root module, every module its `.bazelignore` names, with the modules nested in those,
-    and each add-on module of `addons/`: the root ignores `addons` as a whole.
+    and each add-on module of `addons/` with its own: the root ignores `addons` as a whole.
     """
-    return (".", *ignored_modules(root), *addon_modules(root))
+    addons = (
+        found
+        for addon in addon_modules(root)
+        for found in (addon, *ignored_modules(root, addon))
+    )
+    return (".", *ignored_modules(root), *addons)
 
 
 @dataclass(frozen=True)

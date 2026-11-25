@@ -1,0 +1,6 @@
+# The settings of the add-on modules' registry test modules, addons/<module>/bcr/<name>/, in
+# this repository: they use the rules beside them rather than a release. Each test module
+# try-imports this file, which no release archive contains.
+common --override_module=autoload_rules_godot=../../../../rules_godot
+
+import %workspace%/../../../../shared.bazelrc
