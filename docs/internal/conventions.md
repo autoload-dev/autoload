@@ -402,9 +402,14 @@ repository's add-on modules in `addons/<module>/` follow the layout of the add-o
 template, so that the same tasks build, test and release every module and nothing but the
 root module's declaration lists it. Each module:
 
-- is named `autoload_<module>` and owns `MODULE.bazel`, `README.md`, `REPO.bazel`,
-  `BUILD.bazel`, `.bazelrc`, `.bazelversion`, `.gitignore`, `.gitattributes` and
-  `addon.pkl`;
+- is named `autoload_<module>` and owns the files of the generator's module template, such
+  as `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.bazelrc`, `.bazelignore`,
+  `addon.pkl` and its registry test module `bcr/smoke`;
+- holds in its root only those files and its lock file, its add-ons, `third_party/` with
+  what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and the
+  packages its `addon.pkl` declares in `sharedPackages`, such as Firebase's `config`. An
+  add-on is a directory whose BUILD file declares a target named like it, as the generator
+  writes it;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
@@ -412,7 +417,7 @@ root module's declaration lists it. Each module:
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
   properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
-  of `linux`, `macos`) and `testOperations`. The repository does not evaluate the schema's
+  of `linux`, `macos`), `testOperations` and `sharedPackages`. The repository does not evaluate the schema's
   types, so this rule checks the values. A module builds applications when its lanes include
   `android` or `ios`;
 - has at least one example project in the root module's

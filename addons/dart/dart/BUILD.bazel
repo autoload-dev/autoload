@@ -7,7 +7,7 @@ exports_files(["defs.bzl"])
 # Dart as a Godot script language, on the Dart VM's AOT runtime. godot_dart_extension
 # links it into a project's extension, beside the snapshot of the project's scripts.
 cc_library(
-    name = "language",
+    name = "dart",
     srcs = glob([
         "native/*.cc",
         "native/*.h",

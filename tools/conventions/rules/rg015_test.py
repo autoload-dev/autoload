@@ -50,6 +50,24 @@ class AddonModuleLayoutTest(RepositoryTest):
             ],
         )
 
+    def test_the_module_root_holds_its_files_add_ons_and_declared_packages(self) -> None:
+        self.module("widget")
+        self.write("addons/widget/third_party/BUILD.bazel", "")
+        self.write("addons/widget/tests/x/BUILD.bazel", "")
+        self.write("addons/widget/shared/BUILD.bazel", "")
+        self.write("addons/widget/stray/BUILD.bazel", 'filegroup(name = "files")\n')
+        self.write("addons/widget/notes.txt", "")
+        pkl = (self.root / "addons/widget/addon.pkl").read_text()
+        self.write("addons/widget/addon.pkl", pkl + 'sharedPackages = List("shared")\n')
+        root = "the module's root holds only its files, its add-ons, third_party/, tests/, bcr/"
+        self.assertEqual(
+            sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
+            [
+                f"addons/widget/notes.txt: {root} and the sharedPackages of addon.pkl",
+                f"addons/widget/stray: {root} and the sharedPackages of addon.pkl",
+            ],
+        )
+
     def test_registry_templates_of_a_removed_module(self) -> None:
         self.write(".bcr/addons/gone/source.template.json", "{}\n")
         self.assertEqual(["no add-on module owns .bcr/addons/gone"], self.evaluate())
