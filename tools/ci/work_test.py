@@ -37,6 +37,8 @@ from tools.ci.work import (
     selected,
 )
 
+# ==== Work and callers ========================================================
+
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
     """A checkout with add-on modules naming their lanes, and the schema they amend."""
@@ -49,9 +51,6 @@ def checkout(root: Path, modules: dict[str, str]) -> None:
         (root / "addons" / module / "addon.pkl").write_text(
             f'amends "../../tools/addons/Addon.pkl"\nlanes = List({listed})\n'
         )
-
-
-# ==== Work and callers ========================================================
 
 
 class WorkTest(unittest.TestCase):

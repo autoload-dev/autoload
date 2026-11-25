@@ -4,7 +4,8 @@ Staging and editor runs shared by the Godot project actions and exports.
 Neither tool's own code or data is an input of the other's actions, so a change
 to one reruns only that tool's actions.
 
-Sections: Resource paths, Staged files, Actions, Manifest.
+Sections: Resource paths, Originals, Import results, Metadata completion, Staging,
+Processes, Actions, Manifest.
 """
 
 import argparse
@@ -34,6 +35,10 @@ from tools.node_ids import with_node_ids
 from tools.pck import EXTENSION_LIST
 from tools.resource_graph import portable_identity, validate_identities
 from tools.resource_uids import with_resource_uids
+
+# Where a staged file's bytes came from: a file, an archive member or content.
+Original = Path | tuple[Path, tarfile.TarInfo] | bytes
+
 
 # ==== Resource paths ==========================================================
 
@@ -84,11 +89,7 @@ def validate_staged_paths(resource_paths: dict[str, str]) -> None:
         _check_prefixes(path, files, prefixes)
 
 
-# ==== Staged files ============================================================
-
-
-# Where a staged file's bytes came from: a file, an archive member or content.
-Original = Path | tuple[Path, tarfile.TarInfo] | bytes
+# ==== Originals ===============================================================
 
 
 def executable(original: Original) -> bool:
@@ -136,42 +137,10 @@ def same_content(path: Path, original: Original) -> bool:
                 return True
 
 
-# An import unit's result: one archive, or nothing when the unit had no file
-# that an importer handles.
-IMPORT_ARCHIVE = "import.tar"
-
-
-def tree_files(tree_root: Path) -> list[tuple[str, Path]]:
-    return [
-        (source.relative_to(tree_root).as_posix(), source)
-        for source in sorted(tree_root.rglob("*"))
-        if source.is_file()
-    ]
-
-
-def tree_entries(tree_root: Path) -> Sequence[tuple[str, Original]]:
-    """List an import result's files, from its archive or its tree, without extracting."""
-    archive = tree_root / IMPORT_ARCHIVE
-    if not archive.is_file():
-        return tree_files(tree_root)
-    with tarfile.open(archive, "r:") as stream:
-        members = stream.getmembers()
-    for member in members:
-        if not member.isreg():
-            raise ValueError(f"Unexpected archive entry {member.name!r} in {archive}")
-    return [(member.name, (archive, member)) for member in members]
-
-
-def add_resource_path_manifests(
-    manifest: dict, paths: list[Path], resolve: Callable[[str], str]
-) -> None:
-    """Merge resource path manifests of more paths to stage into the manifest's members."""
-    resource_paths = manifest.setdefault("member_resource_paths", {})
-    for path in paths:
-        staged = json.loads(path.read_text(encoding="utf-8"))
-        for relative, source in resolve_paths(staged, resolve).items():
-            if resource_paths.setdefault(relative, source) != source:
-                raise ValueError("Conflicting staged sources for " + relative)
+def read_original(original: Original) -> bytes:
+    """Return the bytes of a staged file's original."""
+    with open_original(original) as data:
+        return data.read()
 
 
 def _size(original: Original) -> int:
@@ -204,19 +173,33 @@ def write_archive(root: Path, paths: list[str], archive: Path) -> None:
     write_originals({relative: root / relative for relative in paths}, archive)
 
 
-def read_original(original: Original) -> bytes:
-    """Return the bytes of a staged file's original."""
-    with open_original(original) as data:
-        return data.read()
+# ==== Import results ==========================================================
 
 
-def _source_paths(manifest: dict) -> dict[str, str]:
-    """The import inputs overlaid by the members, which must not stage other files there."""
-    resource_paths = dict(manifest.get("import_resource_paths", {}))
-    for path, source in manifest["member_resource_paths"].items():
-        if resource_paths.setdefault(path, source) != source:
-            raise ValueError("Import input conflicts with project member: " + path)
-    return resource_paths
+# An import unit's result: one archive, or nothing when the unit had no file
+# that an importer handles.
+IMPORT_ARCHIVE = "import.tar"
+
+
+def tree_files(tree_root: Path) -> list[tuple[str, Path]]:
+    return [
+        (source.relative_to(tree_root).as_posix(), source)
+        for source in sorted(tree_root.rglob("*"))
+        if source.is_file()
+    ]
+
+
+def tree_entries(tree_root: Path) -> Sequence[tuple[str, Original]]:
+    """List an import result's files, from its archive or its tree, without extracting."""
+    archive = tree_root / IMPORT_ARCHIVE
+    if not archive.is_file():
+        return tree_files(tree_root)
+    with tarfile.open(archive, "r:") as stream:
+        members = stream.getmembers()
+    for member in members:
+        if not member.isreg():
+            raise ValueError(f"Unexpected archive entry {member.name!r} in {archive}")
+    return [(member.name, (archive, member)) for member in members]
 
 
 def _check_import_uid(
@@ -228,6 +211,41 @@ def _check_import_uid(
     authored = (execroot / resource_paths[relative]).read_text(encoding="utf-8").strip()
     if authored != read_original(original).decode("utf-8").strip():
         raise ValueError("Cached import UID conflicts with authored sidecar: " + relative)
+
+
+def _merged_import_results(
+    imported_files: list[tuple[str, Original, str]],
+    resource_paths: dict[str, str],
+    execroot: Path,
+) -> dict[str, Original]:
+    """
+    The import results by resource path; equal results of several units merge.
+
+    An import result may differ neither from another unit's nor, for a UID sidecar, from
+    the authored one.
+    """
+    merged: dict[str, Original] = {}
+    for relative, original, _ in imported_files:
+        _check_import_uid(relative, original, resource_paths, execroot)
+        if relative not in merged:
+            merged[relative] = original
+        elif read_original(merged[relative]) != read_original(original):
+            raise ValueError(
+                f"Conflicting import results for {PurePosixPath(relative).name}"
+            )
+    return merged
+
+
+# ==== Metadata completion =====================================================
+
+
+# How each kind of metadata completes a text file from its metadata index entry.
+COMPLETIONS = {
+    "node_ids": lambda text, path, _: with_node_ids(text, path),
+    "resource_uids": lambda text, path, entry: with_resource_uids(
+        text, path, entry["uids"]
+    ),
+}
 
 
 def completed_texts(
@@ -268,27 +286,36 @@ def _metadata_completions(
     return {path: text.encode("utf-8") for path, text in texts.items()}
 
 
-def _merged_import_results(
-    imported_files: list[tuple[str, Original, str]],
-    resource_paths: dict[str, str],
-    execroot: Path,
-) -> dict[str, Original]:
+def apply_metadata(
+    root: Path, index: dict, kinds: Iterable[str], staged: Collection[str]
+) -> dict[str, bytes]:
     """
-    The import results by resource path; equal results of several units merge.
+    Complete the staged text files with the metadata kinds the index lists for them.
 
-    An import result may differ neither from another unit's nor, for a UID sidecar, from
-    the authored one.
+    Returns:
+        The updated files' bytes by resource path; their sources keep theirs.
     """
-    merged: dict[str, Original] = {}
-    for relative, original, _ in imported_files:
-        _check_import_uid(relative, original, resource_paths, execroot)
-        if relative not in merged:
-            merged[relative] = original
-        elif read_original(merged[relative]) != read_original(original):
-            raise ValueError(
-                f"Conflicting import results for {PurePosixPath(relative).name}"
-            )
-    return merged
+    texts = completed_texts(
+        index,
+        kinds,
+        staged,
+        lambda path: (root / resource_path(path)).read_text(encoding="utf-8", newline=""),
+    )
+    for path, text in texts.items():
+        (root / resource_path(path)).write_text(text, encoding="utf-8", newline="")
+    return {path: text.encode("utf-8") for path, text in texts.items()}
+
+
+# ==== Staging =================================================================
+
+
+def _source_paths(manifest: dict) -> dict[str, str]:
+    """The import inputs overlaid by the members, which must not stage other files there."""
+    resource_paths = dict(manifest.get("import_resource_paths", {}))
+    for path, source in manifest["member_resource_paths"].items():
+        if resource_paths.setdefault(path, source) != source:
+            raise ValueError("Import input conflicts with project member: " + path)
+    return resource_paths
 
 
 def extension_list(paths: Iterable[str]) -> bytes:
@@ -372,35 +399,6 @@ def stage(manifest: dict, root: Path, execroot: Path) -> dict[str, Original]:
     return originals
 
 
-# How each kind of metadata completes a text file from its metadata index entry.
-COMPLETIONS = {
-    "node_ids": lambda text, path, _: with_node_ids(text, path),
-    "resource_uids": lambda text, path, entry: with_resource_uids(
-        text, path, entry["uids"]
-    ),
-}
-
-
-def apply_metadata(
-    root: Path, index: dict, kinds: Iterable[str], staged: Collection[str]
-) -> dict[str, bytes]:
-    """
-    Complete the staged text files with the metadata kinds the index lists for them.
-
-    Returns:
-        The updated files' bytes by resource path; their sources keep theirs.
-    """
-    texts = completed_texts(
-        index,
-        kinds,
-        staged,
-        lambda path: (root / resource_path(path)).read_text(encoding="utf-8", newline=""),
-    )
-    for path, text in texts.items():
-        (root / resource_path(path)).write_text(text, encoding="utf-8", newline="")
-    return {path: text.encode("utf-8") for path, text in texts.items()}
-
-
 @contextlib.contextmanager
 def staged_project(
     manifest: dict, execroot: Path, prefix: str
@@ -419,7 +417,7 @@ def gd_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-# ==== Actions =================================================================
+# ==== Processes ===============================================================
 
 
 # Godot runs in its own process group, so stopping it reaches its descendants.
@@ -462,13 +460,20 @@ def child_environment(directory: Path) -> dict[str, str]:
     return result
 
 
+# ==== Actions =================================================================
+
+
 # rules_godot's action plugin, staged into every view an editor action runs on.
 _ACTION = Path(__file__).parent / "action"
+
 ACTION_DIRECTORY = "addons/rules_godot_action"
+
 # Godot's own result of an action, written by the action plugin.
 _RECORD = "record.json"
+
 # An editor action's bound, and how long Godot may take to exit after its record.
 _ACTION_TIMEOUT_SECONDS = 300
+
 _RECORD_GRACE_SECONDS = 20
 
 
@@ -630,6 +635,18 @@ def run_action(
 
 
 # ==== Manifest ================================================================
+
+
+def add_resource_path_manifests(
+    manifest: dict, paths: list[Path], resolve: Callable[[str], str]
+) -> None:
+    """Merge resource path manifests of more paths to stage into the manifest's members."""
+    resource_paths = manifest.setdefault("member_resource_paths", {})
+    for path in paths:
+        staged = json.loads(path.read_text(encoding="utf-8"))
+        for relative, source in resolve_paths(staged, resolve).items():
+            if resource_paths.setdefault(relative, source) != source:
+                raise ValueError("Conflicting staged sources for " + relative)
 
 
 def add_manifest_arguments(parser: argparse.ArgumentParser) -> None:

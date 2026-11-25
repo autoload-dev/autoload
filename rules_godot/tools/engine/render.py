@@ -64,26 +64,6 @@ def target_constraints(args: argparse.Namespace) -> list[str]:
     return result
 
 
-def source_build_facts(args: argparse.Namespace) -> dict[str, str]:
-    """Describe the configured source graph independently of a consumer's build request."""
-    build_target = args.build_target
-    if build_target not in {"editor", "template_debug", "template_release"}:
-        raise ValueError(
-            f"Unknown build target {build_target}; "
-            "expected editor, template_debug or template_release"
-        )
-    return {
-        "canonical_version": args.version,
-        "platform": "linux" if args.platform == "linuxbsd" else args.platform,
-        "cpu": args.cpu,
-        "environment": args.environment,
-        "role": "editor" if build_target == "editor" else "runtime",
-        "variant": ""
-        if build_target == "editor"
-        else build_target.removeprefix("template_"),
-    }
-
-
 def header_ancestors(generated_headers: Iterable[str]) -> frozenset[Path]:
     """Every directory that contains a generated header, directly or below it."""
     directories = {Path(header).parent for header in generated_headers}
@@ -120,6 +100,9 @@ def object_groups(
     return [(*key, sources) for key, sources in sorted(result.items())]
 
 
+# ==== Unpinned engines ========================================================
+
+
 def engine_targets(platform: str) -> list[str]:
     """The public targets render() declares for a platform's engine."""
     return (
@@ -127,9 +110,6 @@ def engine_targets(platform: str) -> list[str]:
         if platform == "android"
         else (["engine_library"] if platform == "ios" else ["engine_library", "godot"])
     )
-
-
-# ==== Unpinned engines ========================================================
 
 
 _UNPINNED_REASONS = {
@@ -395,6 +375,26 @@ def object_rules(
 
 
 # ==== Swift and sources =======================================================
+
+
+def source_build_facts(args: argparse.Namespace) -> dict[str, str]:
+    """Describe the configured source graph independently of a consumer's build request."""
+    build_target = args.build_target
+    if build_target not in {"editor", "template_debug", "template_release"}:
+        raise ValueError(
+            f"Unknown build target {build_target}; "
+            "expected editor, template_debug or template_release"
+        )
+    return {
+        "canonical_version": args.version,
+        "platform": "linux" if args.platform == "linuxbsd" else args.platform,
+        "cpu": args.cpu,
+        "environment": args.environment,
+        "role": "editor" if build_target == "editor" else "runtime",
+        "variant": ""
+        if build_target == "editor"
+        else build_target.removeprefix("template_"),
+    }
 
 
 _DEFAULT_SWIFT_OPTIONS: dict[str, Any] = {

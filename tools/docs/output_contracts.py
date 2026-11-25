@@ -17,6 +17,7 @@ from tools.setup.modules import RULESET
 
 # ==== Contract grammar ========================================================
 
+
 SECTIONS = {
     "Default outputs": ("kind", "cardinality", "availability", "behavior"),
     "Output groups": ("name", "contents", "availability", "prerequisites"),
@@ -31,6 +32,7 @@ SECTIONS = {
         "availability",
     ),
 }
+
 # The first line of an entry: `- kind (cardinality): behavior` for default outputs,
 # `- `name`: contents` for output groups and `- `name` (kind): reason` for generated
 # targets. Indented `- field: value` lines below it give the other fields; an omitted
@@ -44,6 +46,7 @@ FIRST_LINES = {
         r"`(?P<name>[^`]+)` \((?P<kind>[a-z_]+)\): (?P<reason>.+)"
     ),
 }
+
 FIELD_DEFAULTS = {
     "availability": "always",
     "prerequisites": "none",
@@ -51,7 +54,9 @@ FIELD_DEFAULTS = {
     "visibility": "public",
     "testonly": "false",
 }
+
 DEFAULT_KINDS = frozenset({"files", "executable", "test", "metadata", "repository"})
+
 COMPANION_KINDS = frozenset(
     {"alias", "test", "executable", "files", "metadata", "library", "toolchain"}
 )
@@ -219,6 +224,7 @@ def parse(doc: str) -> Contract:
 
 # ==== Evaluated comparison ====================================================
 
+
 # The provider a kind's evaluated target must carry.
 REQUIRED_PROVIDERS = {"library": "CcInfo", "toolchain": "ToolchainInfo"}
 
@@ -374,12 +380,16 @@ def is_shared_library(kind: str, booleans: Mapping[str, bool]) -> bool:
 
 # ==== Coverage ================================================================
 
+
 # The lanes with API contract cases: docs, whose cases are the default, and the
 # profile lanes.
 DEFAULT_CONTRACT_LANE = "docs"
+
 CONTRACT_LANES = (DEFAULT_CONTRACT_LANE, *MACHINE_LANES)
+
 # The lane whose cases evaluate the consumer modules.
 CONSUMER_MODULE_LANE = "desktop"
+
 REPOSITORY_KINDS = frozenset({"repository_rule_info", "module_extension_info"})
 
 

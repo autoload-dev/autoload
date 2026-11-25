@@ -21,8 +21,11 @@ from tools.platforms.shell_common import (
 from tools.platforms.shell_overrides import defined_styles, without_styles
 
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
+
 TOOLS_NAMESPACE = "http://schemas.android.com/tools"
+
 ANDROID = "{" + ANDROID_NAMESPACE + "}"
+
 PERMISSION_TAGS = ("uses-permission", "uses-permission-sdk-23")
 
 

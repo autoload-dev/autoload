@@ -23,37 +23,17 @@ try:
 except ImportError:
     from source_tree import SOURCE_SUFFIXES
 
-# Includes, imports and __has_include checks, whose answer an undeclared header would
-# change, by their delimiter.
-_DIRECTIVES = (
-    re.compile(
-        r'^[ \t]*#[ \t]*(?:include|include_next|import)[ \t]*([<"])([^>"\n]+)[>"]',
-        re.MULTILINE,
-    ),
-    re.compile(r'__has_include(?:_next)?[ \t]*\([ \t]*([<"])([^>"\n]+)[>"]'),
-)
 
-# Macros that name a header for a computed include, such as FreeType's FT_FREETYPE_H.
-# The file that expands one may be elsewhere, so no directory is preferred.
-_HEADER_MACRO = re.compile(
-    r'^[ \t]*#[ \t]*define[ \t]+\w+[ \t]+[<"]([^>"\n]+)[>"]', re.MULTILINE
-)
+# ==== Inputs ==================================================================
 
-# An include directive a generator writes: at the start of a line of a template, or at
-# the start of a string. Directives quoted inside messages are none.
-_GENERATED_DIRECTIVE = re.compile(
-    r"""(?:^|["'])[ \t]*#[ \t]*(?:include|import)[ \t]*[<"]([^>"\n]*)[>"]""", re.MULTILINE
-)
 
 # A header that a compiler option names for a computed include, as Mbed TLS's
 # -DMBEDTLS_CONFIG_FILE=\"godot_mbedtls_config.h\" does.
 _OPTION_HEADER = re.compile(r'^-D\w+=\\?[<"](.+?)\\?[>"]$')
+
 _INCLUDE_OPTIONS = ("-isystem", "-iquote", "-I")
-_PLACEHOLDER = re.compile(r"\{[^}]*\}")
+
 _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
-
-
-# ==== Inputs ==================================================================
 
 
 class Generated(NamedTuple):
@@ -109,6 +89,31 @@ def option_includes(copts: Iterable[str]) -> tuple[list[str], list[str]]:
 
 
 # ==== Include resolution ======================================================
+
+
+# Includes, imports and __has_include checks, whose answer an undeclared header would
+# change, by their delimiter.
+_DIRECTIVES = (
+    re.compile(
+        r'^[ \t]*#[ \t]*(?:include|include_next|import)[ \t]*([<"])([^>"\n]+)[>"]',
+        re.MULTILINE,
+    ),
+    re.compile(r'__has_include(?:_next)?[ \t]*\([ \t]*([<"])([^>"\n]+)[>"]'),
+)
+
+# Macros that name a header for a computed include, such as FreeType's FT_FREETYPE_H.
+# The file that expands one may be elsewhere, so no directory is preferred.
+_HEADER_MACRO = re.compile(
+    r'^[ \t]*#[ \t]*define[ \t]+\w+[ \t]+[<"]([^>"\n]+)[>"]', re.MULTILINE
+)
+
+# An include directive a generator writes: at the start of a line of a template, or at
+# the start of a string. Directives quoted inside messages are none.
+_GENERATED_DIRECTIVE = re.compile(
+    r"""(?:^|["'])[ \t]*#[ \t]*(?:include|import)[ \t]*[<"]([^>"\n]*)[>"]""", re.MULTILINE
+)
+
+_PLACEHOLDER = re.compile(r"\{[^}]*\}")
 
 
 class _Resolver:

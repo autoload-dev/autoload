@@ -39,6 +39,15 @@ class ReadingOrderTest(RepositoryTest):
             self.findings(),
         )
 
+    def test_a_local_of_a_definitions_name_is_no_call(self) -> None:
+        self.write(
+            "a.py",
+            "def main(lanes):\n    devices = lanes\n    return devices\n\n\n"
+            "def lanes():\n    return []\n\n\n"
+            "def devices():\n    return []\n",
+        )
+        self.assertEqual([], self.findings())
+
     def test_recursion_between_definitions_passes(self) -> None:
         self.write(
             "a.py",

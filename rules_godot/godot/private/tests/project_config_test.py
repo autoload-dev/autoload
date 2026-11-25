@@ -28,6 +28,8 @@ from godot.private.project_config import (
     write_back,
 )
 
+# ==== Compose project =========================================================
+
 
 def _runfile(name: str) -> str:
     return (
@@ -38,14 +40,12 @@ def _runfile(name: str) -> str:
     ).read_text(encoding="utf-8")
 
 
-# ==== Compose project =========================================================
-
-
 # The setting kinds and sections of Godot 4.7, from godot/private/engine/setting_kinds.bzl.
 _TABLE = json.loads(_runfile("setting_kinds.json"))
-KINDS = _TABLE["kinds"]
-SECTIONS = _TABLE["sections"]
 
+KINDS = _TABLE["kinds"]
+
+SECTIONS = _TABLE["sections"]
 
 # Construct with Godot 4.7's setting kinds, as the rules do.
 compose_project = functools.partial(

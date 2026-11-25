@@ -1,7 +1,5 @@
 """
 Godot Android applications built by rules_android, without a nested Gradle build.
-
-Sections: godot_android_runtime, godot_android_application.
 """
 
 load("@rules_android//rules:rules.bzl", "aar_import", "android_application", "android_binary", "android_library")
@@ -28,8 +26,6 @@ _ACTIVITY_DEPS = [
 ]
 
 _PRIVATE = ["//visibility:private"]
-
-# ==== godot_android_runtime ===================================================
 
 def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     """
@@ -77,7 +73,139 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
         aar = ":" + name + ".engine_aar"
     aar_import(name = name, aar = aar, deps = _SHELL_DEPS, **kwargs)
 
-# ==== godot_android_application ===============================================
+def _application_runtime(name, runtime, common):
+    """The fixed runtime, or one that resolves the runtime component per platform slice."""
+    if runtime:
+        return runtime
+
+    # Resolve the runtime component inside each platform slice of the Android split.
+    _runtime_bridge_android(name = name + ".godot_runtime", visibility = _PRIVATE, **common)
+    return ":" + name + ".godot_runtime"
+
+def _application_libraries(name, pack, runtime, deps, common):
+    """
+    Declare the application's JNI libraries, platform libraries and manifest order.
+
+    Args:
+        name: The application's target name.
+        pack: The application's pack.
+        runtime: The application's Android runtime.
+        deps: The application's own platform libraries.
+        common: Common attributes of every declared target.
+
+    Returns:
+        A struct with the JNI libraries' label and `deps`, the first android_binary deps:
+        the manifest order, which ranks the libraries' manifests as in a Gradle build,
+        then the runtime and the native libraries; the other deps keep their order for
+        classes and resources.
+    """
+    godot_android_jni_libraries(
+        name = name + ".godot_jni_libraries",
+        pack = pack,
+        runtime = runtime,
+        visibility = _PRIVATE,
+        **common
+    )
+    godot_android_platform_libraries(
+        name = name + ".godot_platform_libraries",
+        deps = [pack],
+        visibility = _PRIVATE,
+        **common
+    )
+    godot_android_manifest_order(
+        name = name + ".godot_manifest_order",
+        leading = _ACTIVITY_DEPS + [runtime],
+        pack = pack,
+        application_deps = deps,
+        visibility = _PRIVATE,
+        **common
+    )
+    jni = ":" + name + ".godot_jni_libraries"
+    return struct(
+        jni_libraries = jni,
+        deps = [
+            ":" + name + ".godot_manifest_order",
+            runtime,
+            jni,
+            ":" + name + ".godot_platform_libraries",
+        ],
+    )
+
+def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource_files, common):
+    """
+    Declare the bootstrap, its output groups and, with an own manifest, the shell library.
+
+    Args:
+        name: The application's target name.
+        pack: The application's pack.
+        deps: The application's own platform libraries.
+        manifest: The application's own manifest, or None.
+        manifest_values: The application's manifest placeholder values.
+        resource_files: The application's resource files.
+        common: Common attributes of every declared target.
+
+    Returns:
+        A struct with the labels the android_binary takes: the bootstrap as `assets`
+        with its `assets_dir`, its `java`, `manifest` and `resources` output groups, and
+        the `shell_library` deps, empty without an own manifest.
+    """
+    godot_android_bootstrap(
+        name = name + ".godot_bootstrap",
+        pack = pack,
+        maven_deps = _SHELL_DEPS + _ACTIVITY_DEPS + deps,
+        app_name = name.rsplit("/", 1)[-1],
+        manifest_values = manifest_values,
+        manifest_override = manifest,
+        resource_overrides = resource_files,
+        visibility = _PRIVATE,
+        **common
+    )
+    bootstrap = ":" + name + ".godot_bootstrap"
+    for group in ["java", "manifest", "resources"] + (["shell_manifest"] if manifest else []):
+        native.filegroup(
+            name = name + ".godot_bootstrap." + group,
+            srcs = [bootstrap],
+            output_group = group,
+            visibility = _PRIVATE,
+            **filegroup_kwargs(common)
+        )
+    shell_library = []
+    if manifest:
+        # A manifest-only library: its manifest merges below the application's own.
+        android_library(
+            name = name + ".godot_bootstrap.shell_library",
+            manifest = bootstrap + ".shell_manifest",
+            exports_manifest = 1,
+            custom_package = "com.godot.game.shell",
+            visibility = _PRIVATE,
+            **common
+        )
+        shell_library = [bootstrap + ".shell_library"]
+    return struct(
+        assets = bootstrap,
+        assets_dir = name + ".godot_bootstrap/assets",
+        java = bootstrap + ".java",
+        manifest = bootstrap + ".manifest",
+        resources = bootstrap + ".resources",
+        shell_library = shell_library,
+    )
+
+def _application_debug_symbols(name, jni_libraries, runtime, visibility, common):
+    """Declare the public `<name>.debug_symbols` and the zip it links."""
+    godot_android_debug_symbols_zip(
+        name = name + ".debug_symbols_zip",
+        jni_libraries = jni_libraries,
+        runtime = runtime,
+        output_name = name.rsplit("/", 1)[-1] + "_debug_symbols.zip",
+        visibility = _PRIVATE,
+        **common
+    )
+    godot_android_debug_symbols(
+        name = name + ".debug_symbols",
+        symbols = ":" + name + ".debug_symbols_zip",
+        visibility = visibility,
+        **common
+    )
 
 def godot_android_application(
         name,
@@ -225,140 +353,6 @@ def godot_android_application(
         app = ":" + native_app,
         application_id = application_id,
         toolchains = kwargs.get("toolchains", []),
-        visibility = visibility,
-        **common
-    )
-
-def _application_runtime(name, runtime, common):
-    """The fixed runtime, or one that resolves the runtime component per platform slice."""
-    if runtime:
-        return runtime
-
-    # Resolve the runtime component inside each platform slice of the Android split.
-    _runtime_bridge_android(name = name + ".godot_runtime", visibility = _PRIVATE, **common)
-    return ":" + name + ".godot_runtime"
-
-def _application_libraries(name, pack, runtime, deps, common):
-    """
-    Declare the application's JNI libraries, platform libraries and manifest order.
-
-    Args:
-        name: The application's target name.
-        pack: The application's pack.
-        runtime: The application's Android runtime.
-        deps: The application's own platform libraries.
-        common: Common attributes of every declared target.
-
-    Returns:
-        A struct with the JNI libraries' label and `deps`, the first android_binary deps:
-        the manifest order, which ranks the libraries' manifests as in a Gradle build,
-        then the runtime and the native libraries; the other deps keep their order for
-        classes and resources.
-    """
-    godot_android_jni_libraries(
-        name = name + ".godot_jni_libraries",
-        pack = pack,
-        runtime = runtime,
-        visibility = _PRIVATE,
-        **common
-    )
-    godot_android_platform_libraries(
-        name = name + ".godot_platform_libraries",
-        deps = [pack],
-        visibility = _PRIVATE,
-        **common
-    )
-    godot_android_manifest_order(
-        name = name + ".godot_manifest_order",
-        leading = _ACTIVITY_DEPS + [runtime],
-        pack = pack,
-        application_deps = deps,
-        visibility = _PRIVATE,
-        **common
-    )
-    jni = ":" + name + ".godot_jni_libraries"
-    return struct(
-        jni_libraries = jni,
-        deps = [
-            ":" + name + ".godot_manifest_order",
-            runtime,
-            jni,
-            ":" + name + ".godot_platform_libraries",
-        ],
-    )
-
-def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource_files, common):
-    """
-    Declare the bootstrap, its output groups and, with an own manifest, the shell library.
-
-    Args:
-        name: The application's target name.
-        pack: The application's pack.
-        deps: The application's own platform libraries.
-        manifest: The application's own manifest, or None.
-        manifest_values: The application's manifest placeholder values.
-        resource_files: The application's resource files.
-        common: Common attributes of every declared target.
-
-    Returns:
-        A struct with the labels the android_binary takes: the bootstrap as `assets`
-        with its `assets_dir`, its `java`, `manifest` and `resources` output groups, and
-        the `shell_library` deps, empty without an own manifest.
-    """
-    godot_android_bootstrap(
-        name = name + ".godot_bootstrap",
-        pack = pack,
-        maven_deps = _SHELL_DEPS + _ACTIVITY_DEPS + deps,
-        app_name = name.rsplit("/", 1)[-1],
-        manifest_values = manifest_values,
-        manifest_override = manifest,
-        resource_overrides = resource_files,
-        visibility = _PRIVATE,
-        **common
-    )
-    bootstrap = ":" + name + ".godot_bootstrap"
-    for group in ["java", "manifest", "resources"] + (["shell_manifest"] if manifest else []):
-        native.filegroup(
-            name = name + ".godot_bootstrap." + group,
-            srcs = [bootstrap],
-            output_group = group,
-            visibility = _PRIVATE,
-            **filegroup_kwargs(common)
-        )
-    shell_library = []
-    if manifest:
-        # A manifest-only library: its manifest merges below the application's own.
-        android_library(
-            name = name + ".godot_bootstrap.shell_library",
-            manifest = bootstrap + ".shell_manifest",
-            exports_manifest = 1,
-            custom_package = "com.godot.game.shell",
-            visibility = _PRIVATE,
-            **common
-        )
-        shell_library = [bootstrap + ".shell_library"]
-    return struct(
-        assets = bootstrap,
-        assets_dir = name + ".godot_bootstrap/assets",
-        java = bootstrap + ".java",
-        manifest = bootstrap + ".manifest",
-        resources = bootstrap + ".resources",
-        shell_library = shell_library,
-    )
-
-def _application_debug_symbols(name, jni_libraries, runtime, visibility, common):
-    """Declare the public `<name>.debug_symbols` and the zip it links."""
-    godot_android_debug_symbols_zip(
-        name = name + ".debug_symbols_zip",
-        jni_libraries = jni_libraries,
-        runtime = runtime,
-        output_name = name.rsplit("/", 1)[-1] + "_debug_symbols.zip",
-        visibility = _PRIVATE,
-        **common
-    )
-    godot_android_debug_symbols(
-        name = name + ".debug_symbols",
-        symbols = ":" + name + ".debug_symbols_zip",
         visibility = visibility,
         **common
     )

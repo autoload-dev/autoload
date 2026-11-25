@@ -16,18 +16,6 @@ from tools.platforms.shell_common import Facts, fill, release_value, xml
 # ==== Plist merging ===========================================================
 
 
-def _plist_bool(value: object) -> str:
-    return "<true/>" if value else "<false/>"
-
-
-def _plist_strings(values: list[str], indent: str = "    ") -> str:
-    """A plist array of strings as the value of a dict entry at indent."""
-    if not values:
-        return "<array/>"
-    items = "".join(f"{indent}    <string>{xml(value)}</string>\n" for value in values)
-    return f"<array>\n{items}{indent}</array>"
-
-
 class _UniqueKeys(dict):
     def __setitem__(self, key: str, value: Any) -> None:
         if key in self:
@@ -99,6 +87,18 @@ def merge_plists(base: str, fragments: list[str]) -> str:
 
 
 # ==== Info plists =============================================================
+
+
+def _plist_bool(value: object) -> str:
+    return "<true/>" if value else "<false/>"
+
+
+def _plist_strings(values: list[str], indent: str = "    ") -> str:
+    """A plist array of strings as the value of a dict entry at indent."""
+    if not values:
+        return "<array/>"
+    items = "".join(f"{indent}    <string>{xml(value)}</string>\n" for value in values)
+    return f"<array>\n{items}{indent}</array>"
 
 
 def _checked(

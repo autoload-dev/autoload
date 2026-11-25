@@ -5,7 +5,8 @@ The launcher uses the host's Android SDK tools, from ANDROID_SDK_ROOT, ANDROID_H
 PATH, because an adb client must match the adb server already serving the host's
 devices.
 
-Sections: SDK tools, Virtual devices, Emulator, App launch.
+Sections: SDK tools, Connected devices, Virtual devices, Device selection, Installation,
+App launch, Command line.
 """
 
 from __future__ import annotations
@@ -46,51 +47,11 @@ OPTIONS = frozenset(
 )
 
 BOOT_TIMEOUT = 300
+
 INSTALL_TIMEOUT = 600
-
-# The AVD the launcher creates when none suits the application.
-DEFAULT_AVD = "medium_phone"
-
-# The file of godot/platforms/private/android/LaunchArgumentsPlugin.java, below the
-# application's files directory.
-LAUNCH_ARGUMENTS_FILE = "rules_godot_launch_arguments"
-
-# Install failures an installed copy of the application causes; uninstalling it, and
-# its data, lets the install succeed.
-_CONFLICTS = {
-    "INSTALL_FAILED_UPDATE_INCOMPATIBLE": "it is signed with another key",
-    "INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES": "it is signed with another key",
-    "INSTALL_FAILED_VERSION_DOWNGRADE": "it has a newer version code",
-    "INSTALL_FAILED_INSUFFICIENT_STORAGE": "the device has too little free storage",
-}
-
-_HINTS = {
-    "INSTALL_FAILED_NO_MATCHING_ABIS": "the APK has no native libraries for the device's CPU {abi}; build for it with --platforms=@autoload_rules_godot//godot/platforms:android_<cpu>",
-    "INSTALL_FAILED_OLDER_SDK": "the device's API level {sdk} is below the application's android_min_sdk_version",
-    "INSTALL_FAILED_INSUFFICIENT_STORAGE": "free storage on the device",
-    "INSTALL_FAILED_USER_RESTRICTED": "allow installs over USB in the device's developer options",
-}
-
-_FAILURE = re.compile(r"\b(INSTALL_[A-Z_]+|DELETE_FAILED_[A-Z_]+)")
-
-# System image tags in the order the launcher prefers them for an AVD it creates.
-_IMAGE_TAGS = ("google_apis_playstore", "google_apis", "default")
 
 
 # ==== SDK tools ===============================================================
-
-
-@dataclasses.dataclass(frozen=True)
-class Device:
-    """A device adb lists."""
-
-    serial: str
-    state: str
-    description: str = ""
-
-    @property
-    def emulator(self) -> bool:
-        return self.serial.startswith("emulator-")
 
 
 def sdk_root() -> str | None:
@@ -150,7 +111,32 @@ class Adb:
         return self.run("shell", command, check=check).stdout.strip()
 
 
-# ==== Virtual devices =========================================================
+def _version_of_path(path: str) -> tuple[int, ...]:
+    return tuple(
+        int(part) for part in re.findall(r"\d+", os.path.basename(os.path.dirname(path)))
+    )
+
+
+def _aapt2() -> str | None:
+    """The newest aapt2 of the host SDK's build tools."""
+    tools = glob.glob(os.path.join(sdk_root() or "", "build-tools", "*", "aapt2"))
+    return max(tools, key=_version_of_path) if tools else None
+
+
+# ==== Connected devices =======================================================
+
+
+@dataclasses.dataclass(frozen=True)
+class Device:
+    """A device adb lists."""
+
+    serial: str
+    state: str
+    description: str = ""
+
+    @property
+    def emulator(self) -> bool:
+        return self.serial.startswith("emulator-")
 
 
 def devices(adb: Adb) -> list[Device]:
@@ -172,6 +158,16 @@ def avd_name(adb: Adb, serial: str) -> str | None:
     if result.returncode != 0 or not lines or lines[0] == "OK":
         return None
     return lines[0]
+
+
+# ==== Virtual devices =========================================================
+
+
+# The AVD the launcher creates when none suits the application.
+DEFAULT_AVD = "medium_phone"
+
+# System image tags in the order the launcher prefers them for an AVD it creates.
+_IMAGE_TAGS = ("google_apis_playstore", "google_apis", "default")
 
 
 def avds(emulator: str) -> list[str]:
@@ -229,21 +225,6 @@ def target_abi(apk: str) -> str:
     return abi
 
 
-def list_devices(adb: Adb, emulator: str | None) -> None:
-    print("Running:")
-    for device in devices(adb):
-        kind = (
-            f"emulator {avd_name(adb, device.serial)}"
-            if device.emulator
-            else device.description
-        )
-        print(f"  {device.serial}  {device.state}  {kind}".rstrip())
-    if emulator:
-        print("Startable AVDs:")
-        for avd in avds(emulator):
-            print("  " + avd)
-
-
 def _images(abi: str) -> list[tuple[tuple[int, ...], str, str]]:
     """The installed system images of an ABI: version, API directory and tag."""
     root = sdk_root() or ""
@@ -257,18 +238,6 @@ def _images(abi: str) -> list[tuple[tuple[int, ...], str, str]]:
         if version and tag in _IMAGE_TAGS:
             images.append((version, api_directory, tag))
     return images
-
-
-def _version_of_path(path: str) -> tuple[int, ...]:
-    return tuple(
-        int(part) for part in re.findall(r"\d+", os.path.basename(os.path.dirname(path)))
-    )
-
-
-def _aapt2() -> str | None:
-    """The newest aapt2 of the host SDK's build tools."""
-    tools = glob.glob(os.path.join(sdk_root() or "", "build-tools", "*", "aapt2"))
-    return max(tools, key=_version_of_path) if tools else None
 
 
 def _sdk_versions(apk: str | None) -> tuple[int | None, int | None]:
@@ -370,7 +339,7 @@ def choose_avd(emulator: str, apk: str | None) -> str:
     return create_avd(abi or host_abi(), apk)
 
 
-# ==== Emulator ================================================================
+# ==== Device selection ========================================================
 
 
 def _wait_for_boot(
@@ -498,7 +467,65 @@ def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> 
     return start_emulator(adb, emulator, choose_avd(emulator, apk), options)
 
 
-# ==== App launch ==============================================================
+# ==== Installation ============================================================
+
+
+def universal_apk(
+    manifest: Mapping[str, Any], runfile: Callable[[str], str], directory: str
+) -> str:
+    """The one APK bundletool derives from the bundle for every device, signed for debugging."""
+    java_home = os.environ.get("JAVA_HOME")
+    java = os.path.join(java_home, "bin", "java") if java_home else shutil.which("java")
+    if not java or not os.access(java, os.X_OK):
+        raise LaunchError(
+            "installing an App Bundle runs bundletool, which needs java; set JAVA_HOME or put java on PATH"
+        )
+    # rules_android's bundletool carries no aapt2 of its own.
+    aapt2 = _aapt2()
+    if not aapt2:
+        raise LaunchError(
+            "installing an App Bundle runs bundletool, which needs aapt2 of the Android SDK's build-tools"
+        )
+    apks = os.path.join(directory, "app.apks")
+    log("building the universal APK of the App Bundle")
+    launch_common.run(
+        [
+            java,
+            "-jar",
+            runfile(manifest["bundletool"]),
+            "build-apks",
+            "--bundle=" + runfile(manifest["bundle"]),
+            "--output=" + apks,
+            "--mode=universal",
+            "--ks=" + runfile(manifest["keystore"]),
+            "--ks-pass=pass:android",
+            "--ks-key-alias=androiddebugkey",
+            "--key-pass=pass:android",
+            "--aapt2=" + aapt2,
+        ],
+        timeout=INSTALL_TIMEOUT,
+    )
+    with zipfile.ZipFile(apks) as archive:
+        return archive.extract("universal.apk", directory)
+
+
+# Install failures an installed copy of the application causes; uninstalling it, and
+# its data, lets the install succeed.
+_CONFLICTS = {
+    "INSTALL_FAILED_UPDATE_INCOMPATIBLE": "it is signed with another key",
+    "INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES": "it is signed with another key",
+    "INSTALL_FAILED_VERSION_DOWNGRADE": "it has a newer version code",
+    "INSTALL_FAILED_INSUFFICIENT_STORAGE": "the device has too little free storage",
+}
+
+_HINTS = {
+    "INSTALL_FAILED_NO_MATCHING_ABIS": "the APK has no native libraries for the device's CPU {abi}; build for it with --platforms=@autoload_rules_godot//godot/platforms:android_<cpu>",
+    "INSTALL_FAILED_OLDER_SDK": "the device's API level {sdk} is below the application's android_min_sdk_version",
+    "INSTALL_FAILED_INSUFFICIENT_STORAGE": "free storage on the device",
+    "INSTALL_FAILED_USER_RESTRICTED": "allow installs over USB in the device's developer options",
+}
+
+_FAILURE = re.compile(r"\b(INSTALL_[A-Z_]+|DELETE_FAILED_[A-Z_]+)")
 
 
 def install(device: Adb, apk: str, package: str, options: launch_common.Options) -> None:
@@ -542,6 +569,14 @@ def install(device: Adb, apk: str, package: str, options: launch_common.Options)
         conflict=_CONFLICTS.get,
         describe=describe,
     )
+
+
+# ==== App launch ==============================================================
+
+
+# The file of godot/platforms/private/android/LaunchArgumentsPlugin.java, below the
+# application's files directory.
+LAUNCH_ARGUMENTS_FILE = "rules_godot_launch_arguments"
 
 
 def write_launch_arguments(device: Adb, package: str, godot_args: Sequence[str]) -> None:
@@ -629,43 +664,22 @@ def stream(device: Adb, package: str, pid: str, options: launch_common.Options) 
         launch_common.end(watcher)
 
 
-def universal_apk(
-    manifest: Mapping[str, Any], runfile: Callable[[str], str], directory: str
-) -> str:
-    """The one APK bundletool derives from the bundle for every device, signed for debugging."""
-    java_home = os.environ.get("JAVA_HOME")
-    java = os.path.join(java_home, "bin", "java") if java_home else shutil.which("java")
-    if not java or not os.access(java, os.X_OK):
-        raise LaunchError(
-            "installing an App Bundle runs bundletool, which needs java; set JAVA_HOME or put java on PATH"
+# ==== Command line ============================================================
+
+
+def list_devices(adb: Adb, emulator: str | None) -> None:
+    print("Running:")
+    for device in devices(adb):
+        kind = (
+            f"emulator {avd_name(adb, device.serial)}"
+            if device.emulator
+            else device.description
         )
-    # rules_android's bundletool carries no aapt2 of its own.
-    aapt2 = _aapt2()
-    if not aapt2:
-        raise LaunchError(
-            "installing an App Bundle runs bundletool, which needs aapt2 of the Android SDK's build-tools"
-        )
-    apks = os.path.join(directory, "app.apks")
-    log("building the universal APK of the App Bundle")
-    launch_common.run(
-        [
-            java,
-            "-jar",
-            runfile(manifest["bundletool"]),
-            "build-apks",
-            "--bundle=" + runfile(manifest["bundle"]),
-            "--output=" + apks,
-            "--mode=universal",
-            "--ks=" + runfile(manifest["keystore"]),
-            "--ks-pass=pass:android",
-            "--ks-key-alias=androiddebugkey",
-            "--key-pass=pass:android",
-            "--aapt2=" + aapt2,
-        ],
-        timeout=INSTALL_TIMEOUT,
-    )
-    with zipfile.ZipFile(apks) as archive:
-        return archive.extract("universal.apk", directory)
+        print(f"  {device.serial}  {device.state}  {kind}".rstrip())
+    if emulator:
+        print("Startable AVDs:")
+        for avd in avds(emulator):
+            print("  " + avd)
 
 
 def launch(

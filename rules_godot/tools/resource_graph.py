@@ -5,7 +5,7 @@ Graph paths are res:// identities, not execroot paths. The scanner deliberately
 does not execute Godot, scripts, importers, or addon code. Unknown dynamic loads
 remain diagnostics and must be covered by explicit declarations.
 
-Sections: Diagnostics, Lexer, Project files, Scan, Script scanning, Graph, Pack
+Sections: Lexer, Text resources, Scan, Reference scanning, Graph, Graph queries, Pack
 selection, Command line.
 """
 
@@ -43,6 +43,7 @@ ANALYZED_FORMATS = frozenset(
         ".import",
     }
 )
+
 LEAF_FORMATS = frozenset(
     {
         ".png",
@@ -70,7 +71,6 @@ LEAF_FORMATS = frozenset(
     }
 )
 
-
 # Files godot_build_files collects without a reference scanner.
 OPAQUE_FORMATS = frozenset(
     {".res", ".scn", ".svg", ".glb", ".obj", ".fbx", ".csv", ".json", ".gdextension"}
@@ -80,34 +80,8 @@ OPAQUE_FORMATS = frozenset(
 # graph records that as a reference it cannot determine.
 UNANALYZED_CONTAINERS = frozenset({".res", ".scn"})
 
-# FileAccess reads a file's bytes; file_exists only probes for it.
-_FILE_READS = frozenset(
-    {
-        "open",
-        "open_compressed",
-        "open_encrypted",
-        "open_encrypted_with_pass",
-        "get_file_as_bytes",
-        "get_file_as_string",
-    }
-)
-_DIRECTORY_LISTINGS = frozenset({"open", "get_files_at", "get_directories_at"})
-
-# Code can guard these runtime accesses, so an unavailable target is not
-# necessarily an error. Every other reference must resolve wherever it loads.
-SOFT_REFERENCE_KINDS = frozenset({"load", "file_access", "runtime", "runtime_deps"})
-# Godot records no file or directory hint for a setting, and a declared runtime
-# reference names what code lists. Every other kind loads or reads one file.
-DIRECTORY_REFERENCE_KINDS = frozenset({"project_setting", "runtime"})
-
 # The project configuration, which the graph scans for settings that name resources.
 _PROJECT_FILE = "res://project.godot"
-
-_UID = re.compile(r"uid://[a-z0-9]+")
-_IMPORT_UID = re.compile(r'^\s*uid\s*=\s*"(uid://[a-z0-9]+)"', re.MULTILINE)
-
-
-# ==== Diagnostics =============================================================
 
 
 def portable_identity(path: str) -> str:
@@ -115,8 +89,28 @@ def portable_identity(path: str) -> str:
     return unicodedata.normalize("NFC", path).casefold()
 
 
-def _json(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+def _project_relative(value: str, source: str) -> str:
+    """A reference without its res:// prefix; a relative one is joined to its source's directory."""
+    if value.startswith("res://"):
+        return value[6:]
+    if ":" in value or value.startswith("/"):
+        raise ValueError("only resource paths or res:// paths are supported")
+    return posixpath.join(posixpath.dirname(source[6:]), value)
+
+
+def res_path(value: str, source: str = _PROJECT_FILE) -> str:
+    """Normalize a resource reference, rejecting escapes and non-resource URLs."""
+    value = _project_relative(value, source)
+    if any(char in value for char in "\\\0:") or value.startswith("/"):
+        raise ValueError("invalid resource path")
+    value = posixpath.normpath(value)
+    if value in ("", ".", "..") or value.startswith("../"):
+        raise ValueError("resource path escapes the project")
+    return "res://" + value
+
+
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def diagnostic(code: str, path: str, message: str, line: int = 0) -> dict:
@@ -145,73 +139,17 @@ def _sorted_diagnostics(diagnostics: list[dict]) -> list[dict]:
     )
 
 
-def _record_manifest_line(manifest: dict, kind: str, fields: list) -> None:
-    if kind == "project_file":
-        manifest["project_file"] = fields[0]
-    elif kind == "addon":
-        manifest["addons"][fields[0]] = fields[1]
-    elif kind == "uses":
-        manifest["addon_uses"][fields[0]] = fields[1]
-    elif kind == "metadata_index":
-        manifest["metadata_index"] = dict(zip(("path", "corrects"), fields))
-    elif kind == "ignored":
-        manifest["ignored"].append(fields[0])
-    elif kind == "relationship":
-        manifest["relationships"].append(
-            dict(zip(("source", "target", "kind", "owner"), fields))
-        )
-    else:
-        relative, source, owner = fields
-        prefix = "import_" if kind == "import" else "member_"
-        manifest[prefix + "resource_paths"][relative] = source
-        manifest[prefix + "owners"][relative] = owner
+class _Findings:
+    """Collects the findings of a pass over the files of a project."""
 
+    def __init__(self) -> None:
+        self.diagnostics: list[dict] = []
 
-def read_manifest(path: Path) -> dict:
-    """Read the JSON-lines scan manifest that godot_project writes."""
-    manifest = {
-        "member_resource_paths": {},
-        "import_resource_paths": {},
-        "member_owners": {},
-        "import_owners": {},
-        "relationships": [],
-        "ignored": [],
-        "addons": {},
-        "addon_uses": {},
-    }
-    for line in path.read_text(encoding="utf-8").splitlines():
-        kind, *fields = json.loads(line)
-        _record_manifest_line(manifest, kind, fields)
-    return manifest
+    def error(self, code: str, path: str, message: str, line: int = 0) -> None:
+        self.diagnostics.append(diagnostic(code, path, message, line))
 
-
-def _chain(parents: dict, path: str | None) -> list[str]:
-    """The path from a root to path, following each file's parent."""
-    result = []
-    while path is not None:
-        result.append(path)
-        path = parents.get(path)
-    return result[::-1]
-
-
-def _project_relative(value: str, source: str) -> str:
-    """A reference without its res:// prefix; a relative one is joined to its source's directory."""
-    if value.startswith("res://"):
-        return value[6:]
-    if ":" in value or value.startswith("/"):
-        raise ValueError("only resource paths or res:// paths are supported")
-    return posixpath.join(posixpath.dirname(source[6:]), value)
-
-
-def res_path(value: str, source: str = _PROJECT_FILE) -> str:
-    """Normalize a resource reference, rejecting escapes and non-resource URLs."""
-    value = _project_relative(value, source)
-    if any(char in value for char in "\\\0:") or value.startswith("/"):
-        raise ValueError("invalid resource path")
-    value = posixpath.normpath(value)
-    if value in ("", ".", "..") or value.startswith("../"):
-        raise ValueError("resource path escapes the project")
-    return "res://" + value
+    def warn(self, code: str, path: str, message: str, line: int = 0) -> None:
+        self.diagnostics.append(warning(code, path, message, line))
 
 
 # ==== Lexer ===================================================================
@@ -227,6 +165,7 @@ class Token(NamedTuple):
 
 
 _ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "'": "'"}
+
 _UNICODE_ESCAPE = re.compile(r"[0-9a-fA-F]{4}")
 
 
@@ -366,12 +305,15 @@ def _literal_argument(
     return literal[1] if literal[0] == "string" and closer[1] in closers else None
 
 
-# ==== Project files ===========================================================
+# ==== Text resources ==========================================================
 
 
 _SECTION = re.compile(r"^[ \t]*\[([a-z_]+)\b", re.MULTILINE)
+
 _KEY = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
+
 _CLOSING = {"(": ")", "[": "]", "{": "}"}
+
 _ASSIGN = re.compile(r"\s*=\s*")
 
 
@@ -483,6 +425,7 @@ def headings(text: str) -> Iterator[Heading]:
 REMAP_PATH = re.compile(
     r'^(path(?:\.([A-Za-z0-9_]+))?)="res://([^"]+)"[ \t]*$', re.MULTILINE
 )
+
 IMPORTER = re.compile(r'^importer="([^"]*)"', re.MULTILINE)
 
 
@@ -496,6 +439,11 @@ def remap_section(text: str) -> str | None:
         return None
     end = next((start for _, start in starts if start > remap), len(text))
     return text[remap:end]
+
+
+_UID = re.compile(r"uid://[a-z0-9]+")
+
+_IMPORT_UID = re.compile(r'^\s*uid\s*=\s*"(uid://[a-z0-9]+)"', re.MULTILINE)
 
 
 def file_identities(
@@ -596,17 +544,44 @@ def validate_identities(resource_paths: dict[str, Path]) -> None:
 # ==== Scan ====================================================================
 
 
-class _Findings:
-    """Collects the findings of a pass over the files of a project."""
+def _record_manifest_line(manifest: dict, kind: str, fields: list) -> None:
+    if kind == "project_file":
+        manifest["project_file"] = fields[0]
+    elif kind == "addon":
+        manifest["addons"][fields[0]] = fields[1]
+    elif kind == "uses":
+        manifest["addon_uses"][fields[0]] = fields[1]
+    elif kind == "metadata_index":
+        manifest["metadata_index"] = dict(zip(("path", "corrects"), fields))
+    elif kind == "ignored":
+        manifest["ignored"].append(fields[0])
+    elif kind == "relationship":
+        manifest["relationships"].append(
+            dict(zip(("source", "target", "kind", "owner"), fields))
+        )
+    else:
+        relative, source, owner = fields
+        prefix = "import_" if kind == "import" else "member_"
+        manifest[prefix + "resource_paths"][relative] = source
+        manifest[prefix + "owners"][relative] = owner
 
-    def __init__(self) -> None:
-        self.diagnostics: list[dict] = []
 
-    def error(self, code: str, path: str, message: str, line: int = 0) -> None:
-        self.diagnostics.append(diagnostic(code, path, message, line))
-
-    def warn(self, code: str, path: str, message: str, line: int = 0) -> None:
-        self.diagnostics.append(warning(code, path, message, line))
+def read_manifest(path: Path) -> dict:
+    """Read the JSON-lines scan manifest that godot_project writes."""
+    manifest = {
+        "member_resource_paths": {},
+        "import_resource_paths": {},
+        "member_owners": {},
+        "import_owners": {},
+        "relationships": [],
+        "ignored": [],
+        "addons": {},
+        "addon_uses": {},
+    }
+    for line in path.read_text(encoding="utf-8").splitlines():
+        kind, *fields = json.loads(line)
+        _record_manifest_line(manifest, kind, fields)
+    return manifest
 
 
 class _Scan(_Findings):
@@ -641,59 +616,6 @@ class _Scan(_Findings):
                 "origin": origin,
             }
         )
-
-
-def _targets(edge: dict) -> list[str]:
-    """The nodes a resolved edge reaches: its file, or every node below its directory."""
-    return edge.get("targets", [edge["target"]])
-
-
-def _undeclared_addon_use(
-    edge: dict, nodes: dict, addon_of: dict, uses: dict
-) -> dict | None:
-    """The warning for a content file that refers to a file of an add-on it does not use."""
-    if edge["status"] != "resolved":
-        return None
-    source_owner = nodes[edge["source"]].get("owner", "")
-    if not source_owner or source_owner in addon_of:
-        return None
-    for target in _targets(edge):
-        label = addon_of.get(nodes.get(target, {}).get("owner", ""))
-        if label and label not in uses.get(source_owner, set()):
-            return warning(
-                "undeclared_addon_use",
-                edge["source"],
-                f"{edge['kind']} refers to {target} of the add-on {label}; "
-                f"list the add-on in the deps of {source_owner}",
-                edge["line"],
-            )
-    return None
-
-
-def _diagnose_undeclared_addon_uses(
-    manifest: dict, scan: _Scan, edges: list[dict]
-) -> None:
-    """
-    Report a content file referring to an add-on's file while its resources use no such add-on.
-
-    The manifest names the operation's add-ons with the owners of their files, and per
-    resources owner the add-ons that target and its dependencies use (FR-026). The content
-    validation already fails such a script or scene; this names the add-on, for text
-    resources too. An add-on's own files are checked by its declaration. It is a warning;
-    require_declared makes it an error, as research-addons R9 has it.
-    """
-    addon_of = {
-        owner: label
-        for label, owners in manifest.get("addons", {}).items()
-        for owner in owners
-    }
-    uses = {
-        owner: set(labels) for owner, labels in manifest.get("addon_uses", {}).items()
-    }
-    for edge in edges:
-        finding = _undeclared_addon_use(edge, scan.nodes, addon_of, uses)
-        if finding:
-            scan.diagnostics.append(finding)
 
 
 def _declared_sources(manifest: dict, scan: _Scan) -> tuple[dict, dict]:
@@ -886,10 +808,6 @@ def _add_generated_uids(scan: _Scan, uids: dict[str, str]) -> None:
             scan.uids[uid].add(node)
 
 
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def _read_metadata_index(scan: _Scan, manifest: dict) -> dict[str, set[str]]:
     """
     Add the UIDs that only generated sidecars declare to the identities.
@@ -966,22 +884,24 @@ def _declare_runtime_references(scan: _Scan, manifest: dict) -> set[tuple[str, s
     return declared
 
 
-def _directories(nodes: Iterable[str]) -> set[str]:
-    """Every directory below which the project declares a file."""
-    directories = set()
-    for path in nodes:
-        parent = path.rpartition("/")[0]
-        while parent != "res:/" and parent not in directories:
-            directories.add(parent)
-            parent = parent.rpartition("/")[0]
-    return directories
-
-
-# ==== Script scanning =========================================================
+# ==== Reference scanning ======================================================
 
 
 _LOADERS = frozenset({"load", "preload", "load_threaded_request"})
-_SHADER_FORMATS = (".gdshader", ".gdshaderinc", ".shader", ".shaderinc")
+
+# FileAccess reads a file's bytes; file_exists only probes for it.
+_FILE_READS = frozenset(
+    {
+        "open",
+        "open_compressed",
+        "open_encrypted",
+        "open_encrypted_with_pass",
+        "get_file_as_bytes",
+        "get_file_as_string",
+    }
+)
+
+_DIRECTORY_LISTINGS = frozenset({"open", "get_files_at", "get_directories_at"})
 
 
 def _is_member_call(script: list, i: int) -> bool:
@@ -1107,6 +1027,9 @@ def _scan_script(scan: _Scan, path: str) -> None:
             _scan_identifier(scan, path, script, i)
 
 
+_SHADER_FORMATS = (".gdshader", ".gdshaderinc", ".shader", ".shaderinc")
+
+
 def _scan_shader(scan: _Scan, path: str, text: str) -> None:
     """Record the #include directives of a shader."""
     shader = _code_tokens(text, shader=True)
@@ -1212,6 +1135,10 @@ def _scan_references(scan: _Scan) -> None:
 
 _IMPORT_KINDS = frozenset({"gltf_buffers", "gltf_images", "import_settings"})
 
+# Godot records no file or directory hint for a setting, and a declared runtime
+# reference names what code lists. Every other kind loads or reads one file.
+DIRECTORY_REFERENCE_KINDS = frozenset({"project_setting", "runtime"})
+
 
 def _dependency_kind(kind: str) -> str:
     """How an edge's source depends on its target: as an import input, as metadata or at runtime."""
@@ -1241,6 +1168,22 @@ def _below(nodes: Iterable[str], directory: str) -> list[str]:
     """The sorted nodes below a directory's res:// path."""
     prefix = directory + "/"
     return sorted(path for path in nodes if path.startswith(prefix))
+
+
+def _directories(nodes: Iterable[str]) -> set[str]:
+    """Every directory below which the project declares a file."""
+    directories = set()
+    for path in nodes:
+        parent = path.rpartition("/")[0]
+        while parent != "res:/" and parent not in directories:
+            directories.add(parent)
+            parent = parent.rpartition("/")[0]
+    return directories
+
+
+def _targets(edge: dict) -> list[str]:
+    """The nodes a resolved edge reaches: its file, or every node below its directory."""
+    return edge.get("targets", [edge["target"]])
 
 
 class _Resolver:
@@ -1447,6 +1390,54 @@ def _graph_document(manifest: dict, scan: _Scan, edges: list[dict]) -> dict:
     }
 
 
+def _undeclared_addon_use(
+    edge: dict, nodes: dict, addon_of: dict, uses: dict
+) -> dict | None:
+    """The warning for a content file that refers to a file of an add-on it does not use."""
+    if edge["status"] != "resolved":
+        return None
+    source_owner = nodes[edge["source"]].get("owner", "")
+    if not source_owner or source_owner in addon_of:
+        return None
+    for target in _targets(edge):
+        label = addon_of.get(nodes.get(target, {}).get("owner", ""))
+        if label and label not in uses.get(source_owner, set()):
+            return warning(
+                "undeclared_addon_use",
+                edge["source"],
+                f"{edge['kind']} refers to {target} of the add-on {label}; "
+                f"list the add-on in the deps of {source_owner}",
+                edge["line"],
+            )
+    return None
+
+
+def _diagnose_undeclared_addon_uses(
+    manifest: dict, scan: _Scan, edges: list[dict]
+) -> None:
+    """
+    Report a content file referring to an add-on's file while its resources use no such add-on.
+
+    The manifest names the operation's add-ons with the owners of their files, and per
+    resources owner the add-ons that target and its dependencies use (FR-026). The content
+    validation already fails such a script or scene; this names the add-on, for text
+    resources too. An add-on's own files are checked by its declaration. It is a warning;
+    require_declared makes it an error, as research-addons R9 has it.
+    """
+    addon_of = {
+        owner: label
+        for label, owners in manifest.get("addons", {}).items()
+        for owner in owners
+    }
+    uses = {
+        owner: set(labels) for owner, labels in manifest.get("addon_uses", {}).items()
+    }
+    for edge in edges:
+        finding = _undeclared_addon_use(edge, scan.nodes, addon_of, uses)
+        if finding:
+            scan.diagnostics.append(finding)
+
+
 def _is_inferred_runtime(edge: dict) -> bool:
     """Whether the scanner inferred a runtime reference, rather than the build or a declaration."""
     return edge["origin"] == "inferred" and edge["dependency_kind"] == "runtime"
@@ -1514,6 +1505,9 @@ def build_graph(manifest: dict, execroot: Path | None = None) -> dict:
     return require_declared(graph) if manifest.get("require_declared") else graph
 
 
+# ==== Graph queries ===========================================================
+
+
 def _snapshot_uids(snapshot: dict | None) -> defaultdict[str, set[str]]:
     """The files of a graph snapshot by the UIDs they carry."""
     result = defaultdict(set)
@@ -1578,6 +1572,15 @@ def _adjacency(edges: Iterable[dict], reverse: bool) -> defaultdict[str, set[str
     return adjacency
 
 
+def _chain(parents: dict, path: str | None) -> list[str]:
+    """The path from a root to path, following each file's parent."""
+    result = []
+    while path is not None:
+        result.append(path)
+        path = parents.get(path)
+    return result[::-1]
+
+
 def _parents(
     roots: set[str],
     known: set[str],
@@ -1632,6 +1635,11 @@ def query_graph(
 
 
 # ==== Pack selection ==========================================================
+
+
+# Code can guard these runtime accesses, so an unavailable target is not
+# necessarily an error. Every other reference must resolve wherever it loads.
+SOFT_REFERENCE_KINDS = frozenset({"load", "file_access", "runtime", "runtime_deps"})
 
 
 class SelectionError(ValueError):
@@ -1957,6 +1965,10 @@ def select_from_manifest(
 
 
 # ==== Command line ============================================================
+
+
+def _json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 
 
 def _run_scan(args: argparse.Namespace) -> int:

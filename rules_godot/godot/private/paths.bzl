@@ -1,7 +1,8 @@
 """
 Stable resource paths without leaking Bazel output directory names.
 
-Sections: Resource paths, Sidecars and ignores, Namespace validation, Path resolution.
+Sections: Resource paths, Sidecars and ignores, Namespace validation, Path resolution,
+Execution paths, Extension loaders.
 """
 
 visibility(["//godot/engine/private", "//godot/extension", "//godot/platforms/private", "//godot/private/tests"])
@@ -90,32 +91,6 @@ def resource_path(file, target, strip_prefix, prefix = ""):
         ))
     return validate_resource_path(prefix + path[len(source):])
 
-def placed_resource_paths(ctx, srcs, resource_paths, prefix):
-    """
-    Place the files of srcs-like targets and of single-file targets at explicit paths.
-
-    Args:
-        ctx: Rule analysis context with strip_prefix, the package-relative directory
-            prefix to remove from srcs paths.
-        srcs: The listed targets, such as ctx.attr.srcs; each file's path is relative
-            to its target's package.
-        resource_paths: A label-keyed dictionary of single-file targets to explicit
-            resource paths, which prefix does not change.
-        prefix: Resource path of the directory the srcs files are placed under.
-
-    Returns:
-        A dictionary of resource paths to Files.
-    """
-    placed = {}
-    owner = str(ctx.label)
-    for target in srcs:
-        for file in target[DefaultInfo].files.to_list():
-            path = resource_path(file, target.label, ctx.attr.strip_prefix, prefix)
-            merge_resource_paths(placed, {path: file}, owner = owner)
-    for target, path in resource_paths.items():
-        merge_resource_paths(placed, {path: _single_file(target)}, owner = owner)
-    return placed
-
 def _single_file(target):
     """The one file of a resource_paths target."""
     files = target[DefaultInfo].files.to_list()
@@ -186,6 +161,32 @@ def merge_resource_paths(
         destination[path] = file
         if owners != None and path not in owners:
             owners[path] = origin
+
+def placed_resource_paths(ctx, srcs, resource_paths, prefix):
+    """
+    Place the files of srcs-like targets and of single-file targets at explicit paths.
+
+    Args:
+        ctx: Rule analysis context with strip_prefix, the package-relative directory
+            prefix to remove from srcs paths.
+        srcs: The listed targets, such as ctx.attr.srcs; each file's path is relative
+            to its target's package.
+        resource_paths: A label-keyed dictionary of single-file targets to explicit
+            resource paths, which prefix does not change.
+        prefix: Resource path of the directory the srcs files are placed under.
+
+    Returns:
+        A dictionary of resource paths to Files.
+    """
+    placed = {}
+    owner = str(ctx.label)
+    for target in srcs:
+        for file in target[DefaultInfo].files.to_list():
+            path = resource_path(file, target.label, ctx.attr.strip_prefix, prefix)
+            merge_resource_paths(placed, {path: file}, owner = owner)
+    for target, path in resource_paths.items():
+        merge_resource_paths(placed, {path: _single_file(target)}, owner = owner)
+    return placed
 
 # ==== Sidecars and ignores ====================================================
 
@@ -330,27 +331,6 @@ def collect_resource_paths(ctx):
         directory_prefix(getattr(ctx.attr, "prefix", "")),
     )
 
-def declared_path(resource_paths, path, kind):
-    """
-    Return a declared resource path, accepting an optional res:// prefix.
-
-    Args:
-        resource_paths: Dictionary of resource paths to Files of the project.
-        path: The path as written by the user.
-        kind: What the path names, for the failure message.
-
-    Returns:
-        The validated resource path.
-    """
-    resolved = resolve_project_path(resource_paths, path)
-    if not resolved or resolved.kind != "file":
-        fail("%s res://%s is not a declared project member%s" % (
-            kind,
-            directory_prefix(path).rstrip("/"),
-            "; it names a directory" if resolved else "",
-        ))
-    return resolved.path
-
 def resolve_project_path(resource_paths, path):
     """
     Resolve a path from configuration as the resource graph does: a file or a directory.
@@ -380,6 +360,29 @@ def resolve_project_path(resource_paths, path):
     if not files:
         return None
     return struct(kind = "directory", path = path, files = files)
+
+def declared_path(resource_paths, path, kind):
+    """
+    Return a declared resource path, accepting an optional res:// prefix.
+
+    Args:
+        resource_paths: Dictionary of resource paths to Files of the project.
+        path: The path as written by the user.
+        kind: What the path names, for the failure message.
+
+    Returns:
+        The validated resource path.
+    """
+    resolved = resolve_project_path(resource_paths, path)
+    if not resolved or resolved.kind != "file":
+        fail("%s res://%s is not a declared project member%s" % (
+            kind,
+            directory_prefix(path).rstrip("/"),
+            "; it names a directory" if resolved else "",
+        ))
+    return resolved.path
+
+# ==== Execution paths =========================================================
 
 def exec_paths(resource_paths):
     """
@@ -421,6 +424,8 @@ def mapped_paths(resource_paths):
         A dictionary for the manifests of actions that support path mapping.
     """
     return {path: mapped_path(file) for path, file in resource_paths.items()}
+
+# ==== Extension loaders =======================================================
 
 _LOADER_FIELDS = {
     "editor": "editor_resource_paths",

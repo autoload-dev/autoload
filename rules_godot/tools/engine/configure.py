@@ -4,8 +4,8 @@ Translate Godot's configure-only SCons graph to rules_cc targets.
 SCons is used to evaluate the upstream feature logic, not to execute a compiler,
 linker, source generator, or build cache. Compiler actions belong to Bazel.
 
-Sections: Version and profile, Renderer, Compile options, Environment reads, Swift
-modules, Capture, Options and modules, Pinning, Command line.
+Sections: Engine version, Recipe options, Renderers, Compile options, Environment reads,
+Capture, Pinning, Command line.
 """
 
 import argparse
@@ -44,10 +44,38 @@ except ImportError:
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
 
-# ==== Version and profile =====================================================
+def file_digest(path: Path) -> str:
+    """Return the SHA-256 of a file's contents."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def digest_of(value: object) -> str:
+    """Return the SHA-256 of a JSON value in canonical form: sorted keys, no spaces."""
+    data = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_digests(
+    root: Path | None, by_content: Callable[[Path], bool] = lambda _path: True
+) -> dict[str, str]:
+    """
+    Return each file below root by its relative path, with its SHA-256 where by_content
+    accepts it and empty otherwise; nothing without a root.
+    """
+    if root is None:
+        return {}
+    return {
+        path.relative_to(root).as_posix(): file_digest(path) if by_content(path) else ""
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+# ==== Engine version ==========================================================
 
 
 _VERSION_FIELDS = ("major", "minor", "patch", "status")
+
 _MINIMUM_VERSION = (4, 7, 2)
 
 
@@ -104,31 +132,13 @@ def source_version(root: Path) -> str:
     return text
 
 
-def file_digest(path: Path) -> str:
-    """Return the SHA-256 of a file's contents."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def digest_of(value: object) -> str:
-    """Return the SHA-256 of a JSON value in canonical form: sorted keys, no spaces."""
-    data = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(data).hexdigest()
-
-
-def file_digests(
-    root: Path | None, by_content: Callable[[Path], bool] = lambda _path: True
-) -> dict[str, str]:
-    """
-    Return each file below root by its relative path, with its SHA-256 where by_content
-    accepts it and empty otherwise; nothing without a root.
-    """
-    if root is None:
-        return {}
-    return {
-        path.relative_to(root).as_posix(): file_digest(path) if by_content(path) else ""
-        for path in sorted(root.rglob("*"))
-        if path.is_file()
-    }
+def require_expected_version(actual: str, expected: str) -> None:
+    """Reject sources whose version.py contradicts their descriptor."""
+    if expected and actual != expected:
+        raise ValueError(
+            f"The source descriptor declares Godot {expected}, "
+            f"but the extracted version.py is {actual}"
+        )
 
 
 def _module_selection(args: argparse.Namespace) -> dict[str, Any]:
@@ -145,7 +155,60 @@ def _profile_input(args: argparse.Namespace) -> dict[str, str]:
     return {"build_profile": digest} if digest else {}
 
 
+def inputs_hash(args: argparse.Namespace) -> str:
+    """
+    Return the hash an unstamped source-built engine names in place of a Git commit.
+
+    It covers the engine's declared inputs: the archive digest, the patches, the
+    custom module trees and the configuration. Neither time nor host state enters
+    it, so an unchanged engine keeps its hash and its cached actions. The CPU stays
+    out, so the engines of one configuration for several Android ABIs name the same
+    hash in their shared AAR.
+    """
+    inputs = {
+        "source": args.source_sha256,
+        "patches": [file_digest(path) for path in args.patch],
+        "patch_strip": args.patch_strip,
+        **_profile_input(args),
+        "custom_modules": file_digests(args.custom_modules_root),
+        "configuration": {
+            "platform": args.platform,
+            "build_target": args.build_target,
+            **_module_selection(args),
+            "options": sorted(args.options),
+        },
+    }
+    # The length of a Git commit hash, which Godot shortens to 9 for display.
+    return digest_of(inputs)[:40]
+
+
+# Version fields the generated :revision target supplies at build time: the
+# build name with the hash's origin, and the hash and time stamp in the Git
+# commit's place, which a release tarball's .git/HEAD may name.
+REVISION_FILES = {
+    "version_info_builder": {"build": "_revision/build.txt"},
+    "version_hash_builder": {
+        "git_hash": "_revision/hash.txt",
+        "git_timestamp": "_revision/timestamp.txt",
+    },
+}
+
+
+def version_name(info: Mapping[str, object]) -> str:
+    """
+    Return an engine's version and status as its Android library manifest names them.
+
+    The patch number is always present, as in the manifest of an official AAR.
+    The build name and hash follow at build time, such as .custom-git.<hash>.
+    """
+    return "{major}.{minor}.{patch}.{status}{module_config}".format(**info)
+
+
+# ==== Recipe options ==========================================================
+
+
 _TRUE_VALUES = {"yes", "true", "1", "y", "on"}
+
 _FALSE_VALUES = {"no", "false", "0", "n", "off"}
 
 
@@ -191,11 +254,137 @@ def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
         )
 
 
-# ==== Renderer ================================================================
+PROTECTED_OPTIONS = {
+    "platform",
+    "arch",
+    "target",
+    "modules_enabled_by_default",
+    "custom_modules",
+    "scu_build",
+    "generate_bundle",
+    "generate_android_binaries",
+    # Upstream extracts separate symbols in postlink actions Bazel does not run.
+    "separate_debug_symbols",
+    # The recipe's explicit iOS environment owns the SDK axis.
+    "simulator",
+    "ios_simulator",
+    # Raw file paths would be undeclared inputs; use patches, build_options or the
+    # recipe's build_profile attribute instead.
+    "profile",
+    "build_profile",
+}
+
+# Options whose flags Bazel's own flags replace, with the replacement.
+BAZEL_OPTIONS = {
+    "debug_symbols": "-c dbg, or --copt=-g / --per_file_copt with -c opt",
+    "optimize": "-c with --@autoload_rules_godot//godot:engine_optimize",
+    "lto": "-c opt with --@autoload_rules_godot//godot:engine_lto",
+}
+
+
+def _is_controlled_option(key: str, has_value: bool) -> bool:
+    """Return whether rules_godot owns an option, so a recipe may not pass it."""
+    is_module_switch = key.startswith("module_") and key.endswith("_enabled")
+    return not has_value or key in PROTECTED_OPTIONS or is_module_switch
+
+
+def check_options(options: Iterable[str]) -> None:
+    for option in options:
+        key, separator, _value = option.partition("=")
+        if key in BAZEL_OPTIONS:
+            raise ValueError(
+                f"Option {option} follows the build's settings: use {BAZEL_OPTIONS[key]}"
+            )
+        if _is_controlled_option(key, bool(separator)):
+            raise ValueError(f"Option is controlled by rules_godot: {option}")
+
+
+# The modules a recipe names when it names none and does not start from Godot's defaults.
+_DEFAULT_MODULES = ("gdscript", "text_server_fb")
+
+
+def requested_modules(modules: str, default_modules: bool) -> list[str]:
+    """
+    Return the modules a recipe asks for: those it names, or else the ruleset's default.
+
+    A recipe that starts from Godot's defaults takes no default of the ruleset's: those
+    already include GDScript and a text server, and a second text server cannot link.
+    """
+    named = [module for module in modules.split(",") if module]
+    return named or ([] if default_modules else list(_DEFAULT_MODULES))
+
+
+_TEXT_SERVERS = ("text_server_adv", "text_server_fb")
+
+
+def require_one_text_server(modules: Iterable[str]) -> None:
+    """
+    Fail for an engine with more than one of Godot's text servers.
+
+    Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
+    object, so the application's link would fail on them.
+    """
+    servers = sorted(set(modules) & set(_TEXT_SERVERS))
+    if len(servers) > 1:
+        raise ValueError(
+            "An engine links one text server, but this configuration enables "
+            + " and ".join(servers)
+            + ": name one in enabled_modules, or leave text_server_fb out when "
+            + "default_modules starts from Godot's defaults"
+        )
+
+
+def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
+    """The requested build customization a recipe's components record as provenance."""
+    requested = {
+        "patches": [path.name for path in args.patch],
+        "modules": list(args.modules),
+        "custom_modules": sorted(args.custom_module_names),
+        "options": sorted(args.options),
+    }
+    if args.default_modules:
+        requested["default_modules"] = ["yes"]
+    if args.build_profile_digest:
+        requested["build_profile"] = [args.build_profile_digest]
+    if args.renderers:
+        requested["renderers"] = list(args.renderers)
+    return requested
+
+
+def _is_module_name(name: str) -> bool:
+    return name.replace("_", "").isalnum() and not name[0].isdigit()
+
+
+def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]:
+    """
+    Copy each `name=directory` custom module below _custom_modules and return the names.
+
+    The copy leaves out Bazel's BUILD files, so the module is no package of its own in
+    the recipe repository, and Python caches.
+    """
+    names = []
+    for declaration in declarations:
+        name, separator, directory = declaration.partition("=")
+        if not separator or not _is_module_name(name):
+            raise ValueError(f"Invalid custom module declaration: {declaration}")
+        destination = root / "_custom_modules" / name
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(
+            directory,
+            destination,
+            ignore=shutil.ignore_patterns(".git", "__pycache__", "BUILD", "BUILD.bazel"),
+        )
+        names.append(name)
+    return names
+
+
+# ==== Renderers ===============================================================
 
 
 # Godot's rendering methods, as project settings name them, and the RenderingDevice ones.
 RENDERING_METHODS = ("gl_compatibility", "mobile", "forward_plus")
+
 _RD_METHODS = ("mobile", "forward_plus")
 
 # Each platform's RenderingDevice driver; Apple engines leave Vulkan off, since it needs
@@ -213,7 +402,6 @@ _RD_SWITCHES = {
     "forward_plus_renderer": ("forward_plus",),
     "forward_mobile_renderer": ("mobile",),
 }
-
 
 _RD_SWITCH_OPTION = re.compile(r'BoolVariable\(\s*"rendering_device"')
 
@@ -312,63 +500,6 @@ def require_renderer_options_unset(
         )
 
 
-def inputs_hash(args: argparse.Namespace) -> str:
-    """
-    Return the hash an unstamped source-built engine names in place of a Git commit.
-
-    It covers the engine's declared inputs: the archive digest, the patches, the
-    custom module trees and the configuration. Neither time nor host state enters
-    it, so an unchanged engine keeps its hash and its cached actions. The CPU stays
-    out, so the engines of one configuration for several Android ABIs name the same
-    hash in their shared AAR.
-    """
-    inputs = {
-        "source": args.source_sha256,
-        "patches": [file_digest(path) for path in args.patch],
-        "patch_strip": args.patch_strip,
-        **_profile_input(args),
-        "custom_modules": file_digests(args.custom_modules_root),
-        "configuration": {
-            "platform": args.platform,
-            "build_target": args.build_target,
-            **_module_selection(args),
-            "options": sorted(args.options),
-        },
-    }
-    # The length of a Git commit hash, which Godot shortens to 9 for display.
-    return digest_of(inputs)[:40]
-
-
-# Version fields the generated :revision target supplies at build time: the
-# build name with the hash's origin, and the hash and time stamp in the Git
-# commit's place, which a release tarball's .git/HEAD may name.
-REVISION_FILES = {
-    "version_info_builder": {"build": "_revision/build.txt"},
-    "version_hash_builder": {
-        "git_hash": "_revision/hash.txt",
-        "git_timestamp": "_revision/timestamp.txt",
-    },
-}
-
-
-def version_name(info: Mapping[str, object]) -> str:
-    """
-    Return an engine's version and status as its Android library manifest names them.
-
-    The patch number is always present, as in the manifest of an official AAR.
-    The build name and hash follow at build time, such as .custom-git.<hash>.
-    """
-    return "{major}.{minor}.{patch}.{status}{module_config}".format(**info)
-
-
-def is_directory_action(actions: Sequence[Any]) -> bool:
-    return (
-        len(actions) == 1
-        and getattr(getattr(actions[0], "execfunction", None), "__name__", "")
-        == "MkdirFunc"
-    )
-
-
 # ==== Compile options =========================================================
 
 
@@ -387,7 +518,6 @@ TOOLCHAIN_ONLY_WARNINGS = {
     "ios": _APPLE_TOOLCHAIN_WARNINGS,
     "macos": _APPLE_TOOLCHAIN_WARNINGS,
 }
-
 
 # Optimization and debug information follow Bazel's compilation mode, --copt
 # and --per_file_copt, and stripping follows --strip, as for any C++ library:
@@ -468,6 +598,7 @@ _OPTIONS_WITH_ARGUMENT = (
 
 # Options Bazel's toolchain replaces; some start a longer option, as -MF does -MFb.d.
 _REPLACED_OPTIONS = ("-MD", "-MMD", "-MP", "-c")
+
 _REPLACED_PREFIXES = (
     "-MF",
     "-MT",
@@ -552,10 +683,135 @@ def normalize_command(
     return copts, includes
 
 
+_SWIFT_VALUE_OPTIONS = {
+    "-import-objc-header": "bridging_header",
+    "-emit-objc-header-path": "generated_header",
+}
+
+_SWIFT_VALUE_FLAGS = ("-module-name", "-swift-version", *_SWIFT_VALUE_OPTIONS)
+
+# rules_swift selects the SDK and the object layout, and includes the source root
+# through the declared C++ compilation context.
+_SWIFT_DROPPED_WITH_VALUE = ("-target", "-sdk")
+
+_SWIFT_DROPPED = ("-emit-object", "-wmo", "-I./")
+
+_SWIFT_KEPT = (
+    "-warnings-as-errors",
+    "-cxx-interoperability-mode=default",
+    "-parse-as-library",
+)
+
+
+def _apply_swift_value_flag(
+    result: dict[str, Any], flag: str, value: str, root: Path
+) -> None:
+    if flag == "-module-name":
+        result["module_name"] = value
+    elif flag == "-swift-version":
+        result["copts"].extend([flag, value])
+    else:
+        result[_SWIFT_VALUE_OPTIONS[flag]] = relative(value, root)
+
+
+def _apply_swift_flag(
+    result: dict[str, Any], flag: str, values: Iterator[str], root: Path
+) -> None:
+    """Fold an upstream Swift flag, and the value that follows it, into the options."""
+    if flag in _SWIFT_DROPPED_WITH_VALUE:
+        next(values)
+    elif flag in _SWIFT_KEPT:
+        result["copts"].append(flag)
+    elif flag in _SWIFT_VALUE_FLAGS:
+        _apply_swift_value_flag(result, flag, next(values), root)
+    elif flag not in _SWIFT_DROPPED and not bazel_owned(flag):
+        # The rest is dropped: rules_swift selects it from the compilation mode.
+        raise ValueError("Unsupported upstream Swift compiler option: " + flag)
+
+
+def swift_module_options(flags: Iterable[str], root: Path) -> dict[str, Any]:
+    """Keep upstream Swift semantics while rules_swift owns SDKs and outputs."""
+    result: dict[str, Any] = {
+        "module_name": "godot_swift_module",
+        "bridging_header": None,
+        "generated_header": None,
+        "copts": [],
+    }
+    values = iter(flags)
+    for flag in values:
+        _apply_swift_flag(result, flag, values, root)
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", result["module_name"]):
+        raise ValueError("Invalid upstream Swift module name: " + result["module_name"])
+    # _apply_swift_flag sets it through the dictionary, which type checkers do not follow.
+    if not result.get("bridging_header"):
+        raise ValueError("Upstream Swift module has no declared bridging header")
+    return result
+
+
+def _header_includes(root: Path, header: str, wanted: str, seen: set[str]) -> bool:
+    """Return whether a header, directly or through the headers it includes, is wanted."""
+    if header == wanted:
+        return True
+    if header in seen:
+        return False
+    seen.add(header)
+    for name in re.findall(
+        r'^\s*#(?:include|import)\s+"([^"]+)"',
+        (root / header).read_text(),
+        re.MULTILINE,
+    ):
+        path = root / name
+        if not path.is_file():
+            path = root / Path(header).parent / name
+        if path.is_file() and _header_includes(
+            root, relative(path.resolve(), root), wanted, seen
+        ):
+            return True
+    return False
+
+
+def _check_mergeable(first: dict[str, Any], second: dict[str, Any]) -> None:
+    """Reject Swift module declarations that need distinct rules_swift targets."""
+    if first["module_name"] != second["module_name"] or first["copts"] != second["copts"]:
+        raise ValueError(
+            "Incompatible upstream Swift modules require distinct rules_swift targets"
+        )
+    header_names = {
+        Path(option["generated_header"]).name
+        for option in [first, second]
+        if option["generated_header"]
+    }
+    if len(header_names) > 1:
+        raise ValueError("Incompatible upstream Swift generated header names")
+
+
+def merge_swift_module_options(
+    first: dict[str, Any] | None, second: dict[str, Any], root: Path
+) -> dict[str, Any]:
+    """Merge upstream's overlapping driver/platform Swift module declarations."""
+    root = root.resolve()
+    if first is None or first == second:
+        return second
+    _check_mergeable(first, second)
+    generated_header = first["generated_header"] or second["generated_header"]
+    # The iOS bridge imports the shared Apple bridge. Compile the deduplicated
+    # source set once with that superset, rather than duplicate Swift classes.
+    for superset, subset in ((first, second), (second, first)):
+        if _header_includes(
+            root, superset["bridging_header"], subset["bridging_header"], set()
+        ):
+            return {
+                **superset,
+                "generated_header": superset["generated_header"] or generated_header,
+            }
+    raise ValueError("Upstream Swift bridging headers have no common declared superset")
+
+
 # ==== Environment reads =======================================================
 
 
 _ALLOWED_ENV_METHODS = ("get", "NoCache", "Detect")
+
 _SCALAR_TYPES = (str, bool, int, float)
 
 
@@ -868,133 +1124,11 @@ def include_closure(root: Path, sources: Collection[str]) -> set[str]:
     return found
 
 
-# ==== Swift modules ===========================================================
-
-
-_SWIFT_VALUE_OPTIONS = {
-    "-import-objc-header": "bridging_header",
-    "-emit-objc-header-path": "generated_header",
-}
-_SWIFT_VALUE_FLAGS = ("-module-name", "-swift-version", *_SWIFT_VALUE_OPTIONS)
-# rules_swift selects the SDK and the object layout, and includes the source root
-# through the declared C++ compilation context.
-_SWIFT_DROPPED_WITH_VALUE = ("-target", "-sdk")
-_SWIFT_DROPPED = ("-emit-object", "-wmo", "-I./")
-_SWIFT_KEPT = (
-    "-warnings-as-errors",
-    "-cxx-interoperability-mode=default",
-    "-parse-as-library",
-)
-
-
-def _apply_swift_value_flag(
-    result: dict[str, Any], flag: str, value: str, root: Path
-) -> None:
-    if flag == "-module-name":
-        result["module_name"] = value
-    elif flag == "-swift-version":
-        result["copts"].extend([flag, value])
-    else:
-        result[_SWIFT_VALUE_OPTIONS[flag]] = relative(value, root)
-
-
-def _apply_swift_flag(
-    result: dict[str, Any], flag: str, values: Iterator[str], root: Path
-) -> None:
-    """Fold an upstream Swift flag, and the value that follows it, into the options."""
-    if flag in _SWIFT_DROPPED_WITH_VALUE:
-        next(values)
-    elif flag in _SWIFT_KEPT:
-        result["copts"].append(flag)
-    elif flag in _SWIFT_VALUE_FLAGS:
-        _apply_swift_value_flag(result, flag, next(values), root)
-    elif flag not in _SWIFT_DROPPED and not bazel_owned(flag):
-        # The rest is dropped: rules_swift selects it from the compilation mode.
-        raise ValueError("Unsupported upstream Swift compiler option: " + flag)
-
-
-def swift_module_options(flags: Iterable[str], root: Path) -> dict[str, Any]:
-    """Keep upstream Swift semantics while rules_swift owns SDKs and outputs."""
-    result: dict[str, Any] = {
-        "module_name": "godot_swift_module",
-        "bridging_header": None,
-        "generated_header": None,
-        "copts": [],
-    }
-    values = iter(flags)
-    for flag in values:
-        _apply_swift_flag(result, flag, values, root)
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", result["module_name"]):
-        raise ValueError("Invalid upstream Swift module name: " + result["module_name"])
-    # _apply_swift_flag sets it through the dictionary, which type checkers do not follow.
-    if not result.get("bridging_header"):
-        raise ValueError("Upstream Swift module has no declared bridging header")
-    return result
-
-
-def _header_includes(root: Path, header: str, wanted: str, seen: set[str]) -> bool:
-    """Return whether a header, directly or through the headers it includes, is wanted."""
-    if header == wanted:
-        return True
-    if header in seen:
-        return False
-    seen.add(header)
-    for name in re.findall(
-        r'^\s*#(?:include|import)\s+"([^"]+)"',
-        (root / header).read_text(),
-        re.MULTILINE,
-    ):
-        path = root / name
-        if not path.is_file():
-            path = root / Path(header).parent / name
-        if path.is_file() and _header_includes(
-            root, relative(path.resolve(), root), wanted, seen
-        ):
-            return True
-    return False
-
-
-def _check_mergeable(first: dict[str, Any], second: dict[str, Any]) -> None:
-    """Reject Swift module declarations that need distinct rules_swift targets."""
-    if first["module_name"] != second["module_name"] or first["copts"] != second["copts"]:
-        raise ValueError(
-            "Incompatible upstream Swift modules require distinct rules_swift targets"
-        )
-    header_names = {
-        Path(option["generated_header"]).name
-        for option in [first, second]
-        if option["generated_header"]
-    }
-    if len(header_names) > 1:
-        raise ValueError("Incompatible upstream Swift generated header names")
-
-
-def merge_swift_module_options(
-    first: dict[str, Any] | None, second: dict[str, Any], root: Path
-) -> dict[str, Any]:
-    """Merge upstream's overlapping driver/platform Swift module declarations."""
-    root = root.resolve()
-    if first is None or first == second:
-        return second
-    _check_mergeable(first, second)
-    generated_header = first["generated_header"] or second["generated_header"]
-    # The iOS bridge imports the shared Apple bridge. Compile the deduplicated
-    # source set once with that superset, rather than duplicate Swift classes.
-    for superset, subset in ((first, second), (second, first)):
-        if _header_includes(
-            root, superset["bridging_header"], subset["bridging_header"], set()
-        ):
-            return {
-                **superset,
-                "generated_header": superset["generated_header"] or generated_header,
-            }
-    raise ValueError("Upstream Swift bridging headers have no common declared superset")
-
-
 # ==== Capture =================================================================
 
 
 _OBJECT_SUFFIXES = (".o", ".os")
+
 _CXX_SUFFIXES = (".cc", ".cpp", ".cxx", ".mm")
 
 
@@ -1048,6 +1182,14 @@ def _is_bazel_owned_output(platform: str, target_names: Sequence[str]) -> bool:
     return all(Path(name).suffix in (".a", ".lib") for name in target_names)
 
 
+def is_directory_action(actions: Sequence[Any]) -> bool:
+    return (
+        len(actions) == 1
+        and getattr(getattr(actions[0], "execfunction", None), "__name__", "")
+        == "MkdirFunc"
+    )
+
+
 def _generator_function(
     target_names: Sequence[str], actions: Sequence[Any]
 ) -> FunctionType:
@@ -1078,23 +1220,6 @@ def _generator_sources(
             files.append(logical)
             entries.append({"path": logical})
     return entries, files
-
-
-def require_one_text_server(modules: Iterable[str]) -> None:
-    """
-    Fail for an engine with more than one of Godot's text servers.
-
-    Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
-    object, so the application's link would fail on them.
-    """
-    servers = sorted(set(modules) & set(_TEXT_SERVERS))
-    if len(servers) > 1:
-        raise ValueError(
-            "An engine links one text server, but this configuration enables "
-            + " and ".join(servers)
-            + ": name one in enabled_modules, or leave text_server_fb out when "
-            + "default_modules starts from Godot's defaults"
-        )
 
 
 def _enabled_modules(
@@ -1286,23 +1411,6 @@ class _Capture:
         }
 
 
-# The modules a recipe names when it names none and does not start from Godot's defaults.
-_DEFAULT_MODULES = ("gdscript", "text_server_fb")
-
-_TEXT_SERVERS = ("text_server_adv", "text_server_fb")
-
-
-def requested_modules(modules: str, default_modules: bool) -> list[str]:
-    """
-    Return the modules a recipe asks for: those it names, or else the ruleset's default.
-
-    A recipe that starts from Godot's defaults takes no default of the ruleset's: those
-    already include GDScript and a text server, and a second text server cannot link.
-    """
-    named = [module for module in modules.split(",") if module]
-    return named or ([] if default_modules else list(_DEFAULT_MODULES))
-
-
 def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any]:
     """
     Return the configured build graph of SCons's recorded executors as plain data.
@@ -1315,137 +1423,6 @@ def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any
     for executor in executors:
         capture.add(executor)
     return capture.graph(args.selected_modules)
-
-
-# ==== Options and modules =====================================================
-
-
-PROTECTED_OPTIONS = {
-    "platform",
-    "arch",
-    "target",
-    "modules_enabled_by_default",
-    "custom_modules",
-    "scu_build",
-    "generate_bundle",
-    "generate_android_binaries",
-    # Upstream extracts separate symbols in postlink actions Bazel does not run.
-    "separate_debug_symbols",
-    # The recipe's explicit iOS environment owns the SDK axis.
-    "simulator",
-    "ios_simulator",
-    # Raw file paths would be undeclared inputs; use patches, build_options or the
-    # recipe's build_profile attribute instead.
-    "profile",
-    "build_profile",
-}
-
-# Options whose flags Bazel's own flags replace, with the replacement.
-BAZEL_OPTIONS = {
-    "debug_symbols": "-c dbg, or --copt=-g / --per_file_copt with -c opt",
-    "optimize": "-c with --@autoload_rules_godot//godot:engine_optimize",
-    "lto": "-c opt with --@autoload_rules_godot//godot:engine_lto",
-}
-
-
-def _is_controlled_option(key: str, has_value: bool) -> bool:
-    """Return whether rules_godot owns an option, so a recipe may not pass it."""
-    is_module_switch = key.startswith("module_") and key.endswith("_enabled")
-    return not has_value or key in PROTECTED_OPTIONS or is_module_switch
-
-
-def check_options(options: Iterable[str]) -> None:
-    for option in options:
-        key, separator, _value = option.partition("=")
-        if key in BAZEL_OPTIONS:
-            raise ValueError(
-                f"Option {option} follows the build's settings: use {BAZEL_OPTIONS[key]}"
-            )
-        if _is_controlled_option(key, bool(separator)):
-            raise ValueError(f"Option is controlled by rules_godot: {option}")
-
-
-def require_expected_version(actual: str, expected: str) -> None:
-    """Reject sources whose version.py contradicts their descriptor."""
-    if expected and actual != expected:
-        raise ValueError(
-            f"The source descriptor declares Godot {expected}, "
-            f"but the extracted version.py is {actual}"
-        )
-
-
-def load_detect(root: Path, platform: str) -> Any:
-    """Load a platform's detect.py; the source root must be on sys.path for its imports."""
-    path = root / "platform" / platform / "detect.py"
-    spec = importlib.util.spec_from_file_location("_godot_detect", path)
-    if spec is None or spec.loader is None:
-        raise ValueError(f"Cannot load {path}")
-    detect = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(detect)
-    return detect
-
-
-def require_host_platform(root: Path, platform: str) -> None:
-    """
-    Reject a recipe whose platform this host cannot configure.
-
-    SConstruct offers only the platforms whose detect.py can_build() accepts the host, such
-    as linuxbsd on a non-macOS POSIX host, and otherwise prints its platform list. A
-    registered execution or target platform can still select such a recipe. The source
-    root must be on sys.path, since detect.py imports upstream's build helpers.
-    """
-    if not load_detect(root, platform).can_build():
-        raise ValueError(
-            f"Godot's platform/{platform}/detect.py rejects this host ({sys.platform}) "
-            "or its environment, such as a missing SDK or cross toolchain; build without "
-            "the execution or target platform that selects this recipe here, or "
-            "configure it on a host that Godot accepts"
-        )
-
-
-def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
-    """The requested build customization a recipe's components record as provenance."""
-    requested = {
-        "patches": [path.name for path in args.patch],
-        "modules": list(args.modules),
-        "custom_modules": sorted(args.custom_module_names),
-        "options": sorted(args.options),
-    }
-    if args.default_modules:
-        requested["default_modules"] = ["yes"]
-    if args.build_profile_digest:
-        requested["build_profile"] = [args.build_profile_digest]
-    if args.renderers:
-        requested["renderers"] = list(args.renderers)
-    return requested
-
-
-def _is_module_name(name: str) -> bool:
-    return name.replace("_", "").isalnum() and not name[0].isdigit()
-
-
-def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]:
-    """
-    Copy each `name=directory` custom module below _custom_modules and return the names.
-
-    The copy leaves out Bazel's BUILD files, so the module is no package of its own in
-    the recipe repository, and Python caches.
-    """
-    names = []
-    for declaration in declarations:
-        name, separator, directory = declaration.partition("=")
-        if not separator or not _is_module_name(name):
-            raise ValueError(f"Invalid custom module declaration: {declaration}")
-        destination = root / "_custom_modules" / name
-        if destination.exists():
-            shutil.rmtree(destination)
-        shutil.copytree(
-            directory,
-            destination,
-            ignore=shutil.ignore_patterns(".git", "__pycache__", "BUILD", "BUILD.bazel"),
-        )
-        names.append(name)
-    return names
 
 
 # ==== Pinning =================================================================
@@ -1461,7 +1438,6 @@ _PIN_TOOLS = (
 
 # The version of a recipe pin's layout.
 PIN_FORMAT = 1
-
 
 # Custom module files whose contents can change the configured graph: Godot's build scripts
 # and the shader sources whose includes a generator follows. Other files count by path.
@@ -1525,36 +1501,6 @@ def pinned_graph(
     # The lock stores generator lists that recipes share once, by digest.
     graph["generators"] = pins["generators"][graph["generators"]]
     return "pinned", graph
-
-
-# Stand-ins for the host tools Godot's Linux detect.py probes. Every package query fails, so a
-# configuration reads none of the host's packages, which compile actions would not declare:
-# Godot's bundled libraries and dynamically loaded system libraries only. Without
-# wayland-scanner, whose generators are shell commands, Godot builds without Wayland.
-_LINUX_PROBES = {
-    "pkg-config": '#!/bin/sh\nif [ "$1" = "--version" ]; then echo 0.29.2; exit 0; fi\nexit 1\n',
-    "wayland-scanner": "#!/bin/sh\nexit 1\n",
-}
-
-
-def stand_in_host(root: Path, platform: str, directory: Path) -> None:
-    """
-    Replace the host state Godot's configuration probes, so it is the same on every host.
-
-    Linux probes tools on PATH; Android only checks that the SDK and Godot's NDK version
-    exist and names their compilers, which Bazel's toolchain replaces.
-    """
-    if platform == "linuxbsd":
-        for name, script in _LINUX_PROBES.items():
-            tool = directory / name
-            tool.write_text(script)
-            tool.chmod(0o755)
-        os.environ["PATH"] = f"{directory}{os.pathsep}{os.environ.get('PATH', '')}"
-    elif platform == "android":
-        sdk = directory / "android_sdk"
-        (sdk / "ndk" / load_detect(root, platform).get_ndk_version()).mkdir(parents=True)
-        os.environ["ANDROID_HOME"] = str(sdk)
-        os.environ.pop("ANDROID_SDK_ROOT", None)
 
 
 def write_pin(path: Path, digest: str, graph: Mapping[str, Any]) -> None:
@@ -1722,6 +1668,65 @@ def _install_capture(
     SCons.Executor.Executor.__init__ = record
     SCons.Script.Main._build_targets = finish
     return SCons.Script.Main.main
+
+
+def load_detect(root: Path, platform: str) -> Any:
+    """Load a platform's detect.py; the source root must be on sys.path for its imports."""
+    path = root / "platform" / platform / "detect.py"
+    spec = importlib.util.spec_from_file_location("_godot_detect", path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Cannot load {path}")
+    detect = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(detect)
+    return detect
+
+
+def require_host_platform(root: Path, platform: str) -> None:
+    """
+    Reject a recipe whose platform this host cannot configure.
+
+    SConstruct offers only the platforms whose detect.py can_build() accepts the host, such
+    as linuxbsd on a non-macOS POSIX host, and otherwise prints its platform list. A
+    registered execution or target platform can still select such a recipe. The source
+    root must be on sys.path, since detect.py imports upstream's build helpers.
+    """
+    if not load_detect(root, platform).can_build():
+        raise ValueError(
+            f"Godot's platform/{platform}/detect.py rejects this host ({sys.platform}) "
+            "or its environment, such as a missing SDK or cross toolchain; build without "
+            "the execution or target platform that selects this recipe here, or "
+            "configure it on a host that Godot accepts"
+        )
+
+
+# Stand-ins for the host tools Godot's Linux detect.py probes. Every package query fails, so a
+# configuration reads none of the host's packages, which compile actions would not declare:
+# Godot's bundled libraries and dynamically loaded system libraries only. Without
+# wayland-scanner, whose generators are shell commands, Godot builds without Wayland.
+_LINUX_PROBES = {
+    "pkg-config": '#!/bin/sh\nif [ "$1" = "--version" ]; then echo 0.29.2; exit 0; fi\nexit 1\n',
+    "wayland-scanner": "#!/bin/sh\nexit 1\n",
+}
+
+
+def stand_in_host(root: Path, platform: str, directory: Path) -> None:
+    """
+    Replace the host state Godot's configuration probes, so it is the same on every host.
+
+    Linux probes tools on PATH; Android only checks that the SDK and Godot's NDK version
+    exist and names their compilers, which Bazel's toolchain replaces.
+    """
+    if platform == "linuxbsd":
+        for name, script in _LINUX_PROBES.items():
+            tool = directory / name
+            tool.write_text(script)
+            tool.chmod(0o755)
+        os.environ["PATH"] = f"{directory}{os.pathsep}{os.environ.get('PATH', '')}"
+    elif platform == "android":
+        sdk = directory / "android_sdk"
+        (sdk / "ndk" / load_detect(root, platform).get_ndk_version()).mkdir(parents=True)
+        os.environ["ANDROID_HOME"] = str(sdk)
+        os.environ.pop("ANDROID_SDK_ROOT", None)
 
 
 def _scons_arguments(args: argparse.Namespace) -> list[str]:

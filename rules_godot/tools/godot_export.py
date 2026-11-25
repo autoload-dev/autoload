@@ -47,10 +47,6 @@ from tools.pck import (
     write_pck,
 )
 
-_EXPORT_PRESETS = Path(__file__).parent / "export_presets.cfg.tpl"
-
-# Godot exports at least one file; the shell probe skips it.
-_SHELL_RESOURCE = "rules_godot_shell.tres"
 _ADAPTIVE_ICON = Path(__file__).parent / "adaptive_icon.xml.tpl"
 
 # The image types of an Apple icon file that hold a PNG image of each size.
@@ -85,6 +81,11 @@ def _absolute(execroot: Path, source: str | list) -> str | list:
 
 
 # ==== Export lock =============================================================
+
+
+# <unistd.h>'s confstr name for the user's temporary directory; Python's os module
+# has no symbolic name for it.
+_CS_DARWIN_USER_TEMP_DIR = 65537
 
 
 def export_lock() -> Path | None:
@@ -140,6 +141,11 @@ def export_pack(
 
 # ==== Export presets ==========================================================
 
+
+_EXPORT_PRESETS = Path(__file__).parent / "export_presets.cfg.tpl"
+
+# Godot exports at least one file; the shell probe skips it.
+_SHELL_RESOURCE = "rules_godot_shell.tres"
 
 # The one message Godot prints when the export loads a scene or resource of a class it does
 # not know. The export then drops values of that class, such as a sub-resource, and still
@@ -415,11 +421,6 @@ def configuration(manifest: dict, output: Path, report: Path, execroot: Path) ->
     report.write_text(
         json.dumps(facts, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-
-
-# <unistd.h>'s confstr name for the user's temporary directory; Python's os module
-# has no symbolic name for it.
-_CS_DARWIN_USER_TEMP_DIR = 65537
 
 
 def runtime_descriptors(

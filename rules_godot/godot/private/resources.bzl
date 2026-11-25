@@ -1,7 +1,7 @@
 """
 Godot resources as import units: their composition, staging and import under an operation's project.
 
-Sections: Target classification, Composition, godot_resources.
+Sections: Target classification, Composition, Composition validation, godot_resources.
 """
 
 load("//godot/private:actions.bzl", "write_manifest")
@@ -86,9 +86,6 @@ def addon_closure(direct, transitive = []):
 
 # ==== Composition =============================================================
 
-def _edges(kind, paths, owner):
-    return [("", path, kind, owner) for path in sorted(paths)]
-
 def configuration_contributions(values, owner):
     return [(key, value, owner) for key, value in values.items()]
 
@@ -116,36 +113,6 @@ def _merge_extensions(members, extensions, owners):
             owners = owners,
             owner = str(extension.runtime_descriptor.owner),
         )
-
-def _source_owner(dependency, sidecar, source):
-    """The label declaring source in a dependency that lacks the sidecar, or None."""
-    if sidecar in dependency.member_resource_paths or sidecar in dependency.import_resource_paths:
-        return None
-    return dependency.member_owners.get(source) or dependency.import_owners.get(source)
-
-def _check_sidecar(sidecar, source, dependencies):
-    """Fail for a sidecar whose source a dependency declares without it."""
-    for dependency in dependencies:
-        declared = _source_owner(dependency, sidecar, source)
-        if declared:
-            fail((
-                "Authored sidecar res://%s must be declared in %s with res://%s; " +
-                "adding it later would change the cached resource identity or " +
-                "import settings"
-            ) % (sidecar, declared, source))
-
-def _validate_import_sidecars(selected, dependencies):
-    """
-    Reject a sidecar that this composition adds to a source a dependency already has.
-
-    The dependency's units imported that source without the sidecar. Each
-    dependency passed this check itself, so a sidecar it has is in every one of
-    its units that has the source.
-    """
-    for sidecar in selected:
-        source = sidecar_source(sidecar)
-        if source:
-            _check_sidecar(sidecar, source, dependencies)
 
 def extension_file_paths(extensions):
     return {path: True for extension in extensions for path in extension.runtime_resource_paths}
@@ -219,6 +186,56 @@ def compose(owner, dependencies, extensions = [], own = {}):
         extensions = extensions,
     )
 
+# ==== Composition validation ==================================================
+
+def _source_owner(dependency, sidecar, source):
+    """The label declaring source in a dependency that lacks the sidecar, or None."""
+    if sidecar in dependency.member_resource_paths or sidecar in dependency.import_resource_paths:
+        return None
+    return dependency.member_owners.get(source) or dependency.import_owners.get(source)
+
+def _check_sidecar(sidecar, source, dependencies):
+    """Fail for a sidecar whose source a dependency declares without it."""
+    for dependency in dependencies:
+        declared = _source_owner(dependency, sidecar, source)
+        if declared:
+            fail((
+                "Authored sidecar res://%s must be declared in %s with res://%s; " +
+                "adding it later would change the cached resource identity or " +
+                "import settings"
+            ) % (sidecar, declared, source))
+
+def _validate_import_sidecars(selected, dependencies):
+    """
+    Reject a sidecar that this composition adds to a source a dependency already has.
+
+    The dependency's units imported that source without the sidecar. Each
+    dependency passed this check itself, so a sidecar it has is in every one of
+    its units that has the source.
+    """
+    for sidecar in selected:
+        source = sidecar_source(sidecar)
+        if source:
+            _check_sidecar(sidecar, source, dependencies)
+
+def _validate_ignored(composition, owners):
+    """
+    Reject a file below a directory Godot ignores that another target declares than its marker.
+
+    Each target decides which of its own files Godot ignores, so the .gdignore or
+    project.godot that makes Godot skip a directory comes with the files below it, as a
+    sidecar comes with its source. Without a marker this costs nothing.
+    """
+    ignored = composition.ignored_resource_paths
+    for marker in godot_ignore_markers(ignored):
+        directory = marker.rpartition("/")[0] + "/"
+        for path in owners:
+            if path.startswith(directory) and path not in ignored:
+                fail((
+                    "res://%s is in a directory Godot ignores; declare it in %s with " +
+                    "res://%s, or move it out of that directory"
+                ) % (path, owners[marker], marker))
+
 def validate_composition(composition, dependencies):
     """
     Check a composition's namespace and the sidecars it adds to its dependencies.
@@ -239,25 +256,10 @@ def validate_composition(composition, dependencies):
     _validate_import_sidecars(staged, dependencies)
     _validate_ignored(composition, staged_owners)
 
-def _validate_ignored(composition, owners):
-    """
-    Reject a file below a directory Godot ignores that another target declares than its marker.
-
-    Each target decides which of its own files Godot ignores, so the .gdignore or
-    project.godot that makes Godot skip a directory comes with the files below it, as a
-    sidecar comes with its source. Without a marker this costs nothing.
-    """
-    ignored = composition.ignored_resource_paths
-    for marker in godot_ignore_markers(ignored):
-        directory = marker.rpartition("/")[0] + "/"
-        for path in owners:
-            if path.startswith(directory) and path not in ignored:
-                fail((
-                    "res://%s is in a directory Godot ignores; declare it in %s with " +
-                    "res://%s, or move it out of that directory"
-                ) % (path, owners[marker], marker))
-
 # ==== godot_resources =========================================================
+
+def _edges(kind, paths, owner):
+    return [("", path, kind, owner) for path in sorted(paths)]
 
 def dependency_units(dependencies):
     """

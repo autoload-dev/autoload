@@ -16,6 +16,9 @@ load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
 
+def _declaration(rule, **attrs):
+    return struct(rule = rule, attrs = attrs)
+
 # ==== Prebuilt plan ===========================================================
 
 def _release_urls(tag, slug):
@@ -25,56 +28,6 @@ def _release_urls(tag, slug):
         "https://downloads.godotengine.org/?version=%s&flavor=%s&slug=%s" % (version, flavor, slug),
         "https://github.com/godotengine/godot-builds/releases/download/%s/Godot_v%s_%s" % (tag, tag, slug),
     ]
-
-def prebuilt_plan(tag, *, _fail = fail):
-    """
-    Return editor archives, the templates archive and macOS layout of a prebuilt tag.
-
-    Args:
-        tag: A godot_engines.prebuilt tag.
-        _fail: Replaces fail in Starlark unit tests.
-
-    Returns:
-        A struct of editors, templates, the Android shells by variant, iOS simulator CPUs
-        and the source archive that builds missing runtimes, or None after an error.
-    """
-    error = godot_version_error(tag.version)
-    if error:
-        return _fail(error)
-    release = RELEASES.get(tag.version)
-    editors = _editors(tag, release, _fail)
-    if editors == None:
-        return None
-    templates = _templates(tag, release, _fail)
-    if templates == None:
-        return None
-    error = _shell_error(tag)
-    if error:
-        return _fail(error)
-    return struct(
-        editors = editors,
-        templates = templates,
-        android_shells = _android_shells(tag, release),
-        ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
-        android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
-        source = _missing_runtime_source(tag, release),
-    )
-
-def _editors(tag, release, _fail):
-    """Return the editor archives of a prebuilt tag by editor platform, or None after an error."""
-    editor_platforms = sorted(tag.editor_urls) if tag.editor_urls else (release["editor_platforms"] if release else [])
-    if not editor_platforms:
-        return _fail((
-            "Godot %s has no built-in pins; set editor_urls/editor_integrity/editor_binaries " +
-            "and templates_urls/templates_integrity on godot_engines.prebuilt(name = %r)"
-        ) % (tag.version, tag.name))
-    editors = {}
-    for editor_platform in editor_platforms:
-        editor = _editor(tag, release, editor_platform, _fail)
-        if editor == None:
-            return None
-        editors[editor_platform] = editor
-    return editors
 
 def _editor(tag, release, editor_platform, _fail):
     """Return the archive of one editor platform: pinned on the tag or catalogued; None after an error."""
@@ -100,6 +53,33 @@ def _editor(tag, release, editor_platform, _fail):
         layout = layout,
     )
 
+def _editors(tag, release, _fail):
+    """Return the editor archives of a prebuilt tag by editor platform, or None after an error."""
+    editor_platforms = sorted(tag.editor_urls) if tag.editor_urls else (release["editor_platforms"] if release else [])
+    if not editor_platforms:
+        return _fail((
+            "Godot %s has no built-in pins; set editor_urls/editor_integrity/editor_binaries " +
+            "and templates_urls/templates_integrity on godot_engines.prebuilt(name = %r)"
+        ) % (tag.version, tag.name))
+    editors = {}
+    for editor_platform in editor_platforms:
+        editor = _editor(tag, release, editor_platform, _fail)
+        if editor == None:
+            return None
+        editors[editor_platform] = editor
+    return editors
+
+def _pinned_templates(tag, _fail):
+    """Return the export-template archive a tag pins with templates_urls, or None after an error."""
+    if not tag.templates_integrity:
+        return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
+    return struct(
+        urls = tag.templates_urls,
+        integrity = tag.templates_integrity,
+        macos_cpus = tag.templates_macos_cpus or ["universal"],
+        linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
+    )
+
 def _templates(tag, release, _fail):
     """Return the export-template archive of a prebuilt tag and its layout, or None after an error."""
     if tag.templates_urls:
@@ -115,17 +95,6 @@ def _templates(tag, release, _fail):
             linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
         )
     return _fail("godot_engines.prebuilt %r: Godot %s needs templates_urls and templates_integrity" % (tag.name, tag.version))
-
-def _pinned_templates(tag, _fail):
-    """Return the export-template archive a tag pins with templates_urls, or None after an error."""
-    if not tag.templates_integrity:
-        return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
-    return struct(
-        urls = tag.templates_urls,
-        integrity = tag.templates_integrity,
-        macos_cpus = tag.templates_macos_cpus or ["universal"],
-        linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
-    )
 
 # The Android shell AARs of a prebuilt engine: the variant each serves and the prefix of
 # its tag attributes, catalogue key and repository name. The shells of official releases
@@ -163,25 +132,41 @@ def _missing_runtime_source(tag, release):
         return None
     return (release or {}).get("source")
 
-# ==== Prebuilt slots ==========================================================
-
-def prebuilt_slots(tag, plan):
+def prebuilt_plan(tag, *, _fail = fail):
     """
-    Return the hub slots of a prebuilt plan.
+    Return editor archives, the templates archive and macOS layout of a prebuilt tag.
 
     Args:
-        tag: The godot_engines.prebuilt tag of the plan.
-        plan: The result of prebuilt_plan.
+        tag: A godot_engines.prebuilt tag.
+        _fail: Replaces fail in Starlark unit tests.
 
     Returns:
-        A list of hub component descriptions.
+        A struct of editors, templates, the Android shells by variant, iOS simulator CPUs
+        and the source archive that builds missing runtimes, or None after an error.
     """
-    return (
-        _editor_slots(tag, plan.editors) +
-        _desktop_runtime_slots(tag, plan.templates) +
-        _ios_runtime_slots(tag, plan.templates, plan.ios_simulator_cpus) +
-        _android_runtime_slots(tag, plan)
+    error = godot_version_error(tag.version)
+    if error:
+        return _fail(error)
+    release = RELEASES.get(tag.version)
+    editors = _editors(tag, release, _fail)
+    if editors == None:
+        return None
+    templates = _templates(tag, release, _fail)
+    if templates == None:
+        return None
+    error = _shell_error(tag)
+    if error:
+        return _fail(error)
+    return struct(
+        editors = editors,
+        templates = templates,
+        android_shells = _android_shells(tag, release),
+        ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
+        android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
+        source = _missing_runtime_source(tag, release),
     )
+
+# ==== Prebuilt slots ==========================================================
 
 def _editor_slots(tag, editors):
     return [
@@ -261,6 +246,24 @@ def _android_runtime_slots(tag, plan):
         for variant, shell in plan.android_shells.items()
         for cpu in plan.android_cpus
     ]
+
+def prebuilt_slots(tag, plan):
+    """
+    Return the hub slots of a prebuilt plan.
+
+    Args:
+        tag: The godot_engines.prebuilt tag of the plan.
+        plan: The result of prebuilt_plan.
+
+    Returns:
+        A list of hub component descriptions.
+    """
+    return (
+        _editor_slots(tag, plan.editors) +
+        _desktop_runtime_slots(tag, plan.templates) +
+        _ios_runtime_slots(tag, plan.templates, plan.ios_simulator_cpus) +
+        _android_runtime_slots(tag, plan)
+    )
 
 # ==== Missing runtimes ========================================================
 
@@ -348,6 +351,21 @@ def _signature(kind, tag, attributes):
         values[attribute] = _plain(getattr(tag, attribute))
     return json.encode(values)
 
+def _requests(modules, tag_attributes):
+    """Every tag of the three tag classes, which share one namespace of names, with its module."""
+    return [
+        struct(
+            kind = kind,
+            tag = tag,
+            signature = _signature(kind, tag, tag_attributes[kind]),
+            module = mod.name,
+            is_root = mod.is_root,
+        )
+        for mod in modules
+        for kind in ["prebuilt", "source", "source_build"]
+        for tag in getattr(mod.tags, kind)
+    ]
+
 def selected_tags(modules, *, tag_attributes, _fail = fail):
     """
     Select one request per name.
@@ -381,25 +399,7 @@ def selected_tags(modules, *, tag_attributes, _fail = fail):
         selected.append(first)
     return selected
 
-def _requests(modules, tag_attributes):
-    """Every tag of the three tag classes, which share one namespace of names, with its module."""
-    return [
-        struct(
-            kind = kind,
-            tag = tag,
-            signature = _signature(kind, tag, tag_attributes[kind]),
-            module = mod.name,
-            is_root = mod.is_root,
-        )
-        for mod in modules
-        for kind in ["prebuilt", "source", "source_build"]
-        for tag in getattr(mod.tags, kind)
-    ]
-
 # ==== Declarations ============================================================
-
-def _declaration(rule, **attrs):
-    return struct(rule = rule, attrs = attrs)
 
 # The file name of a downloaded export-template archive. The platform repositories
 # extract the file itself, so they name it rather than the archive repository's //file
@@ -442,63 +442,11 @@ def _templates_declarations(tag, templates):
         for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
     ]
 
-def plan_engines(modules, *, tag_attributes, _fail = fail):
-    """
-    Return the repositories the godot_engines extension declares.
-
-    Args:
-        modules: module_ctx.modules.
-        tag_attributes: The attribute names of each tag class, keyed by tag class.
-        _fail: Replaces fail in Starlark unit tests.
-
-    Returns:
-        A list of structs with `rule`, the name of a repository rule or macro, and `attrs`,
-        its keyword arguments; None after an error.
-    """
-    selections = selected_tags(modules, tag_attributes = tag_attributes, _fail = _fail)
-    if selections == None:
-        return None
-    declarations = []
-    for selection in selections:
-        tag = selection.tag
-        if selection.kind in _SOURCE_RULES:
-            attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
-            declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
-            continue
-        prebuilt = _prebuilt_declarations(tag, _fail)
-        if prebuilt == None:
-            return None
-        declarations.extend(prebuilt)
-    return declarations
-
 # The repository rule that each source tag class declares.
 _SOURCE_RULES = {
     "source": "godot_engine_source",
     "source_build": "godot_engine_source_build",
 }
-
-def _prebuilt_declarations(tag, _fail):
-    """Return the editor, template, shell and hub repositories of a prebuilt tag, or None after an error."""
-    plan = prebuilt_plan(tag, _fail = _fail)
-    if plan == None:
-        return None
-    shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
-    slots = prebuilt_slots(tag, plan)
-    missing = missing_runtimes(tag, plan, slots)
-    sources = []
-    if missing:
-        sources = missing.declarations
-        slots = slots + missing.slots
-        android_runtimes = missing.android | android_runtimes
-    hub = _declaration(
-        "engine_hub",
-        name = tag.name,
-        display_name = tag.name,
-        components = json.encode(slots),
-        android_runtimes = json.encode(android_runtimes),
-        engine = tag.engine,
-    )
-    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + sources + [hub]
 
 def _editor_declarations(tag, editors):
     return [
@@ -538,3 +486,55 @@ def _shell_declarations(tag, shells):
         ))
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
+
+def _prebuilt_declarations(tag, _fail):
+    """Return the editor, template, shell and hub repositories of a prebuilt tag, or None after an error."""
+    plan = prebuilt_plan(tag, _fail = _fail)
+    if plan == None:
+        return None
+    shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
+    slots = prebuilt_slots(tag, plan)
+    missing = missing_runtimes(tag, plan, slots)
+    sources = []
+    if missing:
+        sources = missing.declarations
+        slots = slots + missing.slots
+        android_runtimes = missing.android | android_runtimes
+    hub = _declaration(
+        "engine_hub",
+        name = tag.name,
+        display_name = tag.name,
+        components = json.encode(slots),
+        android_runtimes = json.encode(android_runtimes),
+        engine = tag.engine,
+    )
+    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + sources + [hub]
+
+def plan_engines(modules, *, tag_attributes, _fail = fail):
+    """
+    Return the repositories the godot_engines extension declares.
+
+    Args:
+        modules: module_ctx.modules.
+        tag_attributes: The attribute names of each tag class, keyed by tag class.
+        _fail: Replaces fail in Starlark unit tests.
+
+    Returns:
+        A list of structs with `rule`, the name of a repository rule or macro, and `attrs`,
+        its keyword arguments; None after an error.
+    """
+    selections = selected_tags(modules, tag_attributes = tag_attributes, _fail = _fail)
+    if selections == None:
+        return None
+    declarations = []
+    for selection in selections:
+        tag = selection.tag
+        if selection.kind in _SOURCE_RULES:
+            attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
+            declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
+            continue
+        prebuilt = _prebuilt_declarations(tag, _fail)
+        if prebuilt == None:
+            return None
+        declarations.extend(prebuilt)
+    return declarations

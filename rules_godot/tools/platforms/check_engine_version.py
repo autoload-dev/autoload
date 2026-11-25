@@ -32,14 +32,10 @@ from xml.etree import ElementTree
 
 from tools.platforms.native_symbols import native_slices
 
-ANDROID = "{http://schemas.android.com/apk/res/android}"
-_LIBRARY_VERSION = re.compile(
-    rb"Godot Engine v(\d+\.\d+(?:\.\d+)?\.[a-z]+\d*(?:\.[\w-]+)*)"
-)
-_ENGINE_LIBRARY = "libgodot_android.so"
-
-
 # ==== Versions ================================================================
+
+
+ANDROID = "{http://schemas.android.com/apk/res/android}"
 
 
 @dataclass(frozen=True)
@@ -80,7 +76,14 @@ def manifest_versions(path: Path) -> set[str]:
 # ==== Native libraries ========================================================
 
 
+_LIBRARY_VERSION = re.compile(
+    rb"Godot Engine v(\d+\.\d+(?:\.\d+)?\.[a-z]+\d*(?:\.[\w-]+)*)"
+)
+
+_ENGINE_LIBRARY = "libgodot_android.so"
+
 _CHUNK = 1 << 24
+
 # Longer than any version string or hash: a match this close to the end of a
 # chunk may continue in the next one, so it is searched again with that.
 _OVERLAP = 128
@@ -181,6 +184,7 @@ def engine_abis(path: Path) -> set[str]:
 
 
 _IOS_ENVIRONMENTS = {"ios_device": "device", "ios_simulator": "Simulator"}
+
 _IOS_EXPORT_PLATFORMS = {
     ("arm64", "ios_device"): "ios_arm64",
     ("arm64", "ios_simulator"): "ios_sim_arm64",

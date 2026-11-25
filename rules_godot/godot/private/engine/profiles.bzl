@@ -9,8 +9,8 @@ exporters use to write shell files, such as Android categories or iOS icon sizes
 Rules pass a profile to the build tools as data, so a newer Godot
 version changes one profile, not the code that writes shell files.
 
-Sections: Godot 4.7, Owned options, Rejected options, Export hooks, Godot 4.8, Android
-shell, Profile lookup.
+Sections: Godot 4.7, Export options, Export hooks, Godot 4.8, Android shell, Profile
+lookup.
 """
 
 load("//godot/private:versions.bzl", "godot_series", "require_supported_source_version")
@@ -20,9 +20,13 @@ visibility(["//godot/..."])
 # ==== Godot 4.7 ===============================================================
 
 _LEFT = "UIInterfaceOrientationLandscapeLeft"
+
 _RIGHT = "UIInterfaceOrientationLandscapeRight"
+
 _UP = "UIInterfaceOrientationPortrait"
+
 _DOWN = "UIInterfaceOrientationPortraitUpsideDown"
+
 _ALL = [_LEFT, _RIGHT, _UP, _DOWN]
 
 # Godot 4.7, from its Android, iOS (Apple embedded) and macOS exporters.
@@ -292,7 +296,7 @@ _GODOT_4_7 = {
     },
 }
 
-# ==== Owned options ===========================================================
+# ==== Export options ==========================================================
 
 # One row owns the value, applicability and authoring policy together. CPU
 # rows reuse exporter maps above; Android SDK fallbacks stay in the Android shell policy.
@@ -410,8 +414,6 @@ def _owned_options(profile):
     }
 
 _GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7)
-
-# ==== Rejected options ========================================================
 
 # Export options a pack must not author, by exporter, with the owner ID of what
 # replaces them: option_owners names a Bazel equivalent; other owners have no
@@ -542,6 +544,7 @@ _GODOT_4_7["rejected_export_options"] = _REJECTED_OPTIONS_4_7
 # Registered options that Godot's reflection hides and build tools read; the probe
 # asks for them by name, as it does for every option a pack authors.
 _GODOT_4_7["hidden_export_options"] = {"ios": ["capabilities/performance_a12"]}
+
 _GODOT_4_7["option_owners"] = {
     "export_platform": "select a godot_export_platform with --platforms",
     "identity": "godot_app.application_id",
@@ -636,6 +639,7 @@ _EXPORT_HOOKS_4_7 = {
     "gdap": _hook("descriptor", "counterpart", ["android"], "android_library"),
     "gdip": _hook("descriptor", "counterpart", ["ios"], "static_library"),
 }
+
 _GODOT_4_7["export_hooks"] = _EXPORT_HOOKS_4_7
 
 # ==== Godot 4.8 ===============================================================
@@ -644,10 +648,15 @@ _GODOT_4_7["export_hooks"] = _EXPORT_HOOKS_4_7
 # only these three registered options differ from the bounded 4.7.2 inventory.
 # Defaults and actual types are still read from the configured editor's probe.
 _REJECTED_OPTIONS_4_8 = {operating_system: dict(options) for operating_system, options in _REJECTED_OPTIONS_4_7.items()}
+
 _REJECTED_OPTIONS_4_8["android"]["gradle_build/minification"] = "gradle"
+
 _REJECTED_OPTIONS_4_8["linux"]["debug/export_debug_symbols"] = "native-debug-symbols"
+
 _REJECTED_OPTIONS_4_8["macos"]["debug/export_debug_symbols"] = "native-debug-symbols"
+
 _GODOT_4_8 = dict(_GODOT_4_7)
+
 _GODOT_4_8["rejected_export_options"] = _REJECTED_OPTIONS_4_8
 
 # Godot 4.8 moves the template activity into the template's data library, whose
@@ -663,6 +672,7 @@ _GODOT_4_8["android"] = _GODOT_4_7["android"] | {
         "fontWeightAdjustment",
     ],
 }
+
 _GODOT_4_8["option_owners"] = _GODOT_4_7["option_owners"] | {
     "native-debug-symbols": "native toolchain symbol/strip settings and the app's debug_symbols output group",
 }
@@ -696,12 +706,15 @@ _ANDROID_SHELL = {
     # Maven dependencies; a file of //godot/private/engine:android_maven_graphs.
     "maven_graph": "android/maven_graph_install.json",
 }
+
 _GODOT_4_7["android_shell"] = _ANDROID_SHELL
+
 _GODOT_4_8["android_shell"] = _ANDROID_SHELL
 
 # Every supported minor shares one shell library; godot_android_runtime's shell AAR names
 # no version.
 ANDROID_SHELL_DEPS = _ANDROID_SHELL["deps"]
+
 # ==== Profile lookup ==========================================================
 
 _PROFILES = {

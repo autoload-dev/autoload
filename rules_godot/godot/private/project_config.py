@@ -1,8 +1,8 @@
 """
 Compose explicit Godot settings without evaluating arbitrary expressions.
 
-Sections: Literals, Statements, Settings, Overrides, Composition, Write back, Command
-line.
+Sections: Statements, Literals, Named files, Overrides, Plugins and autoloads,
+Composition, Write back, Command line.
 """
 
 import argparse
@@ -14,8 +14,107 @@ from collections.abc import Callable, Collection, Iterable
 from pathlib import Path
 
 _SECTION = re.compile(r"^\s*\[([^]\r\n]+)\]\s*(?:;.*)?$")
+
 # A comment line, such as Godot's "; param=value" header, assigns nothing.
 _ASSIGNMENT = re.compile(r'^\s*(?!;)("(?:[^"\\\r\n]|\\.)*"|[^=\r\n]+?)\s*=')
+
+
+# ==== Statements ==============================================================
+
+
+_CLOSING = {"(": ")", "[": "]", "{": "}"}
+
+_BRACKET_DEPTH = dict.fromkeys(_CLOSING, 1) | dict.fromkeys(_CLOSING.values(), -1)
+
+
+class _Scan:
+    """Track the string literals and bracket depth of Godot text across lines."""
+
+    def __init__(self) -> None:
+        self.quote = False
+        self.escape = False
+        self.balance = 0
+
+    def in_string(self, char: str) -> bool:
+        """Advance past char; whether it belongs to a string literal, quotes included."""
+        if not self.quote:
+            self.quote = char == '"'
+            return self.quote
+        self.quote = self.escape or char != '"'
+        self.escape = not self.escape and char == "\\"
+        return True
+
+    def continues(self, line: str) -> bool:
+        """Scan a line up to its comment; whether its statement continues past it."""
+        for char in line:
+            if self.in_string(char):
+                continue
+            if char == ";":
+                break
+            self.balance += _BRACKET_DEPTH.get(char, 0)
+        return self.balance != 0 or self.quote
+
+
+def _decoded_key(key: str) -> str:
+    """
+    Decode a quoted setting key to the setting key of its unquoted spelling.
+
+    Godot accepts quoted setting keys. Decode the ordinary JSON string form so a quoted
+    key has the same setting key as its unquoted spelling. Unrecognized escapes remain
+    authored text and are never evaluated here.
+    """
+    if not key.startswith('"'):
+        return key
+    try:
+        return json.loads(key)
+    except ValueError:
+        return key
+
+
+def _statement_start(line: str, section: str | None) -> tuple[str | None, str | None]:
+    """The section after a statement's first line, and the key that line assigns."""
+    match = _SECTION.match(line.strip())
+    if match:
+        return match.group(1), None
+    assignment = _ASSIGNMENT.match(line)
+    return section, _decoded_key(assignment.group(1).strip()) if assignment else None
+
+
+def statement_groups(text: str) -> list[tuple[str, str | None, str | None]]:
+    """Preserve authored text while keeping multiline Variant values together."""
+    groups = []
+    section = None
+    pending = []
+    pending_key = None
+    scan = _Scan()
+    for line in text.splitlines(keepends=True):
+        if not pending:
+            section, pending_key = _statement_start(line, section)
+        pending.append(line)
+        if not scan.continues(line):
+            groups.append(("".join(pending), section, pending_key))
+            pending, pending_key = [], None
+    if pending:
+        raise ValueError("Unterminated statement in base project.godot")
+    return groups
+
+
+def _value(text: str) -> str:
+    match = _ASSIGNMENT.match(text)
+    return text[match.end() :] if match else ""
+
+
+def setting_key(section: str | None, key: str) -> str:
+    """The section/property identity of a statement; root keys have no section."""
+    return f"{section}/{key}" if section else key
+
+
+def setting_section(setting: str) -> str | None:
+    """The section of a setting_key identity, or None for a root key."""
+    section, separator, _ = setting.partition("/")
+    return section if separator else None
+
+
 # ==== Literals ================================================================
 
 
@@ -51,13 +150,12 @@ _CONSTRUCTORS = {
     "PackedColorArray",
 }
 
-
 _TOKEN = re.compile(
     r'\s*(?:(-inf\b|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)|([A-Za-z_][A-Za-z_0-9]*)|("(?:[^"\\\r\n]|\\.)*")|([\[\]{}(),:&^]))'
 )
 
-
 _NUMBER = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
+
 _KEYWORDS = {"true", "false", "null", "inf", "-inf", "inf_neg", "nan"}
 
 
@@ -152,138 +250,6 @@ def validate_literal(value: str) -> str:
     return value
 
 
-# ==== Statements ==============================================================
-
-
-class _Scan:
-    """Track the string literals and bracket depth of Godot text across lines."""
-
-    def __init__(self) -> None:
-        self.quote = False
-        self.escape = False
-        self.balance = 0
-
-    def in_string(self, char: str) -> bool:
-        """Advance past char; whether it belongs to a string literal, quotes included."""
-        if not self.quote:
-            self.quote = char == '"'
-            return self.quote
-        self.quote = self.escape or char != '"'
-        self.escape = not self.escape and char == "\\"
-        return True
-
-    def continues(self, line: str) -> bool:
-        """Scan a line up to its comment; whether its statement continues past it."""
-        for char in line:
-            if self.in_string(char):
-                continue
-            if char == ";":
-                break
-            self.balance += _BRACKET_DEPTH.get(char, 0)
-        return self.balance != 0 or self.quote
-
-
-_CLOSING = {"(": ")", "[": "]", "{": "}"}
-_BRACKET_DEPTH = dict.fromkeys(_CLOSING, 1) | dict.fromkeys(_CLOSING.values(), -1)
-
-
-def _decoded_key(key: str) -> str:
-    """
-    Decode a quoted setting key to the setting key of its unquoted spelling.
-
-    Godot accepts quoted setting keys. Decode the ordinary JSON string form so a quoted
-    key has the same setting key as its unquoted spelling. Unrecognized escapes remain
-    authored text and are never evaluated here.
-    """
-    if not key.startswith('"'):
-        return key
-    try:
-        return json.loads(key)
-    except ValueError:
-        return key
-
-
-def _statement_start(line: str, section: str | None) -> tuple[str | None, str | None]:
-    """The section after a statement's first line, and the key that line assigns."""
-    match = _SECTION.match(line.strip())
-    if match:
-        return match.group(1), None
-    assignment = _ASSIGNMENT.match(line)
-    return section, _decoded_key(assignment.group(1).strip()) if assignment else None
-
-
-def statement_groups(text: str) -> list[tuple[str, str | None, str | None]]:
-    """Preserve authored text while keeping multiline Variant values together."""
-    groups = []
-    section = None
-    pending = []
-    pending_key = None
-    scan = _Scan()
-    for line in text.splitlines(keepends=True):
-        if not pending:
-            section, pending_key = _statement_start(line, section)
-        pending.append(line)
-        if not scan.continues(line):
-            groups.append(("".join(pending), section, pending_key))
-            pending, pending_key = [], None
-    if pending:
-        raise ValueError("Unterminated statement in base project.godot")
-    return groups
-
-
-# ==== Settings ================================================================
-
-
-# The purposes of a project.godot: the game's, the context every import reads, the
-# configuration packs export and the one editor views open.
-PURPOSES = ("runtime", "import", "export", "editor")
-
-# A key outside Godot's sections, such as an add-on's own key: program-level, so no
-# import carries it, and content-bound. Its shape is what its declaration names.
-UNKNOWN_KIND = {
-    "binding": "content",
-    "hint": None,
-    "purposes": ["export", "runtime", "editor"],
-    "shape": None,
-}
-
-
-def _outside_godot(section: str | None, sections: Iterable[str] | None) -> bool:
-    """Whether a setting's section is none of Godot's; a root key is always Godot's."""
-    if sections is None or section is None:
-        return False
-    return section not in sections
-
-
-def setting_section(setting: str) -> str | None:
-    """The section of a setting_key identity, or None for a root key."""
-    section, separator, _ = setting.partition("/")
-    return section if separator else None
-
-
-def setting_kind(
-    setting: str, kinds: dict[str, dict], sections: Iterable[str] | None
-) -> dict | None:
-    """
-    Return the kind of a setting or of a feature override's base setting, as setting_values.bzl does.
-
-    Args:
-        setting: A section/property key, such as gui/theme/custom.mobile.
-        kinds: The setting-kind table of the engine version.
-        sections: The sections of Godot's own settings; None knows every key.
-
-    Returns:
-        The table's row, UNKNOWN_KIND for a key outside Godot's sections, or None for
-        a setting of Godot that names no file.
-    """
-    base = setting.partition(".")[0]
-    section = setting_section(base)
-    row = kinds.get(base) or kinds.get(f"{section}/*")
-    if row:
-        return row
-    return UNKNOWN_KIND if _outside_godot(section, sections) else None
-
-
 _PACKED_STRING_ARRAY = "PackedStringArray("
 
 
@@ -328,28 +294,53 @@ def _strings(value: object) -> list[str]:
     return []
 
 
+# ==== Named files =============================================================
+
+
+# A key outside Godot's sections, such as an add-on's own key: program-level, so no
+# import carries it, and content-bound. Its shape is what its declaration names.
+UNKNOWN_KIND = {
+    "binding": "content",
+    "hint": None,
+    "purposes": ["export", "runtime", "editor"],
+    "shape": None,
+}
+
+
+def _outside_godot(section: str | None, sections: Iterable[str] | None) -> bool:
+    """Whether a setting's section is none of Godot's; a root key is always Godot's."""
+    if sections is None or section is None:
+        return False
+    return section not in sections
+
+
+def setting_kind(
+    setting: str, kinds: dict[str, dict], sections: Iterable[str] | None
+) -> dict | None:
+    """
+    Return the kind of a setting or of a feature override's base setting, as setting_values.bzl does.
+
+    Args:
+        setting: A section/property key, such as gui/theme/custom.mobile.
+        kinds: The setting-kind table of the engine version.
+        sections: The sections of Godot's own settings; None knows every key.
+
+    Returns:
+        The table's row, UNKNOWN_KIND for a key outside Godot's sections, or None for
+        a setting of Godot that names no file.
+    """
+    base = setting.partition(".")[0]
+    section = setting_section(base)
+    row = kinds.get(base) or kinds.get(f"{section}/*")
+    if row:
+        return row
+    return UNKNOWN_KIND if _outside_godot(section, sections) else None
+
+
 def _remapped(value: str) -> str:
     """The path of a translation remap such as res://hello_de.ogg:de, without its locale."""
     path, separator, locale = value.rpartition(":")
     return path if separator and "/" not in locale else value
-
-
-def named_paths(shape: str | None, literal: str) -> list[str]:
-    """
-    Return the strings a file-referencing setting's Godot literal names, as setting_values.bzl does.
-
-    Args:
-        shape: The setting's shape in the setting-kind table, or None for a declared
-            key unknown to the table, which names a string or an array of strings.
-        literal: The setting's Godot literal.
-
-    Returns:
-        The named strings: an autoload's without its singleton `*`, a translation
-        remap's sources and remapped files without their locale, a shader global's
-        sampler file, and for the other shapes the string or array of strings; empty
-        for any other value.
-    """
-    return _SHAPE_PATHS.get(shape, _strings)(_godot_value(literal))
 
 
 def _autoload_paths(value: object) -> list[str]:
@@ -378,6 +369,34 @@ _SHAPE_PATHS: dict[str | None, Callable[[object], list[str]]] = {
 }
 
 
+def named_paths(shape: str | None, literal: str) -> list[str]:
+    """
+    Return the strings a file-referencing setting's Godot literal names, as setting_values.bzl does.
+
+    Args:
+        shape: The setting's shape in the setting-kind table, or None for a declared
+            key unknown to the table, which names a string or an array of strings.
+        literal: The setting's Godot literal.
+
+    Returns:
+        The named strings: an autoload's without its singleton `*`, a translation
+        remap's sources and remapped files without their locale, a shader global's
+        sampler file, and for the other shapes the string or array of strings; empty
+        for any other value.
+    """
+    return _SHAPE_PATHS.get(shape, _strings)(_godot_value(literal))
+
+
+def names_directories(kind: dict) -> bool:
+    """
+    Whether a setting of kind may name a directory, as setting_values.bzl decides (FR-032).
+
+    A setting Godot hints as a file names files, and so does an autoload; any other, an
+    add-on's own key included, may name a directory, which a file below it provides.
+    """
+    return kind.get("hint") != "file" and kind["shape"] != "autoload"
+
+
 def _names_game_files(kind: dict, literal: str) -> bool:
     """
     Whether a setting of kind names a file of the game, which a context-only configuration drops.
@@ -392,35 +411,12 @@ def _names_game_files(kind: dict, literal: str) -> bool:
     )
 
 
-def names_directories(kind: dict) -> bool:
-    """
-    Whether a setting of kind may name a directory, as setting_values.bzl decides (FR-032).
-
-    A setting Godot hints as a file names files, and so does an autoload; any other, an
-    add-on's own key included, may name a directory, which a file below it provides.
-    """
-    return kind.get("hint") != "file" and kind["shape"] != "autoload"
-
-
 def _declared(path: str, members: set[str], directory: bool) -> bool:
     """Whether members hold the file path, or with directory a file below it."""
     path = path.rstrip("/")
     if path in members:
         return True
     return directory and any(member.startswith(path + "/") for member in members)
-
-
-def _value(text: str) -> str:
-    match = _ASSIGNMENT.match(text)
-    return text[match.end() :] if match else ""
-
-
-def setting_key(section: str | None, key: str) -> str:
-    """The section/property identity of a statement; root keys have no section."""
-    return f"{section}/{key}" if section else key
-
-
-# ==== Overrides ===============================================================
 
 
 def left_out(
@@ -464,9 +460,72 @@ def left_out(
     return result
 
 
+# ==== Overrides ===============================================================
+
+
 def feature_tags(key: str) -> list[str]:
     """Return the feature tags of an override key such as ``method.mobile``."""
     return key.split(".")[1:]
+
+
+def override_applies(key: str, features: Collection[str] | None) -> bool:
+    """
+    Whether a setting key applies under features, as setting_values.bzl decides.
+
+    Godot applies a feature override such as ``custom.mobile`` when one of its tags is a
+    feature the game has; a key without a tag always applies. None for features counts
+    every override.
+    """
+    tags = feature_tags(key)
+    return features is None or not tags or any(tag in features for tag in tags)
+
+
+def override_tags(base: str, settings: Iterable[str]) -> list[str]:
+    """Return every feature tag that a base or contributed setting overrides with."""
+    keys = [key for _, _, key in statement_groups(base) if key is not None]
+    keys += [setting.split("/", 1)[1] for setting in settings]
+    return sorted({tag for key in keys for tag in feature_tags(key)})
+
+
+def _overrides_of(base: str, settings: Collection[str]) -> list[str]:
+    """The feature overrides of settings that base authors, such as ``key.mobile``."""
+    return [
+        setting
+        for _, section, key in statement_groups(base)
+        if key is not None
+        and feature_tags(key)
+        and (setting := setting_key(section, key)).partition(".")[0] in settings
+    ]
+
+
+def shadowed(base: str, flag_keys: dict[str, str]) -> list[str]:
+    """
+    Describe each feature override in base of a setting a project's settings_from_flags
+    set, which would hide the flag's value where its tag applies.
+
+    Args:
+        base: Authored project.godot text.
+        flag_keys: The settings settings_from_flags set, to their flags' labels.
+    """
+    flags = {key.split(".")[0]: flag for key, flag in flag_keys.items()}
+    found = []
+    for _, section, key in statement_groups(base):
+        if key is None:
+            continue
+        setting = setting_key(section, key)
+        # A flag's own override sets the flag's value, and a plain setting hides nothing.
+        if setting in flag_keys or not feature_tags(setting):
+            continue
+        flag = flags.get(setting.split(".")[0])
+        if flag:
+            found.append(
+                f"The authored project.godot overrides {setting}, which hides the "
+                f"value {flag} gives through settings_from_flags"
+            )
+    return found
+
+
+# ==== Plugins and autoloads ===================================================
 
 
 def authored_autoloads(base: str) -> dict[str, str]:
@@ -489,25 +548,6 @@ def authored_autoloads(base: str) -> dict[str, str]:
         if isinstance(value, str) and not feature_tags(key):
             autoloads[key] = value
     return autoloads
-
-
-def override_applies(key: str, features: Collection[str] | None) -> bool:
-    """
-    Whether a setting key applies under features, as setting_values.bzl decides.
-
-    Godot applies a feature override such as ``custom.mobile`` when one of its tags is a
-    feature the game has; a key without a tag always applies. None for features counts
-    every override.
-    """
-    tags = feature_tags(key)
-    return features is None or not tags or any(tag in features for tag in tags)
-
-
-def override_tags(base: str, settings: Iterable[str]) -> list[str]:
-    """Return every feature tag that a base or contributed setting overrides with."""
-    keys = [key for _, _, key in statement_groups(base) if key is not None]
-    keys += [setting.split("/", 1)[1] for setting in settings]
-    return sorted({tag for key in keys for tag in feature_tags(key)})
 
 
 def enabled_plugins(text: str) -> list[str]:
@@ -540,6 +580,11 @@ def enable_plugins(text: str, plugins: Iterable[str]) -> str:
 
 
 # ==== Composition =============================================================
+
+
+# The purposes of a project.godot: the game's, the context every import reads, the
+# configuration packs export and the one editor views open.
+PURPOSES = ("runtime", "import", "export", "editor")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -584,17 +629,6 @@ def _replacements(
             main_scene, ensure_ascii=False
         )
     return replacements
-
-
-def _overrides_of(base: str, settings: Collection[str]) -> list[str]:
-    """The feature overrides of settings that base authors, such as ``key.mobile``."""
-    return [
-        setting
-        for _, section, key in statement_groups(base)
-        if key is not None
-        and feature_tags(key)
-        and (setting := setting_key(section, key)).partition(".")[0] in settings
-    ]
 
 
 def _empty_header(group: str, section: str | None, filled: set[str | None]) -> bool:
@@ -703,33 +737,6 @@ def compose_project(
         replacements, carrier
     )
     return enable_plugins(text, editor_plugins) if editor_plugins else text
-
-
-def shadowed(base: str, flag_keys: dict[str, str]) -> list[str]:
-    """
-    Describe each feature override in base of a setting a project's settings_from_flags
-    set, which would hide the flag's value where its tag applies.
-
-    Args:
-        base: Authored project.godot text.
-        flag_keys: The settings settings_from_flags set, to their flags' labels.
-    """
-    flags = {key.split(".")[0]: flag for key, flag in flag_keys.items()}
-    found = []
-    for _, section, key in statement_groups(base):
-        if key is None:
-            continue
-        setting = setting_key(section, key)
-        # A flag's own override sets the flag's value, and a plain setting hides nothing.
-        if setting in flag_keys or not feature_tags(setting):
-            continue
-        flag = flags.get(setting.split(".")[0])
-        if flag:
-            found.append(
-                f"The authored project.godot overrides {setting}, which hides the "
-                f"value {flag} gives through settings_from_flags"
-            )
-    return found
 
 
 # ==== Write back ==============================================================

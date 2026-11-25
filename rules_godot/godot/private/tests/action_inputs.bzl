@@ -156,6 +156,7 @@ def expect_mentions(env, target, mnemonic, text, *, mentioned = True):
 # import reads: these, of the project whose import configuration the unit's import
 # manifest `<unit>.import.json` names.
 IMPORT_INPUT_MNEMONICS = ["GodotImportConfig", "GodotImportFeatures", "GodotImportableSuffixes"]
+
 _GENERATED = ["FileWrite", "TemplateExpand"]
 
 def _matches(file, path):

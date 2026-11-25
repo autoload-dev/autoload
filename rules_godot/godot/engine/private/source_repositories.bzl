@@ -14,9 +14,6 @@ load("//godot/private/engine:profiles.bzl", "engine_profile")
 
 visibility(["//godot/..."])
 
-_SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
-_SCONS_SHA256 = "99c0e94a42a2c1182fa6859b0be697953db07ba936ecc9817ae0d218ced20b15"
-
 # ==== Engine source ===========================================================
 
 _ARCHIVE_SUFFIXES = [".tar.gz", ".tgz", ".tar.xz", ".tar.bz2", ".tar.zst", ".zip"]
@@ -64,6 +61,10 @@ def engine_source_impl(ctx, *, _fail = fail):
     return ctx.repo_metadata(reproducible = bool(ctx.attr.sha256))
 
 # ==== Engine build ============================================================
+
+_SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
+
+_SCONS_SHA256 = "99c0e94a42a2c1182fa6859b0be697953db07ba936ecc9817ae0d218ced20b15"
 
 _SCONS_PLATFORMS = {"linux": "linuxbsd", "macos": "macos", "android": "android", "ios": "ios"}
 

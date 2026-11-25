@@ -89,6 +89,9 @@ def host_case(case: dict[str, Any]) -> dict[str, Any]:
     return replace({**defaults, **case})
 
 
+# ==== Case checks =============================================================
+
+
 def companion_errors(
     row: dict[str, str], loaded: Target, root: Target, target: ConfiguredTarget
 ) -> list[str]:
@@ -115,9 +118,6 @@ def companion_errors(
     if row["kind"] == "alias" and loaded.kind != "alias":
         errors.append("is not its documented evaluated alias")
     return errors
-
-
-# ==== Case checks =============================================================
 
 
 @dataclass(frozen=True)

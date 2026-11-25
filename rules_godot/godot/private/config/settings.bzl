@@ -10,10 +10,15 @@ load("//godot/private:flags.bzl", "FlagInfo", "string_flag")
 visibility(["//godot/..."])
 
 OPERATING_SYSTEM = str(Label("//godot/private/config:operating_system"))
+
 ENVIRONMENT = str(Label("//godot/private/config:environment"))
+
 CPUS = str(Label("//godot/private/config:cpus"))
+
 EXPORT_PLATFORM = str(Label("//godot/private/config:export_platform"))
+
 PLATFORM_SLICES = str(Label("//godot/private/config:platform_slices"))
+
 APPLICATION_CONTEXT = str(Label("//godot/private/config:application_context"))
 
 # The build's --macos_minimum_os, JSON-encoded, that a macOS application's edge to its pack
@@ -26,7 +31,9 @@ MACOS_MINIMUM_OS_OUTSIDE_APPLICATION = str(Label("//godot/private/config:macos_m
 # option. An Android application sets it on its edge; the application's edge to its pack
 # resets it, so packs, their imports and native code stay in one configuration.
 MERGE_ANDROID_MANIFEST_PERMISSIONS = "//command_line_option:merge_android_manifest_permissions"
+
 TOOL = str(Label("//godot/private/config:tool"))
+
 VARIANT = str(Label("//godot:variant"))
 
 # ==== Settings ================================================================
@@ -165,6 +172,7 @@ def export_platform_error(operating_system, cpus, environment, parents = []):
 # ==== Constraints and tags ====================================================
 
 OPERATING_SYSTEM_CONSTRAINTS = {operating_system: Label("@platforms//os:" + operating_system) for operating_system in ["linux", "macos", "android", "ios"]}
+
 CPU_CONSTRAINTS = {cpu: row.constraint for cpu, row in CPU_TABLE.items()}
 
 ENVIRONMENT_CONSTRAINTS = {

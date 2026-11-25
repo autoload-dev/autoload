@@ -149,13 +149,16 @@ def elf_library(build_id: bytes, *sections: str) -> bytes:
 
 
 _APPLICATION_ID = "com.example.game"
+
 _MANIFEST = (
     '<manifest package="com.example.game">'
     '<uses-sdk android:minSdkVersion="24"/>'
     '<activity android:name="com.godot.game.GodotApp"/>'
     "</manifest>"
 )
+
 _LIBRARY = "arm64-v8a/libgame.so"
+
 _BUILD_ID = bytes.fromhex("7eb76e5a")
 
 

@@ -16,17 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any
 
-# Godot loads the extensions this file lists when the runtime starts.
-EXTENSION_LIST = ".godot/extension_list.cfg"
-
 _MAGIC = 0x43504447
-# Godot aligns the first file, every file's end and the directory to 16 bytes.
-_PADDING = 16
-# Two blocks of eight reserved 32-bit words follow the directory offset.
-_RESERVED = 64
 
 
 # ==== Reading =================================================================
+
+
+# Godot loads the extensions this file lists when the runtime starts.
+EXTENSION_LIST = ".godot/extension_list.cfg"
 
 
 @dataclass(frozen=True)
@@ -148,6 +145,13 @@ def pck_file_member(source: str | os.PathLike[str], path: str) -> bytes:
 
 
 # ==== Writing =================================================================
+
+
+# Godot aligns the first file, every file's end and the directory to 16 bytes.
+_PADDING = 16
+
+# Two blocks of eight reserved 32-bit words follow the directory offset.
+_RESERVED = 64
 
 
 def _pad(destination: IO[bytes]) -> None:

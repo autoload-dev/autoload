@@ -70,6 +70,7 @@ _CL_COMPILERS = ("msvc-cl", "clang-cl")
 _CANARY = "#define GODOT_DEFINE_ANALYSIS_CANARY 1\n"
 
 _PER_FILE_COPT = "//command_line_option:per_file_copt"
+
 _PER_FILE_COPT_SET = str(Label("//godot/engine/private:per_file_copt_set"))
 
 def _setting_impl(ctx):

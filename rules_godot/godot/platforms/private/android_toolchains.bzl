@@ -18,12 +18,7 @@ visibility(["//godot", "//godot/platforms/private/tests"])
 # The Android versions tools/android/sdk.json pins as build_tools, api_levels and ndk,
 # from Google's SDK repository (repository2-3.xml).
 _REPOSITORY = "https://dl.google.com/android/repository/"
-_LINUX_BUILD_TOOLS = struct(
-    version = "35.0.0",
-    archive = "build-tools_r35_linux.zip",
-    integrity = "sha256-vTpJZpEuuLMO0NALDNprZUO5SdX/4AvqVMBMgeFWHYg=",
-    strip_prefix = "android-15",
-)
+
 _PLATFORMS = {
     "35": struct(
         archive = "platform-35_r02.zip",
@@ -34,18 +29,10 @@ _PLATFORMS = {
         integrity = "sha256-N2BzaaKMW2QLOnmYho1FiY68t3dWWg6F+azzbyljHS4=",
     ),
 }
-_LINUX_NDK = struct(
-    version = "29.0.14206865",
-    archive = "android-ndk-r29-linux.zip",
-    integrity = "sha256-Sru83IQvPUh5IG6WldUnCWA+Ut1o08H/8Es7Xnowjs8=",
-    strip_prefix = "android-ndk-r29",
-)
+
 _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 
-_SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 _NDK_TEMPLATES = "@rules_android_ndk//:"
-
-# ==== Linux SDK ===============================================================
 
 def _require_revision(ctx, directory, expected, _fail):
     """Fail unless an extracted package's source.properties names the pinned revision."""
@@ -59,6 +46,17 @@ def _require_revision(ctx, directory, expected, _fail):
         _fail("%s holds revision %s, not the pinned %s" % (ctx.name, revisions, expected))
         return False
     return True
+
+# ==== Linux SDK ===============================================================
+
+_LINUX_BUILD_TOOLS = struct(
+    version = "35.0.0",
+    archive = "build-tools_r35_linux.zip",
+    integrity = "sha256-vTpJZpEuuLMO0NALDNprZUO5SdX/4AvqVMBMgeFWHYg=",
+    strip_prefix = "android-15",
+)
+
+_SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 
 def _linux_sdk_impl(ctx):
     build_tools = _LINUX_BUILD_TOOLS.version
@@ -111,6 +109,13 @@ _linux_sdk = repository_rule(
 )
 
 # ==== Linux NDK ===============================================================
+
+_LINUX_NDK = struct(
+    version = "29.0.14206865",
+    archive = "android-ndk-r29-linux.zip",
+    integrity = "sha256-Sru83IQvPUh5IG6WldUnCWA+Ut1o08H/8Es7Xnowjs8=",
+    strip_prefix = "android-ndk-r29",
+)
 
 def linux_ndk_impl(ctx, *, _fail = fail):
     """

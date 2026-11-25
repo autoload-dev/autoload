@@ -352,6 +352,7 @@ def sync(view: Path, workspace: Path, layout: Layout, record: dict) -> dict:
 
 # ==== Reports =================================================================
 
+
 # Files of Bazel packages, which Godot does not show, in linked directories.
 _BAZEL_FILES = {"BUILD", "BUILD.bazel", "REPO.bazel", "MODULE.bazel", "WORKSPACE"}
 
@@ -490,6 +491,7 @@ def undeclared(workspace: Path, layout: Layout, checkout: dict[str, str]) -> lis
 
 
 # ==== Editor session ==========================================================
+
 
 _GITIGNORE = Path(__file__).parent / "editor_view.gitignore.tpl"
 

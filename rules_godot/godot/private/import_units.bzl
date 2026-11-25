@@ -15,8 +15,9 @@ visibility(["//godot", "//godot/private/config"])
 
 # ==== Unit import =============================================================
 
-# Script and scene members that only the exported game runs; no import reads them.
-GAME_ONLY = (".gd", ".tscn", ".scn")
+def _suffix(path):
+    name = path.rpartition("/")[2]
+    return name.rpartition(".")[2].lower() if "." in name else ""
 
 def importers_of(context, paths):
     """
@@ -91,6 +92,49 @@ def _with_importers(context, outputs, staging):
             transitive = [staging.resource_path_manifests],
         ),
         inputs = depset(tools.resource_paths.values(), transitive = [staging.inputs]),
+    )
+
+def _import_if_needed(
+        template_ctx,
+        input_directories,
+        output_directories,
+        additional_inputs,
+        tools,
+        additional_params):
+    """Import a unit only if Godot has an importer for one of its own files."""
+    importable = {
+        child.basename: True
+        for child in input_directories["importable"].children
+    }
+    suffixes = additional_params["suffixes"].split(",")
+    if not [suffix for suffix in suffixes if suffix in importable]:
+        return
+
+    # A template action can only declare files, so the result is one archive.
+    out = template_ctx.declare_file("import.tar", directory = output_directories["out"])
+    arguments = template_ctx.args()
+    arguments.add_all([
+        "import",
+        "--manifest",
+        additional_inputs["manifest"],
+        "--output",
+        out,
+    ])
+    arguments.add_all(additional_inputs["resource_path_manifests"], before_each = "--resource-path-manifest")
+    arguments.add_all(
+        additional_inputs["imports"],
+        before_each = "--import",
+        expand_directories = False,
+    )
+
+    arguments.add("--editor", additional_inputs["editor"])
+    add_output_roots(arguments, additional_inputs["named"])
+    template_ctx.run(
+        executable = tools["actions"],
+        arguments = [arguments],
+        inputs = additional_inputs["inputs"],
+        outputs = [out],
+        progress_message = "Importing %s" % additional_params["owner"].removeprefix("@@"),
     )
 
 def import_unit(ctx, context, unit, staging):
@@ -246,6 +290,9 @@ def unit_interface(ctx, unit, own_import):
     return struct(interface = out, interfaced = interfaced.keys())
 
 # ==== Validation ==============================================================
+
+# Script and scene members that only the exported game runs; no import reads them.
+GAME_ONLY = (".gd", ".tscn", ".scn")
 
 def _closure_files(own, uses):
     """
@@ -431,50 +478,3 @@ VALIDATION_ATTRS = {
         providers = [FlagInfo],
     ),
 } | METADATA_ATTRS
-
-def _import_if_needed(
-        template_ctx,
-        input_directories,
-        output_directories,
-        additional_inputs,
-        tools,
-        additional_params):
-    """Import a unit only if Godot has an importer for one of its own files."""
-    importable = {
-        child.basename: True
-        for child in input_directories["importable"].children
-    }
-    suffixes = additional_params["suffixes"].split(",")
-    if not [suffix for suffix in suffixes if suffix in importable]:
-        return
-
-    # A template action can only declare files, so the result is one archive.
-    out = template_ctx.declare_file("import.tar", directory = output_directories["out"])
-    arguments = template_ctx.args()
-    arguments.add_all([
-        "import",
-        "--manifest",
-        additional_inputs["manifest"],
-        "--output",
-        out,
-    ])
-    arguments.add_all(additional_inputs["resource_path_manifests"], before_each = "--resource-path-manifest")
-    arguments.add_all(
-        additional_inputs["imports"],
-        before_each = "--import",
-        expand_directories = False,
-    )
-
-    arguments.add("--editor", additional_inputs["editor"])
-    add_output_roots(arguments, additional_inputs["named"])
-    template_ctx.run(
-        executable = tools["actions"],
-        arguments = [arguments],
-        inputs = additional_inputs["inputs"],
-        outputs = [out],
-        progress_message = "Importing %s" % additional_params["owner"].removeprefix("@@"),
-    )
-
-def _suffix(path):
-    name = path.rpartition("/")[2]
-    return name.rpartition(".")[2].lower() if "." in name else ""

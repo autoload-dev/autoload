@@ -22,6 +22,7 @@ visibility("public")
 
 # The macro definition analysis, for generated engine BUILD files.
 godot_define_analysis = _godot_define_analysis
+
 godot_source_defines = _godot_source_defines
 
 # ==== Source generator ========================================================
@@ -226,6 +227,24 @@ GodotEngineVersionInfo = provider(
     },
 )
 
+# Below these floors every translation unit warns that libc++ no longer supports the
+# platform; Godot's own build targets iOS 14.0 and, on Intel Macs, macOS 10.13.
+_LIBCXX_MINIMUM_OS = {
+    "macos": MACOS_MINIMUM_OS,
+    "ios": IOS_MINIMUM_OS,
+}
+
+def _minimum_os(attr):
+    """
+    The deployment target an Apple engine compiles for: Godot's own, raised to libc++'s floor.
+
+    Applications cannot go below it either, since the runtime reports it.
+    """
+    floor = _LIBCXX_MINIMUM_OS.get(attr.platform, "")
+    if attr.minimum_os and floor and version_below(attr.minimum_os, floor):
+        return floor
+    return attr.minimum_os
+
 def _library_impl(ctx):
     check_optimization(ctx)
     if len(ctx.attr.deps) != 1:
@@ -319,24 +338,6 @@ _FLOOR_OPTIONS = {
     "ios": IOS_MINIMUM_OS_OPTION,
 }
 
-# Below these floors every translation unit warns that libc++ no longer supports the
-# platform; Godot's own build targets iOS 14.0 and, on Intel Macs, macOS 10.13.
-_LIBCXX_MINIMUM_OS = {
-    "macos": MACOS_MINIMUM_OS,
-    "ios": IOS_MINIMUM_OS,
-}
-
-def _minimum_os(attr):
-    """
-    The deployment target an Apple engine compiles for: Godot's own, raised to libc++'s floor.
-
-    Applications cannot go below it either, since the runtime reports it.
-    """
-    floor = _LIBCXX_MINIMUM_OS.get(attr.platform, "")
-    if attr.minimum_os and floor and version_below(attr.minimum_os, floor):
-        return floor
-    return attr.minimum_os
-
 def _floor(settings, attr):
     """
     The deployment targets a recipe's native graph compiles for.
@@ -352,6 +353,7 @@ def _floor(settings, attr):
     return values
 
 _ENGINE_INPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_INPUTS
+
 _ENGINE_OUTPUTS = _FLOOR_OPTIONS.values() + OPTIMIZATION_OUTPUTS
 
 def _engine_library_impl(settings, attr):

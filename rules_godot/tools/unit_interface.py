@@ -47,22 +47,6 @@ from tools.godot_staging import (
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.resource_graph import IMPORTER, REMAP_PATH, Token, lex, remap_section
 
-# A value of type Variant that is no constant, so the analyzer neither folds it nor rejects
-# it for any declared return type, in static and in instance functions alike.
-_VARIANT = 'Engine.get_meta(&"")'
-# The warnings a script can report only once its function bodies are gone. A dependent's
-# validation ignores its dependencies' warnings, but a project may raise one to an error,
-# which would fail the interface's compilation and with it the dependent's.
-_BODY_WARNINGS = ("unused_parameter", "unused_private_class_variable", "unused_signal")
-_IGNORE_BODY_WARNINGS = (
-    "@warning_ignore_start("
-    + ", ".join(f'"{warning}"' for warning in _BODY_WARNINGS)
-    + ")\n"
-)
-# The tokens after which an identifier is part of a node path or member access, not a
-# keyword.
-_PATH_PUNCTUATION = ("$", "%", "/", ".")
-
 # The class of the resource each of Godot's own importers produces, which a stand-in has: a
 # preloaded resource types its constant by its class. Other importers, such as an add-on's,
 # may give their resource a script, so their assets are their own interface.
@@ -77,6 +61,26 @@ IMPORTED_CLASSES = {
 
 
 # ==== Script interface ========================================================
+
+
+# A value of type Variant that is no constant, so the analyzer neither folds it nor rejects
+# it for any declared return type, in static and in instance functions alike.
+_VARIANT = 'Engine.get_meta(&"")'
+
+# The warnings a script can report only once its function bodies are gone. A dependent's
+# validation ignores its dependencies' warnings, but a project may raise one to an error,
+# which would fail the interface's compilation and with it the dependent's.
+_BODY_WARNINGS = ("unused_parameter", "unused_private_class_variable", "unused_signal")
+
+_IGNORE_BODY_WARNINGS = (
+    "@warning_ignore_start("
+    + ", ".join(f'"{warning}"' for warning in _BODY_WARNINGS)
+    + ")\n"
+)
+
+# The tokens after which an identifier is part of a node path or member access, not a
+# keyword.
+_PATH_PUNCTUATION = ("$", "%", "/", ".")
 
 
 def _logical_lines(tokens: list[Token]) -> list[list[Token]]:

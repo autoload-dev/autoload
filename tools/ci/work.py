@@ -13,7 +13,8 @@ A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook ru
 the steps whose inputs did not change since the merge base with the reference
 (tools/ci/changes.py). Lanes and named work without the option run every step.
 
-Sections: Examples, Checks, Work table, Selection, Execution.
+Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Selection,
+Execution, Command line.
 """
 
 import argparse
@@ -40,13 +41,8 @@ from tools.ci.lanes import LANES, PROFILE, profile
 from tools.setup.modules import RULESET, module_paths, registry_test_modules
 
 RULESET_DIR = RULESET.as_posix()
-# The ruleset's consumer scenarios, by package.
-SCENARIOS = "//e2e/rules_godot"
+
 ANDROID_SETUP = "android:setup"
-# The workspace's own output base, which work names where its lane has another profile.
-DEFAULT_PROFILE = "default"
-# The profile of the add-on generator's self-test, which changes the root's module graph.
-TEMPLATE_PROFILE = "addon-template"
 
 
 class In(NamedTuple):
@@ -95,7 +91,7 @@ class Work:
         ]
 
 
-# ==== Examples ================================================================
+# ==== Applications ============================================================
 
 
 # The applications of examples/, by their app.pkl; add-on modules have lanes of their own.
@@ -121,132 +117,10 @@ def example_work() -> Iterator[Work]:
             yield Work(name, None, ".", command, profile="source-engine")
 
 
-# ==== Checks ==================================================================
-
-
-# The API documentation's tests, all of them fast, with the API inventory's discovery
-# of new Starlark modules, which a test's sandbox cannot see.
-DOCS_CHECK = "bazel run //tools/docs:check"
-
 # The tests of the applications the source-engine lane verifies, such as those that run in
 # an editor built from the engine sources with their module.
 SOURCE_ENGINE_EXAMPLES = tuple(
     example_tests(app) for app in APPLICATIONS if "source-engine" in app.lanes
-)
-
-
-def every_module(
-    command: str, root: Path = ROOT, inputs: Inputs | None = None
-) -> tuple[In, ...]:
-    """A command for each module of the checkout, as the setup checks discover them."""
-    return tuple(In(module, command, inputs) for module in module_paths(root))
-
-
-# A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
-# main repository's sources; the query spares `aspect lint` analysing every other target,
-# such as the Android and iOS applications. Targets incompatible with this host are skipped.
-LINT_COMMAND = (
-    "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
-    ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
-    " --skip_incompatible_explicit_targets; }"
-)
-# A module's lint runs for its own Python and the targets that hold it, and for the linters
-# and their configuration, which the root module pins.
-LINT_INPUTS = either(
-    module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
-    files(
-        "pyproject.toml",
-        "ty.toml",
-        "tools/lint/*",
-        ".aspect/config.axl",
-        "MODULE.bazel",
-        "MODULE.bazel.lock",
-    ),
-)
-# What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
-# the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
-GENERATED_INPUTS = files(
-    "*MODULE.bazel*",
-    "*.bazelignore",
-    f"{RULESET_DIR}/godot/*.bzl",
-    f"{RULESET_DIR}/godot/engine/*",
-    # Files that module extensions read and the lock files record: tool and engine pins,
-    # Maven and Swift package resolutions.
-    "*.lock.json",
-    "third_party/maven/*",
-    f"{RULESET_DIR}/third_party/maven/*",
-    "*Package.resolved",
-    "*Package.swift",
-    "tools/generate/*",
-)
-# The API documentation: the ruleset's API, the documentation's tools and the root module's
-# declarations and the Python those tools load.
-DOCS_INPUTS = files(
-    f"{RULESET_DIR}/godot/*",
-    f"{RULESET_DIR}/MODULE.bazel*",
-    f"{RULESET_DIR}/BUILD.bazel",
-    f"{RULESET_DIR}/tools/*",
-    "tools/docs/*",
-    "tools/ci/lanes.py",
-    "MODULE.bazel",
-    "MODULE.bazel.lock",
-    "tools/addons/*",
-    "tools/code_health/*",
-    "tools/conventions/*",
-    "tools/setup/*",
-)
-# The contract checker's test of its mismatch reports.
-MISMATCH_TEST_INPUTS = files(
-    "tools/docs/*",
-    f"{RULESET_DIR}/godot/tests/api_contracts/*",
-    "tools/conventions/*",
-)
-
-
-def contracts_command(lane: str) -> str:
-    """The command that checks the API output contract cases of a lane."""
-    return f"bazel run //tools/docs:contracts -- --lane {lane}"
-
-
-def contracts(lane: str) -> Work:
-    """
-    The API output contract cases of a lane. The checker builds itself and extracts the API
-    in the default profile, which the docs work shares; its configured queries of the
-    lane's cases run in the lane's profile (tools/docs/evidence.py).
-    """
-    return Work(
-        f"contracts:{lane}",
-        lane,
-        ".",
-        (contracts_command(lane),),
-        android=lane == "android",
-        profile=DEFAULT_PROFILE,
-    )
-
-
-SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-# The fast tests of a module, which `aspect pre-push` runs in the ruleset: the unit tests
-# by their size, the analysis tests by rules_testing's tag, and the few smoke tests
-# (docs/internal/verification-architecture.md, "Test size").
-FAST_TESTS = (
-    "(attr(size, small, tests(//...))"
-    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests(//...)))'
-    ' except attr(tags, "\\b(manual|source_engine)\\b", tests(//...))'
-)
-# The query names its tests explicitly, so tests incompatible with this host, such as the
-# macOS-only analysis tests on Linux, are skipped rather than rejected.
-FAST_TEST_COMMAND = (
-    f"bazel query '{FAST_TESTS}' | xargs bazel test --build_tests_only"
-    " --skip_incompatible_explicit_targets"
-)
-PATCHED_ENGINE = (
-    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
-    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/{{engine}}:all"
-)
-PATCHED_EDITOR = (
-    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
-    f" {SCENARIOS}/patched_engine/tests:source_built_editor_test"
-    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/source:all"
 )
 
 
@@ -276,6 +150,209 @@ def release_builds(lane: str, flags: str) -> str:
         *addon_app_packages(lane),
     )
     return f"bazel build {apps(packages)}{flags}"
+
+
+# ==== Checks ==================================================================
+
+
+# The API documentation's tests, all of them fast, with the API inventory's discovery
+# of new Starlark modules, which a test's sandbox cannot see.
+DOCS_CHECK = "bazel run //tools/docs:check"
+
+
+def every_module(
+    command: str, root: Path = ROOT, inputs: Inputs | None = None
+) -> tuple[In, ...]:
+    """A command for each module of the checkout, as the setup checks discover them."""
+    return tuple(In(module, command, inputs) for module in module_paths(root))
+
+
+# A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
+# main repository's sources; the query spares `aspect lint` analysing every other target,
+# such as the Android and iOS applications. Targets incompatible with this host are skipped.
+LINT_COMMAND = (
+    "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
+    ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
+    " --skip_incompatible_explicit_targets; }"
+)
+
+# A module's lint runs for its own Python and the targets that hold it, and for the linters
+# and their configuration, which the root module pins.
+LINT_INPUTS = either(
+    module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
+    files(
+        "pyproject.toml",
+        "ty.toml",
+        "tools/lint/*",
+        ".aspect/config.axl",
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+    ),
+)
+
+# What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
+# the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
+GENERATED_INPUTS = files(
+    "*MODULE.bazel*",
+    "*.bazelignore",
+    f"{RULESET_DIR}/godot/*.bzl",
+    f"{RULESET_DIR}/godot/engine/*",
+    # Files that module extensions read and the lock files record: tool and engine pins,
+    # Maven and Swift package resolutions.
+    "*.lock.json",
+    "third_party/maven/*",
+    f"{RULESET_DIR}/third_party/maven/*",
+    "*Package.resolved",
+    "*Package.swift",
+    "tools/generate/*",
+)
+
+# The API documentation: the ruleset's API, the documentation's tools and the root module's
+# declarations and the Python those tools load.
+DOCS_INPUTS = files(
+    f"{RULESET_DIR}/godot/*",
+    f"{RULESET_DIR}/MODULE.bazel*",
+    f"{RULESET_DIR}/BUILD.bazel",
+    f"{RULESET_DIR}/tools/*",
+    "tools/docs/*",
+    "tools/ci/lanes.py",
+    "MODULE.bazel",
+    "MODULE.bazel.lock",
+    "tools/addons/*",
+    "tools/code_health/*",
+    "tools/conventions/*",
+    "tools/setup/*",
+)
+
+# The contract checker's test of its mismatch reports.
+MISMATCH_TEST_INPUTS = files(
+    "tools/docs/*",
+    f"{RULESET_DIR}/godot/tests/api_contracts/*",
+    "tools/conventions/*",
+)
+
+# The workspace's own output base, which work names where its lane has another profile.
+DEFAULT_PROFILE = "default"
+
+
+def contracts_command(lane: str) -> str:
+    """The command that checks the API output contract cases of a lane."""
+    return f"bazel run //tools/docs:contracts -- --lane {lane}"
+
+
+def contracts(lane: str) -> Work:
+    """
+    The API output contract cases of a lane. The checker builds itself and extracts the API
+    in the default profile, which the docs work shares; its configured queries of the
+    lane's cases run in the lane's profile (tools/docs/evidence.py).
+    """
+    return Work(
+        f"contracts:{lane}",
+        lane,
+        ".",
+        (contracts_command(lane),),
+        android=lane == "android",
+        profile=DEFAULT_PROFILE,
+    )
+
+
+# ==== Ruleset tests ===========================================================
+
+
+# The ruleset's consumer scenarios, by package.
+SCENARIOS = "//e2e/rules_godot"
+
+SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
+
+# The fast tests of a module, which `aspect pre-push` runs in the ruleset: the unit tests
+# by their size, the analysis tests by rules_testing's tag, and the few smoke tests
+# (docs/internal/verification-architecture.md, "Test size").
+FAST_TESTS = (
+    "(attr(size, small, tests(//...))"
+    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests(//...)))'
+    ' except attr(tags, "\\b(manual|source_engine)\\b", tests(//...))'
+)
+
+# The query names its tests explicitly, so tests incompatible with this host, such as the
+# macOS-only analysis tests on Linux, are skipped rather than rejected.
+FAST_TEST_COMMAND = (
+    f"bazel query '{FAST_TESTS}' | xargs bazel test --build_tests_only"
+    " --skip_incompatible_explicit_targets"
+)
+
+PATCHED_ENGINE = (
+    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/{{engine}}:all"
+)
+
+PATCHED_EDITOR = (
+    f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" {SCENARIOS}/patched_engine/tests:source_built_editor_test"
+    f" --extra_toolchains={SCENARIOS}/patched_engine/engines/source:all"
+)
+
+
+# ==== Add-on work =============================================================
+
+
+# The profile of the add-on generator's self-test, which changes the root's module graph.
+TEMPLATE_PROFILE = "addon-template"
+
+
+def lane_addon_work(lane: str) -> Work:
+    """Every add-on module of a lane, with one Bazel command."""
+    return Work(
+        f"{lane}:addons",
+        lane,
+        ".",
+        (f"python3 -m tools.addons.lanes {lane}",),
+        android=lane == "android",
+    )
+
+
+def module_work(lane: str, directory: str) -> Work:
+    """One add-on module's lane alone, run only when named, in its lane's profile."""
+    return Work(
+        f"{lane}:addon:{directory}",
+        None,
+        ".",
+        (f"python3 -m tools.addons.lanes {lane} {directory}",),
+        android=lane == "android",
+        profile=profile(lane),
+    )
+
+
+def template_work(lane: str) -> Work:
+    """The add-on generator's self-test in one lane: a fresh module, then its lane."""
+    return Work(
+        f"{lane}:addon-template",
+        lane,
+        ".",
+        (f"python3 -m tools.addons.selftest {lane}",),
+        android=lane == "android",
+        hosts=("linux",) if lane == "desktop" else (),
+        # The self-test declares a module in the root's module graph for its run, which
+        # would discard the analysis of the server it runs in.
+        profile=TEMPLATE_PROFILE,
+    )
+
+
+def addon_work(root: Path = ROOT) -> Iterator[Work]:
+    """
+    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
+    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
+    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
+    generator's self-test in every lane. The self-test's desktop build checks the template
+    the same way on every host, so its desktop lane runs on Linux only.
+    """
+    modules = all_modules(root)
+    lanes = choices()["lanes"]
+    named = {lane for module in modules for lane in module.lanes}
+    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
+    yield from (
+        module_work(lane, module.directory) for module in modules for lane in module.lanes
+    )
+    yield from map(template_work, lanes)
 
 
 # ==== Work table ==============================================================
@@ -484,44 +561,6 @@ WORK = (
 )
 
 
-def lane_addon_work(lane: str) -> Work:
-    """Every add-on module of a lane, with one Bazel command."""
-    return Work(
-        f"{lane}:addons",
-        lane,
-        ".",
-        (f"python3 -m tools.addons.lanes {lane}",),
-        android=lane == "android",
-    )
-
-
-def module_work(lane: str, directory: str) -> Work:
-    """One add-on module's lane alone, run only when named, in its lane's profile."""
-    return Work(
-        f"{lane}:addon:{directory}",
-        None,
-        ".",
-        (f"python3 -m tools.addons.lanes {lane} {directory}",),
-        android=lane == "android",
-        profile=profile(lane),
-    )
-
-
-def template_work(lane: str) -> Work:
-    """The add-on generator's self-test in one lane: a fresh module, then its lane."""
-    return Work(
-        f"{lane}:addon-template",
-        lane,
-        ".",
-        (f"python3 -m tools.addons.selftest {lane}",),
-        android=lane == "android",
-        hosts=("linux",) if lane == "desktop" else (),
-        # The self-test declares a module in the root's module graph for its run, which
-        # would discard the analysis of the server it runs in.
-        profile=TEMPLATE_PROFILE,
-    )
-
-
 def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
     """The names of each lane's work, in order."""
     planned: dict[str, list[str]] = {lane: [] for lane in LANES}
@@ -529,24 +568,6 @@ def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
         if work.lane is not None:
             planned[work.lane].append(work.name)
     return planned
-
-
-def addon_work(root: Path = ROOT) -> Iterator[Work]:
-    """
-    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
-    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
-    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
-    generator's self-test in every lane. The self-test's desktop build checks the template
-    the same way on every host, so its desktop lane runs on Linux only.
-    """
-    modules = all_modules(root)
-    lanes = choices()["lanes"]
-    named = {lane for module in modules for lane in module.lanes}
-    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
-    yield from (
-        module_work(lane, module.directory) for module in modules for lane in module.lanes
-    )
-    yield from map(template_work, lanes)
 
 
 def all_work(root: Path = ROOT) -> dict[str, Work]:
@@ -562,44 +583,16 @@ def runs_on(work: Work, host: str) -> bool:
     return not work.hosts or host in work.hosts
 
 
-def argv(work: Work, command: str, directory: str = ".") -> list[str]:
-    """
-    The process that runs one command of a piece of work in a directory, with the work's own
-    variables. Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect
-    CLI's environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
-    Commands in the root module run in the work's profile; the ruleset's keep its default
-    server, which its desktop set and fast tests share.
-    """
-    profile = work.bazel_profile if directory == "." else None
-    profile = ((PROFILE, profile),) if profile is not None else ()
-    exports = [
-        f"export {name}={shlex.quote(value)}" for name, value in (*work.env, *profile)
-    ]
-    if work.android:
-        exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
-    script = "; ".join([*exports, command])
-    return ["bash", "-eo", "pipefail", "-c", script]
-
-
-def environment() -> dict[str, str]:
-    """
-    The work's environment: this process's, with this Python first on PATH, so the work's
-    `python3` is the interpreter that runs this module, Bazel's when the Aspect CLI runs it.
-    """
-    path = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("PATH", "")])
-    return {**os.environ, "PATH": path}
+def changes(ref: str | None) -> Changes | None:
+    """The changes since the merge base with a reference, if one is given."""
+    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
+    return changes_since(ref, ROOT, modules) if ref else None
 
 
 def where(step: In, steps: list[In]) -> str:
     """A step by its directory, or with its command where other steps share it."""
     alone = [s.directory for s in steps].count(step.directory) == 1
     return step.directory if alone else f"{step.directory}$ {step.command}"
-
-
-def changes(ref: str | None) -> Changes | None:
-    """The changes since the merge base with a reference, if one is given."""
-    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
-    return changes_since(ref, ROOT, modules) if ref else None
 
 
 def selected(work: Work, changes: Changes | None) -> list[In]:
@@ -639,6 +632,34 @@ def require_android_environment(work: list[Work], env: dict[str, str]) -> None:
         raise ValueError("Android work needs the Android environment: run `aspect work`")
 
 
+def argv(work: Work, command: str, directory: str = ".") -> list[str]:
+    """
+    The process that runs one command of a piece of work in a directory, with the work's own
+    variables. Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect
+    CLI's environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
+    Commands in the root module run in the work's profile; the ruleset's keep its default
+    server, which its desktop set and fast tests share.
+    """
+    profile = work.bazel_profile if directory == "." else None
+    profile = ((PROFILE, profile),) if profile is not None else ()
+    exports = [
+        f"export {name}={shlex.quote(value)}" for name, value in (*work.env, *profile)
+    ]
+    if work.android:
+        exports.insert(0, 'export ANDROID_HOME="$ANDROID_SDK_ROOT"')
+    script = "; ".join([*exports, command])
+    return ["bash", "-eo", "pipefail", "-c", script]
+
+
+def environment() -> dict[str, str]:
+    """
+    The work's environment: this process's, with this Python first on PATH, so the work's
+    `python3` is the interpreter that runs this module, Bazel's when the Aspect CLI runs it.
+    """
+    path = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("PATH", "")])
+    return {**os.environ, "PATH": path}
+
+
 def run(
     names: Iterable[str],
     root: Path = ROOT,
@@ -674,6 +695,9 @@ def run_lane(lane: str, root: Path = ROOT) -> None:
     """Run a lane's work: on this host, all but the work limited to other hosts."""
     known = all_work(root)
     run(lanes(known)[lane], root, known)
+
+
+# ==== Command line ============================================================
 
 
 def print_work() -> None:

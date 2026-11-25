@@ -1,7 +1,8 @@
 """
 Engine components: one editor or runtime slot with its provenance and toolchain registration.
 
-Sections: Component provenance, Editor component, Runtime component, Component macros.
+Sections: Component provenance, Editor component, Runtime component, resolved_runtime,
+Component macros.
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
@@ -19,14 +20,6 @@ load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "CPU_TABLE", "ENV
 visibility(["//godot/..."])
 
 # ==== Component provenance ====================================================
-
-_VARIANT_SETTINGS = {
-    "debug": Label("//godot:debug"),
-    "release": Label("//godot:release"),
-}
-
-_ENGINE_FLAG = Label("//godot:engine")
-_DEFAULT_ENGINE = Label("//godot:default_engine")
 
 def _fields(value):
     return {name: getattr(value, name) for name in dir(value) if name not in ["to_json", "to_proto"]}
@@ -268,7 +261,35 @@ _ios_runtime_component = rule(
     },
 )
 
+# ==== resolved_runtime ========================================================
+
+def _resolved_runtime_impl(ctx):
+    godot = engine_toolchain(ctx, "runtime")
+    if not godot.runtime:
+        fail("%s: the selected runtime component %s has no GodotRuntimeInfo for desktop packaging" % (
+            ctx.label,
+            godot.provenance.component,
+        ))
+    return [godot.runtime, godot.provenance, DefaultInfo(files = godot.runtime.files)]
+
+resolved_runtime = rule(
+    doc = "Forward the GodotRuntimeInfo of the runtime component resolved in this configuration.",
+    implementation = _resolved_runtime_impl,
+    toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
+    attrs = ENGINE_SETTINGS_ATTRS,
+    cfg = engine_settings,
+)
+
 # ==== Component macros ========================================================
+
+_VARIANT_SETTINGS = {
+    "debug": Label("//godot:debug"),
+    "release": Label("//godot:release"),
+}
+
+_ENGINE_FLAG = Label("//godot:engine")
+
+_DEFAULT_ENGINE = Label("//godot:default_engine")
 
 def _engine_setting(name, engine, visibility, tags):
     """
@@ -358,23 +379,6 @@ def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, versi
         target_settings = [_VARIANT_SETTINGS[variant], _engine_setting(name, engine, visibility, tags)],
         visibility = visibility,
     )
-
-def _resolved_runtime_impl(ctx):
-    godot = engine_toolchain(ctx, "runtime")
-    if not godot.runtime:
-        fail("%s: the selected runtime component %s has no GodotRuntimeInfo for desktop packaging" % (
-            ctx.label,
-            godot.provenance.component,
-        ))
-    return [godot.runtime, godot.provenance, DefaultInfo(files = godot.runtime.files)]
-
-resolved_runtime = rule(
-    doc = "Forward the GodotRuntimeInfo of the runtime component resolved in this configuration.",
-    implementation = _resolved_runtime_impl,
-    toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
-    attrs = ENGINE_SETTINGS_ATTRS,
-    cfg = engine_settings,
-)
 
 _COMMON = {
     "cpu": attr.string(

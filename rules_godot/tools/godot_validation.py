@@ -50,11 +50,6 @@ from tools.resource_graph import Heading, Token, headings, lex, res_path
 from tools.resource_uids import known_uids, uid_sources
 
 
-def _singleton(value: str) -> str:
-    """The singleton `*` of an autoload's value, if it has one."""
-    return "*" if value.startswith("*") else ""
-
-
 def _section_end(text: str, sections: list[Heading], index: int) -> int:
     """Where the properties of a text scene or resource's section end."""
     return sections[index + 1].body if index + 1 < len(sections) else len(text)
@@ -62,8 +57,16 @@ def _section_end(text: str, sections: list[Heading], index: int) -> int:
 
 # ==== Autoloads ===============================================================
 
+
+def _singleton(value: str) -> str:
+    """The singleton `*` of an autoload's value, if it has one."""
+    return "*" if value.startswith("*") else ""
+
+
 _SCENES = (".tscn", ".scn")
+
 _EXT_RESOURCE = r'ExtResource\(\s*"?([^")\s]+)"?\s*\)'
+
 _SCRIPT_PROPERTY = re.compile(r"^script\s*=\s*" + _EXT_RESOURCE, re.MULTILINE)
 
 
@@ -199,16 +202,21 @@ def closure_autoloads(
 
 # ==== Tool mode ===============================================================
 
+
 # The annotations that make the editor run a script: @tool, and @export_tool_button, which
 # the analyzer accepts only in a tool script.
 _TOOL_ANNOTATIONS = ("tool", "export_tool_button")
+
 # The files whose scripts lose their tool annotations: scripts, and text scenes and
 # resources with scripts built in.
 _SCRIPTED = (".gd", ".tscn", ".tres")
+
 _BUILT_IN_SOURCE = re.compile(r'^script/source\s*=\s*"', re.MULTILINE)
+
 # The escapes of Godot's text resource strings that name another character; any other
 # escaped character stands for itself, as core/variant/variant_parser.cpp reads them.
 _ESCAPES = {"b": "\b", "t": "\t", "n": "\n", "f": "\f", "r": "\r"}
+
 _TRAIL_SURROGATE = re.compile(r"\\u([dD][c-fC-F][0-9a-fA-F]{2})")
 
 
@@ -434,6 +442,7 @@ def remove_tool_mode(root: Path, staged: Iterable[str]) -> list[str]:
 
 # ==== Findings ================================================================
 
+
 # Godot's warning for a reference whose uid names no known file while its path does.
 _STALE_UID = "invalid UID"
 
@@ -505,13 +514,17 @@ def extensions_hint(manifest: dict) -> str:
 
 # ==== Validation ==============================================================
 
+
 _VALIDATE = Path(__file__).parent / "validation" / "validate.gd"
+
 _NOT_UTF8 = (
     "not valid UTF-8, as which Godot reads scripts, scenes and resources; the "
     "validation loads no file until it is"
 )
+
 # What every autoload names in the validation's project.godot: a Node without a script.
 _STUB = "autoload_stub.tscn"
+
 _STUB_SCENE = '[gd_scene format=3]\n\n[node name="AutoloadStub" type="Node"]\n'
 
 
