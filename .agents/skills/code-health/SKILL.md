@@ -31,8 +31,8 @@ and [RG025](../../../docs/internal/conventions.md#rg025).
 
 ## 2. Review with subagents
 
-Start the four subagents in one message, so they run in parallel, each on the Sonnet model
-with the effort given. Give each the files with their scope, the history report and its
+Start the four subagents in one message, so they run in parallel, each with the effort given:
+in Claude Code on the Sonnet model, in Codex on the terra model. Give each the files with their scope, the history report and its
 rules. Each returns findings only and edits nothing. A finding names its file, line, rule, a
 concrete proposal, the reason, and whether a hook or check would fail without it.
 
