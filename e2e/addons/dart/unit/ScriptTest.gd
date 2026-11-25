@@ -107,6 +107,15 @@ func test_dart_microtasks_and_timers_run() -> void:
 	probe.call("schedule")
 	var counts: Dictionary = probe.call("counts")
 	assert_int(counts["microtasks"]).is_equal(1)
-	await await_millis(100)
-	counts = probe.call("counts")
-	assert_int(counts["timers"]).is_equal(1)
+	# The Dart timer is due after a millisecond of real time, while a headless run's frames,
+	# and so await_millis, advance faster than the clock: wait frame by frame for it, for at
+	# most a second of real time.
+	var deadline := Time.get_ticks_msec() + 1000
+	while _timers(probe) == 0 and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	assert_int(_timers(probe)).is_equal(1)
+
+
+func _timers(probe: Node2D) -> int:
+	var counts: Dictionary = probe.call("counts")
+	return counts["timers"]
