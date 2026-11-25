@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 package(default_testonly = True)
@@ -26,7 +26,7 @@ godot_resources(
     visibility = ["//e2e/addons/dart:__pkg__"],
     deps = [
         "//e2e/addons/dart",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

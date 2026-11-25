@@ -39,6 +39,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   module like an external application, through a `local_path_override` that the generator
   adds, and the rules of this repository the same way, so an add-on always builds against
   the rules it is changed with.
+- Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
+  root; the root holds only the module's files, `third_party/` with the build files of
+  pinned archives, `tests/` and packages several add-ons share, such as Firebase's `config/`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -73,11 +76,16 @@ aspect work ios:addon:<module>       # each example project's app for the iOS Si
 an `ios_app_test` of the app (`e2e/rules_godot/AGENTS.md`, "Artifact test rules"); the tag
 `manual` keeps them out of `desktop`.
 
-`desktop` runs `bazel test` over `@autoload_<module>//...` and all of
-`examples/addons/<module>/`, so tests in the module or its examples need no registration.
-Tests that need more than the module's own dependencies, such as Python or GdUnit, live in
-`examples/addons/<module>/tests/`, where the root module declares what they use; the release
-archive never contains them. CI runs every module's
+`desktop` runs `bazel test` over `@autoload_<module>//...`, all of
+`examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a
+test lives follows what it checks:
+
+- Native unit tests beside the code they test, such as `<addon>/native/backends/linux/tests/`.
+- White-box tests of the module's own machinery, such as `gdunit_test` or a third-party
+  build, in the module's `tests/`. They use only the module's dependencies, which therefore
+  include what the tests need, such as rules_python; the release archive leaves `tests/` out.
+- End-to-end tests that use an add-on as an application does, such as GdUnit suites of its
+  GDScript API, in `e2e/addons/<module>/`, where the root module declares what they use. CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
 `aspect work <lane>:addon-template` checks the template the same way
 (`tools/addons/selftest.py`).

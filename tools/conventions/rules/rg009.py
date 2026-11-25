@@ -9,8 +9,14 @@ from tools.conventions.layout import RULESET_MODULE, is_addon_test
 
 
 def _white_box(workspace: Workspace, path: Path) -> bool:
-    """Whether a configuration is a fixture: the ruleset's, or of an add-on module's tests."""
-    if workspace.owner(path.as_posix()) == RULESET_MODULE:
+    """
+    Whether a configuration is a fixture: the ruleset's, one of an add-on module's own tests
+    in its tests/, or of an add-on module's end-to-end tests.
+    """
+    owner = workspace.owner(path.as_posix())
+    if owner == RULESET_MODULE:
+        return True
+    if owner.parent == Path("addons") and path.relative_to(owner).parts[:1] == ("tests",):
         return True
     return is_addon_test(workspace.consumer_root(path))
 

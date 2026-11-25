@@ -1,4 +1,4 @@
-# Fixtures of //e2e/addons/gdunit
+# Fixtures of //tests
 
 Each section names a fixture and what it reproduces for the tests of this package.
 

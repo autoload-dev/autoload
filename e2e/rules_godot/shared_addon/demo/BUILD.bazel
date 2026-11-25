@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
 
 # A second project that uses the shared add-on, with a GdUnit suite of its own.
@@ -23,7 +23,7 @@ godot_resources(
     ],
     deps = [
         ":main",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

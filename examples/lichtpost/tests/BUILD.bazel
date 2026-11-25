@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources", "godot_test")
 
 package(default_testonly = True)
@@ -37,7 +37,7 @@ godot_resources(
         ":helpers",
         ":replays",
         "//examples/lichtpost/main",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

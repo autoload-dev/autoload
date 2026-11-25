@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 load("//examples/petri:source_engine.bzl", "SOURCE_ENGINE_ONLY")
 
@@ -20,7 +20,7 @@ godot_resources(
     visibility = ["//examples/petri:__pkg__"],
     deps = [
         "//examples/petri/main",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

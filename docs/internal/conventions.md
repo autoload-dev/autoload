@@ -260,8 +260,8 @@ owning test domain when they are not independently reusable add-ons. C++ source 
 do not establish an add-on.
 
 The check inventories project and add-on directories and authored `project.godot` files in
-every consumer; the white-box fixture projects of the ruleset module and of an add-on
-module's end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
+every consumer; the white-box fixture projects of the ruleset module, of an add-on module's
+own `tests/` and of its end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
 Temporary projects constructed inside source strings and generated configuration templates
 are outside the inventory. The check does not require a project or BUILD package for each
 assertion.

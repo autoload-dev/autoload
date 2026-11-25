@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 package(default_testonly = True)
@@ -13,7 +13,7 @@ godot_resources(
     visibility = ["//e2e/addons/app_auth:__pkg__"],
     deps = [
         "@autoload_app_auth//app_auth",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

@@ -4,7 +4,7 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources"
 # GdUnit itself, with a GdUnit suite.
 package(
     default_testonly = True,
-    default_visibility = ["//e2e/addons/gdunit:__pkg__"],
+    default_visibility = ["//tests:__pkg__"],
 )
 
 godot_project(
@@ -17,5 +17,5 @@ godot_resources(
     name = "suites",
     srcs = ["suites/StrictTest.gd"],
     tags = ["manual"],
-    deps = ["@autoload_gdunit//:gdunit"],
+    deps = ["//gdunit"],
 )

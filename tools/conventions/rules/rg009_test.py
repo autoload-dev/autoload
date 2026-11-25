@@ -46,6 +46,14 @@ class TypedRootLayoutTest(RepositoryTest):
             all("named project or add-on of their consumer" in item for item in findings)
         )
 
+    def test_an_add_on_module_s_own_tests_may_hold_fixture_projects(self) -> None:
+        findings = self.evaluate(
+            "addons/runner/MODULE.bazel",
+            "addons/runner/tests/fixtures/suites/project.godot",
+            "addons/runner/runner/project.godot",
+        )
+        self.assertEqual(len(findings), 1)
+
     def test_an_add_on_modules_test_fixtures_may_live_in_its_tests(self) -> None:
         findings = self.evaluate(
             "addons/runner/MODULE.bazel",

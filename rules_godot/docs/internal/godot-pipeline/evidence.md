@@ -158,8 +158,8 @@ different writeback ownership. Missing-sidecar writer does not overwrite existin
 source full project imports/init/runfiles, main-pack-only extension library staging, extra PCK
 delivery, explicit env plus test variables, report publishing.
 [Test adapter](../../../godot/private/adapter.bzl),
-[GdUnit adapter](../../../../addons/gdunit/private/gdunit_test.bzl) and
-[GdUnit test adapter script](../../../../addons/gdunit/private/run.gd) show case selection/framework/report policy.
+[GdUnit adapter](../../../../addons/gdunit/gdunit/private/gdunit_test.bzl) and
+[GdUnit test adapter script](../../../../addons/gdunit/gdunit/private/run.gd) show case selection/framework/report policy.
 
 ### R05
 

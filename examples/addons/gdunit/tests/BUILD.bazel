@@ -1,4 +1,4 @@
-load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
 # The suites use the game's code and GdUnit, both through their deps; the editor opens them.
@@ -9,7 +9,7 @@ godot_resources(
     visibility = ["//examples/addons/gdunit:__pkg__"],
     deps = [
         "//examples/addons/gdunit/main",
-        "@autoload_gdunit//:gdunit",
+        "@autoload_gdunit//gdunit",
     ],
 )
 

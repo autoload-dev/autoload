@@ -15,7 +15,7 @@ def gdunit_test(name, suites, **kwargs):
     suite is a script of the suites targets, generated ones included, that extends GdUnit's
     `GdUnitTestSuite`; helper scripts and sidecars beside the suites are none. The suites
     declare what they use in their deps: the code under test and GdUnit itself,
-    `@autoload_gdunit//:gdunit`. The adapter follows Bazel's test contract: shard_count
+    `@autoload_gdunit//gdunit`. The adapter follows Bazel's test contract: shard_count
     distributes the suites round-robin, `--test_filter` keeps the suites whose `res://`
     path contains it, the JUnit report becomes the test's XML result and all GdUnit reports
     appear among its undeclared outputs. The test fails when a test fails, when no test
@@ -29,14 +29,14 @@ def gdunit_test(name, suites, **kwargs):
 
     Example:
     ```starlark
-    load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+    load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
     load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
     godot_resources(
         name = "unit_suites",
         testonly = True,
         srcs = glob(["test/**/*_test.gd"]),
-        deps = [":game", "@autoload_gdunit//:gdunit"],
+        deps = [":game", "@autoload_gdunit//gdunit"],
     )
 
     gdunit_test(
@@ -62,7 +62,7 @@ def gdunit_test(name, suites, **kwargs):
     adapter_test(
         name = name,
         deps = suites,
-        adapter = Label("//private:run.gd"),
+        adapter = Label("//gdunit/private:run.gd"),
         main = "addons/autoload_gdunit/run.gd",
         cases = "addons/autoload_gdunit/suites.txt",
         # Bazel appends --test_arg values, which then follow the separator too.

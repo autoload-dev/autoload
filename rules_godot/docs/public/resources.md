@@ -296,7 +296,7 @@ godot_resources(
     name = "inventory_suites",
     testonly = True,
     srcs = glob(["tests/*_test.gd"]),
-    deps = [":inventory", "@autoload_gdunit//:gdunit"],
+    deps = [":inventory", "@autoload_gdunit//gdunit"],
 )
 
 godot_project(
