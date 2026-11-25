@@ -638,14 +638,20 @@ godot_app = macro(
         ),
         "build_profile": attr.label(
             doc = """
-            A Godot build profile (.gdbuild), such as the editor's Engine Compilation
-            Configuration writes, whose disabled_classes this application's runtime leaves out.
-            Only the runtime is affected: packs, imports and the editor keep every class. The
-            class list reaches the engine's class generator as an input, so no recipe is
-            repinned and only the sources that register classes recompile; applications with
-            different profiles share every other object. The runtime must be built from
-            source; a prebuilt runtime fails analysis. A profile that also sets
-            disabled_build_options fails the build. See [build profiles](../../engine-size.md#4-use-a-build-profile).
+            A Godot build profile (.gdbuild), such as godot_runtime_profile derives or the
+            editor's Engine Compilation Configuration writes, that cuts this application's
+            runtime to what the game uses. Only the runtime is affected: packs, imports and
+            the editor keep every class. Its disabled_classes reach the engine's class
+            generator as an input, so no recipe is repinned and only the sources that
+            register classes recompile. Its disabled_build_options, such as disable_3d or a
+            module switch, change the engine's build graph: the profile must then be
+            registered with godot_engines.runtime_profile, which pins it as a runtime
+            variant of the engine's recipes, or the build fails naming that line.
+            Applications with different profiles share every object a profile leaves alone.
+            The runtime must be built from source, as a source build or a prebuilt engine's
+            source_runtimes; a prebuilt runtime fails analysis. See
+            [build profiles](../../engine-size.md#4-use-a-build-profile) and
+            [build options in a build profile](../../engine.md#build-options-in-a-build-profile).
             """,
             allow_single_file = [".gdbuild"],
             configurable = False,

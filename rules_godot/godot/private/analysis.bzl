@@ -1,5 +1,6 @@
 """Optional static resource diagnostics without adding build-time dependencies."""
 
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 
 visibility(["//godot/..."])
@@ -50,10 +51,11 @@ _resource_graph = rule(
             executable = True,
             cfg = "exec",
         ),
-    },
+    } | ENGINE_ATTRS,
+    cfg = engine_transition,
 )
 
-def godot_resource_graph(name, project, deps = [], validate = True, require_declared = False, **kwargs):
+def godot_resource_graph(name, project, deps = [], validate = True, require_declared = False, engine = "", **kwargs):
     """
     Emit a deterministic file/UID graph for resources; optionally validate references.
 
@@ -89,12 +91,16 @@ def godot_resource_graph(name, project, deps = [], validate = True, require_decl
         require_declared: Require inferred runtime file references to have matching
             runtime_references entries. Project configuration references are
             implicit; import inputs are checked for availability.
+        engine: The engine whose editor imports the scanned resources, by engine name;
+            empty keeps the build's engine, the default one or the one
+            --@autoload_rules_godot//godot:engine names.
         **kwargs: Common attributes, such as tags and visibility.
     """
     _resource_graph(
         name = name,
-        view = declare_view(name, project, deps, kwargs),
+        view = declare_view(name, project, deps, kwargs, engine = engine),
         validate = validate,
         require_declared = require_declared,
+        engine = engine,
         **kwargs
     )
