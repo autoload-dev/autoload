@@ -39,7 +39,7 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
     }
 
 # The optional attributes of a component, which a slot leaves out when they are empty.
-_OPTIONAL = ["variant", "environment", "digest", "without_build_profile"]
+_OPTIONAL = ["variant", "environment", "digest", "without_build_profile", "visibility"]
 
 def _declaration(slot, engine):
     values = [("name", slot["name"]), (slot["role"], slot["payload"])]
@@ -53,6 +53,8 @@ def _declaration(slot, engine):
 
 def _android_runtime(variant, runtime):
     attributes = ["    name = %r," % variant, "    shell = %r," % runtime["shell"]]
+    if runtime.get("visibility"):
+        attributes.append("    visibility = %r," % runtime["visibility"])
     engine_libraries = runtime.get("engine_libraries", {})
     if engine_libraries:
         # One label per variant serves every CPU; each platform slice repacks its own

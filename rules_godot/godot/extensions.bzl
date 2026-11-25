@@ -244,8 +244,6 @@ godot_engines = module_extension(
     - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
       - prerequisites: Android shell AAR pinned, or source_runtimes with catalogued sources
       - availability: android_shell
-    - `@{repository}//toolchains:runtime_{slot}_profiled` (files): the source-built runtime component of a slot the prebuilt artifacts cover, for applications with a build_profile, which the prebuilt component leaves to it
-      - prerequisites: source_runtimes with catalogued sources
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
       - prerequisites: Android shell library pinned, a source build with Android rows, or source_runtimes with catalogued sources
       - availability: android_shell

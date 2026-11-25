@@ -296,6 +296,11 @@ _SOURCE_RUNTIME_RENDERERS = {
 # where a prebuilt runtime serves the others.
 _PROFILED = "_profiled"
 
+# The visibility of the profiled slots' targets: the hub's own registration, not an
+# entrypoint. Their payloads are configured from source on the first analysis, which only
+# a host that Godot's configuration accepts can do.
+_PROFILED_VISIBILITY = ["//toolchains:__pkg__"]
+
 def _source_rows(tag):
     """The runtime rows a prebuilt engine builds from source; a pinned shell AAR may be a fork's, so Android stays unbuilt."""
     return [
@@ -314,17 +319,25 @@ def _profiled_slots(rows_plan, covered):
     """
     android = {}
     for variant, runtime in rows_plan.android.items():
-        android[variant + (_PROFILED if covered.get("android_" + variant) else "")] = runtime
-    slots = []
-    profiled = []
-    for slot in rows_plan.slots:
-        if slot["name"] in covered:
-            profiled.append(slot["name"])
-            slot = slot | {"name": slot["name"] + _PROFILED}
-            if slot["platform"] == "android":
-                slot["payload"] += _PROFILED
-        slots.append(slot)
+        if covered.get("android_" + variant):
+            android[variant + _PROFILED] = runtime | {"visibility": _PROFILED_VISIBILITY}
+        else:
+            android[variant] = runtime
+    slots = [
+        _profiled_slot(slot) if slot["name"] in covered else slot
+        for slot in rows_plan.slots
+    ]
+    profiled = [slot["name"] for slot in rows_plan.slots if slot["name"] in covered]
     return slots, android, profiled
+
+def _profiled_slot(slot):
+    """Return a covered slot renamed with _PROFILED and visible only to the hub's registration."""
+    payload = slot["payload"] + _PROFILED if slot["platform"] == "android" else slot["payload"]
+    return slot | {
+        "name": slot["name"] + _PROFILED,
+        "payload": payload,
+        "visibility": _PROFILED_VISIBILITY,
+    }
 
 def source_runtimes(tag, plan, slots, profiles = {}):
     """
