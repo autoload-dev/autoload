@@ -510,6 +510,20 @@ def _prebuilt_declarations(tag, _fail):
     )
     return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + sources + [hub]
 
+def _repository(label):
+    """The apparent name of the repository a label or label string names; the last part of a canonical one."""
+    if type(label) == "Label":
+        return label.repo_name.rpartition("+")[2]
+    return label.lstrip("@").partition("//")[0]
+
+def _source_versions(selections):
+    """The version of each source tag, by its repository name."""
+    return {
+        selection.tag.name: selection.tag.version
+        for selection in selections
+        if selection.kind == "source"
+    }
+
 def plan_engines(modules, *, tag_attributes, _fail = fail):
     """
     Return the repositories the godot_engines extension declares.
@@ -526,11 +540,16 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
     selections = selected_tags(modules, tag_attributes = tag_attributes, _fail = _fail)
     if selections == None:
         return None
+    versions = _source_versions(selections)
     declarations = []
     for selection in selections:
         tag = selection.tag
         if selection.kind in _SOURCE_RULES:
             attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
+            if selection.kind == "source_build":
+                # The hub needs the version; a source tag of this extension knows it, so
+                # registering the hub need not fetch the source archive to read it.
+                attrs["version"] = versions.get(_repository(tag.source), "")
             declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
             continue
         prebuilt = _prebuilt_declarations(tag, _fail)

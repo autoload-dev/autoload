@@ -330,7 +330,8 @@ def godot_engine_source_build(
         python = None,
         configure_timeout = 600,
         lock_file = None,
-        engine = ""):
+        engine = "",
+        version = ""):
     """
     Declare a source build: its source recipes and its hub, from a module extension.
 
@@ -409,6 +410,9 @@ def godot_engine_source_build(
             godot_engines.source_build. The hub then declares `:pin`, which writes it.
         engine: Name of the engine the hub's components belong to; empty joins the
             default engine. See godot_engines.source_build.
+        version: Canonical Godot version of the sources, as their godot_engine_source
+            declares it; empty makes the hub read it from the source descriptor, which
+            fetches the source archive whenever the hub is registered.
     """
     common = {
         "enabled_modules": enabled_modules,
@@ -433,5 +437,6 @@ def godot_engine_source_build(
         common,
         lock_file = lock_file,
         engine = engine,
+        version = version,
     ):
         _SOURCE_BUILD_RULES[declaration.rule](**declaration.attrs)

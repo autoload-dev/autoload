@@ -204,7 +204,23 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
         )))
     return declarations
 
-def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", *, _fail = fail):
+def _version_source(source, version):
+    """The hub attribute that reads the version from the source descriptor, when no version is known."""
+    return {} if version else {"version_source": source}
+
+def _pinning(plan, lock_file):
+    """The hub attributes that let `@<hub>//:pin` write the lock file of a plan's recipes."""
+    if not lock_file:
+        return {}
+    return {
+        "pin_recipes": json.encode({
+            "@%s//:pin" % recipe.repository: recipe.row.name
+            for recipe in plan.recipes
+        }),
+        "lock": "/".join([part for part in [lock_file.package, lock_file.name] if part]),
+    }
+
+def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", version = "", *, _fail = fail):
     """
     Return the repositories godot_engine_source_build declares.
 
@@ -222,6 +238,8 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
             declares `:pin`, which writes it.
         engine: Name of the engine the hub's components belong to; empty for the default
             engine.
+        version: Canonical Godot version of the sources; empty makes the hub read it from
+            the source descriptor, which fetches the source archive.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
@@ -231,21 +249,14 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
     rows = select_rows(name, platforms, cpus, build_targets, ios_environments, _fail = _fail)
     if rows == None:
         return None
-    plan = plan_rows(name, rows)
+    plan = plan_rows(name, rows, version)
     declarations = recipe_declarations(name, source, plan, common, lock_file)
     hub = dict(
         name = name,
         display_name = name,
         components = json.encode(plan.slots),
         android_runtimes = json.encode(plan.android),
-        version_source = source,
         engine = engine,
     )
-    if lock_file:
-        hub["pin_recipes"] = json.encode({
-            "@%s//:pin" % recipe.repository: recipe.row.name
-            for recipe in plan.recipes
-        })
-        hub["lock"] = "/".join([part for part in [lock_file.package, lock_file.name] if part])
-    declarations.append(struct(rule = "engine_hub", attrs = hub))
+    declarations.append(struct(rule = "engine_hub", attrs = hub | _version_source(source, version) | _pinning(plan, lock_file)))
     return declarations

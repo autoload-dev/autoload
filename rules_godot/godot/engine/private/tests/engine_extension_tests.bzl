@@ -384,6 +384,17 @@ def _test_tags_name_the_engine_of_their_hubs(env):
     env.expect.that_str(_declared(declarations, "godot")[0].attrs["engine"]).equals("stock")
     env.expect.that_str(_declared(declarations, "godot_source_build")[0].attrs["engine"]).equals("petri")
 
+def _test_source_builds_take_the_version_of_their_source_tag(env):
+    declarations, errors = _plan([_module(
+        "consumer",
+        is_root = True,
+        source = [_source()],
+        source_build = [_source_build(), _source_build(name = "godot_foreign", source = "@foreign_sources//:source.json")],
+    )])
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_str(_declared(declarations, "godot_source_build")[0].attrs["version"]).equals("4.7.2")
+    env.expect.that_str(_declared(declarations, "godot_foreign")[0].attrs["version"]).equals("")
+
 def _test_missing_runtimes_build_from_the_release_sources(env):
     declarations, errors = _plan(_root())
     env.expect.that_collection(errors).contains_exactly([])
@@ -467,6 +478,7 @@ def engine_extension_test_suite(name):
             _test_catalogue_registers_every_template_cpu,
             _test_catalogue_downloads_prefer_godot_cdn,
             _test_source_build_hub_names_each_recipe,
+            _test_source_builds_take_the_version_of_their_source_tag,
             _test_editor_pins_replace_catalogue_editors,
             _test_template_pins_replace_catalogue_templates,
             _test_shell_pins_replace_catalogue_shell,
