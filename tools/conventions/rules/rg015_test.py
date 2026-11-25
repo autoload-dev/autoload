@@ -114,6 +114,18 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
 
+    def test_an_example_project_keeps_its_tests_in_tests(self) -> None:
+        self.module("widget")
+        build = "examples/addons/widget/BUILD.bazel"
+        text = (self.root / build).read_text()
+        self.write(
+            build, text + 'godot_test(\n    name = "starts",\n    pack = ":pack",\n)\n'
+        )
+        self.assertEqual(
+            ["example project's tests live in examples/addons/widget/tests/: :starts"],
+            self.evaluate(),
+        )
+
     def test_a_module_without_application_lanes_needs_no_app(self) -> None:
         self.module("widget")
         self.write(

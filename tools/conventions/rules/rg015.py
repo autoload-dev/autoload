@@ -49,6 +49,8 @@ PROJECT_TARGETS = ("edit", "pack")
 APP_TARGET = "app"
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
+# A test declared directly in an example project's BUILD file, with its name.
+TEST_CALL = re.compile(r'^\w+_test\(\s*name\s*=\s*"([^"]+)"', re.MULTILINE)
 # A property an addon.pkl sets, whatever its value: the tools read only one-line Lists.
 ASSIGNMENT = re.compile(r"^(\w+)\s*(?::[^=]*)?=")
 
@@ -272,9 +274,14 @@ class AddonModuleLayout:
             )
         targets = set(PROJECT_TARGETS) | ({APP_TARGET} if builds_apps else set())
         for build in builds:
-            names = set(NAME.findall(workspace.text(build.as_posix())))
-            for target in sorted(targets - names):
+            text = workspace.text(build.as_posix())
+            for target in sorted(targets - set(NAME.findall(text))):
                 yield Finding(at(build), f"example project must define :{target}")
+            for test in TEST_CALL.findall(text):
+                yield Finding(
+                    at(build),
+                    f"example project's tests live in {build.parent / 'tests'}/: :{test}",
+                )
 
     @staticmethod
     def extensions(workspace: Workspace, modules: list[Path]) -> Iterable[Finding]:

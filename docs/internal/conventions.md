@@ -276,7 +276,8 @@ A test scope is a `tests/` directory below the root of a project or add-on, such
 `<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
 directory below the module root, such as the ruleset's white-box packages
 `godot/private/tests/`, or an add-on module's module-wide unit tests in its `tests/`. Paths
-are measured from the owning module.
+are measured from the owning module. A generator's template of a `tests/` package, a `.tmpl`
+file, is no member of a test scope.
 
 ```starlark
 # game/main/BUILD.bazel
@@ -380,8 +381,8 @@ root module's declaration lists it. Each module:
   `android` or `ios`;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
-  defining the targets `edit` and `pack`,
-  and `app` when the module builds applications;
+  defining the targets `edit` and `pack`, and `app` when the module builds applications,
+  and keeping its tests, such as the exported demo's, in its `tests/` package;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 

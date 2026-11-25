@@ -37,7 +37,7 @@ maven.install(
 load("@autoload_firebase//config:defs.bzl", "firebase_config")
 
 firebase_config(
-    name = "firebase",
+    name = "firebase_config",
     application_id = "com.example.game",
     google_services_json = "google-services.json",
     google_service_info_plist = "GoogleService-Info.plist",
@@ -55,8 +55,8 @@ godot_app(
     pack = ":pack",
     # rules_godot rejects any non-empty platform_resources on desktop platforms.
     platform_resources = select({
-        "@platforms//os:android": [":firebase"],
-        "@platforms//os:ios": [":firebase"],
+        "@platforms//os:android": [":firebase_config"],
+        "@platforms//os:ios": [":firebase_config"],
         "//conditions:default": [],
     }),
 )
