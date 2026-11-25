@@ -8,9 +8,16 @@ from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import ADDONS, RULESET
 
-# The line of a released module's .gitattributes that leaves every tests/ directory, at any
-# depth, out of its release archive (.github/workflows/release_prep.sh).
-EXCLUSION = "tests export-ignore"
+# The lines of a released module's .gitattributes that leave every tests/ directory, at any
+# depth, out of its release archive (.github/workflows/release_prep.sh), but those of its
+# registry test modules in bcr/, which the registry runs from the archive (RG020).
+EXCLUSIONS = (
+    ("tests export-ignore", "the release archive must leave out the module's tests"),
+    (
+        "bcr/**/tests -export-ignore",
+        "the release archive must keep the tests of the registry test modules",
+    ),
+)
 TESTS = "tests"
 STARLARK = ("BUILD", "BUILD.bazel", "MODULE.bazel")
 # Arguments whose labels name packages without loading them.
@@ -127,11 +134,10 @@ class ReleasedWithoutTests:
     def archive(workspace: Workspace, module: Path) -> Iterable[Finding]:
         path = (module / ".gitattributes").as_posix()
         text = workspace.text(path) if path in workspace.file_set else ""
-        if EXCLUSION not in text.splitlines():
-            yield Finding(
-                Location(path, 1),
-                f"the release archive must leave out the module's tests: {EXCLUSION}",
-            )
+        lines = text.splitlines()
+        for line, message in EXCLUSIONS:
+            if line not in lines:
+                yield Finding(Location(path, 1), f"{message}: {line}")
 
     @staticmethod
     def uses(workspace: Workspace, name: str) -> Iterable[Finding]:

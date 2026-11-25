@@ -9,3 +9,5 @@ tools/bazel export-ignore
 # The ruleset's own tests at any depth: consumers cannot run them, since their development
 # dependencies are not theirs (RG023, docs/internal/conventions.md).
 tests export-ignore
+# The registry test modules in bcr/ keep their tests: the registry runs them from the archive.
+bcr/**/tests -export-ignore

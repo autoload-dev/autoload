@@ -5,7 +5,7 @@ import unittest
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 from tools.conventions.test_support import RepositoryTest
 
-EXCLUDED = "tests export-ignore\n"
+EXCLUDED = "tests export-ignore\nbcr/**/tests -export-ignore\n"
 
 
 class ReleasedWithoutTestsTest(RepositoryTest):
@@ -72,7 +72,15 @@ class ReleasedWithoutTestsTest(RepositoryTest):
 
     def test_the_release_archive_leaves_out_tests(self) -> None:
         self.write("rules_godot/.gitattributes", "docs export-ignore\n")
-        self.assertEqual(self.findings(), ["rules_godot/.gitattributes:1"])
+        self.assertEqual(
+            self.findings(),
+            ["rules_godot/.gitattributes:1", "rules_godot/.gitattributes:1"],
+        )
+
+    def test_the_registry_test_modules_keep_their_tests(self) -> None:
+        # The registry runs them from the archive.
+        self.write("addons/widget/.gitattributes", "tests export-ignore\n")
+        self.assertEqual(self.findings(), ["addons/widget/.gitattributes:1"])
 
     def test_unreleased_modules_may_name_tests(self) -> None:
         self.write("e2e/rules_godot/BUILD.bazel", 'filegroup(srcs = ["tests/a"])\n')

@@ -453,13 +453,34 @@ finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a 
 to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
 skills without a counterpart.
 
+## RG020
+
+**Released modules have a flat registry test module in `bcr/`.** The Bazel Central Registry
+tests a release by building a test module from the release archive. Each released module,
+the ruleset and every add-on module, has that module in `bcr/<name>/`, so that it is
+recognizable by its place:
+
+- the module's registry templates, `.bcr/<module>/presubmit.yml`, run it as their
+  `bcr_test_module` with `module_path: "bcr/<name>"`;
+- the module's `.bazelignore` lists `bcr`, since each test module is a Bazel module of its
+  own;
+- the test module is a consumer with a flat project: the test module itself is the project,
+  or each project lies directly in one of its directories, without typed roots.
+
+A test module registers the prebuilt engine itself, as an application does; the add-on
+modules register none for consumers. The add-on generator writes `bcr/smoke` with every new
+module. `python3 -m tools.ci.release_archive` runs each test module from its module's release
+archive, as the release workflow and the registry do.
+
 ## RG023
 
 **Release archives leave out tests, and nothing else needs them.** The ruleset and every
 add-on module are released as a `git archive` of their directory
 (`.github/workflows/release_prep.sh`). Consumers cannot run a module's tests, whose
 development dependencies are not theirs, so each released module's `.gitattributes` leaves
-every `tests/` directory, at any depth, out of the archive: `tests export-ignore`. A package
+every `tests/` directory, at any depth, out of the archive: `tests export-ignore`. The
+registry test modules in `bcr/` keep theirs, since the registry runs them from the archive
+([RG020](#rg020)): `bcr/**/tests -export-ignore`. A package
 that would then name a missing file or package fails to load for every consumer, so no
 Starlark file outside a `tests/` directory may use a path or label inside one. Test code and
 fixtures that a package outside `tests/` needs belong to a `tests/` package of their own.
