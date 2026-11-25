@@ -265,7 +265,7 @@ class SelectionTest(unittest.TestCase):
             "MODULE.bazel.lock",
             "rules_godot/godot/defs.bzl",
             "rules_godot/godot/engine/BUILD.bazel",
-            "examples/petri/godot_petri.lock.json",
+            "examples/petri/engine/godot_petri.lock.json",
             "tools/generate/generate.py",
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)

@@ -20,7 +20,7 @@ identities, not authored target declarations.
 | [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
-| [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
+| [RG014](#rg014) | Engine modules, patches and source build files live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
@@ -317,17 +317,21 @@ and destinations containing whitespace or nested parentheses need review.
 
 ## RG014
 
-**Engine modules and patches live under `engine/`.** A Godot project that builds its engine
-from sources keeps each custom engine module in `engine/modules/<name>/` and each engine
-patch as a `.patch` or `.diff` file directly in `engine/patches/`. Readers and source
-recipes then find a project's engine inputs in one place, separate from its application
-content under `main/`.
+**Engine modules, patches and source build files live under `engine/`.** A Godot project
+that builds its engine from sources keeps each custom engine module in
+`engine/modules/<name>/`, each engine patch as a `.patch` or `.diff` file directly in
+`engine/patches/`, and its source build's lock file, `<hub>.lock.json`, with the `.bzl`
+files of its engine, such as a gate that keeps its targets out of builds with another
+engine, directly in `engine/`. Readers and source recipes then find a project's engine
+inputs in one place, separate from its application content under `main/`.
 
 ```text
 <project>/
   project.godot
   main/
   engine/
+    BUILD.bazel
+    <hub>.lock.json           # the source build's lock file
     modules/
       <module>/               # config.py, SCsub, register_types.cpp, sources, BUILD.bazel
     patches/
@@ -339,14 +343,15 @@ The check inventories the files of every project root of a consumer module; a
 `project.godot` marks a root, and a nested project owns its own files. In each project it
 reports:
 
-- any entry of `engine/` other than `modules/` and `patches/`;
+- any entry of `engine/` other than `modules/`, `patches/`, a BUILD file, lock files and
+  `.bzl` files;
 - any file directly in `engine/modules/`, and any directory there without both `config.py`
   and `SCsub`;
 - any entry of `engine/patches/` other than `.patch`/`.diff` files and a BUILD file,
   including subdirectories;
 - any engine module directory outside `engine/` (a directory owning `config.py` together
-  with `SCsub` or `register_types.*`) and any `.patch`/`.diff` file outside
-  `engine/patches/`.
+  with `SCsub` or `register_types.*`), any `.patch`/`.diff` file outside
+  `engine/patches/` and any `.lock.json` file outside `engine/`.
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project

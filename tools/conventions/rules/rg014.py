@@ -1,4 +1,4 @@
-"""RG014: a project's engine modules and patches sit under its engine/ directory."""
+"""RG014: a project's engine modules, patches and source build files sit under its engine/."""
 
 from collections import defaultdict
 from collections.abc import Iterable
@@ -13,6 +13,18 @@ from tools.conventions.context import (
 from tools.conventions.framework import Finding, RuleInfo
 
 PATCH_SUFFIXES = frozenset({".patch", ".diff"})
+# A source build's lock file, as godot_engines.source_build names it: <hub>.lock.json.
+LOCK_SUFFIX = ".lock.json"
+ENGINE_ENTRIES = (
+    "engine/ holds only modules/, patches/, a BUILD file, lock files and .bzl files"
+)
+
+
+def is_engine_file(name: str) -> bool:
+    """A file engine/ may hold directly: its BUILD file, a lock file or a .bzl file."""
+    return name in BUILD_FILES or name.endswith(LOCK_SUFFIX) or name.endswith(".bzl")
+
+
 MODULE_FILES = frozenset({"config.py", "SCsub"})
 
 
@@ -55,11 +67,19 @@ class EngineLayout:
         for relative in files:
             directories[relative.parent].add(relative.name)
         for relative in files:
-            if relative.parts[0] != "engine" and relative.suffix in PATCH_SUFFIXES:
+            if relative.parts[0] == "engine":
+                continue
+            if relative.suffix in PATCH_SUFFIXES:
                 yield self.finding(
                     root,
                     relative,
                     "engine patch must live under engine/patches/ of its project",
+                )
+            elif relative.name.endswith(LOCK_SUFFIX):
+                yield self.finding(
+                    root,
+                    relative,
+                    "a source build's lock file must live under engine/ of its project",
                 )
         for directory, names in sorted(directories.items()):
             if directory.parts[:1] != ("engine",) and is_module(names):
@@ -80,10 +100,10 @@ class EngineLayout:
             is_directory = len(first.parts) > len(key) + 1
             shown = "engine/" + "/".join(key) + ("/" if is_directory else "")
             if key[0] not in ("modules", "patches"):
+                if not is_directory and is_engine_file(key[0]):
+                    continue
                 yield self.finding(
-                    root,
-                    first,
-                    f"engine/ holds only modules/ and patches/; unexpected entry: {shown}",
+                    root, first, f"{ENGINE_ENTRIES}; unexpected entry: {shown}"
                 )
             elif key[0] == "modules":
                 if not is_directory:
