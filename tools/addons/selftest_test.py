@@ -23,8 +23,12 @@ class SelfTestTest(RepositoryTestCase):
             seen.append((self.root / SEGMENT).read_text())
             self.lock.write_text('{"changed": true}\n')
 
-        with mock.patch.object(selftest.lanes, "run", side_effect=lane):
+        with (
+            mock.patch.object(selftest.lanes, "run", side_effect=lane),
+            mock.patch.object(selftest, "test_registry_module") as registry,
+        ):
             selftest.run("desktop", self.root)
+        registry.assert_called_once_with(self.root)
         return seen[0]
 
     def test_the_lane_runs_with_the_module_declared(self) -> None:

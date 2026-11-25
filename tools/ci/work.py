@@ -35,7 +35,7 @@ from tools.ci.changes import (
     module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
-from tools.setup.modules import RULESET, module_paths
+from tools.setup.modules import RULESET, module_paths, registry_test_modules
 
 RULESET_DIR = RULESET.as_posix()
 # The root module's Godot applications and the ruleset's consumer scenarios, by package.
@@ -409,6 +409,10 @@ WORK = (
         ("python3 -m tools.android.requirements", "python3 tools/android/sdk.py"),
         android=True,
     ),
+    # Each module's registry test module, run in its release archive as the registry runs it,
+    # and as the release workflow tests a release (tools/ci/release_archive.py). Each module
+    # is a Bazel workspace of its own, so it runs only when named.
+    Work("release:archives", None, ".", ("python3 -m tools.ci.release_archive",)),
     # The smoke applications' Android and iOS artifacts, inspected on macOS. They must be built
     # in the default profile first, as the recipe builds them
     # (docs/internal/verification-recipes.md); the lanes build theirs in their own profiles.
@@ -638,7 +642,8 @@ def main() -> None:
 
 def changes(ref: str | None) -> Changes | None:
     """The changes since the merge base with a reference, if one is given."""
-    return changes_since(ref, ROOT, module_paths(ROOT)) if ref else None
+    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
+    return changes_since(ref, ROOT, modules) if ref else None
 
 
 def print_work() -> None:

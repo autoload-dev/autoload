@@ -314,7 +314,8 @@ snake_case names, the `_test` suffix, a suffix per variant and no meaningless su
 test functions after the behavior they test, prefixes arranged targets with the test's name
 and puts each rule's tests in their own directory. rules_go keeps `<subject>_tests.bzl` files
 that export `*_test_suite` functions, and rules_oci names its consumer smoke module
-`e2e/smoke`. The `test_` prefix is what Python's `unittest` discovers.
+`e2e/smoke`. Ours live in `bcr/<name>/` of each released module, so that a registry test
+module is recognizable by its place (RG020). The `test_` prefix is what Python's `unittest` discovers.
 
 ## Verifications without precedent
 
@@ -327,7 +328,7 @@ names the kind that carries its claim, or says that none does.
 | Incrementality and bundle-reuse experiments | Removed | Analysis tests of action inputs, and build-output tests of determinism for actions whose outputs feed others | Bazel reruns an action only when its declared inputs or command change, and a downstream action stays cached when an upstream output is byte-identical. Inputs and determinism together prove both sides. Every surveyed ruleset asserts action inputs. The one execution-log test, rules_js `e2e/path_mapping/test.sh`, is a single script. |
 | Capability experiments | Removed | Analysis tests of membership and import action inputs | Same claim and replacement as incrementality |
 | Desktop-set guard against Android repository fetches | Removed | None. The scenarios' desktop set runs without an Android SDK, so a desktop scenario that needs Android fails there. | What remains is a cost claim about unneeded fetches. No surveyed ruleset guards fetches. |
-| Isolation test in a temporary consumer without mobile toolchains | Removed | Consumer scenarios for visibility. Analysis tests for toolchain resolution without mobile toolchains, using test toolchains in the ruleset's `tests` packages. | Its claims split into two existing kinds. A whole module that registers no mobile toolchain has a precedent only as a BCR smoke module; rules_godot's `e2e/smoke` is that module and registers only the prebuilt desktop engine. |
+| Isolation test in a temporary consumer without mobile toolchains | Removed | Consumer scenarios for visibility. Analysis tests for toolchain resolution without mobile toolchains, using test toolchains in the ruleset's `tests` packages. | Its claims split into two existing kinds. A whole module that registers no mobile toolchain has a precedent only as a BCR smoke module; rules_godot's `bcr/smoke` is that module and registers only the prebuilt desktop engine. |
 | Reproducibility experiment | Rewritten | A build-output test that imports and exports a fixture twice in its sandbox and compares the digests | rules_go's reproducibility test and rules_rust's `determinism_tester` are relatives. If one test cannot run the import twice, a test-only rule runs the tool in two actions that differ only in an unused salt input. |
 | Fetch and re-evaluation checks of the engine module extension in a fresh consumer module | Removed | None. Its tag evaluation, conflicts and errors become Starlark unit tests with a mocked `module_ctx`. | What remains is that no recipe repository is fetched and that a second evaluation after `clean --expunge` gives the same toolchains. No surveyed ruleset guards fetches or re-evaluates an extension. |
 | Automated public-API check (RG005) | Removed | Load visibility and target visibility (B1, B2) | No surveyed ruleset automates this check, while rules_cc, rules_apple and rules_java enforce the same boundary through Bazel |

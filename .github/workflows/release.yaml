@@ -33,8 +33,8 @@ jobs:
     uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
     with:
       release_files: ${{ needs.module.outputs.name }}-*.tar.gz
-      # The module's release test: for the ruleset, the registry's test module; its //...
-      # builds engines and mobile packages.
+      # The module's release test: its registry test module, run in its release archive as
+      # the registry runs it (tools/ci/release_archive.py).
       bazel_test_command: ${{ needs.module.outputs.test }}
       prerelease: false
       # Open the release as a draft so that publish.yaml can upload the attestations;

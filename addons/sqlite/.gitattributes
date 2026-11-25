@@ -3,3 +3,5 @@
 # its example applications live in the root module's examples/addons/<module>/ and its
 # end-to-end tests in e2e/addons/<module>/.
 tests export-ignore
+# The registry test modules in bcr/ keep their tests: the registry runs them from the archive.
+bcr/**/tests -export-ignore

@@ -1,0 +1,23 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
+
+# The smallest consumer of the module: a project that runs a GdUnit suite with the registered
+# prebuilt engine, as an application tests with GdUnit.
+godot_project(
+    name = "smoke",
+    project_file = "project.godot",
+)
+
+godot_resources(
+    name = "suites",
+    testonly = True,
+    srcs = ["tests/SmokeTest.gd"],
+    deps = ["@autoload_gdunit//gdunit"],
+)
+
+gdunit_test(
+    name = "smoke_test",
+    size = "small",
+    project = ":smoke",
+    suites = [":suites"],
+)

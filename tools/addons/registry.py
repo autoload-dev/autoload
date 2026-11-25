@@ -6,6 +6,7 @@ The generator (tools/addons/new.py) writes them once with the module, and the co
 """
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -16,6 +17,21 @@ METADATA = "metadata.template.json"
 SOURCE = "source.template.json"
 # The ruleset's metadata template, whose maintainers and repositories every module shares.
 RULESET_METADATA = Path(".bcr") / RULESET / METADATA
+PRESUBMIT = "presubmit.yml"
+_MODULE_PATH = re.compile(r'^\s*module_path:\s*"?([^"\s]+)"?\s*$', re.MULTILINE)
+
+
+def presubmit(module: Path) -> Path:
+    """The presubmit.yml of a released module, the ruleset or addons/<directory>."""
+    return Path(".bcr") / module / PRESUBMIT
+
+
+def registry_test_module(presubmit_text: str) -> str | None:
+    """The registry test module a presubmit.yml runs, relative to the module, if any."""
+    if "bcr_test_module:" not in presubmit_text:
+        return None
+    match = _MODULE_PATH.search(presubmit_text)
+    return match[1] if match else None
 
 
 def templates_directory(directory: str) -> Path:

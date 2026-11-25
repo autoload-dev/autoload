@@ -1,6 +1,6 @@
 """The Bazel Central Registry's test module of rules_godot: a consumer that exports a pack."""
 
-module(name = "rules_godot_e2e_smoke")
+module(name = "rules_godot_bcr_smoke")
 
 bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
 local_path_override(

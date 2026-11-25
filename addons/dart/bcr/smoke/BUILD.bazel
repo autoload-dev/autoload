@@ -1,0 +1,35 @@
+load("@autoload_dart//dart:defs.bzl", "godot_dart_extension")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+# The smallest consumer of the module: a project with a Dart script, compiled with the Dart
+# language into an extension and exported as a PCK with the registered prebuilt engine.
+godot_dart_extension(
+    name = "dart",
+    srcs = ["main/greeting.dart"],
+)
+
+godot_project(
+    name = "smoke",
+    project_file = "project.godot",
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main/greeting.dart",
+        "main/greeting.dart.uid",
+    ],
+    deps = [":dart"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":smoke",
+    deps = [":main"],
+)
+
+build_test(
+    name = "pack_build_test",
+    targets = [":pack"],
+)

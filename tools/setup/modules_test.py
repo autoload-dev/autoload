@@ -5,7 +5,13 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from tools.setup.modules import bazelrc_options, declarations, module_paths
+from tools.setup.modules import (
+    bazelrc_options,
+    declarations,
+    is_registry_test_module,
+    module_paths,
+    registry_test_modules,
+)
 
 
 class ModulePathsTest(unittest.TestCase):
@@ -28,6 +34,34 @@ class ModulePathsTest(unittest.TestCase):
                 (root / module / "MODULE.bazel").write_text("")
             (root / "addons/d").mkdir()
             self.assertEqual((".", "addons/a", "addons/b"), module_paths(root))
+
+    def test_the_registry_test_modules_of_the_ruleset_and_the_add_on_modules(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".bazelignore").write_text("rules_godot\naddons\n")
+            for module in ("rules_godot", "addons/a"):
+                (root / module).mkdir(parents=True)
+                (root / module / ".bazelignore").write_text("bcr\n")
+            for module in (
+                ".",
+                "rules_godot",
+                "rules_godot/bcr/smoke",
+                "addons/a",
+                "addons/a/bcr/smoke",
+            ):
+                (root / module).mkdir(parents=True, exist_ok=True)
+                (root / module / "MODULE.bazel").write_text("")
+            (root / "examples/bcr/x").mkdir(parents=True)
+            (root / "examples/bcr/x/MODULE.bazel").write_text("")
+            self.assertEqual((".", "rules_godot", "addons/a"), module_paths(root))
+            self.assertEqual(
+                ("rules_godot/bcr/smoke", "addons/a/bcr/smoke"),
+                registry_test_modules(root),
+            )
+            self.assertTrue(is_registry_test_module("addons/a/bcr/smoke"))
+            self.assertFalse(is_registry_test_module("examples/bcr/x"))
 
 
 class DeclarationsTest(unittest.TestCase):

@@ -1,0 +1,10 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+# The configuration tool's unit tests: a package of their own, which the release archive
+# leaves out with every tests/ directory.
+py_test(
+    name = "google_services_test",
+    srcs = ["google_services_test.py"],
+    data = glob(["testdata/*"]),
+    deps = ["//config:google_services_lib"],
+)

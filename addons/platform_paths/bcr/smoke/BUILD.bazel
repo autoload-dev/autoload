@@ -1,0 +1,20 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+# The smallest consumer of the module: a project with its add-ons, exported as a PCK with the
+# registered prebuilt engine.
+godot_project(
+    name = "smoke",
+    project_file = "project.godot",
+    deps = ["@autoload_platform_paths//platform_paths"],
+)
+
+godot_pack(
+    name = "pack",
+    project = ":smoke",
+)
+
+build_test(
+    name = "pack_build_test",
+    targets = [":pack"],
+)
