@@ -13,7 +13,6 @@ exports_files([
 py_library(
     name = "ruleset_lib",
     srcs = ["ruleset.py"],
-    deps = ["//tools/setup:modules_lib"],
 )
 
 py_proto_library(

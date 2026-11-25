@@ -55,7 +55,7 @@ class LanesTest(unittest.TestCase):
     def test_mobile_lanes_build_each_example_app(self) -> None:
         self.assertEqual(
             command("ios", module(".")),
-            ["bazel", "build", "--config=ios_sim", "//examples/addons/widget:app"],
+            ["bazel", "build", "--config=official", "//examples/addons/widget:app"],
         )
         self.assertEqual(command("android", module("."))[2], "--config=android")
 
@@ -65,7 +65,7 @@ class LanesTest(unittest.TestCase):
             [
                 "bazel",
                 "test",
-                "--config=ios_sim",
+                "--config=official",
                 "--",
                 "//examples/addons/widget:app",
                 "//examples/addons/widget:app_test",

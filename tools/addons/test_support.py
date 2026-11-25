@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from tools.addons.modules import ROOT
+from tools.addons.new import DECLARATIONS
 
 
 class RepositoryTestCase(unittest.TestCase):
@@ -20,7 +21,6 @@ class RepositoryTestCase(unittest.TestCase):
             shutil.copyfile(ROOT / name, self.root / name)
         # The root module, which ignores the consumer modules it names here.
         (self.root / "MODULE.bazel").write_text(
-            'module(name = "autoload_dev")\n\n'
-            "# The add-on modules whose example applications examples/addons/<module>/ holds.\n"
+            f'module(name = "autoload_dev")\n\n{DECLARATIONS}.\n'
         )
         (self.root / ".bazelignore").write_text("addons\n")

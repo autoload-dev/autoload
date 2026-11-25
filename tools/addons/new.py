@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tools.addons import registry
-from tools.addons.modules import EXAMPLES, ROOT, module_name, module_path
+from tools.addons.modules import ROOT, examples_path, module_name, module_path
 from tools.addons.uids import id_to_uid
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
@@ -31,7 +31,6 @@ TEMPLATE = Path(__file__).resolve().parent / "template"
 SUFFIX = ".tmpl"
 NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
-SELFTEST = ".selftest"
 # The line of the root's MODULE.bazel after which the add-on modules are declared.
 DECLARATIONS = (
     "# The add-on modules whose example applications examples/addons/<module>/ holds"
@@ -124,7 +123,7 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
-        written += copy_tree("examples", root / EXAMPLES / names.module, tokens)
+        written += copy_tree("examples", root / examples_path(directory), tokens)
         written.append(declare(directory, root))
         if release:
             written += registry_templates(directory, root, tokens)
@@ -155,12 +154,6 @@ def declare(directory: str, root: Path) -> Path:
     return manifest
 
 
-def undeclare(directory: str, root: Path) -> None:
-    """Remove an add-on module's declaration from the root's MODULE.bazel."""
-    manifest = root / "MODULE.bazel"
-    manifest.write_text(manifest.read_text().replace(declaration(directory), ""))
-
-
 def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:
     """The templates publish-to-bcr reads for the module's releases, written once."""
     templates = root / registry.templates_directory(directory)
@@ -177,15 +170,12 @@ def main() -> None:
         "--addon", default="", help="the add-on's directory in the module"
     )
     args = parser.parse_args()
-    # The self-test module is never released.
-    written = generate(args.module, args.addon or None, release=args.module != SELFTEST)
-    for path in written:
+    for path in generate(args.module, args.addon or None):
         print(path.relative_to(ROOT))
-    if args.module != SELFTEST:
-        print(
-            "\nNext: describe the module in its README and verify it with "
-            f"`aspect work desktop:addon:{args.module}`."
-        )
+    print(
+        "\nNext: describe the module in its README and verify it with "
+        f"`aspect work desktop:addon:{args.module}`."
+    )
 
 
 if __name__ == "__main__":

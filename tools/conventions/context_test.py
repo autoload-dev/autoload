@@ -398,7 +398,6 @@ escaped = "a\\"b"
         )
         for name in (
             "godot/private/tests/BUILD.bazel",
-            "e2e/rules_godot/tools/x/BUILD.bazel",
             "e2e/rules_godot/smoke/BUILD.bazel",
             "e2e/rules_godot/BUILD.bazel",
             "projects/root/BUILD.bazel",

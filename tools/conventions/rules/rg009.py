@@ -6,6 +6,7 @@ from pathlib import Path
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.layout import RULESET_MODULE, is_addon_test
+from tools.setup.modules import ADDONS
 
 
 def _white_box(workspace: Workspace, path: Path) -> bool:
@@ -16,7 +17,7 @@ def _white_box(workspace: Workspace, path: Path) -> bool:
     owner = workspace.owner(path.as_posix())
     if owner == RULESET_MODULE:
         return True
-    if owner.parent == Path("addons") and path.relative_to(owner).parts[:1] == ("tests",):
+    if owner.parent == Path(ADDONS) and path.relative_to(owner).parts[:1] == ("tests",):
         return True
     return is_addon_test(workspace.consumer_root(path))
 

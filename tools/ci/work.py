@@ -46,6 +46,8 @@ ANDROID_SETUP = "android:setup"
 PROFILE = "AUTOLOAD_BAZEL_PROFILE"
 # The lanes whose Bazel configuration differs from the desktop default, each a profile.
 PROFILE_LANES = ("source-engine", "android", "ios")
+# The profile of the add-on generator's self-test, which changes the root's module graph.
+TEMPLATE_PROFILE = "addon-template"
 
 
 class In(NamedTuple):
@@ -78,6 +80,11 @@ class Work:
     env: tuple[tuple[str, str], ...] = ()
     inputs: Inputs | None = None
     profile: str | None = None
+
+    @property
+    def bazel_profile(self) -> str | None:
+        """The profile of the work's Bazel commands: the one it names, else its lane's."""
+        return self.profile or (self.lane if self.lane in PROFILE_LANES else None)
 
     def steps(self) -> list[In]:
         """Each command with the directory it runs in and its inputs."""
@@ -189,7 +196,6 @@ def contracts(lane: str) -> Work:
         ".",
         (contracts_command(lane),),
         android=lane == "android",
-        profile=lane if lane in PROFILE_LANES else None,
     )
 
 
@@ -329,14 +335,13 @@ WORK = (
         (
             f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
             f"bazel build {apps(APP_PACKAGES)} --config=android",
-            (f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab"),
+            f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab",
             (
                 f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
                 " --config=android-release --config=aab"
             ),
         ),
         android=True,
-        profile="android",
     ),
     contracts("ios"),
     Work(
@@ -347,7 +352,6 @@ WORK = (
             f"bazel test {SCENARIOS}:ios_official --config=official",
             f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
         ),
-        profile="ios",
     ),
     contracts("source-engine"),
     # Every source-engine case, Petri's included. CI runs it in the Source engine workflow.
@@ -363,7 +367,6 @@ WORK = (
             PETRI_TESTS,
         ),
         android=True,
-        profile="source-engine",
     ),
     # The main source-engine cases, for a quicker local run: those not tagged
     # source_engine_extended, and the patched engine with its editor.
@@ -430,7 +433,6 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
                 (f"python3 -m tools.addons.lanes {lane} {module.directory}",),
                 android=lane == "android",
                 hosts=hosts if lane == "desktop" else (),
-                profile=lane if lane in PROFILE_LANES else None,
             )
     yield from map(template_work, ADDON_LANES)
 
@@ -444,7 +446,9 @@ def template_work(lane: str) -> Work:
         (f"python3 -m tools.addons.selftest {lane}",),
         android=lane == "android",
         hosts=("linux",) if lane == "desktop" else (),
-        profile=lane if lane in PROFILE_LANES else None,
+        # The self-test declares a module in the root's MODULE.bazel for its run, which
+        # would discard the analysis of the server it runs in.
+        profile=TEMPLATE_PROFILE,
     )
 
 
@@ -467,13 +471,16 @@ def runs_on(work: Work, host: str) -> bool:
     return not work.hosts or host in work.hosts
 
 
-def argv(work: Work, command: str) -> list[str]:
+def argv(work: Work, command: str, directory: str = ".") -> list[str]:
     """
-    The process that runs one command of a piece of work, with the work's own variables.
-    Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect CLI's
-    environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
+    The process that runs one command of a piece of work in a directory, with the work's own
+    variables. Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect
+    CLI's environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
+    Commands in the root module run in the work's profile; the ruleset's keep its default
+    server, which its desktop set and fast tests share.
     """
-    profile = ((PROFILE, work.profile),) if work.profile is not None else ()
+    profile = work.bazel_profile if directory == "." else None
+    profile = ((PROFILE, profile),) if profile is not None else ()
     exports = [
         f"export {name}={shlex.quote(value)}" for name, value in (*work.env, *profile)
     ]
@@ -556,7 +563,10 @@ def run(
         for step in selected(work, changes):
             print(f"[{name}] {step.directory}$ {step.command}", flush=True)
             subprocess.run(
-                argv(work, step.command), cwd=root / step.directory, env=env, check=True
+                argv(work, step.command, step.directory),
+                cwd=root / step.directory,
+                env=env,
+                check=True,
             )
 
 

@@ -106,8 +106,12 @@ class WorkTest(unittest.TestCase):
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
-        profiled = Work("z", "ios", ".", ("true",), profile="ios")
+        profiled = Work("z", "ios", ".", ("true",))
         self.assertIn("export AUTOLOAD_BAZEL_PROFILE=ios;", argv(profiled, "true")[-1])
+        # The ruleset's steps keep its default server.
+        self.assertNotIn(
+            "AUTOLOAD_BAZEL_PROFILE", argv(profiled, "true", "rules_godot")[-1]
+        )
         self.assertNotIn("AUTOLOAD_BAZEL_PROFILE", argv(plain, "true")[-1])
 
     def test_mobile_and_source_engine_work_run_in_their_profiles(self) -> None:
@@ -123,7 +127,7 @@ class WorkTest(unittest.TestCase):
             ("contracts:desktop", None),
             ("docs", None),
         ):
-            self.assertEqual(profile, work[name].profile, name)
+            self.assertEqual(profile, work[name].bazel_profile, name)
 
     def test_work_runs_python_with_this_interpreter(self) -> None:
         first = environment()["PATH"].split(os.pathsep)[0]

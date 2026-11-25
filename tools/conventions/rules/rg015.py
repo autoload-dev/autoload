@@ -9,12 +9,13 @@ from tools.addons import registry as templates
 from tools.addons.modules import (
     AMENDS,
     DESKTOPS,
-    EXAMPLES,
     LANES,
     PROPERTIES,
     addon_manifest,
     addon_values,
     builds_apps,
+    example_projects,
+    examples_path,
     module_attributes,
     module_name,
 )
@@ -30,7 +31,7 @@ REQUIRED = tuple(relative for _, relative in template_files("module"))
 # writes once with the module; publish-to-bcr reads them there.
 REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
 # The shared settings each module's .bazelrc imports.
-IMPORTS = {".bazelrc": "import %workspace%/../module.bazelrc"}
+IMPORT = "import %workspace%/../module.bazelrc"
 # The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
 # Pkl, so nothing else checks the schema's types.
 ADDON_VALUES = {"lanes": set(LANES), "desktops": set(DESKTOPS)}
@@ -110,7 +111,7 @@ class AddonModuleLayout:
         modules = sorted(path for path in workspace.module_paths if path.parent == ADDONS)
         for module in modules:
             builds_apps = self.builds_apps(workspace, module / "addon.pkl")
-            yield from self.files(workspace, module, builds_apps)
+            yield from self.files(workspace, module)
             yield from self.registry(workspace, module)
             yield from self.imports(workspace, module)
             yield from self.addon_pkl(workspace, module / "addon.pkl")
@@ -141,7 +142,7 @@ class AddonModuleLayout:
         )
 
     @staticmethod
-    def files(workspace: Workspace, module: Path, builds_apps: bool) -> Iterable[Finding]:
+    def files(workspace: Workspace, module: Path) -> Iterable[Finding]:
         manifest = module / "MODULE.bazel"
         for relative in REQUIRED:
             if (module / relative).as_posix() not in workspace.file_set:
@@ -177,14 +178,9 @@ class AddonModuleLayout:
 
     @staticmethod
     def imports(workspace: Workspace, module: Path) -> Iterable[Finding]:
-        present = [
-            (path, line)
-            for relative, line in IMPORTS.items()
-            if (path := (module / relative).as_posix()) in workspace.file_set
-        ]
-        for path, line in present:
-            if line not in workspace.text(path).splitlines():
-                yield Finding(at(path), f"must import the shared settings: {line}")
+        path = (module / ".bazelrc").as_posix()
+        if path in workspace.file_set and IMPORT not in workspace.text(path).splitlines():
+            yield Finding(at(path), f"must import the shared settings: {IMPORT}")
 
     @staticmethod
     def addon_pkl(workspace: Workspace, path: Path) -> Iterable[Finding]:
@@ -208,15 +204,8 @@ class AddonModuleLayout:
         The module's example projects in the root module: examples/addons/<module>/ itself, or
         each of its subdirectories with a project.
         """
-        root = EXAMPLES / module.name
-        configured = {
-            Path(name).parent
-            for name in workspace.files
-            if Path(name).name == "project.godot"
-        }
-        projects = (
-            [root] if root in configured else [d for d in configured if d.parent == root]
-        )
+        root = examples_path(module.name)
+        projects = example_projects(root, workspace.configured)
         builds = sorted(
             project / build
             for project in projects

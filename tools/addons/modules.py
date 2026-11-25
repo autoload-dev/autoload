@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import platform
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
 from tools.setup.modules import (
+    ADDON_E2E,
+    ADDON_EXAMPLES,
     ADDONS,
     addon_modules,
     declarations,
@@ -15,12 +18,6 @@ from tools.setup.modules import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-# Where the root module keeps each add-on module's example applications: examples/addons/<module>/,
-# which consumes the module as an application does, is one project or holds one per scenario.
-EXAMPLES = Path("examples/addons")
-# Where the root module keeps an add-on module's end-to-end tests, if it has any:
-# e2e/addons/<module>/, with test projects and fixtures in a layout of their own.
-E2E = Path("e2e/addons")
 # The schema every addons/<module>/addon.pkl amends. This module applies its defaults but
 # not its types, so RG015 checks the values against it.
 SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
@@ -117,12 +114,12 @@ class AddonModule:
     @property
     def examples(self) -> Path:
         """The module's example applications in the root module, relative to the root."""
-        return EXAMPLES / self.directory.removeprefix(".")
+        return examples_path(self.directory)
 
     @property
     def tests(self) -> Path:
         """The module's end-to-end tests in the root module, relative to the root."""
-        return E2E / self.directory.removeprefix(".")
+        return e2e_path(self.directory)
 
     @classmethod
     def load(cls, path: Path, root: Path = ROOT) -> AddonModule:
@@ -133,26 +130,43 @@ class AddonModule:
             raise ValueError(f"{path}/MODULE.bazel: no module() name")
         addon = module / "addon.pkl"
         manifest = addon_manifest(addon.read_text() if addon.is_file() else "")
-        examples = root / EXAMPLES / path.name.removeprefix(".")
+        examples = root / examples_path(path.name)
+        configured = {p.parent for p in examples.glob("**/project.godot")}
         return cls(
             path=path,
             name=str(attributes["name"]),
-            projects=example_projects(examples),
+            projects=tuple(
+                project.relative_to(examples).as_posix()
+                for project in example_projects(examples, configured)
+            ),
             desktops=manifest["desktops"],
             lanes=manifest.get("lanes", LANES),
             test_operations=manifest["testOperations"],
-            end_to_end=(root / E2E / path.name.removeprefix(".")).is_dir(),
+            end_to_end=(root / e2e_path(path.name)).is_dir(),
         )
 
 
-def example_projects(examples: Path) -> tuple[str, ...]:
+def examples_path(directory: str) -> Path:
     """
-    A module's example projects, relative to its examples: the examples themselves, ".", when
-    they are one project, else each subdirectory with a project.
+    The examples of the add-on module addons/<directory>, relative to the repository root;
+    the self-test module's leading dot, which keeps it out of the modules, is dropped.
     """
-    if (examples / "project.godot").is_file():
-        return (".",)
-    return tuple(sorted(p.parent.name for p in examples.glob("*/project.godot")))
+    return ADDON_EXAMPLES / directory.removeprefix(".")
+
+
+def e2e_path(directory: str) -> Path:
+    """The end-to-end tests of the add-on module addons/<directory>, relative to the root."""
+    return ADDON_E2E / directory.removeprefix(".")
+
+
+def example_projects(examples: Path, configured: Collection[Path]) -> tuple[Path, ...]:
+    """
+    A module's example projects, given the directories with a project.godot: the examples
+    themselves when they are one project, else each subdirectory with a project.
+    """
+    if examples in configured:
+        return (examples,)
+    return tuple(sorted(d for d in configured if d.parent == examples))
 
 
 def module_path(directory: str) -> Path:

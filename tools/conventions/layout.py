@@ -5,7 +5,7 @@ root module, the consumer modules and the typed roots measured from either.
 
 from pathlib import Path
 
-from tools.setup.modules import RULESET
+from tools.setup.modules import ADDON_E2E, ADDON_EXAMPLES, ADDONS, RULESET
 
 # The typed roots of a consumer, below its root: projects/ and addons/.
 TYPED_ROOTS = frozenset({"projects", "addons"})
@@ -19,15 +19,7 @@ NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 EXAMPLES_ROOT = Path("examples")
 REGRESSION_ROOT = Path("e2e/rules_godot")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
-# Each add-on module's example application, a consumer of its own: examples/addons/<module>/
-# for every module addons/<module>/, one project or one per scenario.
-ADDON_EXAMPLES = EXAMPLES_ROOT / "addons"
-# Each add-on module's end-to-end tests, e2e/addons/<module>/: test projects and fixtures in a
-# layout of their own, without typed roots.
-ADDON_E2E = Path("e2e/addons")
 SMOKE_ROOT = "smoke"
-# Packages of the scenarios that are no scenario, such as shared tools.
-REGRESSION_TOOLING = frozenset({"tools"})
 ADDON_SCENARIO = "shared_addon"
 
 
@@ -41,10 +33,7 @@ def scenario_directory(parts: tuple[str, ...]) -> tuple[str, Path] | None:
         return "projects", REGRESSION_ROOT / Path(*parts[:2])
     if parts[0] == ADDON_SCENARIO and len(parts) > 1:
         return "addons", REGRESSION_ROOT / ADDON_SCENARIO
-    if (
-        parts[0] not in REGRESSION_TOOLING | {SMOKE_ROOT, ADDON_SCENARIO}
-        and len(parts) > 1
-    ):
+    if parts[0] not in {SMOKE_ROOT, ADDON_SCENARIO} and len(parts) > 1:
         return "projects", REGRESSION_ROOT / parts[0]
     return None
 
@@ -58,7 +47,7 @@ def root_consumer(path: Path, modules: tuple[Path, ...]) -> Path | None:
     for area in (ADDON_EXAMPLES, ADDON_E2E):
         if path.is_relative_to(area) and path != area:
             module = path.relative_to(area).parts[0]
-            if Path("addons") / module in modules:
+            if Path(ADDONS) / module in modules:
                 return area / module
     return next((root for root in CONSUMER_ROOTS if path.is_relative_to(root)), None)
 

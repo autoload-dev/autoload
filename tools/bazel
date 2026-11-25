@@ -73,17 +73,17 @@ fi
 # Its server exits after AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS without a command.
 profile="${AUTOLOAD_BAZEL_PROFILE:-default}"
 if [[ "$profile" != default ]]; then
-    if [[ -n "$base" ]]; then
-        user_root="${base%/*}"
-    elif [[ "$(uname -s)" == Darwin ]]; then
+    # Bazel's default output user root and MD5 tool of this system; macOS keeps md5 in /sbin,
+    # which a test's strict PATH leaves out.
+    if [[ "$OSTYPE" == darwin* ]]; then
         user_root="$HOME/Library/Caches/bazel/_bazel_${USER:-$(id -un)}"
+        md5=/sbin/md5
     else
         user_root="${XDG_CACHE_HOME:-$HOME/.cache}/bazel/_bazel_${USER:-$(id -un)}"
+        md5=md5sum
     fi
-    key="${base:-$workspace}:$profile"
-    # md5sum on Linux, md5 in /sbin on macOS, which a test's strict PATH leaves out.
-    md5="$(command -v md5sum || command -v md5 || echo /sbin/md5)"
-    digest="$(printf '%s' "$key" | "$md5" | cut -c1-32)"
+    [[ -n "$base" ]] && user_root="${base%/*}"
+    digest="$(printf '%s' "${base:-$workspace}:$profile" | "$md5" | cut -c1-32)"
     base="$user_root/$digest"
     arguments=("--max_idle_secs=${AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS:-900}" "${arguments[@]}")
 fi

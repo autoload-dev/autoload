@@ -15,6 +15,10 @@ from typing import Any
 
 # The add-on modules, each a directory below it; the root module holds their examples.
 ADDONS = "addons"
+# Where the root module keeps each add-on module's example application, examples/addons/<module>/
+# (one project, or one per scenario), and its end-to-end tests, e2e/addons/<module>/.
+ADDON_EXAMPLES = Path("examples/addons")
+ADDON_E2E = Path("e2e/addons")
 # The ruleset's directory: its module, and below .bcr/ its registry templates.
 RULESET = Path("rules_godot")
 

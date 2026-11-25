@@ -19,7 +19,11 @@ from tools.platforms.apple_bundle import application_bundle, bundle_identity
 # The consumer scenarios' smoke applications whose artifacts this check validates, in the
 # repository's root module, and the godot-cpp extension each one packages.
 ANDROID_APP = "//e2e/rules_godot/smoke/android:app"
-IOS_APP = "//e2e/rules_godot/smoke/ios:app"
+# The iOS application that links the extension statically, whose executable exports its
+# entry symbol; the smoke's other iOS application embeds the extension as a framework.
+IOS_APP = "//e2e/rules_godot/smoke/ios:static_app"
+# Its bundle, executable and pack, named after the target.
+IOS_EXECUTABLE = "static_app"
 MACOS_APP = "//e2e/rules_godot/smoke/macos:app"
 ANDROID_LIBRARY = "lib/arm64-v8a/libcounter_native.so"
 ENTRY_SYMBOL = "native_counter_init"
@@ -74,12 +78,7 @@ def main() -> None:
         "/app.apk",
     )
     # A Simulator build keeps the application a directory.
-    bundle = configured_output(
-        consumer,
-        IOS_APP,
-        "official",
-        "/app.app",
-    )
+    bundle = configured_output(consumer, IOS_APP, "official", f"/{IOS_EXECUTABLE}.app")
     android_tools = args.android_sdk / "build-tools" / args.build_tools
     evidence = {
         "validated_at_utc": datetime.now(UTC).isoformat(),
@@ -166,10 +165,11 @@ def main() -> None:
             }
         app = application_bundle(bundle, temporary / "ios")
         command(["/usr/bin/codesign", "--verify", "--deep", "--strict", app])
-        exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", app / "app"])
+        executable = app / IOS_EXECUTABLE
+        exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
         if f"_{ENTRY_SYMBOL}" not in exported:
             raise ValueError("iOS static extension entry is absent from Mach-O exports")
-        pack = pck_contents((app / "app.pck").read_bytes())
+        pack = pck_contents((app / f"{IOS_EXECUTABLE}.pck").read_bytes())
         descriptor = "\n".join(pack["extension_descriptors"].values())
         if not re.search(r'ios[^=]*=\s*"res://[^"\n]+\.a"', descriptor):
             raise ValueError("iOS pack must retain a nonempty static .a descriptor path")
@@ -179,7 +179,7 @@ def main() -> None:
             "sha256": sha256,
             "size_bytes": size,
             "signature_verification": "codesign --verify --deep --strict passed",
-            "cpu": command(["/usr/bin/file", "-b", app / "app"]),
+            "cpu": command(["/usr/bin/file", "-b", executable]),
             "gdextension_entry_exported": f"_{ENTRY_SYMBOL}",
             "pck": pack,
             "official_template_caveat": "4.7.2 simulator archive is x86_64 despite arm64+x86_64 XCFramework metadata",

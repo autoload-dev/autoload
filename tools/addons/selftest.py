@@ -12,8 +12,12 @@ import shutil
 from pathlib import Path
 
 from tools.addons import lanes
-from tools.addons.modules import EXAMPLES, LANES, ROOT, AddonModule, module_path
-from tools.addons.new import SELFTEST, Names, generate
+from tools.addons.modules import LANES, ROOT, AddonModule, examples_path, module_path
+from tools.addons.new import generate
+
+# The self-test's module, which the leading dot keeps out of the add-on modules; it is never
+# released.
+SELFTEST = ".selftest"
 
 # The root's files that declaring the module changes.
 DECLARATIONS = ("MODULE.bazel", "MODULE.bazel.lock")
@@ -22,7 +26,7 @@ DECLARATIONS = ("MODULE.bazel", "MODULE.bazel.lock")
 def remove(root: Path) -> None:
     """Remove the self-test's module and examples."""
     shutil.rmtree(root / module_path(SELFTEST), ignore_errors=True)
-    shutil.rmtree(root / EXAMPLES / Names(SELFTEST).module, ignore_errors=True)
+    shutil.rmtree(root / examples_path(SELFTEST), ignore_errors=True)
 
 
 def run(lane: str, root: Path = ROOT) -> None:

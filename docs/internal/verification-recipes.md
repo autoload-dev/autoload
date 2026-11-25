@@ -352,7 +352,7 @@ of the smoke applications, build them, then inspect them:
 
 ```sh
 aspect exec -- bazel build //e2e/rules_godot/smoke/android:app --config=android
-bazel build //e2e/rules_godot/smoke/ios:app --config=official
+bazel build //e2e/rules_godot/smoke/ios:static_app --config=official
 aspect work inspect:mobile
 ```
 

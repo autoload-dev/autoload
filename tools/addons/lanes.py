@@ -19,7 +19,7 @@ import sys
 from tools.addons.modules import LANES, ROOT, AddonModule, host, module_path
 
 # The Bazel configuration of each mobile lane, from the root module's .bazelrc.
-APP_CONFIGS = {"android": "--config=android", "ios": "--config=ios_sim"}
+APP_CONFIGS = {"android": "--config=android", "ios": "--config=official"}
 # `bazel test` with no test among the targets exits with 4 after a successful build.
 NO_TESTS = 4
 

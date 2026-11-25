@@ -1,6 +1,6 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
-from tools.addons.new import TOKEN, Names, generate, undeclare
+from tools.addons.new import TOKEN, Names, declaration, generate
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
 
@@ -109,9 +109,10 @@ class DeclarationTest(RepositoryTestCase):
         self.assertIn('    path = "addons/widget",\n', text)
         generate("widget", "extra", root=self.root)
         self.assertEqual(manifest.read_text(), text)
-        undeclare("gadget", self.root)
-        undeclare("widget", self.root)
-        self.assertEqual(manifest.read_text(), before)
+        self.assertEqual(
+            text.replace(declaration("widget"), "").replace(declaration("gadget"), ""),
+            before,
+        )
 
     def test_the_self_test_module_drops_its_dot_in_its_examples(self) -> None:
         generate(".selftest", root=self.root, release=False)

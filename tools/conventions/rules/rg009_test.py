@@ -91,8 +91,8 @@ class TypedRootLayoutTest(RepositoryTest):
         self.assertEqual(
             [],
             self.evaluate(
-                "e2e/rules_godot/tools/c_abi/native.cc",
-                "e2e/rules_godot/tools/resources/project.godot.tpl",
+                "tools/c_abi/native.cc",
+                "tools/resources/project.godot.tpl",
                 "e2e/rules_godot/parser_test.py",
                 "godot/private/default_project.godot",
             ),
