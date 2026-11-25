@@ -8,9 +8,7 @@ from tools.conventions.rules.rg004 import FixtureReferences
 from tools.conventions.rules.rg006 import CommandLabels
 from tools.conventions.rules.rg007 import TestOnlyOperations
 from tools.conventions.rules.rg008 import ApplicationContent
-from tools.conventions.rules.rg009 import TypedRootLayout
-from tools.conventions.rules.rg010 import AddonProjects
-from tools.conventions.rules.rg011 import AddonIndependence
+from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg013 import PublicDocumentationLinks
 from tools.conventions.rules.rg014 import EngineLayout
@@ -30,9 +28,7 @@ RULES: tuple[Rule, ...] = (
     CommandLabels(),
     TestOnlyOperations(),
     ApplicationContent(),
-    TypedRootLayout(),
-    AddonProjects(),
-    AddonIndependence(),
+    ProjectPlaces(),
     ProductionIsolation(),
     PublicDocumentationLinks(),
     EngineLayout(),

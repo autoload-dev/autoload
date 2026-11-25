@@ -303,7 +303,7 @@ A name states what its test proves or what its fixture reproduces, in the
 | Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `godot_actions_test.py`, `test_rejects_missing_preset` |
 | `tests` subpackage | `<impl>/tests/`. The tests of one rule may get their own subpackage, named after the rule's glossary term. | `godot/private/tests/pack/` |
 | Fixture | What it reproduces, not the test that uses it | `project_with_disabled_extension` |
-| Consumer scenario | The package names what the user does. The smoke paths are `tests/smoke/<operating_system>`. | `tests/smoke/android`, `tests/shared_addon` |
+| Consumer scenario | The package names what the user does. The smoke paths are `e2e/rules_godot/smoke/<operating_system>`. | `e2e/rules_godot/smoke/android`, `e2e/rules_godot/script_run` |
 
 A word that states no claim on its own, such as `contract`, `regression`, `misc` or `basic`,
 is not a name or a name's only qualifier, and neither is a number.

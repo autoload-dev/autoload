@@ -242,15 +242,15 @@ bazel test //godot/extension/tests/...
 godot-cpp extension in the stable and the beta engine and checks that the engine is no input
 of the extension's native actions.
 
-### Shared extension consumers
+### A project's own add-on
 
-The `shared_addon` scenario's Counter add-on keeps its native implementation and GDScript
-wrapper in `native_counter/`, with its own GdUnit suites in the test project
-`native_counter/tests/`. A second project, `consumer/`, uses the same add-on and keeps its
-own suite:
+The Linux smoke scenario keeps an add-on of its own beside its content, as a consumer
+does: `main/addons/native_counter/` wraps a godot-cpp extension class in GDScript, the pack
+includes it and a GdUnit suite in the project's `tests/` uses it. The add-on modules cover
+add-ons that several projects share. On a Linux host:
 
 ```sh
-bazel test //e2e/rules_godot/shared_addon/...
+bazel test //e2e/rules_godot/smoke/linux:project_addon_counts_test
 ```
 
 autoload_gdunit's run tests also launch an intentionally failing suite and require the JUnit

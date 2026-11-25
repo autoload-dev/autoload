@@ -4,17 +4,17 @@ A consuming Bazel module keeps each application project in a directory of its ow
 reusable add-on in `addons/<name>/`, apart from the projects that show and test it: the
 add-on's demo project in `examples/addons/<name>/` and its Godot test project in
 `e2e/addons/<name>/`. A demo or test directory is the project itself; one with several
-scenarios holds a project per scenario in subdirectories. The repository follows this layout:
-games such as Lichtpost are projects directly in `examples/`.
+scenarios, add-ons or configuration variants holds a project per each in subdirectories. The
+repository follows this layout: games such as Lichtpost are projects directly in `examples/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
 physical placement of a source decides which project or add-on owns it. A project's custom
 engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
 An add-on keeps its reusable implementation independent of its demo and test projects. Its
-Godot suites use `unit/` for deterministic API behavior and `integration/` for real
-operating-system behavior; create only the categories that have tests. An application's
-suites, helpers and fixtures live in its `tests/` package. Native unit tests stay beside the
-implementation or backend code, independent of consuming Godot projects. Focused test-input
+Godot test project holds its suites in packages named after their topic; a condition a test
+needs to run, such as a real operating system, is a tag of the test, not a directory. An
+application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
+stay beside the implementation or backend code, independent of consuming Godot projects. Focused test-input
 libraries are not add-ons merely because they contain native sources. Build files of pinned
 third-party archives live in `third_party/` of the module that pins them.
 
@@ -209,16 +209,14 @@ and test level, not the presence of an extension or a desire for symmetric direc
 | Tested behavior | Owner and context |
 |---|---|
 | Native implementation/backend | Unit tests beside the implementation, such as `<addon>/native/backends/linux/tests/`; depend on its interface/implementation without requiring Godot |
-| Deterministic Godot API behavior or contract | The add-on's test project, `e2e/addons/<name>/unit/`, with suites, helpers and execution together |
-| Real operating-system behavior | The add-on's test project, `e2e/addons/<name>/integration/`, using the required operating-system context |
+| Godot API behavior or contract, deterministic or on a real operating system | The add-on's test project, `e2e/addons/<name>/`, with suites, helpers and execution together in packages by topic |
 | Exported demo behavior | The demo's `tests/`, consuming the demo artifact |
 | Game/application behavior | The application's `tests/` package, including suites, helpers, fixtures and execution |
 
 The add-on's Godot test project in `e2e/addons/<name>/` owns its configuration, such as the warning rules for the
 add-on under test, and its editor/metadata workflows. The suites' test targets name that project and the necessary dependencies explicitly.
-Reusable helpers and frameworks are dependencies, not implicitly selected suites. Create only
-categories with actual behavior tests; extension use alone does not make a suite an
-integration test. Preserve each execution target's conditions and tags.
+Reusable helpers and frameworks are dependencies, not implicitly selected suites. Preserve
+each execution target's conditions and tags.
 
 A test package can own suites and execution while its test targets name the parent project
 and the parent's operations, such as its editor view, name its suites. Review the actual target graph; this package

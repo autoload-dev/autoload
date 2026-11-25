@@ -12,9 +12,7 @@ from tools.conventions.context import (
     Workspace,
 )
 from tools.conventions.framework import Finding, RuleInfo
-
-# Godot test suite categories of an add-on's tests/ project.
-SUITE_CATEGORIES = frozenset({"unit", "integration"})
+from tools.conventions.layout import is_end_to_end
 
 
 class ApplicationContent:
@@ -98,18 +96,12 @@ class ApplicationContent:
 
     @staticmethod
     def _test_input(workspace: Workspace, path: Path, owner: Path) -> bool:
+        """
+        Whether a test-only input lies where tests may: in its project's tests/, or
+        anywhere in an end-to-end test project, whose suites have no prescribed place.
+        """
         parts = path.relative_to(owner).parts
-        if len(parts) < 2:
-            return False
-        if parts[0] == "tests":
-            return True
-        kind = workspace.typed_directory(owner)
-        return (
-            kind is not None
-            and kind[0] == "addons"
-            and owner.name == "tests"
-            and parts[0] in SUITE_CATEGORIES
-        )
+        return is_end_to_end(owner) or (len(parts) > 1 and parts[0] == "tests")
 
     @staticmethod
     def _owner(
@@ -118,11 +110,7 @@ class ApplicationContent:
         owner = workspace.typed_directory(path)
         if owner is None:
             return None
-        kind, root = owner
-        if kind == "addons":
-            scope = path.relative_to(root).parts[0]
-            # Typed add-on implementation keeps its own resource ownership.
-            return root / scope if scope in {"demo", "tests"} else None
+        _, root = owner
         candidates = [
             config
             for config in configurations

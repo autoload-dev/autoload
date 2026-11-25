@@ -16,10 +16,8 @@ identities, not authored target declarations.
 | [RG004](#rg004) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
-| [RG008](#rg008) | Application content lives under `main/` | Required | Production-eligible resource inputs physically owned by typed application or add-on demo/test scopes | Error; unresolved membership is reported as not checked |
-| [RG009](#rg009) | Applications and add-ons use their typed roots | Required | Project and add-on directories and authored Godot configurations of every consumer module | Error |
-| [RG010](#rg010) | Add-ons separate demo and Godot test projects | Required | Every add-on under a typed add-on root | Error |
-| [RG011](#rg011) | Reusable add-on implementation is independent of its demo | Required | Direct authored workspace inputs of production-eligible implementation declarations, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG008](#rg008) | Application content lives under `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
+| [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules and patches live under `engine/` | Required | Files of every Godot project root of a consumer module, owned by their nearest `project.godot` | Error |
@@ -27,9 +25,16 @@ identities, not authored target declarations.
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
+| [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
+| [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
+| [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
-[boundary rules](verification-architecture.md#boundary-rules)). Choosing the main entry point
+[boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
+required add-ons to keep a demo and a test project inside their own directory and their
+implementation independent of that demo, are retired with that layout: add-ons live in
+add-on modules, which hold no project ([RG021](#rg021)), and their demos and end-to-end tests
+are projects of the root module ([RG009](#rg009)). Choosing the main entry point
 and useful package boundaries still requires judgment; the checks do not elect a primary target.
 
 ## RG001
@@ -192,12 +197,11 @@ policy. Loading-time flags do not establish configured resource membership or ru
 
 ## RG008
 
-**Application content lives under `main/` of its physical project.** The location of the
-project or add-on establishes ownership in every consumer module, following
-[typed roots](#rg009). Application cases own their scenes, scripts and exclusively used
-assets below `main/`. An add-on's implementation retains its own layout; its `demo/` and
-`tests/` project scopes apply the same application-content rule. Keep authored UID/import
-sidecars beside sources.
+**Application content lives under `main/` of its physical project.** The place of a project
+establishes ownership in every consumer, following [RG009](#rg009). Application cases own
+their scenes, scripts and exclusively used assets below `main/`; an add-on a project keeps
+for itself lives there too, such as `main/addons/<name>/`. Keep authored UID/import sidecars
+beside sources.
 
 For example:
 
@@ -224,11 +228,12 @@ their configuration and `main/`. Several resource paths of one physical source p
 finding.
 
 There is no blanket exemption for regression projects, test-only project compositions or
-macro-generated projects. Test-only suites and helpers belong in an application's `tests/`
-scope, or in `unit/` or `integration/` of an add-on's Godot test project. Both the physical
-test scope and the `godot_resources` target's effective test-only flag establish that
-ownership; the flag alone does not waive application layout. Generated outputs and the build
-and delivery inputs of extension and platform libraries are outside this declared
+macro-generated projects. Test-only suites and helpers belong in a project's `tests/` scope;
+an add-on module's end-to-end test project in `e2e/addons/<module>/` is test-only as a whole,
+so its test-only inputs may lie anywhere in it, in packages named after their topic. Both the
+physical test scope and the `godot_resources` target's effective test-only flag establish
+that ownership; the flag alone does not waive application layout. Generated outputs and the
+build and delivery inputs of extension and platform libraries are outside this declared
 Godot-resource subset. Missing role/membership facts and unresolved aggregate inputs are
 reported as not checked. The check does not classify undeclared files or require an empty
 `main/` where no application-owned resources exist. No manually listed application roots or
@@ -236,73 +241,26 @@ reusable-resource exemptions select applicability.
 
 ## RG009
 
-**Applications and add-ons use their typed roots.** Every consumer in the repository's root
-module places its projects and add-ons by path:
+**Projects lie at the fixed places of their consumers.** Every consumer places its projects
+by path, without typed roots:
 
-| Consumer | Application projects | Add-ons |
-|---|---|---|
-| Applications, `examples/` | `examples/<name>/` | none |
-| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or `examples/addons/<module>/<scenario>/` per scenario | none: the add-ons are in the module |
-| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, `e2e/rules_godot/script_run/`, `e2e/rules_godot/patched_engine/` | `e2e/rules_godot/shared_addon/` |
-| Add-on end-to-end tests, `e2e/addons/<module>/` | any layout: white-box fixtures | none |
+| Consumer | Projects |
+|---|---|
+| Applications, `examples/` | `examples/<name>/` |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or one directory of it per scenario |
+| Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, and `e2e/rules_godot/<scenario>/` for every other scenario |
+| Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, or one directory of it per add-on, scenario or configuration variant |
+| Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, or one directory of it per project |
 
-A consumer module outside the root module measures `projects/<name>/` and `addons/<name>/`
-from its module root.
+A project owns a BUILD file and at least one authored Godot configuration; related
+operating-system contexts can share one project. No other module holds projects: an add-on
+module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
+are outside this check. There is no per-directory admission list.
 
-The path determines whether a directory is a project or an add-on, and which rules apply.
-A project case owns a BUILD file and at least one authored Godot configuration; related
-operating-system contexts can share one named case. Add-on project structure follows
-[the add-on layout rule](#rg010). There is no per-directory admission list and no exemption
-based on a mobile module root.
-
-Focused unit/analysis packages and their C++/provider fixture inputs remain with their
-owning test domain when they are not independently reusable add-ons. C++ source files alone
-do not establish an add-on.
-
-The check inventories project and add-on directories and authored `project.godot` files in
-every consumer; the white-box fixture projects of the ruleset module, of an add-on module's
-own `tests/` and of its end-to-end tests in `e2e/addons/<module>/` are outside it. Configurations must belong to a named project or add-on.
-Temporary projects constructed inside source strings and generated configuration templates
-are outside the inventory. The check does not require a project or BUILD package for each
-assertion.
-
-## RG010
-
-**Add-ons separate implementation, demo and Godot tests.** Every add-on under a typed add-on
-root, such as the scenario add-on `e2e/rules_godot/shared_addon/`, owns its reusable
-implementation, a normal-use project under `demo/` and a Godot test
-project under `tests/`. Each of those three scopes owns a BUILD file. The two projects own
-`project.godot` directly; do not add another project at the add-on root or inside a suite
-category. Native backend unit tests do not require a Godot configuration.
-
-The add-on roots are discovered from the shared workspace inventory, so a new add-on is
-checked without editing a list. Reuse the test root configuration for `unit/` and
-`integration/` packages, which
-[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership) creates only
-for the behavior actually present. The inventory establishes project and BUILD locations, not suite
-classification or every configured composition input.
-
-## RG011
-
-**Reusable add-on implementation is independent of its demo.** The location under a typed
-add-on root selects this rule automatically. Implementation declarations must
-not consume targets or source files owned by the add-on's `demo/`. The demo depends on the
-reusable implementation; production dependency direction must not return to it. Test inputs
-are covered for every production target by [RG012](#rg012).
-
-For production-eligible implementation declarations, the check examines authored label,
-label-list and label-keyed-string inputs; implicit attributes from the rule definition are
-not inputs the declaration chose. Bazel resolves each input to its defining target or source
-file, including source symlinks and labels of the workspace's other modules. External
-repositories cannot be a demo and are not resolved. Resource paths and name suffixes do not
-establish whether a directory is a project or an add-on. Generated helpers sharing an
-authored input produce one finding at that call. Test-only declarations are outside this
-rule, and visibility grants are not implementation dependencies.
-
-This is a loading-time direct-input check over conditional branches reported by Bazel query,
-not one selected configuration. Missing effective role flags are reported as not checked.
-Indirect paths through helper packages remain outside this automated subset; review them
-separately. Passing alone does not prove the complete configured dependency closure.
+The check inventories the projects and the authored `project.godot` files of every consumer.
+Configurations must belong to a project at a fixed place. Temporary projects constructed
+inside source strings and generated configuration templates are outside the inventory. The
+check does not require a project or BUILD package for each assertion.
 
 ## RG012
 
@@ -317,8 +275,8 @@ A test scope is a `tests/` directory below the root of a project or add-on, such
 `<project>/tests/`, `<addon>/tests/`, a demo's `examples/addons/<name>/tests/` or a backend's
 `<addon>/native/backends/linux/tests/`. Outside projects and add-ons it is a `tests/`
 directory below the module root, such as the ruleset's white-box packages
-`godot/private/tests/`, or an add-on module's white-box tests in its `tests/`. Paths are
-measured from the owning module.
+`godot/private/tests/`, or an add-on module's module-wide unit tests in its `tests/`. Paths
+are measured from the owning module.
 
 ```starlark
 # game/main/BUILD.bazel
@@ -329,7 +287,7 @@ godot_resources(
 )
 ```
 
-The check uses the same input resolution as [RG011](#rg011): authored label, label-list and
+The check resolves inputs from authored label, label-list and
 label-keyed-string attributes, resolved by Bazel to their defining target or source file
 across the workspace's modules. Declarations inside a test scope and test-only targets are
 consumers, not subjects. Missing effective role flags are reported as not checked. Bazel's

@@ -1,10 +1,18 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:app.bzl", "godot_app")
-load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load(
+    "@autoload_rules_godot//godot:defs.bzl",
+    "godot_addon",
+    "godot_pack",
+    "godot_project",
+    "godot_resources",
+)
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The Linux smoke path: build, inspect and boot a Linux application whose C ABI and
-# godot-cpp extensions load and whose imported texture is usable. Linux hosts only.
+# godot-cpp extensions load and whose imported texture is usable, with an add-on of the
+# project's own. Linux hosts only.
 _LINUX = ["@platforms//os:linux"]
 
 # The extensions build their editor libraries for the host too, where the host constraint
@@ -24,6 +32,50 @@ godot_cc_extension(
     resource_path = "native/cpp_example.gdextension",
     tags = ["manual"],
     deps = ["@godot_cpp"],
+)
+
+godot_cc_extension(
+    name = "counter",
+    srcs = ["native/counter.cc"],
+    entry_symbol = "native_counter_init",
+    resource_path = "addons/native_counter/counter.gdextension",
+    tags = ["manual"],
+    deps = ["@godot_cpp"],
+)
+
+# An add-on of the project's own, as a consumer keeps one beside its content: a GDScript
+# wrapper at res://addons/native_counter over a godot-cpp extension class.
+godot_addon(
+    name = "native_counter",
+    srcs = [
+        "main/addons/native_counter/counter.gd",
+        "main/addons/native_counter/counter.gd.uid",
+    ],
+    strip_prefix = "main/addons/native_counter",
+    target_compatible_with = _LINUX,
+    deps = [":counter"],
+)
+
+godot_resources(
+    name = "suites",
+    testonly = True,
+    srcs = [
+        "tests/CounterTest.gd",
+        "tests/CounterTest.gd.uid",
+    ],
+    target_compatible_with = _LINUX,
+    deps = [
+        ":native_counter",
+        "@autoload_gdunit//gdunit",
+    ],
+)
+
+gdunit_test(
+    name = "project_addon_counts_test",
+    size = "small",
+    project = ":project",
+    suites = [":suites"],
+    target_compatible_with = _LINUX,
 )
 
 godot_resources(
@@ -51,6 +103,7 @@ godot_pack(
         ":cpp_example",
         ":hello",
         ":main",
+        ":native_counter",
     ],
 )
 

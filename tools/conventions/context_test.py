@@ -364,13 +364,8 @@ escaped = "a\\"b"
         self.assertEqual(2, len(first[0].targets))
         self.assertEqual((1, 1), (self.tools.call_requests, self.tools.rule_requests))
 
-    def test_typed_directories_are_measured_from_the_owning_module(self) -> None:
-        for name in (
-            "examples/MODULE.bazel",
-            "e2e/rules_godot/MODULE.bazel",
-            "consumers/demo/MODULE.bazel",
-        ):
-            self.write(name, "")
+    def test_projects_lie_at_the_fixed_places_of_their_consumers(self) -> None:
+        self.write("consumers/demo/MODULE.bazel", "")
         workspace = self.workspace()
         self.assertEqual(
             ("projects", Path("examples/x")),
@@ -386,17 +381,10 @@ escaped = "a\\"b"
             ("projects", Path("e2e/rules_godot/smoke/linux")),
             workspace.typed_directory(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
         )
-        self.assertEqual(
-            ("addons", Path("e2e/rules_godot/shared_addon")),
-            workspace.typed_directory(
-                Path("e2e/rules_godot/shared_addon/demo/BUILD.bazel")
-            ),
-        )
-        self.assertEqual(
-            ("addons", Path("consumers/demo/addons/z")),
-            workspace.typed_directory(Path("consumers/demo/addons/z/BUILD.bazel")),
-        )
         for name in (
+            # Consumer modules other than the registry test modules have no projects.
+            "consumers/demo/addons/z/BUILD.bazel",
+            "consumers/demo/projects/z/BUILD.bazel",
             "godot/private/tests/BUILD.bazel",
             "e2e/rules_godot/smoke/BUILD.bazel",
             "e2e/rules_godot/BUILD.bazel",

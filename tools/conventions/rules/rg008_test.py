@@ -66,13 +66,18 @@ class ApplicationContentTest(RepositoryTest):
             self.evaluate([unit], {"//:counter.gd": APP + "/counter.gd"}),
         )
 
-    def test_typed_addon_implementation_does_not_belong_to_its_consumer(self) -> None:
+    def test_an_end_to_end_project_s_suites_may_lie_anywhere_in_it(self) -> None:
+        self.write("addons/counter/MODULE.bazel", "")
+        sources = {
+            "//:config": "e2e/addons/counter/project.godot",
+            "//:suite": "e2e/addons/counter/database/Suite.gd",
+        }
+        suite = resources(["//:suite"])
+        suite["booleans"] = {"testonly": True}
+        self.assertEqual([], self.evaluate([suite], sources))
         self.assertEqual(
-            [],
-            self.evaluate(
-                [resources(["//:counter.gd"])],
-                {"//:counter.gd": "e2e/rules_godot/shared_addon/runtime/counter.gd"},
-            ),
+            ["e2e/addons/counter/database/Suite.gd"],
+            self.evaluate([resources(["//:suite"])], sources),
         )
 
     def test_test_only_or_generated_project_contexts_do_not_exempt_application_content(
@@ -119,8 +124,7 @@ class ApplicationContentTest(RepositoryTest):
     def test_test_scope_requires_every_resources_target_to_be_test_only(self) -> None:
         for path in (
             APP + "/tests/Suite.gd",
-            "e2e/rules_godot/shared_addon/tests/unit/Suite.gd",
-            "examples/addons/counter/tests/integration/Suite.gd",
+            "e2e/rules_godot/scenario/tests/unit/Suite.gd",
         ):
             with self.subTest(path=path):
                 suite = resources(["//:suite"])
