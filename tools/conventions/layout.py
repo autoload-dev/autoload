@@ -5,6 +5,7 @@ root module, the consumer modules and the typed roots measured from either.
 
 from pathlib import Path
 
+from tools.addons.modules import example_projects
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
@@ -90,10 +91,9 @@ def flat_project(
     The project of a flat consumer, such as an add-on module's examples or a registry test
     module: the consumer itself, or a project directly in one of its directories.
     """
-    if root in configured:
-        return root
-    candidate = root / parts[0]
-    return candidate if len(parts) > 1 and candidate in configured else None
+    projects = example_projects(root, configured)
+    candidate = root if root in projects else root / parts[0]
+    return candidate if candidate in projects else None
 
 
 def consumer_directory(root: Path, parts: tuple[str, ...]) -> tuple[str, Path] | None:

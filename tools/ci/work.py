@@ -35,7 +35,7 @@ from tools.ci.changes import (
     module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
-from tools.setup.modules import RULESET, is_registry_test_module, module_paths
+from tools.setup.modules import RULESET, module_paths, registry_test_modules
 
 RULESET_DIR = RULESET.as_posix()
 # The root module's Godot applications and the ruleset's consumer scenarios, by package.
@@ -117,15 +117,8 @@ PETRI_TESTS = example_tests("petri", config="petri")
 def every_module(
     command: str, root: Path = ROOT, inputs: Inputs | None = None
 ) -> tuple[In, ...]:
-    """
-    A command for each module of the checkout, as the setup checks discover them, but the
-    registry test modules, which hold only a small consumer project.
-    """
-    return tuple(
-        In(module, command, inputs)
-        for module in module_paths(root)
-        if not is_registry_test_module(module)
-    )
+    """A command for each module of the checkout, as the setup checks discover them."""
+    return tuple(In(module, command, inputs) for module in module_paths(root))
 
 
 # A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
@@ -649,7 +642,8 @@ def main() -> None:
 
 def changes(ref: str | None) -> Changes | None:
     """The changes since the merge base with a reference, if one is given."""
-    return changes_since(ref, ROOT, module_paths(ROOT)) if ref else None
+    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
+    return changes_since(ref, ROOT, modules) if ref else None
 
 
 def print_work() -> None:

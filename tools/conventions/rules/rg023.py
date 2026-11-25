@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.setup.modules import ADDONS, RULESET
+from tools.setup.modules import released_modules
 
 # The lines of a released module's .gitattributes that leave every tests/ directory, at any
 # depth, out of its release archive (.github/workflows/release_prep.sh), but those of its
@@ -24,13 +24,11 @@ STARLARK = ("BUILD", "BUILD.bazel", "MODULE.bazel")
 VISIBILITY = frozenset({"visibility", "default_visibility", "packages"})
 
 
-def released(workspace: Workspace) -> tuple[Path, ...]:
-    """The modules with release archives: the ruleset and every add-on module."""
-    return tuple(
-        module
-        for module in workspace.module_paths
-        if module == RULESET or module.parent == Path(ADDONS)
-    )
+def _outside_tests(name: str) -> bool:
+    """Whether a file is Starlark outside every tests/ directory."""
+    path = PurePosixPath(name)
+    starlark = path.name in STARLARK or path.suffix == ".bzl"
+    return starlark and TESTS not in path.parts
 
 
 def in_tests(value: str) -> bool:
@@ -109,8 +107,9 @@ def references(text: str) -> Iterator[tuple[int, str]]:
     tree = ast.parse(text)
     dev = _dev_proxies(tree)
     for constant in _loaded_strings(tree, dev):
-        if in_tests(constant.value):
-            yield constant.lineno, constant.value
+        value = constant.value
+        if isinstance(value, str) and in_tests(value):
+            yield constant.lineno, value
 
 
 class ReleasedWithoutTests:
@@ -121,20 +120,17 @@ class ReleasedWithoutTests:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace
-        for module in released(workspace):
+        released = released_modules(workspace.module_paths)
+        for module in released:
             yield from self.archive(workspace, module)
-            for name in workspace.files:
-                path = PurePosixPath(name)
-                if workspace.owner(name) != module or TESTS in path.parts:
-                    continue
-                if path.name in STARLARK or path.suffix == ".bzl":
-                    yield from self.uses(workspace, name)
+        for name in filter(_outside_tests, workspace.files):
+            if workspace.owner(name) in released:
+                yield from self.uses(workspace, name)
 
     @staticmethod
     def archive(workspace: Workspace, module: Path) -> Iterable[Finding]:
         path = (module / ".gitattributes").as_posix()
-        text = workspace.text(path) if path in workspace.file_set else ""
-        lines = text.splitlines()
+        lines = (workspace.text(path) if path in workspace.file_set else "").splitlines()
         for line, message in EXCLUSIONS:
             if line not in lines:
                 yield Finding(Location(path, 1), f"{message}: {line}")

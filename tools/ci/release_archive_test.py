@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.ci.release_archive import command, test_module
+from tools.ci.release_archive import archive, command, test_module
 
 
 class ReleaseArchiveTest(unittest.TestCase):
@@ -20,15 +20,25 @@ class ReleaseArchiveTest(unittest.TestCase):
                 test_module("addons/widget", root)
 
     def test_an_add_on_module_uses_the_checkout_s_ruleset(self) -> None:
-        root = Path("/repo")
-        self.assertEqual(command("rules_godot", root), ["bazel", "test", "//..."])
+        root, base = Path("/repo"), Path("/tmp/base")
         self.assertEqual(
-            command("addons/widget", root),
+            command("rules_godot", base, root),
+            ["bazel", "--output_base=/tmp/base", "test", "//..."],
+        )
+        self.assertIn(
+            "--override_module=autoload_rules_godot=/repo/rules_godot",
+            command("addons/widget", base, root),
+        )
+
+    def test_the_archive_is_the_release_archive(self) -> None:
+        # The arguments of .github/workflows/release_prep.sh.
+        self.assertEqual(
+            archive("addons/widget", "autoload_widget-v1.0.0")[2:],
             [
-                "bazel",
-                "test",
-                "--override_module=autoload_rules_godot=/repo/rules_godot",
-                "//...",
+                "--format=tar",
+                "--prefix=release/",
+                "--add-file=LICENSE",
+                "autoload_widget-v1.0.0:addons/widget",
             ],
         )
 

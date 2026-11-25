@@ -10,6 +10,7 @@ from tools.setup.modules import (
     declarations,
     is_registry_test_module,
     module_paths,
+    registry_test_modules,
 )
 
 
@@ -52,20 +53,15 @@ class ModulePathsTest(unittest.TestCase):
             ):
                 (root / module).mkdir(parents=True, exist_ok=True)
                 (root / module / "MODULE.bazel").write_text("")
-            self.assertEqual(
-                (
-                    ".",
-                    "rules_godot",
-                    "rules_godot/bcr/smoke",
-                    "addons/a",
-                    "addons/a/bcr/smoke",
-                ),
-                module_paths(root),
-            )
+            (root / "examples/bcr/x").mkdir(parents=True)
+            (root / "examples/bcr/x/MODULE.bazel").write_text("")
+            self.assertEqual((".", "rules_godot", "addons/a"), module_paths(root))
             self.assertEqual(
                 ("rules_godot/bcr/smoke", "addons/a/bcr/smoke"),
-                tuple(m for m in module_paths(root) if is_registry_test_module(m)),
+                registry_test_modules(root),
             )
+            self.assertTrue(is_registry_test_module("addons/a/bcr/smoke"))
+            self.assertFalse(is_registry_test_module("examples/bcr/x"))
 
 
 class DeclarationsTest(unittest.TestCase):

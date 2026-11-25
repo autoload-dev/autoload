@@ -455,7 +455,7 @@ skills without a counterpart.
 
 ## RG020
 
-**Released modules have a flat registry test module in `bcr/`.** The Bazel Central Registry
+**Released modules have a registry test module in `bcr/`.** The Bazel Central Registry
 tests a release by building a test module from the release archive. Each released module,
 the ruleset and every add-on module, has that module in `bcr/<name>/`, so that it is
 recognizable by its place:
@@ -465,7 +465,8 @@ recognizable by its place:
 - the module's `.bazelignore` lists `bcr`, since each test module is a Bazel module of its
   own;
 - the test module is a consumer with a flat project: the test module itself is the project,
-  or each project lies directly in one of its directories, without typed roots.
+  or each project lies directly in one of its directories, without typed roots, which
+  [RG009](#rg009) checks.
 
 A test module registers the prebuilt engine itself, as an application does; the add-on
 modules register none for consumers. The add-on generator writes `bcr/smoke` with every new

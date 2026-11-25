@@ -11,7 +11,10 @@ py_library(
     ],
     # The API documentation's checks read Bazel evidence through it (tools/docs).
     visibility = ["//visibility:public"],
-    deps = ["//tools/setup:modules_lib"],
+    deps = [
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
+    ],
 )
 
 py_library(

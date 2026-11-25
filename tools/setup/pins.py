@@ -12,7 +12,12 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from tools.setup.modules import declarations, literals, module_paths
+from tools.setup.modules import (
+    declarations,
+    literals,
+    module_paths,
+    registry_test_modules,
+)
 
 ARCHIVE = ("sha256", "urls")
 # The attributes compared for each kind of declaration: a function, a repository rule or
@@ -80,7 +85,7 @@ def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
 def drifts(root: Path) -> list[str]:
     """One line per module whose shared pin differs from the most common value."""
     declared: dict[str, dict[str, tuple[str, Any]]] = {}
-    for module in module_paths(root):
+    for module in (*module_paths(root), *registry_test_modules(root)):
         for key, location, value in _shared_pins(root, module):
             declared.setdefault(key, {})[module] = (location, value)
     lines = []

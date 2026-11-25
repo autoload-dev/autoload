@@ -28,7 +28,7 @@ class RegistryTestModulesTest(RepositoryTest):
             for item in RegistryTestModules().evaluate(self.context())
         ]
 
-    def test_flat_registry_test_modules_in_bcr_pass(self) -> None:
+    def test_registry_test_modules_in_bcr_pass(self) -> None:
         self.assertEqual(self.findings(), [])
 
     def test_a_presubmit_without_a_test_module_is_reported(self) -> None:
@@ -58,11 +58,6 @@ class RegistryTestModulesTest(RepositoryTest):
             self.findings(),
             ["addons/widget/.bazelignore: must list bcr, the registry test modules"],
         )
-
-    def test_a_test_module_keeps_its_project_flat(self) -> None:
-        self.files.discard("rules_godot/bcr/smoke/project.godot")
-        self.write("rules_godot/bcr/smoke/projects/smoke/project.godot", "")
-        self.assertIn("project", self.findings()[0])
 
 
 if __name__ == "__main__":

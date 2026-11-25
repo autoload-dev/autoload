@@ -8,7 +8,7 @@ names them; it ignores `addons/` as a whole, whose modules are found by their fi
 import ast
 import os
 import shlex
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,51 +47,58 @@ def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
     MODULE.bazel, with the modules nested in those, relative to the repository root.
     """
     ignore = root / module / ".bazelignore"
-    lines = ignore.read_text().splitlines() if ignore.is_file() else []
     nested = (
         (Path(module) / name).as_posix()
-        for name in (line.strip() for line in lines)
-        if name and not name.startswith("#")
+        for name in bazelignore_entries(ignore.read_text() if ignore.is_file() else "")
     )
     return tuple(
         found
         for path in nested
-        for candidate in _modules_at(root, path)
-        for found in (candidate, *ignored_modules(root, candidate))
+        if (root / path / "MODULE.bazel").is_file()
+        for found in (path, *ignored_modules(root, path))
     )
 
 
-def _modules_at(root: Path, path: str) -> tuple[str, ...]:
+def bazelignore_entries(text: str) -> tuple[str, ...]:
+    """The directories a `.bazelignore` names, without its blank lines and comments."""
+    lines = (line.strip() for line in text.splitlines())
+    return tuple(line for line in lines if line and not line.startswith("#"))
+
+
+def is_released(module: str | Path) -> bool:
+    """Whether a module has release archives: the ruleset and every add-on module."""
+    return Path(module) == RULESET or Path(module).parent == Path(ADDONS)
+
+
+def released_modules(modules: Iterable[Path]) -> tuple[Path, ...]:
+    """Those of the modules with release archives."""
+    return tuple(module for module in modules if is_released(module))
+
+
+def is_registry_test_module(module: str | Path) -> bool:
+    """Whether a module is a registry test module, bcr/<name>/ of a released module (RG020)."""
+    return Path(module).parent.name == BCR and is_released(Path(module).parent.parent)
+
+
+def registry_test_modules(root: Path) -> tuple[str, ...]:
     """
-    The module an ignored directory is, or, for a released module's bcr/, the registry test
-    modules directly in it.
+    The registry test modules of the released modules. No lane builds them in place, so
+    module_paths leaves them out; the release archive test runs them (RG020).
     """
-    if (root / path / "MODULE.bazel").is_file():
-        return (path,)
-    if Path(path).name != BCR:
-        return ()
     return tuple(
-        (Path(path) / found.parent.name).as_posix()
-        for found in sorted((root / path).glob("*/MODULE.bazel"))
+        found.parent.relative_to(root).as_posix()
+        for module in module_paths(root)
+        if is_released(module)
+        for found in sorted((root / module / BCR).glob("*/MODULE.bazel"))
     )
-
-
-def is_registry_test_module(module: str) -> bool:
-    """Whether a module is a registry test module, bcr/<name>/ of a released module."""
-    return Path(module).parent.name == BCR
 
 
 def module_paths(root: Path) -> tuple[str, ...]:
     """
     The root module, every module its `.bazelignore` names, with the modules nested in those,
-    and each add-on module of `addons/` with its own: the root ignores `addons` as a whole.
+    and each add-on module of `addons/`: the root ignores `addons` as a whole.
     """
-    addons = (
-        found
-        for addon in addon_modules(root)
-        for found in (addon, *ignored_modules(root, addon))
-    )
-    return (".", *ignored_modules(root), *addons)
+    return (".", *ignored_modules(root), *addon_modules(root))
 
 
 @dataclass(frozen=True)
