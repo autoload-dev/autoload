@@ -16,6 +16,9 @@ An engine also has to contain the code of the CPU it is linked or packaged
 for: an Android AAR its engine library for the ABI, and the static libraries of an
 iOS engine objects of the CPU and SDK.
 
+A pack's application must also package the runtime of the engine whose editor exported
+the pack.
+
 Sections: Versions, Native libraries, Platform checks, Command line.
 """
 
@@ -272,6 +275,27 @@ def _check_rendering_method(args: argparse.Namespace) -> None:
     )
 
 
+def _engine(name: str) -> str:
+    return f"the engine {name}" if name else "the default engine"
+
+
+def require_engine(pack_engine: str | None, engine: str) -> None:
+    """
+    Fail when the runtime belongs to another engine than the editor that exported the pack.
+
+    Engines differ in their modules and patches: a pack whose scripts name a module's class
+    parses only on an engine with that module, and Godot reports the failure only in its
+    log. Without the pack's engine, as for a text pack, nothing is compared.
+    """
+    if pack_engine is None or pack_engine == engine:
+        return
+    raise SystemExit(
+        f"The pack was exported with the editor of {_engine(pack_engine)}, but the "
+        f"application packages the runtime of {_engine(engine)}; give the application "
+        f'engine = "{pack_engine}", as its pack has'
+    )
+
+
 # ==== Command line ============================================================
 
 
@@ -322,6 +346,15 @@ def _parser() -> argparse.ArgumentParser:
         "--renderers",
         help="Comma-separated rendering methods a source-built engine runs.",
     )
+    parser.add_argument(
+        "--engine",
+        default="",
+        help="Engine name of the runtime component; empty for the default engine.",
+    )
+    parser.add_argument(
+        "--pack-engine",
+        help="Engine name of the editor that exported the pack; unset compares nothing.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser
 
@@ -329,6 +362,7 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _parser()
     args = parser.parse_args()
+    require_engine(args.pack_engine, args.engine)
     _check_rendering_method(args)
     manifests = set()
     for path in args.android_manifest:

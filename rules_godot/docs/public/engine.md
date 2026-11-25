@@ -2,12 +2,12 @@
 
 A Godot build needs two engines: the **editor**, which imports and exports projects, and
 the **runtime**, the export template an application packages. rules_godot resolves both
-as Bazel toolchains, so projects, packs and apps name no engine. Register Godot's official
+as Bazel toolchains, so projects, packs and apps need not name one. Register Godot's official
 builds, build an engine from a pinned source with your own modules and patches, or mix
 both: each role, platform and CPU, plus, for runtimes, the iOS environment and the
-variant, is one slot, and the first registered candidate for a slot wins. A build uses
-one engine, the default one or the one `--@autoload_rules_godot//godot:engine` names, and takes no
-other engine's components.
+variant, is one slot, and the first registered candidate for a slot wins. A target uses
+one engine, the default one or the one it [names](#name-an-engine), and takes no other
+engine's components.
 
 | You want | Use |
 | --- | --- |
@@ -15,7 +15,7 @@ other engine's components.
 | Your own modules, patches or a fork in some slots | [A source recipe and a component](#build-an-engine-from-source), registered ahead |
 | Source-built engines for many slots, with one build policy | [`godot_engines.source_build`](#declare-a-source-build) |
 | Components of different sources in one engine | [`--extra_toolchains`](#replace-slots) or [`select()`](#choose-between-prepared-recipes) |
-| An engine that only the builds naming it use, such as one with your own module | [An engine name](#name-an-engine) |
+| An engine that only the targets naming it use, such as one with your own module | [An engine name](#name-an-engine) |
 
 The supported versions are **>=4.7.2 <5.0.0**; [versions](versions.md) lists the built-in
 release pins.
@@ -126,11 +126,11 @@ editor loads is described in
 
 ## Name an engine
 
-An engine name keeps an engine apart: its components fill slots only in builds whose
-`--@autoload_rules_godot//godot:engine` names it, and such a build takes no component of another
-engine, whatever the registration order. Components that name no engine form the default
-engine, which builds use while the flag is empty. Name the engine on its tag, or on each
-component of your own registration set with `engine`:
+An engine name keeps an engine apart: its components fill slots only for targets that
+select it, and such a target takes no component of another engine, whatever the
+registration order. Components that name no engine form the default engine. Name the
+engine on its tag, or on each component of your own registration set with `engine`, and
+register its hub beside the others:
 
 ```starlark
 godot_engines.source_build(
@@ -138,25 +138,31 @@ godot_engines.source_build(
     engine = "studio",
     # ... sources, modules and platforms
 )
+use_repo(godot_engines, "godot", "godot_studio")
+register_toolchains("@godot//toolchains:all", "@godot_studio//toolchains:all")
 ```
 
-```bash
-bazel build //path/to:app --extra_toolchains=@godot_studio//toolchains:all --@autoload_rules_godot//godot:engine=studio
+A target selects an engine with its `engine` attribute: `godot_editor`,
+`godot_metadata_sync`, `godot_pack`, `godot_run`, `godot_test` and `godot_app` take it, and
+what the target reaches, such as its project's imports, uses the same engine. One build can
+hold targets of several engines:
+
+```starlark
+godot_pack(name = "pack", engine = "studio", project = ":project", deps = [":game"])
+godot_app(name = "app", engine = "studio", pack = ":pack")
 ```
+
+An empty `engine` keeps the build's engine: the default engine, or the one
+`--@autoload_rules_godot//godot:engine` names for a whole invocation, such as a check of
+every target against a newer engine. A run of a pack and an application name the engine
+their pack was exported with. Registering an engine downloads nothing until a target
+selects it.
 
 A slot the named engine does not cover has no candidate: a target platform it lacks fails
 analysis with the missing role, rather than taking the default engine's runtime. An
 execution platform it has no editor for is skipped: Bazel resolves the actions that run the
 editor on the next execution platform with one, such as this host behind a remote Linux
-executor, and the build's other actions stay where they are. A `config_setting` on the flag
-gates the targets that need the engine:
-
-```starlark
-config_setting(
-    name = "studio_engine",
-    flag_values = {"@autoload_rules_godot//godot:engine": "studio"},
-)
-```
+executor, and the build's other actions stay where they are.
 
 ## Build an engine from source
 

@@ -237,13 +237,14 @@ def _android_backends(
         **hidden
     )
 
-def _editor_backend(name, common):
+def _editor_backend(name, common, engine):
     """
     Declare the editor variant's backend of a godot_app and its empty debug symbols.
 
     Args:
         name: Name of the godot_app.
         common: Attributes of every backend, the private targets' among them.
+        engine: The application's engine name, whose editor runs the project.
     """
 
     # The editor variant runs the start pack's project from sources: no export, runtime
@@ -261,6 +262,7 @@ def _editor_backend(name, common):
         # A game's errors show in its log; its exit status stays Godot's.
         engine_errors = "report",
         target_compatible_with = editor_compatible,
+        engine = engine,
         **common
     )
     native.filegroup(
@@ -373,6 +375,7 @@ def _app_impl(
         deprecation,
         exec_properties,
         features,
+        engine,
         engine_optimize,
         engine_lto,
         engine_vfe,
@@ -381,7 +384,8 @@ def _app_impl(
     testonly = kwargs.pop("testonly")
 
     hidden = _hidden(tags, testonly)
-    engine = dict(
+    engine_settings = dict(
+        engine = engine,
         engine_optimize = engine_optimize,
         engine_lto = engine_lto,
         engine_vfe = engine_vfe,
@@ -390,7 +394,7 @@ def _app_impl(
     # Desktop application backends package the runtime component the runtime toolchain
     # resolves in their platform slice; Android and iOS application backends resolve it
     # inside their Android or Apple split.
-    _resolved_runtime(name = name + ".runtime", **(engine | hidden))
+    _resolved_runtime(name = name + ".runtime", **(engine_settings | hidden))
     _application_packs(
         name = name,
         pack = pack,
@@ -426,7 +430,7 @@ def _app_impl(
         debug_key = android_debug_key,
         platform_deps = platform_deps,
         platform_resources = platform_resources,
-        common = common | {"engine_settings": engine},
+        common = common | {"engine_settings": engine_settings},
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -443,9 +447,9 @@ def _app_impl(
         infoplists = ios_infoplists,
         app_icons = ios_app_icons,
         launch_storyboard = ios_launch_storyboard,
-        **(common | {"engine_settings": engine})
+        **(common | {"engine_settings": engine_settings})
     )
-    _editor_backend(name = name, common = common)
+    _editor_backend(name = name, common = common, engine = engine)
     _public_targets(
         name = name,
         visibility = visibility,
@@ -611,6 +615,10 @@ godot_app = macro(
         "deprecation": attr.string(doc = "Optional conventional Bazel deprecation message.", configurable = False),
         "exec_properties": attr.string_dict(doc = "Execution properties of the application backends."),
         "features": attr.string_list(doc = "rules_cc toolchain features, independent of Godot feature tags."),
+        "engine": attr.string(
+            doc = "The engine whose runtime this application packages, by engine name; empty keeps the build's engine, the default one or the one --@autoload_rules_godot//godot:engine names. It must be the engine its packs were exported with.",
+            configurable = False,
+        ),
         "engine_optimize": attr.string(
             doc = "How this application's source-built engine compiles under -c opt, overriding --@autoload_rules_godot//godot:engine_optimize; empty keeps the build's. See [optimization](../../engine.md#optimization).",
             configurable = False,

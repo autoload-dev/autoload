@@ -1,5 +1,6 @@
 """Open a project in the Godot editor on an editor view of the checkout, and sync its metadata."""
 
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
 load("//godot/private:execution.bzl", "RUN_EXEC_GROUPS", "TEST_EXEC_GROUPS", "exec_group_editor")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_kinds")
 load("//godot/private:paths.bzl", "with_extensions_for")
@@ -113,12 +114,13 @@ _godot_editor = rule(
             default = Label("//godot/private:run_launcher.sh.tpl"),
             allow_single_file = True,
         ),
-    },
+    } | ENGINE_ATTRS,
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
-def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kwargs):
+def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engine = "", **kwargs):
     """
     Open a project in the Godot editor with `bazel run`, editing the checkout.
 
@@ -168,6 +170,9 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kw
         write_sidecars: Write the sidecars the checkout lacks before the editor
             opens, as godot_metadata_sync does. Without it, the run names them and Godot
             writes its own when it finds the files, reimporting assets.
+        engine: The engine the operation uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names.
         **kwargs: Common attributes, such as tags and visibility.
     """
     _godot_editor(
@@ -175,6 +180,7 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kw
         view = declare_view(name, project, deps, kwargs),
         env = env,
         write_sidecars = write_sidecars,
+        engine = engine,
         **kwargs
     )
 
@@ -218,20 +224,22 @@ def _metadata_sync_runner(group):
 _godot_metadata_sync = rule(
     doc = "Write a project's missing metadata into the checkout; the rule behind godot_metadata_sync.",
     implementation = _metadata_sync_writer_impl,
-    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("run"),
+    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("run") | ENGINE_ATTRS,
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
 _godot_metadata_sync_test = rule(
     doc = "Fail while a project's checkout lacks metadata; the test behind godot_metadata_sync.",
     implementation = _metadata_sync_test_impl,
-    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("test"),
+    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("test") | ENGINE_ATTRS,
     test = True,
     exec_groups = TEST_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
-def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, **kwargs):
+def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, engine = "", **kwargs):
     """
     Write the metadata Godot keeps beside a project's checkout files, and test for it.
 
@@ -281,11 +289,14 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, *
         deps: The godot_resources whose checkout files get their metadata.
         size: Bazel test size of `<name>.test`; Bazel's default applies when unset.
         timeout: Bazel test timeout of `<name>.test`; derived from size when unset.
+        engine: The engine the operation uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names.
         **kwargs: Common attributes of both targets, such as tags and visibility.
     """
     writer = str(native.package_relative_label(name))
     view = declare_view(name, project, deps, kwargs)
-    _godot_metadata_sync(name = name, view = view, writer = writer, **kwargs)
+    _godot_metadata_sync(name = name, view = view, writer = writer, engine = engine, **kwargs)
 
     _godot_metadata_sync_test(
         name = name + ".test",
@@ -293,5 +304,6 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, *
         timeout = timeout,
         view = view,
         writer = writer,
+        engine = engine,
         **kwargs
     )

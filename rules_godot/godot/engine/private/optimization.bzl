@@ -6,6 +6,7 @@ The engine rules' transitions apply these options to the engine's native graph o
 extensions and application code keep the build's own levels.
 """
 
+load("//godot/engine/private:selection.bzl", "ENGINE", "ENGINE_DOC")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
@@ -127,6 +128,7 @@ def check_optimization(ctx):
 
 # The attributes of the rules that resolve an application's runtime component.
 ENGINE_SETTINGS_ATTRS = {
+    "engine": attr.string(doc = ENGINE_DOC),
     "engine_optimize": attr.string(
         doc = "The engine_optimize of this application's source-built engine; empty keeps the build's.",
         values = [""] + OPTIMIZE_VALUES,
@@ -144,6 +146,7 @@ ENGINE_SETTINGS_ATTRS = {
 def _engine_settings_impl(settings, attr):
     vfe = attr.engine_vfe
     return {
+        ENGINE: attr.engine or settings[ENGINE],
         _ENGINE_OPTIMIZE: attr.engine_optimize or settings[_ENGINE_OPTIMIZE],
         _ENGINE_LTO: attr.engine_lto or settings[_ENGINE_LTO],
         _ENGINE_VFE: vfe == "on" if vfe else settings[_ENGINE_VFE],
@@ -153,6 +156,6 @@ def _engine_settings_impl(settings, attr):
 # engine compiles with them and the rest of the application keeps the build's.
 engine_settings = transition(
     implementation = _engine_settings_impl,
-    inputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
-    outputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
+    inputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
+    outputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
 )

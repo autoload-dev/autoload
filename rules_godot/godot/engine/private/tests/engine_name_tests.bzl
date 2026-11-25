@@ -8,7 +8,11 @@ execution platform moves its editor's actions to one that has one.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
+load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
+
+# buildifier: disable=bzl-visibility
+load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
 _FIXTURES = "//godot/engine/private/tests/fixtures"
@@ -16,6 +20,7 @@ _PLATFORMS = "//godot/engine/private/tests:"
 _NAMED = _FIXTURES + "/named_engine:all"
 _NAMED_MACOS = _FIXTURES + "/named_engine_macos:all"
 _NAMED_FORWARD = _FIXTURES + "/named_forward:all"
+_NAMED_OPERATION = _FIXTURES + "/named_operation:"
 _ENGINE = str(Label("//godot:engine"))
 
 # The engine names of registration sets and their order within one engine are the subject,
@@ -131,6 +136,30 @@ def _test_a_forwarded_component_reports_the_forwarding_engine_impl(env, target):
     env.expect.that_str(_package(runtime)).equals(Label(_FIXTURES + ":all").package)
     env.expect.that_str(runtime.provenance.engine).equals("custom")
 
+def _test_an_operation_names_its_engine(name):
+    analysis_test(
+        name = name,
+        target = _NAMED_OPERATION + "pack",
+        impl = _test_an_operation_names_its_engine_impl,
+        # The build names no engine and keeps the module's registrations; the pack's engine
+        # attribute names the development engine "beta".
+        config_settings = {_ENGINE: ""},
+    )
+
+def _test_an_operation_names_its_engine_impl(env, target):
+    env.expect.that_str(target[GodotPackInfo].editor_component.engine).equals("beta")
+
+def _test_an_application_runtime_names_its_engine(name):
+    analysis_test(
+        name = name,
+        target = _NAMED_OPERATION + "runtime",
+        impl = _test_an_application_runtime_names_its_engine_impl,
+        config_settings = _settings("", [_NAMED]),
+    )
+
+def _test_an_application_runtime_names_its_engine_impl(env, target):
+    env.expect.that_str(target[GodotComponentInfo].engine).equals("custom")
+
 def engine_name_test_suite(name):
     test_suite(
         name = name,
@@ -142,5 +171,7 @@ def engine_name_test_suite(name):
             _test_the_default_engine_keeps_the_first_execution_platform,
             _test_a_missing_slot_of_the_named_engine_fails_naming_the_flag,
             _test_a_forwarded_component_reports_the_forwarding_engine,
+            _test_an_operation_names_its_engine,
+            _test_an_application_runtime_names_its_engine,
         ],
     )

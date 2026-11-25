@@ -246,8 +246,8 @@ godot_engines.source(
 )
 
 # Petri's engine, named petri: the 4.7.2 release sources with its reaction_diffusion module,
-# built for the Linux and macOS editors and runtimes. --config=petri registers the hub and
-# selects the engine; nothing is compiled until a Petri build asks for a payload.
+# built for the Linux and macOS editors and runtimes. Petri's targets select it with their
+# engine attribute; nothing is compiled until a Petri build asks for a payload.
 godot_engines.source_build(
     name = "godot_petri",
     # The Compatibility renderer only; Vulkan would need the MoltenVK SDK on macOS hosts.
@@ -268,8 +268,8 @@ godot_engines.source_build(
         "zip",
         "reaction_diffusion",
     ],
-    # Only builds with --@autoload_rules_godot//godot:engine=petri take these components, and they
-    # take no other engine's.
+    # Only targets that name the engine petri take these components, and they take no
+    # other engine's.
     engine = "petri",
     # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
     # build any recipe, such as a Mac with remote execution the Linux editor.
@@ -363,8 +363,11 @@ use_repo(
     "godot_sources_snapshot",
 )
 
+# Every engine stays registered: a target selects its engine by name, and a hub that no
+# selected engine needs costs no download.
 register_toolchains(
     "@godot//toolchains:all",
+    "@godot_petri//toolchains:all",
     dev_dependency = True,
 )
 

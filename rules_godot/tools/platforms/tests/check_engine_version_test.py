@@ -67,6 +67,18 @@ class CheckEngineVersionTest(unittest.TestCase):
                 check_engine_version.require_rendering_method(facts, ["gl_compatibility"])
             check_engine_version.require_rendering_method(facts, ["mobile"], "mobile")
 
+    def test_the_runtime_is_of_the_engine_that_exported_the_pack(self) -> None:
+        self.check_engine("--pack-engine", "petri", "--engine", "petri")
+        self.check_engine("--pack-engine", "", "--engine", "")
+        with self.assertRaisesRegex(
+            SystemExit,
+            "exported with the editor of the engine petri, but the application "
+            "packages the runtime of the default engine",
+        ):
+            self.check_engine("--pack-engine", "petri", "--engine", "")
+        # Without the pack's engine, as for a text pack, nothing is compared.
+        self.check_engine("--engine", "petri")
+
     def test_opaque_engine_version_assertion_is_checked(self) -> None:
         library = self.root / "libgodot.a"
         library.write_bytes(b"Godot Engine v4.7.2.stable.official\0")

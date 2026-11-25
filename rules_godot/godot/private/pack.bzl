@@ -1,6 +1,7 @@
 """PCK exports of a project's view, with the native code of each platform slice."""
 
 load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_export_options", "validate_preset_settings", "validate_settings")
 load("//godot/private:context.bzl", "TRANSITION_ATTRS")
@@ -725,10 +726,11 @@ _configured_pack = rule(
             doc = "The pack's view in the editor variant, where a godot_app runs it from sources instead of exporting it.",
             providers = [GodotViewInfo],
         ),
-    } | context_attrs() | TRANSITION_ATTRS,
+    } | context_attrs() | ENGINE_ATTRS | TRANSITION_ATTRS,
+    cfg = engine_transition,
 )
 
-def _pack_macro_impl(name, visibility, project, deps, **kwargs):
+def _pack_macro_impl(name, visibility, project, deps, engine, **kwargs):
     export_kwargs = dict(kwargs)
     tags = export_kwargs.pop("tags", None) or []
     if not export_kwargs.get("deprecation"):
@@ -774,6 +776,7 @@ def _pack_macro_impl(name, visibility, project, deps, **kwargs):
         }),
         visibility = visibility,
         tags = tags,
+        engine = engine,
         **common
     )
 
@@ -812,6 +815,7 @@ godot_pack = macro(
     # Remove the exclusion when macro inheritance stops exposing that built-in attribute.
     # buildifier: disable=attr-applicable_licenses
     attrs = {
+        "engine": attr.string(doc = ENGINE_DOC, configurable = False),
         "project": attr.label(
             doc = "The godot_project whose configuration this pack exports.",
             mandatory = True,

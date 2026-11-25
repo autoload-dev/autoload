@@ -100,7 +100,7 @@ APPLICATIONS = applications(ROOT)
 
 def example_tests(application: Application) -> str:
     """The command that runs one application's own tests, below its package."""
-    return f"bazel test --build_tests_only{application.flags} {application.package}/..."
+    return f"bazel test --build_tests_only {application.package}/..."
 
 
 def example_work() -> Iterator[Work]:

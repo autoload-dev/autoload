@@ -23,23 +23,16 @@ class Application:
 
     name: str
     lanes: tuple[str, ...]
-    config: str | None = None
 
     @property
     def package(self) -> str:
         return f"//{(EXAMPLES / self.name).as_posix()}"
 
-    @property
-    def flags(self) -> str:
-        """The flags every command of the application takes."""
-        return f" --config={self.config}" if self.config else ""
-
     @classmethod
     def load(cls, path: Path) -> Application:
         """Read the app.pkl at `path`, as Pkl evaluates it."""
         value = manifest(path, AMENDS)
-        # Pkl renders no null property, such as an unset config.
-        return cls(path.parent.name, tuple(value["lanes"]), value.get("config"))
+        return cls(path.parent.name, tuple(value["lanes"]))
 
 
 def applications(root: Path = ROOT) -> tuple[Application, ...]:

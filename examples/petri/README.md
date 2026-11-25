@@ -27,29 +27,28 @@ top right shows the field size, the steps per frame and the frame rate.
 
 ## Getting started
 
-Run these commands from the repository root on macOS or Linux. Every Petri command
-takes `--config=petri`, which selects the engine `petri`, built from the
-Godot 4.7.2 sources with the module, in place of the prebuilt engine for that
-invocation. The first command compiles that editor and runtime; Bazel caches the
-result. With `--config=buildbuddy`, a Mac compiles Petri's Linux editor on BuildBuddy's
-Linux executors and runs its editor actions there; the engine's lock file pins every
-recipe, so no host configures one.
+Run these commands from the repository root on macOS or Linux. Every Petri target
+names the engine `petri`, built from the Godot 4.7.2 sources with the module, so no
+command needs a flag. The first command compiles that editor and runtime; Bazel caches
+the result. With `--config=buildbuddy`, a Mac compiles Petri's Linux editor on
+BuildBuddy's Linux executors and runs its editor actions there; the engine's lock file
+pins every recipe, so no host configures one.
 
-1. `bazel run //examples/petri:run --config=petri` opens the dish. Tap it.
-2. `bazel test //examples/petri/... --config=petri` validates the scripts and runs the
-   field, dish, layout and scene suites. All pass.
-3. `bazel build //examples/petri:app --config=petri --@autoload_rules_godot//godot:macos_signing=adhoc`
+1. `bazel run //examples/petri:run` opens the dish. Tap it.
+2. `bazel test //examples/petri/...` validates the scripts and runs the field, dish,
+   layout and scene suites. All pass.
+3. `bazel build //examples/petri:app --@autoload_rules_godot//godot:macos_signing=adhoc`
    on macOS, or without the signing flag on Linux, builds the desktop app with the
    source-built runtime. Find its bundle and archive under `bazel-bin/projects/petri/`.
-4. `bazel run //examples/petri:edit --config=petri` opens the project in the
-   source-built editor; `bazel run //examples/petri:test_edit --config=petri` opens
-   the test context with GdUnit and the suites.
-5. `bazel run //examples/petri:update --config=petri` writes missing sidecars and
-   node IDs into the checkout; `test_update` does the same for the tests.
+4. `bazel run //examples/petri:edit` opens the project in the source-built editor;
+   `bazel run //examples/petri:test_edit` opens the test context with GdUnit and the
+   suites.
+5. `bazel run //examples/petri:update` writes missing sidecars and node IDs into the
+   checkout; `test_update` does the same for the tests.
 
-Without `--config=petri` the prebuilt engine has no `GrayScottField`, so Petri's pack,
-app and tests are incompatible and `bazel test //examples/...` or `bazel build //examples/...`
-skip them, keeping the other examples on the prebuilt engine.
+`bazel test //examples/...` builds Petri with its engine beside the other examples on
+the prebuilt one; the prebuilt engine has no `GrayScottField`, so a Petri target without
+`engine = "petri"` would fail to parse Petri's scripts.
 
 ## How the parts connect
 
@@ -58,7 +57,7 @@ skip them, keeping the other examples on the prebuilt engine.
 | Module | `engine/modules/reaction_diffusion/` | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
 | Engine | `godot_engines.source_build` in [`MODULE.bazel`](../../MODULE.bazel) | One recipe per Linux and macOS slot from the pinned 4.7.2 sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
 | Lock file | [`engine/godot_petri.lock.json`](engine/godot_petri.lock.json) | Each recipe's build graph; `bazel run @godot_petri//:pin --config=buildbuddy` rewrites it |
-| Selection | `build:petri` in [`.bazelrc`](../../.bazelrc) | `--extra_toolchains` registers the hub and `--@autoload_rules_godot//godot:engine=petri` selects its engine, which also marks Petri's targets compatible, through `engine/source_engine.bzl` |
+| Selection | `engine = "petri"` in [`BUILD.bazel`](BUILD.bazel) and [`tests/BUILD.bazel`](tests/BUILD.bazel) | Each target that runs Godot selects the engine by name; `MODULE.bazel` registers the hub beside the prebuilt one |
 | Dish | `main/dish/` | The only scripts that name the module's class: steps the field, maps taps into it, paints the texture |
 | HUD | `main/hud/` | Chips, buttons and stats inside the display's safe area |
 | Tests | `tests/` | GdUnit suites for the field, the dish, the layout and the composed scene |
@@ -76,11 +75,11 @@ source build extends to those platforms.
 
 ## Working on Petri
 
-- `bazel test --build_tests_only --config=petri //examples/petri/...` from the repository root validates the scripts and runs the suites.
+- `bazel test --build_tests_only //examples/petri/...` from the repository root validates the scripts and runs the suites.
 - `main/petri.tscn` composes the dish, the scrims that keep the HUD legible over a
   full dish, and the HUD; `main/petri.gd` wires the HUD's requests to the dish.
 - Change the module's code under `engine/modules/reaction_diffusion/`; the next
-  `--config=petri` build recompiles the module and relinks both engines. A changed
+  Petri build recompiles the module and relinks both engines. A changed
   `SCsub` or `config.py`, or an added or removed file, needs a repin with
   `bazel run @godot_petri//:pin --config=buildbuddy`; until then the engines fail with
   that command.

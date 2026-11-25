@@ -6,6 +6,7 @@ Sections: Launch manifest, Run rules, Run macros.
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
 load("//godot/platforms/private:launch.bzl", "LAUNCH_ATTRS", application_launcher = "launcher")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN", "RUN_EXEC_GROUPS", "TEST_EXEC_GROUPS", "exec_group_editor")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_entry", "metadata_kinds")
@@ -304,9 +305,10 @@ godot_source_application = rule(
     says, on this host or on a remote executor.
     """,
     implementation = _source_application_impl,
-    attrs = _ATTRS | _runner() | LAUNCH_ATTRS,
+    attrs = _ATTRS | _runner() | LAUNCH_ATTRS | ENGINE_ATTRS,
     executable = True,
     toolchains = [EDITOR_TOOLCHAIN, Label("//godot/private/config:target_execution_toolchain_type")],
+    cfg = engine_transition,
 )
 
 _godot_run = rule(
@@ -314,9 +316,10 @@ _godot_run = rule(
     Run a project or PCK in a writable, isolated workspace; the rule behind godot_run.
     """,
     implementation = _run_impl,
-    attrs = _ATTRS | _runner("run"),
+    attrs = _ATTRS | _runner("run") | ENGINE_ATTRS,
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
 _godot_test = rule(
@@ -324,9 +327,10 @@ _godot_test = rule(
     Run a project or PCK as a Bazel test; the rule behind godot_test.
     """,
     implementation = _test_impl,
-    attrs = _ATTRS | _runner("test"),
+    attrs = _ATTRS | _runner("test") | ENGINE_ATTRS,
     test = True,
     exec_groups = TEST_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
 # ==== Run macros ==============================================================
@@ -381,6 +385,7 @@ def godot_run(
         headless = None,
         engine_errors = "fail",
         additional_packs = {},
+        engine = "",
         **kwargs):
     """
     Run a Godot project or exported PCK with `bazel run`, like py_binary.
@@ -432,6 +437,9 @@ def godot_run(
             errors.
         additional_packs: Pack -> file name in the working directory, for the
             running project to load with ProjectSettings.load_resource_pack().
+        engine: The engine the run uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names. A pack run must name the engine its pack was exported with.
         **kwargs: Common attributes such as args and visibility.
     """
     _executable(
@@ -448,6 +456,7 @@ def godot_run(
             headless = _headless(headless),
             engine_errors = engine_errors,
             additional_packs = additional_packs,
+            engine = engine,
         ),
         test = False,
     )
@@ -463,6 +472,7 @@ def godot_test(
         headless = None,
         engine_errors = "fail",
         additional_packs = {},
+        engine = "",
         **kwargs):
     """
     Run a Godot project or exported PCK as a Bazel test, like py_test.
@@ -519,6 +529,9 @@ def godot_test(
             godot/errors.jsonl.
         additional_packs: Pack -> file name in the working directory, for the
             running project to load with ProjectSettings.load_resource_pack().
+        engine: The engine the run uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names. A pack run must name the engine its pack was exported with.
         **kwargs: Common test attributes such as args, size and shard_count.
     """
     kwargs.setdefault("testonly", True)
@@ -536,6 +549,7 @@ def godot_test(
             headless = _headless(headless),
             engine_errors = engine_errors,
             additional_packs = additional_packs,
+            engine = engine,
         ),
         test = True,
     )
