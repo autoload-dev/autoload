@@ -5,7 +5,6 @@ the consumer modules and the fixed places of projects in either.
 
 from pathlib import Path
 
-from tools.addons.modules import example_projects
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
@@ -84,8 +83,9 @@ def flat_project(
 ) -> Path | None:
     """
     The project of a flat consumer, such as an add-on module's examples or a registry test
-    module: the consumer itself, or a project directly in one of its directories.
+    module: a project directly in one of its directories, such as a scenario or a
+    configuration variant, or else the consumer itself.
     """
-    projects = example_projects(root, configured)
-    candidate = root if root in projects else root / parts[0]
-    return candidate if candidate in projects else None
+    if len(parts) > 1 and root / parts[0] in configured:
+        return root / parts[0]
+    return root if root in configured else None

@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from tools.conventions.context import (
+    BUILD_FILES,
     Context,
     GeneratedFile,
     Location,
@@ -24,9 +25,10 @@ def root_tests(context: Context) -> Iterable[Finding]:
     workspace = context.workspace
     kinds = declared_operations(workspace)
     roots = {
-        (project / "BUILD.bazel").as_posix(): project
+        (project / build).as_posix(): project
         for project in workspace.projects
         if project.is_relative_to(EXAMPLES_ROOT)
+        for build in BUILD_FILES
     }
     calls = {
         call for module in workspace.modules for call in context.starlark.calls(module)

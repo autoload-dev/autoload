@@ -379,6 +379,18 @@ escaped = "a\\"b"
             Path("e2e/rules_godot/smoke/linux"),
             workspace.project(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
         )
+        self.write("addons/w/MODULE.bazel", "")
+        self.write("e2e/addons/w/project.godot", "")
+        self.write("e2e/addons/w/variant/project.godot", "")
+        workspace = self.workspace()
+        self.assertEqual(
+            Path("e2e/addons/w/variant"),
+            workspace.project(Path("e2e/addons/w/variant/main/main.gd")),
+        )
+        self.assertEqual(
+            Path("e2e/addons/w"),
+            workspace.project(Path("e2e/addons/w/database/BUILD.bazel")),
+        )
         for name in (
             # Consumer modules other than the registry test modules have no projects.
             "consumers/demo/addons/z/BUILD.bazel",

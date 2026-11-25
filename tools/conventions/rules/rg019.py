@@ -18,7 +18,15 @@ class ProjectTargetNames:
         configured = context.workspace.configured
         for build, names in sorted(projects(context).items()):
             package = Path(build).parent
-            if package in configured and package.name not in names:
+            if package not in configured or package.name in names:
+                continue
+            if None in names:
+                yield Finding(
+                    Location(build, 1),
+                    f"cannot read every project name of {package.as_posix()}",
+                    "not_checked",
+                )
+            else:
                 yield Finding(
                     Location(build, 1),
                     f"name the project of {package.as_posix()} like its directory: "

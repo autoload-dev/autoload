@@ -254,10 +254,10 @@ by path:
 | Consumer | Projects |
 |---|---|
 | Applications, `examples/` | `examples/<name>/` |
-| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, or one directory of it per scenario |
+| Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, and one directory of it per scenario |
 | Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, and `e2e/rules_godot/<scenario>/` for every other scenario |
-| Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, or one directory of it per add-on, scenario or configuration variant |
-| Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, or one directory of it per project |
+| Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, and one directory of it per scenario or configuration variant that needs other settings |
+| Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
 
 A project owns a BUILD file and at least one authored Godot configuration; related
 operating-system contexts can share one project. No other module holds projects: an add-on

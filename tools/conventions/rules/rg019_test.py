@@ -7,7 +7,7 @@ from tools.conventions.rules.rg019 import ProjectTargetNames
 from tools.conventions.test_support import RepositoryTest
 
 
-def project(path: str, name: str) -> Call:
+def project(path: str, name: str | None) -> Call:
     return Call(Location(path, 1), "godot_project", frozenset({"name"}), name)
 
 
@@ -40,6 +40,15 @@ class ProjectTargetNamesTest(RepositoryTest):
                 project("examples/addons/sqlite/BUILD.bazel", "test_project"),
             ),
             [],
+        )
+
+    def test_a_computed_project_name_is_not_checked(self) -> None:
+        context = self.context(
+            calls=(project("examples/addons/sqlite/BUILD.bazel", None),)
+        )
+        self.assertEqual(
+            ["not_checked"],
+            [item.status for item in ProjectTargetNames().evaluate(context)],
         )
 
     def test_projects_of_packages_without_project_file_pass(self) -> None:
