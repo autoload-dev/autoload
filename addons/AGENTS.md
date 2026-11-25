@@ -88,14 +88,18 @@ an `ios_app_test` of the app (`e2e/rules_godot/AGENTS.md`, "Artifact test rules"
 
 `desktop` runs `bazel test` over `@autoload_<module>//...`, all of
 `examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a
-test lives follows what it checks:
+test lives follows how it runs:
 
-- Native unit tests beside the code they test, such as `<addon>/native/backends/linux/tests/`.
-- White-box tests of the module's own machinery, such as `gdunit_test` or a third-party
-  build, in the module's `tests/`. They use only the module's dependencies, which therefore
-  include what the tests need, such as rules_python; the release archive leaves `tests/` out.
-- End-to-end tests that use an add-on as an application does, such as GdUnit suites of its
-  GDScript API, in `e2e/addons/<module>/`, where the root module declares what they use. CI runs every module's
+- Unit tests check a unit of code with its language's test tool, such as `cc_test` or
+  `py_test`, without a Godot project. They live in the module beside the unit, such as
+  `<addon>/native/backends/linux/tests/`, or in its `tests/<unit>/` for a module-wide unit
+  such as a third-party build. The lanes build the module from the root module, where its
+  development dependencies are not active, so these tests use only the module's regular
+  dependencies; the release archive leaves every `tests/` out.
+- End-to-end tests use an add-on as an application does: they run Godot or build a project,
+  such as GdUnit suites of an add-on's GDScript API or runs of `gdunit_test`. They live in
+  `e2e/addons/<module>/`, where the root module declares what they use; no add-on module
+  holds a Godot project or a Godot test (RG021). CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
 `aspect work <lane>:addon-template` checks the template the same way
 (`tools/addons/selftest.py`).

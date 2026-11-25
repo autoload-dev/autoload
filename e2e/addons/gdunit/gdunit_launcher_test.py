@@ -6,7 +6,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from tests.contract import run
+from e2e.addons.gdunit.contract import run
 
 PASSING, FAILURE, EMPTY, SKIPPED, ORPHAN = sys.argv[1:6]
 sys.argv = sys.argv[:1]

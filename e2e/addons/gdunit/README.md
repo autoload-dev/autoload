@@ -1,6 +1,7 @@
-# Fixtures of //tests
+# autoload_gdunit's end-to-end tests
 
-Each section names a fixture and what it reproduces for the tests of this package.
+The tests in this package run `gdunit_test` as an application does, in two projects; each
+section names one and what it reproduces for the tests of this package.
 
 ## gdunit_suites
 

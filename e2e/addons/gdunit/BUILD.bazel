@@ -1,11 +1,11 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
-load("//gdunit:defs.bzl", "gdunit_test")
 
 package(default_testonly = True)
 
-_SUITES = "//tests/fixtures/gdunit_suites"
+_SUITES = "//e2e/addons/gdunit/gdunit_suites"
 
-_STRICT = "//tests/fixtures/strict_warnings"
+_STRICT = "//e2e/addons/gdunit/strict_warnings"
 
 # Run test: the passing suites pass with two shards splitting them round-robin.
 gdunit_test(
@@ -29,7 +29,6 @@ gdunit_test(
 py_library(
     name = "support",
     srcs = [
-        "__init__.py",
         "contract.py",
         "pck.py",
     ],

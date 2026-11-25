@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tests.pck import pck_paths
+from e2e.addons.gdunit.pck import pck_paths
 
 PACK = Path(sys.argv[1])
 sys.argv = sys.argv[:1]

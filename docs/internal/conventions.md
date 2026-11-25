@@ -473,6 +473,20 @@ modules register none for consumers. The add-on generator writes `bcr/smoke` wit
 module. `python3 -m tools.ci.release_archive` runs each test module from its module's release
 archive, as the release workflow and the registry do.
 
+## RG021
+
+**Add-on modules run no Godot; their end-to-end tests live in the root module.** An add-on
+module holds its add-ons and the unit tests of their code. A test that uses an add-on as an
+application does, by running Godot or building a project, is an end-to-end test and lives in
+`e2e/addons/<module>/`. There the root module declares what the test uses as development
+dependencies, which an add-on module could only declare as regular dependencies that every
+consumer inherits: the lanes build add-on modules from the root module, where their own
+development dependencies are not active.
+
+The check reports, in each add-on module but its registry test modules, every
+`project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync` or a
+test operation its `addon.pkl` declares in `testOperations`.
+
 ## RG023
 
 **Release archives leave out tests, and nothing else needs them.** The ruleset and every

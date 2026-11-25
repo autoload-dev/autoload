@@ -1,11 +1,11 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
-load("//gdunit:defs.bzl", "gdunit_test")
 
 # GdUnit suites that pass, fail, run no test or leave an orphan node, with launchers for the
 # suites that must not simply pass.
 package(
     default_testonly = True,
-    default_visibility = ["//tests:__subpackages__"],
+    default_visibility = ["//e2e/addons/gdunit:__subpackages__"],
 )
 
 exports_files(["project.godot"])
@@ -36,14 +36,14 @@ godot_resources(
         ":generated_suite",
     ],
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
 
 godot_resources(
     name = "failing_suite_files",
     srcs = ["failing/FailingTest.gd"],
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
 
 gdunit_test(
@@ -58,7 +58,7 @@ godot_resources(
     name = "empty_suite_files",
     srcs = ["empty/EmptyTest.gd"],
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
 
 gdunit_test(
@@ -73,7 +73,7 @@ godot_resources(
     name = "skipped_suite_files",
     srcs = ["skipped/SkippedTest.gd"],
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
 
 gdunit_test(
@@ -88,7 +88,7 @@ godot_resources(
     name = "orphan_suite_files",
     srcs = ["orphan/OrphanTest.gd"],
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
 
 gdunit_test(
@@ -104,5 +104,5 @@ godot_pack(
     name = "gdunit4_pack",
     project = ":project",
     tags = ["manual"],
-    deps = ["//gdunit"],
+    deps = ["@autoload_gdunit//gdunit"],
 )
