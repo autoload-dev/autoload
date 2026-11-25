@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 
 from tools.addons.modules import ROOT
-from tools.addons.new import DECLARATIONS
 
 
 class RepositoryTestCase(unittest.TestCase):
@@ -19,8 +18,8 @@ class RepositoryTestCase(unittest.TestCase):
         for name in (".bazelversion", ".bcr/rules_godot/metadata.template.json"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
-        # The root module, which ignores the consumer modules it names here.
+        # The root module, which ignores the add-on modules it declares in its segment.
         (self.root / "MODULE.bazel").write_text(
-            f'module(name = "autoload_dev")\n\n{DECLARATIONS}.\n'
+            'module(name = "autoload_dev")\n\ninclude("//:addons.MODULE.bazel")\n'
         )
         (self.root / ".bazelignore").write_text("addons\n")

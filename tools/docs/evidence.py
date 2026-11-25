@@ -5,6 +5,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from tools.ci.lanes import PROFILE
 from tools.conventions.context import (
     Bazel,
     EvidenceError,
@@ -15,6 +16,7 @@ from tools.conventions.context import (
 )
 from tools.docs.coverage import ModuleInfo, parse_module
 from tools.docs.output_contracts import ConfiguredTarget
+from tools.setup.modules import RULESET
 
 # Counts and names are all the comparison needs; listing every file is not.
 _EVIDENCE = (
@@ -75,26 +77,39 @@ def invocation(label: str, targets: tuple[Target, ...]) -> tuple[Target, ...]:
     return tuple(target for target in targets if target.origin == roots[0].origin)
 
 
-# The ruleset module, where behavior tests resolve unless they name another module.
-ROOT_MODULE = Module(Path("."), ())
-# The repository's root module, which extracts the ruleset's Starlark modules (tools/docs/api).
-DOCS_MODULE = Module(Path(".."), ())
+# Module paths are relative to the repository root, as the lanes' work names directories:
+# the ruleset module, where cases and behavior tests resolve unless they name another module,
+# and the repository's root module, which extracts the ruleset's Starlark modules
+# (tools/docs/api) and holds the consumer scenarios.
+RULESET_MODULE = Module(RULESET, ())
+RULESET_DIR = RULESET.as_posix()
+DOCS_MODULE = Module(Path("."), ())
 
 
 class EvaluatedBazel(Bazel):
     """
     Bazel facts for contract fixtures; one instance serves a whole checker run.
 
-    Its root is the ruleset's directory, against which module paths resolve.
+    Its root is the repository root, against which module paths resolve. The configured
+    queries of its cases run in a Bazel profile, the lane's, so that they keep that
+    configuration's analysis apart from the default one of the checker's own build; only
+    the root module has profiles (tools/bazel).
     """
 
-    def run(self, module: Module, *arguments: str) -> str:
+    def __init__(self, root: Path, profile: str | None = None) -> None:
+        super().__init__(root)
+        self.profile = profile
+
+    def run(self, module: Module, *arguments: str, profiled: bool = False) -> str:
+        variables = {PROFILE: self.profile} if profiled and self.profile else {}
         return run_tool(
-            ["bazel", *arguments, "--noshow_progress"], self.root / module.path
+            ["bazel", *arguments, "--noshow_progress"],
+            self.root / module.path,
+            variables,
         )
 
     def outputs(
-        self, targets: Iterable[str], module: Module = ROOT_MODULE
+        self, targets: Iterable[str], module: Module = RULESET_MODULE
     ) -> dict[str, Path]:
         """Build file targets of a module and return their output paths."""
         targets = sorted(targets)
@@ -154,6 +169,7 @@ class EvaluatedBazel(Bazel):
                     "--universe_scope=" + ",".join(selected),
                     "--starlark:expr=" + _EVIDENCE,
                     *options,
+                    profiled=True,
                 )
             )
 
@@ -187,7 +203,7 @@ class EvaluatedBazel(Bazel):
         }
         return rules, sources
 
-    def tests(self, labels: Iterable[str], module: Module = ROOT_MODULE) -> set[str]:
+    def tests(self, labels: Iterable[str], module: Module = RULESET_MODULE) -> set[str]:
         """Evaluated Bazel tests among one module's labels, including test suites."""
         labels = sorted(labels)
         if not labels:
@@ -205,15 +221,17 @@ def behavior_tests(behavior: Mapping[str, list[Any]]) -> dict[str, set[str]]:
     """
     Group registered behavior tests by the module they run in, as API cases do.
 
-    An entry is a root-module label or ``{"target": label, "module": path}``.
+    An entry is a label of the ruleset module or ``{"target": label, "module": path}``.
     """
     modules: dict[str, set[str]] = {}
     for tests in behavior.values():
         for test in tests:
             if isinstance(test, str):
-                modules.setdefault(".", set()).add(test)
+                modules.setdefault(RULESET_DIR, set()).add(test)
             else:
-                modules.setdefault(test.get("module", "."), set()).add(test["target"])
+                modules.setdefault(test.get("module", RULESET_DIR), set()).add(
+                    test["target"]
+                )
     return modules
 
 

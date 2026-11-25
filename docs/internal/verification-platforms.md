@@ -76,9 +76,10 @@ as `test:example:lichtpost`, uses `--build_tests_only` over its example subtree,
 targets are discovered automatically without building unrelated app targets. Bazel still
 respects manual tags and platform compatibility.
 
-Each add-on module runs the same generic work in the lanes its `addon.pkl` names, as the
-work `<lane>:addon:<module>`; [add-on guidance](../../addons/AGENTS.md#lanes) has the
-commands. Their iOS work follows the Apple-lane policy below.
+Each add-on module runs the same generic work in the lanes its `addon.pkl` names. A lane
+runs all of them with one Bazel command as the work `<lane>:addons`, and the work
+`<lane>:addon:<module>` runs one module alone; [add-on guidance](../../addons/AGENTS.md#lanes)
+has the commands. Their iOS work follows the Apple-lane policy below.
 
 ### Source engine workflow
 

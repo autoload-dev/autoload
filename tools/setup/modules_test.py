@@ -23,7 +23,7 @@ class ModulePathsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / ".bazelignore").write_text("addons\n")
-            for module in (".", "addons/b", "addons/a", "addons/.c"):
+            for module in (".", "addons/b", "addons/a", "addons/selftest"):
                 (root / module).mkdir(parents=True, exist_ok=True)
                 (root / module / "MODULE.bazel").write_text("")
             (root / "addons/d").mkdir()

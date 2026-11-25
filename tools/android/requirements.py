@@ -33,11 +33,9 @@ def sdk_requirements(source: str) -> dict[str, str | int]:
     }
 
 
-def api_level(root: Path, module: str) -> str:
-    """The Android API level a module's MODULE.bazel configures for its SDK."""
-    return str(
-        sdk_requirements((root / module / "MODULE.bazel").read_text())["api_level"]
-    )
+def api_level(root: Path) -> str:
+    """The Android API level the root module's MODULE.bazel configures for its SDK."""
+    return str(sdk_requirements((root / "MODULE.bazel").read_text())["api_level"])
 
 
 def linux_pins(source: str) -> tuple[str, str, list[str]]:
@@ -133,13 +131,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--api-level",
-        metavar="MODULE",
-        help="print the API level a module configures, such as . or rules_godot, and exit",
+        action="store_true",
+        help="print the API level the root module configures, and exit",
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     if args.api_level:
-        print(api_level(root, args.api_level))
+        print(api_level(root))
         return 0
     errors = configuration_errors(root)
     if errors:

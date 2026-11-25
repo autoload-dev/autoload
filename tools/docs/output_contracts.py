@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from tools.ci.lanes import CONTRACT_LANES as MACHINE_LANES
 from tools.docs.ruleset import MODULE
+from tools.setup.modules import RULESET
 
 SECTIONS = {
     "Default outputs": ("kind", "cardinality", "availability", "behavior"),
@@ -65,7 +66,7 @@ def behavior_lane(module: str) -> str:
 
     The docs lane, part of the default hook, evaluates the ruleset module only.
     """
-    return DEFAULT_CONTRACT_LANE if module == "." else CONSUMER_MODULE_LANE
+    return DEFAULT_CONTRACT_LANE if module == RULESET.as_posix() else CONSUMER_MODULE_LANE
 
 
 @dataclass(frozen=True)

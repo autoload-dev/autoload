@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from tools.conventions.context import Module, Target
-from tools.docs.evidence import ROOT_MODULE, EvaluatedBazel, is_test
+from tools.docs.evidence import RULESET_MODULE, EvaluatedBazel, is_test
 from tools.docs.output_contracts import (
     ConfiguredTarget,
     Contract,
@@ -187,12 +187,12 @@ _PREDICATES = {"values", "define_values", "flag_values", "constraint_values"}
 
 def check_public_targets(bazel: EvaluatedBazel, labels: list[str]) -> list[str]:
     """Require public settings, platforms and toolchain types to be metadata-only."""
-    query = bazel.query(ROOT_MODULE, "set(" + " ".join(labels) + ")")
+    query = bazel.query(RULESET_MODULE, "set(" + " ".join(labels) + ")")
     rules = {
         element.attrib["name"].partition("//")[2]: element
         for element in query.findall("rule")
     }
-    observed = bazel.configured(ROOT_MODULE, labels)
+    observed = bazel.configured(RULESET_MODULE, labels)
     errors = []
     for label in labels:
         target = observed[label]

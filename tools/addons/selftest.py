@@ -1,26 +1,23 @@
 """
 The add-on generator's self-test in one lane: a fresh module from the template, then its lane.
 
-`python3 -m tools.addons.selftest <lane>` writes addons/.selftest and examples/addons/selftest,
-declares the module in the root's MODULE.bazel and runs the lane. Afterwards it removes both
-and restores the root's MODULE.bazel and MODULE.bazel.lock, also when the lane fails, so the
-checkout is as before.
+`python3 -m tools.addons.selftest <lane>` writes addons/selftest and examples/addons/selftest,
+declares the module in the root's generated declarations (tools/addons/declarations.py) and
+runs the lane. Afterwards it removes both, declares the add-on modules of the checkout alone
+again and restores the root's MODULE.bazel.lock, which the run's Bazel commands update, also
+when the lane fails, so the checkout is as before.
 """
 
 import argparse
 import shutil
 from pathlib import Path
 
-from tools.addons import lanes
+from tools.addons import declarations, lanes
 from tools.addons.modules import LANES, ROOT, AddonModule, examples_path, module_path
-from tools.addons.new import declaration, generate
+from tools.addons.new import generate
+from tools.setup.modules import SELFTEST
 
-# The self-test's module, which the leading dot keeps out of the add-on modules; it is never
-# released.
-SELFTEST = ".selftest"
-
-# The root's files that declaring the module changes.
-DECLARATIONS = ("MODULE.bazel", "MODULE.bazel.lock")
+LOCK = "MODULE.bazel.lock"
 
 
 def remove(root: Path) -> None:
@@ -30,22 +27,19 @@ def remove(root: Path) -> None:
 
 
 def run(lane: str, root: Path = ROOT) -> None:
-    # A run that ended before its cleanup may have left the module declared.
-    manifest = root / "MODULE.bazel"
-    manifest.write_text(manifest.read_text().replace(declaration(SELFTEST), ""))
-    saved = {
-        name: (root / name).read_bytes()
-        for name in DECLARATIONS
-        if (root / name).exists()
-    }
+    lock = root / LOCK
+    saved = lock.read_bytes() if lock.is_file() else None
+    # A run that ended before its cleanup may have left the module behind.
     remove(root)
     try:
         generate(SELFTEST, root=root, release=False)
-        lanes.run(lane, AddonModule.load(module_path(SELFTEST), root))
+        declarations.write(root, extra=(SELFTEST,))
+        lanes.run(lane, [AddonModule.load(module_path(SELFTEST), root)])
     finally:
         remove(root)
-        for name, content in saved.items():
-            (root / name).write_bytes(content)
+        declarations.write(root)
+        if saved is not None:
+            lock.write_bytes(saved)
 
 
 def main() -> None:

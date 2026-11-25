@@ -14,10 +14,15 @@ API = Api("rule", Contract(), "//:defs.bzl")
 
 
 def case(target: str, options: tuple[str, ...] = ()) -> dict:
-    return {"target": target, "module": ".", "options": list(options), "conditions": []}
+    return {
+        "target": target,
+        "module": "rules_godot",
+        "options": list(options),
+        "conditions": [],
+    }
 
 
-def fake_bazel(command: list[str], _cwd: Path) -> str:
+def fake_bazel(command: list[str], _cwd: Path, _variables: object = None) -> str:
     """Answer a query with one rule per label and a cquery with one target per label."""
     if command[1] == "query":
         labels = re.findall(r"//[^ ()]+", command[2])

@@ -3,7 +3,7 @@ Representative configurations of each public API, keyed by API identity.
 
 A key may append `#variant` for further configurations of the same API. Fields:
 target, the fixture root; lane, the CI lane whose contract check runs the case
-(default `docs`); module, the Bazel module to run in (default the root module);
+(default `docs`); module, the Bazel module to run in, relative to the repository root (default rules_godot);
 options; conditions, the contract availabilities the configuration activates;
 forwarded_groups, when the root forwards an upstream target's output groups;
 host_replacements, string substitutions per host operating system. Repository APIs
@@ -146,7 +146,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_engines#android": {
         "lane": "android",
-        "module": "..",
+        "module": ".",
         "conditions": ["android_shell"],
         "entrypoints": _hub_entrypoints(
             # The hub builds the debug runtimes the official release lacks from its sources.
@@ -172,7 +172,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_engines#ios": {
         "lane": "ios",
-        "module": "..",
+        "module": ".",
         "conditions": ["ios"],
         "entrypoints": _hub_entrypoints({
             "ios_{cpu}_{environment}_{variant}": [
@@ -186,7 +186,7 @@ API_CASES = {
     },
     "//godot:extensions.bzl%godot_android_toolchains": {
         "lane": "android",
-        "module": "..",
+        "module": ".",
         "conditions": [],
         "entrypoints": {
             _ANDROID_TOOLCHAINS + "ndk_{target_system}": [
@@ -216,7 +216,7 @@ API_CASES = {
 
 # Behavior tests demonstrating why each API's public companions or repository
 # entrypoints are separate targets; the checker requires one per API with them. An entry
-# is a root-module label or a dict with target and module, as cases name their module.
+# is a label of the ruleset module or a dict with target and module, as cases name their module.
 BEHAVIOR_TESTS = {
     "//godot:app.bzl%godot_app": ["//godot/private/config/tests:test_debug_symbols_need_no_signing_identity"],
     "//godot:defs.bzl%godot_addon": ["//godot/private/tests:test_tests_reach_editor_parts_through_the_editor_target"],

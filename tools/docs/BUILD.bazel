@@ -112,6 +112,7 @@ py_library(
     deps = [
         ":ruleset_lib",
         "//tools/ci:lanes_lib",
+        "//tools/setup:modules_lib",
     ],
 )
 
@@ -128,7 +129,9 @@ py_library(
     deps = [
         ":coverage_lib",
         ":output_contracts_lib",
+        "//tools/ci:lanes_lib",
         "//tools/conventions:context_lib",
+        "//tools/setup:modules_lib",
     ],
 )
 
@@ -154,8 +157,8 @@ py_library(
         ":inventory_lib",
         ":output_contracts_lib",
         ":ruleset_lib",
+        "//tools/ci:lanes_lib",
         "//tools/conventions:context_lib",
-        "//tools/setup:modules_lib",
     ],
 )
 

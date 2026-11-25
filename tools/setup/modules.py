@@ -19,19 +19,22 @@ ADDONS = "addons"
 # (one project, or one per scenario), and its end-to-end tests, e2e/addons/<module>/.
 ADDON_EXAMPLES = Path("examples/addons")
 ADDON_E2E = Path("e2e/addons")
+# The add-on generator's self-test module (tools/addons/selftest.py), addons/selftest/ with
+# examples/addons/selftest/ while it runs: never released, and none of the add-on modules.
+SELFTEST = "selftest"
 # The ruleset's directory: its module, and below .bcr/ its registry templates.
 RULESET = Path("rules_godot")
 
 
 def addon_modules(root: Path) -> tuple[str, ...]:
     """
-    The add-on modules of `addons/`, each `addons/<name>` with a `MODULE.bazel`, by name.
-    Hidden directories, such as the generator's self-test module, are none of them.
+    The add-on modules of `addons/`, each `addons/<name>` with a `MODULE.bazel`, by name,
+    but the generator's self-test module.
     """
     return tuple(
         f"{ADDONS}/{path.parent.name}"
         for path in sorted((root / ADDONS).glob("*/MODULE.bazel"))
-        if not path.parent.name.startswith(".")
+        if path.parent.name != SELFTEST
     )
 
 

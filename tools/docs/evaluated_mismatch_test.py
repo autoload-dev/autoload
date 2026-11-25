@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 from tools.docs.contracts import check_cases, extracted_apis, host_case
-from tools.docs.evidence import ROOT_MODULE, EvaluatedBazel
-from tools.setup.modules import RULESET
+from tools.docs.evidence import RULESET_MODULE, EvaluatedBazel
 
 _FIXTURES = "//godot/tests/api_contracts:"
 
@@ -43,9 +42,9 @@ SCENARIOS = {
 
 
 def main() -> None:
-    bazel = EvaluatedBazel(Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]) / RULESET)
+    bazel = EvaluatedBazel(Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]))
     inventory = _FIXTURES + "evaluated_mismatch_inventory.textproto"
-    module = bazel.extracted([inventory], ROOT_MODULE)[inventory]
+    module = bazel.extracted([inventory], RULESET_MODULE)[inventory]
     apis, errors = extracted_apis({_FIXTURES + "mismatch.bzl": module})
     assert not errors, errors
     identities = {symbol: _FIXTURES + "mismatch.bzl%" + symbol for symbol in SCENARIOS}

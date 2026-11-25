@@ -52,10 +52,10 @@ class RequirementsTest(unittest.TestCase):
         )
         self.assertEqual(configuration_errors(self.root), [])
 
-    def test_reads_the_api_level_a_module_configures(self) -> None:
-        self.assertEqual(api_level(self.root, "."), "35")
+    def test_reads_the_api_level_the_root_module_configures(self) -> None:
+        self.assertEqual(api_level(self.root), "35")
         self.replace("MODULE.bazel", "api_level = 35", "api_level = 36")
-        self.assertEqual(api_level(self.root, "."), "36")
+        self.assertEqual(api_level(self.root), "36")
 
     def test_detects_an_unprovisioned_development_api_of_the_root(self) -> None:
         self.replace("rules_godot/MODULE.bazel", "api_level = 35", "api_level = 999")

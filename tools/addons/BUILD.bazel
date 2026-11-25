@@ -5,6 +5,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 py_library(
     name = "new_lib",
     srcs = [
+        "declarations.py",
         "modules.py",
         "new.py",
         "registry.py",
@@ -15,6 +16,7 @@ py_library(
         "//tools/android:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
+        "//tools/generate:__pkg__",
     ],
     deps = [
         "//tools/setup:modules_lib",
@@ -51,6 +53,16 @@ py_library(
         "//:bcr_metadata",
     ],
     deps = [":new_lib"],
+)
+
+py_test(
+    name = "declarations_test",
+    size = "small",
+    srcs = ["declarations_test.py"],
+    deps = [
+        ":new_lib",
+        ":test_support",
+    ],
 )
 
 py_test(

@@ -24,7 +24,7 @@ maven.install(
     name = "maven",
     # The add-ons add their Android libraries to the application's Maven graph.
     known_contributing_modules = ["autoload_firebase", "autoload_rules_godot", "protobuf"],
-    lock_file = "//:maven_install.json",
+    lock_file = "//third_party/maven:maven_install.json",
     # rules_godot checks the graph against Godot's minimums, which need Gradle's resolution.
     resolver = "gradle",
     ...

@@ -8,7 +8,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import NotRequired, TypedDict
 
-from tools.addons.new import DECLARATIONS
 from tools.conventions.context import (
     Call,
     Context,
@@ -117,8 +116,8 @@ class RepositoryTest(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         # Every written file; the default workspace inventory.
         self.files: set[str] = set()
-        # The root module, where the add-on generator declares a new module.
-        self.write("MODULE.bazel", f"{DECLARATIONS}.\n")
+        # The root module, which includes the add-on generator's declarations.
+        self.write("MODULE.bazel", 'include("//:addons.MODULE.bazel")\n')
         self.write("BUILD.bazel", "")
 
     def write_consumer_modules(self) -> None:

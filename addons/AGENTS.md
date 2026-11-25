@@ -36,8 +36,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   the module: its example application, the directory itself or one per scenario in
   subdirectories, each with the targets `edit`,
   `pack` and, for a module that builds applications, `app`. The root module consumes the
-  module like an external application, through a `local_path_override` that the generator
-  adds, and the rules of this repository the same way, so an add-on always builds against
+  module like an external application, through a `local_path_override` in
+  `addons.MODULE.bazel`, which `aspect generate` and the generator write from `addons/`
+  (`tools/addons/declarations.py`), and the rules of this repository the same way, so an add-on always builds against
   the rules it is changed with.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
   root; the root holds only the module's files, `third_party/` with the build files of
@@ -55,7 +56,8 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   generator names it `<module>_<addon>`, or `<module>_extension` for an add-on named like
   its module.
 - Android dependencies come from Maven: a module's `maven.install` merges into the root
-  module's `@maven`, which lists the module in `known_contributing_modules`. After changing
+  module's `@maven`, pinned in `third_party/maven/`, which lists the module in
+  `known_contributing_modules`. After changing
   artifacts, repin from the repository root with `REPIN=1 bazel run @maven//:pin`.
 - Never commit or print secrets, signing material or real service configurations; local
   provisioning profiles stay in the gitignored `examples/addons/<module>/signing/`.
@@ -64,12 +66,15 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 
 The same commands verify every module, from the repository root over its
 `examples/addons/<module>/` (`tools/addons/lanes.py`), as the lanes' work
-(`tools/ci/work.py`), which provisions the Android SDK first:
+(`tools/ci/work.py`), which provisions the Android SDK first. A lane runs every module that
+names it with one Bazel command, `<lane>:addons`; one module alone runs as
+`<lane>:addon:<module>`:
 
 ```sh
 aspect work desktop:addon:<module>      # module tests and example targets but apps
 aspect work android:addon:<module>   # each example project's app for Android
 aspect work ios:addon:<module>       # each example project's app for the iOS Simulator
+aspect work desktop:addons              # every module's desktop lane at once
 ```
 
 `android` and `ios` also run the example projects' tests tagged with the lane's name, such as

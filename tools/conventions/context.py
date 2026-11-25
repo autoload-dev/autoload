@@ -382,11 +382,16 @@ def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
     return tuple(literals)
 
 
-def run_tool(command: list[str], cwd: Path) -> str:
-    """Return a tool's output, or fail the audit with its diagnostics."""
+def run_tool(
+    command: list[str], cwd: Path, variables: Mapping[str, str] | None = None
+) -> str:
+    """
+    Return a tool's output, or fail the audit with its diagnostics. A nested Bazel gets the
+    caller's variables, with the given ones.
+    """
     try:
         environment = (
-            {"env": nested_tool_environment(os.environ)}
+            {"env": nested_tool_environment(os.environ) | dict(variables or {})}
             if Path(command[0]).name == "bazel"
             else {}
         )

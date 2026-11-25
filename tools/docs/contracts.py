@@ -9,10 +9,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from tools.ci.lanes import profile
 from tools.conventions.context import EvidenceError, Module, Target
 from tools.docs.api_docs import read_inventory
 from tools.docs.coverage import ModuleInfo, module_apis
-from tools.docs.evidence import EvaluatedBazel, behavior_tests, is_test, unqualified
+from tools.docs.evidence import (
+    RULESET_DIR,
+    EvaluatedBazel,
+    behavior_tests,
+    is_test,
+    unqualified,
+)
 from tools.docs.output_contracts import (
     CONTRACT_LANES,
     DEFAULT_CONTRACT_LANE,
@@ -28,7 +35,6 @@ from tools.docs.output_contracts import (
 )
 from tools.docs.repository_contracts import check_public_targets, check_repository
 from tools.docs.ruleset import INVENTORY
-from tools.setup.modules import RULESET
 
 MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
 
@@ -69,7 +75,7 @@ def host_case(case: dict[str, Any]) -> dict[str, Any]:
 
     defaults = {
         "lane": DEFAULT_CONTRACT_LANE,
-        "module": ".",
+        "module": RULESET_DIR,
         "options": [],
         "conditions": [],
     }
@@ -266,7 +272,7 @@ def behavior_errors(
             continue
         found = bazel.tests(labels, Module(Path(module), ()))
         for label in sorted(labels - found):
-            where = "" if module == "." else f" (module {module})"
+            where = "" if module == RULESET_DIR else f" (module {module})"
             errors.append(f"unresolved evaluated behavior test: {label}{where}")
     return errors
 
@@ -305,7 +311,7 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
     inventory = read_inventory(root / INVENTORY)
-    bazel = EvaluatedBazel(root / RULESET)
+    bazel = EvaluatedBazel(root, profile(args.lane))
     targets = {inventory_target(label): label for label in inventory["PUBLIC_APIS"]}
     manifest = json.loads(bazel.outputs([MANIFEST])[MANIFEST].read_text())
     modules = bazel.extracted(targets)

@@ -17,6 +17,7 @@ class GenerateTest(unittest.TestCase):
         """The Bazel commands one call of generate runs, each as (module, *arguments)."""
         with (
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
+            mock.patch.object(generate, "segment", return_value=0),
             contextlib.redirect_stderr(io.StringIO()),
         ):
             getattr(generate, call)(*args)
@@ -34,6 +35,22 @@ class GenerateTest(unittest.TestCase):
             [(".", "mod", "deps", "--lockfile_mode=update")],
             self.runs("regenerate", ["MODULE.bazel"]),
         )
+
+    def test_an_add_on_module_file_regenerates_the_root_s_lock_file(self) -> None:
+        self.assertEqual(
+            [(".", "mod", "deps", "--lockfile_mode=update")],
+            self.runs("regenerate", ["addons/sqlite/MODULE.bazel"]),
+        )
+
+    def test_the_segment_is_written_and_checked(self) -> None:
+        with mock.patch.object(generate, "bazel", return_value=0):
+            for call, args in (("regenerate", (["tools/ci/work.py"],)), ("check", ())):
+                with (
+                    self.subTest(call=call),
+                    mock.patch.object(generate, "segment", return_value=0) as segment,
+                ):
+                    getattr(generate, call)(*args)
+                    segment.assert_called_once()
 
     def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
         self.assertEqual(

@@ -46,5 +46,5 @@ bazel-remote-grpc.log
 /examples/addons/*/signing/
 
 # The add-on generator's self-test module (aspect work <lane>:addon-template).
-/addons/.selftest/
+/addons/selftest/
 /examples/addons/selftest/

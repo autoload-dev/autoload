@@ -121,6 +121,15 @@ class AddonModule:
         """The module's end-to-end tests in the root module, relative to the root."""
         return e2e_path(self.directory)
 
+    @property
+    def package(self) -> str:
+        """The package of the module's examples in the root module."""
+        return f"//{self.examples.as_posix()}"
+
+    def project_package(self, project: str) -> str:
+        """The package of one example project: the examples' own, or a subdirectory's."""
+        return self.package if project == "." else f"{self.package}/{project}"
+
     @classmethod
     def load(cls, path: Path, root: Path = ROOT) -> AddonModule:
         """Read the module at `path`, relative to the repository root."""
@@ -147,16 +156,13 @@ class AddonModule:
 
 
 def examples_path(directory: str) -> Path:
-    """
-    The examples of the add-on module addons/<directory>, relative to the repository root;
-    the self-test module's leading dot, which keeps it out of the modules, is dropped.
-    """
-    return ADDON_EXAMPLES / directory.removeprefix(".")
+    """The examples of the add-on module addons/<directory>, relative to the repository root."""
+    return ADDON_EXAMPLES / directory
 
 
 def e2e_path(directory: str) -> Path:
     """The end-to-end tests of the add-on module addons/<directory>, relative to the root."""
-    return ADDON_E2E / directory.removeprefix(".")
+    return ADDON_E2E / directory
 
 
 def example_projects(examples: Path, configured: Collection[Path]) -> tuple[Path, ...]:

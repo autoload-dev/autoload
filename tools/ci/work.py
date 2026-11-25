@@ -24,8 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.addons.modules import DESKTOPS, ROOT, all_modules, host
 from tools.addons.modules import LANES as ADDON_LANES
+from tools.addons.modules import ROOT, all_modules, host
 from tools.ci.changes import (
     Changes,
     Inputs,
@@ -34,7 +34,7 @@ from tools.ci.changes import (
     files,
     module_files,
 )
-from tools.ci.lanes import LANES
+from tools.ci.lanes import LANES, PROFILE, profile
 from tools.setup.modules import RULESET, module_paths
 
 RULESET_DIR = RULESET.as_posix()
@@ -42,10 +42,8 @@ RULESET_DIR = RULESET.as_posix()
 EXAMPLES = "//examples"
 SCENARIOS = "//e2e/rules_godot"
 ANDROID_SETUP = "android:setup"
-# The variable that selects a piece of work's Bazel profile (tools/bazel).
-PROFILE = "AUTOLOAD_BAZEL_PROFILE"
-# The lanes whose Bazel configuration differs from the desktop default, each a profile.
-PROFILE_LANES = ("source-engine", "android", "ios")
+# The workspace's own output base, which work names where its lane has another profile.
+DEFAULT_PROFILE = "default"
 # The profile of the add-on generator's self-test, which changes the root's module graph.
 TEMPLATE_PROFILE = "addon-template"
 
@@ -84,7 +82,7 @@ class Work:
     @property
     def bazel_profile(self) -> str | None:
         """The profile of the work's Bazel commands: the one it names, else its lane's."""
-        return self.profile or (self.lane if self.lane in PROFILE_LANES else None)
+        return self.profile or profile(self.lane)
 
     def steps(self) -> list[In]:
         """Each command with the directory it runs in and its inputs."""
@@ -154,7 +152,8 @@ GENERATED_INPUTS = files(
     # Files that module extensions read and the lock files record: tool and engine pins,
     # Maven and Swift package resolutions.
     "*.lock.json",
-    "*maven_install.json",
+    "third_party/maven/*",
+    f"{RULESET_DIR}/third_party/maven/*",
     "*Package.resolved",
     "*Package.swift",
     "tools/generate/*",
@@ -189,13 +188,18 @@ def contracts_command(lane: str) -> str:
 
 
 def contracts(lane: str) -> Work:
-    """The API output contract cases of a lane."""
+    """
+    The API output contract cases of a lane. The checker builds itself and extracts the API
+    in the default profile, which the docs work shares; its configured queries of the
+    lane's cases run in the lane's profile (tools/docs/evidence.py).
+    """
     return Work(
         f"contracts:{lane}",
         lane,
         ".",
         (contracts_command(lane),),
         android=lane == "android",
+        profile=DEFAULT_PROFILE,
     )
 
 
@@ -223,15 +227,23 @@ PATCHED_EDITOR = (
     f" {SCENARIOS}/patched_engine/tests:source_built_editor_test"
     f" --extra_toolchains={SCENARIOS}/patched_engine/engines/source:all"
 )
-# The example packages with an `app`, which the mobile lanes build.
-APP_PACKAGES = (
-    f"{EXAMPLES}/addons/sqlite",
-    f"{EXAMPLES}/lichtpost",
-    f"{EXAMPLES}/addons/platform_paths",
-    f"{EXAMPLES}/addons/app_auth",
-)
-# The Android release bundles leave Lichtpost out.
-ANDROID_RELEASE_PACKAGES = tuple(p for p in APP_PACKAGES if p != f"{EXAMPLES}/lichtpost")
+# The root module's own application; the add-on modules' lanes build their examples' apps.
+LICHTPOST = f"{EXAMPLES}/lichtpost"
+
+
+def addon_app_packages(root: Path = ROOT) -> tuple[str, ...]:
+    """The example projects of the add-on modules that build applications, by package."""
+    return tuple(
+        module.project_package(project)
+        for module in all_modules(root)
+        if module.builds_apps
+        for project in module.projects
+    )
+
+
+# The release builds of every application: Android's leave Lichtpost out.
+RELEASE_PACKAGES = (LICHTPOST, *addon_app_packages())
+ANDROID_RELEASE_PACKAGES = addon_app_packages()
 
 
 def apps(packages: Iterable[str], symbols: bool = False) -> str:
@@ -328,18 +340,20 @@ WORK = (
     ),
     example("lichtpost"),
     contracts("android"),
+    # Each mobile lane's work ends on the configuration of the add-on modules' lanes that
+    # follow it in its profile, so that they keep its analysis.
     Work(
         "android",
         "android",
         ".",
         (
-            f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
-            f"bazel build {apps(APP_PACKAGES)} --config=android",
-            f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab",
             (
                 f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
                 " --config=android-release --config=aab"
             ),
+            f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab",
+            f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
+            f"bazel build {LICHTPOST}:app --config=android",
         ),
         android=True,
     ),
@@ -349,8 +363,8 @@ WORK = (
         "ios",
         ".",
         (
+            f"bazel build {apps(RELEASE_PACKAGES, symbols=True)} --config=ios-release",
             f"bazel test {SCENARIOS}:ios_official --config=official",
-            f"bazel build {apps(APP_PACKAGES, symbols=True)} --config=ios-release",
         ),
     ),
     contracts("source-engine"),
@@ -407,7 +421,7 @@ WORK = (
                 "bazel run //tools/platforms:validate_artifacts --"
                 ' --android-sdk "$ANDROID_HOME" --android-ndk "$ANDROID_NDK_HOME"'
                 ' --android-api-level "$(cd .. && python3 -m tools.android.requirements'
-                ' --api-level .)"'
+                ' --api-level)"'
                 ' --java "${JAVA_HOME:-$(python3 ../tools/android/java.py)}/bin/java"'
                 ' --build-tools "$ANDROID_BUILD_TOOLS"'
             ),
@@ -419,24 +433,42 @@ WORK = (
 
 def addon_work(root: Path = ROOT) -> Iterator[Work]:
     """
-    Each add-on module's lanes, as its addon.pkl names them, then the generator's self-test
-    in every lane. The self-test's desktop build checks the template the same way on every
-    host, so its desktop lane runs on Linux only.
+    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
+    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
+    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
+    generator's self-test in every lane. The self-test's desktop build checks the template
+    the same way on every host, so its desktop lane runs on Linux only.
     """
-    for module in all_modules(root):
-        # The desktop lane builds for this machine, so it runs on the module's desktop
-        # systems; on all of them, it is no host-limited work.
-        hosts = () if set(module.desktops) == set(DESKTOPS) else module.desktops
-        for lane in module.lanes:
-            yield Work(
-                f"{lane}:addon:{module.directory}",
-                lane,
-                ".",
-                (f"python3 -m tools.addons.lanes {lane} {module.directory}",),
-                android=lane == "android",
-                hosts=hosts if lane == "desktop" else (),
-            )
+    modules = all_modules(root)
+    named = {lane for module in modules for lane in module.lanes}
+    yield from (lane_addon_work(lane) for lane in ADDON_LANES if lane in named)
+    yield from (
+        module_work(lane, module.directory) for module in modules for lane in module.lanes
+    )
     yield from map(template_work, ADDON_LANES)
+
+
+def lane_addon_work(lane: str) -> Work:
+    """Every add-on module of a lane, with one Bazel command."""
+    return Work(
+        f"{lane}:addons",
+        lane,
+        ".",
+        (f"python3 -m tools.addons.lanes {lane}",),
+        android=lane == "android",
+    )
+
+
+def module_work(lane: str, directory: str) -> Work:
+    """One add-on module's lane alone, run only when named, in its lane's profile."""
+    return Work(
+        f"{lane}:addon:{directory}",
+        None,
+        ".",
+        (f"python3 -m tools.addons.lanes {lane} {directory}",),
+        android=lane == "android",
+        profile=profile(lane),
+    )
 
 
 def template_work(lane: str) -> Work:
@@ -448,7 +480,7 @@ def template_work(lane: str) -> Work:
         (f"python3 -m tools.addons.selftest {lane}",),
         android=lane == "android",
         hosts=("linux",) if lane == "desktop" else (),
-        # The self-test declares a module in the root's MODULE.bazel for its run, which
+        # The self-test declares a module in the root's module graph for its run, which
         # would discard the analysis of the server it runs in.
         profile=TEMPLATE_PROFILE,
     )

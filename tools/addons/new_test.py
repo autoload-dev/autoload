@@ -1,8 +1,10 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
-from tools.addons.new import TOKEN, Names, declaration, declare, generate
+from tools.addons.declarations import SEGMENT
+from tools.addons.new import TOKEN, Names, generate
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
+from tools.setup.modules import SELFTEST, addon_modules
 
 
 class NamesTest(RepositoryTestCase):
@@ -18,9 +20,6 @@ class NamesTest(RepositoryTestCase):
         self.assertEqual(tokens["extension"], "firebase_core")
         self.assertEqual(tokens["class"], "FirebaseCore")
         self.assertEqual(tokens["title"], "Firebase Core")
-
-    def test_the_self_test_module_drops_its_dot(self) -> None:
-        self.assertEqual(Names(".selftest").tokens("9.3.0")["module"], "selftest")
 
     def test_resource_uids_are_stable_and_godot_reads_them(self) -> None:
         first, again = Names("widget").tokens("9"), Names("widget").tokens("9")
@@ -96,35 +95,20 @@ class GenerateTest(RepositoryTestCase):
 
 
 class DeclarationTest(RepositoryTestCase):
-    def test_a_new_module_is_declared_after_the_others_and_can_be_removed(self) -> None:
-        manifest = self.root / "MODULE.bazel"
-        before = manifest.read_text()
+    def test_a_new_module_is_declared_in_the_root_s_segment(self) -> None:
         generate("widget", root=self.root)
         generate("gadget", root=self.root)
-        text = manifest.read_text()
+        text = (self.root / SEGMENT).read_text()
         self.assertLess(
-            text.index('module_name = "autoload_widget"'),
             text.index('module_name = "autoload_gadget"'),
+            text.index('module_name = "autoload_widget"'),
         )
         self.assertIn('    path = "addons/widget",\n', text)
         generate("widget", "extra", root=self.root)
-        self.assertEqual(manifest.read_text(), text)
-        self.assertEqual(
-            text.replace(declaration("widget"), "").replace(declaration("gadget"), ""),
-            before,
-        )
+        self.assertEqual((self.root / SEGMENT).read_text(), text)
 
-    def test_a_module_declared_already_is_not_declared_again(self) -> None:
-        # Such as the self-test's module after a run that ended before its cleanup.
-        manifest = self.root / "MODULE.bazel"
-        declare(".selftest", self.root)
-        declared = manifest.read_text()
-        generate(".selftest", root=self.root, release=False)
-        self.assertEqual(manifest.read_text(), declared)
-
-    def test_the_self_test_module_drops_its_dot_in_its_examples(self) -> None:
-        generate(".selftest", root=self.root, release=False)
+    def test_the_self_test_module_is_no_add_on_module(self) -> None:
+        generate(SELFTEST, root=self.root, release=False)
         self.assertTrue((self.root / "examples/addons/selftest/project.godot").is_file())
-        self.assertIn(
-            'module_name = "autoload_selftest"', (self.root / "MODULE.bazel").read_text()
-        )
+        self.assertNotIn(f"addons/{SELFTEST}", addon_modules(self.root))
+        self.assertNotIn("autoload_selftest", (self.root / SEGMENT).read_text())

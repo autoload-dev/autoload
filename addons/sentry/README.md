@@ -19,7 +19,7 @@ maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     name = "maven",
     known_contributing_modules = ["autoload_rules_godot", "autoload_sentry", "protobuf"],
-    lock_file = "//:maven_install.json",
+    lock_file = "//third_party/maven:maven_install.json",
     ...
 )
 ```

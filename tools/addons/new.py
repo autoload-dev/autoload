@@ -5,15 +5,16 @@ Create an add-on module in addons/ from the template, or add an add-on to a modu
 tools/addons/template/module/ to addons/<module>/ for a new module, with
 tools/addons/template/bcr/ to .bcr/addons/<module>/ for its releases,
 tools/addons/template/examples/ to examples/addons/<module>/ for its example applications
-in the root module, which it adds to the root's MODULE.bazel, and
+in the root module, regenerating the root's declarations of the add-on modules
+(tools/addons/declarations.py), and
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
 named like the module unless --addon names it. In these trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. The
 written files belong to the module from then on: nothing regenerates them.
 
-`addons/.selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
+`addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
 (`aspect work <lane>:addon-template`, tools/addons/selftest.py): it is regenerated from scratch
-each time and removed afterwards, with its entry in the root's MODULE.bazel.
+each time and removed afterwards, with its declaration.
 """
 
 import argparse
@@ -22,7 +23,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.addons import registry
+from tools.addons import declarations, registry
 from tools.addons.modules import ROOT, examples_path, module_name, module_path
 from tools.addons.uids import id_to_uid
 
@@ -31,10 +32,6 @@ TEMPLATE = Path(__file__).resolve().parent / "template"
 SUFFIX = ".tmpl"
 NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
-# The line of the root's MODULE.bazel after which the add-on modules are declared.
-DECLARATIONS = (
-    "# The add-on modules whose example applications examples/addons/<module>/ holds"
-)
 
 
 def words(name: str) -> list[str]:
@@ -56,7 +53,7 @@ class Names:
 
     @property
     def module(self) -> str:
-        return self.directory.removeprefix(".")
+        return self.directory
 
     @property
     def addon(self) -> str:
@@ -124,39 +121,10 @@ def generate(
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
         written += copy_tree("examples", root / examples_path(directory), tokens)
-        written.append(declare(directory, root))
+        written.append(declarations.write(root))
         if release:
             written += registry_templates(directory, root, tokens)
     return written + copy_tree("addon", module / names.addon, tokens)
-
-
-def declaration(directory: str) -> str:
-    """The root module's declaration of an add-on module, which its examples consume."""
-    name = module_name(Names(directory).module)
-    return (
-        f'\nbazel_dep(name = "{name}", version = "0.1.0", dev_dependency = True)\n'
-        f"local_path_override(\n"
-        f'    module_name = "{name}",\n'
-        f'    path = "{module_path(directory).as_posix()}",\n'
-        f")\n"
-    )
-
-
-def declare(directory: str, root: Path) -> Path:
-    """
-    Declare a new add-on module in the root's MODULE.bazel, after the others, unless a run
-    that ended before its cleanup, such as the self-test's, left it declared.
-    """
-    manifest = root / "MODULE.bazel"
-    text = manifest.read_text()
-    if declaration(directory) in text:
-        return manifest
-    start = text.index(DECLARATIONS)
-    # After the last add-on module's override, or else the comment that introduces them.
-    overrides = list(re.finditer(r'\n    path = "addons/[^"]+",\n\)\n', text))
-    end = overrides[-1].end() if overrides else text.index("\n", start) + 1
-    manifest.write_text(text[:end] + declaration(directory) + text[end:])
-    return manifest
 
 
 def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:

@@ -79,48 +79,10 @@ single_version_override(
 # (e2e/rules_godot/), built as a consumer builds them: every ruleset label is public, and every
 # repository they name is declared here. Shared pins equal those of the ruleset
 # (tools/setup/pins.py).
-bazel_dep(name = "autoload_gdunit", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_gdunit",
-    path = "addons/gdunit",
-)
 
-# The add-on modules whose example applications examples/addons/<module>/ holds.
-bazel_dep(name = "autoload_firebase", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_firebase",
-    path = "addons/firebase",
-)
-
-bazel_dep(name = "autoload_sentry", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_sentry",
-    path = "addons/sentry",
-)
-
-bazel_dep(name = "autoload_sqlite", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_sqlite",
-    path = "addons/sqlite",
-)
-
-bazel_dep(name = "autoload_platform_paths", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_platform_paths",
-    path = "addons/platform_paths",
-)
-
-bazel_dep(name = "autoload_app_auth", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_app_auth",
-    path = "addons/app_auth",
-)
-
-bazel_dep(name = "autoload_dart", version = "0.1.0", dev_dependency = True)
-local_path_override(
-    module_name = "autoload_dart",
-    path = "addons/dart",
-)
+# The add-on modules, each from its directory, in a segment generated from addons/
+# (tools/addons/declarations.py).
+include("//:addons.MODULE.bazel")
 
 bazel_dep(name = "rules_swift", version = "4.3.0", dev_dependency = True)
 bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
@@ -143,7 +105,7 @@ maven.install(
         "autoload_sentry",
         "protobuf",
     ],
-    lock_file = "//:maven_install.json",
+    lock_file = "//third_party/maven:maven_install.json",
     repositories = [
         "https://repo.maven.apache.org/maven2",
         "https://dl.google.com/dl/android/maven2",
@@ -165,7 +127,7 @@ use_repo(maven, "maven", "rules_android_maven")
 maven.install(
     name = "rules_android_maven",
     known_contributing_modules = ["rules_android"],
-    lock_file = "//:rules_android_maven_install.json",
+    lock_file = "//third_party/maven:rules_android_maven_install.json",
     repositories = [
         "https://maven-central.storage-download.googleapis.com/maven2",
         "https://maven.google.com",
@@ -176,7 +138,7 @@ maven.install(
 maven.install(
     name = "android_ide_common_30_1_3",
     known_contributing_modules = ["rules_android"],
-    lock_file = "//:android_ide_common_30_1_3_install.json",
+    lock_file = "//third_party/maven:android_ide_common_30_1_3_install.json",
     repositories = [
         "https://maven-central.storage-download.googleapis.com/maven2",
         "https://maven.google.com",
@@ -187,7 +149,7 @@ maven.install(
 maven.install(
     name = "bazel_worker_maven",
     known_contributing_modules = ["bazel_worker_java"],
-    lock_file = "//:bazel_worker_maven_install.json",
+    lock_file = "//third_party/maven:bazel_worker_maven_install.json",
     repositories = [
         "https://maven-central.storage-download.googleapis.com/maven2",
         "https://maven.google.com",

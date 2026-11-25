@@ -56,16 +56,27 @@ class WorkTest(unittest.TestCase):
         planned = lanes(all_work(self.root))
         self.assertEqual(planned["docs"], ["docs"])
         self.assertIn("test:bazel", planned["desktop"])
+        # One piece runs every module of a lane; the pieces per module run when named.
         self.assertEqual(
-            planned["desktop"][-3:],
-            ["desktop:addon:gadget", "desktop:addon:widget", "desktop:addon-template"],
+            planned["desktop"][-2:], ["desktop:addons", "desktop:addon-template"]
         )
         self.assertEqual(
-            planned["android"][-2:], ["android:addon:gadget", "android:addon-template"]
+            planned["android"][-2:], ["android:addons", "android:addon-template"]
         )
-        self.assertEqual(planned["ios"][-2:], ["ios:addon:widget", "ios:addon-template"])
+        self.assertEqual(planned["ios"][-2:], ["ios:addons", "ios:addon-template"])
+        self.assertEqual(
+            all_work(self.root)["ios:addons"].steps()[0].command,
+            "python3 -m tools.addons.lanes ios",
+        )
         # Work without a lane runs only when named.
-        self.assertFalse(any("inspect:mobile" in names for names in planned.values()))
+        for name in ("inspect:mobile", "desktop:addon:widget", "ios:addon:widget"):
+            self.assertFalse(any(name in names for names in planned.values()), name)
+
+    def test_a_module_s_own_work_runs_in_its_lane_s_profile(self) -> None:
+        work = all_work(self.root)
+        self.assertEqual("ios", work["ios:addon:widget"].bazel_profile)
+        self.assertIsNone(work["desktop:addon:widget"].bazel_profile)
+        self.assertTrue(work["android:addon:gadget"].android)
 
     def test_fast_tests_run_in_the_ruleset_only_when_named(self) -> None:
         # The root module's tests are test:tools, the API documentation's are docs.
@@ -85,11 +96,8 @@ class WorkTest(unittest.TestCase):
         )
         self.assertTrue(runs_on(template, "linux"))
         self.assertFalse(runs_on(template, "macos"))
-        # A module whose desktop lane covers every desktop system has no host-limited work.
-        (self.root / "other").mkdir()
-        checkout(self.root / "other", {"anywhere": '"desktop"'})
-        anywhere = next(addon_work(self.root / "other"))
-        self.assertEqual((anywhere.name, anywhere.hosts), ("desktop:addon:anywhere", ()))
+        # The modules' desktop lanes choose their desktop systems themselves.
+        self.assertEqual((), all_work(self.root)["desktop:addons"].hosts)
 
     def test_commands_run_with_their_own_variables(self) -> None:
         plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))
@@ -118,13 +126,14 @@ class WorkTest(unittest.TestCase):
         work = all_work(ROOT)
         for name, profile in (
             ("android", "android"),
-            ("contracts:android", "android"),
+            # The checker picks the lane's profile for its cases' configured queries.
+            ("contracts:android", "default"),
             ("ios", "ios"),
-            ("contracts:ios", "ios"),
+            ("contracts:ios", "default"),
             ("source-engine", "source-engine"),
             ("test:example:petri", "source-engine"),
             ("test:bazel", None),
-            ("contracts:desktop", None),
+            ("contracts:desktop", "default"),
             ("docs", None),
         ):
             self.assertEqual(profile, work[name].bazel_profile, name)

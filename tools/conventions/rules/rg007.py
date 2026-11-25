@@ -6,6 +6,7 @@ from pathlib import Path
 from tools.addons.modules import addon_manifest
 from tools.conventions.context import Context, Workspace
 from tools.conventions.framework import Finding, RuleInfo
+from tools.setup.modules import ADDONS
 
 # rules_godot's test operation; add-on modules declare theirs in addon.pkl's testOperations.
 OPERATIONS = frozenset({"godot_test"})
@@ -16,7 +17,7 @@ def declared_operations(workspace: Workspace) -> frozenset[str]:
     manifests = [
         path.as_posix()
         for module in workspace.module_paths
-        if module.parent == Path("addons")
+        if module.parent == Path(ADDONS)
         and (path := module / "addon.pkl").as_posix() in workspace.file_set
     ]
     return OPERATIONS.union(
