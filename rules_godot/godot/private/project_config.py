@@ -234,6 +234,19 @@ UNKNOWN_KIND = {
 }
 
 
+def _outside_godot(section: str | None, sections: Iterable[str] | None) -> bool:
+    """Whether a setting's section is none of Godot's; a root key is always Godot's."""
+    if sections is None or section is None:
+        return False
+    return section not in sections
+
+
+def setting_section(setting: str) -> str | None:
+    """The section of a setting_key identity, or None for a root key."""
+    section, separator, _ = setting.partition("/")
+    return section if separator else None
+
+
 def setting_kind(
     setting: str, kinds: dict[str, dict], sections: Iterable[str] | None
 ) -> dict | None:
@@ -257,14 +270,16 @@ def setting_kind(
     return UNKNOWN_KIND if _outside_godot(section, sections) else None
 
 
-def _outside_godot(section: str | None, sections: Iterable[str] | None) -> bool:
-    """Whether a setting's section is none of Godot's; a root key is always Godot's."""
-    if sections is None or section is None:
-        return False
-    return section not in sections
-
-
 _PACKED_STRING_ARRAY = "PackedStringArray("
+
+
+def _matched_bracket(char: str, closing: list[str]) -> str:
+    """Track an opening bracket, or close the innermost one with its own kind."""
+    if char in "([{":
+        closing.append(_CLOSING[char])
+    elif char in ")]}" and closing:
+        return closing.pop()
+    return char
 
 
 def _godot_value(literal: str) -> object:
@@ -289,15 +304,6 @@ def _godot_value(literal: str) -> object:
         return json.loads("".join(text))
     except ValueError:
         return None
-
-
-def _matched_bracket(char: str, closing: list[str]) -> str:
-    """Track an opening bracket, or close the innermost one with its own kind."""
-    if char in "([{":
-        closing.append(_CLOSING[char])
-    elif char in ")]}" and closing:
-        return closing.pop()
-    return char
 
 
 def _strings(value: object) -> list[str]:
@@ -390,6 +396,16 @@ def _declared(path: str, members: set[str], directory: bool) -> bool:
     return directory and any(member.startswith(path + "/") for member in members)
 
 
+def _value(text: str) -> str:
+    match = _ASSIGNMENT.match(text)
+    return text[match.end() :] if match else ""
+
+
+def setting_key(section: str | None, key: str) -> str:
+    """The section/property identity of a statement; root keys have no section."""
+    return f"{section}/{key}" if section else key
+
+
 def left_out(
     base: str,
     kinds: dict[str, dict],
@@ -431,6 +447,11 @@ def left_out(
     return result
 
 
+def feature_tags(key: str) -> list[str]:
+    """Return the feature tags of an override key such as ``method.mobile``."""
+    return key.split(".")[1:]
+
+
 def authored_autoloads(base: str) -> dict[str, str]:
     """
     Return the autoloads of an authored project.godot, name to value as Godot writes it.
@@ -453,11 +474,6 @@ def authored_autoloads(base: str) -> dict[str, str]:
     return autoloads
 
 
-def feature_tags(key: str) -> list[str]:
-    """Return the feature tags of an override key such as ``method.mobile``."""
-    return key.split(".")[1:]
-
-
 def override_applies(key: str, features: Collection[str] | None) -> bool:
     """
     Whether a setting key applies under features, as setting_values.bzl decides.
@@ -475,11 +491,6 @@ def override_tags(base: str, settings: Iterable[str]) -> list[str]:
     keys = [key for _, _, key in statement_groups(base) if key is not None]
     keys += [setting.split("/", 1)[1] for setting in settings]
     return sorted({tag for key in keys for tag in feature_tags(key)})
-
-
-def _value(text: str) -> str:
-    match = _ASSIGNMENT.match(text)
-    return text[match.end() :] if match else ""
 
 
 def enabled_plugins(text: str) -> list[str]:
@@ -509,6 +520,103 @@ def enable_plugins(text: str, plugins: Iterable[str]) -> str:
         return text
     paths = ", ".join(json.dumps(path) for path in sorted(enabled))
     return text.rstrip() + f"\n\n[editor_plugins]\nenabled=PackedStringArray({paths})\n"
+
+
+@dataclasses.dataclass(frozen=True)
+class _Purpose:
+    """The settings a purpose's project.godot carries; see compose_project."""
+
+    name: str
+    kinds: dict[str, dict]
+    sections: Iterable[str] | None
+    active_features: Collection[str] | None
+    context_only: bool
+
+    def carries(self, section: str | None, key: str, literal: str) -> bool:
+        """Whether the purpose carries a statement of section and key with literal."""
+        if section == "editor_plugins":
+            return False
+        kind = setting_kind(setting_key(section, key), self.kinds, self.sections)
+        if kind is not None and not self._carries_kind(kind, literal):
+            return False
+        # An override with no tag the editor of import actions has cannot affect an import.
+        return self.name != "import" or override_applies(key, self.active_features)
+
+    def _carries_kind(self, kind: dict, literal: str) -> bool:
+        if self.name not in kind["purposes"]:
+            return False
+        return not (self.context_only and _names_game_files(kind, literal))
+
+
+def _replacements(
+    settings: dict[str, str], autoloads: dict[str, str], main_scene: str
+) -> dict[str, str]:
+    """The settings a composition sets, to their validated or quoted Godot literals."""
+    replacements = {key: validate_literal(value) for key, value in settings.items()}
+    replacements.update(
+        {
+            "autoload/" + name: json.dumps(value, ensure_ascii=False)
+            for name, value in autoloads.items()
+        }
+    )
+    if main_scene:
+        replacements["application/run/main_scene"] = json.dumps(
+            main_scene, ensure_ascii=False
+        )
+    return replacements
+
+
+def _overrides_of(base: str, settings: Collection[str]) -> list[str]:
+    """The feature overrides of settings that base authors, such as ``key.mobile``."""
+    return [
+        setting
+        for _, section, key in statement_groups(base)
+        if key is not None
+        and feature_tags(key)
+        and (setting := setting_key(section, key)).partition(".")[0] in settings
+    ]
+
+
+def _empty_header(group: str, section: str | None, filled: set[str | None]) -> bool:
+    """Whether group is the header of a section none of whose settings stay."""
+    return section not in filled and _SECTION.match(group.strip()) is not None
+
+
+def _authored_settings(base: str, purpose: _Purpose, dropped: set[str]) -> str:
+    """The statements of base the purpose carries, except the dropped settings."""
+    kept = []
+    filled = set()
+    for group in statement_groups(base):
+        text, section, key = group
+        if key is not None:
+            setting = setting_key(section, key)
+            if setting in dropped or not purpose.carries(
+                section, key, _value(text).strip()
+            ):
+                continue
+            filled.add(section)
+        kept.append(group)
+    # A section none of whose settings the purpose carries leaves with its header.
+    return (
+        "".join(
+            group
+            for group, section, _ in kept
+            if not _empty_header(group, section, filled)
+        ).rstrip()
+        + "\n"
+    )
+
+
+def _added_settings(replacements: dict[str, str], purpose: _Purpose) -> str:
+    """The sections that append the replacements the purpose carries, in setting order."""
+    statements: dict[str, list[str]] = {}
+    for setting, value in sorted(replacements.items()):
+        section, key = setting.split("/", 1)
+        if purpose.carries(section, key, value):
+            statements.setdefault(section, []).append(f"{key}={value}\n")
+    return "".join(
+        f"\n[{section}]\n" + "".join(lines) for section, lines in statements.items()
+    )
 
 
 def compose_project(
@@ -577,103 +685,6 @@ def compose_project(
     return enable_plugins(text, editor_plugins) if editor_plugins else text
 
 
-@dataclasses.dataclass(frozen=True)
-class _Purpose:
-    """The settings a purpose's project.godot carries; see compose_project."""
-
-    name: str
-    kinds: dict[str, dict]
-    sections: Iterable[str] | None
-    active_features: Collection[str] | None
-    context_only: bool
-
-    def carries(self, section: str | None, key: str, literal: str) -> bool:
-        """Whether the purpose carries a statement of section and key with literal."""
-        if section == "editor_plugins":
-            return False
-        kind = setting_kind(setting_key(section, key), self.kinds, self.sections)
-        if kind is not None and not self._carries_kind(kind, literal):
-            return False
-        # An override with no tag the editor of import actions has cannot affect an import.
-        return self.name != "import" or override_applies(key, self.active_features)
-
-    def _carries_kind(self, kind: dict, literal: str) -> bool:
-        if self.name not in kind["purposes"]:
-            return False
-        return not (self.context_only and _names_game_files(kind, literal))
-
-
-def _replacements(
-    settings: dict[str, str], autoloads: dict[str, str], main_scene: str
-) -> dict[str, str]:
-    """The settings a composition sets, to their validated or quoted Godot literals."""
-    replacements = {key: validate_literal(value) for key, value in settings.items()}
-    replacements.update(
-        {
-            "autoload/" + name: json.dumps(value, ensure_ascii=False)
-            for name, value in autoloads.items()
-        }
-    )
-    if main_scene:
-        replacements["application/run/main_scene"] = json.dumps(
-            main_scene, ensure_ascii=False
-        )
-    return replacements
-
-
-def _overrides_of(base: str, settings: Collection[str]) -> list[str]:
-    """The feature overrides of settings that base authors, such as ``key.mobile``."""
-    return [
-        setting
-        for _, section, key in statement_groups(base)
-        if key is not None
-        and feature_tags(key)
-        and (setting := setting_key(section, key)).partition(".")[0] in settings
-    ]
-
-
-def _authored_settings(base: str, purpose: _Purpose, dropped: set[str]) -> str:
-    """The statements of base the purpose carries, except the dropped settings."""
-    kept = []
-    filled = set()
-    for group in statement_groups(base):
-        text, section, key = group
-        if key is not None:
-            setting = setting_key(section, key)
-            if setting in dropped or not purpose.carries(
-                section, key, _value(text).strip()
-            ):
-                continue
-            filled.add(section)
-        kept.append(group)
-    # A section none of whose settings the purpose carries leaves with its header.
-    return (
-        "".join(
-            group
-            for group, section, _ in kept
-            if not _empty_header(group, section, filled)
-        ).rstrip()
-        + "\n"
-    )
-
-
-def _empty_header(group: str, section: str | None, filled: set[str | None]) -> bool:
-    """Whether group is the header of a section none of whose settings stay."""
-    return section not in filled and _SECTION.match(group.strip()) is not None
-
-
-def _added_settings(replacements: dict[str, str], purpose: _Purpose) -> str:
-    """The sections that append the replacements the purpose carries, in setting order."""
-    statements: dict[str, list[str]] = {}
-    for setting, value in sorted(replacements.items()):
-        section, key = setting.split("/", 1)
-        if purpose.carries(section, key, value):
-            statements.setdefault(section, []).append(f"{key}={value}\n")
-    return "".join(
-        f"\n[{section}]\n" + "".join(lines) for section, lines in statements.items()
-    )
-
-
 def shadowed(base: str, flag_keys: dict[str, str]) -> list[str]:
     """
     Describe each feature override in base of a setting a project's settings_from_flags
@@ -701,17 +712,6 @@ def shadowed(base: str, flag_keys: dict[str, str]) -> list[str]:
     return found
 
 
-def setting_key(section: str | None, key: str) -> str:
-    """The section/property identity of a statement; root keys have no section."""
-    return f"{section}/{key}" if section else key
-
-
-def setting_section(setting: str) -> str | None:
-    """The section of a setting_key identity, or None for a root key."""
-    section, separator, _ = setting.partition("/")
-    return section if separator else None
-
-
 def _statements(text: str) -> dict[str, str]:
     """Map each setting to its statement, ending in a newline; the last one wins."""
     return {
@@ -724,22 +724,6 @@ def _statements(text: str) -> dict[str, str]:
 def _setting_value(statements: dict[str, str], setting: str) -> str | None:
     statement = statements.get(setting)
     return None if statement is None else _value(statement).strip()
-
-
-def _replace(text: str, setting: str, statement: str | None) -> str:
-    """Replace, insert or, for None, remove one setting's statement in text."""
-    groups = statement_groups(text)
-    assigns = [
-        key is not None and setting_key(section, key) == setting
-        for _, section, key in groups
-    ]
-    if not any(assigns):
-        return text if statement is None else _insert(groups, setting, statement)
-    # The first statement of the setting becomes the new one; any later one leaves.
-    result = [group for (group, _, _), match in zip(groups, assigns) if not match]
-    if statement is not None:
-        result.insert(assigns.index(True), statement)
-    return "".join(result)
 
 
 def _insert(
@@ -761,6 +745,22 @@ def _insert(
     if section is None:
         return statement + "".join(result)
     return "".join(result).rstrip() + f"\n\n[{section}]\n\n{statement}"
+
+
+def _replace(text: str, setting: str, statement: str | None) -> str:
+    """Replace, insert or, for None, remove one setting's statement in text."""
+    groups = statement_groups(text)
+    assigns = [
+        key is not None and setting_key(section, key) == setting
+        for _, section, key in groups
+    ]
+    if not any(assigns):
+        return text if statement is None else _insert(groups, setting, statement)
+    # The first statement of the setting becomes the new one; any later one leaves.
+    result = [group for (group, _, _), match in zip(groups, assigns) if not match]
+    if statement is not None:
+        result.insert(assigns.index(True), statement)
+    return "".join(result)
 
 
 @dataclasses.dataclass

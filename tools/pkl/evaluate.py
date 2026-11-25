@@ -37,16 +37,6 @@ class PklError(RuntimeError):
     """A Pkl module that does not evaluate, such as one whose values break its schema."""
 
 
-@functools.cache
-def cli() -> str:
-    """The path of the Pkl CLI."""
-    if (path := os.environ.get("PKL_CLI")) and os.path.exists(path):
-        return path
-    if (path := runfile()) is not None:
-        return path
-    return built()
-
-
 def runfile() -> str | None:
     """The CLI in this process's runfiles, when Bazel runs it."""
     try:
@@ -76,27 +66,20 @@ def built() -> str:
     return str(ROOT / files.stdout.strip())
 
 
+@functools.cache
+def cli() -> str:
+    """The path of the Pkl CLI."""
+    if (path := os.environ.get("PKL_CLI")) and os.path.exists(path):
+        return path
+    if (path := runfile()) is not None:
+        return path
+    return built()
+
+
 def first_line(text: str) -> str:
     """A Pkl module's first line, after comments, such as the one that amends its schema."""
     lines = (line.split("//")[0].strip() for line in text.splitlines())
     return next((line for line in lines if line), "")
-
-
-def manifest(path: Path, amends: str) -> dict[str, Any]:
-    """
-    A manifest that amends a schema, as Pkl evaluates it with the schema's defaults and
-    types, once per process and text; one that does not amend the schema does not evaluate.
-    """
-    text = path.read_text()
-    if first_line(text) != amends:
-        raise PklError(f"{path}: starts with {amends}")
-    return _evaluated(path, text)
-
-
-@functools.cache
-def _evaluated(path: Path, text: str) -> dict[str, Any]:
-    """The evaluation of one manifest's text."""
-    return evaluate(path)
 
 
 def evaluate(path: Path, expression: str | None = None) -> Any:
@@ -112,3 +95,20 @@ def evaluate(path: Path, expression: str | None = None) -> Any:
     if result.returncode != 0:
         raise PklError(f"{path}: {result.stderr.strip()}")
     return json.loads(result.stdout)
+
+
+@functools.cache
+def _evaluated(path: Path, text: str) -> dict[str, Any]:
+    """The evaluation of one manifest's text."""
+    return evaluate(path)
+
+
+def manifest(path: Path, amends: str) -> dict[str, Any]:
+    """
+    A manifest that amends a schema, as Pkl evaluates it with the schema's defaults and
+    types, once per process and text; one that does not amend the schema does not evaluate.
+    """
+    text = path.read_text()
+    if first_line(text) != amends:
+        raise PklError(f"{path}: starts with {amends}")
+    return _evaluated(path, text)

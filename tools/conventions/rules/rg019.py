@@ -8,6 +8,16 @@ from tools.conventions.context import Context, Location
 from tools.conventions.framework import Finding, RuleInfo
 
 
+def projects(context: Context) -> dict[str, set[str | None]]:
+    """The names of the projects that each BUILD file declares."""
+    names: dict[str, set[str | None]] = defaultdict(set)
+    for module in context.workspace.modules:
+        for call in context.starlark.calls(module):
+            if call.kind == "godot_project":
+                names[call.location.path].add(call.literal_name)
+    return names
+
+
 class ProjectTargetNames:
     info = RuleInfo(
         "RG019",
@@ -32,13 +42,3 @@ class ProjectTargetNames:
                     f"name the project of {package.as_posix()} like its directory: "
                     f"{package.name}",
                 )
-
-
-def projects(context: Context) -> dict[str, set[str | None]]:
-    """The names of the projects that each BUILD file declares."""
-    names: dict[str, set[str | None]] = defaultdict(set)
-    for module in context.workspace.modules:
-        for call in context.starlark.calls(module):
-            if call.kind == "godot_project":
-                names[call.location.path].add(call.literal_name)
-    return names

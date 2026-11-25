@@ -62,6 +62,26 @@ def module_attributes(manifest: str) -> dict[str, object]:
     return {}
 
 
+def examples_path(directory: str) -> Path:
+    """The examples of the add-on module addons/<directory>, relative to the repository root."""
+    return ADDON_EXAMPLES / directory
+
+
+def e2e_path(directory: str) -> Path:
+    """The end-to-end tests of the add-on module addons/<directory>, relative to the root."""
+    return ADDON_E2E / directory
+
+
+def example_projects(examples: Path, configured: Collection[Path]) -> tuple[Path, ...]:
+    """
+    A module's example projects, given the directories with a project.godot: the examples
+    themselves when they are one project, else each subdirectory with a project.
+    """
+    if examples in configured:
+        return (examples,)
+    return tuple(sorted(d for d in configured if d.parent == examples))
+
+
 @dataclass(frozen=True)
 class AddonModule:
     """One module `addons/<directory>`, read from its own files."""
@@ -128,26 +148,6 @@ class AddonModule:
             test_operations=manifest["testOperations"],
             end_to_end=(root / e2e_path(path.name)).is_dir(),
         )
-
-
-def examples_path(directory: str) -> Path:
-    """The examples of the add-on module addons/<directory>, relative to the repository root."""
-    return ADDON_EXAMPLES / directory
-
-
-def e2e_path(directory: str) -> Path:
-    """The end-to-end tests of the add-on module addons/<directory>, relative to the root."""
-    return ADDON_E2E / directory
-
-
-def example_projects(examples: Path, configured: Collection[Path]) -> tuple[Path, ...]:
-    """
-    A module's example projects, given the directories with a project.godot: the examples
-    themselves when they are one project, else each subdirectory with a project.
-    """
-    if examples in configured:
-        return (examples,)
-    return tuple(sorted(d for d in configured if d.parent == examples))
 
 
 def module_path(directory: str) -> Path:

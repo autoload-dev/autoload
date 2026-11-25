@@ -252,6 +252,12 @@ def addon_app_packages(lane: str, root: Path = ROOT) -> tuple[str, ...]:
     )
 
 
+def apps(packages: Iterable[str]) -> str:
+    """The packages' apps and their debug symbols as Bazel targets."""
+    suffixes = (":app", ":app.debug_symbols")
+    return " ".join(package + suffix for package in packages for suffix in suffixes)
+
+
 def release_builds(lane: str, flags: str) -> str:
     """
     The release builds of every application of a mobile lane with their debug symbols: the
@@ -262,12 +268,6 @@ def release_builds(lane: str, flags: str) -> str:
         *addon_app_packages(lane),
     )
     return f"bazel build {apps(packages)}{flags}"
-
-
-def apps(packages: Iterable[str]) -> str:
-    """The packages' apps and their debug symbols as Bazel targets."""
-    suffixes = (":app", ":app.debug_symbols")
-    return " ".join(package + suffix for package in packages for suffix in suffixes)
 
 
 # The repository's own work, in the order a lane runs it. A piece without a lane runs only
@@ -473,24 +473,6 @@ WORK = (
 )
 
 
-def addon_work(root: Path = ROOT) -> Iterator[Work]:
-    """
-    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
-    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
-    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
-    generator's self-test in every lane. The self-test's desktop build checks the template
-    the same way on every host, so its desktop lane runs on Linux only.
-    """
-    modules = all_modules(root)
-    lanes = choices()["lanes"]
-    named = {lane for module in modules for lane in module.lanes}
-    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
-    yield from (
-        module_work(lane, module.directory) for module in modules for lane in module.lanes
-    )
-    yield from map(template_work, lanes)
-
-
 def lane_addon_work(lane: str) -> Work:
     """Every add-on module of a lane, with one Bazel command."""
     return Work(
@@ -529,11 +511,6 @@ def template_work(lane: str) -> Work:
     )
 
 
-def all_work(root: Path = ROOT) -> dict[str, Work]:
-    """Every piece of work, by name: the repository's own and the add-on modules'."""
-    return {work.name: work for work in (*WORK, *addon_work(root))}
-
-
 def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
     """The names of each lane's work, in order."""
     planned: dict[str, list[str]] = {lane: [] for lane in LANES}
@@ -541,6 +518,29 @@ def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
         if work.lane is not None:
             planned[work.lane].append(work.name)
     return planned
+
+
+def addon_work(root: Path = ROOT) -> Iterator[Work]:
+    """
+    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
+    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
+    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
+    generator's self-test in every lane. The self-test's desktop build checks the template
+    the same way on every host, so its desktop lane runs on Linux only.
+    """
+    modules = all_modules(root)
+    lanes = choices()["lanes"]
+    named = {lane for module in modules for lane in module.lanes}
+    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
+    yield from (
+        module_work(lane, module.directory) for module in modules for lane in module.lanes
+    )
+    yield from map(template_work, lanes)
+
+
+def all_work(root: Path = ROOT) -> dict[str, Work]:
+    """Every piece of work, by name: the repository's own and the add-on modules'."""
+    return {work.name: work for work in (*WORK, *addon_work(root))}
 
 
 def runs_on(work: Work, host: str) -> bool:
@@ -576,6 +576,18 @@ def environment() -> dict[str, str]:
     return {**os.environ, "PATH": path}
 
 
+def where(step: In, steps: list[In]) -> str:
+    """A step by its directory, or with its command where other steps share it."""
+    alone = [s.directory for s in steps].count(step.directory) == 1
+    return step.directory if alone else f"{step.directory}$ {step.command}"
+
+
+def changes(ref: str | None) -> Changes | None:
+    """The changes since the merge base with a reference, if one is given."""
+    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
+    return changes_since(ref, ROOT, modules) if ref else None
+
+
 def selected(work: Work, changes: Changes | None) -> list[In]:
     """
     The steps of a piece of work to run: all of them without changes, else those without
@@ -593,12 +605,6 @@ def selected(work: Work, changes: Changes | None) -> list[In]:
                 f"[{work.name}] {where(step, steps)} skipped: no change since {changes.base}"
             )
     return chosen
-
-
-def where(step: In, steps: list[In]) -> str:
-    """A step by its directory, or with its command where other steps share it."""
-    alone = [s.directory for s in steps].count(step.directory) == 1
-    return step.directory if alone else f"{step.directory}$ {step.command}"
 
 
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
@@ -653,6 +659,12 @@ def run_lane(lane: str, root: Path = ROOT) -> None:
     run(lanes(known)[lane], root, known)
 
 
+def print_work() -> None:
+    """List every piece of work with its lane."""
+    for name, work in all_work().items():
+        print(f"{work.lane or '-':14} {name}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -677,18 +689,6 @@ def main() -> None:
             print_work()
     except ValueError as error:
         parser.error(str(error))
-
-
-def changes(ref: str | None) -> Changes | None:
-    """The changes since the merge base with a reference, if one is given."""
-    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
-    return changes_since(ref, ROOT, modules) if ref else None
-
-
-def print_work() -> None:
-    """List every piece of work with its lane."""
-    for name, work in all_work().items():
-        print(f"{work.lane or '-':14} {name}")
 
 
 if __name__ == "__main__":

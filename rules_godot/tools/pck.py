@@ -31,44 +31,19 @@ class _Entry:
     flags: int
 
 
-def pck_contents(data: bytes, include_paths: bool = False) -> dict[str, Any]:
-    """Read a Godot 4.7.2+ unencrypted standalone PCK v4 directory."""
-    return _pck_contents(io.BytesIO(data), len(data), include_paths)
-
-
-def pck_file_contents(
-    path: str | os.PathLike[str], include_paths: bool = False
-) -> dict[str, Any]:
-    """Inspect a PCK directory without loading all asset contents into memory."""
-    with Path(path).open("rb") as source:
-        return _pck_contents(source, Path(path).stat().st_size, include_paths)
-
-
-def pck_member(data: bytes, path: str) -> bytes:
-    """Return the bytes of a packed file by its path, with or without res://."""
-    return _member(io.BytesIO(data), len(data), path)
-
-
-def pck_file_member(source: str | os.PathLike[str], path: str) -> bytes:
-    """Return one packed file without loading the other asset contents into memory."""
-    with Path(source).open("rb") as pack:
-        return _member(pack, Path(source).stat().st_size, path)
-
-
-def _member(source: IO[bytes], file_size: int, path: str) -> bytes:
-    _, entries = _directory(source, file_size)
-    name = path.removeprefix("res://")
-    for entry in entries:
-        if entry.path.removeprefix("res://") == name:
-            return _content(source, entry)
-    raise KeyError(f"PCK has no file {path}")
-
-
 def _exact(source: IO[bytes], size: int) -> bytes:
     value = source.read(size)
     if len(value) != size:
         raise ValueError("truncated PCK directory")
     return value
+
+
+def _content(source: IO[bytes], entry: _Entry) -> bytes:
+    position = source.tell()
+    source.seek(entry.offset)
+    data = _exact(source, entry.size)
+    source.seek(position)
+    return data
 
 
 def _read(source: IO[bytes], fmt: str) -> tuple[Any, ...]:
@@ -110,14 +85,6 @@ def _directory(source: IO[bytes], file_size: int) -> tuple[bytes, list[_Entry]]:
     return header, entries
 
 
-def _content(source: IO[bytes], entry: _Entry) -> bytes:
-    position = source.tell()
-    source.seek(entry.offset)
-    data = _exact(source, entry.size)
-    source.seek(position)
-    return data
-
-
 def _pck_contents(
     source: IO[bytes], file_size: int, include_paths: bool
 ) -> dict[str, Any]:
@@ -138,6 +105,39 @@ def _pck_contents(
         "extension_list": [line for line in extension_list if line.strip()],
         **({"paths": sorted(entry.path for entry in entries)} if include_paths else {}),
     }
+
+
+def pck_contents(data: bytes, include_paths: bool = False) -> dict[str, Any]:
+    """Read a Godot 4.7.2+ unencrypted standalone PCK v4 directory."""
+    return _pck_contents(io.BytesIO(data), len(data), include_paths)
+
+
+def pck_file_contents(
+    path: str | os.PathLike[str], include_paths: bool = False
+) -> dict[str, Any]:
+    """Inspect a PCK directory without loading all asset contents into memory."""
+    with Path(path).open("rb") as source:
+        return _pck_contents(source, Path(path).stat().st_size, include_paths)
+
+
+def _member(source: IO[bytes], file_size: int, path: str) -> bytes:
+    _, entries = _directory(source, file_size)
+    name = path.removeprefix("res://")
+    for entry in entries:
+        if entry.path.removeprefix("res://") == name:
+            return _content(source, entry)
+    raise KeyError(f"PCK has no file {path}")
+
+
+def pck_member(data: bytes, path: str) -> bytes:
+    """Return the bytes of a packed file by its path, with or without res://."""
+    return _member(io.BytesIO(data), len(data), path)
+
+
+def pck_file_member(source: str | os.PathLike[str], path: str) -> bytes:
+    """Return one packed file without loading the other asset contents into memory."""
+    with Path(source).open("rb") as pack:
+        return _member(pack, Path(source).stat().st_size, path)
 
 
 def _pad(destination: IO[bytes]) -> None:

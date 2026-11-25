@@ -20,6 +20,11 @@ from tools.conventions.layout import EXAMPLES_ROOT, is_end_to_end
 from tools.conventions.rules.rg007 import declared_operations
 
 
+def is_test(kind: str, operations: frozenset[str]) -> bool:
+    """Whether a call declares a test: a test operation or a rule named like one."""
+    return kind in operations or kind.endswith("_test")
+
+
 def root_tests(context: Context) -> Iterable[Finding]:
     """Report the tests an application project's root package declares."""
     workspace = context.workspace
@@ -40,11 +45,6 @@ def root_tests(context: Context) -> Iterable[Finding]:
                 call.location,
                 f"an application's tests live in {project / 'tests'}/: :{call.literal_name}",
             )
-
-
-def is_test(kind: str, operations: frozenset[str]) -> bool:
-    """Whether a call declares a test: a test operation or a rule named like one."""
-    return kind in operations or kind.endswith("_test")
 
 
 class ApplicationContent:

@@ -21,6 +21,8 @@ from tools.conventions.rules.rg020 import RegistryTestModules
 from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
 from tools.conventions.rules.rg022 import NoComponentNames
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
+from tools.conventions.rules.rg024 import RegionHeaders
+from tools.conventions.rules.rg025 import ReadingOrder
 
 RULES: tuple[Rule, ...] = (
     PackageNames(),
@@ -43,6 +45,8 @@ RULES: tuple[Rule, ...] = (
     NoGodotRunsInAddonModules(),
     NoComponentNames(),
     ReleasedWithoutTests(),
+    RegionHeaders(),
+    ReadingOrder(),
 )
 
 

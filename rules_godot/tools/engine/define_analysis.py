@@ -57,6 +57,10 @@ def header(library: str) -> str:
     return f"_macros/{library}.h"
 
 
+def _defines_target(library: str) -> str:
+    return library + "__defines"
+
+
 def defines_rule(library: Library) -> str:
     """The godot_source_defines target of a source, with its library's options."""
     return (
@@ -66,6 +70,23 @@ def defines_rule(library: Library) -> str:
         f"local_defines = {library.local_defines!r}, includes = {library.includes}, "
         f"deps = {library.deps!r})"
     )
+
+
+def _directory(source: str) -> str:
+    """The directory a source shards by: its top-level one, or below _NESTED the next."""
+    parts = source.split("/")[:-1] or ["_root"]
+    return "__".join(parts[: 2 if parts[0] in _NESTED else 1])
+
+
+def _chunks(members: list[Library], size: int) -> list[list[Library]]:
+    """
+    Split sorted members into the fewest runs of at most size, as even as possible.
+
+    Runs keep neighbouring sources, which tend to share headers, in one shard.
+    """
+    count = -(-len(members) // size)
+    per = -(-len(members) // count)
+    return [members[start : start + per] for start in range(0, len(members), per)]
 
 
 def analysis_rules(libraries: Iterable[Library], size: int = SHARD_SIZE) -> list[str]:
@@ -85,24 +106,3 @@ def analysis_rules(libraries: Iterable[Library], size: int = SHARD_SIZE) -> list
                 f"outs = {[header(member.name) for member in chunk]!r})"
             )
     return lines
-
-
-def _defines_target(library: str) -> str:
-    return library + "__defines"
-
-
-def _directory(source: str) -> str:
-    """The directory a source shards by: its top-level one, or below _NESTED the next."""
-    parts = source.split("/")[:-1] or ["_root"]
-    return "__".join(parts[: 2 if parts[0] in _NESTED else 1])
-
-
-def _chunks(members: list[Library], size: int) -> list[list[Library]]:
-    """
-    Split sorted members into the fewest runs of at most size, as even as possible.
-
-    Runs keep neighbouring sources, which tend to share headers, in one shard.
-    """
-    count = -(-len(members) // size)
-    per = -(-len(members) // count)
-    return [members[start : start + per] for start in range(0, len(members), per)]

@@ -103,9 +103,6 @@ def original_title(title: str, translation: Translation) -> str:
     return f"{match.group(1)}:{translation.original_line(int(match.group(2)))}"
 
 
-# --- translations -------------------------------------------------------------------
-
-
 def starlark(path: str, source: str, macro_arguments: bool) -> Translation:
     """
     Starlark as Python, without its documentation; macros exempt from the

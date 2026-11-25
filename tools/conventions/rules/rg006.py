@@ -18,6 +18,20 @@ LABEL = re.compile(rf"(?<![\w/@:])(?:{re.escape(REPO)})?//[\w./-]*(?::[\w.*+/-]+
 WILDCARDS = {"all", "*", "all-targets"}
 
 
+def _labels(line: str) -> Iterable[str]:
+    for command in COMMAND.finditer(line):
+        # Everything after -- is an application's argument, not Bazel's.
+        arguments = command[1].split(" -- ", 1)[0].split(" #", 1)[0]
+        for match in LABEL.finditer(arguments):
+            if "..." in match[0]:
+                continue
+            # A sentence may end right after the label.
+            label = match[0].removesuffix(".")
+            if re.match(r"//path/to(?:[/:]|$)", label.removeprefix(REPO)):
+                continue
+            yield label
+
+
 def command_labels(text: str) -> list[tuple[int, str]]:
     """Return each command label with the line on which its command starts."""
     labels: list[tuple[int, str]] = []
@@ -32,20 +46,6 @@ def command_labels(text: str) -> list[tuple[int, str]]:
         command = ""
     labels.extend((start, label) for label in _labels(command))
     return labels
-
-
-def _labels(line: str) -> Iterable[str]:
-    for command in COMMAND.finditer(line):
-        # Everything after -- is an application's argument, not Bazel's.
-        arguments = command[1].split(" -- ", 1)[0].split(" #", 1)[0]
-        for match in LABEL.finditer(arguments):
-            if "..." in match[0]:
-                continue
-            # A sentence may end right after the label.
-            label = match[0].removesuffix(".")
-            if re.match(r"//path/to(?:[/:]|$)", label.removeprefix(REPO)):
-                continue
-            yield label
 
 
 class CommandLabels:

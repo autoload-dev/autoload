@@ -197,6 +197,28 @@ def _generated_includes(path: str, generated: Generated, resolver: _Resolver) ->
     return found
 
 
+def _option_headers(
+    groups: Iterable[CompileGroup], resolver: _Resolver
+) -> dict[str, set[str]]:
+    """Return each source mapped to the headers its group's options name."""
+    forced: dict[str, set[str]] = {}
+    for group in groups:
+        _directories, names = option_includes(group.copts)
+        for source in group.sources:
+            forced.setdefault(source, set()).update(
+                found for name in names for found in resolver.resolve(source, name)
+            )
+    return forced
+
+
+def _includes(
+    root: Path, path: str, generated: Mapping[str, Generated], resolver: _Resolver
+) -> frozenset[str]:
+    if path in generated:
+        return frozenset(_generated_includes(path, generated[path], resolver))
+    return frozenset(_file_includes(root, path, resolver))
+
+
 def include_graph(
     root: Path,
     groups: Iterable[CompileGroup],
@@ -227,68 +249,6 @@ def include_graph(
             )
             pending.extend(graph[path])
     return graph
-
-
-def _option_headers(
-    groups: Iterable[CompileGroup], resolver: _Resolver
-) -> dict[str, set[str]]:
-    """Return each source mapped to the headers its group's options name."""
-    forced: dict[str, set[str]] = {}
-    for group in groups:
-        _directories, names = option_includes(group.copts)
-        for source in group.sources:
-            forced.setdefault(source, set()).update(
-                found for name in names for found in resolver.resolve(source, name)
-            )
-    return forced
-
-
-def _includes(
-    root: Path, path: str, generated: Mapping[str, Generated], resolver: _Resolver
-) -> frozenset[str]:
-    if path in generated:
-        return frozenset(_generated_includes(path, generated[path], resolver))
-    return frozenset(_file_includes(root, path, resolver))
-
-
-def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
-    """
-    Return the strongly connected components of an include graph, dependencies first.
-
-    Header guards let headers include each other; Bazel dependencies cannot form cycles,
-    and the files of a cycle are included together anyway.
-    """
-    return _Components(graph).search()
-
-
-def reached_directories(
-    graph: Mapping[str, Collection[str]], directories: Iterable[str]
-) -> dict[str, frozenset[str]]:
-    """
-    Return each file of an include graph mapped to the directories, as spelled, that hold
-    it or a file it includes, transitively, at any depth.
-
-    The scan resolves an include to every directory that has the file, so an include
-    directory that holds no file a source reaches resolves none of its includes. The
-    source root, ".", holds every file.
-    """
-    spellings: dict[str, set[str]] = {}
-    for directory in directories:
-        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
-    reached: dict[str, frozenset[str]] = {}
-    # Dependencies come first, and the files of a cycle reach the same directories.
-    for component in components(graph):
-        found = {
-            spelling
-            for name in component
-            for parent in PurePosixPath(name).parents
-            for spelling in spellings.get(str(parent), ())
-        }
-        for name in component:
-            for include in graph[name]:
-                found |= reached.get(include, frozenset())
-        reached.update(dict.fromkeys(component, frozenset(found)))
-    return reached
 
 
 class _Components:
@@ -341,3 +301,43 @@ class _Components:
             component.append(self.stack.pop())
             self.on_stack.discard(component[-1])
         return sorted(component)
+
+
+def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
+    """
+    Return the strongly connected components of an include graph, dependencies first.
+
+    Header guards let headers include each other; Bazel dependencies cannot form cycles,
+    and the files of a cycle are included together anyway.
+    """
+    return _Components(graph).search()
+
+
+def reached_directories(
+    graph: Mapping[str, Collection[str]], directories: Iterable[str]
+) -> dict[str, frozenset[str]]:
+    """
+    Return each file of an include graph mapped to the directories, as spelled, that hold
+    it or a file it includes, transitively, at any depth.
+
+    The scan resolves an include to every directory that has the file, so an include
+    directory that holds no file a source reaches resolves none of its includes. The
+    source root, ".", holds every file.
+    """
+    spellings: dict[str, set[str]] = {}
+    for directory in directories:
+        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
+    reached: dict[str, frozenset[str]] = {}
+    # Dependencies come first, and the files of a cycle reach the same directories.
+    for component in components(graph):
+        found = {
+            spelling
+            for name in component
+            for parent in PurePosixPath(name).parents
+            for spelling in spellings.get(str(parent), ())
+        }
+        for name in component:
+            for include in graph[name]:
+                found |= reached.get(include, frozenset())
+        reached.update(dict.fromkeys(component, frozenset(found)))
+    return reached

@@ -153,6 +153,28 @@ def accesskit_symbols(library: Path, directory: Path) -> tuple[str, list[str]]:
     return "\n".join(definitions), members
 
 
+def source_build_manifest(path: Path) -> dict:
+    """Return the source-built engine's manifest after checking what it was built from."""
+    manifest = json.loads(path.read_text())
+    if (
+        manifest.get("version") not in {"4.8.0-beta", "4.8.0-beta1"}
+        or manifest.get("platform") != "ios"
+    ):
+        raise ValueError(
+            "Source-built engine manifest does not describe Godot 4.8 Beta for iOS"
+        )
+    if "bazel_probe" not in manifest.get("selected_modules", []):
+        raise ValueError(
+            "Source-built engine manifest is missing the custom bazel_probe module"
+        )
+    if not manifest.get("build_profile_scoped"):
+        raise ValueError(
+            "Every source of the source-built engine sees the build profile: its "
+            "class_db.h no longer matches tools/engine/build_profile.py"
+        )
+    return manifest
+
+
 def verify(args: argparse.Namespace) -> dict[str, Any]:
     check_mode(args.kind, args.expected_environment, args.artifact is not None)
     # Read the actual selected engine libraries. A source-built engine consists
@@ -297,28 +319,6 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
     if args.engine_manifest:
         result["engine_manifest"] = source_build_manifest(args.engine_manifest)
     return result
-
-
-def source_build_manifest(path: Path) -> dict:
-    """Return the source-built engine's manifest after checking what it was built from."""
-    manifest = json.loads(path.read_text())
-    if (
-        manifest.get("version") not in {"4.8.0-beta", "4.8.0-beta1"}
-        or manifest.get("platform") != "ios"
-    ):
-        raise ValueError(
-            "Source-built engine manifest does not describe Godot 4.8 Beta for iOS"
-        )
-    if "bazel_probe" not in manifest.get("selected_modules", []):
-        raise ValueError(
-            "Source-built engine manifest is missing the custom bazel_probe module"
-        )
-    if not manifest.get("build_profile_scoped"):
-        raise ValueError(
-            "Every source of the source-built engine sees the build profile: its "
-            "class_db.h no longer matches tools/engine/build_profile.py"
-        )
-    return manifest
 
 
 def main() -> None:

@@ -167,6 +167,15 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
     return lines
 
 
+def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
+    return (
+        rule
+        + "(\n"
+        + "".join(f"    {key} = {value!r},\n" for key, value in attributes.items())
+        + ")"
+    )
+
+
 def _generator_rules(
     root: Path, generators: Sequence[tuple[dict[str, Any], set[str]]]
 ) -> tuple[list[str], list[str]]:
@@ -247,15 +256,6 @@ def _source_deps(
 ) -> list[str]:
     """The source root's include directory and the header targets of a source's includes."""
     return [":_root", *sorted({targets[name] for name in graph[source]})]
-
-
-def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
-    return (
-        rule
-        + "(\n"
-        + "".join(f"    {key} = {value!r},\n" for key, value in attributes.items())
-        + ")"
-    )
 
 
 def object_library_name(source: str, group: int, taken: Container[str]) -> str:

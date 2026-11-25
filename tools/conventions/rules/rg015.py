@@ -139,6 +139,20 @@ def regular_dependencies(manifest: str) -> set[str]:
     }
 
 
+def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> bool:
+    """Whether some of the files name a repository in a string, all of them in tests/."""
+    label = f"@{repository}"
+    uses = [
+        Path(name)
+        for name in files
+        if any(
+            literal.value == label or literal.value.startswith(f"{label}//")
+            for literal in workspace.strings(name)
+        )
+    ]
+    return bool(uses) and all(TESTS in use.parts for use in uses)
+
+
 def test_dependency_problems(
     workspace: Workspace, module: Path, listed: tuple[str, ...]
 ) -> Iterable[str]:
@@ -155,20 +169,6 @@ def test_dependency_problems(
         yield f"only tests load {name}: list it in addon.pkl's testDependencies"
     for name in sorted((set(listed) & regular) - tests_only):
         yield f"addon.pkl's testDependencies names {name}, which tests alone do not load"
-
-
-def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> bool:
-    """Whether some of the files name a repository in a string, all of them in tests/."""
-    label = f"@{repository}"
-    uses = [
-        Path(name)
-        for name in files
-        if any(
-            literal.value == label or literal.value.startswith(f"{label}//")
-            for literal in workspace.strings(name)
-        )
-    ]
-    return bool(uses) and all(TESTS in use.parts for use in uses)
 
 
 class AddonModuleLayout:

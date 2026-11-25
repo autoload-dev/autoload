@@ -58,6 +58,21 @@ class Module:
         )
 
 
+def location(root: Path, base: Path, value: str) -> Location:
+    """Resolve a ``path:line:column`` value; relative paths start at base."""
+    path, line, _column = value.rsplit(":", 2)
+    source = Path(path)
+    if not source.is_absolute():
+        source = base / source
+    source = source.resolve()
+    name = (
+        source.relative_to(root).as_posix()
+        if source.is_relative_to(root)
+        else str(source)
+    )
+    return Location(name, int(line))
+
+
 @dataclass(frozen=True)
 class Call:
     location: Location
@@ -71,6 +86,32 @@ class StringLiteral:
     location: Location
     # Contents between the quotes; escapes stay undecoded.
     value: str
+
+
+def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
+    """
+    Return the root of the repository declaring a rule.
+
+    Bazel reports generator_location relative to that repository, which differs from
+    the querying module for targets of other modules.
+    """
+    build = Path(rule.attrib["location"].rsplit(":", 2)[0])
+    if not build.is_absolute():
+        build = root / module.path / build
+    repository = build.parent
+    for _ in Path(rule.attrib["name"].partition("//")[2].partition(":")[0]).parts:
+        repository = repository.parent
+    return repository
+
+
+def generator_location(
+    root: Path, module: Module, rule: ET.Element, origin: str | None
+) -> Location | None:
+    """The authored macro call, or None where Bazel names no file (another module's macro)."""
+    if not origin:
+        return None
+    resolved = location(root, repository_root(root, module, rule), origin)
+    return resolved if (root / resolved.path).is_file() else None
 
 
 @dataclass(frozen=True)
@@ -188,6 +229,29 @@ class BazelTool(Protocol):
     def invocations(
         self, module: Module
     ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
+
+
+def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
+    """
+    List string literals in Starlark source without evaluating it.
+
+    Comments are skipped by the tokenizer. Contents keep their escapes undecoded,
+    so Python's string semantics are never substituted for Starlark's.
+    """
+    try:
+        tokens = tuple(tokenize.generate_tokens(io.StringIO(text).readline))
+    except tokenize.TokenError as error:
+        raise EvidenceError(f"{name}: cannot tokenize: {error}") from error
+    literals = []
+    for token in tokens:
+        if token.type != tokenize.STRING:
+            continue
+        body = token.string.lstrip("rRbBuU")
+        quotes = 3 if body[:3] in {'"""', "'''"} else 1
+        literals.append(
+            StringLiteral(Location(name, token.start[0]), body[quotes:-quotes])
+        )
+    return tuple(literals)
 
 
 class Workspace:
@@ -354,29 +418,6 @@ def has_literal_name(source: str) -> bool:
     return False
 
 
-def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
-    """
-    List string literals in Starlark source without evaluating it.
-
-    Comments are skipped by the tokenizer. Contents keep their escapes undecoded,
-    so Python's string semantics are never substituted for Starlark's.
-    """
-    try:
-        tokens = tuple(tokenize.generate_tokens(io.StringIO(text).readline))
-    except tokenize.TokenError as error:
-        raise EvidenceError(f"{name}: cannot tokenize: {error}") from error
-    literals = []
-    for token in tokens:
-        if token.type != tokenize.STRING:
-            continue
-        body = token.string.lstrip("rRbBuU")
-        quotes = 3 if body[:3] in {'"""', "'''"} else 1
-        literals.append(
-            StringLiteral(Location(name, token.start[0]), body[quotes:-quotes])
-        )
-    return tuple(literals)
-
-
 def run_tool(
     command: list[str], cwd: Path, variables: Mapping[str, str] | None = None
 ) -> str:
@@ -457,47 +498,6 @@ class Buildozer:
             )
         self._calls[module] = tuple(calls)
         return self._calls[module]
-
-
-def location(root: Path, base: Path, value: str) -> Location:
-    """Resolve a ``path:line:column`` value; relative paths start at base."""
-    path, line, _column = value.rsplit(":", 2)
-    source = Path(path)
-    if not source.is_absolute():
-        source = base / source
-    source = source.resolve()
-    name = (
-        source.relative_to(root).as_posix()
-        if source.is_relative_to(root)
-        else str(source)
-    )
-    return Location(name, int(line))
-
-
-def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
-    """
-    Return the root of the repository declaring a rule.
-
-    Bazel reports generator_location relative to that repository, which differs from
-    the querying module for targets of other modules.
-    """
-    build = Path(rule.attrib["location"].rsplit(":", 2)[0])
-    if not build.is_absolute():
-        build = root / module.path / build
-    repository = build.parent
-    for _ in Path(rule.attrib["name"].partition("//")[2].partition(":")[0]).parts:
-        repository = repository.parent
-    return repository
-
-
-def generator_location(
-    root: Path, module: Module, rule: ET.Element, origin: str | None
-) -> Location | None:
-    """The authored macro call, or None where Bazel names no file (another module's macro)."""
-    if not origin:
-        return None
-    resolved = location(root, repository_root(root, module, rule), origin)
-    return resolved if (root / resolved.path).is_file() else None
 
 
 def query_targets(root: Path, module: Module, query: ET.Element) -> tuple[Target, ...]:
@@ -653,6 +653,29 @@ class Bazel:
         return MappingProxyType({label: cache[label] for label in labels})
 
 
+def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaration, ...]:
+    """Attach each evaluated target to the one authored BUILD call it came from."""
+    by_location: dict[Location, list[Call]] = defaultdict(list)
+    for call in calls:
+        by_location[call.location].append(call)
+    targets: dict[Location, list[Target]] = defaultdict(list)
+    for target in rules:
+        origin = target.origin
+        # Macro implementation calls are generated, not authored BUILD declarations.
+        if Path(origin.path).name not in BUILD_FILES:
+            continue
+        candidates = by_location.get(origin, [])
+        if len(candidates) != 1:
+            raise EvidenceError(
+                f"{origin.path}:{origin.line}: expected one parsed declaration, found {len(candidates)}"
+            )
+        targets[origin].append(target)
+    return tuple(
+        Declaration(by_location[origin][0], tuple(items))
+        for origin, items in targets.items()
+    )
+
+
 class Context:
     def __init__(
         self, workspace: Workspace, starlark: StarlarkTool, bazel: BazelTool
@@ -760,26 +783,3 @@ class Context:
                 for m in modules:
                     self._declarations[m] = join(calls[m].result(), rules[m].result())
         return self._declarations[module]
-
-
-def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaration, ...]:
-    """Attach each evaluated target to the one authored BUILD call it came from."""
-    by_location: dict[Location, list[Call]] = defaultdict(list)
-    for call in calls:
-        by_location[call.location].append(call)
-    targets: dict[Location, list[Target]] = defaultdict(list)
-    for target in rules:
-        origin = target.origin
-        # Macro implementation calls are generated, not authored BUILD declarations.
-        if Path(origin.path).name not in BUILD_FILES:
-            continue
-        candidates = by_location.get(origin, [])
-        if len(candidates) != 1:
-            raise EvidenceError(
-                f"{origin.path}:{origin.line}: expected one parsed declaration, found {len(candidates)}"
-            )
-        targets[origin].append(target)
-    return tuple(
-        Declaration(by_location[origin][0], tuple(items))
-        for origin, items in targets.items()
-    )

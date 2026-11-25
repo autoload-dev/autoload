@@ -82,6 +82,34 @@ def _absolute(execroot: Path, source: str | list) -> str | list:
     return source
 
 
+def export_lock() -> Path | None:
+    """Return the lock file of exports that share a temporary directory, if any."""
+    directory = os.confstr(_CS_DARWIN_USER_TEMP_DIR) if sys.platform == "darwin" else None
+    return Path(directory) / "rules_godot-export.lock" if directory else None
+
+
+@contextlib.contextmanager
+def exclusive_export() -> Iterator[None]:
+    """
+    Serialize exports that share Godot's temporary project.binary.
+
+    Godot writes every export's configuration to tmpproject.binary in the
+    operating system's temporary directory. On macOS that is the user's
+    directory, whatever TMPDIR says, so concurrent exports would overwrite and
+    delete each other's file.
+    """
+    path = export_lock()
+    if path is None:
+        yield
+        return
+    with path.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def export_pack(
     manifest: dict, execroot: Path, root: Path, work: Path, output: Path
 ) -> dict:
@@ -166,6 +194,53 @@ def validate_export_facts(manifest: dict, facts: dict) -> None:
             raise ValueError(
                 f"Export option {key} requires Godot {expected}, got {actual}"
             )
+
+
+def export_presets(
+    manifest: dict, excluded: Collection[str] = (), export_only: str = ""
+) -> str:
+    # Selection belongs to the project declaration. The only exclusion filter
+    # passed to Godot is an expanded, inspectable list of declared paths, which
+    # Godot reads as comma-separated glob patterns.
+    excluded = sorted(excluded_with_sidecars(excluded))
+    unfilterable = [
+        path for path in excluded if any(character in path for character in "*,?[]")
+    ]
+    if unfilterable:
+        raise ValueError(
+            "Excluded resources cannot be literal export filter entries; they contain one of * , ? [ ]: "
+            + ", ".join(unfilterable)
+        )
+    # godot_pack validates the preset fields and option names at analysis.
+    authored = manifest.get("preset_settings", {})
+    fields = []
+    features = list(dict.fromkeys(manifest.get("features", [])))
+    if features:
+        fields.append("custom_features=" + gd_string(",".join(features)))
+    if "script_export_mode" in authored:
+        fields.append(
+            "script_export_mode=" + validate_literal(authored["script_export_mode"])
+        )
+    options = [
+        f"{key}={validate_literal(value)}"
+        for layer in ["preset_prelude", "export_options"]
+        for key, value in sorted(manifest.get(layer, {}).items())
+    ]
+    values = {
+        # A preset of one selected resource exports only that resource.
+        "EXPORT_FILTER": gd_string("resources" if export_only else "all_resources"),
+        "INCLUDE_FILTER": gd_string("" if export_only else "*"),
+        "EXPORT_FILES": (
+            f"export_files=PackedStringArray({gd_string(export_only)})"
+            if export_only
+            else ""
+        ),
+        "PLATFORM": gd_string(manifest["preset_platform"]),
+        "PRESET_SETTINGS": "\n".join(fields),
+        "EXCLUDE_FILTER": gd_string(",".join(excluded)),
+        "OPTIONS": "\n".join(options),
+    }
+    return template.fill(_EXPORT_PRESETS, values)
 
 
 def _export_nothing(manifest: dict, root: Path) -> None:
@@ -276,6 +351,19 @@ def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
     )
 
 
+def validate_pck(path: Path) -> dict:
+    """Return the directory of a PCK; Godot can exit 0 after a failed export."""
+    try:
+        contents = pck_file_contents(path, include_paths=True)
+    except (OSError, ValueError) as error:
+        raise RuntimeError(
+            f"Godot did not produce a valid Godot 4.7.2+ PCK v4: {error}"
+        ) from error
+    if path.stat().st_size < 100:
+        raise RuntimeError("Godot produced an empty PCK")
+    return contents
+
+
 def configuration(manifest: dict, output: Path, report: Path, execroot: Path) -> None:
     """
     Export a pack's configuration: the PCK files a pack written without Godot needs from it.
@@ -318,97 +406,9 @@ def configuration(manifest: dict, output: Path, report: Path, execroot: Path) ->
     )
 
 
-def export_presets(
-    manifest: dict, excluded: Collection[str] = (), export_only: str = ""
-) -> str:
-    # Selection belongs to the project declaration. The only exclusion filter
-    # passed to Godot is an expanded, inspectable list of declared paths, which
-    # Godot reads as comma-separated glob patterns.
-    excluded = sorted(excluded_with_sidecars(excluded))
-    unfilterable = [
-        path for path in excluded if any(character in path for character in "*,?[]")
-    ]
-    if unfilterable:
-        raise ValueError(
-            "Excluded resources cannot be literal export filter entries; they contain one of * , ? [ ]: "
-            + ", ".join(unfilterable)
-        )
-    # godot_pack validates the preset fields and option names at analysis.
-    authored = manifest.get("preset_settings", {})
-    fields = []
-    features = list(dict.fromkeys(manifest.get("features", [])))
-    if features:
-        fields.append("custom_features=" + gd_string(",".join(features)))
-    if "script_export_mode" in authored:
-        fields.append(
-            "script_export_mode=" + validate_literal(authored["script_export_mode"])
-        )
-    options = [
-        f"{key}={validate_literal(value)}"
-        for layer in ["preset_prelude", "export_options"]
-        for key, value in sorted(manifest.get(layer, {}).items())
-    ]
-    values = {
-        # A preset of one selected resource exports only that resource.
-        "EXPORT_FILTER": gd_string("resources" if export_only else "all_resources"),
-        "INCLUDE_FILTER": gd_string("" if export_only else "*"),
-        "EXPORT_FILES": (
-            f"export_files=PackedStringArray({gd_string(export_only)})"
-            if export_only
-            else ""
-        ),
-        "PLATFORM": gd_string(manifest["preset_platform"]),
-        "PRESET_SETTINGS": "\n".join(fields),
-        "EXCLUDE_FILTER": gd_string(",".join(excluded)),
-        "OPTIONS": "\n".join(options),
-    }
-    return template.fill(_EXPORT_PRESETS, values)
-
-
-def validate_pck(path: Path) -> dict:
-    """Return the directory of a PCK; Godot can exit 0 after a failed export."""
-    try:
-        contents = pck_file_contents(path, include_paths=True)
-    except (OSError, ValueError) as error:
-        raise RuntimeError(
-            f"Godot did not produce a valid Godot 4.7.2+ PCK v4: {error}"
-        ) from error
-    if path.stat().st_size < 100:
-        raise RuntimeError("Godot produced an empty PCK")
-    return contents
-
-
 # <unistd.h>'s confstr name for the user's temporary directory; Python's os module
 # has no symbolic name for it.
 _CS_DARWIN_USER_TEMP_DIR = 65537
-
-
-def export_lock() -> Path | None:
-    """Return the lock file of exports that share a temporary directory, if any."""
-    directory = os.confstr(_CS_DARWIN_USER_TEMP_DIR) if sys.platform == "darwin" else None
-    return Path(directory) / "rules_godot-export.lock" if directory else None
-
-
-@contextlib.contextmanager
-def exclusive_export() -> Iterator[None]:
-    """
-    Serialize exports that share Godot's temporary project.binary.
-
-    Godot writes every export's configuration to tmpproject.binary in the
-    operating system's temporary directory. On macOS that is the user's
-    directory, whatever TMPDIR says, so concurrent exports would overwrite and
-    delete each other's file.
-    """
-    path = export_lock()
-    if path is None:
-        yield
-        return
-    with path.open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def runtime_descriptors(

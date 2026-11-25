@@ -12,6 +12,11 @@ SCHEMA = Path(__file__).resolve().parent / "App.pkl"
 AMENDS = 'amends "../../tools/apps/App.pkl"'
 
 
+def lanes() -> tuple[str, ...]:
+    """The lanes an application may name, as the schema's Lane union lists them."""
+    return tuple(evaluate(SCHEMA, "choices")["lanes"])
+
+
 @dataclass(frozen=True)
 class Application:
     """One application, a project directly in examples/, as its app.pkl declares it."""
@@ -35,11 +40,6 @@ class Application:
         value = manifest(path, AMENDS)
         # Pkl renders no null property, such as an unset config.
         return cls(path.parent.name, tuple(value["lanes"]), value.get("config"))
-
-
-def lanes() -> tuple[str, ...]:
-    """The lanes an application may name, as the schema's Lane union lists them."""
-    return tuple(evaluate(SCHEMA, "choices")["lanes"])
 
 
 def applications(root: Path = ROOT) -> tuple[Application, ...]:

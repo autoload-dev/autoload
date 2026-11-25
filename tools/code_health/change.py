@@ -5,6 +5,8 @@ files included, so that commits which landed on the base after the branch point 
 part of it (changed_paths), or the index against HEAD (staged_paths).
 A file declines when its score falls, or, for a file without a score before, such as a new
 one, when it scores below NEW_FILE_MINIMUM. Deleted files never decline.
+
+Sections: Changed files, Report.
 """
 
 from __future__ import annotations
@@ -39,6 +41,9 @@ ACCEPT_HINT = (
     "deliberately instead, put the directive shown under it above its function's definition, "
     'with a comment that gives the reason (docs/internal/code-health.md, "The hooks").'
 )
+
+
+# ==== Changed files ===========================================================
 
 
 @dataclass(frozen=True)
@@ -93,6 +98,27 @@ def staged_paths(repo: Path) -> list[ChangedPath]:
     )
 
 
+def function_name(function: dict) -> str:
+    """A finding's function, without the line its title may carry."""
+    return function["name"].split(":")[0]
+
+
+def findings(result: FileResult | None) -> list[tuple[str, dict]]:
+    """Each finding of a file as its category and function; file-level ones without one."""
+    if result is None:
+        return []
+    return [
+        (smell["category"], function)
+        for smell in result.smells
+        for function in smell["functions"] or [NO_FUNCTION]
+    ]
+
+
+def finding_keys(result: FileResult | None) -> set[tuple[str, str]]:
+    """The (category, function) pairs of a file's findings, ignoring line numbers."""
+    return {(category, function_name(f)) for category, f in findings(result)}
+
+
 @dataclass
 class FileChange:
     path: ChangedPath
@@ -131,28 +157,7 @@ class FileChange:
         ]
 
 
-def function_name(function: dict) -> str:
-    """A finding's function, without the line its title may carry."""
-    return function["name"].split(":")[0]
-
-
-def findings(result: FileResult | None) -> list[tuple[str, dict]]:
-    """Each finding of a file as its category and function; file-level ones without one."""
-    if result is None:
-        return []
-    return [
-        (smell["category"], function)
-        for smell in result.smells
-        for function in smell["functions"] or [NO_FUNCTION]
-    ]
-
-
-def finding_keys(result: FileResult | None) -> set[tuple[str, str]]:
-    """The (category, function) pairs of a file's findings, ignoring line numbers."""
-    return {(category, function_name(f)) for category, f in findings(result)}
-
-
-# --- report -----------------------------------------------------------------------------
+# ==== Report ==================================================================
 
 
 def score_cell(score: float | None) -> str:

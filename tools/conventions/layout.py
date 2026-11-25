@@ -68,6 +68,19 @@ def is_end_to_end(project: Path) -> bool:
     return project.is_relative_to(ADDON_E2E)
 
 
+def flat_project(
+    root: Path, parts: tuple[str, ...], configured: frozenset[Path]
+) -> Path | None:
+    """
+    The project of a flat consumer, such as an add-on module's examples or a registry test
+    module: a project directly in one of its directories, such as a scenario or a
+    configuration variant, or else the consumer itself.
+    """
+    if len(parts) > 1 and root / parts[0] in configured:
+        return root / parts[0]
+    return root if root in configured else None
+
+
 def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Path | None:
     """
     The project that path lies in, below the consumer root ``root``: a project directly in
@@ -82,16 +95,3 @@ def project_directory(root: Path, path: Path, configured: frozenset[Path]) -> Pa
     if is_flat(root):
         return flat_project(root, parts, configured)
     return root / parts[0] if root == EXAMPLES_ROOT and len(parts) > 1 else None
-
-
-def flat_project(
-    root: Path, parts: tuple[str, ...], configured: frozenset[Path]
-) -> Path | None:
-    """
-    The project of a flat consumer, such as an add-on module's examples or a registry test
-    module: a project directly in one of its directories, such as a scenario or a
-    configuration variant, or else the consumer itself.
-    """
-    if len(parts) > 1 and root / parts[0] in configured:
-        return root / parts[0]
-    return root if root in configured else None
