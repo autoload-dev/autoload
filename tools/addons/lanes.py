@@ -22,10 +22,10 @@ import sys
 from collections.abc import Sequence
 
 from tools.addons.modules import (
-    LANES,
     ROOT,
     AddonModule,
     all_modules,
+    choices,
     host,
     module_path,
 )
@@ -115,7 +115,7 @@ def run(lane: str, modules: Sequence[AddonModule]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("lane", choices=LANES)
+    parser.add_argument("lane", choices=choices()["lanes"])
     parser.add_argument(
         "modules", nargs="*", help="modules' directories below addons/; none for all"
     )

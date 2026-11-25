@@ -12,6 +12,6 @@ objc_library(
     target_compatible_with = ["@platforms//os:ios"],
     deps = [
         "//analytics/native:backend_api",
-        "//ios:analytics",
+        "//third_party/ios:analytics",
     ],
 )

@@ -192,7 +192,7 @@ bazel run //e2e/addons/app_auth:edit    # open the test project
 bazel run //examples/addons/app_auth:update   # write UIDs and node IDs into the checkout
 bazel run //e2e/addons/app_auth:update
 bazel test @autoload_app_auth//app_auth/native/tests # only validation and ID-token decoding
-bazel test //e2e/addons/app_auth/unit   # only the GdUnit contract suite
+bazel test //e2e/addons/app_auth/login   # only the GdUnit suite of the login API
 ```
 
 The parts table at the top maps the repository. The

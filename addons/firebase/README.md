@@ -37,7 +37,7 @@ maven.install(
 load("@autoload_firebase//config:defs.bzl", "firebase_config")
 
 firebase_config(
-    name = "firebase",
+    name = "firebase_config",
     application_id = "com.example.game",
     google_services_json = "google-services.json",
     google_service_info_plist = "GoogleService-Info.plist",
@@ -55,8 +55,8 @@ godot_app(
     pack = ":pack",
     # rules_godot rejects any non-empty platform_resources on desktop platforms.
     platform_resources = select({
-        "@platforms//os:android": [":firebase"],
-        "@platforms//os:ios": [":firebase"],
+        "@platforms//os:android": [":firebase_config"],
+        "@platforms//os:ios": [":firebase_config"],
         "//conditions:default": [],
     }),
 )
@@ -106,13 +106,13 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
   XCFrameworks (`third_party/firebase_ios.BUILD.bazel`), not from SwiftPM, so an application
   needs no Swift package setup of its own.
 - On iOS the Firebase SDK is one dynamic framework per product, as CocoaPods builds it with
-  `use_frameworks! :linkage => :dynamic` (`ios/`): `FirebaseCore.framework` holds the core
+  `use_frameworks! :linkage => :dynamic` (`third_party/ios/`): `FirebaseCore.framework` holds the core
   libraries (FirebaseCore, FirebaseCoreInternal, FirebaseInstallations, GoogleUtilities,
   FBLPromises, nanopb) and the application's one FIRApp; `FirebaseAnalytics.framework` holds
   the rest of Analytics and links `FirebaseCore`; `FirebaseFirestore.framework` holds
   Firestore with gRPC, BoringSSL and LevelDB, and its code compiles against the headers of
   FirebaseFirestoreInternal, which it holds too (`header_libraries`). Firebase publishes no
-  dynamic frameworks, so `ios/` links them from the static XCFrameworks and copies their
+  dynamic frameworks, so `third_party/ios/` links them from the static XCFrameworks and copies their
   headers, modules and privacy bundles into them.
   The add-ons' extensions are rules_godot's default dynamic frameworks, each with its own
   godot-cpp: an Apple backend links its product's framework, which rules_godot embeds and

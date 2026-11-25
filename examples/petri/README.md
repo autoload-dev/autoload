@@ -57,8 +57,8 @@ skip them, keeping the other examples on the prebuilt engine.
 | --- | --- | --- |
 | Module | `engine/modules/reaction_diffusion/` | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
 | Engine | `godot_engines.source_build` in [`MODULE.bazel`](../../MODULE.bazel) | One recipe per Linux and macOS slot from the pinned 4.7.2 sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
-| Lock file | [`engines/godot_petri.lock.json`](godot_petri.lock.json) | Each recipe's build graph; `bazel run @godot_petri//:pin --config=buildbuddy` rewrites it |
-| Selection | `build:petri` in [`.bazelrc`](../../.bazelrc) | `--extra_toolchains` registers the hub and `--@autoload_rules_godot//godot:engine=petri` selects its engine, which also marks Petri's targets compatible, through `source_engine.bzl` |
+| Lock file | [`engine/godot_petri.lock.json`](engine/godot_petri.lock.json) | Each recipe's build graph; `bazel run @godot_petri//:pin --config=buildbuddy` rewrites it |
+| Selection | `build:petri` in [`.bazelrc`](../../.bazelrc) | `--extra_toolchains` registers the hub and `--@autoload_rules_godot//godot:engine=petri` selects its engine, which also marks Petri's targets compatible, through `engine/source_engine.bzl` |
 | Dish | `main/dish/` | The only scripts that name the module's class: steps the field, maps taps into it, paints the texture |
 | HUD | `main/hud/` | Chips, buttons and stats inside the display's safe area |
 | Tests | `tests/` | GdUnit suites for the field, the dish, the layout and the composed scene |

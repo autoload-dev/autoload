@@ -14,19 +14,19 @@ exports_files(["project.godot"])
 
 # The Dart language, with the demo's scripts compiled in.
 godot_dart_extension(
-    name = "dart",
+    name = "dart_extension",
     srcs = ["//examples/addons/dart/main:scripts"],
 )
 
 godot_project(
-    name = "demo",
+    name = "dart",
     main_scene = "main/dart_demo.tscn",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":demo",
+    project = ":dart",
     deps = ["//examples/addons/dart/main"],
 )
 
@@ -38,13 +38,13 @@ godot_run(
 
 godot_editor(
     name = "edit",
-    project = ":demo",
+    project = ":dart",
     deps = ["//examples/addons/dart/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":demo",
+    project = ":dart",
     deps = ["//examples/addons/dart/main"],
 )

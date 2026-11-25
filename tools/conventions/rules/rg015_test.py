@@ -4,6 +4,7 @@ import unittest
 
 from tools.addons.modules import ROOT
 from tools.addons.new import generate
+from tools.conventions.context import Call, Location
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.test_support import RepositoryTest
 
@@ -11,6 +12,7 @@ from tools.conventions.test_support import RepositoryTest
 class AddonModuleLayoutTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
+        self.calls: list[Call] = []
         self.write(".bazelversion", "9.3.0\n")
         self.write(
             ".bcr/rules_godot/metadata.template.json",
@@ -18,12 +20,21 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
 
     def module(self, directory: str, addon: str | None = None) -> None:
-        """A module as the generator writes it, in the workspace inventory."""
+        """
+        A module as the generator writes it, in the workspace inventory, with the call that
+        declares its add-on.
+        """
         for path in generate(directory, addon, root=self.root):
             self.files.add(path.relative_to(self.root).as_posix())
+        name = addon or directory
+        build = f"addons/{directory}/{name}/BUILD.bazel"
+        self.calls.append(
+            Call(Location(build, 1), "godot_addon", frozenset({"name"}), name)
+        )
 
     def evaluate(self) -> list[str]:
-        return [item.message for item in AddonModuleLayout().evaluate(self.context())]
+        context = self.context(calls=tuple(self.calls))
+        return [item.message for item in AddonModuleLayout().evaluate(context)]
 
     def test_generated_modules_follow_the_layout(self) -> None:
         self.module("widget")
@@ -50,6 +61,24 @@ class AddonModuleLayoutTest(RepositoryTest):
             ],
         )
 
+    def test_the_module_root_holds_its_files_add_ons_and_declared_packages(self) -> None:
+        self.module("widget")
+        self.write("addons/widget/third_party/BUILD.bazel", "")
+        self.write("addons/widget/tests/x/BUILD.bazel", "")
+        self.write("addons/widget/shared/BUILD.bazel", "")
+        self.write("addons/widget/stray/BUILD.bazel", 'filegroup(name = "files")\n')
+        self.write("addons/widget/notes.txt", "")
+        pkl = (self.root / "addons/widget/addon.pkl").read_text()
+        self.write("addons/widget/addon.pkl", pkl + 'sharedPackages = List("shared")\n')
+        root = "the module's root holds only its files, its add-ons, bcr/, tests/, third_party/"
+        self.assertEqual(
+            sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
+            [
+                f"addons/widget/notes.txt: {root} and the sharedPackages of addon.pkl",
+                f"addons/widget/stray: {root} and the sharedPackages of addon.pkl",
+            ],
+        )
+
     def test_registry_templates_of_a_removed_module(self) -> None:
         self.write(".bcr/addons/gone/source.template.json", "{}\n")
         self.assertEqual(["no add-on module owns .bcr/addons/gone"], self.evaluate())
@@ -58,35 +87,56 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.module("widget")
         amends = 'amends "../../tools/addons/Addon.pkl"\n'
         for text, message in (
-            (
-                amends + 'lanes = List("host")\ndesktops = List("macos")\n',
-                "lanes names some",
-            ),
+            (amends + 'lanes = List("host")\n', "does not evaluate"),
             (
                 amends + 'lanes = List("desktop")\ndesktops = List()\n',
-                "desktops names some",
+                "does not evaluate",
             ),
-            (amends + 'desktops = List("macos")\n', "sets lanes"),
+            (amends + 'desktops = List("macos")\n', "does not evaluate"),
             (
-                amends + 'lanes = List("desktop")\nplatforms = List("ios")\n',
-                "sets no platforms",
+                amends + 'lanes = List("desktop")\nplatforms = List()\n',
+                "does not evaluate",
             ),
             ('lanes = List("desktop")\n', "starts with amends"),
-            (
-                amends + 'lanes = List("desktop")\ndesktops = "macos"\n',
-                "desktops is a List(...) on one line",
-            ),
-            (
-                amends
-                + 'lanes = List("desktop")\ntestOperations = List(\n  "gdunit_test"\n)\n',
-                "testOperations is a List(...) on one line",
-            ),
         ):
             with self.subTest(text=text):
                 self.write("addons/widget/addon.pkl", text)
                 findings = self.evaluate()
                 self.assertEqual(len(findings), 1)
                 self.assertIn(message, findings[0])
+
+    def test_a_dependency_only_tests_load_is_declared(self) -> None:
+        self.module("widget")
+        manifest = (self.root / "addons/widget/MODULE.bazel").read_text()
+        self.write(
+            "addons/widget/MODULE.bazel",
+            manifest + 'bazel_dep(name = "rules_testing", version = "0.9.0")\n',
+        )
+        self.write(
+            "addons/widget/tests/BUILD.bazel",
+            'load("@rules_testing//lib:analysis_test.bzl", "analysis_test")\n',
+        )
+        self.assertEqual(
+            ["only tests load rules_testing: list it in addon.pkl's testDependencies"],
+            self.evaluate(),
+        )
+        pkl = (self.root / "addons/widget/addon.pkl").read_text()
+        self.write(
+            "addons/widget/addon.pkl", pkl + 'testDependencies = List("rules_testing")\n'
+        )
+        self.assertEqual([], self.evaluate())
+        self.write(
+            "addons/widget/widget/defs.bzl", 'load("@rules_testing//lib:util.bzl", "x")\n'
+        )
+        self.assertEqual(
+            [
+                (
+                    "addon.pkl's testDependencies names rules_testing, which tests alone"
+                    " do not load"
+                )
+            ],
+            self.evaluate(),
+        )
 
     def test_example_projects_define_the_targets_the_lanes_build(self) -> None:
         self.module("widget")

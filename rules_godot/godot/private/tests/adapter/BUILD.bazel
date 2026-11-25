@@ -23,7 +23,7 @@ _TESTS = {
         name = name,
         size = "medium",
         cases = [_CASES + ":" + cases],
-        project = _CASES + ":project",
+        project = _CASES,
         tags = ["manual"],
     )
     for name, cases in _TESTS.items()

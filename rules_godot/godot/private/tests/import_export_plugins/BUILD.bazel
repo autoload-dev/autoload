@@ -11,7 +11,7 @@ _FIXTURE = "//godot/private/tests/import_export_plugins/fixtures/project_with_im
 # own icon (FR-017, FR-020).
 run_view(
     name = "run",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [
         _FIXTURE + ":authored_hook",
         _FIXTURE + ":export_marker",

@@ -73,7 +73,7 @@ def _pack_exposes_configured_metadata_impl(env, target):
     for field in ["operating_system", "cpus", "environment"]:
         env.expect.where(field = field).that_bool(hasattr(pack, field), "Configured pack must expose " + field).equals(True)
     env.expect.that_collection(target[_TraceInfo].projects.to_list()).contains_exactly(
-        [str(Label("//godot/private/tests/app_pack:project"))],
+        [str(Label("//godot/private/tests/app_pack"))],
     ).in_order()
     env.expect.that_collection([str(t.label) for t in pack.project.platform_libraries]).contains_exactly(
         [str(Label("//godot/private/tests/app_pack:platform_library"))],

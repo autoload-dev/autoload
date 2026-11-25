@@ -38,7 +38,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "macos",
     project_file = "project.godot",
     target_compatible_with = _MACOS,
 )
@@ -46,7 +46,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos",
     target_compatible_with = _MACOS,
     deps = [
         ":cpp_example",

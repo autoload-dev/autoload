@@ -60,8 +60,8 @@ def _test_imports_and_exports_pin_the_vram_formats(name):
     analysis_test(
         name = name,
         targets = {
-            "project": _FIXTURE + ":configured_project",
-            "view": run_view(name + "_run", _FIXTURE + ":configured_project", _CONFIGURED),
+            "project": _FIXTURE,
+            "view": run_view(name + "_run", _FIXTURE, _CONFIGURED),
         },
         impl = _imports_and_exports_pin_the_vram_formats,
     )
@@ -98,8 +98,8 @@ def _test_main_scene_reaches_runtime_but_not_import_configuration(name):
     analysis_test(
         name = name,
         targets = {
-            "project": _FIXTURE + ":configured_project",
-            "view": run_view(name + "_run", _FIXTURE + ":configured_project", _CONFIGURED),
+            "project": _FIXTURE,
+            "view": run_view(name + "_run", _FIXTURE, _CONFIGURED),
         },
         impl = _main_scene_reaches_runtime_but_not_import_configuration,
     )

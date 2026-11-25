@@ -50,7 +50,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_importer",
     project_file = "project.godot",
     tags = ["manual"],
     deps = [":md_importer"],
@@ -58,7 +58,7 @@ godot_project(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":project_with_importer",
     tags = ["manual"],
     deps = [
         ":notes",
@@ -70,7 +70,7 @@ godot_pack(
 # A pack without an .md file.
 godot_pack(
     name = "texture_pack",
-    project = ":project",
+    project = ":project_with_importer",
     tags = ["manual"],
     deps = [":textures"],
 )

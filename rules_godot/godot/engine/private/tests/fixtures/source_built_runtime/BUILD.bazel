@@ -81,14 +81,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "source_built_runtime",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":source_built_runtime",
     tags = ["manual"],
     deps = [":main"],
 )

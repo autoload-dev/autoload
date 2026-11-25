@@ -54,7 +54,7 @@ godot_extension(
 )
 
 godot_project(
-    name = "desktop_project",
+    name = "extensions_without_matching_libraries",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -62,7 +62,7 @@ godot_project(
 godot_pack(
     name = "desktop_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":desktop_project",
+    project = ":extensions_without_matching_libraries",
     tags = ["manual"],
     deps = [":desktop_extension"],
 )

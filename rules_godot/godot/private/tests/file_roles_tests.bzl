@@ -68,7 +68,7 @@ _IGNORED_FIXTURE = "//godot/private/tests/godot_ignored/fixtures/project_with_ig
 def _test_operations_carry_the_godot_ignored_role(name):
     analysis_test(
         name = name,
-        target = run_view(name + "_run", _IGNORED_FIXTURE + ":project", [_IGNORED_FIXTURE + ":reader"]),
+        target = run_view(name + "_run", _IGNORED_FIXTURE, [_IGNORED_FIXTURE + ":reader"]),
         impl = _operations_carry_the_godot_ignored_role,
     )
 

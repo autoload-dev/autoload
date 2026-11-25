@@ -364,46 +364,44 @@ escaped = "a\\"b"
         self.assertEqual(2, len(first[0].targets))
         self.assertEqual((1, 1), (self.tools.call_requests, self.tools.rule_requests))
 
-    def test_typed_directories_are_measured_from_the_owning_module(self) -> None:
-        for name in (
-            "examples/MODULE.bazel",
-            "e2e/rules_godot/MODULE.bazel",
-            "consumers/demo/MODULE.bazel",
-        ):
-            self.write(name, "")
+    def test_projects_lie_at_the_fixed_places_of_their_consumers(self) -> None:
+        self.write("consumers/demo/MODULE.bazel", "")
         workspace = self.workspace()
         self.assertEqual(
-            ("projects", Path("examples/x")),
-            workspace.typed_directory(Path("examples/x/BUILD.bazel")),
+            Path("examples/x"),
+            workspace.project(Path("examples/x/BUILD.bazel")),
         )
         self.assertEqual(
-            ("projects", Path("e2e/rules_godot/y")),
-            workspace.typed_directory(
-                Path("e2e/rules_godot/y/tests/android/BUILD.bazel")
-            ),
+            Path("e2e/rules_godot/y"),
+            workspace.project(Path("e2e/rules_godot/y/tests/android/BUILD.bazel")),
         )
         self.assertEqual(
-            ("projects", Path("e2e/rules_godot/smoke/linux")),
-            workspace.typed_directory(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
+            Path("e2e/rules_godot/smoke/linux"),
+            workspace.project(Path("e2e/rules_godot/smoke/linux/main/main.gd")),
+        )
+        self.write("addons/w/MODULE.bazel", "")
+        self.write("e2e/addons/w/project.godot", "")
+        self.write("e2e/addons/w/variant/project.godot", "")
+        workspace = self.workspace()
+        self.assertEqual(
+            Path("e2e/addons/w/variant"),
+            workspace.project(Path("e2e/addons/w/variant/main/main.gd")),
         )
         self.assertEqual(
-            ("addons", Path("e2e/rules_godot/shared_addon")),
-            workspace.typed_directory(
-                Path("e2e/rules_godot/shared_addon/demo/BUILD.bazel")
-            ),
-        )
-        self.assertEqual(
-            ("addons", Path("consumers/demo/addons/z")),
-            workspace.typed_directory(Path("consumers/demo/addons/z/BUILD.bazel")),
+            Path("e2e/addons/w"),
+            workspace.project(Path("e2e/addons/w/database/BUILD.bazel")),
         )
         for name in (
+            # Consumer modules other than the registry test modules have no projects.
+            "consumers/demo/addons/z/BUILD.bazel",
+            "consumers/demo/projects/z/BUILD.bazel",
             "godot/private/tests/BUILD.bazel",
             "e2e/rules_godot/smoke/BUILD.bazel",
             "e2e/rules_godot/BUILD.bazel",
             "projects/root/BUILD.bazel",
         ):
             with self.subTest(name=name):
-                self.assertIsNone(workspace.typed_directory(Path(name)))
+                self.assertIsNone(workspace.project(Path(name)))
 
     def test_tools_visit_each_owning_module_once(self) -> None:
         files = (

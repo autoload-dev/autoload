@@ -29,7 +29,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "configured_project",
+    name = "composed_configuration",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     setting_overrides = {"application/config/name": '"Configured"'},

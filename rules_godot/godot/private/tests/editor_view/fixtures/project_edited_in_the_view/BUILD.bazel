@@ -46,7 +46,7 @@ godot_cc_extension(
 )
 
 godot_project(
-    name = "project",
+    name = "project_edited_in_the_view",
     project_file = "project.godot",
     settings = {"rules_godot/editor/contributed": "1"},
     tags = ["manual"],
@@ -54,7 +54,7 @@ godot_project(
 
 godot_editor(
     name = "edit",
-    project = ":project",
+    project = ":project_edited_in_the_view",
     tags = ["manual"],
     deps = [
         ":authored_only",
@@ -69,7 +69,7 @@ godot_editor(
 godot_metadata_sync(
     name = "metadata",
     size = "medium",
-    project = ":project",
+    project = ":project_edited_in_the_view",
     tags = ["manual"],
     deps = [
         ":authored_only",

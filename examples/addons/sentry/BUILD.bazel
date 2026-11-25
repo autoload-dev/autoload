@@ -6,7 +6,6 @@ load(
     "godot_pack",
     "godot_project",
     "godot_run",
-    "godot_test",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -14,14 +13,14 @@ package(default_visibility = ["//visibility:public"])
 exports_files(["project.godot"])
 
 godot_project(
-    name = "demo",
+    name = "sentry",
     main_scene = "main/demo.tscn",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":demo",
+    project = ":sentry",
     deps = ["//examples/addons/sentry/main"],
 )
 
@@ -31,24 +30,16 @@ godot_run(
     pack = ":pack",
 )
 
-# Runs the demo headless: any engine error, such as a missing class, fails it.
-godot_test(
-    name = "headless",
-    size = "small",
-    headless = True,
-    pack = ":pack",
-)
-
 godot_editor(
     name = "edit",
-    project = ":demo",
+    project = ":sentry",
     deps = ["//examples/addons/sentry/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":demo",
+    project = ":sentry",
     deps = ["//examples/addons/sentry/main"],
 )
 

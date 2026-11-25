@@ -46,8 +46,10 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   (`tools/addons/declarations.py`), and the rules of this repository the same way, so an add-on always builds against
   the rules it is changed with.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
-  root; the root holds only the module's files, `third_party/` with the build files of
-  pinned archives, `tests/` and packages several add-ons share, such as Firebase's `config/`.
+  root; the root holds only the module's files,
+  [`third_party/`](../docs/internal/glossary.md#modules-and-tests), `tests/`, `bcr/` and
+  the packages several add-ons share, which `addon.pkl` names in `sharedPackages`, such as
+  Firebase's `config/`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -88,14 +90,23 @@ an `ios_app_test` of the app (`e2e/rules_godot/AGENTS.md`, "Artifact test rules"
 
 `desktop` runs `bazel test` over `@autoload_<module>//...`, all of
 `examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a
-test lives follows what it checks:
+test lives follows how it runs, by the
+[add-on module tests](../docs/internal/verification-architecture.md#add-on-module-tests).
+For a module, that means:
 
-- Native unit tests beside the code they test, such as `<addon>/native/backends/linux/tests/`.
-- White-box tests of the module's own machinery, such as `gdunit_test` or a third-party
-  build, in the module's `tests/`. They use only the module's dependencies, which therefore
-  include what the tests need, such as rules_python; the release archive leaves `tests/` out.
-- End-to-end tests that use an add-on as an application does, such as GdUnit suites of its
-  GDScript API, in `e2e/addons/<module>/`, where the root module declares what they use. CI runs every module's
+- Unit tests sit beside their unit, such as `<addon>/native/backends/linux/tests/`, or in
+  `tests/<unit>/` for a module-wide unit such as a third-party build. The lanes build the
+  module from the root module, where its development dependencies are not active, so they
+  use only the module's regular dependencies.
+- End-to-end tests share one test project, `e2e/addons/<module>/` itself, with the add-ons
+  it depends on, such as Firestore with Firebase Core. A scenario or configuration variant
+  that needs other settings gets a project of its own in a subdirectory. Suites go into
+  packages named after their topic, such as `e2e/addons/sqlite/database/`; conditions such
+  as a host or a device are tags, not directories.
+- Demo tests live in `examples/addons/<module>/tests/`, never in the project's root package.
+
+Every project is named like its directory (RG019), so `//examples/addons/<module>` and
+`//e2e/addons/<module>` name the projects. CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
 `aspect work <lane>:addon-template` checks the template the same way
 (`tools/addons/selftest.py`).

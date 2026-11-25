@@ -213,6 +213,24 @@ ruleset's, so they live in the repository's root module, which sees the ruleset 
 | `autoload_dev`, the repository root, `tools/` | The repository's tooling and its tests | Tooling tests beside their tools in `tools/` |
 | `autoload_dev`, `examples/` | Demonstrations of the ruleset, each with tests for its own behavior | Example tests |
 | `autoload_dev`, `e2e/rules_godot/` | What a user can do with the public API | One smoke scenario per platform and focused consumer scenarios |
+| `autoload_<module>` at `addons/<module>/` | An add-on module and the unit tests of its code | Add-on unit tests beside their unit, `bcr/smoke/` |
+| `autoload_dev`, `e2e/addons/<module>/` | What an application can do with an add-on module | Add-on end-to-end tests: one test project per module, suites in topic packages |
+
+### Add-on module tests
+
+The add-on modules follow the same split by how a test runs, with four kinds that
+[add-on guidance](../../addons/AGENTS.md#lanes) places:
+
+| Kind | Location | Form |
+|---|---|---|
+| Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only: the lanes build the module from the root module, where its development dependencies are not active |
+| Add-on end-to-end test | `e2e/addons/<module>/` in the root module | Godot runs or project builds through the module's public targets, such as GdUnit suites |
+| Demo test | `examples/addons/<module>/tests/` | Checks of the example application itself, such as its exported pack running headless |
+| Registry test module | `bcr/<name>/` of every released module ([RG020](conventions.md#rg020)) | A consumer module that the registry builds from the release archive |
+
+The public rules of `@autoload_<module>`, such as `gdunit_test`, are tested from
+`e2e/addons/<module>/` like any other end-to-end claim: an add-on module runs no Godot
+([RG021](conventions.md#rg021)).
 
 This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
@@ -303,7 +321,7 @@ A name states what its test proves or what its fixture reproduces, in the
 | Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `godot_actions_test.py`, `test_rejects_missing_preset` |
 | `tests` subpackage | `<impl>/tests/`. The tests of one rule may get their own subpackage, named after the rule's glossary term. | `godot/private/tests/pack/` |
 | Fixture | What it reproduces, not the test that uses it | `project_with_disabled_extension` |
-| Consumer scenario | The package names what the user does. The smoke paths are `tests/smoke/<operating_system>`. | `tests/smoke/android`, `tests/shared_addon` |
+| Consumer scenario | The package names what the user does. The smoke paths are `e2e/rules_godot/smoke/<operating_system>`. | `e2e/rules_godot/smoke/android`, `e2e/rules_godot/script_run` |
 
 A word that states no claim on its own, such as `contract`, `regression`, `misc` or `basic`,
 is not a name or a name's only qualifier, and neither is a number.

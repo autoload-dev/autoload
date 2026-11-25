@@ -16,7 +16,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "macos_app_with_liquid_glass_icon",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -25,7 +25,7 @@ godot_pack(
     name = "pack_declared",
     export_options = {"application/liquid_glass_icon": '"res://game.icon"'},
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos_app_with_liquid_glass_icon",
     tags = ["manual"],
     deps = [":icon"],
 )
@@ -52,7 +52,7 @@ godot_pack(
     name = "pack_naming_a_file_declared",
     export_options = {"application/liquid_glass_icon": '"res://game.icon/icon.json"'},
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos_app_with_liquid_glass_icon",
     tags = ["manual"],
     deps = [":icon"],
 )

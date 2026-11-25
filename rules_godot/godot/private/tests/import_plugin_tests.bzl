@@ -29,7 +29,7 @@ def _label(name):
 def _test_project_indexes_importers_by_suffix(name):
     analysis_test(
         name = name,
-        target = _FIXTURE + ":project",
+        target = _FIXTURE,
         impl = _project_indexes_importers_by_suffix,
     )
 
@@ -125,7 +125,7 @@ def _import_settings_reach_the_processes_staging_the_importer(env, target):
 def _test_used_importer_addon_named_by_the_project(name):
     analysis_test(
         name = name,
-        target = run_view(name + "_run", _FIXTURE + ":project", [_FIXTURE + ":uses_importer"]),
+        target = run_view(name + "_run", _FIXTURE, [_FIXTURE + ":uses_importer"]),
         impl = _used_importer_addon_named_by_the_project,
     )
 

@@ -1,0 +1,18 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Pkl modules, evaluated by the pinned Pkl CLI, which every target that depends on this
+# library finds in its runfiles.
+py_library(
+    name = "evaluate_lib",
+    srcs = ["evaluate.py"],
+    data = ["@multitool//tools/pkl"],
+    visibility = ["//tools:__subpackages__"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_test(
+    name = "evaluate_test",
+    size = "small",
+    srcs = ["evaluate_test.py"],
+    deps = [":evaluate_lib"],
+)

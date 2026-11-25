@@ -106,7 +106,8 @@ class GodotEditorTest(unittest.TestCase):
         self.assertIn('config/description="Edited in the view"', authored)
         self.assertNotIn("rules_godot/editor", authored)
         self.assertIn(
-            f"rules_godot/editor/contributed is set by //{_PACKAGE}:project", output
+            f"rules_godot/editor/contributed is set by //{_PACKAGE}:project_edited_in_the_view",
+            output,
         )
 
     def test_metadata_run_reports_undeclared_sidecars(self) -> None:

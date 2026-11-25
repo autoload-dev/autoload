@@ -18,14 +18,14 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_runtime_inputs",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":project_with_runtime_inputs",
     tags = ["manual"],
     deps = [":main"],
 )

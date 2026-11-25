@@ -80,7 +80,7 @@ def _application_id_reaches_only_pack_and_shell_assets(env, targets):
     expect_same_actions(env, targets.first, targets.second, _project_action)
 
 def _project_action(entry):
-    return entry.action.mnemonic.startswith("Godot") and entry.owner.endswith(":project")
+    return entry.action.mnemonic.startswith("Godot") and entry.owner.endswith(":apps_with_editor_plugin_and_autoload")
 
 # The shell-assets probe's configuration names no autoload, so the autoload's script
 # reruns the export and leaves the probe cached (#129).

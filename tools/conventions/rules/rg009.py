@@ -1,49 +1,57 @@
-"""RG009: project and add-on type and applicability follow the four typed roots."""
+"""RG009: projects lie at the fixed places of their consumers."""
 
 from collections.abc import Iterable
-from pathlib import Path
 
+from tools.apps.apps import AMENDS, Application
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.layout import RULESET_MODULE, is_addon_test
-from tools.setup.modules import ADDONS
+from tools.conventions.layout import RULESET_MODULE, is_application
+from tools.pkl.evaluate import PklError
 
 
-def _white_box(workspace: Workspace, path: Path) -> bool:
-    """
-    Whether a configuration is a fixture: the ruleset's, one of an add-on module's own tests
-    in its tests/, or of an add-on module's end-to-end tests.
-    """
-    owner = workspace.owner(path.as_posix())
-    if owner == RULESET_MODULE:
-        return True
-    if owner.parent == Path(ADDONS) and path.relative_to(owner).parts[:1] == ("tests",):
-        return True
-    return is_addon_test(workspace.consumer_root(path))
-
-
-class TypedRootLayout:
+class ProjectPlaces:
     info = RuleInfo(
         "RG009",
-        "Applications and add-ons use their typed roots",
+        "Projects lie at the fixed places of their consumers",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        workspace = context.workspace
+        yield from self.unplaced(context.workspace)
+        yield from self.incomplete(context.workspace)
+        yield from self.undeclared(context.workspace)
+
+    @staticmethod
+    def undeclared(workspace: Workspace) -> Iterable[Finding]:
+        """Report applications without an app.pkl that amends the schema and evaluates."""
+        for project in filter(is_application, workspace.projects):
+            path = project / "app.pkl"
+            try:
+                Application.load(workspace.root / path)
+            except (FileNotFoundError, PklError) as error:
+                yield Finding(
+                    Location(path.as_posix(), 1),
+                    f"an application declares its lanes in app.pkl, which starts with "
+                    f"{AMENDS}: {error}",
+                )
+
+    @staticmethod
+    def unplaced(workspace: Workspace) -> Iterable[Finding]:
+        """Report configurations outside a project at a fixed place."""
+        for path in sorted(workspace.godot_configurations):
+            # The white-box fixtures of the ruleset module may live anywhere there.
+            ruleset = workspace.owner(path.as_posix()) == RULESET_MODULE
+            if not ruleset and workspace.project(path) is None:
+                yield Finding(
+                    Location(path.as_posix(), 1),
+                    "Godot configurations must belong to a project at a fixed place "
+                    "of their consumer",
+                )
+
+    @staticmethod
+    def incomplete(workspace: Workspace) -> Iterable[Finding]:
+        """Report projects without a BUILD file or a Godot configuration."""
         configurations = workspace.godot_configurations
-        for path in sorted(configurations):
-            # Consumer modules keep Godot configurations in their typed roots; white-box
-            # fixtures of the ruleset module, and the fixtures of an add-on module's tests in
-            # its examples/tests/, may live anywhere there.
-            if _white_box(workspace, path):
-                continue
-            if workspace.typed_directory(path) is not None:
-                continue
-            yield Finding(
-                Location(path.as_posix(), 1),
-                "Godot configurations must belong to a named project or add-on of their consumer",
-            )
-        for project, members in workspace.typed_directories("projects").items():
+        for project, members in workspace.projects.items():
             location = Location(members[0], 1)
             if not workspace.has_build(project):
                 yield Finding(

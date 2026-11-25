@@ -201,7 +201,7 @@ def _test_run_entry_point_accepts_res_prefix(name):
     godot_run(
         name = name + "_run",
         main = "res://main/configured_test.gd",
-        project = _FIXTURE + ":configured_project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = _CONFIGURED,
     )
@@ -347,8 +347,8 @@ def _test_project_resolves_contributed_settings_and_autoloads(name):
     analysis_test(
         name = name,
         targets = {
-            "project": _FIXTURE + ":configured_project",
-            "view": run_view(name + "_run", _FIXTURE + ":configured_project", _CONFIGURED),
+            "project": _FIXTURE,
+            "view": run_view(name + "_run", _FIXTURE, _CONFIGURED),
         },
         impl = _project_resolves_contributed_settings_and_autoloads,
     )
