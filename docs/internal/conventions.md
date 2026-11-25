@@ -262,7 +262,8 @@ by path:
 
 A project owns a BUILD file and at least one authored Godot configuration; an application,
 a project directly in `examples/`, also has an `app.pkl` that amends `tools/apps/App.pkl`
-and evaluates, which tells the lanes' work how to verify it ([RG022](#rg022)). Related
+and evaluates, which tells the lanes' work how to verify it
+([example guidance](../../examples/AGENTS.md#common-workflows)). Related
 operating-system contexts can share one project. No other module holds projects: an add-on
 module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
 are outside this check. There is no per-directory admission list.

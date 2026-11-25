@@ -8,7 +8,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tools.pkl.evaluate import evaluate, first_line, manifest
+from tools.pkl.evaluate import PklError, evaluate, manifest
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
@@ -38,11 +38,6 @@ def addon_manifest(path: Path) -> dict[str, tuple[str, ...]]:
     not amend the schema does not evaluate.
     """
     return {name: tuple(values) for name, values in manifest(path, AMENDS).items()}
-
-
-def amends_schema(text: str) -> bool:
-    """Whether an addon.pkl's first line, after comments, amends the schema."""
-    return first_line(text) == AMENDS
 
 
 def host() -> str:
@@ -113,7 +108,12 @@ class AddonModule:
         attributes = module_attributes((module / "MODULE.bazel").read_text())
         if "name" not in attributes:
             raise ValueError(f"{path}/MODULE.bazel: no module() name")
-        manifest = addon_manifest(module / "addon.pkl")
+        try:
+            manifest = addon_manifest(module / "addon.pkl")
+        except (FileNotFoundError, PklError) as error:
+            raise ValueError(
+                f"{path}/addon.pkl: {error}; `aspect work conventions` says more"
+            ) from error
         examples = root / examples_path(path.name)
         configured = {p.parent for p in examples.glob("**/project.godot")}
         return cls(
