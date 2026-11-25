@@ -31,7 +31,7 @@ def _test_reachable_pack_scans_references(name):
     godot_pack(
         name = name + "_pack",
         preset_settings = {"script_export_mode": "0"},
-        project = _FIXTURE + ":configured_project",
+        project = _FIXTURE,
         packing = "reachable",
         tags = ["manual"],
         deps = _CONFIGURED,
@@ -54,7 +54,7 @@ def _test_entry_points_without_reachable_selection_fail(name):
         name = name + "_pack",
         entry_points = ["main/configured_test.gd"],
         preset_settings = {"script_export_mode": "0"},
-        project = _FIXTURE + ":configured_project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = _CONFIGURED,
     )
@@ -65,7 +65,7 @@ def _test_undeclared_entry_point_fails(name):
         name = name + "_pack",
         entry_points = ["absent.gd"],
         preset_settings = {"script_export_mode": "0"},
-        project = _FIXTURE + ":configured_project",
+        project = _FIXTURE,
         packing = "reachable",
         tags = ["manual"],
         deps = _CONFIGURED,

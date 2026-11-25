@@ -59,7 +59,7 @@ godot_source_binary(
 )
 
 godot_project(
-    name = "project",
+    name = "macos_apps_with_dsyms",
     project_file = "project.godot",
     tags = ["manual"],
     target_compatible_with = _MACOS,
@@ -68,7 +68,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":macos_apps_with_dsyms",
     tags = ["manual"],
     target_compatible_with = _MACOS,
     deps = [":extension"],

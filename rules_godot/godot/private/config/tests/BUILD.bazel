@@ -133,7 +133,7 @@ platform_slices_fixture(
 )
 
 godot_project(
-    name = "app_project",
+    name = "tests",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -141,7 +141,7 @@ godot_project(
 godot_pack(
     name = "app_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":app_project",
+    project = ":tests",
     tags = ["manual"],
 )
 

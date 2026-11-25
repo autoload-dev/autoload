@@ -12,20 +12,20 @@ exports_files(
 
 # The Dart language with the suites' fixture scripts.
 godot_dart_extension(
-    name = "dart",
+    name = "dart_extension",
     srcs = ["//e2e/addons/dart/scripts:fixtures"],
     visibility = ["//e2e/addons/dart:__subpackages__"],
 )
 
 godot_project(
-    name = "tests",
+    name = "dart",
     project_file = "project.godot",
     visibility = ["//e2e/addons/dart:__subpackages__"],
 )
 
 godot_editor(
     name = "edit",
-    project = ":tests",
+    project = ":dart",
     deps = [
         "//e2e/addons/dart/scripts:suites",
     ],
@@ -34,7 +34,7 @@ godot_editor(
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":tests",
+    project = ":dart",
     deps = [
         "//e2e/addons/dart/scripts:suites",
     ],

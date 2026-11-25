@@ -25,6 +25,7 @@ identities, not authored target declarations.
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
+| [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
 | [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
 | [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
@@ -421,6 +422,19 @@ as a directory `.agents/skills/<name>/` with a `SKILL.md`, where Codex finds it.
 finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a symbolic link
 to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
 skills without a counterpart.
+
+## RG019
+
+**A package's Godot project is named like its directory.** A package that holds a
+`project.godot` and declares projects names one of them like its directory, so the package's
+own label names its project: `//examples/addons/sqlite` and `//e2e/addons/sqlite`, not
+`//examples/addons/sqlite:demo`. Write that short form in labels and commands. Further
+projects of the package, such as a test project beside an application's, take names of their
+own. This applies everywhere, the ruleset's fixtures included.
+
+The check reads the `godot_project` calls of every module and reports each package with a
+`project.godot` whose projects include none named like its directory. A package without a
+`project.godot`, whose project reads its configuration from elsewhere, is outside the check.
 
 ## RG020
 

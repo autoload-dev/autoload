@@ -28,7 +28,7 @@ string_flag(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_desktop_apps",
     custom_features = [":channel"],
     main_scene = "main/main.tscn",
     project_file = "project.godot",
@@ -37,7 +37,7 @@ godot_project(
 
 godot_pack(
     name = "start_pack",
-    project = ":project",
+    project = ":project_with_desktop_apps",
     tags = ["manual"],
     deps = [":main"],
 )

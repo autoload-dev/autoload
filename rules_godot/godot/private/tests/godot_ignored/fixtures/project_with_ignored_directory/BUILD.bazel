@@ -9,7 +9,7 @@ package(default_visibility = [
 ])
 
 godot_project(
-    name = "project",
+    name = "project_with_ignored_directory",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -40,7 +40,7 @@ godot_resources(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":project_with_ignored_directory",
     tags = ["manual"],
     deps = [":reader"],
 )
@@ -55,7 +55,7 @@ godot_resources(
 
 godot_pack(
     name = "unacknowledged_pack",
-    project = ":project",
+    project = ":project_with_ignored_directory",
     tags = ["manual"],
     deps = [":unacknowledged_reader"],
 )

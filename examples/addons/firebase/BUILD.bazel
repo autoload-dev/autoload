@@ -25,14 +25,14 @@ firebase_config(
 )
 
 godot_project(
-    name = "demo",
+    name = "firebase",
     main_scene = "main/demo.tscn",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 
@@ -44,14 +44,14 @@ godot_run(
 
 godot_editor(
     name = "edit",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":demo",
+    project = ":firebase",
     deps = ["//examples/addons/firebase/main"],
 )
 

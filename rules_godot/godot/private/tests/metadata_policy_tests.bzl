@@ -34,7 +34,7 @@ def _project_test(name, value, impl):
         name = name,
         target = run_view(
             name + "_run",
-            _FIXTURE + ":configured_project",
+            _FIXTURE,
             [_FIXTURE + ":configured_check", _FIXTURE + ":configured_resources"],
         ),
         impl = impl,

@@ -46,8 +46,10 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   (`tools/addons/declarations.py`), and the rules of this repository the same way, so an add-on always builds against
   the rules it is changed with.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
-  root; the root holds only the module's files, `third_party/` with the build files of
-  pinned archives, `tests/` and packages several add-ons share, such as Firebase's `config/`.
+  root; the root holds only the module's files, `third_party/`, `tests/`, `bcr/` and packages
+  several add-ons share, such as Firebase's `config/`. `third_party/` is where the module
+  includes its dependencies and makes them usable: the build files of pinned archives and
+  the targets that wrap them, such as Firebase's `third_party/ios/` frameworks.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -99,7 +101,20 @@ test lives follows how it runs:
 - End-to-end tests use an add-on as an application does: they run Godot or build a project,
   such as GdUnit suites of an add-on's GDScript API or runs of `gdunit_test`. They live in
   `e2e/addons/<module>/`, where the root module declares what they use; no add-on module
-  holds a Godot project or a Godot test (RG021). CI runs every module's
+  holds a Godot project or a Godot test (RG021). The module has one test project there,
+  `e2e/addons/<module>/` itself, with the add-ons it depends on, such as Firestore with
+  Firebase Core; a scenario or configuration variant that needs other settings gets a
+  project of its own in a subdirectory. Suites go into packages named after their topic,
+  such as `e2e/addons/sqlite/database/`; conditions such as a host or a device are tags,
+  not directories.
+- Demo tests check the example application itself, such as that its exported pack runs
+  headless without an engine error. They live in `examples/addons/<module>/tests/`, which
+  belongs to the demo, never in the project's root package.
+- The registry test module `bcr/smoke/` checks that a release builds for a consumer; see the
+  module layout above.
+
+Every project is named like its directory (RG019), so `//examples/addons/<module>` and
+`//e2e/addons/<module>` name the projects. CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
 `aspect work <lane>:addon-template` checks the template the same way
 (`tools/addons/selftest.py`).

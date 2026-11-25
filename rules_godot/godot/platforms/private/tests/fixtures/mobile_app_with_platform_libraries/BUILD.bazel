@@ -58,7 +58,7 @@ godot_addon(
 )
 
 godot_project(
-    name = "project",
+    name = "mobile_app_with_platform_libraries",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -66,7 +66,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":mobile_app_with_platform_libraries",
     tags = ["manual"],
     deps = [
         ":hello",

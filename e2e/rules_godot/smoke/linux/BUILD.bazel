@@ -73,7 +73,7 @@ godot_resources(
 gdunit_test(
     name = "project_addon_counts_test",
     size = "small",
-    project = ":project",
+    project = ":linux",
     suites = [":suites"],
     target_compatible_with = _LINUX,
 )
@@ -89,7 +89,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "linux",
     project_file = "project.godot",
     target_compatible_with = _LINUX,
 )
@@ -97,7 +97,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":linux",
     target_compatible_with = _LINUX,
     deps = [
         ":cpp_example",

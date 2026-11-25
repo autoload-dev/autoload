@@ -20,6 +20,6 @@ godot_resources(
 gdunit_test(
     name = "database",
     size = "small",
-    project = "//e2e/addons/sqlite:tests",
+    project = "//e2e/addons/sqlite",
     suites = [":suites"],
 )

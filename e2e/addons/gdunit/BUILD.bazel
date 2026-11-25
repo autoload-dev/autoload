@@ -11,7 +11,7 @@ _STRICT = "//e2e/addons/gdunit/strict_warnings"
 gdunit_test(
     name = "sharded_gdunit_suites_pass_test",
     size = "small",
-    project = _SUITES + ":project",
+    project = _SUITES,
     shard_count = 2,
     suites = [_SUITES + ":passing_suites"],
 )
@@ -21,7 +21,7 @@ gdunit_test(
 gdunit_test(
     name = "gdunit_under_strict_warnings_test",
     size = "small",
-    project = _STRICT + ":project",
+    project = _STRICT,
     suites = [_STRICT + ":suites"],
 )
 

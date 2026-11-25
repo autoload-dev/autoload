@@ -11,7 +11,7 @@ package(
 exports_files(["project.godot"])
 
 godot_project(
-    name = "project",
+    name = "gdunit_suites",
     project_file = "project.godot",
 )
 
@@ -49,7 +49,7 @@ godot_resources(
 gdunit_test(
     name = "failing_suite",
     size = "small",
-    project = ":project",
+    project = ":gdunit_suites",
     suites = [":failing_suite_files"],
     tags = ["manual"],
 )
@@ -64,7 +64,7 @@ godot_resources(
 gdunit_test(
     name = "empty_suite",
     size = "small",
-    project = ":project",
+    project = ":gdunit_suites",
     suites = [":empty_suite_files"],
     tags = ["manual"],
 )
@@ -79,7 +79,7 @@ godot_resources(
 gdunit_test(
     name = "skipped_suite",
     size = "small",
-    project = ":project",
+    project = ":gdunit_suites",
     suites = [":skipped_suite_files"],
     tags = ["manual"],
 )
@@ -94,7 +94,7 @@ godot_resources(
 gdunit_test(
     name = "orphan_suite",
     size = "small",
-    project = ":project",
+    project = ":gdunit_suites",
     suites = [":orphan_suite_files"],
     tags = ["manual"],
 )
@@ -102,7 +102,7 @@ gdunit_test(
 # GdUnit4 itself packed, as a game that ships its suites would pack it.
 godot_pack(
     name = "gdunit4_pack",
-    project = ":project",
+    project = ":gdunit_suites",
     tags = ["manual"],
     deps = ["@autoload_gdunit//gdunit"],
 )

@@ -105,10 +105,11 @@ BUILD files, determine which work can be reused. See
 
 Use `lower_snake_case` for package segments and authored logical target names, and pass
 `name` explicitly in every target declaration so a reader finds the target without following
-an inferred default. The main entry takes its package's final directory name. Bazel treats
-`//addons/platform_paths` as `//addons/platform_paths:platform_paths`, so prefer the short
-form in cross-package dependencies and commands. Within the same package, use ordinary
-relative labels such as `:demo`.
+an inferred default. The main entry takes its package's final directory name; a package
+with a `project.godot` names its project that way. Bazel treats `//addons/platform_paths`
+as `//addons/platform_paths:platform_paths`, so use the short form in cross-package
+dependencies and commands. Within the same package, use ordinary relative labels such as
+`:sqlite`.
 
 Choose the main entry by the package's useful public responsibility, not by rule type or
 declaration order:
@@ -117,8 +118,8 @@ declaration order:
 |---|---|---|
 | SQLite add-on | Extension `sqlite` | `//addons/sqlite` |
 | Platform Paths add-on | Extension `platform_paths` | `//addons/platform_paths` |
-| SQLite demo | Project `demo` | `//examples/addons/sqlite:demo` |
-| SQLite Godot test project | Project `tests` | `//e2e/addons/sqlite:tests` |
+| SQLite demo | Project `sqlite` | `//examples/addons/sqlite` |
+| SQLite end-to-end test project | Project `sqlite` | `//e2e/addons/sqlite` |
 | SQLite database suites | Executable `database` | `//e2e/addons/sqlite/database` |
 | Platform Paths operating-system location suites | Executable `locations` | `//e2e/addons/platform_paths/locations` |
 | Lichtpost | Production project `lichtpost` | `//examples/lichtpost` |

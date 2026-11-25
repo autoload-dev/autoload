@@ -13,14 +13,14 @@ package(default_visibility = ["//visibility:public"])
 exports_files(["project.godot"])
 
 godot_project(
-    name = "demo",
+    name = "{{module}}",
     main_scene = "main/demo.tscn",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
-    project = ":demo",
+    project = ":{{module}}",
     deps = ["//examples/addons/{{module}}/main"],
 )
 
@@ -32,14 +32,14 @@ godot_run(
 
 godot_editor(
     name = "edit",
-    project = ":demo",
+    project = ":{{module}}",
     deps = ["//examples/addons/{{module}}/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":demo",
+    project = ":{{module}}",
     deps = ["//examples/addons/{{module}}/main"],
 )
 

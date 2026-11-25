@@ -22,7 +22,7 @@ ENGINE_ENTRIES = (
 
 def is_engine_file(name: str) -> bool:
     """A file engine/ may hold directly: its BUILD file, a lock file or a .bzl file."""
-    return name in BUILD_FILES or name.endswith(LOCK_SUFFIX) or name.endswith(".bzl")
+    return name in BUILD_FILES or name.endswith((LOCK_SUFFIX, ".bzl"))
 
 
 MODULE_FILES = frozenset({"config.py", "SCsub"})

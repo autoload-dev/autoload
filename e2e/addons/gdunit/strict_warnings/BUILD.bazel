@@ -8,7 +8,7 @@ package(
 )
 
 godot_project(
-    name = "project",
+    name = "strict_warnings",
     project_file = "project.godot",
     tags = ["manual"],
 )

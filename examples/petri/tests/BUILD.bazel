@@ -27,7 +27,7 @@ godot_resources(
 gdunit_test(
     name = "tests",
     size = "small",
-    project = "//examples/petri:petri",
+    project = "//examples/petri",
     suites = [":suites"],
     target_compatible_with = SOURCE_ENGINE_ONLY,
 )

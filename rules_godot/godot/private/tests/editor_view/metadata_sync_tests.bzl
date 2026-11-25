@@ -13,7 +13,7 @@ _KINDS = ["node_ids", "resource_uids"]
 def _sync(name, **kwargs):
     godot_metadata_sync(
         name = name + "_sync",
-        project = _FIXTURE + ":project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":main"],
         **kwargs

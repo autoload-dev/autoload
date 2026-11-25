@@ -10,14 +10,14 @@ exports_files(
 )
 
 godot_project(
-    name = "tests",
+    name = "sqlite",
     project_file = "project.godot",
     visibility = ["//e2e/addons/sqlite:__subpackages__"],
 )
 
 godot_editor(
     name = "edit",
-    project = ":tests",
+    project = ":sqlite",
     deps = [
         "//e2e/addons/sqlite/database:suites",
     ],
@@ -26,7 +26,7 @@ godot_editor(
 godot_metadata_sync(
     name = "update",
     size = "small",
-    project = ":tests",
+    project = ":sqlite",
     deps = [
         "//e2e/addons/sqlite/database:suites",
     ],

@@ -20,6 +20,6 @@ godot_resources(
 gdunit_test(
     name = "results",
     size = "small",
-    project = "//e2e/addons/platform_paths:tests",
+    project = "//e2e/addons/platform_paths",
     suites = [":suites"],
 )

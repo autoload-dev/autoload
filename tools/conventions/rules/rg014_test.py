@@ -53,8 +53,10 @@ class EngineLayoutTest(RepositoryTest):
         root = "examples/petri"
         self.assertEqual(
             [
-                f"{root}/godot_petri.lock.json: a source build's lock file must live under "
-                "engine/ of its project"
+                (
+                    f"{root}/godot_petri.lock.json: a source build's lock file must live "
+                    "under engine/ of its project"
+                )
             ],
             self.evaluate(*self.project(root, "godot_petri.lock.json")),
         )

@@ -11,7 +11,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "direct_project",
+    name = "script_run",
     project_file = "project.godot",
 )
 
@@ -24,7 +24,7 @@ godot_test(
         "'declared value'",
     ],
     main = "main/direct.gd",
-    project = ":direct_project",
+    project = ":script_run",
     tags = ["integration"],
     deps = [
         ":direct",
@@ -39,7 +39,7 @@ godot_run(
         "'declared value'",
     ],
     main = "main/direct.gd",
-    project = ":direct_project",
+    project = ":script_run",
     deps = [
         ":direct",
         ":icon",

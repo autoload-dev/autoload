@@ -25,7 +25,7 @@ godot_resources(
     prefix = "scripts",
     visibility = ["//e2e/addons/dart:__pkg__"],
     deps = [
-        "//e2e/addons/dart",
+        "//e2e/addons/dart:dart_extension",
         "@autoload_gdunit//gdunit",
     ],
 )
@@ -33,6 +33,6 @@ godot_resources(
 gdunit_test(
     name = "scripts",
     size = "small",
-    project = "//e2e/addons/dart:tests",
+    project = "//e2e/addons/dart",
     suites = [":suites"],
 )

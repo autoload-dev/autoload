@@ -20,6 +20,6 @@ godot_resources(
 gdunit_test(
     name = "login",
     size = "small",
-    project = "//e2e/addons/app_auth:tests",
+    project = "//e2e/addons/app_auth",
     suites = [":suites"],
 )

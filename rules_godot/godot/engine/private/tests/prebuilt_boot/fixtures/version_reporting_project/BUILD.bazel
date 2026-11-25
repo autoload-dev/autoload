@@ -13,7 +13,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "version_reporting_project",
     main_scene = "main/main.tscn",
     project_file = "project.godot",
     tags = ["manual"],
@@ -21,7 +21,7 @@ godot_project(
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":version_reporting_project",
     tags = ["manual"],
     deps = [":main"],
 )
