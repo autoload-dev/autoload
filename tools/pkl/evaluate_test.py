@@ -1,10 +1,12 @@
 """The pinned Pkl CLI evaluates modules, applies their schema and rejects bad values."""
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from tools.pkl.evaluate import PklError, evaluate
+from tools.pkl.evaluate import PklError, cli, evaluate
 
 SCHEMA = """\
 module Schema
@@ -39,6 +41,14 @@ class EvaluateTest(unittest.TestCase):
     def test_a_value_outside_its_type_fails(self) -> None:
         with self.assertRaisesRegex(PklError, "value.pkl"):
             evaluate(self.amend('lanes = List("ios")\n'))
+
+    def test_a_task_cli_that_no_longer_exists_falls_back_to_the_runfiles(self) -> None:
+        missing = str(self.root / "bazel-out" / "pkl")
+        cli.cache_clear()
+        self.addCleanup(cli.cache_clear)
+        with mock.patch.dict(os.environ, {"PKL_CLI": missing}):
+            self.assertNotEqual(missing, cli())
+            self.assertTrue(Path(cli()).is_file())
 
 
 if __name__ == "__main__":

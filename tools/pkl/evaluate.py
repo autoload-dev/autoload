@@ -20,6 +20,19 @@ RUNFILES_PATH = "multitool/tools/pkl/pkl"
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def resolve_task_cli() -> None:
+    """
+    Resolve PKL_CLI to the file it names, for this process and the tools it starts. The task
+    names the CLI through the bazel-out symlink, which a later Bazel command of another
+    profile repoints to that profile's output base.
+    """
+    if (path := os.environ.get("PKL_CLI")) and os.path.exists(path):
+        os.environ["PKL_CLI"] = os.path.realpath(path)
+
+
+resolve_task_cli()
+
+
 class PklError(RuntimeError):
     """A Pkl module that does not evaluate, such as one whose values break its schema."""
 
@@ -27,7 +40,7 @@ class PklError(RuntimeError):
 @functools.cache
 def cli() -> str:
     """The path of the Pkl CLI."""
-    if path := os.environ.get("PKL_CLI"):
+    if (path := os.environ.get("PKL_CLI")) and os.path.exists(path):
         return path
     if (path := runfile()) is not None:
         return path
