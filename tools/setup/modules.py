@@ -65,9 +65,14 @@ def bazelignore_entries(text: str) -> tuple[str, ...]:
     return tuple(line for line in lines if line and not line.startswith("#"))
 
 
+def is_addon_module(module: str | Path) -> bool:
+    """Whether a module directory is an add-on module, `addons/<module>`."""
+    return Path(module).parent == Path(ADDONS)
+
+
 def is_released(module: str | Path) -> bool:
     """Whether a module has release archives: the ruleset and every add-on module."""
-    return Path(module) == RULESET or Path(module).parent == Path(ADDONS)
+    return Path(module) == RULESET or is_addon_module(module)
 
 
 def released_modules(modules: Iterable[Path]) -> tuple[Path, ...]:

@@ -19,7 +19,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "host_test_and_macos_app",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -27,14 +27,14 @@ godot_project(
 godot_test(
     name = "test",
     size = "medium",
-    project = ":project",
+    project = ":host_test_and_macos_app",
     tags = ["manual"],
     deps = [":main"],
 )
 
 godot_pack(
     name = "pack",
-    project = ":project",
+    project = ":host_test_and_macos_app",
     tags = ["manual"],
     deps = [":main"],
 )

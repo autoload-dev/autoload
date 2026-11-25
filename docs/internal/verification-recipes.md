@@ -211,7 +211,7 @@ Use these project cases to find a concrete behavior:
 |---|---|
 | `editor_view` | Editor writeback, sidecars and disabled extensions, from `rules_godot/`: `//godot/private/tests/editor_view` |
 | `script_run` | Direct script execution, imports and command-line arguments: `//script_run` |
-| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's: `bazel test @autoload_gdunit//tests/...` from the repository root |
+| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's end-to-end tests: `bazel test //e2e/addons/gdunit/...` from the repository root |
 | `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from `rules_godot/`: `//godot/private/tests/validation` |
 | `import_context_runs` | Composed settings and autoloads applied at runtime, an import input's own kept private: `//godot/private/tests/import_context_runs`; sidecars, import units, path and collision failures and metadata policies are analysis tests in `//godot/private/tests` |
 | `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from `rules_godot/`: `//godot/private/tests/gltf_import` |
@@ -242,22 +242,22 @@ bazel test //godot/extension/tests/...
 godot-cpp extension in the stable and the beta engine and checks that the engine is no input
 of the extension's native actions.
 
-### Shared extension consumers
+### A project's own add-on
 
-The `shared_addon` scenario's Counter add-on keeps its native implementation and GDScript
-wrapper in `native_counter/`, with its own GdUnit suites in the test project
-`native_counter/tests/`. A second project, `consumer/`, uses the same add-on and keeps its
-own suite:
+The Linux smoke scenario keeps an add-on of its own beside its content, as a consumer
+does: `main/addons/native_counter/` wraps a godot-cpp extension class in GDScript, the pack
+includes it and a GdUnit suite in the project's `tests/` uses it. The add-on modules cover
+add-ons that several projects share. On a Linux host:
 
 ```sh
-bazel test //e2e/rules_godot/shared_addon/...
+bazel test //e2e/rules_godot/smoke/linux:project_addon_counts_test
 ```
 
 autoload_gdunit's run tests also launch an intentionally failing suite and require the JUnit
 report to keep the assertion's details, expected 5 versus actual 4:
 
 ```sh
-bazel test @autoload_gdunit//tests/...
+bazel test //e2e/addons/gdunit/...
 ```
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.

@@ -4,17 +4,16 @@ A consuming Bazel module keeps each application project in a directory of its ow
 reusable add-on in `addons/<name>/`, apart from the projects that show and test it: the
 add-on's demo project in `examples/addons/<name>/` and its Godot test project in
 `e2e/addons/<name>/`. A demo or test directory is the project itself; one with several
-scenarios holds a project per scenario in subdirectories. The repository follows this layout:
-games such as Lichtpost are projects directly in `examples/`.
+scenarios, add-ons or configuration variants holds a project per each in subdirectories. The
+repository follows this layout: games such as Lichtpost are projects directly in `examples/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
 physical placement of a source decides which project or add-on owns it. A project's custom
 engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
-An add-on keeps its reusable implementation independent of its demo and test projects. Its
-Godot suites use `unit/` for deterministic API behavior and `integration/` for real
-operating-system behavior; create only the categories that have tests. An application's
-suites, helpers and fixtures live in its `tests/` package. Native unit tests stay beside the
-implementation or backend code, independent of consuming Godot projects. Focused test-input
+An add-on's Godot test project holds its suites in packages named after their topic; a
+condition a test needs to run, such as a real operating system, is a tag of the test, not a
+directory. An application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
+stay beside the implementation or backend code, independent of consuming Godot projects. Focused test-input
 libraries are not add-ons merely because they contain native sources. Build files of pinned
 third-party archives live in `third_party/` of the module that pins them.
 
@@ -105,10 +104,11 @@ BUILD files, determine which work can be reused. See
 
 Use `lower_snake_case` for package segments and authored logical target names, and pass
 `name` explicitly in every target declaration so a reader finds the target without following
-an inferred default. The main entry takes its package's final directory name. Bazel treats
-`//addons/platform_paths` as `//addons/platform_paths:platform_paths`, so prefer the short
-form in cross-package dependencies and commands. Within the same package, use ordinary
-relative labels such as `:demo`.
+an inferred default. The main entry takes its package's final directory name; a package
+with a `project.godot` names its project that way. Bazel treats `//addons/platform_paths`
+as `//addons/platform_paths:platform_paths`, so use the short form in cross-package
+dependencies and commands. Within the same package, use ordinary relative labels such as
+`:sqlite`.
 
 Choose the main entry by the package's useful public responsibility, not by rule type or
 declaration order:
@@ -117,10 +117,10 @@ declaration order:
 |---|---|---|
 | SQLite add-on | Extension `sqlite` | `//addons/sqlite` |
 | Platform Paths add-on | Extension `platform_paths` | `//addons/platform_paths` |
-| SQLite demo | Project `demo` | `//examples/addons/sqlite:demo` |
-| SQLite Godot test project | Project `tests` | `//e2e/addons/sqlite:tests` |
-| SQLite unit suites | Executable `unit` | `//e2e/addons/sqlite/unit` |
-| Platform Paths operating-system suites | Executable `integration` | `//e2e/addons/platform_paths/integration` |
+| SQLite demo | Project `sqlite` | `//examples/addons/sqlite` |
+| SQLite end-to-end test project | Project `sqlite` | `//e2e/addons/sqlite` |
+| SQLite database suites | Executable `database` | `//e2e/addons/sqlite/database` |
+| Platform Paths operating-system location suites | Executable `locations` | `//e2e/addons/platform_paths/locations` |
 | Lichtpost | Production project `lichtpost` | `//examples/lichtpost` |
 | Lichtpost scene content | Resources `main` | `//examples/lichtpost/main` |
 | Lichtpost gameplay suites | Executable `tests` | `//examples/lichtpost/tests` |
@@ -209,16 +209,14 @@ and test level, not the presence of an extension or a desire for symmetric direc
 | Tested behavior | Owner and context |
 |---|---|
 | Native implementation/backend | Unit tests beside the implementation, such as `<addon>/native/backends/linux/tests/`; depend on its interface/implementation without requiring Godot |
-| Deterministic Godot API behavior or contract | The add-on's test project, `e2e/addons/<name>/unit/`, with suites, helpers and execution together |
-| Real operating-system behavior | The add-on's test project, `e2e/addons/<name>/integration/`, using the required operating-system context |
+| Godot API behavior or contract, deterministic or on a real operating system | The add-on's test project, `e2e/addons/<name>/`, with suites, helpers and execution together in packages by topic |
 | Exported demo behavior | The demo's `tests/`, consuming the demo artifact |
 | Game/application behavior | The application's `tests/` package, including suites, helpers, fixtures and execution |
 
 The add-on's Godot test project in `e2e/addons/<name>/` owns its configuration, such as the warning rules for the
 add-on under test, and its editor/metadata workflows. The suites' test targets name that project and the necessary dependencies explicitly.
-Reusable helpers and frameworks are dependencies, not implicitly selected suites. Create only
-categories with actual behavior tests; extension use alone does not make a suite an
-integration test. Preserve each execution target's conditions and tags.
+Reusable helpers and frameworks are dependencies, not implicitly selected suites. Preserve
+each execution target's conditions and tags.
 
 A test package can own suites and execution while its test targets name the parent project
 and the parent's operations, such as its editor view, name its suites. Review the actual target graph; this package
@@ -319,7 +317,7 @@ labels with an [export platform](platforms.md#export-platforms).
 4. Run the add-on's suites and exported content, which validates their scripts:
 
    ```sh
-   bazel test //e2e/addons/sqlite/unit //examples/addons/sqlite/tests:exported
+   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
    ```
 
 5. Export its production content:
@@ -356,7 +354,7 @@ filesystem location alone does not make a file part of an operation. See
 [resource paths](resources.md) for the complete rules.
 
 The SQLite demo's scene and extension are dependencies of its
-production pack. Its separate Godot test project's `unit/` package declares
+production pack. Its separate Godot test project's `database/` package declares
 the GdUnit suites and framework. Production does not depend on those targets.
 Its exported-pack test starts the normal demo scene headless; that scene checks
 the database result and returns a failing exit status on error.

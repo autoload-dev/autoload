@@ -11,7 +11,7 @@ _FIXTURE = "//godot/private/tests/fixtures/import_context"
 def _graph_test(name, impl, **kwargs):
     godot_resource_graph(
         name = name + "_graph",
-        project = _FIXTURE + ":configured_project",
+        project = _FIXTURE,
         tags = ["manual"],
         deps = [_FIXTURE + ":configured_check", _FIXTURE + ":configured_resources"],
         **kwargs

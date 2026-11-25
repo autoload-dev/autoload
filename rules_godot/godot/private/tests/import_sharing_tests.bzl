@@ -42,7 +42,7 @@ def _operations_of_one_project_share_each_import(env, targets):
                 imports[json.encode(manifest)] = manifest
         env.expect.where(unit = unit).that_collection(imports).has_size(1)
         for manifest in imports.values():
-            env.expect.where(unit = unit).that_str(manifest["project_file"]).contains("/project.import.project.godot")
+            env.expect.where(unit = unit).that_str(manifest["project_file"]).contains("/project_with_shared_unit.import.project.godot")
 
 # The same units under two projects import once per project, each under its project's
 # import configuration.
@@ -65,7 +65,7 @@ def _two_projects_import_a_unit_separately(env, targets):
             configurations.extend([manifest["project_file"].rpartition("/")[2] for manifest in manifests.values()])
         env.expect.where(unit = unit).that_collection(configurations).contains_exactly([
             "other_project.import.project.godot",
-            "project.import.project.godot",
+            "project_with_shared_unit.import.project.godot",
         ])
 
 # A pack exported for a platform of two slices reaches its native path once per slice and

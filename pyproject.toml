@@ -14,4 +14,4 @@ ignore = ["ANN401"]
 # The lint aspects (`aspect lint`, tools/lint/linters.bzl) see only the sources of one target,
 # so the first-party packages are named rather than discovered.
 [tool.ruff.lint.isort]
-known-first-party = ["godot", "tools"]
+known-first-party = ["e2e", "godot", "tools"]

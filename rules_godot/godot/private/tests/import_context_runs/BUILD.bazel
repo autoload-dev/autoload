@@ -10,7 +10,7 @@ godot_test(
     name = "composed_settings_and_autoloads_apply_test",
     size = "medium",
     main = "main/configured_test.gd",
-    project = _FIXTURE + ":configured_project",
+    project = _FIXTURE,
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":configured_resources",

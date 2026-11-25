@@ -4,6 +4,7 @@ import unittest
 
 from tools.addons.modules import ROOT
 from tools.addons.new import generate
+from tools.conventions.context import Call, Location
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.test_support import RepositoryTest
 
@@ -11,6 +12,7 @@ from tools.conventions.test_support import RepositoryTest
 class AddonModuleLayoutTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
+        self.calls: list[Call] = []
         self.write(".bazelversion", "9.3.0\n")
         self.write(
             ".bcr/rules_godot/metadata.template.json",
@@ -18,12 +20,21 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
 
     def module(self, directory: str, addon: str | None = None) -> None:
-        """A module as the generator writes it, in the workspace inventory."""
+        """
+        A module as the generator writes it, in the workspace inventory, with the call that
+        declares its add-on.
+        """
         for path in generate(directory, addon, root=self.root):
             self.files.add(path.relative_to(self.root).as_posix())
+        name = addon or directory
+        build = f"addons/{directory}/{name}/BUILD.bazel"
+        self.calls.append(
+            Call(Location(build, 1), "godot_addon", frozenset({"name"}), name)
+        )
 
     def evaluate(self) -> list[str]:
-        return [item.message for item in AddonModuleLayout().evaluate(self.context())]
+        context = self.context(calls=tuple(self.calls))
+        return [item.message for item in AddonModuleLayout().evaluate(context)]
 
     def test_generated_modules_follow_the_layout(self) -> None:
         self.module("widget")
@@ -47,6 +58,24 @@ class AddonModuleLayoutTest(RepositoryTest):
                 "must be .bcr/rules_godot/metadata.template.json with the module's homepage",
                 "must import the shared settings: import %workspace%/../module.bazelrc",
                 "must release the archive autoload_widget-{VERSION}",
+            ],
+        )
+
+    def test_the_module_root_holds_its_files_add_ons_and_declared_packages(self) -> None:
+        self.module("widget")
+        self.write("addons/widget/third_party/BUILD.bazel", "")
+        self.write("addons/widget/tests/x/BUILD.bazel", "")
+        self.write("addons/widget/shared/BUILD.bazel", "")
+        self.write("addons/widget/stray/BUILD.bazel", 'filegroup(name = "files")\n')
+        self.write("addons/widget/notes.txt", "")
+        pkl = (self.root / "addons/widget/addon.pkl").read_text()
+        self.write("addons/widget/addon.pkl", pkl + 'sharedPackages = List("shared")\n')
+        root = "the module's root holds only its files, its add-ons, bcr/, tests/, third_party/"
+        self.assertEqual(
+            sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
+            [
+                f"addons/widget/notes.txt: {root} and the sharedPackages of addon.pkl",
+                f"addons/widget/stray: {root} and the sharedPackages of addon.pkl",
             ],
         )
 

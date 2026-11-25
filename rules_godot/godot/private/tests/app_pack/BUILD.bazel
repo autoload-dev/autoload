@@ -12,7 +12,7 @@ owned_options_test_suite(name = "owned_options_test_suite")
 pack_test_suite(name = "pack_test_suite")
 
 godot_project(
-    name = "project",
+    name = "app_pack",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -20,7 +20,7 @@ godot_project(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":app_pack",
     tags = ["manual"],
     deps = [":platform_addon"],
 )

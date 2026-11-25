@@ -10,7 +10,7 @@ _FIXTURE = "//godot/private/tests/strict_warnings/fixtures/project_with_strict_w
 
 godot_pack(
     name = "pack",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     tags = ["manual"],
     deps = [_FIXTURE + ":main"],
 )
@@ -27,7 +27,7 @@ filegroup(
 godot_test(
     name = "source_run_under_strict_warnings_test",
     size = "medium",
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
     deps = [_FIXTURE + ":main"],
 )
 
@@ -44,5 +44,5 @@ fake_adapter_test(
     name = "adapter_under_strict_warnings_test",
     size = "medium",
     cases = ["//godot/private/tests/adapter/fixtures/cases:passing"],
-    project = _FIXTURE + ":project",
+    project = _FIXTURE,
 )

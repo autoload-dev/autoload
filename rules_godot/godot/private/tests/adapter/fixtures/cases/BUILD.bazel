@@ -7,7 +7,7 @@ package(
 )
 
 godot_project(
-    name = "project",
+    name = "cases",
     project_file = "project.godot",
     tags = ["manual"],
 )

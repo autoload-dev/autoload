@@ -28,36 +28,36 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "api_contracts",
     project_file = "project.godot",
 )
 
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":api_contracts",
 )
 
 godot_run(
     name = "run",
-    project = ":project",
+    project = ":api_contracts",
 )
 
 godot_test(
     name = "game_test",
-    project = ":project",
+    project = ":api_contracts",
     tags = ["manual"],
 )
 
 godot_editor(
     name = "editor",
-    project = ":project",
+    project = ":api_contracts",
 )
 
 godot_metadata_sync(
     name = "metadata",
     size = "medium",
-    project = ":project",
+    project = ":api_contracts",
     tags = ["manual"],
 )
 
@@ -137,12 +137,12 @@ godot_runtime_component(
 godot_pack(
     name = "reachable_pack",
     packing = "reachable",
-    project = ":project",
+    project = ":api_contracts",
 )
 
 godot_pack(
     name = "required_pack",
-    project = ":project",
+    project = ":api_contracts",
     required_packs = [":pack"],
 )
 

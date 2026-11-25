@@ -62,7 +62,7 @@ _NDK_TARGET_SYSTEMS = [
 API_CASES = {
     "//godot:defs.bzl%godot_resources": {"target": _FIXTURES + "resources"},
     "//godot:defs.bzl%godot_addon": {"target": _FIXTURES + "addon"},
-    "//godot:defs.bzl%godot_project": {"target": _FIXTURES + "project"},
+    "//godot:defs.bzl%godot_project": {"target": _FIXTURES + "api_contracts"},
     "//godot:defs.bzl%godot_pack": {"target": _FIXTURES + "pack"},
     "//godot:defs.bzl%godot_pack#reachable": {"target": _FIXTURES + "reachable_pack", "conditions": ["filtered"]},
     "//godot:defs.bzl%godot_pack#required": {"target": _FIXTURES + "required_pack", "conditions": ["filtered"]},

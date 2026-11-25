@@ -23,6 +23,7 @@ from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import ADDONS as ADDON_DIRECTORY
+from tools.setup.modules import BCR, is_addon_module
 
 ADDONS = Path(ADDON_DIRECTORY)
 # The files every module addons/<directory> owns: those of the generator's module template.
@@ -30,6 +31,15 @@ REQUIRED = tuple(relative for _, relative in template_files("module"))
 # The registry templates each module owns in .bcr/addons/<directory>/, which the generator
 # writes once with the module; publish-to-bcr reads them there.
 REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
+# What a module's root holds besides its add-ons and the sharedPackages of its addon.pkl:
+# the template's files, its lock file and the directories every module may have.
+ROOT_FILES = frozenset(
+    {*(relative for relative in REQUIRED if "/" not in relative), "MODULE.bazel.lock"}
+)
+ROOT_DIRECTORIES = frozenset({"third_party", "tests", BCR})
+ROOT_ENTRIES = ", ".join(
+    ["its files", "its add-ons", *(f"{name}/" for name in sorted(ROOT_DIRECTORIES))]
+)
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
 # The values addon.pkl may name, by property: the tools read addon.pkl without evaluating
@@ -47,6 +57,40 @@ ASSIGNMENT = re.compile(r"^(\w+)\s*(?::[^=]*)?=")
 
 def at(path: Path | str) -> Location:
     return Location(Path(path).as_posix(), 1)
+
+
+def module_root_entries(workspace: Workspace, module: Path) -> dict[str, bool]:
+    """The entries of a module's root, by name, and whether each is a file."""
+    entries = {}
+    prefix = f"{module.as_posix()}/"
+    for name in workspace.files:
+        # The prefix test spares the owner lookup for files of other modules.
+        if name.startswith(prefix) and workspace.owner(name) == module:
+            parts = Path(name).relative_to(module).parts
+            entries[parts[0]] = len(parts) == 1
+    return entries
+
+
+def declared_names(context: Context) -> dict[str, set[str | None]]:
+    """The names of the targets that each BUILD file declares, from its parsed calls."""
+    names: dict[str, set[str | None]] = defaultdict(set)
+    for module in context.workspace.modules:
+        for call in context.starlark.calls(module):
+            names[call.location.path].add(call.literal_name)
+    return names
+
+
+def allowed_entry(
+    path: Path, is_file: bool, allowed: frozenset[str], names: dict[str, set[str | None]]
+) -> bool:
+    """
+    Whether a root entry is a module file, an allowed directory or an add-on, whose BUILD
+    file declares a target named like its directory.
+    """
+    if is_file:
+        return path.name in ROOT_FILES
+    builds = ((path / build).as_posix() for build in BUILD_FILES)
+    return path.name in allowed or any(path.name in names[build] for build in builds)
 
 
 def backends_directory(name: str) -> Path | None:
@@ -108,16 +152,39 @@ class AddonModuleLayout:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace
         yield from self.backends(workspace)
-        modules = sorted(path for path in workspace.module_paths if path.parent == ADDONS)
+        modules = sorted(filter(is_addon_module, workspace.module_paths))
+        names = declared_names(context)
         for module in modules:
             builds_apps = self.builds_apps(workspace, module / "addon.pkl")
             yield from self.files(workspace, module)
+            yield from self.root_entries(workspace, module, names)
             yield from self.registry(workspace, module)
             yield from self.imports(workspace, module)
             yield from self.addon_pkl(workspace, module / "addon.pkl")
             yield from self.projects(workspace, module, builds_apps)
         yield from self.extensions(workspace, modules)
         yield from self.orphaned_templates(workspace, modules)
+
+    @staticmethod
+    def root_entries(
+        workspace: Workspace, module: Path, names: dict[str, set[str | None]]
+    ) -> Iterable[Finding]:
+        """
+        The entries of the module's root that are none of its files, add-ons, shared
+        packages or the directories every module may have.
+        """
+        pkl = (module / "addon.pkl").as_posix()
+        manifest = addon_manifest(
+            workspace.text(pkl) if pkl in workspace.file_set else ""
+        )
+        allowed = ROOT_DIRECTORIES | frozenset(manifest["sharedPackages"])
+        for entry, is_file in sorted(module_root_entries(workspace, module).items()):
+            if not allowed_entry(module / entry, is_file, allowed, names):
+                yield Finding(
+                    at(module / entry),
+                    f"{module / entry}: the module's root holds only {ROOT_ENTRIES} and "
+                    "the sharedPackages of addon.pkl",
+                )
 
     @staticmethod
     def backends(workspace: Workspace) -> Iterable[Finding]:
@@ -218,8 +285,8 @@ class AddonModuleLayout:
             )
         targets = set(PROJECT_TARGETS) | ({APP_TARGET} if builds_apps else set())
         for build in builds:
-            names = set(NAME.findall(workspace.text(build.as_posix())))
-            for target in sorted(targets - names):
+            text = workspace.text(build.as_posix())
+            for target in sorted(targets - set(NAME.findall(text))):
                 yield Finding(at(build), f"example project must define :{target}")
 
     @staticmethod

@@ -6,7 +6,7 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
 
 godot_project(
-    name = "project",
+    name = "packs_with_export_options",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -32,7 +32,7 @@ godot_pack(
         "version/name": '"2.0"',
     },
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_export_options",
     tags = ["manual"],
 )
 
@@ -61,14 +61,14 @@ godot_pack(
         "user_data/accessible_from_files_app": "true",
     },
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_export_options",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "macos_pack_declared",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_export_options",
     tags = ["manual"],
 )
 

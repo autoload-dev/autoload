@@ -43,7 +43,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "probe_project_with_native_extensions",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -52,7 +52,7 @@ godot_pack(
     name = "android_pack",
     export_options = {"package/name": '"Bazel Godot Beta"'},
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":probe_project_with_native_extensions",
     tags = ["manual"],
     deps = [
         ":extension",
@@ -64,7 +64,7 @@ godot_pack(
 godot_pack(
     name = "ios_pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":probe_project_with_native_extensions",
     tags = ["manual"],
     deps = [
         ":extension",

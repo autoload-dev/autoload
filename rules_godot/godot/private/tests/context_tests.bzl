@@ -49,11 +49,11 @@ def _test_import_reads_own_files_import_inputs_and_dependency_imports(name):
             "home": _FIXTURE + ":home",
             "home_buffer": _FIXTURE + ":home_buffer",
             "main": _FIXTURE + ":main",
-            "project": _FIXTURE + ":project",
+            "project": _FIXTURE,
         },
         impl = _import_reads_own_files_import_inputs_and_dependency_imports,
         extra_target_under_test_aspects = [godot_actions],
-        config_settings = _under(_FIXTURE + ":project"),
+        config_settings = _under(_FIXTURE),
     )
 
 def _import_reads_own_files_import_inputs_and_dependency_imports(env, targets):
@@ -88,7 +88,7 @@ def _test_extension_is_configured_once_across_contexts(name):
         name = name,
         targets = {
             "direct": _FIXTURE + ":hello",
-            "first": run_view(name + "_first", _FIXTURE + ":project", [_FIXTURE + ":main"]),
+            "first": run_view(name + "_first", _FIXTURE, [_FIXTURE + ":main"]),
             "pack": _FIXTURE + ":pack",
             "second": run_view(name + "_second", _FIXTURE + ":other_project", [_FIXTURE + ":main"]),
         },

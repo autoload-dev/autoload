@@ -77,7 +77,7 @@ godot_resources(
 )
 
 godot_project(
-    name = "project",
+    name = "project_with_addons",
     project_file = "project.godot",
     tags = ["manual"],
     deps = [":tool"],

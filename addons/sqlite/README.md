@@ -28,7 +28,7 @@ database.close()
 3. Run the add-on's own tests without a graphical display:
 
    ```sh
-   bazel test //e2e/addons/sqlite/unit //examples/addons/sqlite/tests:exported
+   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
    ```
 
    Building them validates the GDScript; the tests check parameterized round trips,
@@ -74,4 +74,4 @@ The extension's C++ code is in [`database.cc`](sqlite/database.cc). The
 [module](MODULE.bazel) pins the official [SQLite amalgamation](https://www.sqlite.org/amalgamation.html)
 by URL and digest; its [BUILD file](third_party/sqlite.BUILD.bazel) compiles the
 C library independently from the C++ binding. GdUnit and its suites belong to
-the Godot test project's `unit/` package and are absent from production packs.
+the Godot test project's `database/` package and are absent from production packs.

@@ -6,7 +6,7 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
 
 godot_project(
-    name = "project",
+    name = "packs_with_and_without_version_options",
     project_file = "project.godot",
     tags = ["manual"],
 )
@@ -14,7 +14,7 @@ godot_project(
 godot_pack(
     name = "android_pack_declared",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     tags = ["manual"],
 )
 
@@ -25,14 +25,14 @@ godot_pack(
         "version/name": '"2.0"',
     },
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "ios_pack_declared",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     tags = ["manual"],
 )
 
@@ -43,7 +43,7 @@ godot_pack(
         "application/version": '"42"',
     },
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     tags = ["manual"],
 )
 
@@ -78,14 +78,14 @@ in_export_platform(
 godot_pack(
     name = "pack",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     tags = ["manual"],
 )
 
 godot_pack(
     name = "pack_with_version_setting",
     preset_settings = {"script_export_mode": "0"},
-    project = ":project",
+    project = ":packs_with_and_without_version_options",
     settings = {"application/config/version": '"9.9"'},
     tags = ["manual"],
 )
