@@ -102,18 +102,18 @@ def example_tests(application: Application) -> str:
     return f"bazel test --build_tests_only{application.flags} {application.package}/..."
 
 
-def example_work(application: Application) -> Work | None:
+def example_work() -> Iterator[Work]:
     """
-    An application's own tests, named on their own: in the desktop lane, or, for one that
+    Each application's own tests, named on their own: in the desktop lane, or, for one that
     the source-engine lane tests, only when named, in that lane's profile.
     """
-    name = f"test:example:{application.name}"
-    command = (example_tests(application),)
-    if "desktop" in application.lanes:
-        return Work(name, "desktop", ".", command)
-    if "source-engine" in application.lanes:
-        return Work(name, None, ".", command, profile="source-engine")
-    return None
+    for app in APPLICATIONS:
+        name = f"test:example:{app.name}"
+        command = (example_tests(app),)
+        if "desktop" in app.lanes:
+            yield Work(name, "desktop", ".", command)
+        elif "source-engine" in app.lanes:
+            yield Work(name, None, ".", command, profile="source-engine")
 
 
 # The API documentation's tests, all of them fast, with the API inventory's discovery
@@ -242,31 +242,26 @@ PATCHED_EDITOR = (
 )
 
 
-def addon_app_packages(root: Path = ROOT) -> tuple[str, ...]:
-    """The example projects of the add-on modules that build applications, by package."""
+def addon_app_packages(lane: str, root: Path = ROOT) -> tuple[str, ...]:
+    """The example projects of the add-on modules whose lanes include a mobile lane."""
     return tuple(
         module.project_package(project)
         for module in all_modules(root)
-        if module.builds_apps
+        if lane in module.lanes
         for project in module.projects
     )
 
 
-def release_builds(lane: str, flags: str) -> tuple[str, ...]:
+def release_builds(lane: str, flags: str) -> str:
     """
     The release builds of every application of a mobile lane with their debug symbols: the
-    applications that name the lane and the add-on modules' examples, one command per
-    configuration they take.
+    applications that name the lane and the add-on modules' examples.
     """
-    configs: dict[str, list[str]] = {"": list(addon_app_packages())}
-    for app in APPLICATIONS:
-        if lane in app.lanes:
-            configs.setdefault(app.flags, []).insert(0, app.package)
-    return tuple(
-        f"bazel build {apps(packages)}{flags}{config}"
-        for config, packages in configs.items()
-        if packages
+    packages = (
+        *(app.package for app in APPLICATIONS if lane in app.lanes),
+        *addon_app_packages(lane),
     )
+    return f"bazel build {apps(packages)}{flags}"
 
 
 def apps(packages: Iterable[str]) -> str:
@@ -361,7 +356,7 @@ WORK = (
         ),
         hosts=("macos",),
     ),
-    *filter(None, map(example_work, APPLICATIONS)),
+    *example_work(),
     contracts("android"),
     # Each mobile lane's work ends on the configuration of the add-on modules' lanes that
     # follow it in its profile, so that they keep its analysis.
@@ -370,7 +365,7 @@ WORK = (
         "android",
         ".",
         (
-            *release_builds(
+            release_builds(
                 "android", " --config=android-release --config=multi_abi --config=aab"
             ),
             f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
@@ -383,7 +378,7 @@ WORK = (
         "ios",
         ".",
         (
-            *release_builds("ios", " --config=ios-release"),
+            release_builds("ios", " --config=ios-release"),
             f"bazel test {SCENARIOS}:ios_official --config=official",
         ),
     ),

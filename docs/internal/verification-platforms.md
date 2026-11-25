@@ -76,10 +76,8 @@ as `test:example:lichtpost`, uses `--build_tests_only` over its example subtree,
 targets are discovered automatically without building unrelated app targets. Bazel still
 respects manual tags and platform compatibility.
 
-Each application of `examples/` runs in the lanes its `app.pkl` names
-([example guidance](../../examples/AGENTS.md#common-workflows)): `desktop` and
-`source-engine` run its suite, and the `android` and `ios` work build its release apps with
-their debug symbols, for Android as an App Bundle for every ABI.
+Each application of `examples/` runs in the lanes its `app.pkl` names, as
+[tools/apps/App.pkl](../../tools/apps/App.pkl) defines them.
 
 Each add-on module runs the same generic work in the lanes its `addon.pkl` names. A lane
 runs all of them with one Bazel command as the work `<lane>:addons`, and the work
@@ -100,8 +98,8 @@ toolchains, which fails on a pin whose inputs changed, such as rules_godot's gra
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged
-`source_engine_extended`, the stable and beta patched engines and the suites of the applications whose
-`app.pkl` names the lane join them in `source-engine:full`.
+`source_engine_extended`, the stable and beta patched engines and the suites of the
+applications whose `app.pkl` names the lane join them in `source-engine:full`.
 
 ### Apple lanes
 

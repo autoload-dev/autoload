@@ -7,10 +7,7 @@ from pathlib import Path
 
 from tools.addons import registry as templates
 from tools.addons.modules import (
-    AMENDS,
-    APP_LANES,
     addon_manifest,
-    amends_schema,
     builds_apps,
     example_projects,
     examples_path,
@@ -21,6 +18,7 @@ from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.manifests import module_manifest
+from tools.conventions.rules.rg023 import TESTS
 from tools.pkl.evaluate import PklError
 from tools.setup.modules import ADDONS as ADDON_DIRECTORY
 from tools.setup.modules import BCR, declarations, is_addon_module, literals
@@ -117,13 +115,16 @@ def extension_owners(workspace: Workspace, modules: list[Path]) -> dict[str, lis
 
 
 def starlark_files(workspace: Workspace, module: Path) -> list[str]:
-    """The BUILD and .bzl files of a module, without those of its nested modules."""
+    """
+    The Starlark files of a module: its MODULE.bazel, BUILD and .bzl files and the build
+    files of its third-party archives, without those of its nested modules.
+    """
     prefix = f"{module.as_posix()}/"
     return [
         name
         for name in workspace.files
         if name.startswith(prefix)
-        and (Path(name).name in BUILD_FILES or name.endswith(".bzl"))
+        and name.endswith(("BUILD", "BUILD.bazel", ".bzl", "MODULE.bazel"))
         and workspace.owner(name) == module
     ]
 
@@ -147,17 +148,27 @@ def test_dependency_problems(
     """
     regular = regular_dependencies(workspace.text((module / "MODULE.bazel").as_posix()))
     files = starlark_files(workspace, module)
+    tests_only = {name for name in regular if only_tests_load(workspace, files, name)}
     for name in sorted(set(listed) - regular):
         yield f"addon.pkl's testDependencies names {name}, no regular bazel_dep"
-    for name in sorted(regular):
-        uses = [Path(f) for f in files if f"@{name}//" in workspace.text(f)]
-        tests_only = bool(uses) and all("tests" in use.parts for use in uses)
-        if tests_only != (name in listed):
-            yield (
-                f"only tests load {name}: list it in addon.pkl's testDependencies"
-                if tests_only
-                else f"addon.pkl's testDependencies names {name}, which tests alone do not load"
-            )
+    for name in sorted(tests_only - set(listed)):
+        yield f"only tests load {name}: list it in addon.pkl's testDependencies"
+    for name in sorted((set(listed) & regular) - tests_only):
+        yield f"addon.pkl's testDependencies names {name}, which tests alone do not load"
+
+
+def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> bool:
+    """Whether some of the files name a repository in a string, all of them in tests/."""
+    label = f"@{repository}"
+    uses = [
+        Path(name)
+        for name in files
+        if any(
+            literal.value == label or literal.value.startswith(f"{label}//")
+            for literal in workspace.strings(name)
+        )
+    ]
+    return bool(uses) and all(TESTS in use.parts for use in uses)
 
 
 class AddonModuleLayout:
@@ -180,17 +191,14 @@ class AddonModuleLayout:
         self, workspace: Workspace, module: Path, names: dict[str, set[str | None]]
     ) -> Iterable[Finding]:
         """The findings of one module, which its addon.pkl configures."""
-        yield from self.addon_pkl(workspace, module / "addon.pkl")
-        # Without an addon.pkl that evaluates, the module's lanes are unknown: check them all.
-        manifest = module_manifest(workspace, module) or {
-            "lanes": APP_LANES,
-            "sharedPackages": (),
-            "testDependencies": (),
-        }
         yield from self.files(workspace, module)
-        yield from self.root_entries(workspace, module, names, manifest["sharedPackages"])
         yield from self.registry(workspace, module)
         yield from self.imports(workspace, module)
+        yield from self.addon_pkl(workspace, module / "addon.pkl")
+        # The rest needs the manifest; the checks above report one that is missing or wrong.
+        if (manifest := module_manifest(workspace, module)) is None:
+            return
+        yield from self.root_entries(workspace, module, names, manifest["sharedPackages"])
         yield from self.projects(workspace, module, builds_apps(manifest["lanes"]))
         for message in test_dependency_problems(
             workspace, module, manifest["testDependencies"]
@@ -275,9 +283,6 @@ class AddonModuleLayout:
     def addon_pkl(workspace: Workspace, path: Path) -> Iterable[Finding]:
         """addon.pkl amends the schema, and Pkl evaluates it: its values fit their types."""
         if path.as_posix() not in workspace.file_set:
-            return
-        if not amends_schema(workspace.text(path.as_posix())):
-            yield Finding(at(path), f"addon.pkl starts with {AMENDS}")
             return
         try:
             addon_manifest(workspace.root / path)

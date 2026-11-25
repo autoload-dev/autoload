@@ -75,7 +75,7 @@ def _built(ctx: TaskContext, target: str) -> str:
     return path
 
 def python(ctx: TaskContext, arguments) -> int:
-    """Run Bazel's Python in the repository root, with the Pkl CLI as PKL_CLI.
+    """Run Bazel's Python in the repository root.
 
     Args:
         ctx: the running task's context.
@@ -84,8 +84,20 @@ def python(ctx: TaskContext, arguments) -> int:
     Returns:
         Its exit code.
     """
-    _built(ctx, _PKL)
     return run(ctx, _built(ctx, _PYTHON), arguments)
+
+def run_work_tool(ctx: TaskContext, arguments) -> int:
+    """Run the lanes' work (tools/ci/work.py), with the Pkl CLI it reads the manifests with.
+
+    Args:
+        ctx: the running task's context.
+        arguments: the arguments of tools/ci/work.py.
+
+    Returns:
+        Its exit code.
+    """
+    _built(ctx, _PKL)
+    return python(ctx, ["-m", "tools.ci.work"] + arguments)
 
 def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
     """Run pieces of the lanes' work by name.
@@ -100,7 +112,7 @@ def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
         The work's exit code.
     """
     selection = ["--changed-since", changed_since] if changed_since else []
-    return python(ctx, ["-m", "tools.ci.work", "run"] + selection + list(names))
+    return run_work_tool(ctx, ["run"] + selection + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
     return run_work(ctx, *ctx.args.names)
@@ -114,7 +126,7 @@ work = task(
 )
 
 def _lane_impl(ctx: TaskContext) -> int:
-    return python(ctx, ["-m", "tools.ci.work", "lane"] + ctx.args.lane)
+    return run_work_tool(ctx, ["lane"] + ctx.args.lane)
 
 lane = task(
     implementation = _lane_impl,

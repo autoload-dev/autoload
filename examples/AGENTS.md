@@ -20,8 +20,7 @@ These run the chosen example's tests, as the lanes' work does; an add-on module'
 runs with the module's lanes ([add-on guidance](../addons/AGENTS.md#lanes)).
 
 An application declares how the repository verifies it in its `app.pkl`, which amends
-[tools/apps/App.pkl](../tools/apps/App.pkl): the lanes that run its tests or build its
-release apps, and a Bazel configuration that all its commands take, such as Petri's
+[tools/apps/App.pkl](../tools/apps/App.pkl), such as its lanes and Petri's
 `--config=petri` for its source-built engine. The lanes' work reads it; no tool names an
 application (RG022). For a more focused test, editor or sidecar command,
 read that example's README. Required timing and the evidence of each lane come from the root

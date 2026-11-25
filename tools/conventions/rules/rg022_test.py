@@ -35,9 +35,9 @@ class NoComponentNamesTest(RepositoryTest):
         )
         self.assertEqual(
             [
-                "tools/ci/work.py names the component game; read it from its manifest",
-                "tools/ci/work.py names the component widget; read it from its manifest",
-                "tools/ci/work.py names the component widget; read it from its manifest",
+                "names the component game; read it from its manifest",
+                "names the component widget; read it from its manifest",
+                "names the component widget; read it from its manifest",
             ],
             self.findings(),
         )

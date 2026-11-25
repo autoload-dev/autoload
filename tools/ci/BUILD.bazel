@@ -58,7 +58,10 @@ py_test(
     srcs = ["work_test.py"],
     # The Aspect tasks that name work.
     data = ["//:aspect_tasks"],
-    deps = [":work_lib"],
+    deps = [
+        ":work_lib",
+        "//tools/addons:test_support",
+    ],
 )
 
 # The setup action's shutdown of Bazel, through Node's test runner. On a GitHub Linux runner

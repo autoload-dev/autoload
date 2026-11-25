@@ -8,7 +8,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tools.pkl.evaluate import PklError, evaluate
+from tools.pkl.evaluate import evaluate, first_line, manifest
 from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
@@ -37,22 +37,12 @@ def addon_manifest(path: Path) -> dict[str, tuple[str, ...]]:
     An addon.pkl's properties, as Pkl evaluates it with the schema's defaults; one that does
     not amend the schema does not evaluate.
     """
-    text = path.read_text()
-    if not amends_schema(text):
-        raise PklError(f"{path}: starts with {AMENDS}")
-    return _manifest(path, text)
+    return {name: tuple(values) for name, values in manifest(path, AMENDS).items()}
 
 
 def amends_schema(text: str) -> bool:
     """Whether an addon.pkl's first line, after comments, amends the schema."""
-    lines = (line.split("//")[0].strip() for line in text.splitlines())
-    return next((line for line in lines if line), "") == AMENDS
-
-
-@functools.cache
-def _manifest(path: Path, text: str) -> dict[str, tuple[str, ...]]:
-    """The evaluation of one addon.pkl's text, once per process."""
-    return {name: tuple(values) for name, values in evaluate(path).items()}
+    return first_line(text) == AMENDS
 
 
 def host() -> str:

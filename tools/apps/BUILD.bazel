@@ -6,15 +6,22 @@ py_library(
     srcs = ["apps.py"],
     data = ["App.pkl"],
     visibility = [
+        "//tools/addons:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
     ],
-    deps = ["//tools/pkl:evaluate_lib"],
+    deps = [
+        "//tools/pkl:evaluate_lib",
+        "//tools/setup:modules_lib",
+    ],
 )
 
 py_test(
     name = "apps_test",
     size = "small",
     srcs = ["apps_test.py"],
-    deps = [":apps_lib"],
+    deps = [
+        ":apps_lib",
+        "//tools/addons:test_support",
+    ],
 )

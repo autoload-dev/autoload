@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.apps.apps import ROOT, SCHEMA, Application, applications
+from tools.addons.test_support import copy_schemas
+from tools.apps.apps import Application, applications
 from tools.pkl.evaluate import PklError
 
 
@@ -13,9 +14,7 @@ class ApplicationsTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        schema = self.root / SCHEMA.relative_to(ROOT)
-        schema.parent.mkdir(parents=True)
-        schema.write_text(SCHEMA.read_text())
+        copy_schemas(self.root)
 
     def app(self, name: str, text: str) -> None:
         path = self.root / "examples" / name / "app.pkl"
@@ -25,15 +24,16 @@ class ApplicationsTest(unittest.TestCase):
     def test_applications_name_their_lanes_and_configuration(self) -> None:
         self.app("game", 'lanes = List("desktop", "android")\n')
         self.app("dish", 'lanes = List("source-engine")\nconfig = "dish"\n')
+        found = applications(self.root)
         self.assertEqual(
             (
                 Application("dish", ("source-engine",), "dish"),
                 Application("game", ("desktop", "android")),
             ),
-            applications(self.root),
+            found,
         )
-        self.assertEqual(" --config=dish", applications(self.root)[0].flags)
-        self.assertEqual("//examples/game", applications(self.root)[1].package)
+        self.assertEqual(" --config=dish", found[0].flags)
+        self.assertEqual("//examples/game", found[1].package)
 
     def test_an_unknown_lane_fails(self) -> None:
         self.app("game", 'lanes = List("quality")\n')

@@ -9,6 +9,7 @@ from tools.setup.modules import (
     ADDON_E2E,
     ADDON_EXAMPLES,
     ADDONS,
+    EXAMPLES,
     RULESET,
     is_registry_test_module,
 )
@@ -19,7 +20,7 @@ DOCS = ("docs/", f"{RULESET_MODULE}/docs/")
 NON_CONSUMER_MODULES = frozenset({Path("."), RULESET_MODULE})
 # The consumers in the root module: its examples, each application a project directly in
 # examples/, and the ruleset's consumer scenarios with their smoke paths.
-EXAMPLES_ROOT = Path("examples")
+EXAMPLES_ROOT = EXAMPLES
 REGRESSION_ROOT = Path("e2e/rules_godot")
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
 SMOKE_ROOT = "smoke"
@@ -55,6 +56,11 @@ def is_flat(root: Path) -> bool:
     examples or end-to-end tests, or a registry test module.
     """
     return root.parent in (ADDON_EXAMPLES, ADDON_E2E) or is_registry_test_module(root)
+
+
+def is_application(project: Path) -> bool:
+    """Whether a project is an application, a project directly in examples/."""
+    return project.parent == EXAMPLES_ROOT
 
 
 def is_end_to_end(project: Path) -> bool:

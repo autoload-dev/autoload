@@ -81,7 +81,7 @@ py_library(
     deps = [
         ":context_lib",
         "//tools/addons:new_lib",
-        "//tools/apps:apps_lib",
+        "//tools/addons:test_support",
     ],
 )
 

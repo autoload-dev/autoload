@@ -53,7 +53,15 @@ py_library(
         "//:.bazelversion",
         "//:bcr_metadata",
     ],
-    deps = [":new_lib"],
+    visibility = [
+        "//tools/apps:__pkg__",
+        "//tools/ci:__pkg__",
+        "//tools/conventions:__pkg__",
+    ],
+    deps = [
+        ":new_lib",
+        "//tools/apps:apps_lib",
+    ],
 )
 
 py_test(

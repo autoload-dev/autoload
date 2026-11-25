@@ -47,15 +47,43 @@ def runfile() -> str | None:
 
 def built() -> str:
     """The CLI as Bazel builds it in the repository's root module."""
-    subprocess.run(["bazel", "build", TARGET], cwd=ROOT, capture_output=True, check=True)
-    files = subprocess.run(
-        ["bazel", "cquery", "--output=files", TARGET],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        subprocess.run(
+            ["bazel", "build", TARGET], cwd=ROOT, capture_output=True, check=True
+        )
+        files = subprocess.run(
+            ["bazel", "cquery", "--output=files", TARGET],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise PklError(f"no Pkl CLI: building {TARGET} failed: {error}") from error
     return str(ROOT / files.stdout.strip())
+
+
+def first_line(text: str) -> str:
+    """A Pkl module's first line, after comments, such as the one that amends its schema."""
+    lines = (line.split("//")[0].strip() for line in text.splitlines())
+    return next((line for line in lines if line), "")
+
+
+def manifest(path: Path, amends: str) -> dict[str, Any]:
+    """
+    A manifest that amends a schema, as Pkl evaluates it with the schema's defaults and
+    types, once per process and text; one that does not amend the schema does not evaluate.
+    """
+    text = path.read_text()
+    if first_line(text) != amends:
+        raise PklError(f"{path}: starts with {amends}")
+    return _evaluated(path, text)
+
+
+@functools.cache
+def _evaluated(path: Path, text: str) -> dict[str, Any]:
+    """The evaluation of one manifest's text."""
+    return evaluate(path)
 
 
 def evaluate(path: Path, expression: str | None = None) -> Any:

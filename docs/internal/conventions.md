@@ -260,7 +260,9 @@ by path:
 | Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, and one directory of it per scenario or configuration variant that needs other settings |
 | Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
 
-A project owns a BUILD file and at least one authored Godot configuration; related
+A project owns a BUILD file and at least one authored Godot configuration; an application,
+a project directly in `examples/`, also has an `app.pkl` that amends `tools/apps/App.pkl`
+and evaluates, which tells the lanes' work how to verify it ([RG022](#rg022)). Related
 operating-system contexts can share one project. No other module holds projects: an add-on
 module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
 are outside this check. There is no per-directory admission list.
@@ -490,10 +492,10 @@ evaluates. A new component then needs no change of the tooling, and what is spec
 one stays visible beside it, as a standardized option.
 
 The check reads the string literals of every Python file in `tools/`, docstrings included,
-apart from tests and their support, and reports each word that names an add-on module, by
-directory or as `autoload_<module>`, or an application of `examples/`. A word is what a
-path, label or sentence separates; a file extension such as `.dart` is none. Comments may
-name components, such as to explain an exception.
+apart from tests and their support, and reports each that names an add-on module or an
+application of `examples/` as a word, also inside a flag or label, such as `--config=<name>`
+or `@autoload_<module>//`; a file extension such as `.dart` names none. Comments may name
+components, such as to explain an exception.
 
 ## RG023
 

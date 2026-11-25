@@ -3,12 +3,13 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.pkl.evaluate import evaluate
+from tools.pkl.evaluate import evaluate, manifest
+from tools.setup.modules import EXAMPLES
 
 ROOT = Path(__file__).resolve().parents[2]
-# The schema every examples/<name>/app.pkl amends.
+# The schema every examples/<name>/app.pkl amends, and the line an app.pkl starts with.
 SCHEMA = Path(__file__).resolve().parent / "App.pkl"
-EXAMPLES = Path("examples")
+AMENDS = 'amends "../../tools/apps/App.pkl"'
 
 
 @dataclass(frozen=True)
@@ -31,9 +32,14 @@ class Application:
     @classmethod
     def load(cls, path: Path) -> Application:
         """Read the app.pkl at `path`, as Pkl evaluates it."""
-        value = evaluate(path)
+        value = manifest(path, AMENDS)
         # Pkl renders no null property, such as an unset config.
         return cls(path.parent.name, tuple(value["lanes"]), value.get("config"))
+
+
+def lanes() -> tuple[str, ...]:
+    """The lanes an application may name, as the schema's Lane union lists them."""
+    return tuple(evaluate(SCHEMA, "choices")["lanes"])
 
 
 def applications(root: Path = ROOT) -> tuple[Application, ...]:
