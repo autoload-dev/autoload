@@ -453,6 +453,23 @@ finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a 
 to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
 skills without a counterpart.
 
+## RG023
+
+**Release archives leave out tests, and nothing else needs them.** The ruleset and every
+add-on module are released as a `git archive` of their directory
+(`.github/workflows/release_prep.sh`). Consumers cannot run a module's tests, whose
+development dependencies are not theirs, so each released module's `.gitattributes` leaves
+every `tests/` directory, at any depth, out of the archive: `tests export-ignore`. A package
+that would then name a missing file or package fails to load for every consumer, so no
+Starlark file outside a `tests/` directory may use a path or label inside one. Test code and
+fixtures that a package outside `tests/` needs belong to a `tests/` package of their own.
+
+The check parses each released module's BUILD files, `MODULE.bazel` and `.bzl` files. Names
+that are never loaded are allowed: target visibility, `package_group` packages and load
+visibility, and the arguments of dev dependencies in `MODULE.bazel`, which only the module's
+own builds evaluate. Modules that are never released, such as the root module, are outside
+it.
+
 ## Run and maintain the checks
 
 From the repository root:

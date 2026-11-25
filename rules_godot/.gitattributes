@@ -6,3 +6,6 @@
 docs export-ignore
 # A link to the repository's Bazelisk wrapper, outside this directory.
 tools/bazel export-ignore
+# The ruleset's own tests at any depth: consumers cannot run them, since their development
+# dependencies are not theirs (RG023, docs/internal/conventions.md).
+tests export-ignore
