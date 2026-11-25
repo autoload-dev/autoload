@@ -1,0 +1,24 @@
+/// What an application of examples/ declares about itself: `examples/<name>/app.pkl` amends
+/// this module (examples/AGENTS.md). The lanes' work (tools/ci/work.py) reads it as the
+/// pinned Pkl CLI evaluates it (tools/pkl/evaluate.py), with the defaults and types below.
+module App
+
+import "pkl:reflect"
+
+typealias Lane = "desktop" | "source-engine" | "android" | "ios"
+
+/// The lanes that verify the application: `desktop` or `source-engine` runs its own tests,
+/// and `android` and `ios` build its release apps with their debug symbols, for every
+/// Android ABI.
+lanes: List<Lane>(isDistinct, contains("desktop") || contains("source-engine"))
+
+/// The Bazel configuration every command of the application's suite takes, such as one that
+/// registers its source-built engine. The `android` and `ios` lanes build every application
+/// in one command, without it.
+config: String? = null
+
+/// The members of the Lane union, which the lanes' work checks against its lanes.
+hidden fixed choices: Mapping<String, List<String>> = new {
+  ["lanes"] = (reflect.TypeAlias(Lane).referent as reflect.UnionType).members
+    .map((member) -> (member as reflect.StringLiteralType).value)
+}

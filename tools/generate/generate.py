@@ -5,7 +5,7 @@ Regenerate the repository's generated files, or check that they are current.
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
-| The lock files of source-built engines, such as Petri's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
+| The lock files of source-built engines, such as an application's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
 (`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 from tools.addons import declarations
-from tools.setup.modules import ADDONS, RULESET, module_paths
+from tools.setup.modules import ADDONS, EXAMPLES, LOCK_SUFFIX, RULESET, module_paths
 
 ROOT = Path(__file__).resolve().parents[2]
 RULESET_DIR = RULESET.as_posix()
@@ -31,8 +31,14 @@ RULESET_DIR = RULESET.as_posix()
 LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
-# The source builds with a lock file, as (module, hub).
-PINNED_ENGINES = ((".", "godot_petri"),)
+
+
+def pinned_engines(root: Path = ROOT) -> tuple[str, ...]:
+    """The hubs of the source builds with a lock file: those of the applications' engine/."""
+    return tuple(
+        path.name.removesuffix(LOCK_SUFFIX)
+        for path in sorted((root / EXAMPLES).glob(f"*/engine/*{LOCK_SUFFIX}"))
+    )
 
 
 def bazel(module: str, *args: str) -> int:
@@ -102,14 +108,14 @@ def check_lock_files() -> int:
 
 def pins() -> int:
     status = 0
-    for module, hub in PINNED_ENGINES:
+    for hub in pinned_engines():
         failed = bazel(
-            module, "build", "--nobuild", "--keep_going", f"@{hub}//toolchains:all"
+            ".", "build", "--nobuild", "--keep_going", f"@{hub}//toolchains:all"
         )
         if failed:
             print(
-                f"{module}: a pin of @{hub} is stale or the hub does not analyse; pin it "
-                f"there with `bazel run @{hub}//:pin --config=buildbuddy`.",
+                f"a pin of @{hub} is stale or the hub does not analyse; pin it with "
+                f"`bazel run @{hub}//:pin --config=buildbuddy`.",
                 file=sys.stderr,
             )
         status |= failed

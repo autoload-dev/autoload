@@ -1,0 +1,4 @@
+// How this repository verifies the application (tools/apps/App.pkl).
+amends "../../tools/apps/App.pkl"
+
+lanes = List("desktop", "android", "ios")

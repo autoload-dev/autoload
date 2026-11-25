@@ -5,6 +5,8 @@ import unittest
 from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.test_support import RepositoryTest
 
+APP = 'amends "../../tools/apps/App.pkl"\n\nlanes = List("desktop")\n'
+
 
 class ProjectPlacesTest(RepositoryTest):
     def setUp(self) -> None:
@@ -13,7 +15,7 @@ class ProjectPlacesTest(RepositoryTest):
 
     def evaluate(self, *names: str) -> list[str]:
         for name in names:
-            self.write(name, "")
+            self.write(name, APP if name.endswith("app.pkl") else "")
         context = self.context()
         return [item.message for item in ProjectPlaces().evaluate(context)]
 
@@ -23,6 +25,7 @@ class ProjectPlacesTest(RepositoryTest):
             self.evaluate(
                 "examples/game/BUILD.bazel",
                 "examples/game/project.godot",
+                "examples/game/app.pkl",
                 "e2e/rules_godot/mobile/BUILD.bazel",
                 "e2e/rules_godot/mobile/android/project.godot",
                 "addons/widget/MODULE.bazel",
@@ -103,12 +106,20 @@ class ProjectPlacesTest(RepositoryTest):
         findings = self.evaluate(
             "e2e/rules_godot/raw_library/native.cc",
             "examples/app/project.godot",
+            "examples/app/app.pkl",
         )
         self.assertEqual(len(findings), 3)
         self.assertTrue(
             any("must contain a Godot configuration" in item for item in findings)
         )
         self.assertTrue(any("must own a BUILD file" in item for item in findings))
+
+    def test_an_application_declares_its_lanes_in_app_pkl(self) -> None:
+        findings = self.evaluate(
+            "examples/game/BUILD.bazel", "examples/game/project.godot"
+        )
+        self.assertEqual(1, len(findings))
+        self.assertIn("declares its lanes in app.pkl", findings[0])
 
     def test_extension_fixture_inputs_and_generated_templates_do_not_define_projects(
         self,

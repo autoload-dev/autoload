@@ -28,6 +28,7 @@ identities, not authored target declarations.
 | [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
 | [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
 | [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
+| [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
@@ -259,7 +260,10 @@ by path:
 | Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, and one directory of it per scenario or configuration variant that needs other settings |
 | Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
 
-A project owns a BUILD file and at least one authored Godot configuration; related
+A project owns a BUILD file and at least one authored Godot configuration; an application,
+a project directly in `examples/`, also has an `app.pkl` that amends `tools/apps/App.pkl`
+and evaluates, which tells the lanes' work how to verify it
+([example guidance](../../examples/AGENTS.md#common-workflows)). Related
 operating-system contexts can share one project. No other module holds projects: an add-on
 module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
 are outside this check. There is no per-directory admission list.
@@ -386,11 +390,14 @@ root module's declaration lists it. Each module:
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
-- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
-  properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
-  of `linux`, `macos`), `testOperations` and `sharedPackages`. The repository does not evaluate the schema's
-  types, so this rule checks the values. A module builds applications when its lanes include
-  `android` or `ios`;
+- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and that the pinned Pkl
+  CLI evaluates: Pkl rejects a property the schema does not declare and a value outside its
+  type, such as a lane other than `desktop`, `android` and `ios`. A module builds
+  applications when its lanes include `android` or `ios`;
+- lists in `addon.pkl`'s `testDependencies` exactly the regular dependencies that only its
+  `tests/` packages load from. The lanes build the module from the root module, where its
+  development dependencies are not active, so a unit test's library is a regular
+  dependency; the list keeps that exception visible;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
   defining the targets `edit` and `pack`, and `app` when the module builds applications;
@@ -476,6 +483,20 @@ development dependencies are not active.
 The check reports, in each add-on module but its registry test modules, every
 `project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync` or a
 test operation its `addon.pkl` declares in `testOperations`.
+
+## RG022
+
+**The Python tooling names no add-on module or application.** The tools read what is
+specific to a component from its manifest: an add-on module's `addon.pkl`
+(`tools/addons/Addon.pkl`) and an application's `app.pkl` (`tools/apps/App.pkl`), which Pkl
+evaluates. A new component then needs no change of the tooling, and what is special about
+one stays visible beside it, as a standardized option.
+
+The check reads the string literals of every Python file in `tools/`, docstrings included,
+apart from tests and their support, and reports each that names an add-on module or an
+application of `examples/` as a word, also inside a flag or label, such as `--config=<name>`
+or `@autoload_<module>//`; a file extension such as `.dart` names none. Comments may name
+components, such as to explain an exception.
 
 ## RG023
 

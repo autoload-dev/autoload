@@ -24,8 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.addons.modules import LANES as ADDON_LANES
-from tools.addons.modules import ROOT, all_modules, host
+from tools.addons.modules import ROOT, all_modules, choices, host
+from tools.apps.apps import Application, applications
 from tools.ci.changes import (
     Changes,
     Inputs,
@@ -38,8 +38,7 @@ from tools.ci.lanes import LANES, PROFILE, profile
 from tools.setup.modules import RULESET, module_paths, registry_test_modules
 
 RULESET_DIR = RULESET.as_posix()
-# The root module's Godot applications and the ruleset's consumer scenarios, by package.
-EXAMPLES = "//examples"
+# The ruleset's consumer scenarios, by package.
 SCENARIOS = "//e2e/rules_godot"
 ANDROID_SETUP = "android:setup"
 # The workspace's own output base, which work names where its lane has another profile.
@@ -94,24 +93,38 @@ class Work:
         ]
 
 
-def example_tests(name: str, config: str = "") -> str:
-    """The command that runs one application's own tests, below examples/<name>/."""
-    flags = f" --config={config}" if config else ""
-    return f"bazel test --build_tests_only{flags} {EXAMPLES}/{name}/..."
+# The applications of examples/, by their app.pkl; add-on modules have lanes of their own.
+APPLICATIONS = applications(ROOT)
 
 
-def example(name: str) -> Work:
-    """One application's own tests, in the desktop lane; add-on modules have lanes of their own."""
-    return Work(f"test:example:{name}", "desktop", ".", (example_tests(name),))
+def example_tests(application: Application) -> str:
+    """The command that runs one application's own tests, below its package."""
+    return f"bazel test --build_tests_only{application.flags} {application.package}/..."
+
+
+def example_work() -> Iterator[Work]:
+    """
+    Each application's own tests, named on their own: in the desktop lane, or, for one that
+    the source-engine lane tests, only when named, in that lane's profile.
+    """
+    for app in APPLICATIONS:
+        name = f"test:example:{app.name}"
+        command = (example_tests(app),)
+        if "desktop" in app.lanes:
+            yield Work(name, "desktop", ".", command)
+        elif "source-engine" in app.lanes:
+            yield Work(name, None, ".", command, profile="source-engine")
 
 
 # The API documentation's tests, all of them fast, with the API inventory's discovery
 # of new Starlark modules, which a test's sandbox cannot see.
 DOCS_CHECK = "bazel run //tools/docs:check"
 
-# Petri's suites run in an editor built from the engine sources with its module, so the
-# source-engine lane runs them; named on its own, it runs here too.
-PETRI_TESTS = example_tests("petri", config="petri")
+# The tests of the applications the source-engine lane verifies, such as those that run in
+# an editor built from the engine sources with their module.
+SOURCE_ENGINE_EXAMPLES = tuple(
+    example_tests(app) for app in APPLICATIONS if "source-engine" in app.lanes
+)
 
 
 def every_module(
@@ -227,28 +240,33 @@ PATCHED_EDITOR = (
     f" {SCENARIOS}/patched_engine/tests:source_built_editor_test"
     f" --extra_toolchains={SCENARIOS}/patched_engine/engines/source:all"
 )
-# The root module's own application; the add-on modules' lanes build their examples' apps.
-LICHTPOST = f"{EXAMPLES}/lichtpost"
 
 
-def addon_app_packages(root: Path = ROOT) -> tuple[str, ...]:
-    """The example projects of the add-on modules that build applications, by package."""
+def addon_app_packages(lane: str, root: Path = ROOT) -> tuple[str, ...]:
+    """The example projects of the add-on modules whose lanes include a mobile lane."""
     return tuple(
         module.project_package(project)
         for module in all_modules(root)
-        if module.builds_apps
+        if lane in module.lanes
         for project in module.projects
     )
 
 
-# The release builds of every application: Android's leave Lichtpost out.
-RELEASE_PACKAGES = (LICHTPOST, *addon_app_packages())
-ANDROID_RELEASE_PACKAGES = addon_app_packages()
+def release_builds(lane: str, flags: str) -> str:
+    """
+    The release builds of every application of a mobile lane with their debug symbols: the
+    applications that name the lane and the add-on modules' examples.
+    """
+    packages = (
+        *(app.package for app in APPLICATIONS if lane in app.lanes),
+        *addon_app_packages(lane),
+    )
+    return f"bazel build {apps(packages)}{flags}"
 
 
-def apps(packages: Iterable[str], symbols: bool = False) -> str:
-    """The packages' apps as Bazel targets, with their debug symbols if asked."""
-    suffixes = (":app", ":app.debug_symbols") if symbols else (":app",)
+def apps(packages: Iterable[str]) -> str:
+    """The packages' apps and their debug symbols as Bazel targets."""
+    suffixes = (":app", ":app.debug_symbols")
     return " ".join(package + suffix for package in packages for suffix in suffixes)
 
 
@@ -338,7 +356,7 @@ WORK = (
         ),
         hosts=("macos",),
     ),
-    example("lichtpost"),
+    *example_work(),
     contracts("android"),
     # Each mobile lane's work ends on the configuration of the add-on modules' lanes that
     # follow it in its profile, so that they keep its analysis.
@@ -347,13 +365,10 @@ WORK = (
         "android",
         ".",
         (
-            (
-                f"bazel build {apps(ANDROID_RELEASE_PACKAGES, symbols=True)}"
-                " --config=android-release --config=aab"
+            release_builds(
+                "android", " --config=android-release --config=multi_abi --config=aab"
             ),
-            f"bazel build {EXAMPLES}/addons/sqlite:app --config=multi_abi --config=aab",
             f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
-            f"bazel build {LICHTPOST}:app --config=android",
         ),
         android=True,
     ),
@@ -363,12 +378,13 @@ WORK = (
         "ios",
         ".",
         (
-            f"bazel build {apps(RELEASE_PACKAGES, symbols=True)} --config=ios-release",
+            release_builds("ios", " --config=ios-release"),
             f"bazel test {SCENARIOS}:ios_official --config=official",
         ),
     ),
     contracts("source-engine"),
-    # Every source-engine case, Petri's included. CI runs it in the Source engine workflow.
+    # Every source-engine case, the applications' it verifies included. CI runs it in the
+    # Source engine workflow.
     Work(
         "source-engine:full",
         "source-engine",
@@ -378,7 +394,7 @@ WORK = (
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            PETRI_TESTS,
+            *SOURCE_ENGINE_EXAMPLES,
         ),
         android=True,
     ),
@@ -400,7 +416,6 @@ WORK = (
         android=True,
         profile="source-engine",
     ),
-    Work("test:example:petri", None, ".", (PETRI_TESTS,), profile="source-engine"),
     # Running Android work provisions the SDK first.
     Work(
         ANDROID_SETUP,
@@ -444,12 +459,13 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
     the same way on every host, so its desktop lane runs on Linux only.
     """
     modules = all_modules(root)
+    lanes = choices()["lanes"]
     named = {lane for module in modules for lane in module.lanes}
-    yield from (lane_addon_work(lane) for lane in ADDON_LANES if lane in named)
+    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
     yield from (
         module_work(lane, module.directory) for module in modules for lane in module.lanes
     )
-    yield from map(template_work, ADDON_LANES)
+    yield from map(template_work, lanes)
 
 
 def lane_addon_work(lane: str) -> Work:

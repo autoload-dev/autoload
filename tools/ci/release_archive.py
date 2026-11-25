@@ -96,7 +96,7 @@ def test(directory: str, root: Path = ROOT, registry: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "directories", nargs="*", help="such as rules_godot or addons/sqlite"
+        "directories", nargs="*", help="such as rules_godot or addons/<module>"
     )
     parser.add_argument(
         "--registry",

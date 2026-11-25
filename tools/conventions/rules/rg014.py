@@ -11,11 +11,10 @@ from tools.conventions.context import (
     nearest,
 )
 from tools.conventions.framework import Finding, RuleInfo
+from tools.setup.modules import LOCK_SUFFIX
 
 PATCH_SUFFIXES = frozenset({".patch", ".diff"})
 MODULE_FILES = frozenset({"config.py", "SCsub"})
-# A source build's lock file, as godot_engines.source_build names it: <hub>.lock.json.
-LOCK_SUFFIX = ".lock.json"
 ENGINE_ENTRIES = (
     "engine/ holds only modules/, patches/, a BUILD file, lock files and .bzl files"
 )

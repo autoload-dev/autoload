@@ -1,8 +1,10 @@
 /// What an add-on module of addons/ declares about itself: `addons/<module>/addon.pkl`
 /// amends this module (addons/AGENTS.md). The lanes' work (tools/ci/work.py), the lanes
-/// (tools/addons/lanes.py) and the conventions read it with Python, which applies the
-/// defaults below but not the types, so the conventions check (RG015) checks the values.
+/// (tools/addons/lanes.py) and the conventions read it as the pinned Pkl CLI evaluates it
+/// (tools/pkl/evaluate.py), with the defaults and types below.
 module Addon
+
+import "pkl:reflect"
 
 typealias Lane = "desktop" | "android" | "ios"
 typealias Desktop = "linux" | "macos"
@@ -23,3 +25,20 @@ testOperations: List<String> = List()
 /// The packages in the module's root that several of its add-ons share and that are no
 /// add-on themselves, such as Firebase's `config`. RG015 allows them in the module's root.
 sharedPackages: List<String> = List()
+
+/// The packages that only the module's unit tests load from and that it still declares as
+/// regular dependencies, since the lanes build it from the root module, where its development
+/// dependencies are not active. RG015 allows a dependency that only tests use only when it is
+/// listed here. Public rules are tested from `e2e/addons/<module>/` instead, so keep this
+/// for real exceptions.
+testDependencies: List<String> = List()
+
+/// The members of the string unions above, which the tools offer as choices.
+hidden fixed choices: Mapping<String, List<String>> = new {
+  ["lanes"] = members(Lane)
+  ["desktops"] = members(Desktop)
+}
+
+local function members(alias: TypeAlias): List<String> =
+  (reflect.TypeAlias(alias).referent as reflect.UnionType).members
+    .map((member) -> (member as reflect.StringLiteralType).value)

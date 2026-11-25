@@ -19,6 +19,7 @@ from tools.conventions.rules.rg018 import SharedSkills
 from tools.conventions.rules.rg019 import ProjectTargetNames
 from tools.conventions.rules.rg020 import RegistryTestModules
 from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
+from tools.conventions.rules.rg022 import NoComponentNames
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 
 RULES: tuple[Rule, ...] = (
@@ -40,6 +41,7 @@ RULES: tuple[Rule, ...] = (
     ProjectTargetNames(),
     RegistryTestModules(),
     NoGodotRunsInAddonModules(),
+    NoComponentNames(),
     ReleasedWithoutTests(),
 )
 
