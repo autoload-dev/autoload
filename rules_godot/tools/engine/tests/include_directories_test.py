@@ -1,5 +1,3 @@
-"""The include directories each engine source reaches."""
-
 import tempfile
 import unittest
 from pathlib import Path

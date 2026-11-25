@@ -1,5 +1,3 @@
-"""The definitions the define analysis keeps in the header and in a per-file copt."""
-
 import sys
 import unittest
 from pathlib import Path

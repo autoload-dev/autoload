@@ -1,5 +1,3 @@
-"""The SCons configuration of the bazel_probe engine module."""
-
 from typing import Any
 
 

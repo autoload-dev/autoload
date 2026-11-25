@@ -1,5 +1,3 @@
-"""The add-on self-test: its lane and the checkout it leaves behind."""
-
 import unittest
 from unittest import mock
 

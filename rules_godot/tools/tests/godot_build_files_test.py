@@ -1,5 +1,3 @@
-"""The generated BUILD files of Godot projects: discovery, rendering and check mode."""
-
 import contextlib
 import io
 import tempfile

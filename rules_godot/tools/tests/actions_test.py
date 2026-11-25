@@ -1,5 +1,3 @@
-"""The Godot actions: export, staging, mapped paths, node IDs and PCK contents."""
-
 import contextlib
 import hashlib
 import io

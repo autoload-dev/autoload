@@ -1,5 +1,3 @@
-"""How define_analysis.awk reads the diagnostics of Clang, Apple's wrapper and GCC."""
-
 import subprocess
 import sys
 import tempfile
