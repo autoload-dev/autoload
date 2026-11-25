@@ -483,8 +483,8 @@ consumer inherits: the lanes build add-on modules from the root module, where th
 development dependencies are not active.
 
 The check reports, in each add-on module but its registry test modules, every
-`project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync` or a
-test operation its `addon.pkl` declares in `testOperations`.
+`project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync`,
+`godot_runtime_profile` or a test operation its `addon.pkl` declares in `testOperations`.
 
 ## RG022
 

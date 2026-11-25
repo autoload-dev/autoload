@@ -103,7 +103,100 @@ _BUILD_PROFILE = "_build_profile.gdbuild"
 def _pin_sources(ctx):
     """The globs of the recipe repository's files a pin action copies into its source tree."""
     sources = ["_custom_modules/**", "_scons/**"]
-    return sources + [_BUILD_PROFILE] if ctx.attr.build_profile else sources
+    if ctx.attr.build_profile:
+        sources.append(_BUILD_PROFILE)
+    if ctx.attr.runtime_profiles:
+        sources.append("_variant_*.gdbuild")
+    return sources
+
+# Where a recipe without a lock file configures its runtime variants, one pin each.
+_VARIANT_PINS = "_variant_pins"
+
+def _profile_options(ctx, label):
+    """The build options of a build profile."""
+    return dict(json.decode(ctx.read(ctx.path(label))).get("disabled_build_options", {}))
+
+def _variant_profiles(ctx):
+    """
+    Write each runtime variant's build profile and return its runtime profile and path.
+
+    A variant's profile has the recipe's own build options with its runtime profile's; its
+    classes stay with the application, whose profile the class generator reads.
+    """
+    recipe = _profile_options(ctx, ctx.attr.build_profile) if ctx.attr.build_profile else {}
+    variants = []
+    for index, label in enumerate(ctx.attr.runtime_profiles):
+        path = "_variant_%d.gdbuild" % index
+        options = recipe | _profile_options(ctx, label)
+        ctx.file(path, json.encode_indent({"type": "build_profile", "disabled_build_options": options}) + "\n")
+        variants.append((str(label), path))
+    return variants
+
+def with_build_profile(arguments, path):
+    """
+    Return configure arguments with another build profile, such as a runtime variant's.
+
+    Args:
+        arguments: A recipe's configure arguments.
+        path: The build profile's path below the source root.
+
+    Returns:
+        The arguments without their --build-profile, then the given one.
+    """
+    result = []
+    skip = False
+    for argument in arguments:
+        if skip:
+            skip = False
+        elif argument == "--build-profile":
+            skip = True
+        else:
+            result.append(argument)
+    return result + ["--build-profile", path]
+
+def _variant_arguments(ctx, command, variants):
+    """
+    The configure arguments that render a recipe's runtime variants beside its graph.
+
+    A recipe without a lock file configures each variant first.
+    """
+    arguments = [
+        "--build-profile-label",
+        str(ctx.attr._build_profile_label),
+        "--engine",
+        ctx.attr.engine,
+    ]
+    if variants and not ctx.attr.lock_file:
+        arguments.extend(_configure_variants(ctx, command, variants))
+    for label, path in variants:
+        arguments.extend(["--runtime-profile", label, path])
+    return arguments
+
+def _failure(result):
+    """The exception a failed configuration reports, or else its last line of output."""
+    lines = (result.stdout + "\n" + result.stderr).strip().splitlines()
+    errors = [line for line in lines if "Error: " in line]
+    return (errors or lines or ["configuration failed"])[-1].strip()
+
+def _configure_variants(ctx, command, variants):
+    """
+    Configure the runtime variants of a recipe without a lock file, one pin each.
+
+    A variant that cannot configure, such as one whose profile contradicts the recipe's
+    build options, records why; only the applications that select it fail.
+    """
+    for index, (label, path) in enumerate(variants):
+        pin = ctx.path("%s/%d.json" % (_VARIANT_PINS, index))
+        result = ctx.execute(
+            with_build_profile(command, path) + ["--pin-output", str(pin)],
+            timeout = ctx.attr.configure_timeout,
+            quiet = True,
+        )
+        if result.return_code:
+            ctx.file("%s/%d.error" % (_VARIANT_PINS, index), (
+                "%s: the runtime profile %s cannot apply to this recipe: %s"
+            ) % (ctx.attr.name, label, _failure(result)))
+    return ["--variant-pins", str(ctx.path(_VARIANT_PINS))]
 
 def _selection_arguments(ctx):
     """
@@ -124,15 +217,15 @@ def _repository(label):
     """The canonical repository of a label, such as @@platforms, for generated BUILD files."""
     return str(label).split("//")[0]
 
-def _pin_target(ctx, archive, strip_prefix, arguments):
-    """The :pin target that configures this recipe on its execution platform."""
+def _pin_target(ctx, descriptor, arguments, name = "pin"):
+    """The :pin target that configures this recipe, or one of its variants, on its execution platform."""
     execution = _PIN_EXECUTION.get(ctx.attr.platform)
     constraints = [str(OPERATING_SYSTEM_CONSTRAINTS[execution])] if execution else []
     return """
 load(%r, "godot_recipe_pin")
 
 godot_recipe_pin(
-    name = "pin",
+    name = %r,
     archive = %r,
     strip_prefix = %r,
     patches = %r,
@@ -144,13 +237,21 @@ godot_recipe_pin(
 )
 """ % (
         str(ctx.attr._pin_bzl),
-        str(archive),
-        strip_prefix,
+        name,
+        str(ctx.attr.source.same_package_label(descriptor["archive"])),
+        descriptor["strip_prefix"],
         [str(patch) for patch in ctx.attr.patches],
         _pin_sources(ctx),
         arguments,
         constraints,
     )
+
+def _pin_targets(ctx, descriptor, arguments, variants):
+    """The :pin target of the recipe and the :pin_variant_<n> target of each runtime variant."""
+    return _pin_target(ctx, descriptor, arguments) + "".join([
+        _pin_target(ctx, descriptor, with_build_profile(arguments, path), name = "pin_variant_%d" % index)
+        for index, (_, path) in enumerate(variants)
+    ])
 
 def _watch_tools(ctx):
     """Configure again when the code that captures or renders a recipe's graph changes."""
@@ -161,6 +262,8 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._build_profile))
     ctx.watch(ctx.path(ctx.attr._define_analysis))
     ctx.watch(ctx.path(ctx.attr._include_graph))
+    ctx.watch(ctx.path(ctx.attr._variants))
+    ctx.watch(ctx.path(ctx.attr._generators))
 
 def engine_build_impl(ctx, *, _fail = fail):
     """
@@ -263,6 +366,8 @@ def engine_build_impl(ctx, *, _fail = fail):
         arguments.extend(["--custom-module-name", name])
     for patch in ctx.attr.patches:
         command.extend(["--patch", str(ctx.path(patch))])
+    variants = _variant_profiles(ctx)
+    command.extend(_variant_arguments(ctx, command, variants))
     if pinned:
         lock = ctx.path(ctx.attr.lock_file)
         ctx.watch(lock)
@@ -281,12 +386,7 @@ def engine_build_impl(ctx, *, _fail = fail):
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None
     if pinned:
-        ctx.file("BUILD.bazel", ctx.read("BUILD.bazel") + _pin_target(
-            ctx,
-            ctx.attr.source.same_package_label(descriptor["archive"]),
-            descriptor["strip_prefix"],
-            arguments,
-        ))
+        ctx.file("BUILD.bazel", ctx.read("BUILD.bazel") + _pin_targets(ctx, descriptor, arguments, variants))
     else:
         # Upstream dumps its configured environment, with this host's SDK paths, for editor
         # integrations; no target reads it.

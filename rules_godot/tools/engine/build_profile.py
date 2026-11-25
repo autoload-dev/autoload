@@ -60,6 +60,9 @@ def scope(root: Path) -> bool:
     """
     path = root / _CLASS_DB
     text = path.read_text() if path.is_file() else ""
+    if text.count(_SCOPED) == 1:
+        # Scoped already, for another runtime variant of the recipe.
+        return True
     if text.count(_UPSTREAM) != 1:
         return False
     path.write_text(text.replace(_UPSTREAM, _SCOPED))

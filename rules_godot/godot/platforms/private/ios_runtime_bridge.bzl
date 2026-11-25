@@ -25,7 +25,7 @@ load("@rules_apple//apple/internal/aspects:resource_aspect.bzl", "apple_resource
 load("@rules_apple//apple/internal/aspects:swift_usage_aspect.bzl", "SwiftUsageInfo", "swift_usage_aspect")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_swift//swift:swift.bzl", "SwiftInfo")
-load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings", "require_tunable_runtime")
 load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
@@ -47,6 +47,7 @@ _FORWARDED = [
 
 def _bridge_impl(ctx):
     godot = engine_toolchain(ctx, "runtime", "this iOS platform slice, its iOS environment and the variant")
+    require_tunable_runtime(ctx.label, ctx.attr, godot.provenance)
     target = godot.payload
 
     # Files only: a payload's executable belongs to the rule that created it.

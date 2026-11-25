@@ -379,6 +379,7 @@ def _app_impl(
         engine_optimize,
         engine_lto,
         engine_vfe,
+        build_profile,
         **kwargs):
     # The inherited testonly is None unless set, which applies the package default.
     testonly = kwargs.pop("testonly")
@@ -389,6 +390,7 @@ def _app_impl(
         engine_optimize = engine_optimize,
         engine_lto = engine_lto,
         engine_vfe = engine_vfe,
+        build_profile = build_profile,
     )
 
     # Desktop application backends package the runtime component the runtime toolchain
@@ -633,6 +635,20 @@ godot_app = macro(
             doc = "Whether this application's source-built engine drops the virtual functions nothing calls under -c opt, overriding --@autoload_rules_godot//godot:engine_vfe: on, off, or empty to keep the build's. Needs full LTO and Clang.",
             configurable = False,
             values = VFE_VALUES,
+        ),
+        "build_profile": attr.label(
+            doc = """
+            A Godot build profile (.gdbuild), such as the editor's Engine Compilation
+            Configuration writes, whose disabled_classes this application's runtime leaves out.
+            Only the runtime is affected: packs, imports and the editor keep every class. The
+            class list reaches the engine's class generator as an input, so no recipe is
+            repinned and only the sources that register classes recompile; applications with
+            different profiles share every other object. The runtime must be built from
+            source; a prebuilt runtime fails analysis. A profile that also sets
+            disabled_build_options fails the build. See [build profiles](../../engine-size.md#4-use-a-build-profile).
+            """,
+            allow_single_file = [".gdbuild"],
+            configurable = False,
         ),
     },
 )

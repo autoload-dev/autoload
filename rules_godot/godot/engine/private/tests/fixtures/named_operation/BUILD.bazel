@@ -1,4 +1,4 @@
-load("//godot:defs.bzl", "godot_pack", "godot_project")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 # buildifier: disable=bzl-visibility
 load("//godot/engine/private:components.bzl", "resolved_runtime")
@@ -19,6 +19,22 @@ godot_pack(
     engine = "beta",
     project = ":named_operation",
     tags = ["manual"],
+    deps = [":beta_resources"],
+)
+
+# Resources that need the engine "beta": a pack of another engine must not reach them.
+godot_resources(
+    name = "beta_resources",
+    srcs = ["beta.gd"],
+    engine = "beta",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "default_pack",
+    project = ":named_operation",
+    tags = ["manual"],
+    deps = [":beta_resources"],
 )
 
 resolved_runtime(

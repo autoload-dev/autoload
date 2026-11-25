@@ -282,6 +282,7 @@ FAST_TEST_COMMAND = (
 
 PATCHED_ENGINE = (
     f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" {SCENARIOS}/patched_engine/tests:app_build_profile_test"
     f" --extra_toolchains={SCENARIOS}/patched_engine/engines/{{engine}}:all"
 )
 

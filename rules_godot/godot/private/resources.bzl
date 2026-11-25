@@ -1,12 +1,14 @@
 """
 Godot resources as import units: their composition, staging and import under an operation's project.
 
-Sections: Target classification, Composition, Composition validation, godot_resources.
+Sections: Target classification, Composition, Composition validation, Engine, godot_resources.
 """
 
+load("//godot/engine/private:selection.bzl", "ENGINE")
 load("//godot/private:actions.bzl", "write_manifest")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
+load("//godot/private:context.bzl", "NO_PROJECT", "PROJECT_SETTING", "TRANSITION_ATTRS", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
+load("//godot/private:flags.bzl", "FlagInfo")
 load(
     "//godot/private:import_units.bzl",
     "GAME_ONLY",
@@ -256,6 +258,35 @@ def validate_composition(composition, dependencies):
     _validate_import_sidecars(staged, dependencies)
     _validate_ignored(composition, staged_owners)
 
+# ==== Engine ==================================================================
+
+def _own_engine_impl(settings, attr):
+    # Outside every operation, as a build of the target alone, the target's own engine
+    # validates it; an operation's engine stays, and _require_engine compares the two.
+    if attr.engine and str(settings[PROJECT_SETTING]) == NO_PROJECT:
+        return {ENGINE: attr.engine}
+    return {ENGINE: settings[ENGINE]}
+
+_own_engine = transition(
+    implementation = _own_engine_impl,
+    inputs = [ENGINE, PROJECT_SETTING],
+    outputs = [ENGINE],
+)
+
+def _engine_name(name):
+    return "the engine " + name if name else "the default engine"
+
+def _require_engine(ctx):
+    """Fail when an operation of another engine reaches resources that name their engine."""
+    configured = ctx.attr._engine[FlagInfo].value
+    if ctx.attr.engine and configured != ctx.attr.engine:
+        fail("%s needs %s, but an operation of %s reaches it; give the operation engine = %r" % (
+            ctx.label,
+            _engine_name(ctx.attr.engine),
+            _engine_name(configured),
+            ctx.attr.engine,
+        ))
+
 # ==== godot_resources =========================================================
 
 def _edges(kind, paths, owner):
@@ -394,6 +425,7 @@ def _unit_results(ctx, composition, selection, staging):
     )
 
 def _resources_impl(ctx):
+    _require_engine(ctx)
     owner = str(ctx.label)
     selection = _selection(ctx)
     dependencies = selection.dependencies
@@ -537,8 +569,19 @@ godot_resources = rule(
             executable = True,
             cfg = "exec",
         ),
+        "engine": attr.string(
+            doc = """
+            The engine these resources need, by engine name, such as one whose module
+            defines a class their scripts name. Building the target by itself, as
+            `bazel build //...` does, then validates its scripts with that engine's
+            editor. An operation that reaches the target must name the same engine, or
+            the analysis fails. Empty keeps the engine of whatever reaches the target.
+            """,
+        ),
+        "_engine": attr.label(default = Label("//godot:engine"), providers = [FlagInfo]),
     } | VALIDATION_ATTRS | TRANSITION_ATTRS,
     toolchains = [config_common.toolchain_type(EDITOR_TOOLCHAIN, mandatory = False)],
+    cfg = _own_engine,
 )
 
 def own_paths(resources):

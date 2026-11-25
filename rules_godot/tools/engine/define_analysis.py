@@ -3,12 +3,12 @@ Render the macro definition analysis of a source-built engine's C and C++ source
 
 Each such source gets a `godot_source_defines` target with its -D and -U options, and its
 library compiles with `-include _macros/<library>.h` instead of them. `godot_define_analysis`
-targets write those headers, one action per shard: the sources of one compile group and
-directory, at most SHARD_SIZE of them. See //godot/engine/private:define_analysis.bzl.
+targets write those headers, one action per shard: the sources of one directory that the
+same runtime variants compile, at most SHARD_SIZE of them. See //godot/engine/private:define_analysis.bzl.
 """
 
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import NamedTuple
 
 # The most sources one analysis action preprocesses. A shard's action runs its sources in
@@ -89,18 +89,29 @@ def _chunks(members: list[Library], size: int) -> list[list[Library]]:
     return [members[start : start + per] for start in range(0, len(members), per)]
 
 
-def analysis_rules(libraries: Iterable[Library], size: int = SHARD_SIZE) -> list[str]:
-    """The godot_define_analysis targets that write the libraries' headers."""
-    shards: dict[tuple[int, str], list[Library]] = defaultdict(list)
+def analysis_rules(
+    libraries: Iterable[Library],
+    size: int = SHARD_SIZE,
+    scopes: Mapping[str, str] | None = None,
+) -> list[str]:
+    """
+    The godot_define_analysis targets that write the libraries' headers.
+
+    A shard holds the libraries of one scope and directory. scopes names each library's
+    scope, the runtime variants that compile it; a library without one is in every variant.
+    Compile groups share shards, since each source preprocesses with its own options.
+    """
+    shards: dict[tuple[str, str], list[Library]] = defaultdict(list)
     for library in libraries:
-        shards[library.group, _directory(library.source)].append(library)
+        scope = (scopes or {}).get(library.name, "")
+        shards[scope, _directory(library.source)].append(library)
     lines = []
-    for (group, directory), members in sorted(shards.items()):
+    for (scope, directory), members in sorted(shards.items()):
         chunks = _chunks(sorted(members, key=lambda member: member.source), size)
         for index, chunk in enumerate(chunks):
             suffix = f"__{index}" if len(chunks) > 1 else ""
             lines.append(
-                f"godot_define_analysis(name = '_macros__{group}__{directory}{suffix}', "
+                f"godot_define_analysis(name = '_macros__{scope}{directory}{suffix}', "
                 "visibility = ['//visibility:private'], "
                 f"sources = {[':' + _defines_target(member.name) for member in chunk]!r}, "
                 f"outs = {[header(member.name) for member in chunk]!r})"

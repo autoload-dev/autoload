@@ -8,7 +8,9 @@ from tools.conventions.rules.rg007 import declared_operations
 from tools.setup.modules import is_addon_module
 
 # The calls that make a Godot project or run Godot, besides the declared test operations.
-GODOT_RUNS = frozenset({"godot_project", "godot_test", "godot_metadata_sync"})
+GODOT_RUNS = frozenset(
+    {"godot_project", "godot_test", "godot_metadata_sync", "godot_runtime_profile"}
+)
 
 
 class NoGodotRunsInAddonModules:

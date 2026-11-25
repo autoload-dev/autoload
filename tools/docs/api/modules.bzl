@@ -18,6 +18,7 @@ PUBLIC_APIS = {
         "godot_test",
         "godot_editor",
         "godot_metadata_sync",
+        "godot_runtime_profile",
     ],
     "//godot/extension:defs.bzl": [
         "godot_extension",
@@ -104,6 +105,7 @@ SUPPORT_MODULES = [
     "//godot/private:resources.bzl",
     "//godot/private:import_units.bzl",
     "//godot/private:run.bzl",
+    "//godot/private:runtime_profile.bzl",
     "//godot/private:symbols.bzl",
     "//godot/private:variant.bzl",
     "//godot/private:view.bzl",
@@ -146,6 +148,7 @@ PUBLIC_TARGETS = {
     "//godot:android_aab": "config_setting matching an explicitly requested Android App Bundle delivery.",
     "//godot:engine_optimize": "String build setting, auto (default), speed, speed_trace, size, size_extra or size_min: how source-built engines compile under -c opt, with Godot's levels (-O3, -O2, -Os, -Os with SIZE_EXTRA) plus size_min (-Oz with SIZE_EXTRA); auto is speed for release runtimes and speed_trace for debug runtimes and editors. Applies to engine code only; other compilation modes keep Bazel's levels.",
     "//godot:engine_lto": "String build setting, none (default), thin or full: link-time optimization of source-built engines under -c opt, for engine code only. thin needs Clang.",
+    "//godot:editor_debug": "Boolean build setting, default false: whether source-built editors compile in Bazel's dbg mode, with debug information, without optimization and unstripped, for a debugger; runtimes keep the build's mode. Editors build in the execution configuration, so propagate it with --experimental_propagate_custom_flag.",
     "//godot:engine_vfe": "Boolean build setting, default false: whether source-built engines drop the virtual functions nothing calls under -c opt, compiling engine code with TYPED_METHOD_BIND and Clang's -fvisibility=hidden -fwhole-program-vtables -fvirtual-function-elimination. Needs engine_lto=full and Clang.",
     "//godot:headless": "Boolean build setting, default true: whether godot_run and godot_test targets that leave headless unset run headless. Set --@autoload_rules_godot//godot:headless=false to watch tests render.",
     "//godot:app_version": "String build setting, default empty: the application version of packs and applications that set none themselves, such as --@autoload_rules_godot//godot:app_version=2.3.4 from a release pipeline. Packs export it as application/config/version; Android uses it as versionName, iOS and macOS as CFBundleShortVersionString.",

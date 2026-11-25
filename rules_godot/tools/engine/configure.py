@@ -36,11 +36,11 @@ from typing import Any, TypeGuard, cast
 
 try:
     from .module_graph import module_closure, module_dependencies
-    from .render import render, render_unpinned
+    from .render import Variant, render, render_unpinned
     from .source_tree import SOURCE_SUFFIXES, relative, write_json
 except ImportError:
     from module_graph import module_closure, module_dependencies
-    from render import render, render_unpinned
+    from render import Variant, render, render_unpinned
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
 
@@ -233,6 +233,39 @@ def _read_profile(profile: Path) -> dict[str, Any]:
     return data
 
 
+# The part of a build profile that reaches the engine as an action input, not through the
+# configured graph: the generator of core/disabled_classes.gen.h reads the class list.
+_CLASS_LIST = "disabled_classes"
+
+
+def profile_options_digest(profile: Path) -> str:
+    """
+    Return the digest of what a build profile contributes to the configured graph.
+
+    Only its build options shape the graph; its class list reaches the engine as an action
+    input, so a profile that disables classes alone needs no pin. Empty without options, so
+    earlier digests hold.
+    """
+    shaping = {
+        key: value
+        for key, value in _read_profile(profile).items()
+        if key not in {"type", _CLASS_LIST} and value
+    }
+    return "sha256:" + digest_of(shaping) if shaping else ""
+
+
+def without_class_list(spec: Mapping[str, Any]) -> dict[str, Any]:
+    """
+    Return a generator specification without the class list of the build profile.
+
+    The class generator takes the list from the recipe's or the application's profile when
+    it runs, so a pinned graph holds none and stays valid whatever classes they disable.
+    """
+    if spec["function"] != "disabled_class_builder":
+        return dict(spec)
+    return dict(spec) | {"sources": [{"value": []}]}
+
+
 def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
     """
     Fail for a build profile that is no JSON object or contradicts the recipe's options.
@@ -251,6 +284,22 @@ def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
         raise ValueError(
             "The build profile contradicts the recipe's build_options: "
             + ", ".join(conflicts)
+        )
+
+
+def require_known_options(profile: Path, known: Collection[str]) -> None:
+    """
+    Fail for a build profile that sets options this Godot version's SCons does not have.
+
+    SCons assigns each of a profile's disabled_build_options whatever its name, so a name
+    this version lacks, such as an option of a later version, would change nothing.
+    """
+    options = _read_profile(profile).get("disabled_build_options") or {}
+    unknown = sorted(set(options) - set(known))
+    if unknown:
+        raise ValueError(
+            "The build profile sets options this Godot version does not have: "
+            + ", ".join(unknown)
         )
 
 
@@ -1399,7 +1448,7 @@ class _Capture:
             # By their outputs, so recipes whose SCons visits generators in another order
             # share one list in a lock file.
             "generators": [
-                {"spec": spec, "dependencies": sorted(dependencies)}
+                {"spec": without_class_list(spec), "dependencies": sorted(dependencies)}
                 for spec, dependencies in sorted(
                     self.generators, key=lambda item: item[0]["targets"]
                 )
@@ -1487,12 +1536,19 @@ def pin_digest(args: argparse.Namespace, scons: Path) -> str:
 
 
 def pinned_graph(
-    lock: Path, recipe: str, digest: str
+    lock: Path, recipe: str, digest: str, profile: str = ""
 ) -> tuple[str, dict[str, Any] | None]:
-    """Return a recipe's status in a lock file, missing, stale or pinned, and its graph."""
+    """
+    Return a recipe's status in a lock file, missing, stale or pinned, and its graph.
+
+    With a runtime profile, the status and graph of the recipe's variant for it.
+    """
     text = lock.read_text().strip() if lock.is_file() else ""
     pins = json.loads(text) if text else {}
-    entry = pins.get("recipes", {}).get(recipe)
+    if profile:
+        entry = pins.get("variants", {}).get(recipe, {}).get(profile)
+    else:
+        entry = pins.get("recipes", {}).get(recipe)
     if entry is None:
         return "missing", None
     if entry.get("digest") != digest:
@@ -1506,6 +1562,69 @@ def pinned_graph(
 def write_pin(path: Path, digest: str, graph: Mapping[str, Any]) -> None:
     """Write one recipe's pin, the entry a lock file holds for it."""
     write_json(path, {"digest": digest, "graph": graph})
+
+
+def variant_arguments(
+    args: argparse.Namespace, root: Path, profile: str
+) -> argparse.Namespace:
+    """
+    Return a recipe's arguments for its runtime variant of a registered runtime profile.
+
+    The repository writes the variant's profile, the recipe's build options with the runtime
+    profile's, to profile below the source root.
+    """
+    variant = argparse.Namespace(**vars(args))
+    variant.build_profile = profile
+    require_consistent_profile(root / profile, args.options)
+    variant.build_profile_digest = profile_options_digest(root / profile)
+    variant.customizations = customizations(variant)
+    variant.inputs_hash = inputs_hash(variant)
+    return variant
+
+
+_VARIANT_REASONS = {
+    "missing": "has no pin for runtime profile {profile} of",
+    "stale": "pins other sources, patches, modules, options or rules_godot code for "
+    "runtime profile {profile} of",
+}
+
+
+def locked_variants(args: argparse.Namespace, root: Path, scons: Path) -> list[Variant]:
+    """Return a pinned recipe's runtime variants, with the graphs of those with current pins."""
+    result = []
+    for label, profile in args.runtime_profile:
+        try:
+            variant = variant_arguments(args, root, profile)
+        except ValueError as error:
+            result.append(Variant(label, args, None, f"{args.recipe}: {error}"))
+            continue
+        status, graph = pinned_graph(
+            args.lock, args.recipe, pin_digest(variant, scons), label
+        )
+        reason = _VARIANT_REASONS.get(status, "").format(profile=label)
+        error = args.unpinned_message.format(reason=reason) if graph is None else ""
+        result.append(Variant(label, variant, graph, error))
+    return result
+
+
+def captured_variants(args: argparse.Namespace, root: Path) -> list[Variant]:
+    """
+    Return a configured recipe's runtime variants, from the pins of their configurations.
+
+    The repository configures each variant before the recipe, into <index>.json below
+    args.variant_pins, or writes why it could not into <index>.error.
+    """
+    result = []
+    for index, (label, profile) in enumerate(args.runtime_profile):
+        pin = args.variant_pins / f"{index}.json"
+        if not pin.is_file():
+            error = (args.variant_pins / f"{index}.error").read_text()
+            result.append(Variant(label, args, None, error))
+            continue
+        variant = variant_arguments(args, root, profile)
+        graph = json.loads(pin.read_text())["graph"]
+        result.append(Variant(label, variant, graph))
+    return result
 
 
 # ==== Command line ============================================================
@@ -1559,6 +1678,24 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pin-bzl", default="@autoload_rules_godot//godot/engine/private:pin.bzl"
     )
+    # The engine's registered runtime profiles with graph-shaping build options: each one's
+    # label and the path of its variant's profile below the source root.
+    parser.add_argument(
+        "--runtime-profile",
+        nargs=2,
+        action="append",
+        default=[],
+        metavar=("LABEL", "PATH"),
+    )
+    # Where the repository configured the runtime variants of a recipe without a lock file.
+    parser.add_argument("--variant-pins", type=Path)
+    # The setting whose value, a build profile's label, selects a runtime variant, and the
+    # engine's name.
+    parser.add_argument(
+        "--build-profile-label",
+        default="@autoload_rules_godot//godot/private:build_profile_label",
+    )
+    parser.add_argument("--engine", default="")
     # Configure and write the recipe's pin here instead of its BUILD file.
     parser.add_argument("--pin-output", type=Path)
     return parser
@@ -1630,10 +1767,13 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     require_one_text_server(args.selected_modules)
     check_options(args.options)
     _add_renderer_options(args, root)
+    # The class generator falls back to the recipe's own profile in every variant.
+    args.recipe_profile = args.build_profile
+    args.runtime_profiles = [label for label, _ in args.runtime_profile]
     args.build_profile_digest = ""
     if args.build_profile:
         require_consistent_profile(root / args.build_profile, args.options)
-        args.build_profile_digest = file_digest(root / args.build_profile)
+        args.build_profile_digest = profile_options_digest(root / args.build_profile)
     args.customizations = customizations(args)
     _add_environment_option(args)
     args.inputs_hash = inputs_hash(args)
@@ -1650,22 +1790,33 @@ def _install_capture(
     sys.path.insert(0, str(scons))
     import SCons.Executor
     import SCons.Script.Main
+    import SCons.Variables
 
     executors: list[Any] = []
     original = SCons.Executor.Executor.__init__
+    # The names of Godot's options, its modules' among them, as SConstruct declares them.
+    options: set[str] = set()
+    original_update = SCons.Variables.Variables.Update
 
     def record(executor: Any, *values: Any, **kwargs: Any) -> None:
         original(executor, *values, **kwargs)
         executors.append(executor)
 
+    def update(variables: Any, *values: Any, **kwargs: Any) -> None:
+        options.update(variables.keys())
+        original_update(variables, *values, **kwargs)
+
     def finish(*_args: Any) -> None:
+        if args.build_profile:
+            require_known_options(root / args.build_profile, options)
         captured = collect(args, executors)
         if args.pin_output:
             write_pin(args.pin_output, digest, captured)
         else:
-            render(args, captured, root)
+            render(args, captured, root, captured_variants(args, root))
 
     SCons.Executor.Executor.__init__ = record
+    SCons.Variables.Variables.Update = update
     SCons.Script.Main._build_targets = finish
     return SCons.Script.Main.main
 
@@ -1789,7 +1940,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         if pinned is None:
             render_unpinned(args, status, root)
         else:
-            render(args, pinned, root)
+            render(args, pinned, root, locked_variants(args, root, scons))
         return
     if args.pin_output:
         args.pin_output = args.pin_output.resolve()

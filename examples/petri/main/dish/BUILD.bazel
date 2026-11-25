@@ -10,5 +10,6 @@ godot_resources(
         "dish.gd.uid",
         "dish.tscn",
     ],
+    engine = "petri",
     prefix = "main/dish",
 )

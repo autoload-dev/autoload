@@ -112,6 +112,28 @@ py_binary(
     deps = [":godot_actions_lib"],
 )
 
+# Derives and syncs a runtime profile: a tool of its own, with the action plugin it joins and
+# its own profile plugin, so a change to it reruns only profile derivations.
+py_library(
+    name = "runtime_profile_lib",
+    srcs = ["runtime_profile.py"],
+    data = glob([
+        "action/*",
+        "profile/*",
+    ]),
+    deps = [
+        ":godot_run_lib",
+        ":godot_staging_lib",
+        "//godot/private:project_config_lib",
+    ],
+)
+
+py_binary(
+    name = "runtime_profile",
+    srcs = ["runtime_profile.py"],
+    deps = [":runtime_profile_lib"],
+)
+
 py_library(
     name = "class_fragment_lib",
     srcs = ["class_fragment.py"],

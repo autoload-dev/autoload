@@ -12,6 +12,7 @@ host test and a macOS application of one project share each unit's actions; the 
 code takes them on the pack's native path, outside the context.
 """
 
+load("//godot/engine/private:selection.bzl", "ENGINE")
 load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private/config:native.bzl", "APPLICATION_SCOPED_OPTIONS", "outside_application_options")
 load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT")
@@ -32,14 +33,17 @@ def _context_impl(settings, attr):
     project = getattr(attr, "project", None)
     return {
         PROJECT_SETTING: str(project) if project else NO_PROJECT,
+        # The operation's engine, so a view built by itself, as `bazel build //...` builds
+        # it, imports with the same engine as under its operation.
+        ENGINE: getattr(attr, "engine", "") or settings[ENGINE],
         # An application's context belongs to its pack export, not to the imports.
         APPLICATION_CONTEXT: "{}",
     } | outside_application_options(settings)
 
 context_transition = transition(
     implementation = _context_impl,
-    inputs = APPLICATION_SCOPED_OPTIONS,
-    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT] + APPLICATION_SCOPED_OPTIONS,
+    inputs = [ENGINE] + APPLICATION_SCOPED_OPTIONS,
+    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT, ENGINE] + APPLICATION_SCOPED_OPTIONS,
 )
 
 def _reset_impl(_settings, _attr):

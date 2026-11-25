@@ -56,14 +56,17 @@ These source recipes enable the modules Godot's official builds enable by defaul
 the MoltenVK SDK on the configuring Mac, and keep Metal and OpenGL. Like any
 [source build](#declare-a-source-build), a recipe downloads the sources, configures and
 compiles only when a build selects its slot, on a host Godot accepts for its platform, such
-as a Mac for iOS. The prebuilt slots keep the official artifacts. To fail the missing slots
-instead, or to fill them with your own engine, set `build_missing_runtimes = False`, or
-register your components [ahead of the hub](#replace-slots). Only catalogued releases
-with pinned sources build missing runtimes. A hub that pins its own templates or editors
-builds none, and one that pins its own Android shell builds no Android runtimes, since the
-upstream sources would not match a fork's artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
+as a Mac for iOS. The prebuilt slots keep the official artifacts, except for applications
+with a [build profile](#an-applications-build-profile): a prebuilt runtime cannot leave
+classes out, so the hub builds every runtime slot from the same sources for them, as its
+`runtime_<slot>_profiled` components. To fail the missing slots instead, or to fill them
+with your own engine, set `source_runtimes = False`, or register your components
+[ahead of the hub](#replace-slots). Only catalogued releases with pinned sources build
+runtimes from source. A hub that pins its own templates or editors builds none, and one
+that pins its own Android shell builds no Android runtimes, since the upstream sources
+would not match a fork's artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
 ones, which only a Mac can; fetch the targets you build instead, or set
-`build_missing_runtimes = False` where you need a whole-module fetch.
+`source_runtimes = False` where you need a whole-module fetch.
 
 For a release outside the catalogue, or an archive built elsewhere, pin each artifact.
 Digests are Subresource Integrity strings; explicit values replace catalogue entries:
@@ -143,7 +146,8 @@ register_toolchains("@godot//toolchains:all", "@godot_studio//toolchains:all")
 ```
 
 A target selects an engine with its `engine` attribute: `godot_editor`,
-`godot_metadata_sync`, `godot_pack`, `godot_run`, `godot_test` and `godot_app` take it, and
+`godot_metadata_sync`, `godot_runtime_profile`, `godot_pack`, `godot_run`, `godot_test` and
+`godot_app` take it, and
 what the target reaches, such as its project's imports, uses the same engine. One build can
 hold targets of several engines:
 
@@ -235,7 +239,11 @@ Engine Compilation Configuration writes. Its `disabled_classes` leave those clas
 the engine, so linking drops their code; an application whose scenes, resources or scripts
 need a disabled class fails when it loads them. Its `disabled_build_options` must agree with
 `build_options`: a profile that sets an option the recipe sets differently fails
-configuration. The profile is part of the recipe's inputs and of a lock file's pins.
+configuration. Its `disabled_build_options` are part of a lock file's pins; its
+`disabled_classes` are not: the generator of `core/disabled_classes.gen.h` reads them when
+it runs, so a profile that only disables classes needs no pin, and changing its class list
+needs no repin. A `godot_app` can disable classes of its own runtime the same way; see
+[an application's build profile](#an-applications-build-profile).
 Changing its `disabled_classes` recompiles only the sources that register classes: when the
 engine's `core/object/class_db.h` includes the profile as upstream does, rules_godot lets it
 include the profile only in the sources whose includes reach a `GDREGISTER_*` macro or
@@ -330,7 +338,8 @@ Without a Linux execution platform, such as a remote executor, a Mac cannot pin 
 recipes; a Linux CI job can run the same command.
 
 Each pin records the digest of what its graph depends on: the archive, the patches, the
-recipe's platform, CPU, target, modules and options, its build name, the SCons release and
+recipe's platform, CPU, target, modules and options, its build profile's build options
+(not its class list), its build name, the SCons release and
 rules_godot code that capture the graph, and of each custom module its `SCsub`,
 `config.py` and shader sources and the paths of its other files. A recipe whose digest no
 longer matches, after such a change or a rules_godot upgrade that changes that code,
@@ -488,6 +497,80 @@ recipe then serves a small release application beside a fast debug one, each wit
 engine built for it. [Optimize for size](engine-size.md#5-optimize-for-size) shows the
 command and the `godot_app` attributes for the smallest release engine.
 
+## An application's build profile
+
+`godot_app`'s `build_profile` takes a build profile, a `.gdbuild` file as in
+[use a build profile](engine-size.md#4-use-a-build-profile), and leaves its
+`disabled_classes` out of that application's runtime only. Packs, imports, tests and the
+editor keep every class, so the same project can ship a reduced release application while
+development uses the full runtime:
+
+```starlark
+godot_app(
+    name = "app",
+    pack = ":pack",
+    build_profile = "release.gdbuild",
+)
+```
+
+The class list reaches the generator of `core/disabled_classes.gen.h` as an input when it
+runs: no recipe is configured or repinned. The application's profile replaces the class list
+of the recipe's own `build_profile`. Only the sources that register classes read the profile;
+the engine's other objects reach the runtime through a rule that resets the application's
+profile, so applications with different profiles share them and compile only those sources
+and their link again.
+
+The runtime must be built from source, such as a [source build](#declare-a-source-build) or
+the runtimes a [prebuilt engine](#use-a-prebuilt-engine) builds from its release's
+sources for applications with a profile: a prebuilt runtime has no class generator, and an
+application with a `build_profile` whose runtime component is prebuilt fails analysis
+naming it. Before you ship, run the whole game: an application that loads a disabled class
+fails when it loads it, not at build time.
+
+### Build options in a build profile
+
+A profile's `disabled_build_options`, such as `disable_3d` or `module_gridmap_enabled`,
+shape the engine's graph, so they need a runtime variant of the engine with its own graph.
+Register the profile in `MODULE.bazel` for the engine whose runtimes apply it, with the
+`engine` of its `godot_engines` tags; empty, the default, is the default engine:
+
+```starlark
+godot_engines.runtime_profile(profile = "//game:release.gdbuild")
+```
+
+Every runtime recipe of that engine, of its source builds and of the runtimes its prebuilt
+engines build from source, then declares a runtime variant: the recipe configured with the
+recipe's own build options and the profile's. The variant lives in the recipe's repository
+beside the recipe's own graph; the targets the two declare alike keep one label, and the
+attributes that differ select on the application's profile. An application whose
+`build_profile` names the registered file gets the variant; other applications keep the
+recipe's graph. Under path mapping, the variant's objects that compile alike share the
+recipe's cache entries; only the sources whose preprocessing reads a definition the options
+change compile again, with the class registrations.
+
+A profile that only disables classes needs no registration. An application whose profile
+sets build options without one fails its build, naming the `runtime_profile` line to add.
+To switch single options or modules, write a small profile with only them:
+
+```json
+{
+	"type": "build_profile",
+	"disabled_build_options": {
+		"module_gridmap_enabled": false
+	}
+}
+```
+
+With a [lock file](#pin-the-recipes), each variant has its own pin beside its recipe's;
+`bazel run @<hub>//:pin` writes both, and an application that selects a variant without a
+current pin fails with that command. Without one, the recipe's repository configures each
+variant before the recipe. A profile that names an option the recipe's Godot version does
+not have, whose options contradict the recipe's `build_options`, or that disables a module
+the recipe's `enabled_modules` names leaves that recipe without the variant: the
+applications that select it fail with the reason, and the recipe's other applications build
+as before; with a lock file, pinning that variant fails with the reason. `module_<name>_enabled` switches custom modules too, those a recipe enables
+through `default_modules`.
+
 ## Debug symbols
 
 A source-built engine's debug information follows Bazel's `-c`, `--copt`,
@@ -516,6 +599,22 @@ Debug information names sources relative to the execution root, such as
 bytes do not depend on the build machine and stay cacheable.
 `separate_debug_symbols` is rejected: Bazel does not run Godot's symbol extraction
 after linking.
+
+### Debug a source-built editor
+
+`--@autoload_rules_godot//godot:editor_debug` compiles source-built editors in Bazel's
+`dbg` mode: with debug information, without optimization and unstripped, whatever the
+build's `-c`. Runtimes keep the build's mode. An editor builds in the execution
+configuration, which resets custom flags, so propagate the flag with it, for example as a
+config in your `.bazelrc`:
+
+```
+common:editor-debug --@autoload_rules_godot//godot:editor_debug
+common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//godot:editor_debug
+```
+
+`bazel run --config=editor-debug` of a [`godot_editor`](development.md#editor-view) then opens the project in
+an editor you can attach a debugger to. Prebuilt editors are unaffected.
 
 ## Cache behavior and limits
 
@@ -564,6 +663,16 @@ too: the analysis covers C and C++. Options of the toolchain and of `--copt`, `-
 as `-c opt`'s `NDEBUG`, stay on every command line, and the analysis preprocesses with
 them. Starlark cannot read `--per_file_copt`, so with it set every source keeps all of its
 definitions.
+
+A build with `--experimental_output_paths=strip` shares more: a source build's native
+targets declare `supports-path-mapping`, compile without module maps, and its define
+analysis and code generators name output files only through their arguments, so an action
+keeps one cache key in every configuration whose command and inputs it shares. Applications
+with different [build profiles](#an-applications-build-profile) or engine settings then
+share every object they compile alike, locally and in a remote cache. Without the flag,
+nothing changes. A `.bazelrc` that removes `supports-path-mapping` with
+`--modify_execution_info` must keep it for `CppCompile`, `CppArchive`, `CppLink`,
+`ObjcCompile` and `DefineAnalysis`.
 
 Engine objects compile with upstream's warning flags. Warning groups that the
 Bazel C++ toolchain adds and unmodified Godot sources trigger are turned off:

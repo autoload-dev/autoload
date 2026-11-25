@@ -4,7 +4,7 @@ load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
 
-def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = ""):
+def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = "", build_profiles = ""):
     """
     Return a hub slot description.
 
@@ -19,6 +19,8 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         variant: debug or release for runtimes.
         environment: device or simulator for iOS runtimes.
         digest: Integrity of the artifact behind an opaque runtime payload.
+        build_profiles: For runtimes, whose build profiles the slot serves, as
+            godot_runtime_component's build_profiles; empty for all.
 
     Returns:
         A dict the hub repository rule serializes into a component declaration.
@@ -33,6 +35,7 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         "variant": variant,
         "environment": environment,
         "digest": digest,
+        "build_profiles": build_profiles,
     }
 
 def _declaration(slot, engine):
@@ -48,6 +51,8 @@ def _declaration(slot, engine):
         attributes.append("    environment = %s," % repr(slot["environment"]))
     if slot.get("digest"):
         attributes.append("    digest = %s," % repr(slot["digest"]))
+    if slot.get("build_profiles"):
+        attributes.append("    build_profiles = %s," % repr(slot["build_profiles"]))
     attributes.append("    version = %s," % repr(slot["version"]))
     if engine:
         attributes.append("    engine = %s," % repr(engine))
@@ -68,10 +73,12 @@ def _android_runtime(variant, runtime):
 _PIN = """
 load({pin_bzl}, "godot_engine_pin")
 
-# Pins every recipe of this source build into its lock file: bazel run //:pin.
+# Pins every recipe of this source build and its runtime variants into its lock file:
+# bazel run //:pin.
 godot_engine_pin(
     name = "pin",
     recipes = {recipes},
+    variants = {variants},
     lock = {lock},
     visibility = ["//visibility:public"],
 )
@@ -92,6 +99,7 @@ def _hub_impl(ctx):
         pin = _PIN.format(
             pin_bzl = repr(str(ctx.attr._pin_bzl)),
             recipes = repr(json.decode(ctx.attr.pin_recipes)),
+            variants = repr(json.decode(ctx.attr.pin_variants or "{}")),
             lock = repr(ctx.attr.lock),
         )
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
@@ -129,6 +137,7 @@ engine_hub = repository_rule(
             """),
         "version_source": attr.label(doc = "A source descriptor whose version fills slots without one."),
         "pin_recipes": attr.string(doc = "JSON object of each recipe's :pin label to its key in the lock file."),
+        "pin_variants": attr.string(doc = "JSON object of each runtime variant's :pin label to its recipe's key and runtime profile, separated by a space."),
         "lock": attr.string(doc = "Workspace-relative path of the lock file that //:pin writes."),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_android_template": attr.label(default = Label("//godot/engine/private:hub_android.BUILD.tpl")),

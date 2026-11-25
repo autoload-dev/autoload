@@ -45,10 +45,12 @@ class NoGodotRunsInAddonModulesTest(RepositoryTest):
             self.findings(
                 call("addons/widget/tests/BUILD.bazel", "godot_project"),
                 call("addons/widget/tests/BUILD.bazel", "godot_test"),
+                call("addons/widget/tests/BUILD.bazel", "godot_runtime_profile"),
                 call("addons/widget/tests/BUILD.bazel", "widget_test"),
             ),
             [
                 "addons/widget/tests/fixtures/project.godot",
+                "addons/widget/tests/BUILD.bazel",
                 "addons/widget/tests/BUILD.bazel",
                 "addons/widget/tests/BUILD.bazel",
                 "addons/widget/tests/BUILD.bazel",

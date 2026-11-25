@@ -1,7 +1,7 @@
 """How the engine settings become a source-built engine's compiler and linker options."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//godot/engine/private:optimization.bzl", "engine_optimization", "optimization_error")
+load("//godot/engine/private:optimization.bzl", "editor_debugging", "engine_optimization", "optimization_error")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
 _RELEASE = struct(role = "runtime", variant = "release")
@@ -11,6 +11,7 @@ _EDITOR = struct(role = "editor", variant = "")
 _ENGINE_OPTIMIZE = str(Label("//godot:engine_optimize"))
 _ENGINE_LTO = str(Label("//godot:engine_lto"))
 _ENGINE_VFE = str(Label("//godot:engine_vfe"))
+_EDITOR_DEBUG = str(Label("//godot:editor_debug"))
 
 _VFE_OPTIONS = [
     "-DTYPED_METHOD_BIND",
@@ -100,6 +101,18 @@ def _test_virtual_function_elimination_needs_full_lto(env):
         ).equals(str(error))
     env.expect.that_str(str(optimization_error("opt", "none", False))).equals("None")
 
+# editor_debug compiles a source-built editor for a debugger, and only an editor.
+def _test_editor_debug_compiles_editors_without_optimization(env):
+    for attr, mode in [(_EDITOR, "dbg"), (_RELEASE, "opt"), (_DEBUG, "opt")]:
+        settings = editor_debugging({COMPILATION_MODE: "opt", _EDITOR_DEBUG: True}, attr)
+        expect = env.expect.where(role = attr.role, variant = attr.variant)
+        expect.that_str(settings[COMPILATION_MODE]).equals(mode)
+
+        # The graph resets the setting, so runtimes compile alike with and without it.
+        expect.that_bool(settings[_EDITOR_DEBUG]).equals(False)
+    settings = editor_debugging({COMPILATION_MODE: "fastbuild", _EDITOR_DEBUG: False}, _EDITOR)
+    env.expect.that_str(settings[COMPILATION_MODE]).equals("fastbuild")
+
 def optimization_test_suite(name):
     test_suite(
         name = name,
@@ -111,5 +124,6 @@ def optimization_test_suite(name):
             _test_the_engine_graph_resets_the_settings,
             _test_other_compilation_modes_keep_bazels_levels,
             _test_virtual_function_elimination_needs_full_lto,
+            _test_editor_debug_compiles_editors_without_optimization,
         ],
     )

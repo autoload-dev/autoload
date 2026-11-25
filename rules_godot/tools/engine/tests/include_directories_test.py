@@ -51,7 +51,7 @@ class IncludeDirectoryTest(unittest.TestCase):
                 (root / name).write_text(text)
             graph = include_graph(root, [CompileGroup(sources, includes, [])], {})
             _, targets = include_rules(graph)
-            lines, _ = object_rules(
+            lines, _, _ = object_rules(
                 [("cpp", (), includes, sources)], graph, targets, set()
             )
         self.assertIn("_INCLUDES_0_0 = ['.']", lines)

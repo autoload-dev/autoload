@@ -30,6 +30,8 @@ godot_define_analysis(
     name = "analysis",
     outs = ["_macros/source.h"],
     sources = [":defines"],
+    # path_mapping_tests.bzl checks its action.
+    visibility = ["//godot/engine/private/tests:__pkg__"],
 )
 
 cc_library(

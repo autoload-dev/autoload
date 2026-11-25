@@ -70,6 +70,7 @@ API_CASES = {
     "//godot:defs.bzl%godot_test": {"target": _FIXTURES + "game_test"},
     "//godot:defs.bzl%godot_editor": {"target": _FIXTURES + "editor"},
     "//godot:defs.bzl%godot_metadata_sync": {"target": _FIXTURES + "metadata"},
+    "//godot:defs.bzl%godot_runtime_profile": {"target": _FIXTURES + "runtime_profile"},
     "//godot/extension:defs.bzl%godot_extension": {"target": _FIXTURES + "extension"},
     # Extensions forward CcInfo for the static libraries iOS links.
     "//godot/extension:defs.bzl%godot_extension#cc": {
@@ -226,6 +227,9 @@ BEHAVIOR_TESTS = {
     ],
     "//godot:defs.bzl%godot_metadata_sync": [
         "//godot/private/tests/editor_view:editor_view_writes_edits_back_test",
+    ],
+    "//godot:defs.bzl%godot_runtime_profile": [
+        "//godot/private/tests/editor_view:test_the_writer_and_test_list_the_file_they_place",
     ],
     "//godot/extension:repositories.bzl%godot_cpp_bindings": [_FIXTURES + "repository_cpp"],
     "//godot:extensions.bzl%godot_engines": [_FIXTURES + "repository_hub"],

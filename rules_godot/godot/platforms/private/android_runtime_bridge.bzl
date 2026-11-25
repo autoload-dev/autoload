@@ -23,7 +23,7 @@ load("@rules_android//rules:dex_desugar_aspect.bzl", "dex_desugar_aspect")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("@rules_java//java/common:proguard_spec_info.bzl", "ProguardSpecInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
-load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings", "require_tunable_runtime")
 load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load(":manifest_graph.bzl", "ManifestGraphInfo", "manifest_graph_aspect")
 
@@ -88,6 +88,7 @@ def android_runtime_providers(target):
 
 def _bridge_impl(ctx):
     godot = engine_toolchain(ctx, "runtime", "this Android platform slice and variant")
+    require_tunable_runtime(ctx.label, ctx.attr, godot.provenance)
     return android_runtime_providers(godot.payload) + [godot.provenance]
 
 # The kind must not start with android_ and the rule must have no Android constraints, so

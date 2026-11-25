@@ -27,7 +27,7 @@ class DefineAnalysisTest(unittest.TestCase):
             ),
             ("objc", ("-Wall", "-DXR_DISABLED"), (".",), ["platform/ios/b.mm"]),
         ]
-        lines, labels = object_rules(groups, graph, {}, {"core/a.cpp"})
+        lines, labels, analyzed = object_rules(groups, graph, {}, {"core/a.cpp"})
         self.assertIn("_COPTS_0 = ['-Wall']", lines)
         # The separate form of an option, -U NDEBUG, stays one definition.
         self.assertIn("_DEFINES_0 = ['-DXR_DISABLED', '-UNDEBUG']", lines)
@@ -47,7 +47,7 @@ class DefineAnalysisTest(unittest.TestCase):
         self.assertIn(
             "sources = [':_objects__core__a.cpp__defines'], "
             "outs = ['_macros/_objects__core__a.cpp.h']",
-            _rules(lines, "godot_define_analysis")["_macros__0__core"],
+            _rules(analysis_rules(analyzed), "godot_define_analysis")["_macros__core"],
         )
         # Assembly keeps its options, after the others.
         assembly = _rules(lines, "cc_library")["_objects__core__c.S"]
@@ -64,7 +64,7 @@ class DefineAnalysisTest(unittest.TestCase):
             ],
         )
 
-    def test_shards_split_by_group_and_directory_and_size(self) -> None:
+    def test_shards_split_by_scope_and_directory_and_size(self) -> None:
         def library(group: int, source: str) -> Library:
             return Library(
                 group, source, "_objects__" + source.replace("/", "__"), "[]", [], []
@@ -73,29 +73,35 @@ class DefineAnalysisTest(unittest.TestCase):
         sources = [library(0, f"scene/{name}.cpp") for name in "abcde"] + [
             library(0, "thirdparty/zlib/a.c"),
             library(0, "thirdparty/zstd/a.c"),
+            # Compile groups share shards: a variant may compile a source in another.
             library(1, "scene/f.cpp"),
             library(0, "main.cpp"),
+            library(0, "scene/g.cpp"),
         ]
-        rules = _rules(analysis_rules(sources, size=2), "godot_define_analysis")
+        scopes = {"_objects__scene__g.cpp": "p1__"}
+        rules = _rules(
+            analysis_rules(sources, size=2, scopes=scopes), "godot_define_analysis"
+        )
         self.assertEqual(
             sorted(rules),
             [
-                "_macros__0___root",
-                "_macros__0__scene__0",
-                "_macros__0__scene__1",
-                "_macros__0__scene__2",
-                "_macros__0__thirdparty__zlib",
-                "_macros__0__thirdparty__zstd",
-                "_macros__1__scene",
+                "_macros___root",
+                "_macros__p1__scene",
+                "_macros__scene__0",
+                "_macros__scene__1",
+                "_macros__scene__2",
+                "_macros__thirdparty__zlib",
+                "_macros__thirdparty__zstd",
             ],
         )
         # Sorted runs of nearly even size keep neighbouring sources together.
         self.assertIn(
             "outs = ['_macros/_objects__scene__a.cpp.h', '_macros/_objects__scene__b.cpp.h']",
-            rules["_macros__0__scene__0"],
+            rules["_macros__scene__0"],
         )
         self.assertIn(
-            "outs = ['_macros/_objects__scene__e.cpp.h']", rules["_macros__0__scene__2"]
+            "outs = ['_macros/_objects__scene__e.cpp.h', '_macros/_objects__scene__f.cpp.h']",
+            rules["_macros__scene__2"],
         )
 
 

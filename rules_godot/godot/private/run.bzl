@@ -371,6 +371,7 @@ def _executable(name, rule_, deps, project, pack, kwargs, test):
             kwargs,
             # A source run starts the game itself; a test runs its own main.
             program_entry = "" if test else str(native.package_relative_label(":" + name)),
+            engine = kwargs.get("engine", ""),
         )
     rule_(name = name, view = view, pack = pack, **kwargs)
 

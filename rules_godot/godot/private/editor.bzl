@@ -177,7 +177,7 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engi
     """
     _godot_editor(
         name = name,
-        view = declare_view(name, project, deps, kwargs),
+        view = declare_view(name, project, deps, kwargs, engine = engine),
         env = env,
         write_sidecars = write_sidecars,
         engine = engine,
@@ -295,7 +295,7 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, e
         **kwargs: Common attributes of both targets, such as tags and visibility.
     """
     writer = str(native.package_relative_label(name))
-    view = declare_view(name, project, deps, kwargs)
+    view = declare_view(name, project, deps, kwargs, engine = engine)
     _godot_metadata_sync(name = name, view = view, writer = writer, engine = engine, **kwargs)
 
     _godot_metadata_sync_test(

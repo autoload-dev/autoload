@@ -43,6 +43,15 @@ bool_flag(
     build_setting_default = False,
 )
 
+# Whether source-built editors compile for a debugger: in Bazel's dbg mode, with debug
+# information, without optimization and unstripped. Editors build in the execution
+# configuration, which keeps the flag only with --experimental_propagate_custom_flag; see
+# docs/public/engine.md.
+bool_flag(
+    name = "editor_debug",
+    build_setting_default = False,
+)
+
 # Whether godot_run and godot_test targets that leave headless unset run headless.
 bool_flag(
     name = "headless",

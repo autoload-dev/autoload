@@ -32,3 +32,23 @@ godot_app(
     pack = ":pack",
     tags = ["manual"],
 )
+
+# The same runtime without the classes a build profile disables; only the sources that
+# register classes compile again.
+godot_app(
+    name = "app_without_tree",
+    build_profile = "classes.gdbuild",
+    macos_minimum_os_version = "13.0",
+    pack = ":pack",
+    tags = ["manual"],
+)
+
+# A build option compiles a runtime variant: MODULE.bazel registers the profile, so the
+# engine's recipes declare the variant beside their own graph.
+godot_app(
+    name = "app_without_advanced_gui",
+    build_profile = "no_advanced_gui.gdbuild",
+    macos_minimum_os_version = "13.0",
+    pack = ":pack",
+    tags = ["manual"],
+)

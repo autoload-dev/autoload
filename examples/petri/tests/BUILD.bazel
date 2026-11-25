@@ -15,6 +15,7 @@ godot_resources(
         "SceneTest.gd",
         "SceneTest.gd.uid",
     ],
+    engine = "petri",
     prefix = "tests",
     visibility = ["//examples/petri:__pkg__"],
     deps = [

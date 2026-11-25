@@ -238,6 +238,7 @@ class PinTest(unittest.TestCase):
                 argparse.Namespace(
                     output=str(root / "engine.lock.json"),
                     recipe=[f"{key}={root / key}.json" for key in keys],
+                    variant=[],
                 )
             )
             text = (root / "engine.lock.json").read_text()
@@ -260,6 +261,42 @@ class PinTest(unittest.TestCase):
                 self.assertEqual(
                     list(generator["spec"]["sources"][0]["value"]), ["z", "a"]
                 )
+
+    def test_runtime_variants_pin_beside_their_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spec = {"function": "f", "sources": []}
+            for name, digest in [("recipe", "sha256:r"), ("variant", "sha256:v")]:
+                pin = {"digest": digest, "graph": {"generators": [{"spec": spec}]}}
+                (root / f"{name}.json").write_text(json.dumps(pin))
+            merge(
+                argparse.Namespace(
+                    output=str(root / "engine.lock.json"),
+                    recipe=[f"macos_arm64_template_release={root}/recipe.json"],
+                    variant=[
+                        [
+                            "macos_arm64_template_release",
+                            "@@//app:runtime.gdbuild",
+                            f"{root}/variant.json",
+                        ]
+                    ],
+                )
+            )
+            lock = root / "engine.lock.json"
+            key = "macos_arm64_template_release"
+            self.assertEqual(pinned_graph(lock, key, "sha256:r")[0], "pinned")
+            self.assertEqual(
+                pinned_graph(lock, key, "sha256:v", "@@//app:runtime.gdbuild")[0],
+                "pinned",
+            )
+            self.assertEqual(
+                pinned_graph(lock, key, "sha256:r", "@@//app:runtime.gdbuild")[0],
+                "stale",
+            )
+            self.assertEqual(
+                pinned_graph(lock, key, "sha256:v", "@@//app:other.gdbuild")[0],
+                "missing",
+            )
 
 
 if __name__ == "__main__":

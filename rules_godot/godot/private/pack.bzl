@@ -744,6 +744,7 @@ def _pack_macro_impl(name, visibility, project, deps, engine, **kwargs):
         deps,
         kwargs,
         tags = tags + ["manual"],
+        engine = engine,
     )
 
     # The deps edge of the configured pack to this target is what the aspects of

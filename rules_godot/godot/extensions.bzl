@@ -75,14 +75,15 @@ _PREBUILT_ATTRS = {
     "android_debug_shell_integrity": attr.string(
         doc = "Subresource Integrity digest of the AAR in android_debug_shell_urls.",
     ),
-    "build_missing_runtimes": attr.bool(
+    "source_runtimes": attr.bool(
         doc = """
-            Build the runtime slots the prebuilt artifacts lack from the release's sources,
-            such as the arm64 iOS simulator runtimes of 4.7.2 or the Android debug runtimes.
-            Each recipe is configured and compiled only when a build selects its slot.
-            Catalogued versions with pinned sources only; none when templates_urls or
-            editor_urls pin a fork's artifacts, and no Android runtimes when
-            android_shell_urls does.
+            Build runtimes from the release's sources: the runtime slots the prebuilt
+            artifacts lack, such as the arm64 iOS simulator runtimes of 4.7.2 or the Android
+            debug runtimes, and, for applications with a `build_profile`, which a prebuilt
+            runtime cannot apply, every runtime slot. Each recipe is configured and compiled
+            only when a build selects its slot. Catalogued versions with pinned sources only;
+            none when templates_urls or editor_urls pin a fork's artifacts, and no Android
+            runtimes when android_shell_urls does.
             """,
         default = True,
     ),
@@ -145,6 +146,21 @@ _SOURCE_BUILD_ATTRS = {
         """),
 }
 
+_RUNTIME_PROFILE_ATTRS = {
+    "profile": attr.label(
+        doc = """
+        A build profile (.gdbuild) whose build options applications' runtimes may apply,
+        such as the one a godot_app's build_profile names.
+        """,
+        mandatory = True,
+        allow_single_file = [".gdbuild"],
+    ),
+    "engine": attr.string(doc = """
+        Name of the engine whose source recipes build the variant, as the engine of a
+        godot_engines tag; empty for the default engine.
+        """),
+}
+
 _ENGINE_TAG_ATTRIBUTES = {
     "prebuilt": _PREBUILT_ATTRS.keys(),
     "source": _SOURCE_ATTRS.keys(),
@@ -164,7 +180,10 @@ _ENGINE_RULES = {
 }
 
 def _engines_impl(module_ctx):
-    for declaration in plan_engines(module_ctx.modules, tag_attributes = _ENGINE_TAG_ATTRIBUTES):
+    def read(label):
+        return module_ctx.read(module_ctx.path(label))
+
+    for declaration in plan_engines(module_ctx.modules, tag_attributes = _ENGINE_TAG_ATTRIBUTES, read = read):
         _ENGINE_RULES[declaration.rule](**declaration.attrs)
     return module_ctx.extension_metadata(reproducible = True)
 
@@ -220,13 +239,15 @@ godot_engines = module_extension(
       - prerequisites: template archive contains the slot
       - availability: desktop
     - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-      - prerequisites: template archive contains the slot, or build_missing_runtimes with catalogued sources
+      - prerequisites: template archive contains the slot, or source_runtimes with catalogued sources
       - availability: ios
     - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-      - prerequisites: Android shell AAR pinned, or build_missing_runtimes with catalogued sources
+      - prerequisites: Android shell AAR pinned, or source_runtimes with catalogued sources
       - availability: android_shell
+    - `@{repository}//toolchains:runtime_{slot}_profiled` (files): the source-built runtime component of a slot the prebuilt artifacts cover, for applications with a build_profile, which the prebuilt component leaves to it
+      - prerequisites: source_runtimes with catalogued sources
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-      - prerequisites: Android shell library pinned, a source build with Android rows, or build_missing_runtimes with catalogued sources
+      - prerequisites: Android shell library pinned, a source build with Android rows, or source_runtimes with catalogued sources
       - availability: android_shell
     - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
       - prerequisites: Android shell library pinned or a source build with Android rows
@@ -271,6 +292,18 @@ godot_engines = module_extension(
             one source recipe and one component per valid slot the filters select.
             """,
             attrs = _SOURCE_BUILD_ATTRS,
+        ),
+        "runtime_profile": tag_class(
+            doc = """
+            Register a build profile with build options for an engine's source-built
+            runtimes. Its build options shape a recipe's graph, so every runtime recipe of
+            the engine declares a runtime variant with them, beside its own graph, and with
+            its own pin in a lock file; an application whose build_profile names the file
+            gets that variant. A profile that only disables classes needs no registration,
+            and an application whose profile sets build options without one fails with
+            this tag's line.
+            """,
+            attrs = _RUNTIME_PROFILE_ATTRS,
         ),
     },
 )

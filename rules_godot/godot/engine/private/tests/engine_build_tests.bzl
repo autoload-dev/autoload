@@ -49,6 +49,9 @@ _ATTRS = {
     "_build_profile": "tools/engine/build_profile.py",
     "_define_analysis": "tools/engine/define_analysis.py",
     "_source_tree": "tools/engine/source_tree.py",
+    "_variants": "tools/engine/variants.py",
+    "_generators": "tools/engine/generators.py",
+    "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
     "_platforms_constraint": "@@platforms//os:android",
@@ -58,6 +61,8 @@ _ATTRS = {
     "lock_file": None,
     "lock_key": "",
     "repin": "",
+    "runtime_profiles": [],
+    "engine": "",
 }
 
 def _build(*, which = {"python3": _PYTHON, "patch": _PATCH}, execute = {}, path = None, environ = {}, files = {}, **overrides):
@@ -86,6 +91,51 @@ def _configure(ctx, python = _PYTHON):
 def _options(arguments):
     return [arguments[i + 1] for i in range(len(arguments)) if arguments[i] == "--option"]
 
+# The configure command of the recipe _test_configure_command_carries_the_recipe declares.
+_CONFIGURE_COMMAND = [
+    _PYTHON,
+    "tools/engine/configure.py",
+    "--source",
+    ".",
+    "--scons",
+    "_scons",
+    "--generator-bzl",
+    "@@//godot/engine/private:generator.bzl",
+    "--cc-repository",
+    "@@rules_cc+",
+    "--platforms-repository",
+    "@@platforms",
+    "--apple-repository",
+    "@@apple_support+",
+    "--swift-repository",
+    "@@rules_swift+",
+    "--platform",
+    "linuxbsd",
+    "--cpu",
+    "x86_64",
+    "--build-target",
+    "template_release",
+    "--environment",
+    "",
+    "--expected-version",
+    "4.7.2",
+    "--modules",
+    "gdscript,svg",
+    "--build-name",
+    "studio",
+    "--source-sha256",
+    _SHA256,
+    "--patch-strip",
+    "2",
+    "--patch",
+    "fork.patch",
+    # The settings a recipe with runtime variants selects them on, here without any.
+    "--build-profile-label",
+    "@@//godot/private:build_profile_label",
+    "--engine",
+    "",
+]
+
 def _test_configure_command_carries_the_recipe(env):
     ctx, errors = _build(
         enabled_modules = ["gdscript", "svg"],
@@ -95,7 +145,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 7 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        ["watch"] * 9 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "extract",
             "getenv",
             "watch",
@@ -114,44 +164,7 @@ def _test_configure_command_carries_the_recipe(env):
         [_PATCH, "-p2", "-F0", "-t", "-N", "-i", "fork.patch"],
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "download_and_extract")[0].output).equals("_scons")
-    env.expect.that_collection(_configure(ctx).args).contains_exactly([
-        _PYTHON,
-        "tools/engine/configure.py",
-        "--source",
-        ".",
-        "--scons",
-        "_scons",
-        "--generator-bzl",
-        "@@//godot/engine/private:generator.bzl",
-        "--cc-repository",
-        "@@rules_cc+",
-        "--platforms-repository",
-        "@@platforms",
-        "--apple-repository",
-        "@@apple_support+",
-        "--swift-repository",
-        "@@rules_swift+",
-        "--platform",
-        "linuxbsd",
-        "--cpu",
-        "x86_64",
-        "--build-target",
-        "template_release",
-        "--environment",
-        "",
-        "--expected-version",
-        "4.7.2",
-        "--modules",
-        "gdscript,svg",
-        "--build-name",
-        "studio",
-        "--source-sha256",
-        _SHA256,
-        "--patch-strip",
-        "2",
-        "--patch",
-        "fork.patch",
-    ]).in_order()
+    env.expect.that_collection(_configure(ctx).args).contains_exactly(_CONFIGURE_COMMAND).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly(
         ["WORKSPACE.bazel"],
     )
@@ -231,7 +244,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 7,
+        ["watch"] * 9,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -240,7 +253,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 7,
+        ["watch"] * 9,
     )
 
 def _test_declared_python_runs_configure(env):
@@ -359,6 +372,37 @@ def _test_renderers_reach_configure(env):
     ctx, _errors = _build()
     env.expect.that_collection(_configure(ctx).args).not_contains("--renderers")
 
+_PROFILES = {
+    "size.gdbuild": json.encode({"disabled_build_options": {"disable_3d": True}}),
+    "app.gdbuild": json.encode({"disabled_build_options": {"disable_navigation_2d": True}}),
+}
+
+# A runtime variant's profile has the recipe's options and its runtime profile's.
+def _test_a_runtime_variant_configures_with_both_profiles_options(env):
+    ctx, errors = _build(build_profile = "size.gdbuild", runtime_profiles = ["app.gdbuild"], files = _PROFILES)
+    env.expect.that_collection(errors).contains_exactly([])
+    written = {call.path: call.content for call in mocks.calls(ctx, "file")}
+    env.expect.that_dict(json.decode(written["_variant_0.gdbuild"])["disabled_build_options"]).contains_exactly(
+        {"disable_3d": True, "disable_navigation_2d": True},
+    )
+
+    # Without a lock file, the variant configures into its pin before the recipe.
+    capture, recipe = [call.args for call in mocks.calls(ctx, "execute") if call.args[0] == _PYTHON]
+    env.expect.that_str(_argument(capture, "--build-profile")).equals("_variant_0.gdbuild")
+    env.expect.that_str(_argument(capture, "--pin-output")).equals("_variant_pins/0.json")
+    env.expect.that_str(_argument(recipe, "--build-profile")).equals("_build_profile.gdbuild")
+    env.expect.that_str(_argument(recipe, "--variant-pins")).equals("_variant_pins")
+    env.expect.that_str(_argument(recipe, "--runtime-profile")).equals("app.gdbuild")
+
+def _test_a_runtime_variant_has_its_own_pin(env):
+    ctx, errors = _pinned(build_profile = "size.gdbuild", runtime_profiles = ["app.gdbuild"], files = _PROFILES)
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_int(len([call for call in mocks.calls(ctx, "execute") if call.args[0] == _PYTHON])).equals(1)
+    build = _written_build(ctx)
+    env.expect.that_str(build).contains('name = "pin_variant_0"')
+    env.expect.that_str(build).contains('"--build-profile", "_variant_0.gdbuild"')
+    env.expect.that_str(build).contains('"_build_profile.gdbuild", "_variant_*.gdbuild"])')
+
 def engine_build_test_suite(name):
     test_suite(
         name = name,
@@ -369,6 +413,8 @@ def engine_build_test_suite(name):
             _test_import_env_vars_are_read,
             _test_default_modules_reach_configure,
             _test_a_build_profile_reaches_configure_and_the_pin,
+            _test_a_runtime_variant_configures_with_both_profiles_options,
+            _test_a_runtime_variant_has_its_own_pin,
             _test_renderers_reach_configure,
             _test_custom_module_sources_are_watched,
             _test_custom_module_key_not_config_py_fails,

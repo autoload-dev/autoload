@@ -607,6 +607,7 @@ def _view_impl(ctx):
     )]
 
 VIEW_ATTRS = {
+    "engine": attr.string(doc = "The operation's engine, which the view imports and validates with."),
     "project": attr.label(
         doc = "The godot_project whose configuration this operation uses.",
         mandatory = True,

@@ -62,7 +62,7 @@ runfiles="${{RUNFILES_DIR:-$0.runfiles}}"
 mkdir -p "$(dirname "$BUILD_WORKSPACE_DIRECTORY/{lock}")"
 cp "$runfiles/{merged}" "$BUILD_WORKSPACE_DIRECTORY/{lock}"
 chmod 644 "$BUILD_WORKSPACE_DIRECTORY/{lock}"
-echo "Pinned {count} recipes in {lock}"
+echo "Pinned {count} recipes and runtime variants in {lock}"
 """
 
 def _engine_pin_impl(ctx):
@@ -72,10 +72,13 @@ def _engine_pin_impl(ctx):
     args.add("--output", merged)
     for target, key in ctx.attr.recipes.items():
         args.add("--recipe", "%s=%s" % (key, target[DefaultInfo].files.to_list()[0].path))
+    for target, variant in ctx.attr.variants.items():
+        key, _, profile = variant.partition(" ")
+        args.add_all(["--variant", key, profile, target[DefaultInfo].files.to_list()[0]])
     ctx.actions.run(
         executable = ctx.executable._pin,
         arguments = [args],
-        inputs = ctx.files.recipes,
+        inputs = ctx.files.recipes + ctx.files.variants,
         outputs = [merged],
         mnemonic = "GodotPinLock",
         progress_message = "Merging the recipe pins of %{label}",
@@ -84,7 +87,7 @@ def _engine_pin_impl(ctx):
     ctx.actions.write(launcher, _LAUNCHER.format(
         lock = ctx.attr.lock,
         merged = runfile_key(ctx, merged),
-        count = len(ctx.attr.recipes),
+        count = len(ctx.attr.recipes) + len(ctx.attr.variants),
     ), is_executable = True)
     return [DefaultInfo(
         executable = launcher,
@@ -98,6 +101,7 @@ godot_engine_pin = rule(
     executable = True,
     attrs = {
         "recipes": attr.label_keyed_string_dict(doc = "Each recipe's :pin target and its key in the lock file."),
+        "variants": attr.label_keyed_string_dict(doc = "Each runtime variant's :pin target, with its recipe's key and its runtime profile, separated by a space."),
         "lock": attr.string(doc = "Path of the lock file relative to the workspace root.", mandatory = True),
         "_pin": attr.label(default = _PIN_TOOL, cfg = "exec", executable = True),
     },

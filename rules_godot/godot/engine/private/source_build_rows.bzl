@@ -162,7 +162,11 @@ def plan_rows(name, rows, version = ""):
             _add_android_library(android, name, recipe)
     return struct(recipes = recipes, slots = slots, android = android)
 
-def recipe_declarations(name, source, plan, common, lock_file = None):
+def _recipe_profiles(row, runtime_profiles):
+    """The runtime profiles a recipe declares variants of: a runtime's, not an editor's."""
+    return [] if row.build_target == "editor" else runtime_profiles
+
+def recipe_declarations(name, source, plan, common, lock_file = None, runtime_profiles = [], engine = ""):
     """
     Return the recipe and Android shell repositories of a plan_rows result.
 
@@ -174,6 +178,10 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
             custom_modules, patches, patch_strip, renderers, build_profile, build_options, build_name, python and
             configure_timeout.
         lock_file: Optional Label of the lock file that pins every recipe.
+        runtime_profiles: The engine's registered runtime profiles, as label strings; each
+            runtime recipe declares a runtime variant of each.
+        engine: The name of the engine, which the recipes name when an application's
+            profile needs registering.
 
     Returns:
         A list of structs with `rule`, the name of a repository rule, and `attrs`, its
@@ -191,6 +199,8 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
             build_target = recipe.row.build_target,
             environment = recipe.row.environment,
             lock_key = recipe.row.name if lock_file else "",
+            runtime_profiles = _recipe_profiles(recipe.row, runtime_profiles),
+            engine = engine,
             **(common | pinning)
         ))
         for recipe in plan.recipes
@@ -208,7 +218,7 @@ def _version_source(source, version):
     """The hub attribute that reads the version from the source descriptor, when no version is known."""
     return {} if version else {"version_source": source}
 
-def _pinning(plan, lock_file):
+def _pinning(plan, lock_file, runtime_profiles):
     """The hub attributes that let `@<hub>//:pin` write the lock file of a plan's recipes."""
     if not lock_file:
         return {}
@@ -217,10 +227,16 @@ def _pinning(plan, lock_file):
             "@%s//:pin" % recipe.repository: recipe.row.name
             for recipe in plan.recipes
         }),
+        # Each runtime variant's pin target, its recipe's key and its runtime profile.
+        "pin_variants": json.encode({
+            "@%s//:pin_variant_%d" % (recipe.repository, index): "%s %s" % (recipe.row.name, profile)
+            for recipe in plan.recipes
+            for index, profile in enumerate(_recipe_profiles(recipe.row, runtime_profiles))
+        }),
         "lock": "/".join([part for part in [lock_file.package, lock_file.name] if part]),
     }
 
-def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", version = "", *, _fail = fail):
+def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", version = "", runtime_profiles = [], *, _fail = fail):
     """
     Return the repositories godot_engine_source_build declares.
 
@@ -240,6 +256,8 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
             engine.
         version: Canonical Godot version of the sources; empty makes the hub read it from
             the source descriptor, which fetches the source archive.
+        runtime_profiles: The engine's registered runtime profiles with build options, as
+            label strings; each runtime recipe declares a runtime variant of each.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
@@ -250,7 +268,7 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
     if rows == None:
         return None
     plan = plan_rows(name, rows, version)
-    declarations = recipe_declarations(name, source, plan, common, lock_file)
+    declarations = recipe_declarations(name, source, plan, common, lock_file, runtime_profiles, engine)
     hub = dict(
         name = name,
         display_name = name,
@@ -258,5 +276,5 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
         android_runtimes = json.encode(plan.android),
         engine = engine,
     )
-    declarations.append(struct(rule = "engine_hub", attrs = hub | _version_source(source, version) | _pinning(plan, lock_file)))
+    declarations.append(struct(rule = "engine_hub", attrs = hub | _version_source(source, version) | _pinning(plan, lock_file, runtime_profiles)))
     return declarations

@@ -146,6 +146,56 @@ back what the game needs: an application that loads a disabled class fails when 
 it, not at build time. A profile's `disabled_build_options` must agree with the recipe's
 `build_options` and `renderers`.
 
+A profile that only disables classes needs no pin: the class list reaches the engine's class
+generator when it runs, and only the sources that register classes recompile. It can also
+sit on the application instead of the source build: `godot_app`'s `build_profile` reduces
+that application's runtime only, while tests and the editor keep every class; see
+[an application's build profile](engine.md#an-applications-build-profile). A profile with
+build options does so too once `MODULE.bazel` registers it with
+`godot_engines.runtime_profile`, which gives the engine's runtime recipes a variant with
+those options; see [build options in a build profile](engine.md#build-options-in-a-build-profile).
+
+### Derive the profile from the project
+
+`godot_runtime_profile` runs Godot's detection for you, headless, with the editor of the
+selected engine, and keeps the result in your repository. It needs the editor only, not an
+engine build:
+
+```starlark
+load("@autoload_rules_godot//godot:defs.bzl", "godot_runtime_profile")
+
+godot_runtime_profile(
+    name = "update_profile",
+    project = ":project",
+    deps = ["//path/to/game"],
+    profile = "runtime.gdbuild",
+    keep_classes = ["Camera3D"],
+)
+```
+
+`bazel run //path/to:update_profile` writes `runtime.gdbuild` beside the target; commit it.
+It is one file, as Godot writes it: `disabled_classes` and `disabled_build_options`, which
+holds the build options and the module switches the detection turns off, such as
+`disable_physics_3d` and `module_openxr_enabled`. Register it in `MODULE.bazel` with a
+`godot_engines.runtime_profile` tag, and name it as `godot_app`'s `build_profile`; the
+[engine guide](engine.md#build-options-in-a-build-profile) says what the registration does.
+The profile also turns off the drivers the detection finds unused; they must agree with the
+engine's `renderers` from [step 2](#2-choose-the-renderers).
+
+`bazel test //path/to:update_profile.test` fails while the file is missing or differs from
+the detection, and names the command that writes it, so the profile follows the project.
+
+The profile is the detection minus two sets of classes. The first is a list of classes the
+engine creates itself, such as `Image`, `Script` and `Shader`, which Godot's detection
+names for a project that never mentions them and which an engine cannot start without. The
+ruleset keeps that list for each Godot minor. The second is `keep_classes`, the classes
+your game creates by name, loads on some paths or gets from an add-on's code, which
+detection cannot see. Run the whole game, as [the check below](#check-the-result)
+says, and add what fails.
+
+Applying Lichtpost's whole detection, with its 227 classes, the build options and the modules
+the detection turns off, took the macOS template of Godot 4.7.2 from 61.3 MB to 33.1 MB.
+
 ## 5. Optimize for size
 
 Two build settings compile and link the engine for size, without changing extensions or

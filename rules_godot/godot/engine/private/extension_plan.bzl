@@ -5,13 +5,14 @@ The planner takes the extension's modules and returns the repositories to declar
 extension instantiates them. Errors go through `_fail`, so a Starlark unit test with mocked
 modules collects them; the planner returns None after an error.
 
-Sections: Prebuilt plan, Prebuilt slots, Missing runtimes, Tag selection, Declarations.
+Sections: Prebuilt plan, Prebuilt slots, Source runtimes, Runtime profiles, Tag selection,
+Declarations.
 """
 
 load("//godot/engine/private:archives.bzl", "template_target")
 load("//godot/engine/private:catalogue.bzl", "EDITOR_PLATFORMS", "RELEASES", "TEMPLATE_CPUS")
 load("//godot/engine/private:hub.bzl", "component")
-load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recipe_declarations", "slot_name")
+load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recipe_declarations")
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
@@ -125,10 +126,10 @@ def _android_shells(tag, release):
             shells[variant] = struct(pin = pin, **release[pin])
     return shells
 
-def _missing_runtime_source(tag, release):
-    """The catalogued sources of the missing runtimes; none for a fork's pinned artifacts."""
+def _source_runtime_source(tag, release):
+    """The catalogued sources of runtimes built from source; none for a fork's pinned artifacts."""
     pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls])
-    if not tag.build_missing_runtimes or pins_fork_artifacts:
+    if not tag.source_runtimes or pins_fork_artifacts:
         return None
     return (release or {}).get("source")
 
@@ -142,7 +143,7 @@ def prebuilt_plan(tag, *, _fail = fail):
 
     Returns:
         A struct of editors, templates, the Android shells by variant, iOS simulator CPUs
-        and the source archive that builds missing runtimes, or None after an error.
+        and the source archive that builds runtimes from source, or None after an error.
     """
     error = godot_version_error(tag.version)
     if error:
@@ -163,7 +164,7 @@ def prebuilt_plan(tag, *, _fail = fail):
         android_shells = _android_shells(tag, release),
         ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
         android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
-        source = _missing_runtime_source(tag, release),
+        source = _source_runtime_source(tag, release),
     )
 
 # ==== Prebuilt slots ==========================================================
@@ -265,11 +266,11 @@ def prebuilt_slots(tag, plan):
         _android_runtime_slots(tag, plan)
     )
 
-# ==== Missing runtimes ========================================================
+# ==== Source runtimes =========================================================
 
 # The build policy of the runtimes a prebuilt engine builds from its release's sources: the
 # modules of Godot's official builds.
-_MISSING_RUNTIME_POLICY = {
+_SOURCE_RUNTIME_POLICY = {
     "enabled_modules": [],
     "default_modules": True,
     "custom_modules": {},
@@ -285,52 +286,120 @@ _MISSING_RUNTIME_POLICY = {
 
 # Platform options of those runtimes. Vulkan would need the MoltenVK SDK on the configuring
 # Mac; Metal and OpenGL stay.
-_MISSING_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}}
+_SOURCE_RUNTIME_OPTIONS = {"ios": {"vulkan": "no"}, "macos": {"vulkan": "no"}}
 
-def _missing_rows(tag, slots):
-    """The runtime rows no prebuilt slot covers; a pinned shell AAR may be a fork's, so its Android rows stay unbuilt."""
-    covered = {slot["name"]: True for slot in slots}
-    if tag.android_shell_urls:
-        covered.update({slot_name(row): True for row in ROWS if row.platform == "android"})
-    return [row for row in ROWS if row.build_target != "editor" and slot_name(row) not in covered]
+# The suffix of the slots and Android runtimes that serve applications with a build profile
+# where a prebuilt runtime serves the others.
+_PROFILED = "_profiled"
 
-def missing_runtimes(tag, plan, slots):
+def _source_rows(tag):
+    """The runtime rows a prebuilt engine builds from source; a pinned shell AAR may be a fork's, so Android stays unbuilt."""
+    return [
+        row
+        for row in ROWS
+        if row.build_target != "editor" and not (row.platform == "android" and tag.android_shell_urls)
+    ]
+
+def _profiled_slots(rows_plan, covered):
     """
-    Return the source declarations, slots and Android runtimes of the runtimes a prebuilt lacks.
+    Return the source-built slots and Android runtimes, those of covered slots profiled only.
+
+    A slot that a prebuilt runtime covers takes the source-built runtime under the slot's
+    name with _PROFILED, for applications with a build profile, which a prebuilt runtime
+    cannot apply.
+    """
+    android = {}
+    for variant, runtime in rows_plan.android.items():
+        android[variant + (_PROFILED if covered.get("android_" + variant) else "")] = runtime
+    slots = []
+    for slot in rows_plan.slots:
+        if slot["name"] in covered:
+            slot = slot | {"name": slot["name"] + _PROFILED, "build_profiles": "only"}
+            if slot["platform"] == "android":
+                slot["payload"] += _PROFILED
+        slots.append(slot)
+    return slots, android
+
+def source_runtimes(tag, plan, slots, profiles = []):
+    """
+    Return the source declarations, slots and Android runtimes of the runtimes a prebuilt builds.
+
+    It builds from its release's sources the runtimes its artifacts lack, and, for
+    applications with a build profile, those they cover.
 
     Args:
         tag: The godot_engines.prebuilt tag of the plan.
         plan: The result of prebuilt_plan.
         slots: The prebuilt slots of the plan.
+        profiles: The engine's registered runtime profiles, as label strings.
 
     Returns:
         A struct of `declarations`, the source archive and recipe repositories, `slots`,
-        the source-built hub slots, and `android`, their Android runtimes by variant; None
-        without a missing runtime or a source archive.
+        the source-built hub slots, `android`, their Android runtimes by name, and
+        `profiled`, the prebuilt slots an application with a build profile leaves to them;
+        None without a source archive.
     """
     if not plan.source:
         return None
-    rows = _missing_rows(tag, slots)
-    if not rows:
-        return None
 
     # A double underscore keeps the recipes apart from the repositories of a source build.
-    name = tag.name + "__missing"
+    name = tag.name + "__source"
     source = "@%s_archive//:source.json" % name
 
     # The catalogue knows the sources' version, so the hub need not read the archive.
-    rows_plan = plan_rows(name, rows, version = plan.source["version"])
+    rows_plan = plan_rows(name, _source_rows(tag), version = plan.source["version"])
+    covered = {slot["name"]: True for slot in slots}
+    covered.update({"android_" + variant: True for variant in plan.android_shells})
     declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
-    for declaration in recipe_declarations(name, source, rows_plan, _MISSING_RUNTIME_POLICY):
-        options = _MISSING_RUNTIME_OPTIONS.get(declaration.attrs.get("platform"))
+    for declaration in recipe_declarations(
+        name,
+        source,
+        rows_plan,
+        _SOURCE_RUNTIME_POLICY,
+        runtime_profiles = profiles,
+        engine = tag.engine,
+    ):
+        options = _SOURCE_RUNTIME_OPTIONS.get(declaration.attrs.get("platform"))
         if options:
             declaration.attrs["build_options"] = declaration.attrs["build_options"] | options
         declarations.append(declaration)
+    source_slots, android = _profiled_slots(rows_plan, covered)
     return struct(
         declarations = declarations,
-        slots = rows_plan.slots,
-        android = rows_plan.android,
+        slots = source_slots,
+        android = android,
+        profiled = [slot["name"].removesuffix(_PROFILED) for slot in source_slots if slot["build_profiles"] == "only"],
     )
+
+# ==== Runtime profiles ========================================================
+
+def _shapes_graph(text):
+    """Whether a build profile sets build options, which shape a source recipe's graph."""
+    data = json.decode(text)
+    if type(data) != "dict":
+        return False
+    return any([value for key, value in data.items() if key not in ["type", "disabled_classes"]])
+
+def runtime_profiles(modules, read):
+    """
+    Return the registered runtime profiles with build options, by engine name.
+
+    A profile that disables classes alone needs no runtime variant: applications apply its
+    classes to any source-built runtime.
+
+    Args:
+        modules: module_ctx.modules.
+        read: Returns the content of a profile's file by its label.
+
+    Returns:
+        A dict of each engine name to the sorted label strings of its runtime profiles.
+    """
+    profiles = {}
+    for mod in modules:
+        for tag in mod.tags.runtime_profile:
+            if _shapes_graph(read(tag.profile)):
+                profiles.setdefault(tag.engine, {})[str(tag.profile)] = True
+    return {engine: sorted(labels) for engine, labels in profiles.items()}
 
 # ==== Tag selection ===========================================================
 
@@ -487,19 +556,22 @@ def _shell_declarations(tag, shells):
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
 
-def _prebuilt_declarations(tag, _fail):
+def _prebuilt_declarations(tag, profiles, _fail):
     """Return the editor, template, shell and hub repositories of a prebuilt tag, or None after an error."""
     plan = prebuilt_plan(tag, _fail = _fail)
     if plan == None:
         return None
     shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
     slots = prebuilt_slots(tag, plan)
-    missing = missing_runtimes(tag, plan, slots)
+    built = source_runtimes(tag, plan, slots, profiles.get(tag.engine, []))
     sources = []
-    if missing:
-        sources = missing.declarations
-        slots = slots + missing.slots
-        android_runtimes = missing.android | android_runtimes
+    if built:
+        sources = built.declarations
+        slots = [
+            slot | {"build_profiles": "none"} if slot["name"] in built.profiled else slot
+            for slot in slots
+        ] + built.slots
+        android_runtimes = built.android | android_runtimes
     hub = _declaration(
         "engine_hub",
         name = tag.name,
@@ -524,13 +596,14 @@ def _source_versions(selections):
         if selection.kind == "source"
     }
 
-def plan_engines(modules, *, tag_attributes, _fail = fail):
+def plan_engines(modules, *, tag_attributes, read = None, _fail = fail):
     """
     Return the repositories the godot_engines extension declares.
 
     Args:
         modules: module_ctx.modules.
         tag_attributes: The attribute names of each tag class, keyed by tag class.
+        read: Returns the content of a runtime profile's file by its label.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
@@ -541,6 +614,7 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
     if selections == None:
         return None
     versions = _source_versions(selections)
+    profiles = runtime_profiles(modules, read)
     declarations = []
     for selection in selections:
         tag = selection.tag
@@ -550,9 +624,10 @@ def plan_engines(modules, *, tag_attributes, _fail = fail):
                 # The hub needs the version; a source tag of this extension knows it, so
                 # registering the hub need not fetch the source archive to read it.
                 attrs["version"] = versions.get(_repository(tag.source), "")
+                attrs["runtime_profiles"] = profiles.get(tag.engine, [])
             declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
             continue
-        prebuilt = _prebuilt_declarations(tag, _fail)
+        prebuilt = _prebuilt_declarations(tag, profiles, _fail)
         if prebuilt == None:
             return None
         declarations.extend(prebuilt)

@@ -110,3 +110,10 @@ py_test(
     srcs = ["define_analysis_test.py"],
     deps = ["//tools/engine:support"],
 )
+
+py_test(
+    name = "variants_test",
+    size = "small",
+    srcs = ["variants_test.py"],
+    deps = ["//tools/engine:support"],
+)

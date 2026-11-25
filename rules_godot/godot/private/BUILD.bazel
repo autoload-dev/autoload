@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 load(":context.bzl", "no_project")
-load(":flags.bzl", "bool_value", "string_flag")
+load(":flags.bzl", "bool_flag", "bool_value", "string_flag")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
@@ -104,6 +104,52 @@ py_binary(
     name = "project_config",
     srcs = ["project_config.py"],
     main = "project_config.py",
+)
+
+# The build profile of the runtime an application packages, which godot_app's build_profile
+# sets at the runtime's edge. Only the class generator of a source recipe reads it; generated
+# engine repositories name it, so it is public.
+label_flag(
+    name = "build_profile",
+    build_setting_default = ":no_build_profile",
+    visibility = ["//visibility:public"],
+)
+
+# The label of that build profile as a string, which godot_app sets with it; empty without
+# one. A config_setting cannot compare a label flag that names a file, so the package of a
+# source recipe selects the runtime variant of a registered runtime profile with this.
+string_flag(
+    name = "build_profile_label",
+    build_setting_default = "",
+    visibility = ["//visibility:public"],
+)
+
+# Whether the runtime an application packages has a build profile, which godot_app sets
+# with its build_profile. A prebuilt runtime cannot leave classes out, so where a hub
+# builds the slot from source too, its prebuilt component requires it false.
+bool_flag(
+    name = "profiled_runtime",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "runtime_with_profile",
+    flag_values = {":profiled_runtime": "true"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "runtime_without_profile",
+    flag_values = {":profiled_runtime": "false"},
+    visibility = ["//visibility:public"],
+)
+
+# No build profile: the class generator keeps the recipe's own.
+filegroup(
+    name = "no_build_profile",
+    srcs = [],
+    visibility = ["//visibility:public"],
 )
 
 config_setting(

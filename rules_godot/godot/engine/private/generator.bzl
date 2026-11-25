@@ -14,9 +14,9 @@ load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
-load("//godot/private/config:native.bzl", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
+load("//godot/private/config:native.bzl", "COMPILATION_MODE", "IOS_MINIMUM_OS_OPTION", "MACOS_MINIMUM_OS_OPTION", "UNSTRIPPED")
 load(":define_analysis.bzl", _godot_define_analysis = "godot_define_analysis", _godot_source_defines = "godot_source_defines")
-load(":optimization.bzl", "OPTIMIZATION_CHECK_ATTRS", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "check_optimization", "engine_optimization")
+load(":optimization.bzl", "EDITOR_DEBUG_OUTPUTS", "OPTIMIZATION_CHECK_ATTRS", "OPTIMIZATION_INPUTS", "OPTIMIZATION_OUTPUTS", "check_optimization", "editor_debugging", "engine_optimization")
 
 visibility("public")
 
@@ -27,23 +27,57 @@ godot_source_defines = _godot_source_defines
 
 # ==== Source generator ========================================================
 
+def _add_files(args, flag, files):
+    """Name each logical path's file, as a File so path mapping rewrites its path."""
+    for logical, file in files:
+        args.add(flag)
+        args.add(file, format = logical.replace("%", "%%") + "=%s")
+
+def _single_file(target):
+    files = target[DefaultInfo].files.to_list()
+    if len(files) != 1:
+        fail("generator input %s must contain exactly one file" % target.label)
+    return files[0]
+
+def _add_profile(args, flag, target):
+    """Name the build profile a profile attribute names, if any: a label flag may name none."""
+    profiles = target[DefaultInfo].files.to_list() if target else []
+    if len(profiles) > 1:
+        fail("%s names more than one build profile" % target.label)
+    args.add_all(profiles, before_each = flag)
+
+def _registration(label, engine):
+    """The MODULE.bazel line that registers a build profile as a runtime profile."""
+    profile = str(label).removeprefix("@@") if str(label).startswith("@@//") else str(label)
+    named = "engine = %r, " % engine if engine else ""
+    return 'godot_engines.runtime_profile(%sprofile = "%s")' % (named, profile)
+
+def _add_registration(args, ctx):
+    """Say whether the application's build profile is a registered runtime profile, and how to register it."""
+    if not ctx.files.class_profile:
+        return
+    label = ctx.attr.class_profile.label
+    if str(label) in ctx.attr.runtime_profiles:
+        args.add("--registered-profile")
+    args.add("--registration", _registration(label, ctx.attr.engine))
+
 def _generator_impl(ctx):
     outputs = ctx.outputs.outs
     args = ctx.actions.args()
     args.add("--spec", ctx.file.spec)
-    for target, logical in ctx.attr.inputs.items():
-        files = target[DefaultInfo].files.to_list()
-        if len(files) != 1:
-            fail("generator input %s must contain exactly one file" % target.label)
-        args.add("--input", logical + "=" + files[0].path)
-    for logical, output in zip(ctx.attr.logical_outputs, outputs):
-        args.add("--output", logical + "=" + output.path)
+    _add_files(args, "--input", [(logical, _single_file(target)) for target, logical in ctx.attr.inputs.items()])
+    _add_files(args, "--output", zip(ctx.attr.logical_outputs, outputs))
+    _add_profile(args, "--class-profile", ctx.attr.class_profile)
+    _add_registration(args, ctx)
+    _add_profile(args, "--recipe-profile", ctx.attr.recipe_profile)
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
-        inputs = depset([ctx.file.spec] + ctx.files.inputs),
+        inputs = depset([ctx.file.spec] + ctx.files.inputs + ctx.files.class_profile + ctx.files.recipe_profile),
         outputs = outputs,
         mnemonic = "GodotGenerate",
+        # One cache key in every configuration with --experimental_output_paths=strip.
+        execution_requirements = {"supports-path-mapping": "1"},
         progress_message = "Generating %{label}",
     )
     return [DefaultInfo(files = depset(outputs))]
@@ -68,6 +102,18 @@ _godot_source_generator = rule(
             doc = "Upstream logical paths corresponding one-to-one to outs.",
             mandatory = True,
         ),
+        "class_profile": attr.label(
+            doc = "The application's build profile, //godot/private:build_profile, for the class generator; no file without one.",
+            allow_files = True,
+        ),
+        "recipe_profile": attr.label(
+            doc = "The recipe's own build profile, whose classes apply without an application's.",
+            allow_single_file = [".gdbuild"],
+        ),
+        "runtime_profiles": attr.string_list(
+            doc = "The engine's registered runtime profiles, whose build options an application's profile may set.",
+        ),
+        "engine": attr.string(doc = "The engine's name, for the line that registers an application's profile."),
         "_generator": attr.label(
             default = Label("//tools/engine:generator"),
             cfg = "exec",
@@ -76,7 +122,7 @@ _godot_source_generator = rule(
     },
 )
 
-def godot_source_generator(name, spec, inputs, outs):
+def godot_source_generator(name, spec, inputs, outs, class_profile = False, recipe_profile = None, runtime_profiles = [], engine = "", **kwargs):
     """
     Declare one upstream source generator as a hermetic Bazel action.
 
@@ -97,6 +143,13 @@ def godot_source_generator(name, spec, inputs, outs):
         spec: Label of the JSON specification emitted by source configuration.
         inputs: Single-file targets mapped to upstream logical input paths.
         outs: Declared output paths, also used as upstream logical output paths.
+        class_profile: Whether the generator writes core/disabled_classes.gen.h, whose class
+            list comes from the application's build profile when one is set.
+        recipe_profile: The recipe's own build profile, whose classes apply otherwise.
+        runtime_profiles: The engine's registered runtime profiles, as label strings: an
+            application's profile may set build options only as one of them.
+        engine: The engine's name, which the error of an unregistered profile names.
+        **kwargs: Common attributes, such as tags.
     """
     _godot_source_generator(
         name = name,
@@ -104,8 +157,66 @@ def godot_source_generator(name, spec, inputs, outs):
         inputs = inputs,
         outs = outs,
         logical_outputs = outs,
+        class_profile = _BUILD_PROFILE if class_profile else None,
+        recipe_profile = recipe_profile,
+        runtime_profiles = runtime_profiles,
+        engine = engine,
         visibility = ["//visibility:private"],
+        **kwargs
     )
+
+_EDITOR_DEBUG = str(Label("//godot:editor_debug"))
+
+_BUILD_PROFILE = Label("//godot/private:build_profile")
+_NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
+_BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
+_PROFILED_RUNTIME = str(Label("//godot/private:profiled_runtime"))
+
+def _without_build_profile_impl(settings, attr):
+    profile = settings[str(_BUILD_PROFILE)]
+    if str(profile) in attr.runtime_profiles:
+        kept = {str(_BUILD_PROFILE): profile, _BUILD_PROFILE_LABEL: str(profile)}
+    else:
+        kept = {str(_BUILD_PROFILE): _NO_BUILD_PROFILE, _BUILD_PROFILE_LABEL: ""}
+    return kept | {_PROFILED_RUNTIME: False}
+
+# Resets an application's build profile for the objects that do not read it, unless it is a
+# registered runtime profile, whose runtime variant they compile in.
+_without_build_profile = transition(
+    implementation = _without_build_profile_impl,
+    inputs = [str(_BUILD_PROFILE)],
+    outputs = [str(_BUILD_PROFILE), _BUILD_PROFILE_LABEL, _PROFILED_RUNTIME],
+)
+
+def _profile_independent_impl(ctx):
+    return [
+        cc_common.merge_cc_infos(cc_infos = [dep[CcInfo] for dep in ctx.attr.deps]),
+        DefaultInfo(files = depset(transitive = [dep[DefaultInfo].files for dep in ctx.attr.deps])),
+    ]
+
+godot_profile_independent = rule(
+    doc = """
+    Gather the objects of a source-built engine that read no build profile.
+
+    Only the sources that register classes read the class list of a build profile. The
+    others reach their objects through this rule, whose transition resets the profile that
+    godot_app's build_profile sets, so applications with different profiles share them. A
+    registered runtime profile stays: it selects the runtime variant the objects compile
+    in. The attribute is named deps so that rules_apple's and rules_android's aspects reach
+    the objects through it.
+    """,
+    implementation = _profile_independent_impl,
+    attrs = {
+        "deps": attr.label_list(
+            doc = "The objects that read no build profile.",
+            providers = [CcInfo],
+            cfg = _without_build_profile,
+        ),
+        "runtime_profiles": attr.string_list(
+            doc = "The engine's registered runtime profiles, which the transition keeps.",
+        ),
+    },
+)
 
 # ==== Revision and headers ====================================================
 
@@ -368,12 +479,15 @@ _engine_library = transition(
 def _desktop_native_impl(settings, attr):
     # Desktop executables link without Bazel's --strip, as keep_debug_info in symbols.bzl
     # explains; a transition cannot compose two, so this one repeats that setting.
-    return _engine_library_impl(settings, attr) | UNSTRIPPED
+    debugging = editor_debugging(settings, attr)
+    debugged = dict(settings) | {COMPILATION_MODE: debugging[COMPILATION_MODE]}
+    return _engine_library_impl(debugged, attr) | UNSTRIPPED | debugging
 
+# Editors are desktop executables, so this transition also applies editor_debug.
 _desktop_native = transition(
     implementation = _desktop_native_impl,
-    inputs = _ENGINE_INPUTS,
-    outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys(),
+    inputs = _ENGINE_INPUTS + [_EDITOR_DEBUG],
+    outputs = _ENGINE_OUTPUTS + UNSTRIPPED.keys() + EDITOR_DEBUG_OUTPUTS,
 )
 
 _BINARY_ATTRS = _SOURCE_ATTRS | OPTIMIZATION_CHECK_ATTRS | {

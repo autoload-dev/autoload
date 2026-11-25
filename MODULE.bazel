@@ -351,6 +351,14 @@ godot_engines.source_build(
     platforms = ["macos"],
     source = "@godot_sources_beta//:source.json",
 )
+
+# A build profile with a build option, for the patched engine's runtime variant: every
+# runtime recipe of the default engine declares the variant, and builds only the
+# applications whose build_profile names the file compile it.
+godot_engines.runtime_profile(profile = "//e2e/rules_godot/patched_engine:no_advanced_gui.gdbuild")
+
+# Lichtpost's runtime profile, as godot_runtime_profile derives it; its slim_app takes it.
+godot_engines.runtime_profile(profile = "//examples/lichtpost:runtime.gdbuild")
 use_repo(
     godot_engines,
     "godot",

@@ -25,6 +25,12 @@ Run these commands from the repository root on macOS or Linux:
 6. `bazel build //examples/lichtpost:app --@autoload_rules_godot//godot:macos_signing=adhoc` on macOS or
    `bazel build //examples/lichtpost:app` on Linux builds a desktop app for the host using the
    prebuilt Godot runtime. Find its bundle and archive under `bazel-bin/`.
+7. `bazel build //examples/lichtpost:slim_app` builds the same desktop app with a runtime
+   cut to what the game uses: the default engine compiles it from Godot's release sources
+   with [`runtime.gdbuild`](runtime.gdbuild), which `MODULE.bazel` registers with
+   `godot_engines.runtime_profile`. `bazel run //examples/lichtpost:update_profile`
+   derives that file from the project again after the game changes;
+   `update_profile.test` fails until it does.
 
 The host workflow needs no mobile SDK. The macOS app is ad-hoc signed for local
 use; distribution signing is a separate step. Game tests and their data live

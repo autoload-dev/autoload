@@ -11,10 +11,16 @@ Sections: Build facts, Unpinned engines, Native rules, Swift and sources, Render
 import argparse
 from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 try:
-    from . import build_profile, define_analysis
+    from . import build_profile, define_analysis, variants
+    from .generators import (
+        generated_files,
+        generator_rules,
+        multiline_rule,
+        spec_path,
+    )
     from .include_graph import (
         CompileGroup,
         Generated,
@@ -22,10 +28,17 @@ try:
         include_graph,
         reached_directories,
     )
-    from .source_tree import SOURCE_SUFFIXES, relative, write_json
+    from .source_tree import write_json
 except ImportError:
     import build_profile
     import define_analysis
+    import variants
+    from generators import (
+        generated_files,
+        generator_rules,
+        multiline_rule,
+        spec_path,
+    )
     from include_graph import (
         CompileGroup,
         Generated,
@@ -33,7 +46,7 @@ except ImportError:
         include_graph,
         reached_directories,
     )
-    from source_tree import SOURCE_SUFFIXES, relative, write_json
+    from source_tree import write_json
 
 
 # ==== Build facts =============================================================
@@ -135,7 +148,7 @@ def render_unpinned(args: argparse.Namespace, status: str, root: Path) -> None:
 # ==== Native rules ============================================================
 
 
-def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
+def header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
     """Return the loads, package defaults and revision target that open the BUILD file."""
     lines = [
         "# Generated from Godot SCons; do not edit.",
@@ -148,72 +161,17 @@ def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
             f'load("{args.swift_repository}//swift:swift_library.bzl", "swift_library")'
         )
     lines += [
-        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision", "godot_define_analysis", "godot_source_defines")',
-        'package(default_visibility = ["//visibility:public"])',
+        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision", "godot_define_analysis", "godot_source_defines", "godot_profile_independent")',
+        # Without module maps, whose contents name the configuration's output directory, the
+        # engine's compile actions keep one cache key in every configuration under path
+        # mapping. The engine's sources, Swift's included, need none.
+        'package(default_visibility = ["//visibility:public"], features = ["-module_maps", "-layering_check"])',
         'exports_files(["engine_manifest.json"])',
         f"godot_source_revision(name = 'revision', visibility = ['//visibility:private'], build_name = {args.build_name!r}, inputs_hash = {args.inputs_hash!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', timestamp = '_revision/timestamp.txt')",
         # The source root's include directory, which every compile action searches.
         "cc_library(name = '_root', visibility = ['//visibility:private'], includes = ['.'])",
     ]
     return lines
-
-
-def _multiline_rule(rule: str, attributes: Mapping[str, object]) -> str:
-    return (
-        rule
-        + "(\n"
-        + "".join(f"    {key} = {value!r},\n" for key, value in attributes.items())
-        + ")"
-    )
-
-
-def _generator_rules(
-    root: Path, generators: Sequence[tuple[dict[str, Any], set[str]]]
-) -> tuple[list[str], list[str]]:
-    """
-    Write each generator's specification and return its rules and its generated headers.
-
-    A generator's inputs are its dependencies and the Python files of the source tree.
-    """
-    python_files = sorted(
-        relative(path, root)
-        for path in root.rglob("*.py")
-        if "_scons" not in path.parts and "_bazel_generators" not in path.parts
-    )
-    lines: list[str] = []
-    generated_headers: list[str] = []
-    for index, (spec, dependencies) in enumerate(generators):
-        name = f"_generate_{index:04d}"
-        manifest = f"_bazel_generators/{name}.json"
-        write_json(root / manifest, spec)
-        inputs = {source: source for source in sorted(dependencies | set(python_files))}
-        # A script's SCsub is needed for inspection provenance, but its captured
-        # function is executed alone by tools/engine/generator.py.
-        inputs[spec["code_file"]] = spec["code_file"]
-        attributes = {
-            "name": name,
-            "spec": manifest,
-            "inputs": inputs,
-            "outs": spec["targets"],
-        }
-        lines.append(_multiline_rule("godot_source_generator", attributes))
-        generated_headers.extend(
-            name for name in spec["targets"] if Path(name).suffix not in SOURCE_SUFFIXES
-        )
-    return lines, generated_headers
-
-
-def generated_files(
-    root: Path, specs: Iterable[Mapping[str, Any]]
-) -> dict[str, Generated]:
-    """Return each generated file with its generator's code, inputs and outputs."""
-    files: dict[str, Generated] = {}
-    for spec in specs:
-        code = spec.get("inline") or (root / spec["code_file"]).read_text()
-        inputs = tuple(entry["path"] for entry in spec["sources"] if "path" in entry)
-        outputs = tuple(spec["targets"])
-        files.update((target, Generated(code, inputs, outputs)) for target in outputs)
-    return files
 
 
 def include_rules(
@@ -296,6 +254,12 @@ def _group_constants(index: int, language: str, copts: Sequence[str]) -> list[st
     return [f"_COPTS_{index} = {options!r}", f"_DEFINES_{index} = {definitions!r}"]
 
 
+# The tag that lets Bazel's path mapping (--experimental_output_paths=strip) give the engine's
+# native actions one cache key in every configuration, such as the runtimes of applications
+# with different build profiles; without that flag it changes nothing.
+PATH_MAPPING = "tags = ['supports-path-mapping'], "
+
+
 def _library_rules(language: str, library: define_analysis.Library) -> list[str]:
     """
     A source's library rule, with its define analysis if it is C or C++.
@@ -303,7 +267,9 @@ def _library_rules(language: str, library: define_analysis.Library) -> list[str]
     Objective-C sources import implicit modules, which see only the command line's macros,
     and assembly sources are no C or C++: both keep their -D options.
     """
-    common = f"name = {library.name!r}, visibility = ['//visibility:private'], "
+    common = (
+        f"name = {library.name!r}, visibility = ['//visibility:private'], {PATH_MAPPING}"
+    )
     rest = f"includes = {library.includes}, deps = {library.deps!r}, alwayslink = True)"
     if not define_analysis.analyzed(language, library.source):
         rule = "objc_library" if language == "objc" else "cc_library"
@@ -332,9 +298,10 @@ def object_rules(
     graph: Mapping[str, Collection[str]],
     targets: Mapping[str, str],
     profile_users: Container[str],
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[str], list[str], list[define_analysis.Library]]:
     """
-    Return a library rule per source and the labels of those libraries.
+    Return a library rule per source, the labels of those libraries, and those whose
+    definitions the define analysis writes.
 
     A library is named after its source, so its object keeps its path, and its cache key,
     when other compile groups of the engine change. Sources that register classes see
@@ -371,7 +338,7 @@ def object_rules(
             lines += _library_rules(language, library)
             if define_analysis.analyzed(language, source):
                 analyzed.append(library)
-    return lines + define_analysis.analysis_rules(analyzed), labels
+    return lines, labels, analyzed
 
 
 # ==== Swift and sources =======================================================
@@ -422,7 +389,7 @@ def _swift_rule(
     }
     if options["generated_header"]:
         attributes["generated_header_name"] = Path(options["generated_header"]).name
-    return _multiline_rule("swift_library", attributes)
+    return multiline_rule("swift_library", attributes)
 
 
 # Upstream's combined static archive cannot carry application framework dependencies;
@@ -473,6 +440,38 @@ def _source_rule(
 # ==== Rendering ===============================================================
 
 
+# The target that gathers the engine's objects that read no build profile.
+_PROFILE_INDEPENDENT = ":_profile_independent_objects"
+
+
+def engine_dependencies(
+    labels: Sequence[str],
+    readers: Collection[str],
+    scoped: bool,
+    runtime_profiles: Sequence[str] = (),
+) -> tuple[list[str], list[str]]:
+    """
+    Return the engine library's dependencies and the rule that gathers the others.
+
+    Only the objects of the sources that register classes read a build profile. The others
+    sit behind a rule whose transition resets an application's profile, so applications with
+    different profiles share them; a registered runtime profile stays, since it selects the
+    runtime variant they compile in. A tree whose class_db.h gives the profile to every
+    source, as a fork's may, keeps every object with the library.
+    """
+    if not scoped:
+        return list(labels), []
+    independent = [label for label in labels if label not in readers]
+    kept = f", runtime_profiles = {list(runtime_profiles)!r}" if runtime_profiles else ""
+    rule = (
+        f"godot_profile_independent(name = {_PROFILE_INDEPENDENT[1:]!r}, "
+        f"visibility = ['//visibility:private'], deps = {independent!r}{kept})"
+    )
+    return [label for label in labels if label in readers] + [_PROFILE_INDEPENDENT], [
+        rule
+    ]
+
+
 def _engine_rules(
     args: argparse.Namespace, graph: Mapping[str, Any], dependencies: list[str]
 ) -> list[str]:
@@ -483,19 +482,19 @@ def _engine_rules(
     linkopts = graph["linkopts"]
     if args.platform == "ios":
         return [
-            f"objc_library(name = '_engine_library', visibility = ['//visibility:private'], deps = {dependencies!r}, linkopts = {linkopts!r}, sdk_frameworks = {_IOS_FRAMEWORKS!r}, sdk_dylibs = ['c++', 'z', 'iconv'], target_compatible_with = {compatibility!r})",
+            f"objc_library(name = '_engine_library', visibility = ['//visibility:private'], {PATH_MAPPING}deps = {dependencies!r}, linkopts = {linkopts!r}, sdk_frameworks = {_IOS_FRAMEWORKS!r}, sdk_dylibs = ['c++', 'z', 'iconv'], target_compatible_with = {compatibility!r})",
             _source_rule(args, graph, "engine_library", ":_engine_library"),
         ]
-    library = f"cc_library(name = 'engine_library', deps = {dependencies!r}, linkopts = {linkopts!r}, target_compatible_with = {compatibility!r})"
+    library = f"cc_library(name = 'engine_library', {PATH_MAPPING}deps = {dependencies!r}, linkopts = {linkopts!r}, target_compatible_with = {compatibility!r})"
     if args.platform == "android":
         return [
             library,
-            f"cc_binary(name = 'libgodot_android.so', deps = [':engine_library'], linkstatic = True, linkshared = True, target_compatible_with = {compatibility!r})",
+            f"cc_binary(name = 'libgodot_android.so', {PATH_MAPPING}deps = [':engine_library'], linkstatic = True, linkshared = True, target_compatible_with = {compatibility!r})",
             _source_rule(args, graph, "godot", ":libgodot_android.so"),
         ]
     return [
         library,
-        f"cc_binary(name = '_godot', visibility = ['//visibility:private'], deps = [':engine_library'], linkstatic = True, target_compatible_with = {compatibility!r})",
+        f"cc_binary(name = '_godot', visibility = ['//visibility:private'], {PATH_MAPPING}deps = [':engine_library'], linkstatic = True, target_compatible_with = {compatibility!r})",
         _source_rule(args, graph, "godot", ":_godot"),
     ]
 
@@ -533,13 +532,9 @@ def _includes(
     compiled: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
     generated: Mapping[str, Generated],
     extra_roots: Sequence[str],
-) -> tuple[Mapping[str, Collection[str]], set[str], bool]:
-    """
-    Return what each file includes, the sources that see the build profile, and whether
-    only those do.
-    """
-    profile_scoped = build_profile.scope(root)
-    includes = include_graph(
+) -> Mapping[str, Collection[str]]:
+    """Return what each file includes."""
+    return include_graph(
         root,
         (
             CompileGroup(sources, directories, copts)
@@ -548,15 +543,47 @@ def _includes(
         generated,
         extra_roots,
     )
-    if not profile_scoped:
-        return includes, set(), False
+
+
+def _profile_users(
+    root: Path,
+    compiled: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
+    includes: Mapping[str, Collection[str]],
+    generated: Mapping[str, Generated],
+) -> tuple[Mapping[str, Collection[str]], set[str]]:
+    """
+    Return the include graph with the build profile where it is scoped, and its sources.
+
+    Only the sources that register classes see it.
+    """
     sources = [source for *_, group in compiled for source in group]
-    includes, users = build_profile.declare(root, includes, generated, sources)
-    return includes, users, True
+    return build_profile.declare(root, includes, generated, sources)
 
 
-def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> None:
-    """Write the BUILD file, generator specifications and manifest of a configured graph."""
+def _profile_readers(
+    compiled: Sequence[tuple[str, tuple[str, ...], tuple[str, ...], list[str]]],
+    labels: Sequence[str],
+    profile_users: Container[str],
+) -> set[str]:
+    """Return the labels of the objects whose sources read the build profile."""
+    # object_rules names one library per source, in the order of the compile groups.
+    ordered = [source for *_, sources in compiled for source in sources]
+    return {label for source, label in zip(ordered, labels) if source in profile_users}
+
+
+class Rendered(NamedTuple):
+    """A graph's BUILD statements without the define analysis, which they share."""
+
+    statements: list[str]
+    analyzed: list[define_analysis.Library]
+    specs: dict[str, Mapping[str, Any]]
+    manifest: dict[str, Any]
+
+
+def render_graph(
+    args: argparse.Namespace, graph: Mapping[str, Any], root: Path, scoped: bool
+) -> Rendered:
+    """Return the BUILD statements, generator specifications and manifest of a graph."""
     groups = {
         (language, tuple(copts), tuple(includes)): sources
         for language, copts, includes, sources in graph["groups"]
@@ -565,27 +592,149 @@ def render(args: argparse.Namespace, graph: Mapping[str, Any], root: Path) -> No
         (generator["spec"], set(generator["dependencies"]))
         for generator in graph["generators"]
     ]
-    lines = _header_rules(args, bool(graph["swift_sources"]))
-    generator_rules, generated_headers = _generator_rules(root, generators)
-    lines += generator_rules
+    lines = header_rules(args, bool(graph["swift_sources"]))
+    generator_lines, generated_headers = generator_rules(args, root, generators)
+    lines += generator_lines
     generated = generated_files(root, (spec for spec, _ in generators))
     compiled = object_groups(groups, generated_headers, generated)
     swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
     swift_roots = [swift_options["bridging_header"]] if graph["swift_sources"] else []
-    includes, profile_users, profile_scoped = _includes(
-        root, compiled, generated, swift_roots
+    includes = _includes(root, compiled, generated, swift_roots)
+    profile_users: set[str] = set()
+    if scoped:
+        includes, profile_users = _profile_users(root, compiled, includes, generated)
+    include_lines, targets = include_rules(includes)
+    lines += include_lines
+    objects, dependencies, analyzed = object_rules(
+        compiled, includes, targets, profile_users
     )
-    header_rules, targets = include_rules(includes)
-    lines += header_rules
-    objects, dependencies = object_rules(compiled, includes, targets, profile_users)
     lines += objects
+    readers = _profile_readers(compiled, dependencies, profile_users)
     for bridging_header in swift_roots:
         deps = _source_deps(includes, targets, bridging_header)
         lines.append(_swift_rule(graph["swift_sources"], swift_options, deps))
         dependencies.append(":_swift")
-    lines += _engine_rules(args, graph, dependencies)
-    (root / "BUILD.bazel").write_text("\n\n".join(lines) + "\n")
-    # This file is the successful-capture marker checked after SCons exits.
-    write_json(
-        root / "engine_manifest.json", _manifest(args, graph, groups, profile_scoped)
+    dependencies, independent = engine_dependencies(
+        dependencies, readers, scoped, args.runtime_profiles
     )
+    lines += independent
+    lines += _engine_rules(args, graph, dependencies)
+    specs = {spec_path(spec): spec for spec, _ in generators}
+    return Rendered(lines, analyzed, specs, _manifest(args, graph, groups, scoped))
+
+
+class Variant(NamedTuple):
+    """
+    A recipe's runtime variant: its registered runtime profile's label and configuration.
+
+    graph is None where the variant has no current pin or cannot configure; error says why.
+    """
+
+    profile: str
+    args: argparse.Namespace
+    graph: Mapping[str, Any] | None
+    error: str = ""
+
+
+def _variant_settings(args: argparse.Namespace, settings: Mapping[str, str]) -> list[str]:
+    """The config_setting of each variant: the build profile is its runtime profile."""
+    return [
+        f"config_setting(name = {setting[1:]!r}, visibility = ['//visibility:private'], "
+        f"flag_values = {{{args.build_profile_label!r}: {profile!r}}})"
+        for profile, setting in settings.items()
+    ]
+
+
+class _Variants(NamedTuple):
+    """A recipe's runtime variants: their settings, rendered graphs and errors, by setting."""
+
+    settings: dict[str, str]
+    rendered: dict[str, Rendered]
+    errors: dict[str, str]
+
+
+def _render_variants(
+    runtime_variants: Sequence[Variant], root: Path, scoped: bool
+) -> _Variants:
+    """Render the graph of each variant that has one, and name each one's config_setting."""
+    settings = {
+        variant.profile: f":_variant_{index}"
+        for index, variant in enumerate(runtime_variants)
+    }
+    rendered = {}
+    errors = {}
+    for variant in runtime_variants:
+        setting = settings[variant.profile]
+        if variant.graph is None:
+            errors[setting] = variant.error
+        else:
+            rendered[setting] = render_graph(variant.args, variant.graph, root, scoped)
+    return _Variants(settings, rendered, errors)
+
+
+def _shared_analysis(base: Rendered, rendered: Mapping[str, Rendered]) -> list[str]:
+    """The define analysis of every variant's libraries, sharded by the variants that compile them."""
+    graphs = {"": base, **rendered}
+    libraries = {
+        library.name: library for item in graphs.values() for library in item.analyzed
+    }
+    scopes = variants.presence_scopes(
+        {
+            setting: [library.name for library in item.analyzed]
+            for setting, item in graphs.items()
+        }
+    )
+    return define_analysis.analysis_rules(libraries.values(), scopes=scopes)
+
+
+def _merge_variants(
+    args: argparse.Namespace, base: Rendered, merged: _Variants
+) -> tuple[list[str], dict[str, Mapping[str, Any]]]:
+    """Return the statements and specifications of one package of every variant."""
+    statements = variants.merge(
+        base.statements,
+        {setting: item.statements for setting, item in merged.rendered.items()},
+    )
+    statements += _variant_settings(args, merged.settings)
+    statements += _shared_analysis(base, merged.rendered)
+    if merged.errors:
+        statements.insert(1, f'load("{args.pin_bzl}", "godot_unpinned_recipe")')
+    statements = variants.unpinned_variants(
+        statements, engine_targets(args.platform), merged.errors
+    )
+    specs = dict(base.specs)
+    for item in merged.rendered.values():
+        specs.update(item.specs)
+    return statements, specs
+
+
+def render(
+    args: argparse.Namespace,
+    graph: Mapping[str, Any],
+    root: Path,
+    runtime_variants: Sequence[Variant] = (),
+) -> None:
+    """
+    Write the BUILD file, generator specifications and manifest of a configured graph.
+
+    With runtime variants, the package declares each variant's graph too, selected by the
+    build profile.
+    """
+    scoped = build_profile.scope(root)
+    base = render_graph(args, graph, root, scoped)
+    if runtime_variants:
+        merged = _render_variants(runtime_variants, root, scoped)
+        statements, specs = _merge_variants(args, base, merged)
+    else:
+        statements = base.statements + define_analysis.analysis_rules(base.analyzed)
+        specs = base.specs
+    for path, spec in specs.items():
+        write_json(root / path, spec)
+    (root / "BUILD.bazel").write_text("\n\n".join(statements) + "\n")
+    manifest = base.manifest | {
+        "runtime_variants": {
+            variant.profile: variant.error or "configured" for variant in runtime_variants
+        }
+    }
+    # This file is the successful-capture marker checked after SCons exits.
+    write_json(root / "engine_manifest.json", manifest)

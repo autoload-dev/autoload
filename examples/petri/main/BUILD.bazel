@@ -9,6 +9,7 @@ godot_resources(
         "petri.gd.uid",
         "petri.tscn",
     ],
+    engine = "petri",
     prefix = "main",
     deps = [
         "//examples/petri/main/dish",

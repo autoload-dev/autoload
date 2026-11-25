@@ -1,7 +1,9 @@
 load("//godot/engine/private:components.bzl", "resolved_runtime")
+load("//godot/engine/private:generator.bzl", "godot_profile_independent", "godot_source_generator")
 load("//godot/engine/private/tests:engines.bzl", "editor_probe", "resolution_probe")
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
 load(":android_shell_tests.bzl", "android_shell_test_suite")
+load(":build_profile_tests.bzl", "PROFILE", "build_profile_test_suite", "profile_reader")
 load(":components_tests.bzl", "components_test_suite")
 load(":composition_tests.bzl", "composition_test_suite")
 load(":editor_archive_tests.bzl", "editor_archive_test_suite")
@@ -13,6 +15,7 @@ load(":execution_tests.bzl", "execution_test_suite")
 load(":export_templates_archive_tests.bzl", "export_templates_archive_test_suite")
 load(":ios_tests.bzl", "ios_test_suite")
 load(":optimization_tests.bzl", "optimization_test_suite")
+load(":path_mapping_tests.bzl", "path_mapping_test_suite")
 load(":prebuilt_tests.bzl", "prebuilt_test_suite")
 load(":provenance_tests.bzl", "provenance_test_suite")
 load(":runtime_producer_tests.bzl", "runtime_producer_test_suite")
@@ -78,7 +81,73 @@ resolved_runtime(
     tags = ["manual"],
 )
 
+# An application's runtime with a build profile that disables classes.
+resolved_runtime(
+    name = "profiled_runtime",
+    build_profile = "profile.gdbuild",
+    tags = ["manual"],
+)
+
+# The class generator of a source recipe, as a generated recipe declares it.
+godot_source_generator(
+    name = "class_generator",
+    outs = ["core/disabled_classes.gen.h"],
+    class_profile = True,
+    inputs = {},
+    spec = "class_spec.json",
+    tags = ["manual"],
+)
+
+profile_reader(
+    name = "profile_reader",
+    tags = ["manual"],
+)
+
+# The engine objects that read no build profile, as a generated recipe gathers them.
+godot_profile_independent(
+    name = "profile_independent",
+    tags = ["manual"],
+    deps = [":profile_reader"],
+)
+
+# The same objects of a recipe with a runtime variant of profile.gdbuild, which they keep.
+godot_profile_independent(
+    name = "variant_independent",
+    runtime_profiles = [PROFILE],
+    tags = ["manual"],
+    deps = [":profile_reader"],
+)
+
+# The class generator of a recipe whose engine registers profile.gdbuild.
+godot_source_generator(
+    name = "registered_class_generator",
+    outs = ["registered/core/disabled_classes.gen.h"],
+    class_profile = True,
+    engine = "petri",
+    inputs = {},
+    runtime_profiles = [PROFILE],
+    spec = "class_spec.json",
+    tags = ["manual"],
+)
+
+# How a recipe's package selects the runtime variant of profile.gdbuild.
+config_setting(
+    name = "profile_variant",
+    flag_values = {"//godot/private:build_profile_label": PROFILE},
+)
+
+filegroup(
+    name = "variant_probe",
+    srcs = select({
+        ":profile_variant": ["profile.gdbuild"],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],
+)
+
 android_shell_test_suite(name = "android_shell_test_suite")
+
+build_profile_test_suite(name = "build_profile_test_suite")
 
 components_test_suite(name = "components_test_suite")
 
@@ -101,6 +170,8 @@ export_templates_archive_test_suite(name = "export_templates_archive_test_suite"
 ios_test_suite(name = "ios_test_suite")
 
 optimization_test_suite(name = "optimization_test_suite")
+
+path_mapping_test_suite(name = "path_mapping_test_suite")
 
 prebuilt_test_suite(name = "prebuilt_test_suite")
 

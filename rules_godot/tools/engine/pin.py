@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any
 
 try:
     from . import configure
@@ -100,22 +101,35 @@ def merge(arguments: argparse.Namespace) -> None:
     Write the lock file of a source build's recipe pins.
 
     Recipes of one build target share their generators whatever the platform or CPU, so
-    the lock stores each distinct generator list once, by its digest.
+    the lock stores each distinct generator list once, by its digest. A recipe's runtime
+    variants pin in the lock's variants table, by recipe and runtime profile.
     """
-    recipes = {}
-    generators = {}
-    for declaration in arguments.recipe:
-        key, _, path = declaration.partition("=")
+    generators: dict[str, object] = {}
+
+    def stored(path: str) -> dict[str, Any]:
         pin = json.loads(Path(path).read_text())
         shared = pin["graph"]["generators"]
         reference = "sha256:" + configure.digest_of(shared)
         generators[reference] = shared
         pin["graph"]["generators"] = reference
-        recipes[key] = pin
-    lock = {
+        return pin
+
+    recipes = {}
+    for declaration in arguments.recipe:
+        key, _, path = declaration.partition("=")
+        recipes[key] = stored(path)
+    variants: dict[str, dict[str, object]] = {}
+    for key, profile, path in arguments.variant:
+        variants.setdefault(key, {})[profile] = stored(path)
+    lock: dict[str, object] = {
         "generators": dict(sorted(generators.items())),
         "recipes": dict(sorted(recipes.items())),
     }
+    if variants:
+        # Each recipe's runtime variants, by the label of their runtime profile.
+        lock["variants"] = {
+            key: dict(sorted(pins.items())) for key, pins in sorted(variants.items())
+        }
     # Only the tables are sorted; one space per level keeps the lock small.
     configure.write_json(Path(arguments.output), lock, indent=1)
 
@@ -136,6 +150,14 @@ def main() -> None:
     lock = commands.add_parser("merge")
     lock.add_argument("--output", required=True)
     lock.add_argument("--recipe", action="append", default=[], help="key=pin file")
+    lock.add_argument(
+        "--variant",
+        nargs=3,
+        action="append",
+        default=[],
+        metavar=("KEY", "PROFILE", "PIN"),
+        help="a recipe's runtime variant: its key, runtime profile label and pin file",
+    )
     arguments, rest = parser.parse_known_args()
     if arguments.command == "recipe":
         recipe(arguments, rest)

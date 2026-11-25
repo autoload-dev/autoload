@@ -224,6 +224,15 @@ godot_engine_build = repository_rule(
             """,
         ),
         "lock_key": attr.string(doc = "The recipe's key in the lock file, such as linux_x86_64_editor."),
+        "runtime_profiles": attr.label_list(
+            doc = """
+            Registered runtime profiles with build options. The recipe declares a runtime
+            variant of each: its graph configured with the profile's build options, which
+            an application whose build_profile names the profile gets.
+            """,
+            allow_files = [".gdbuild"],
+        ),
+        "engine": attr.string(doc = "Name of the recipe's engine, for the tag line that registers a runtime profile."),
         "repin": attr.string(doc = "The target that repins the lock file, named by a stale recipe's error."),
         "_configure": attr.label(default = Label("//tools/engine:configure.py")),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
@@ -234,6 +243,9 @@ godot_engine_build = repository_rule(
         "_build_profile": attr.label(default = Label("//tools/engine:build_profile.py")),
         "_define_analysis": attr.label(default = Label("//tools/engine:define_analysis.py")),
         "_source_tree": attr.label(default = Label("//tools/engine:source_tree.py")),
+        "_variants": attr.label(default = Label("//tools/engine:variants.py")),
+        "_generators": attr.label(default = Label("//tools/engine:generators.py")),
+        "_build_profile_label": attr.label(default = Label("//godot/private:build_profile_label")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
         "_apple_constraint": attr.label(
@@ -331,7 +343,8 @@ def godot_engine_source_build(
         configure_timeout = 600,
         lock_file = None,
         engine = "",
-        version = ""):
+        version = "",
+        runtime_profiles = []):
     """
     Declare a source build: its source recipes and its hub, from a module extension.
 
@@ -413,6 +426,9 @@ def godot_engine_source_build(
         version: Canonical Godot version of the sources, as their godot_engine_source
             declares it; empty makes the hub read it from the source descriptor, which
             fetches the source archive whenever the hub is registered.
+        runtime_profiles: Labels of registered runtime profiles with build options; every
+            runtime recipe declares a runtime variant of each, as godot_engines'
+            runtime_profile tags do.
     """
     common = {
         "enabled_modules": enabled_modules,
@@ -438,5 +454,6 @@ def godot_engine_source_build(
         lock_file = lock_file,
         engine = engine,
         version = version,
+        runtime_profiles = runtime_profiles,
     ):
         _SOURCE_BUILD_RULES[declaration.rule](**declaration.attrs)
