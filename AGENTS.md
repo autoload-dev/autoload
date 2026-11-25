@@ -117,7 +117,8 @@ For public Bazel API or documentation-checker changes, use the
 - Validate and debug CI changes in a temporary job that runs only what the change needs, and
   remove it afterwards; do not run the whole CI for every attempt.
 - Claude Code only: before every pull request, follow-ups included, run `/simplify` and apply
-  its cleanups, then `/code-review` and fix its findings, running the relevant tests after each.
+  its cleanups, then `/code-health` and apply what it selects, then `/code-review` and fix its
+  findings, running the relevant tests after each.
 
 # Source and generation conventions
 
