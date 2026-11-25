@@ -1,4 +1,8 @@
-"""Add-ons: a runtime part, an editor part with its roles, extensions, platform libraries and contributions, declared once."""
+"""
+Add-ons: a runtime part, an editor part with its roles, extensions, platform libraries and contributions, declared once.
+
+Sections: Platform libraries, extension_addon, Part files, Import parts, godot_addon.
+"""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
@@ -13,6 +17,8 @@ load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo", "G
 load("//godot/private:resources.bzl", "addon_closure", "configuration_contributions", "import_staged", "unique_extensions", "unique_platform_libraries")
 
 visibility(["//godot/..."])
+
+# ==== Platform libraries ======================================================
 
 _PlatformLibrariesInfo = provider(
     doc = "The platform libraries of an add-on, reached through its <name>.platform_libraries helper.",
@@ -32,6 +38,8 @@ _addon_platform_libraries = rule(
         "deps": attr.label_list(providers = [[JavaInfo], [CcInfo]], aspects = [manifest_graph_aspect]),
     } | TRANSITION_ATTRS,
 )
+
+# ==== extension_addon =========================================================
 
 def _part(owner, files, imports = depset(), resource_path_manifests = depset(), relationships = [], deps = [], class_fragments = depset(), interfaces = depset(), interfaced = depset(), validations = depset(), ignored = None):
     """The GodotResourcesInfo of one part: its files as one import unit, and those of them Godot ignores."""
@@ -85,6 +93,8 @@ def extension_addon(label, extension):
         addons = depset(),
     )
 
+# ==== Part files ==============================================================
+
 def _placed(ctx, srcs, resource_paths, prefix):
     """Place a part's files below the add-on's directory, as srcs and resource_paths place resources."""
     paths = placed_resource_paths(ctx, srcs, resource_paths, prefix)
@@ -92,6 +102,126 @@ def _placed(ctx, srcs, resource_paths, prefix):
         if not path.startswith(prefix):
             fail("%s: res://%s is outside res://%s; every file of the add-on lives below its directory" % (ctx.label, path, prefix))
     return paths
+
+def _validate_autoloads(label, autoloads, runtime_files, needed):
+    """Fail for an autoload naming no file of the runtime part or of the needed add-ons' runtime parts."""
+    for name, value in autoloads.items():
+        path = value.removeprefix("*").removeprefix("res://")
+        if path not in runtime_files and not [addon for addon in needed if path in addon.runtime_files.member_resource_paths]:
+            fail((
+                "%s: autoload %s names res://%s, which is no file of the add-on's runtime part " +
+                "or of the runtime parts of the add-ons it needs"
+            ) % (label, name, path))
+
+def _validate_sidecars(label, runtime_files, editor_files):
+    """Fail for a sidecar declared in the other part than its source: it is metadata of that file (FR-032)."""
+    for part, other, other_attr in [(runtime_files, editor_files, "editor_srcs"), (editor_files, runtime_files, "srcs")]:
+        for path in part:
+            source = sidecar_source(path)
+            if source and source in other:
+                fail("%s: res://%s belongs in %s with res://%s; a sidecar is metadata of its file" % (
+                    label,
+                    path,
+                    other_attr,
+                    source,
+                ))
+
+def _fail_for_ignored(label, marker, other, part_attr):
+    """Fail for a file of the other part in the directory a marker makes Godot skip."""
+    directory = marker.rpartition("/")[0] + "/"
+    for path in other:
+        if path.startswith(directory):
+            fail("%s: res://%s is in a directory Godot ignores; it belongs in %s with res://%s" % (
+                label,
+                path,
+                part_attr,
+                marker,
+            ))
+
+def _validate_ignored(label, runtime_files, editor_files):
+    """Fail for a file in the other part than the marker that makes Godot skip its directory."""
+    for part, other, part_attr in [(runtime_files, editor_files, "srcs"), (editor_files, runtime_files, "editor_srcs")]:
+        for marker in godot_ignore_markers(part):
+            _fail_for_ignored(label, marker, other, part_attr)
+
+def _addon_parts(ctx, prefix):
+    """
+    Place both parts' files below the add-on's directory and check what each part holds.
+
+    Returns:
+        A struct of the runtime and editor parts' resource paths to Files and the editor
+        part's plugin.cfg res:// path, or empty without an editor part.
+    """
+    runtime_files = _placed(ctx, ctx.attr.srcs, ctx.attr.resource_paths, prefix)
+    editor_files = _placed(ctx, ctx.attr.editor_srcs, ctx.attr.editor_resource_paths, prefix)
+    for path in runtime_files:
+        if path in editor_files:
+            fail("%s: res://%s is in both srcs and editor_srcs; a file belongs to one part" % (ctx.label, path))
+        if path.rpartition("/")[2] == "plugin.cfg":
+            fail("%s: res://%s belongs in editor_srcs; the editor part holds the plugin" % (ctx.label, path))
+    _validate_sidecars(ctx.label, runtime_files, editor_files)
+    _validate_ignored(ctx.label, runtime_files, editor_files)
+    validate_namespace(runtime_files | editor_files)
+    configs = sorted([path for path in editor_files if path.rpartition("/")[2] == "plugin.cfg"])
+    if editor_files and len(configs) != 1:
+        fail("%s: editor_srcs must contain exactly one plugin.cfg, found %s" % (ctx.label, configs))
+    return struct(
+        runtime_files = runtime_files,
+        editor_files = editor_files,
+        plugin_config = configs[0] if configs else "",
+    )
+
+# ==== Import parts ============================================================
+
+def _is_file_suffix(suffix):
+    """Whether a suffix is lowercase and holds no dot or slash."""
+    if not suffix or suffix != suffix.lower():
+        return False
+    return "." not in suffix and "/" not in suffix
+
+def _importer_suffixes(label, suffixes):
+    """Check the declared importer suffixes: lowercase, without a dot, each once."""
+    for suffix in suffixes:
+        if not _is_file_suffix(suffix):
+            fail("%s: importer suffix %r must be a lowercase file suffix without a dot, such as \"md\"" % (label, suffix))
+    return sorted({suffix: True for suffix in suffixes})
+
+def _import_settings(label, keys, settings):
+    """The keys of the settings the importer reads at import time; each must be one of settings."""
+    for key in keys:
+        if key not in settings:
+            fail("%s: import_settings names %s, which is no key of its settings" % (label, key))
+    return sorted(keys)
+
+def _importer_resource_paths(runtime_files, editor_files, extensions, closure):
+    """What an importer of the add-on needs to run: both parts of it and of the add-ons it needs, with their extensions' editor files."""
+    paths = dict(runtime_files)
+    paths.update(editor_files)
+    for addon in closure:
+        paths.update(addon.runtime_files.member_resource_paths)
+        paths.update(addon.editor_files.member_resource_paths)
+    return with_extensions_for(paths, extensions, "editor")
+
+def _checked_importer_suffixes(ctx, parts, extensions):
+    """The declared importer suffixes, which need an editor part with a plugin.cfg or an extension."""
+    importer_suffixes = _importer_suffixes(ctx.label, ctx.attr.importer_suffixes)
+    if not importer_suffixes:
+        return []
+    if not (parts.editor_files or extensions):
+        fail("%s: importer_suffixes needs an editor part with a plugin.cfg or an extension" % ctx.label)
+    return importer_suffixes
+
+def _importer_staging(ctx, context, parts, used):
+    """
+    What an importer of the add-on needs to run, and its manifest outside every context.
+
+    Imports find the add-on in their project's index, outside every context.
+    """
+    paths = _importer_resource_paths(parts.runtime_files, parts.editor_files, used.extensions, used.closure)
+    manifest = None
+    if not is_context(context):
+        manifest = write_manifest(ctx, ".importer.resource_paths", mapped_paths(paths))
+    return paths, manifest
 
 def _passed_on(part, field):
     """The field of each part this one uses, when it passes them on as resources pass on their dependencies'."""
@@ -189,166 +319,6 @@ def _import_part(ctx, context, part):
         ignored = ignored,
     )
 
-def _validate_autoloads(label, autoloads, runtime_files, needed):
-    """Fail for an autoload naming no file of the runtime part or of the needed add-ons' runtime parts."""
-    for name, value in autoloads.items():
-        path = value.removeprefix("*").removeprefix("res://")
-        if path not in runtime_files and not [addon for addon in needed if path in addon.runtime_files.member_resource_paths]:
-            fail((
-                "%s: autoload %s names res://%s, which is no file of the add-on's runtime part " +
-                "or of the runtime parts of the add-ons it needs"
-            ) % (label, name, path))
-
-def _is_file_suffix(suffix):
-    """Whether a suffix is lowercase and holds no dot or slash."""
-    if not suffix or suffix != suffix.lower():
-        return False
-    return "." not in suffix and "/" not in suffix
-
-def _importer_suffixes(label, suffixes):
-    """Check the declared importer suffixes: lowercase, without a dot, each once."""
-    for suffix in suffixes:
-        if not _is_file_suffix(suffix):
-            fail("%s: importer suffix %r must be a lowercase file suffix without a dot, such as \"md\"" % (label, suffix))
-    return sorted({suffix: True for suffix in suffixes})
-
-def _import_settings(label, keys, settings):
-    """The keys of the settings the importer reads at import time; each must be one of settings."""
-    for key in keys:
-        if key not in settings:
-            fail("%s: import_settings names %s, which is no key of its settings" % (label, key))
-    return sorted(keys)
-
-def _importer_resource_paths(runtime_files, editor_files, extensions, closure):
-    """What an importer of the add-on needs to run: both parts of it and of the add-ons it needs, with their extensions' editor files."""
-    paths = dict(runtime_files)
-    paths.update(editor_files)
-    for addon in closure:
-        paths.update(addon.runtime_files.member_resource_paths)
-        paths.update(addon.editor_files.member_resource_paths)
-    return with_extensions_for(paths, extensions, "editor")
-
-def _validate_sidecars(label, runtime_files, editor_files):
-    """Fail for a sidecar declared in the other part than its source: it is metadata of that file (FR-032)."""
-    for part, other, other_attr in [(runtime_files, editor_files, "editor_srcs"), (editor_files, runtime_files, "srcs")]:
-        for path in part:
-            source = sidecar_source(path)
-            if source and source in other:
-                fail("%s: res://%s belongs in %s with res://%s; a sidecar is metadata of its file" % (
-                    label,
-                    path,
-                    other_attr,
-                    source,
-                ))
-
-def _fail_for_ignored(label, marker, other, part_attr):
-    """Fail for a file of the other part in the directory a marker makes Godot skip."""
-    directory = marker.rpartition("/")[0] + "/"
-    for path in other:
-        if path.startswith(directory):
-            fail("%s: res://%s is in a directory Godot ignores; it belongs in %s with res://%s" % (
-                label,
-                path,
-                part_attr,
-                marker,
-            ))
-
-def _validate_ignored(label, runtime_files, editor_files):
-    """Fail for a file in the other part than the marker that makes Godot skip its directory."""
-    for part, other, part_attr in [(runtime_files, editor_files, "srcs"), (editor_files, runtime_files, "editor_srcs")]:
-        for marker in godot_ignore_markers(part):
-            _fail_for_ignored(label, marker, other, part_attr)
-
-def _addon_parts(ctx, prefix):
-    """
-    Place both parts' files below the add-on's directory and check what each part holds.
-
-    Returns:
-        A struct of the runtime and editor parts' resource paths to Files and the editor
-        part's plugin.cfg res:// path, or empty without an editor part.
-    """
-    runtime_files = _placed(ctx, ctx.attr.srcs, ctx.attr.resource_paths, prefix)
-    editor_files = _placed(ctx, ctx.attr.editor_srcs, ctx.attr.editor_resource_paths, prefix)
-    for path in runtime_files:
-        if path in editor_files:
-            fail("%s: res://%s is in both srcs and editor_srcs; a file belongs to one part" % (ctx.label, path))
-        if path.rpartition("/")[2] == "plugin.cfg":
-            fail("%s: res://%s belongs in editor_srcs; the editor part holds the plugin" % (ctx.label, path))
-    _validate_sidecars(ctx.label, runtime_files, editor_files)
-    _validate_ignored(ctx.label, runtime_files, editor_files)
-    validate_namespace(runtime_files | editor_files)
-    configs = sorted([path for path in editor_files if path.rpartition("/")[2] == "plugin.cfg"])
-    if editor_files and len(configs) != 1:
-        fail("%s: editor_srcs must contain exactly one plugin.cfg, found %s" % (ctx.label, configs))
-    return struct(
-        runtime_files = runtime_files,
-        editor_files = editor_files,
-        plugin_config = configs[0] if configs else "",
-    )
-
-def _classified_deps(ctx):
-    """
-    Classify the add-on's deps: its extensions, the add-ons it needs and its platform libraries.
-
-    Every extension in deps is the add-on's, wherever its descriptor lies.
-    """
-    extensions = []
-    needed = []
-    platform_libraries = []
-    for target in ctx.attr.deps:
-        if GodotExtensionInfo in target:
-            extension = target[GodotExtensionInfo]
-            extensions.append(extension)
-            platform_libraries.extend(extension.platform_libraries)
-        elif GodotAddonInfo in target:
-            needed.append(target[GodotAddonInfo])
-        elif _PlatformLibrariesInfo in target:
-            platform_libraries.extend(target[_PlatformLibrariesInfo].libraries)
-        else:
-            fail((
-                "%s: %s in deps is no godot_addon or extension; declare platform libraries " +
-                "such as an android_library in platform_deps"
-            ) % (ctx.label, target.label))
-    return struct(extensions = extensions, needed = needed, platform_libraries = platform_libraries)
-
-def _checked_importer_suffixes(ctx, parts, extensions):
-    """The declared importer suffixes, which need an editor part with a plugin.cfg or an extension."""
-    importer_suffixes = _importer_suffixes(ctx.label, ctx.attr.importer_suffixes)
-    if not importer_suffixes:
-        return []
-    if not (parts.editor_files or extensions):
-        fail("%s: importer_suffixes needs an editor part with a plugin.cfg or an extension" % ctx.label)
-    return importer_suffixes
-
-def _used(ctx, extensions, closure):
-    """
-    What the add-on's parts use: the add-ons it needs, and their and its own extensions and autoloads.
-
-    Returns:
-        A struct of the closure of needed add-ons, the unique extensions, the add-on's own
-        autoload contributions and those of the closure followed by its own, which the
-        parts' validations load.
-    """
-    own_autoloads = configuration_contributions(ctx.attr.autoloads, str(ctx.label))
-    return struct(
-        closure = closure,
-        extensions = unique_extensions(extensions + [extension for addon in closure for extension in addon.extensions]),
-        own_autoloads = own_autoloads,
-        autoloads = [autoload for addon in closure for autoload in addon.autoloads] + own_autoloads,
-    )
-
-def _importer_staging(ctx, context, parts, used):
-    """
-    What an importer of the add-on needs to run, and its manifest outside every context.
-
-    Imports find the add-on in their project's index, outside every context.
-    """
-    paths = _importer_resource_paths(parts.runtime_files, parts.editor_files, used.extensions, used.closure)
-    manifest = None
-    if not is_context(context):
-        manifest = write_manifest(ctx, ".importer.resource_paths", mapped_paths(paths))
-    return paths, manifest
-
 def _import_parts(ctx, context, parts, used):
     """
     Import both parts under the context of an operation, each after what it may use.
@@ -381,6 +351,50 @@ def _import_parts(ctx, context, parts, used):
         runs_in_editor = True,
     ))
     return runtime, editor
+
+# ==== godot_addon =============================================================
+
+def _classified_deps(ctx):
+    """
+    Classify the add-on's deps: its extensions, the add-ons it needs and its platform libraries.
+
+    Every extension in deps is the add-on's, wherever its descriptor lies.
+    """
+    extensions = []
+    needed = []
+    platform_libraries = []
+    for target in ctx.attr.deps:
+        if GodotExtensionInfo in target:
+            extension = target[GodotExtensionInfo]
+            extensions.append(extension)
+            platform_libraries.extend(extension.platform_libraries)
+        elif GodotAddonInfo in target:
+            needed.append(target[GodotAddonInfo])
+        elif _PlatformLibrariesInfo in target:
+            platform_libraries.extend(target[_PlatformLibrariesInfo].libraries)
+        else:
+            fail((
+                "%s: %s in deps is no godot_addon or extension; declare platform libraries " +
+                "such as an android_library in platform_deps"
+            ) % (ctx.label, target.label))
+    return struct(extensions = extensions, needed = needed, platform_libraries = platform_libraries)
+
+def _used(ctx, extensions, closure):
+    """
+    What the add-on's parts use: the add-ons it needs, and their and its own extensions and autoloads.
+
+    Returns:
+        A struct of the closure of needed add-ons, the unique extensions, the add-on's own
+        autoload contributions and those of the closure followed by its own, which the
+        parts' validations load.
+    """
+    own_autoloads = configuration_contributions(ctx.attr.autoloads, str(ctx.label))
+    return struct(
+        closure = closure,
+        extensions = unique_extensions(extensions + [extension for addon in closure for extension in addon.extensions]),
+        own_autoloads = own_autoloads,
+        autoloads = [autoload for addon in closure for autoload in addon.autoloads] + own_autoloads,
+    )
 
 def _addon_impl(ctx):
     owner = str(ctx.label)

@@ -1,4 +1,8 @@
-"""Run Godot projects or packs with `bazel run` and `bazel test`, like py_binary/py_test."""
+"""
+Run Godot projects or packs with `bazel run` and `bazel test`, like py_binary/py_test.
+
+Sections: Launch manifest, Run rules, Run macros.
+"""
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("//godot:providers.bzl", "GodotPackInfo")
@@ -10,6 +14,8 @@ load("//godot/private:view.bzl", "GodotViewInfo", "declare_view", "require_entri
 load("//godot/private/config:transitions.bzl", "editor_variant_transition")
 
 visibility("//godot/...")
+
+# ==== Launch manifest =========================================================
 
 def _short_path(file):
     return file.short_path
@@ -200,6 +206,8 @@ def _run_fields(ctx, pack, project, foreign):
     fields, inputs = _project_data(ctx, project, foreign)
     return {"project": fields}, inputs
 
+# ==== Run rules ===============================================================
+
 def _executable_impl(ctx, test, tc = None, foreign = None):
     if not tc:
         tc = exec_group_editor(ctx, "test" if test else "run")
@@ -320,6 +328,8 @@ _godot_test = rule(
     test = True,
     exec_groups = TEST_EXEC_GROUPS,
 )
+
+# ==== Run macros ==============================================================
 
 # The project operations use when they name none: a minimal project.godot.
 DEFAULT_PROJECT = Label("//godot/private:default_project")

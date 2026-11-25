@@ -6,6 +6,8 @@ rules_android's `//toolchains/android_sdk:android_sdk_tools` and
 carry no execution constraints and resolve this host's tools, so the hub registers its own
 with `--extra_toolchains` priority. The repositories reuse the BUILD templates of
 rules_android and rules_android_ndk.
+
+Sections: Linux SDK, Linux NDK, Toolchain hub, Planning.
 """
 
 load("@rules_android_ndk//:rules.bzl", "android_ndk_repository")
@@ -16,12 +18,7 @@ visibility(["//godot", "//godot/platforms/private/tests"])
 # The Android versions tools/android/sdk.json pins as build_tools, api_levels and ndk,
 # from Google's SDK repository (repository2-3.xml).
 _REPOSITORY = "https://dl.google.com/android/repository/"
-_LINUX_BUILD_TOOLS = struct(
-    version = "35.0.0",
-    archive = "build-tools_r35_linux.zip",
-    integrity = "sha256-vTpJZpEuuLMO0NALDNprZUO5SdX/4AvqVMBMgeFWHYg=",
-    strip_prefix = "android-15",
-)
+
 _PLATFORMS = {
     "35": struct(
         archive = "platform-35_r02.zip",
@@ -32,15 +29,9 @@ _PLATFORMS = {
         integrity = "sha256-N2BzaaKMW2QLOnmYho1FiY68t3dWWg6F+azzbyljHS4=",
     ),
 }
-_LINUX_NDK = struct(
-    version = "29.0.14206865",
-    archive = "android-ndk-r29-linux.zip",
-    integrity = "sha256-Sru83IQvPUh5IG6WldUnCWA+Ut1o08H/8Es7Xnowjs8=",
-    strip_prefix = "android-ndk-r29",
-)
+
 _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 
-_SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 _NDK_TEMPLATES = "@rules_android_ndk//:"
 
 def _require_revision(ctx, directory, expected, _fail):
@@ -55,6 +46,17 @@ def _require_revision(ctx, directory, expected, _fail):
         _fail("%s holds revision %s, not the pinned %s" % (ctx.name, revisions, expected))
         return False
     return True
+
+# ==== Linux SDK ===============================================================
+
+_LINUX_BUILD_TOOLS = struct(
+    version = "35.0.0",
+    archive = "build-tools_r35_linux.zip",
+    integrity = "sha256-vTpJZpEuuLMO0NALDNprZUO5SdX/4AvqVMBMgeFWHYg=",
+    strip_prefix = "android-15",
+)
+
+_SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 
 def _linux_sdk_impl(ctx):
     build_tools = _LINUX_BUILD_TOOLS.version
@@ -104,6 +106,15 @@ create_system_images_filegroups = _create_system_images_filegroups
 _linux_sdk = repository_rule(
     doc = "The pinned Linux build tools and platforms, as rules_android's SDK repository.",
     implementation = _linux_sdk_impl,
+)
+
+# ==== Linux NDK ===============================================================
+
+_LINUX_NDK = struct(
+    version = "29.0.14206865",
+    archive = "android-ndk-r29-linux.zip",
+    integrity = "sha256-Sru83IQvPUh5IG6WldUnCWA+Ut1o08H/8Es7Xnowjs8=",
+    strip_prefix = "android-ndk-r29",
 )
 
 def linux_ndk_impl(ctx, *, _fail = fail):
@@ -170,6 +181,8 @@ _linux_ndk = repository_rule(
         ),
     },
 )
+
+# ==== Toolchain hub ===========================================================
 
 def _ndk_toolchains(ctx, name, clang, constraints):
     return fill_template(ctx, ctx.attr._ndk_template, {
@@ -244,6 +257,8 @@ _hub = repository_rule(
         ),
     },
 )
+
+# ==== Planning ================================================================
 
 def plan_android_toolchains(modules, *, _fail = fail):
     """

@@ -1,4 +1,8 @@
-"""Write the shell files of an Android application as Godot's Android exporter does."""
+"""
+Write the shell files of an Android application as Godot's Android exporter does.
+
+Sections: Permissions, Manifest, Command line, Themes.
+"""
 
 import struct
 from collections.abc import Mapping, Sequence
@@ -17,9 +21,15 @@ from tools.platforms.shell_common import (
 from tools.platforms.shell_overrides import defined_styles, without_styles
 
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
+
 TOOLS_NAMESPACE = "http://schemas.android.com/tools"
+
 ANDROID = "{" + ANDROID_NAMESPACE + "}"
+
 PERMISSION_TAGS = ("uses-permission", "uses-permission-sdk-23")
+
+
+# ==== Permissions =============================================================
 
 
 def _bool(value: object) -> str:
@@ -64,6 +74,9 @@ def permission_entries(declared: list[str], max_sdk: Mapping[str, str]) -> list[
         + " />"
         for name in declared
     ]
+
+
+# ==== Manifest ================================================================
 
 
 def manifest(facts: Facts, values: Mapping[str, Any]) -> str:
@@ -170,6 +183,9 @@ def _transparent(facts: Facts) -> bool:
     return bool(facts.setting("display/window/per_pixel_transparency/allowed"))
 
 
+# ==== Command line ============================================================
+
+
 def command_line(facts: Facts, values: Mapping[str, Any]) -> list[str]:
     """Godot's command line flags of its Android export."""
     flags = values["profile"]["command_line"]
@@ -216,6 +232,9 @@ def parse_command_line_file(data: bytes) -> list[str]:
     if offset != len(data):
         raise ValueError(f"{len(data) - offset} bytes follow the last argument")
     return args
+
+
+# ==== Themes ==================================================================
 
 
 def themes(

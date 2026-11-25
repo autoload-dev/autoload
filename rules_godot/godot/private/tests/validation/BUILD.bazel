@@ -1,3 +1,6 @@
+# Sections: Class cache, Project code guard, GDScript warnings, Script errors,
+# Interfaces, Platform libraries.
+
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources", "godot_run")
@@ -13,6 +16,8 @@ godot_project(
     name = "project",
     project_file = "fixtures/project.godot",
 )
+
+# ==== Class cache =============================================================
 
 # Script headers whose global classes Godot's scan records: @abstract, one-line
 # class_name ... extends ..., bases written as script paths and inner classes.
@@ -92,6 +97,8 @@ godot_pack(
         ":outside",
     ],
 )
+
+# ==== Project code guard ======================================================
 
 # FR-033: the validation runs no project code. Every kind of code that loading could run
 # calls the guard (fixtures/guard/guard.gd), which fails the validation: the autoloads'
@@ -206,6 +213,8 @@ godot_resources(
     ]
 ]
 
+# ==== GDScript warnings =======================================================
+
 # The validation follows the project's GDScript warning settings: a project raising
 # untyped declarations to errors fails a unit's untyped script, while an add-on below
 # res://addons stays exempt, as Godot's default directory_rules exempt res://addons,
@@ -287,6 +296,8 @@ godot_addon(
         "addon_warnings_project",
     ]
 ]
+
+# ==== Script errors ===========================================================
 
 # US4 AS3: a parse error fails exactly the validation of its unit; the imports, the
 # initialization and the export over it succeed. Built with validations reported, so the
@@ -405,6 +416,8 @@ py_test(
     main = "script_error_validation_test.py",
 )
 
+# ==== Interfaces ==============================================================
+
 # A unit's dependents validate against its interface (#158): the base's declarations, the
 # coroutine flags of its functions and the classes of its imported assets, as the analyzer
 # and the loader read them from its sources, decide the users' validations; an error in a
@@ -475,6 +488,8 @@ py_test(
     data = [":interface_validations_reported"],
     main = "interface_validation_test.py",
 )
+
+# ==== Platform libraries ======================================================
 
 # A script fails the validation of a platform whose runtime cannot load the extension it
 # uses, one without a library for that platform, unless it guards the use with ClassDB. The

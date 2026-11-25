@@ -1,4 +1,8 @@
-"""Projects as configuration contexts: their configuration files and the add-ons they name."""
+"""
+Projects as configuration contexts: their configuration files and the add-ons they name.
+
+Sections: Configuration files, Named add-ons, godot_project.
+"""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
@@ -14,6 +18,8 @@ load("//godot/private/config:settings.bzl", "ENGINE_FEATURE_TAGS", "entry_featur
 load("//godot/private/engine:setting_kinds.bzl", "engine_sections", "setting_kinds")
 
 visibility("//godot")
+
+# ==== Configuration files =====================================================
 
 _PURPOSE_MNEMONICS = {
     "runtime": "GodotProjectConfig",
@@ -98,6 +104,20 @@ def configuration_file(
     )
     return out
 
+def configuration_kinds(ctx):
+    """
+    The setting kinds and sections of the registered editor's version.
+
+    Args:
+        ctx: Rule analysis context with the editor toolchain.
+
+    Returns:
+        A struct of kinds, the setting-kind table, and sections, the sections of Godot's
+        own settings, as configuration_file takes them.
+    """
+    version = ctx.toolchains[EDITOR_TOOLCHAIN].godot.version
+    return struct(kinds = setting_kinds(version), sections = engine_sections(version))
+
 def left_out_entries(ctx, project, members, program_entry):
     """
     List the content-bound settings of the authored file that name a file a view lacks.
@@ -136,6 +156,33 @@ def left_out_entries(ctx, project, members, program_entry):
     )
     return out
 
+# ==== Named add-ons ===========================================================
+
+NamedAddonsInfo = provider(
+    doc = "The add-ons a project names, reached by views and a pack's native path without the project.",
+    fields = {"addons": "postorder depset of GodotAddonInfo, with the add-ons those need, dependencies first"},
+)
+
+def _named_addons_impl(ctx):
+    return [NamedAddonsInfo(addons = addon_closure([target[GodotAddonInfo] for target in ctx.attr.deps]))]
+
+# The add-ons a project names, without the project, which cannot depend on them in its own
+# context: their imports read it. A view reaches them here in its context, where they import
+# their parts like used add-ons; a pack's native path reaches them with the context reset, on
+# a deps edge the aspects of rules_android and rules_apple follow.
+_named_addons = rule(
+    implementation = _named_addons_impl,
+    attrs = {
+        "deps": attr.label_list(providers = [GodotAddonInfo]),
+    },
+)
+
+def named_addons_label(project):
+    """The label of the helper that holds the add-ons the project with this label names."""
+    return project.same_package_label(project.name + ".named_addons")
+
+# ==== godot_project ===========================================================
+
 def _authored_autoloads(ctx):
     """
     List the autoloads of the authored project.godot, which content validations register.
@@ -156,20 +203,6 @@ def _authored_autoloads(ctx):
         progress_message = "Generating %{label}",
     )
     return out
-
-def configuration_kinds(ctx):
-    """
-    The setting kinds and sections of the registered editor's version.
-
-    Args:
-        ctx: Rule analysis context with the editor toolchain.
-
-    Returns:
-        A struct of kinds, the setting-kind table, and sections, the sections of Godot's
-        own settings, as configuration_file takes them.
-    """
-    version = ctx.toolchains[EDITOR_TOOLCHAIN].godot.version
-    return struct(kinds = setting_kinds(version), sections = engine_sections(version))
 
 def _importer_index(named):
     """
@@ -202,29 +235,6 @@ def _probed_importer(addon):
         "native": bool(addon.extensions),
         "member_resource_paths": exec_paths(addon.importer_resource_paths) if addon.extensions else {},
     }
-
-NamedAddonsInfo = provider(
-    doc = "The add-ons a project names, reached by views and a pack's native path without the project.",
-    fields = {"addons": "postorder depset of GodotAddonInfo, with the add-ons those need, dependencies first"},
-)
-
-def _named_addons_impl(ctx):
-    return [NamedAddonsInfo(addons = addon_closure([target[GodotAddonInfo] for target in ctx.attr.deps]))]
-
-# The add-ons a project names, without the project, which cannot depend on them in its own
-# context: their imports read it. A view reaches them here in its context, where they import
-# their parts like used add-ons; a pack's native path reaches them with the context reset, on
-# a deps edge the aspects of rules_android and rules_apple follow.
-_named_addons = rule(
-    implementation = _named_addons_impl,
-    attrs = {
-        "deps": attr.label_list(providers = [GodotAddonInfo]),
-    },
-)
-
-def named_addons_label(project):
-    """The label of the helper that holds the add-ons the project with this label names."""
-    return project.same_package_label(project.name + ".named_addons")
 
 def _custom_features(settings):
     """
@@ -307,47 +317,6 @@ def _flag_setting_overrides(ctx):
     )
     return out
 
-def _project_impl(ctx):
-    validate_settings(ctx.attr.settings)
-    validate_settings(ctx.attr.setting_overrides)
-    validate_autoloads(ctx.attr.autoloads)
-    validate_autoloads(ctx.attr.autoload_overrides)
-    flag_settings = _flag_settings(ctx)
-    named = addon_closure([target[GodotAddonInfo] for target in ctx.attr.deps])
-    named_list = named.to_list()
-
-    importers = _importer_index(named_list)
-    import_project_file = _import_configuration(ctx)
-    importable = _importable_suffixes(ctx, import_project_file, named_list)
-    context_files = {}
-    for target, path in ctx.attr.context_files.items():
-        validate_resource_path(path)
-        context_files[path] = target.files.to_list()[0]
-
-    # Outside every operation a project builds nothing; operations build what they use.
-    checked = _flag_setting_overrides(ctx)
-    return [
-        DefaultInfo(),
-        OutputGroupInfo(_validation = depset([checked] if checked else [])),
-        GodotProjectInfo(
-            label = ctx.label,
-            import_configuration = import_project_file,
-            importable = importable,
-            authored_project_file = ctx.file.project_file,
-            authored_autoloads = _authored_autoloads(ctx),
-            settings = dict(ctx.attr.settings),
-            setting_overrides = dict(ctx.attr.setting_overrides),
-            autoloads = dict(ctx.attr.autoloads),
-            autoload_overrides = dict(ctx.attr.autoload_overrides),
-            main_scene = ctx.attr.main_scene,
-            context_files = context_files,
-            importers = importers,
-            named_addons = named,
-            custom_features = _custom_features(ctx.attr.custom_features),
-            flag_settings = flag_settings,
-        ),
-    ]
-
 def _import_configuration(ctx):
     """
     The project.godot that imports read: the project's settings for the import purpose.
@@ -413,6 +382,47 @@ def _importable_suffixes(ctx, import_project_file, named_list):
         path_mapping = True,
     )
     return importable
+
+def _project_impl(ctx):
+    validate_settings(ctx.attr.settings)
+    validate_settings(ctx.attr.setting_overrides)
+    validate_autoloads(ctx.attr.autoloads)
+    validate_autoloads(ctx.attr.autoload_overrides)
+    flag_settings = _flag_settings(ctx)
+    named = addon_closure([target[GodotAddonInfo] for target in ctx.attr.deps])
+    named_list = named.to_list()
+
+    importers = _importer_index(named_list)
+    import_project_file = _import_configuration(ctx)
+    importable = _importable_suffixes(ctx, import_project_file, named_list)
+    context_files = {}
+    for target, path in ctx.attr.context_files.items():
+        validate_resource_path(path)
+        context_files[path] = target.files.to_list()[0]
+
+    # Outside every operation a project builds nothing; operations build what they use.
+    checked = _flag_setting_overrides(ctx)
+    return [
+        DefaultInfo(),
+        OutputGroupInfo(_validation = depset([checked] if checked else [])),
+        GodotProjectInfo(
+            label = ctx.label,
+            import_configuration = import_project_file,
+            importable = importable,
+            authored_project_file = ctx.file.project_file,
+            authored_autoloads = _authored_autoloads(ctx),
+            settings = dict(ctx.attr.settings),
+            setting_overrides = dict(ctx.attr.setting_overrides),
+            autoloads = dict(ctx.attr.autoloads),
+            autoload_overrides = dict(ctx.attr.autoload_overrides),
+            main_scene = ctx.attr.main_scene,
+            context_files = context_files,
+            importers = importers,
+            named_addons = named,
+            custom_features = _custom_features(ctx.attr.custom_features),
+            flag_settings = flag_settings,
+        ),
+    ]
 
 _godot_project = rule(
     doc = "The configuration context of a product; the rule behind godot_project.",

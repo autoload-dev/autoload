@@ -3,6 +3,8 @@
 The lists are part of the API's Stardoc prose. This module never reads or evaluates
 Starlark: callers supply the docstring emitted by starlark_doc_extract and the facts
 Bazel reports for configured fixtures.
+
+Sections: Contract grammar, Evaluated comparison, Coverage.
 """
 
 import re
@@ -12,6 +14,9 @@ from dataclasses import dataclass
 from tools.ci.lanes import CONTRACT_LANES as MACHINE_LANES
 from tools.docs.ruleset import MODULE
 from tools.setup.modules import RULESET
+
+# ==== Contract grammar ========================================================
+
 
 SECTIONS = {
     "Default outputs": ("kind", "cardinality", "availability", "behavior"),
@@ -27,6 +32,7 @@ SECTIONS = {
         "availability",
     ),
 }
+
 # The first line of an entry: `- kind (cardinality): behavior` for default outputs,
 # `- `name`: contents` for output groups and `- `name` (kind): reason` for generated
 # targets. Indented `- field: value` lines below it give the other fields; an omitted
@@ -40,6 +46,7 @@ FIRST_LINES = {
         r"`(?P<name>[^`]+)` \((?P<kind>[a-z_]+)\): (?P<reason>.+)"
     ),
 }
+
 FIELD_DEFAULTS = {
     "availability": "always",
     "prerequisites": "none",
@@ -47,26 +54,12 @@ FIELD_DEFAULTS = {
     "visibility": "public",
     "testonly": "false",
 }
+
 DEFAULT_KINDS = frozenset({"files", "executable", "test", "metadata", "repository"})
+
 COMPANION_KINDS = frozenset(
     {"alias", "test", "executable", "files", "metadata", "library", "toolchain"}
 )
-# The lanes with API contract cases: docs, whose cases are the default, and the
-# profile lanes.
-DEFAULT_CONTRACT_LANE = "docs"
-CONTRACT_LANES = (DEFAULT_CONTRACT_LANE, *MACHINE_LANES)
-# The lane whose cases evaluate the consumer modules.
-CONSUMER_MODULE_LANE = "desktop"
-REPOSITORY_KINDS = frozenset({"repository_rule_info", "module_extension_info"})
-
-
-def behavior_lane(module: str) -> str:
-    """
-    The lane that resolves a module's behavior tests: one that evaluates the module anyway.
-
-    The docs lane, part of the default hook, evaluates the ruleset module only.
-    """
-    return DEFAULT_CONTRACT_LANE if module == RULESET.as_posix() else CONSUMER_MODULE_LANE
 
 
 @dataclass(frozen=True)
@@ -76,13 +69,164 @@ class Contract:
     companions: tuple[dict[str, str], ...] = ()
 
 
-@dataclass(frozen=True)
-class Api:
-    """One extracted public export: its Stardoc kind, contract and defining identity."""
+def _first_line(section: str, text: str) -> dict[str, str]:
+    """Read an entry's first line: `- ` and the section's pattern."""
+    if not text.startswith("- "):
+        raise ValueError(f"{section}: expected a list entry: {text}")
+    match = FIRST_LINES[section].fullmatch(text[2:])
+    if not match:
+        raise ValueError(f"{section}: malformed entry: {text}")
+    return match.groupdict()
 
-    kind: str
-    contract: Contract
-    origin: str
+
+def _field(section: str, entry: Mapping[str, str], text: str) -> tuple[str, str]:
+    """Read an indented `- field: value` line that adds a field of the section."""
+    field, separator, value = text[2:].partition(": ")
+    new = field in SECTIONS[section] and field not in entry
+    complete = bool(separator and value)
+    if not (new and complete):
+        raise ValueError(f"{section}: unknown or repeated field: {text}")
+    return field, value
+
+
+def _section_entries(section: str, lines: list[str]) -> list[dict[str, str]]:
+    """Group a section's lines into entries with their fields and continuation lines."""
+    entries: list[dict[str, str]] = []
+    entry_indent = 0
+    last = ""
+    for line in lines:
+        text = line.strip()
+        if not text:
+            continue
+        indent = len(line) - len(line.lstrip())
+        if not entries or indent <= entry_indent:
+            entries.append(_first_line(section, text))
+            entry_indent = indent
+            last = list(entries[-1])[-1]
+        elif text.startswith("- "):
+            field, value = _field(section, entries[-1], text)
+            entries[-1][field] = value
+            last = field
+        else:
+            entries[-1][last] += " " + text
+    return entries
+
+
+def _with_defaults(
+    section: str, entries: list[dict[str, str]]
+) -> tuple[dict[str, str], ...]:
+    """Fill omitted fields with their defaults and reject duplicate entries."""
+    fields = SECTIONS[section]
+    result = []
+    identities = set()
+    for entry in entries:
+        values = {field: entry.get(field) or FIELD_DEFAULTS[field] for field in fields}
+        # A name may repeat across availabilities; defaults are keyed by kind.
+        identity = (values[fields[0]], values["availability"])
+        if identity in identities:
+            raise ValueError(f"{section}: duplicate {values[fields[0]]}")
+        identities.add(identity)
+        result.append(values)
+    return tuple(result)
+
+
+def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
+    """Read a section's list: entries, their indented fields and continuation lines."""
+    entries = _section_entries(section, lines)
+    if not entries:
+        raise ValueError(f"{section}: an empty section is omitted")
+    return _with_defaults(section, entries)
+
+
+def _open_section(sections: dict[str, list[str]], title: str) -> str | None:
+    """Start collecting a contract section; other subsections are no contract."""
+    if title not in SECTIONS:
+        return None
+    if title in sections:
+        raise ValueError(f"{title}: duplicate section")
+    sections[title] = []
+    return title
+
+
+def _sections(doc: str) -> dict[str, list[str]]:
+    """Collect the lines of each contract section of a docstring, keyed by title."""
+    sections: dict[str, list[str]] = {}
+    current = None
+    for line in doc.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("### "):
+            current = _open_section(sections, stripped[4:])
+        elif stripped.startswith("## ") or stripped in {"Args:", "Returns:"}:
+            current = None
+        elif current:
+            sections[current].append(line)
+    return sections
+
+
+def _require(section: str, checks: Iterable[tuple[bool, str]]) -> None:
+    """Raise the first failed check's problem, in the order given."""
+    for valid, problem in checks:
+        if not valid:
+            raise ValueError(f"{section}: {problem}")
+
+
+def _check_default(row: Mapping[str, str]) -> None:
+    _require(
+        "Default outputs",
+        (
+            (row["kind"] in DEFAULT_KINDS, "unknown kind " + row["kind"]),
+            (row["cardinality"] in {"none", "one", "many"}, "invalid cardinality"),
+        ),
+    )
+
+
+def _check_companion(row: Mapping[str, str]) -> None:
+    purpose = row["purpose"]
+    _require(
+        "Generated targets",
+        (
+            (row["kind"] in COMPANION_KINDS, "invalid kind"),
+            (
+                purpose in {"operation", "test", "analysis_boundary"},
+                "invalid purpose " + purpose,
+            ),
+            (
+                (purpose == "test") == (row["kind"] == "test"),
+                "test purpose requires test kind",
+            ),
+            (row["visibility"] in {"public", "caller"}, "invalid visibility"),
+            (row["testonly"] in {"true", "false", "inherit"}, "invalid testonly"),
+            (row["reason"] != "none", "require concrete reason"),
+        ),
+    )
+
+
+def parse(doc: str) -> Contract:
+    """Read the typed contract sections of a Bazel-evaluated docstring.
+
+    Default outputs is required; a section without entries is omitted.
+    """
+    sections = _sections(doc)
+    if "Default outputs" not in sections:
+        raise ValueError("Default outputs: missing section")
+    contract = Contract(
+        *(
+            _entries(title, sections[title]) if title in sections else ()
+            for title in SECTIONS
+        )
+    )
+    for row in contract.defaults:
+        _check_default(row)
+    for row in contract.companions:
+        _check_companion(row)
+    return contract
+
+
+# ==== Evaluated comparison ====================================================
+
+
+# The provider a kind's evaluated target must carry.
+REQUIRED_PROVIDERS = {"library": "CcInfo", "toolchain": "ToolchainInfo"}
 
 
 @dataclass(frozen=True)
@@ -97,102 +241,10 @@ class ConfiguredTarget:
     groups: frozenset[str]
 
 
-def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
-    """Read a section's list: entries, their indented fields and continuation lines."""
-    fields = SECTIONS[section]
-    entries: list[dict[str, str]] = []
-    entry_indent = 0
-    last = ""
-    for line in lines:
-        if not line.strip():
-            continue
-        indent = len(line) - len(line.lstrip())
-        text = line.strip()
-        if not entries or indent <= entry_indent:
-            if not text.startswith("- "):
-                raise ValueError(f"{section}: expected a list entry: {text}")
-            match = FIRST_LINES[section].fullmatch(text[2:])
-            if not match:
-                raise ValueError(f"{section}: malformed entry: {text}")
-            entries.append(match.groupdict())
-            entry_indent = indent
-            last = list(match.groupdict())[-1]
-        elif text.startswith("- "):
-            field, separator, value = text[2:].partition(": ")
-            entry = entries[-1]
-            if not separator or field not in fields or field in entry or not value:
-                raise ValueError(f"{section}: unknown or repeated field: {text}")
-            entry[field] = value
-            last = field
-        else:
-            entries[-1][last] += " " + text
-    if not entries:
-        raise ValueError(f"{section}: an empty section is omitted")
-    result = []
-    identities = set()
-    for entry in entries:
-        values = {field: entry.get(field) or FIELD_DEFAULTS[field] for field in fields}
-        # A name may repeat across availabilities; defaults are keyed by kind.
-        identity = (values[fields[0]], values["availability"])
-        if identity in identities:
-            raise ValueError(f"{section}: duplicate {values[fields[0]]}")
-        identities.add(identity)
-        result.append(values)
-    return tuple(result)
-
-
 def active(rows: Iterable[dict[str, str]], conditions: Iterable[str]) -> list[dict]:
     """Rows available in a configuration with the given conditions."""
     conditions = set(conditions)
     return [row for row in rows if row["availability"] in conditions | {"always"}]
-
-
-def parse(doc: str) -> Contract:
-    """Read the typed contract sections of a Bazel-evaluated docstring.
-
-    Default outputs is required; a section without entries is omitted.
-    """
-    sections: dict[str, list[str]] = {}
-    active = None
-    for line in doc.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("### "):
-            active = stripped[4:] if stripped[4:] in SECTIONS else None
-            if active:
-                if active in sections:
-                    raise ValueError(f"{active}: duplicate section")
-                sections[active] = []
-        elif stripped.startswith("## ") or stripped in {"Args:", "Returns:"}:
-            active = None
-        elif active:
-            sections[active].append(line)
-    if "Default outputs" not in sections:
-        raise ValueError("Default outputs: missing section")
-    contract = Contract(
-        *(
-            _entries(title, sections[title]) if title in sections else ()
-            for title in SECTIONS
-        )
-    )
-    for row in contract.defaults:
-        if row["kind"] not in DEFAULT_KINDS:
-            raise ValueError("Default outputs: unknown kind " + row["kind"])
-        if row["cardinality"] not in {"none", "one", "many"}:
-            raise ValueError("Default outputs: invalid cardinality")
-    for row in contract.companions:
-        if row["kind"] not in COMPANION_KINDS:
-            raise ValueError("Generated targets: invalid kind")
-        if row["purpose"] not in {"operation", "test", "analysis_boundary"}:
-            raise ValueError("Generated targets: invalid purpose " + row["purpose"])
-        if (row["purpose"] == "test") != (row["kind"] == "test"):
-            raise ValueError("Generated targets: test purpose requires test kind")
-        if row["visibility"] not in {"public", "caller"}:
-            raise ValueError("Generated targets: invalid visibility")
-        if row["testonly"] not in {"true", "false", "inherit"}:
-            raise ValueError("Generated targets: invalid testonly")
-        if row["reason"] == "none":
-            raise ValueError("Generated targets: require concrete reason")
-    return contract
 
 
 def provider_identity(key: str) -> str:
@@ -207,6 +259,39 @@ def _has_provider(target: ConfiguredTarget, name: str) -> bool:
     return any(key == name or key.endswith("%" + name) for key in target.providers)
 
 
+def _test_errors(kind: str, test: bool) -> list[str]:
+    """Compare a promised test with Bazel's own test classification."""
+    promised = kind == "test"
+    if promised == test:
+        return []
+    if promised:
+        return ["promised test is not an evaluated Bazel test"]
+    return ["undocumented evaluated test behavior"]
+
+
+def _executable_errors(
+    kind: str, target: ConfiguredTarget, shared_library: bool
+) -> list[str]:
+    """Compare promised running with the evaluated executable and its runfiles."""
+    if kind in {"test", "executable"}:
+        runs = target.executable and target.runfiles
+        return [] if runs else ["missing promised executable or runfiles"]
+    if target.executable and not shared_library:
+        return ["undocumented executable behavior"]
+    return []
+
+
+def _content_errors(kind: str, target: ConfiguredTarget) -> list[str]:
+    """Compare a kind's promised files and providers with the evaluated ones."""
+    errors = []
+    if kind in {"metadata", "toolchain"} and target.files:
+        errors.append(kind + " must not produce default files")
+    provider = REQUIRED_PROVIDERS.get(kind)
+    if provider and not _has_provider(target, provider):
+        errors.append(f"{kind} lacks {provider}")
+    return errors
+
+
 def kind_errors(
     kind: str, target: ConfiguredTarget, *, test: bool, shared_library: bool = False
 ) -> list[str]:
@@ -215,29 +300,36 @@ def kind_errors(
     ``test`` is Bazel's own test classification. A ``cc_binary`` with ``linkshared``
     exposes RunfilesSupport, but it links rather than runs.
     """
-    errors = []
-    if kind == "test" and not test:
-        errors.append("promised test is not an evaluated Bazel test")
-    if kind != "test" and test:
-        errors.append("undocumented evaluated test behavior")
-    if kind in {"test", "executable"}:
-        if not target.executable or not target.runfiles:
-            errors.append("missing promised executable or runfiles")
-    elif target.executable and not shared_library:
-        errors.append("undocumented executable behavior")
-    if kind in {"metadata", "toolchain"} and target.files:
-        errors.append(kind + " must not produce default files")
-    if kind == "library" and not _has_provider(target, "CcInfo"):
-        errors.append("library lacks CcInfo")
-    if kind == "toolchain" and not _has_provider(target, "ToolchainInfo"):
-        errors.append("toolchain lacks ToolchainInfo")
-    return errors
+    return [
+        *_test_errors(kind, test),
+        *_executable_errors(kind, target, shared_library),
+        *_content_errors(kind, target),
+    ]
 
 
 def _difference(kind: str, expected: set[str], actual: set[str]) -> list[str]:
     return [
         f"missing documented {kind}: {name}" for name in sorted(expected - actual)
     ] + [f"undocumented {kind}: {name}" for name in sorted(actual - expected)]
+
+
+def _cardinality_errors(cardinality: str, files: int) -> list[str]:
+    """Compare a promised default output cardinality with the evaluated files."""
+    if cardinality == "one" and files != 1:
+        return ["default output cardinality must be one"]
+    if cardinality == "none" and files:
+        return ["default output cardinality must be none"]
+    return []
+
+
+def _group_errors(
+    documented: set[str], target: ConfiguredTarget, forwarded_groups: bool
+) -> list[str]:
+    """Compare documented output groups with the evaluated public ones."""
+    observed = {name for name in target.groups if not name.startswith("_")}
+    if forwarded_groups:
+        observed &= documented
+    return _difference("group", documented, observed)
 
 
 def compare(
@@ -255,93 +347,18 @@ def compare(
     Groups whose name starts with ``_`` are Bazel/implementation groups. A root that
     forwards an upstream target's groups is only checked for its documented ones.
     """
-    errors = []
     defaults = active(contract.defaults, conditions)
     if len(defaults) != 1:
         return ["require exactly one active default output contract"]
     row = defaults[0]
-    if row["cardinality"] == "one" and target.files != 1:
-        errors.append("default output cardinality must be one")
-    elif row["cardinality"] == "none" and target.files:
-        errors.append("default output cardinality must be none")
-    errors.extend(
-        kind_errors(row["kind"], target, test=test, shared_library=shared_library)
-    )
     groups = {row["name"] for row in active(contract.groups, conditions)}
-    observed = {name for name in target.groups if not name.startswith("_")}
-    if forwarded_groups:
-        observed &= groups
-    errors.extend(_difference("group", groups, observed))
-    errors.extend(
-        _difference(
-            "companion",
-            {row["name"] for row in active(contract.companions, conditions)},
-            set(companions),
-        )
-    )
-    return errors
-
-
-def is_repository_api(api: Api) -> bool:
-    """Repository rules, module extensions and helper functions whose only output is repositories."""
-    if api.kind in REPOSITORY_KINDS:
-        return True
-    return api.kind == "func_info" and [row["kind"] for row in api.contract.defaults] == [
-        "repository"
+    promised = {row["name"] for row in active(contract.companions, conditions)}
+    return [
+        *_cardinality_errors(row["cardinality"], target.files),
+        *kind_errors(row["kind"], target, test=test, shared_library=shared_library),
+        *_group_errors(groups, target, forwarded_groups),
+        *_difference("companion", promised, set(companions)),
     ]
-
-
-def coverage_errors(
-    apis: Mapping[str, Api],
-    cases: Mapping[str, dict],
-    behavior: Mapping[str, list[str]],
-) -> list[str]:
-    """Require every public export to own configured cases and companion tests."""
-    errors = []
-    for identity, api in apis.items():
-        if api.kind == "provider_info":
-            continue
-        registered = [
-            case for key, case in cases.items() if key.partition("#")[0] == identity
-        ]
-        if not registered:
-            errors.append(f"{identity}: missing configured case")
-        covered = {
-            condition for case in registered for condition in case.get("conditions", [])
-        }
-        contract = api.contract
-        promised = {
-            row["availability"]
-            for section in (
-                contract.defaults,
-                contract.groups,
-                contract.companions,
-            )
-            for row in section
-        } - {"always"}
-        for condition in sorted(promised - covered):
-            errors.append(
-                f"{identity}: conditional availability {condition!r} has no configured case"
-            )
-        if contract.companions and not behavior.get(identity):
-            errors.append(
-                f"{identity}: public companions need a registered behavior test"
-            )
-    for key, case in cases.items():
-        api = apis.get(key.partition("#")[0])
-        if api is None:
-            errors.append(f"{key}: case refers to unknown API")
-            continue
-        if case.get("lane", DEFAULT_CONTRACT_LANE) not in CONTRACT_LANES:
-            errors.append(f"{key}: unknown required lane")
-        if is_repository_api(api) != ("entrypoints" in case):
-            errors.append(f"{key}: repository APIs, and only those, use entrypoint cases")
-        elif "entrypoints" not in case and not case.get("target"):
-            errors.append(f"{key}: missing evaluated target")
-    for identity in behavior:
-        if identity not in apis:
-            errors.append(f"{identity}: behavior test refers to unknown API")
-    return errors
 
 
 def has_consumer_visibility(
@@ -359,3 +376,109 @@ def has_consumer_visibility(
 def is_shared_library(kind: str, booleans: Mapping[str, bool]) -> bool:
     """An evaluated cc_binary with linkshared declares linking despite exposing RunfilesSupport."""
     return kind == "cc_binary" and booleans.get("linkshared", False)
+
+
+# ==== Coverage ================================================================
+
+
+# The lanes with API contract cases: docs, whose cases are the default, and the
+# profile lanes.
+DEFAULT_CONTRACT_LANE = "docs"
+
+CONTRACT_LANES = (DEFAULT_CONTRACT_LANE, *MACHINE_LANES)
+
+# The lane whose cases evaluate the consumer modules.
+CONSUMER_MODULE_LANE = "desktop"
+
+REPOSITORY_KINDS = frozenset({"repository_rule_info", "module_extension_info"})
+
+
+def behavior_lane(module: str) -> str:
+    """
+    The lane that resolves a module's behavior tests: one that evaluates the module anyway.
+
+    The docs lane, part of the default hook, evaluates the ruleset module only.
+    """
+    return DEFAULT_CONTRACT_LANE if module == RULESET.as_posix() else CONSUMER_MODULE_LANE
+
+
+@dataclass(frozen=True)
+class Api:
+    """One extracted public export: its Stardoc kind, contract and defining identity."""
+
+    kind: str
+    contract: Contract
+    origin: str
+
+
+def is_repository_api(api: Api) -> bool:
+    """Repository rules, module extensions and helper functions whose only output is repositories."""
+    if api.kind in REPOSITORY_KINDS:
+        return True
+    return api.kind == "func_info" and [row["kind"] for row in api.contract.defaults] == [
+        "repository"
+    ]
+
+
+def _promised_conditions(contract: Contract) -> set[str]:
+    """The conditions a contract promises something under, other than always."""
+    sections = (contract.defaults, contract.groups, contract.companions)
+    return {row["availability"] for section in sections for row in section} - {"always"}
+
+
+def _api_errors(
+    identity: str,
+    api: Api,
+    cases: Mapping[str, dict],
+    behavior: Mapping[str, list[str]],
+) -> list[str]:
+    """Require an export's configured cases, its conditions and its behavior test."""
+    registered = [
+        case for key, case in cases.items() if key.partition("#")[0] == identity
+    ]
+    errors = [] if registered else [f"{identity}: missing configured case"]
+    covered = {
+        condition for case in registered for condition in case.get("conditions", [])
+    }
+    errors.extend(
+        f"{identity}: conditional availability {condition!r} has no configured case"
+        for condition in sorted(_promised_conditions(api.contract) - covered)
+    )
+    if api.contract.companions and not behavior.get(identity):
+        errors.append(f"{identity}: public companions need a registered behavior test")
+    return errors
+
+
+def _case_errors(key: str, case: dict, apis: Mapping[str, Api]) -> list[str]:
+    """Check that a case names a known export, a lane and what it evaluates."""
+    api = apis.get(key.partition("#")[0])
+    if api is None:
+        return [f"{key}: case refers to unknown API"]
+    errors = []
+    if case.get("lane", DEFAULT_CONTRACT_LANE) not in CONTRACT_LANES:
+        errors.append(f"{key}: unknown required lane")
+    if is_repository_api(api) != ("entrypoints" in case):
+        errors.append(f"{key}: repository APIs, and only those, use entrypoint cases")
+    elif "entrypoints" not in case and not case.get("target"):
+        errors.append(f"{key}: missing evaluated target")
+    return errors
+
+
+def coverage_errors(
+    apis: Mapping[str, Api],
+    cases: Mapping[str, dict],
+    behavior: Mapping[str, list[str]],
+) -> list[str]:
+    """Require every public export to own configured cases and companion tests."""
+    errors = []
+    for identity, api in apis.items():
+        if api.kind != "provider_info":
+            errors.extend(_api_errors(identity, api, cases, behavior))
+    for key, case in cases.items():
+        errors.extend(_case_errors(key, case, apis))
+    errors.extend(
+        f"{identity}: behavior test refers to unknown API"
+        for identity in behavior
+        if identity not in apis
+    )
+    return errors

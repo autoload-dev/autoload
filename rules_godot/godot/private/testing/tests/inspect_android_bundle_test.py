@@ -1,4 +1,8 @@
-"""The Android inspector's checks of a bundle's manifest, universal APK and symbols."""
+"""
+The Android inspector's checks of a bundle's manifest, universal APK and symbols.
+
+Sections: Class definitions, Bundle inspection.
+"""
 
 import contextlib
 import hashlib
@@ -15,6 +19,8 @@ from unittest import mock
 
 from godot.private.testing import inspect_android_bundle
 from godot.private.testing.inspect_android_bundle import apk_classes, defined_classes
+
+# ==== Class definitions =======================================================
 
 
 def dex_types(defined: str, referenced: str) -> bytes:
@@ -71,6 +77,9 @@ class ClassDefinitionsTest(unittest.TestCase):
         ]:
             with self.subTest(size=len(invalid)), self.assertRaises(ValueError):
                 defined_classes(invalid)
+
+
+# ==== Bundle inspection =======================================================
 
 
 def pck(files: dict[str, bytes]) -> bytes:
@@ -140,13 +149,16 @@ def elf_library(build_id: bytes, *sections: str) -> bytes:
 
 
 _APPLICATION_ID = "com.example.game"
+
 _MANIFEST = (
     '<manifest package="com.example.game">'
     '<uses-sdk android:minSdkVersion="24"/>'
     '<activity android:name="com.godot.game.GodotApp"/>'
     "</manifest>"
 )
+
 _LIBRARY = "arm64-v8a/libgame.so"
+
 _BUILD_ID = bytes.fromhex("7eb76e5a")
 
 

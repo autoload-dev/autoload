@@ -1,4 +1,8 @@
-"""Read and write Godot 4.7.2+ PCKs: their directory, members and packed project settings."""
+"""
+Read and write Godot 4.7.2+ PCKs: their directory, members and packed project settings.
+
+Sections: Reading, Writing, Project settings.
+"""
 
 import functools
 import hashlib
@@ -12,14 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any
 
+_MAGIC = 0x43504447
+
+
+# ==== Reading =================================================================
+
+
 # Godot loads the extensions this file lists when the runtime starts.
 EXTENSION_LIST = ".godot/extension_list.cfg"
-
-_MAGIC = 0x43504447
-# Godot aligns the first file, every file's end and the directory to 16 bytes.
-_PADDING = 16
-# Two blocks of eight reserved 32-bit words follow the directory offset.
-_RESERVED = 64
 
 
 @dataclass(frozen=True)
@@ -140,6 +144,16 @@ def pck_file_member(source: str | os.PathLike[str], path: str) -> bytes:
         return _member(pack, Path(source).stat().st_size, path)
 
 
+# ==== Writing =================================================================
+
+
+# Godot aligns the first file, every file's end and the directory to 16 bytes.
+_PADDING = 16
+
+# Two blocks of eight reserved 32-bit words follow the directory offset.
+_RESERVED = 64
+
+
 def _pad(destination: IO[bytes]) -> None:
     destination.write(bytes(-destination.tell() % _PADDING))
 
@@ -251,6 +265,9 @@ def pck_files(source: str | os.PathLike[str]) -> dict[str, bytes]:
     with Path(source).open("rb") as pack:
         _, entries = _directory(pack, Path(source).stat().st_size)
         return {entry.path: _content(pack, entry) for entry in entries}
+
+
+# ==== Project settings ========================================================
 
 
 def _ecfg_records(data: bytes) -> Iterator[tuple[str, bytes, bytes]]:

@@ -1,4 +1,8 @@
-"""Strip native code or extract its dSYM; other files, such as launcher scripts, pass."""
+"""
+Strip native code or extract its dSYM; other files, such as launcher scripts, pass.
+
+Sections: ELF files, Mach-O files, Slices, Command line.
+"""
 
 import argparse
 import mmap
@@ -11,8 +15,10 @@ from collections.abc import Iterator
 from pathlib import Path
 
 _ELF = b"\x7fELF"
+
 # Little-endian thin files, as Apple's toolchains write them, and universal ones.
 _MACHO_THIN = {"cefaedfe", "cffaedfe"}
+
 _MACHO_UNIVERSAL = {"cafebabe", "cafebabf"}
 
 # A whole file's bytes or a read-only map of it, which reads only what is parsed.
@@ -26,6 +32,9 @@ def native_format(path: str | Path) -> str | None:
     if magic == _ELF:
         return "elf"
     return "macho" if magic.hex() in _MACHO_THIN | _MACHO_UNIVERSAL else None
+
+
+# ==== ELF files ===============================================================
 
 
 def elf_sections(data: bytes) -> dict[str, memoryview]:
@@ -69,6 +78,9 @@ def elf_build_id(sections: dict[str, memoryview]) -> str | None:
 def elf_file_build_id(data: bytes) -> str | None:
     """Return the GNU build ID of an ELF file, as hex."""
     return elf_build_id(elf_sections(data))
+
+
+# ==== Mach-O files ============================================================
 
 
 def macho_slices(data: Binary) -> list[tuple[int, int]]:
@@ -139,65 +151,6 @@ def macho_uuids(data: Binary) -> list[str]:
     return uuids
 
 
-def strip(tool: str, options: list[str], source: str, output: str) -> None:
-    form = native_format(source)
-    if form:
-        result = subprocess.run(
-            [tool, *options, "-o", output, source],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        # The signature is renewed below; other diagnostics stay visible.
-        for line in result.stderr.splitlines():
-            if "invalidate the code signature" not in line:
-                print(line, file=sys.stderr)
-        result.check_returncode()
-    else:
-        shutil.copyfile(source, output)
-    os.chmod(output, 0o755)
-    if form == "macho":
-        # Stripping invalidates the signature, and arm64 runs only signed code;
-        # sign ad hoc as the linker does. godot_app optionally signs the complete bundle.
-        subprocess.run(
-            ["/usr/bin/codesign", "--force", "--sign", "-", output],
-            check=True,
-            capture_output=True,
-        )
-
-
-def dsym(source: str, output: str) -> None:
-    if native_format(source) == "macho":
-        subprocess.run(["/usr/bin/xcrun", "dsymutil", source, "-o", output], check=True)
-    else:
-        Path(output).mkdir(parents=True, exist_ok=True)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["strip", "dsym"])
-    parser.add_argument("--tool", help="The C/C++ toolchain's strip tool.")
-    parser.add_argument("--option", action="append", default=[], help="Strip option.")
-    parser.add_argument("--input", action="append", required=True)
-    parser.add_argument(
-        "--output", action="append", required=True, help="One per --input, in order."
-    )
-    args = parser.parse_args()
-    if len(args.input) != len(args.output):
-        parser.error("every --input needs an --output")
-    for source, output in zip(args.input, args.output, strict=True):
-        if args.mode == "strip":
-            strip(args.tool, args.option, source, output)
-        else:
-            dsym(source, output)
-
-
-if __name__ == "__main__":
-    main()
-
-
-# ELF e_machine values by Godot's CPU tag; the class (32- or 64-bit) follows the CPU.
-_ELF_CPUS = {3: "x86_32", 40: "arm32", 62: "x86_64", 183: "arm64", 243: "rv64"}
 _MACHO_CPUS = {0x100000C: "arm64", 0x1000007: "x86_64"}
 
 
@@ -231,7 +184,14 @@ def _macho_slice(data: Binary, offset: int, size: int) -> tuple[str, str]:
     return cpu, sdk
 
 
+# ==== Slices ==================================================================
+
+
+# ELF e_machine values by Godot's CPU tag; the class (32- or 64-bit) follows the CPU.
+_ELF_CPUS = {3: "x86_32", 40: "arm32", 62: "x86_64", 183: "arm64", 243: "rv64"}
+
 _ARCHIVE = b"!<arch>\n"
+
 _MEMBER_HEADER = 60
 
 
@@ -340,3 +300,63 @@ def desktop_runtime(data: bytes, cpu: str, operating_system: str) -> bytes:
     if actual != sdk:
         raise ValueError(f"desktop runtime: SDK of {cpu}: {actual} differs from {sdk}")
     return data[offset : offset + size] if len(slices) > 1 else data
+
+
+# ==== Command line ============================================================
+
+
+def strip(tool: str, options: list[str], source: str, output: str) -> None:
+    form = native_format(source)
+    if form:
+        result = subprocess.run(
+            [tool, *options, "-o", output, source],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        # The signature is renewed below; other diagnostics stay visible.
+        for line in result.stderr.splitlines():
+            if "invalidate the code signature" not in line:
+                print(line, file=sys.stderr)
+        result.check_returncode()
+    else:
+        shutil.copyfile(source, output)
+    os.chmod(output, 0o755)
+    if form == "macho":
+        # Stripping invalidates the signature, and arm64 runs only signed code;
+        # sign ad hoc as the linker does. godot_app optionally signs the complete bundle.
+        subprocess.run(
+            ["/usr/bin/codesign", "--force", "--sign", "-", output],
+            check=True,
+            capture_output=True,
+        )
+
+
+def dsym(source: str, output: str) -> None:
+    if native_format(source) == "macho":
+        subprocess.run(["/usr/bin/xcrun", "dsymutil", source, "-o", output], check=True)
+    else:
+        Path(output).mkdir(parents=True, exist_ok=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mode", choices=["strip", "dsym"])
+    parser.add_argument("--tool", help="The C/C++ toolchain's strip tool.")
+    parser.add_argument("--option", action="append", default=[], help="Strip option.")
+    parser.add_argument("--input", action="append", required=True)
+    parser.add_argument(
+        "--output", action="append", required=True, help="One per --input, in order."
+    )
+    args = parser.parse_args()
+    if len(args.input) != len(args.output):
+        parser.error("every --input needs an --output")
+    for source, output in zip(args.input, args.output, strict=True):
+        if args.mode == "strip":
+            strip(args.tool, args.option, source, output)
+        else:
+            dsym(source, output)
+
+
+if __name__ == "__main__":
+    main()

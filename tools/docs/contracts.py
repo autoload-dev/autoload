@@ -1,4 +1,8 @@
-"""Compare evaluated public source contracts with configured, evaluated Bazel fixtures."""
+"""
+Compare evaluated public source contracts with configured, evaluated Bazel fixtures.
+
+Sections: Extraction, Case checks, Lane errors.
+"""
 
 import argparse
 import json
@@ -37,6 +41,9 @@ from tools.docs.repository_contracts import check_public_targets, check_reposito
 from tools.docs.ruleset import INVENTORY
 
 MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
+
+
+# ==== Extraction ==============================================================
 
 
 def inventory_target(module: str) -> str:
@@ -80,6 +87,9 @@ def host_case(case: dict[str, Any]) -> dict[str, Any]:
         "conditions": [],
     }
     return replace({**defaults, **case})
+
+
+# ==== Case checks =============================================================
 
 
 def companion_errors(
@@ -249,6 +259,9 @@ def check_cases(bazel: EvaluatedBazel, cases: Cases) -> dict[str, list[str]]:
         if targets:
             errors |= check_targets(bazel, module, options, targets)
     return {key: [f"{key}: {error}" for error in found] for key, found in errors.items()}
+
+
+# ==== Lane errors =============================================================
 
 
 def lane_independent_errors(

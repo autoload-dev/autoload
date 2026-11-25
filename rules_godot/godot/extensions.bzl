@@ -1,6 +1,8 @@
 """
 Bzlmod setup of Godot engines (prebuilt releases, sources and source builds) and of
 experimental Android toolchains for each execution platform.
+
+Sections: godot_engines, godot_android_toolchains.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
@@ -19,6 +21,8 @@ load(
     "android_toolchain_repositories",
     "plan_android_toolchains",
 )
+
+# ==== godot_engines ===========================================================
 
 _ENGINE_ATTR = attr.string(doc = """
     Name of the engine the hub's components belong to, such as `petri`; builds select it
@@ -270,6 +274,8 @@ godot_engines = module_extension(
         ),
     },
 )
+
+# ==== godot_android_toolchains ================================================
 
 def _android_toolchains_impl(module_ctx):
     ndk_api_level = plan_android_toolchains(module_ctx.modules)

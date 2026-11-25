@@ -8,16 +8,25 @@ rest: the owned export options and the tables and constants Godot's
 exporters use to write shell files, such as Android categories or iOS icon sizes.
 Rules pass a profile to the build tools as data, so a newer Godot
 version changes one profile, not the code that writes shell files.
+
+Sections: Godot 4.7, Export options, Export hooks, Godot 4.8, Android shell, Profile
+lookup.
 """
 
 load("//godot/private:versions.bzl", "godot_series", "require_supported_source_version")
 
 visibility(["//godot/..."])
 
+# ==== Godot 4.7 ===============================================================
+
 _LEFT = "UIInterfaceOrientationLandscapeLeft"
+
 _RIGHT = "UIInterfaceOrientationLandscapeRight"
+
 _UP = "UIInterfaceOrientationPortrait"
+
 _DOWN = "UIInterfaceOrientationPortraitUpsideDown"
+
 _ALL = [_LEFT, _RIGHT, _UP, _DOWN]
 
 # Godot 4.7, from its Android, iOS (Apple embedded) and macOS exporters.
@@ -287,6 +296,8 @@ _GODOT_4_7 = {
     },
 }
 
+# ==== Export options ==========================================================
+
 # One row owns the value, applicability and authoring policy together. CPU
 # rows reuse exporter maps above; Android SDK fallbacks stay in the Android shell policy.
 def _owned(key, owner, derive, placement, when, authored, **operands):
@@ -533,6 +544,7 @@ _GODOT_4_7["rejected_export_options"] = _REJECTED_OPTIONS_4_7
 # Registered options that Godot's reflection hides and build tools read; the probe
 # asks for them by name, as it does for every option a pack authors.
 _GODOT_4_7["hidden_export_options"] = {"ios": ["capabilities/performance_a12"]}
+
 _GODOT_4_7["option_owners"] = {
     "export_platform": "select a godot_export_platform with --platforms",
     "identity": "godot_app.application_id",
@@ -547,6 +559,8 @@ _GODOT_4_7["option_owners"] = {
     "output-layout": "the godot_app target name and Bazel's output layout",
     "android-compression": "rules_android's packaging of JNI libraries",
 }
+
+# ==== Export hooks ============================================================
 
 def _hook(kind, disposition, operating_systems = [], counterpart = None, aliases = []):
     """
@@ -625,16 +639,24 @@ _EXPORT_HOOKS_4_7 = {
     "gdap": _hook("descriptor", "counterpart", ["android"], "android_library"),
     "gdip": _hook("descriptor", "counterpart", ["ios"], "static_library"),
 }
+
 _GODOT_4_7["export_hooks"] = _EXPORT_HOOKS_4_7
+
+# ==== Godot 4.8 ===============================================================
 
 # Live 4.8-beta1 inventory comparison: the retained per-minor tables are unchanged;
 # only these three registered options differ from the bounded 4.7.2 inventory.
 # Defaults and actual types are still read from the configured editor's probe.
 _REJECTED_OPTIONS_4_8 = {operating_system: dict(options) for operating_system, options in _REJECTED_OPTIONS_4_7.items()}
+
 _REJECTED_OPTIONS_4_8["android"]["gradle_build/minification"] = "gradle"
+
 _REJECTED_OPTIONS_4_8["linux"]["debug/export_debug_symbols"] = "native-debug-symbols"
+
 _REJECTED_OPTIONS_4_8["macos"]["debug/export_debug_symbols"] = "native-debug-symbols"
+
 _GODOT_4_8 = dict(_GODOT_4_7)
+
 _GODOT_4_8["rejected_export_options"] = _REJECTED_OPTIONS_4_8
 
 # Godot 4.8 moves the template activity into the template's data library, whose
@@ -650,6 +672,7 @@ _GODOT_4_8["android"] = _GODOT_4_7["android"] | {
         "fontWeightAdjustment",
     ],
 }
+
 _GODOT_4_8["option_owners"] = _GODOT_4_7["option_owners"] | {
     "native-debug-symbols": "native toolchain symbol/strip settings and the app's debug_symbols output group",
 }
@@ -658,6 +681,8 @@ _GODOT_4_8["option_owners"] = _GODOT_4_7["option_owners"] | {
 _GODOT_4_8["export_hooks"] = _EXPORT_HOOKS_4_7 | {
     "add_apple_embedded_platform_spm_package": _hook("method", "counterpart", ["ios"], "swift_package"),
 }
+
+# ==== Android shell ===========================================================
 
 # Godot's Android shell library, a Java/Kotlin library
 # (platform/android/java/lib/build.gradle and app/config.gradle). The Maven coordinates
@@ -681,12 +706,17 @@ _ANDROID_SHELL = {
     # Maven dependencies; a file of //godot/private/engine:android_maven_graphs.
     "maven_graph": "android/maven_graph_install.json",
 }
+
 _GODOT_4_7["android_shell"] = _ANDROID_SHELL
+
 _GODOT_4_8["android_shell"] = _ANDROID_SHELL
 
 # Every supported minor shares one shell library; godot_android_runtime's shell AAR names
 # no version.
 ANDROID_SHELL_DEPS = _ANDROID_SHELL["deps"]
+
+# ==== Profile lookup ==========================================================
+
 _PROFILES = {
     "4.7": _GODOT_4_7,
     "4.8": _GODOT_4_8,

@@ -1,4 +1,7 @@
-"""Provide cached, read-only workspace, Starlark and Bazel facts to convention rules."""
+"""Provide cached, read-only workspace, Starlark and Bazel facts to convention rules.
+
+Sections: Workspace, Starlark syntax, Bazel evidence, Context.
+"""
 
 import io
 import json
@@ -24,12 +27,6 @@ from tools.conventions.layout import (
 )
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
-
-
-def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
-    """The deepest root that contains path: a nested root owns its files, not the outer one."""
-    owners = [root for root in roots if path.is_relative_to(root)]
-    return max(owners, key=lambda root: len(root.parts)) if owners else None
 
 
 class EvidenceError(ValueError):
@@ -73,12 +70,38 @@ def location(root: Path, base: Path, value: str) -> Location:
     return Location(name, int(line))
 
 
-@dataclass(frozen=True)
-class Call:
-    location: Location
-    kind: str
-    attrs: frozenset[str]
-    literal_name: str | None = None
+def run_tool(
+    command: list[str], cwd: Path, variables: Mapping[str, str] | None = None
+) -> str:
+    """
+    Return a tool's output, or fail the audit with its diagnostics. A nested Bazel gets the
+    caller's variables, with the given ones.
+    """
+    try:
+        environment = (
+            {"env": nested_tool_environment(os.environ) | dict(variables or {})}
+            if Path(command[0]).name == "bazel"
+            else {}
+        )
+        return subprocess.run(
+            command, cwd=cwd, capture_output=True, text=True, check=True, **environment
+        ).stdout
+    except subprocess.CalledProcessError as error:
+        raise EvidenceError(
+            f"{Path(command[0]).name} failed with exit status {error.returncode}\n"
+            + (error.stderr or "")
+        ) from error
+    except OSError as error:
+        raise EvidenceError(f"cannot run {command[0]}: {error}") from error
+
+
+# ==== Workspace ===============================================================
+
+
+def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
+    """The deepest root that contains path: a nested root owns its files, not the outer one."""
+    owners = [root for root in roots if path.is_relative_to(root)]
+    return max(owners, key=lambda root: len(root.parts)) if owners else None
 
 
 @dataclass(frozen=True)
@@ -86,149 +109,6 @@ class StringLiteral:
     location: Location
     # Contents between the quotes; escapes stay undecoded.
     value: str
-
-
-def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
-    """
-    Return the root of the repository declaring a rule.
-
-    Bazel reports generator_location relative to that repository, which differs from
-    the querying module for targets of other modules.
-    """
-    build = Path(rule.attrib["location"].rsplit(":", 2)[0])
-    if not build.is_absolute():
-        build = root / module.path / build
-    repository = build.parent
-    for _ in Path(rule.attrib["name"].partition("//")[2].partition(":")[0]).parts:
-        repository = repository.parent
-    return repository
-
-
-def generator_location(
-    root: Path, module: Module, rule: ET.Element, origin: str | None
-) -> Location | None:
-    """The authored macro call, or None where Bazel names no file (another module's macro)."""
-    if not origin:
-        return None
-    resolved = location(root, repository_root(root, module, rule), origin)
-    return resolved if (root / resolved.path).is_file() else None
-
-
-@dataclass(frozen=True)
-class Target:
-    label: str
-    location: Location
-    strings: Mapping[str, str]
-    booleans: Mapping[str, bool]
-    generator_location: Location | None
-    kind: str
-    labels: Mapping[str, str]
-    label_lists: Mapping[str, tuple[str, ...]]
-    label_keyed_strings: Mapping[str, Mapping[str, str]]
-    outputs: tuple[str, ...]
-
-    @property
-    def origin(self) -> Location:
-        """The authored call: a macro's caller, otherwise the rule's own location."""
-        return self.generator_location or self.location
-
-    def authored_inputs(self) -> frozenset[str]:
-        """
-        Labels in attributes the declaration chose.
-
-        Implicit attributes come from the rule definition, and visibility grants
-        access rather than consuming anything.
-        """
-
-        def authored(attribute: str) -> bool:
-            return not attribute.startswith(("$", ":")) and attribute != "visibility"
-
-        inputs = {value for name, value in self.labels.items() if authored(name)}
-        for name, labels in self.label_lists.items():
-            if authored(name):
-                inputs.update(labels)
-        for name, mapping in self.label_keyed_strings.items():
-            if authored(name):
-                inputs.update(mapping)
-        return frozenset(inputs)
-
-
-def evaluated_source_label(root: Path, module: Module, file: str) -> str:
-    """Turn an evaluated source frame into its repository-qualified Starlark label."""
-    if file.startswith(("@", "//")) and "//" in file:
-        repository, _, relative = file.partition("//")
-        if ":" in relative:
-            return repository + "//" + relative
-        directory, _, basename = relative.rpartition("/")
-        return repository + "//" + directory + ":" + basename
-    path = Path(file)
-    main = root / module.path
-    if path.is_absolute() and path.is_relative_to(main):
-        path = path.relative_to(main)
-    elif "/external/" in file or file.startswith("external/"):
-        external = (
-            file.split("/external/", 1)[1]
-            if "/external/" in file
-            else file.removeprefix("external/")
-        )
-        repository, separator, relative = external.partition("/")
-        if not separator:
-            raise EvidenceError("unresolved evaluated external source: " + file)
-        directory, _, basename = relative.rpartition("/")
-        return "@@" + repository + "//" + directory + ":" + basename
-    elif path.is_absolute():
-        resolved = path.resolve()
-        if not resolved.is_relative_to(main.resolve()):
-            raise EvidenceError("unresolved evaluated source repository: " + file)
-        path = resolved.relative_to(main.resolve())
-    directory = path.parent.as_posix()
-    return "//" + ("" if directory == "." else directory) + ":" + path.name
-
-
-def evaluated_frames(stack: Iterable[str]) -> tuple[tuple[str, str], ...]:
-    """Retain named Starlark call frames supplied by Bazel, without source guessing."""
-    result = []
-    for frame in stack:
-        file, _, _, function = frame.rsplit(":", 3)
-        if file.endswith(".bzl") and function.strip() != "<toplevel>":
-            result.append((file, function.strip()))
-    return tuple(result)
-
-
-@dataclass(frozen=True)
-class SourceFile:
-    label: str
-    path: Path
-
-
-@dataclass(frozen=True)
-class GeneratedFile:
-    label: str
-
-
-Fact = Target | SourceFile | GeneratedFile
-
-
-@dataclass(frozen=True)
-class Declaration:
-    call: Call
-    targets: tuple[Target, ...]
-
-
-class StarlarkTool(Protocol):
-    def calls(self, module: Module) -> tuple[Call, ...]: ...
-
-    def module_name(self, module: Module) -> str: ...
-
-
-class BazelTool(Protocol):
-    def rules(self, module: Module) -> tuple[Target, ...]: ...
-
-    def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]: ...
-
-    def invocations(
-        self, module: Module
-    ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
 
 
 def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
@@ -374,6 +254,30 @@ class Workspace:
         return self._strings[name]
 
 
+# ==== Starlark syntax =========================================================
+
+
+@dataclass(frozen=True)
+class Call:
+    location: Location
+    kind: str
+    attrs: frozenset[str]
+    literal_name: str | None = None
+
+
+# How a delimiter changes the nesting depth.
+NESTING = {"(": 1, "[": 1, "{": 1, ")": -1, "]": -1, "}": -1}
+
+
+def _is_name_argument(tokens: list[tokenize.TokenInfo], index: int) -> bool:
+    """Whether the token at index starts a ``name = value`` argument with a value."""
+    if index == 0 or tokens[index].string != "name":
+        return False
+    if tokens[index - 1].string not in {"(", ","}:
+        return False
+    return index + 3 < len(tokens) and tokens[index + 1].string == "="
+
+
 def has_literal_name(source: str) -> bool:
     """
     Recognize one literal argument in Buildozer's already-parsed, formatted call.
@@ -400,47 +304,11 @@ def has_literal_name(source: str) -> bool:
         raise EvidenceError(f"cannot tokenize parsed call: {error}") from error
     depth = 0
     for index, token in enumerate(tokens):
-        if token.string in {"(", "[", "{"}:
-            depth += 1
-        elif token.string in {")", "]", "}"}:
-            depth -= 1
-        elif (
-            depth == 1
-            and token.string == "name"
-            and index > 0
-            and tokens[index - 1].string in {"(", ","}
-            and index + 3 < len(tokens)
-            and tokens[index + 1].string == "="
-        ):
-            return tokens[index + 2].type == tokenize.STRING and tokens[
-                index + 3
-            ].string in {",", ")"}
+        if depth == 1 and _is_name_argument(tokens, index):
+            value, end = tokens[index + 2], tokens[index + 3]
+            return value.type == tokenize.STRING and end.string in {",", ")"}
+        depth += NESTING.get(token.string, 0)
     return False
-
-
-def run_tool(
-    command: list[str], cwd: Path, variables: Mapping[str, str] | None = None
-) -> str:
-    """
-    Return a tool's output, or fail the audit with its diagnostics. A nested Bazel gets the
-    caller's variables, with the given ones.
-    """
-    try:
-        environment = (
-            {"env": nested_tool_environment(os.environ) | dict(variables or {})}
-            if Path(command[0]).name == "bazel"
-            else {}
-        )
-        return subprocess.run(
-            command, cwd=cwd, capture_output=True, text=True, check=True, **environment
-        ).stdout
-    except subprocess.CalledProcessError as error:
-        raise EvidenceError(
-            f"{Path(command[0]).name} failed with exit status {error.returncode}\n"
-            + (error.stderr or "")
-        ) from error
-    except OSError as error:
-        raise EvidenceError(f"cannot run {command[0]}: {error}") from error
 
 
 class Buildozer:
@@ -500,61 +368,174 @@ class Buildozer:
         return self._calls[module]
 
 
+# ==== Bazel evidence ==========================================================
+
+
+def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
+    """
+    Return the root of the repository declaring a rule.
+
+    Bazel reports generator_location relative to that repository, which differs from
+    the querying module for targets of other modules.
+    """
+    build = Path(rule.attrib["location"].rsplit(":", 2)[0])
+    if not build.is_absolute():
+        build = root / module.path / build
+    repository = build.parent
+    for _ in Path(rule.attrib["name"].partition("//")[2].partition(":")[0]).parts:
+        repository = repository.parent
+    return repository
+
+
+def generator_location(
+    root: Path, module: Module, rule: ET.Element, origin: str | None
+) -> Location | None:
+    """The authored macro call, or None where Bazel names no file (another module's macro)."""
+    if not origin:
+        return None
+    resolved = location(root, repository_root(root, module, rule), origin)
+    return resolved if (root / resolved.path).is_file() else None
+
+
+@dataclass(frozen=True)
+class Target:
+    label: str
+    location: Location
+    strings: Mapping[str, str]
+    booleans: Mapping[str, bool]
+    generator_location: Location | None
+    kind: str
+    labels: Mapping[str, str]
+    label_lists: Mapping[str, tuple[str, ...]]
+    label_keyed_strings: Mapping[str, Mapping[str, str]]
+    outputs: tuple[str, ...]
+
+    @property
+    def origin(self) -> Location:
+        """The authored call: a macro's caller, otherwise the rule's own location."""
+        return self.generator_location or self.location
+
+    def authored_inputs(self) -> frozenset[str]:
+        """
+        Labels in attributes the declaration chose.
+
+        Implicit attributes come from the rule definition, and visibility grants
+        access rather than consuming anything.
+        """
+
+        def authored(attribute: str) -> bool:
+            return not attribute.startswith(("$", ":")) and attribute != "visibility"
+
+        inputs = {value for name, value in self.labels.items() if authored(name)}
+        # A label-keyed dictionary contributes its keys.
+        for name, values in (
+            *self.label_lists.items(),
+            *self.label_keyed_strings.items(),
+        ):
+            if authored(name):
+                inputs.update(values)
+        return frozenset(inputs)
+
+
+def _valued(rule: ET.Element, tag: str) -> dict[str, str]:
+    """The values of a rule's attributes of one type that have a value, by name."""
+    return {
+        item.attrib["name"]: item.attrib["value"]
+        for item in rule.findall(tag)
+        if "value" in item.attrib
+    }
+
+
+def _label_lists(rule: ET.Element) -> dict[str, tuple[str, ...]]:
+    """The list attributes whose every element is a label with a value."""
+    return {
+        item.attrib["name"]: tuple(child.attrib["value"] for child in item)
+        for item in rule.findall("list")
+        if all(child.tag == "label" and "value" in child.attrib for child in item)
+    }
+
+
+def _is_label_string_pair(pair: ET.Element) -> bool:
+    """Whether a dictionary entry maps a label to a string, both with values."""
+    if [child.tag for child in pair] != ["label", "string"]:
+        return False
+    return all("value" in child.attrib for child in pair)
+
+
+def _label_keyed_strings(rule: ET.Element) -> dict[str, Mapping[str, str]]:
+    """The dictionary attributes whose every entry maps a label to a string."""
+    result = {}
+    for item in rule.findall("dict"):
+        pairs = item.findall("pair")
+        if len(pairs) == len(item) and all(map(_is_label_string_pair, pairs)):
+            result[item.attrib["name"]] = MappingProxyType(
+                {pair[0].attrib["value"]: pair[1].attrib["value"] for pair in pairs}
+            )
+    return result
+
+
+def _query_target(root: Path, module: Module, rule: ET.Element) -> Target:
+    """Decode one rule of a loading query."""
+    strings = {
+        item.attrib["name"]: item.attrib.get("value", "")
+        for item in rule.findall("string")
+    }
+    booleans = {name: value == "true" for name, value in _valued(rule, "boolean").items()}
+    origin = strings.get("generator_location")
+    return Target(
+        label=rule.attrib["name"],
+        location=location(root, root / module.path, rule.attrib["location"]),
+        strings=MappingProxyType(strings),
+        booleans=MappingProxyType(booleans),
+        generator_location=generator_location(root, module, rule, origin),
+        kind=rule.attrib["class"],
+        labels=MappingProxyType(_valued(rule, "label")),
+        label_lists=MappingProxyType(_label_lists(rule)),
+        label_keyed_strings=MappingProxyType(_label_keyed_strings(rule)),
+        outputs=tuple(item.attrib["name"] for item in rule.findall("rule-output")),
+    )
+
+
 def query_targets(root: Path, module: Module, query: ET.Element) -> tuple[Target, ...]:
     """Decode loading metadata without naming policy, exemptions or diagnostics."""
-    targets = []
-    for rule in query.findall("rule"):
-        strings = {
-            item.attrib["name"]: item.attrib.get("value", "")
-            for item in rule.findall("string")
-        }
-        booleans = {
-            item.attrib["name"]: item.attrib["value"] == "true"
-            for item in rule.findall("boolean")
-            if "value" in item.attrib
-        }
-        origin = strings.get("generator_location")
-        labels = {
-            item.attrib["name"]: item.attrib["value"]
-            for item in rule.findall("label")
-            if "value" in item.attrib
-        }
-        label_lists = {
-            item.attrib["name"]: tuple(child.attrib["value"] for child in item)
-            for item in rule.findall("list")
-            if all(child.tag == "label" and "value" in child.attrib for child in item)
-        }
-        label_keyed_strings = {}
-        for item in rule.findall("dict"):
-            pairs = item.findall("pair")
-            if len(pairs) == len(item) and all(
-                len(pair) == 2
-                and pair[0].tag == "label"
-                and pair[1].tag == "string"
-                and "value" in pair[0].attrib
-                and "value" in pair[1].attrib
-                for pair in pairs
-            ):
-                label_keyed_strings[item.attrib["name"]] = MappingProxyType(
-                    {pair[0].attrib["value"]: pair[1].attrib["value"] for pair in pairs}
-                )
-        targets.append(
-            Target(
-                label=rule.attrib["name"],
-                location=location(root, root / module.path, rule.attrib["location"]),
-                strings=MappingProxyType(strings),
-                booleans=MappingProxyType(booleans),
-                generator_location=generator_location(root, module, rule, origin),
-                kind=rule.attrib["class"],
-                labels=MappingProxyType(labels),
-                label_lists=MappingProxyType(label_lists),
-                label_keyed_strings=MappingProxyType(label_keyed_strings),
-                outputs=tuple(
-                    item.attrib["name"] for item in rule.findall("rule-output")
-                ),
-            )
-        )
-    return tuple(targets)
+    return tuple(_query_target(root, module, rule) for rule in query.findall("rule"))
+
+
+@dataclass(frozen=True)
+class SourceFile:
+    label: str
+    path: Path
+
+
+@dataclass(frozen=True)
+class GeneratedFile:
+    label: str
+
+
+Fact = Target | SourceFile | GeneratedFile
+
+
+def query_files(root: Path, module: Module, query: ET.Element) -> dict[str, Fact]:
+    """Decode the source and generated files of a loading query by label."""
+    files: dict[str, Fact] = {}
+    for element in query:
+        label = element.attrib["name"]
+        if element.tag == "source-file":
+            value = location(root, root / module.path, element.attrib["location"])
+            files[label] = SourceFile(label, (root / value.path).resolve())
+        elif element.tag == "generated-file":
+            files[label] = GeneratedFile(label)
+    return files
+
+
+def evaluated_frames(stack: Iterable[str]) -> tuple[tuple[str, str], ...]:
+    """Retain named Starlark call frames supplied by Bazel, without source guessing."""
+    result = []
+    for frame in stack:
+        file, _, _, function = frame.rsplit(":", 3)
+        if file.endswith(".bzl") and function.strip() != "<toplevel>":
+            result.append((file, function.strip()))
+    return tuple(result)
 
 
 class Bazel:
@@ -636,21 +617,38 @@ class Bazel:
                     for target in query_targets(self.root, module, query)
                 }
             )
-            for source in query:
-                label = source.attrib["name"]
-                if source.tag == "source-file":
-                    value = location(
-                        self.root, self.root / module.path, source.attrib["location"]
-                    )
-                    cache[label] = SourceFile(label, (self.root / value.path).resolve())
-                elif source.tag == "generated-file":
-                    cache[label] = GeneratedFile(label)
+            cache.update(query_files(self.root, module, query))
             unresolved = set(missing) - cache.keys()
             if unresolved:
                 raise EvidenceError(
                     "Bazel did not resolve labels: " + ", ".join(sorted(unresolved))
                 )
         return MappingProxyType({label: cache[label] for label in labels})
+
+
+# ==== Context =================================================================
+
+
+@dataclass(frozen=True)
+class Declaration:
+    call: Call
+    targets: tuple[Target, ...]
+
+
+class StarlarkTool(Protocol):
+    def calls(self, module: Module) -> tuple[Call, ...]: ...
+
+    def module_name(self, module: Module) -> str: ...
+
+
+class BazelTool(Protocol):
+    def rules(self, module: Module) -> tuple[Target, ...]: ...
+
+    def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]: ...
+
+    def invocations(
+        self, module: Module
+    ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
 
 
 def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaration, ...]:
@@ -674,6 +672,55 @@ def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaratio
         Declaration(by_location[origin][0], tuple(items))
         for origin, items in targets.items()
     )
+
+
+def main_label(path: Path) -> str:
+    """The label of a file in the main repository, given relative to its root."""
+    directory = path.parent.as_posix()
+    return "//" + ("" if directory == "." else directory) + ":" + path.name
+
+
+def _file_label(repository: str, relative: str) -> str:
+    directory, _, basename = relative.rpartition("/")
+    return repository + "//" + directory + ":" + basename
+
+
+def _external_source_label(file: str) -> str:
+    """The label of a source below Bazel's external directory."""
+    external = (
+        file.split("/external/", 1)[1]
+        if "/external/" in file
+        else file.removeprefix("external/")
+    )
+    repository, separator, relative = external.partition("/")
+    if not separator:
+        raise EvidenceError("unresolved evaluated external source: " + file)
+    return _file_label("@@" + repository, relative)
+
+
+def _main_path(file: str, main: Path) -> Path:
+    """A source path relative to the main repository, absolute ones through links."""
+    path = Path(file)
+    if not path.is_absolute():
+        return path
+    resolved = path.resolve()
+    if not resolved.is_relative_to(main.resolve()):
+        raise EvidenceError("unresolved evaluated source repository: " + file)
+    return resolved.relative_to(main.resolve())
+
+
+def evaluated_source_label(root: Path, module: Module, file: str) -> str:
+    """Turn an evaluated source frame into its repository-qualified Starlark label."""
+    if file.startswith(("@", "//")) and "//" in file:
+        repository, _, relative = file.partition("//")
+        return file if ":" in relative else _file_label(repository, relative)
+    path = Path(file)
+    main = root / module.path
+    if path.is_absolute() and path.is_relative_to(main):
+        return main_label(path.relative_to(main))
+    if "/external/" in file or file.startswith("external/"):
+        return _external_source_label(file)
+    return main_label(_main_path(file, main))
 
 
 class Context:
@@ -733,36 +780,28 @@ class Context:
         base = module.path if not name else self._module_paths[name]
         return base / package / target
 
+    def _frame_owner(self, module: Module, file: str, function: str) -> str:
+        """The function of a frame's file: in the workspace if it owns the file."""
+        label = evaluated_source_label(self.workspace.root, module, file)
+        repository, _, relative = label.partition("//")
+        name = repository.lstrip("@").removesuffix("+")
+        base = module.path if not name else self._module_paths.get(name)
+        if base is None:
+            return label + "%" + function
+        return main_label(base / relative.replace(":", "/")) + "%" + function
+
     def macro_owner(self, module: Module, declaration: Declaration) -> str | None:
         """Resolve the evaluated outer macro's physical source, never its name alone."""
         invocations = self.bazel.invocations(module)
         owners = set()
         for target in declaration.targets:
             frames = invocations.get(target.label, ())
-            if not frames:
-                if target.strings.get("generator_function"):
-                    raise EvidenceError(
-                        f"{target.label}: missing evaluated macro instantiation ownership"
-                    )
-                continue
-            file, function = frames[0]
-            label = evaluated_source_label(self.workspace.root, module, file)
-            repository, _, relative = label.partition("//")
-            name = repository.lstrip("@").removesuffix("+")
-            base = module.path if not name else self._module_paths.get(name)
-            if base is None:
-                owners.add(label + "%" + function)
-                continue
-            path = base / relative.replace(":", "/")
-            directory = path.parent.as_posix()
-            owners.add(
-                "//"
-                + ("" if directory == "." else directory)
-                + ":"
-                + path.name
-                + "%"
-                + function
-            )
+            if frames:
+                owners.add(self._frame_owner(module, *frames[0]))
+            elif target.strings.get("generator_function"):
+                raise EvidenceError(
+                    f"{target.label}: missing evaluated macro instantiation ownership"
+                )
         if len(owners) > 1:
             raise EvidenceError(
                 f"{declaration.call.location}: ambiguous evaluated macro ownership: {sorted(owners)}"

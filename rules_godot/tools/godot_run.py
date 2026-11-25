@@ -1,4 +1,9 @@
-"""Run a declared project or PCK with isolated writable state; report its exit code."""
+"""
+Run a declared project or PCK with isolated writable state; report its exit code.
+
+Sections: Runfiles, Execution, Project staging, Pack staging, Error logger, Run, Command
+line.
+"""
 
 import argparse
 import contextlib
@@ -35,6 +40,14 @@ from tools.pck import add_pck_files, pck_file_contents
 
 class ExecutionError(RuntimeError):
     """An execution failure with actionable diagnostics already captured."""
+
+
+def report(message: str) -> None:
+    """Tell the user something, with main-repository labels as they write them."""
+    print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
+
+
+# ==== Runfiles ================================================================
 
 
 @functools.cache
@@ -74,12 +87,23 @@ def locate(key: str) -> Path:
     return found
 
 
-# The autoload that records the errors Godot reports while the game runs.
-_LOGGER = Path(__file__).parent / "run" / "errors.gd"
-# The logger's name beside the project, where Godot reports errors of it.
-_LOGGER_NAME = "rules_godot_errors.gd"
-# A main scene replaces the project's; any other main runs with --script.
-_SCENES = {".tscn", ".scn"}
+def runfile_key(short_path: str, workspace: str) -> str:
+    """The runfiles key of a Bazel short path; external repositories start with ../."""
+    if short_path.startswith("../"):
+        return short_path[3:]
+    return workspace + "/" + short_path if workspace else short_path
+
+
+def runfile_locator(workspace: str) -> Callable[[str], Path]:
+    """Resolve a Bazel short path of the runfiles of a target in workspace."""
+
+    def runfile(short_path: str) -> Path:
+        return locate(runfile_key(short_path, workspace))
+
+    return runfile
+
+
+# ==== Execution ===============================================================
 
 
 @contextlib.contextmanager
@@ -159,20 +183,40 @@ def execute(
     return process.returncode
 
 
-def runfile_key(short_path: str, workspace: str) -> str:
-    """The runfiles key of a Bazel short path; external repositories start with ../."""
-    if short_path.startswith("../"):
-        return short_path[3:]
-    return workspace + "/" + short_path if workspace else short_path
+# Bazel's test contract and the target's env reach the running project.
+_TEST_ENVIRONMENT = (
+    "TEST_SRCDIR",
+    "RUNFILES_DIR",
+    "RUNFILES_MANIFEST_FILE",
+    "TEST_SHARD_INDEX",
+    "TEST_TOTAL_SHARDS",
+    "TEST_SHARD_STATUS_FILE",
+    "TESTBRIDGE_TEST_ONLY",
+    "XML_OUTPUT_FILE",
+    "TEST_UNDECLARED_OUTPUTS_DIR",
+    "TEST_TMPDIR",
+    "TEST_PREMATURE_EXIT_FILE",
+    "TEST_TARGET",
+    "TEST_WORKSPACE",
+)
 
 
-def runfile_locator(workspace: str) -> Callable[[str], Path]:
-    """Resolve a Bazel short path of the runfiles of a target in workspace."""
+def godot_environment(work: Path, env: dict[str, str]) -> dict[str, str]:
+    """The isolated environment plus Bazel's test variables and the target's env."""
+    environment = child_environment(work)
+    environment.update(
+        {name: os.environ[name] for name in _TEST_ENVIRONMENT if name in os.environ}
+    )
+    environment.update(env)
+    return environment
 
-    def runfile(short_path: str) -> Path:
-        return locate(runfile_key(short_path, workspace))
 
-    return runfile
+def _exit_status(code: int) -> int:
+    """Godot's exit code; a signal ending Godot maps to the shell's exit status."""
+    return code if code >= 0 else 128 - code
+
+
+# ==== Project staging =========================================================
 
 
 def _present_trees(keys: list[str], runfile: Callable[[str], Path]) -> list[str]:
@@ -225,59 +269,6 @@ def tree_files_by_path(imports: list[str], initialized: list[str]) -> dict[str, 
 def generated_files(project: dict, runfile: Callable[[str], Path]) -> dict[str, Original]:
     """A project's import results, then Godot's caches, by resource path."""
     return tree_files_by_path(*import_results(project, runfile))
-
-
-def _is_desktop_release_entry(section: str | None, key: str) -> bool:
-    """Whether a descriptor key lists a desktop release library or dependency."""
-    if section not in ("libraries", "dependencies"):
-        return False
-    return key.split(".")[0] in ("linux", "macos") and key.endswith(".release")
-
-
-def with_editor_runtime_entries(descriptor: str) -> str:
-    """
-    Add an editor_runtime entry beside each desktop release entry of a pack's descriptor.
-
-    The editor that runs a pack has the editor_runtime and debug feature tags, not
-    release, so it loads a release pack's desktop libraries only under these entries.
-    Export templates never have the tag.
-    """
-    groups = []
-    for group, section, key in statement_groups(descriptor):
-        groups.append(group)
-        if key and _is_desktop_release_entry(section, key):
-            separator = "" if group.endswith("\n") else "\n"
-            value = group.split("=", 1)[1].lstrip()
-            groups.append(
-                f"{separator}{key.removesuffix('.release')}.editor_runtime={value}"
-            )
-    return "".join(groups)
-
-
-def pack_descriptors(manifest: dict, runfile: Callable[[str], Path]) -> dict[str, bytes]:
-    """Return the descriptors that replace those of the pack a pack run stages."""
-    replaced = {
-        path: runfile(key).read_bytes()
-        for path, key in manifest.get("pack_descriptors", {}).items()
-    }
-    # Listed for a release pack of a desktop platform only.
-    if manifest.get("release_descriptors"):
-        # The pack names its files with or without res://; a replacement keeps its name.
-        packed = {
-            name.removeprefix("res://"): (name, text)
-            for name, text in pck_file_contents(runfile(manifest["pack"]))[
-                "extension_descriptors"
-            ].items()
-        }
-        for path in manifest["release_descriptors"]:
-            name, text = packed[path]
-            replaced[name] = with_editor_runtime_entries(text).encode("utf-8")
-    return replaced
-
-
-def report(message: str) -> None:
-    """Tell the user something, with main-repository labels as they write them."""
-    print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
 
 
 def _resolved(paths: dict[str, str], runfile: Callable[[str], Path]) -> dict[str, str]:
@@ -338,38 +329,89 @@ def stage_project(project: dict, root: Path, runfile: Callable[[str], Path]) -> 
         apply_metadata(root, index, metadata["assign"], staged)
 
 
-# Bazel's test contract and the target's env reach the running project.
-_TEST_ENVIRONMENT = (
-    "TEST_SRCDIR",
-    "RUNFILES_DIR",
-    "RUNFILES_MANIFEST_FILE",
-    "TEST_SHARD_INDEX",
-    "TEST_TOTAL_SHARDS",
-    "TEST_SHARD_STATUS_FILE",
-    "TESTBRIDGE_TEST_ONLY",
-    "XML_OUTPUT_FILE",
-    "TEST_UNDECLARED_OUTPUTS_DIR",
-    "TEST_TMPDIR",
-    "TEST_PREMATURE_EXIT_FILE",
-    "TEST_TARGET",
-    "TEST_WORKSPACE",
-)
+# ==== Pack staging ============================================================
 
 
-def godot_environment(work: Path, env: dict[str, str]) -> dict[str, str]:
-    """The isolated environment plus Bazel's test variables and the target's env."""
-    environment = child_environment(work)
-    environment.update(
-        {name: os.environ[name] for name in _TEST_ENVIRONMENT if name in os.environ}
-    )
-    environment.update(env)
-    return environment
+def _is_desktop_release_entry(section: str | None, key: str) -> bool:
+    """Whether a descriptor key lists a desktop release library or dependency."""
+    if section not in ("libraries", "dependencies"):
+        return False
+    return key.split(".")[0] in ("linux", "macos") and key.endswith(".release")
 
 
-def publish_reports(reports: Path) -> None:
-    destination = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
-    if destination:
-        shutil.copytree(reports, Path(destination) / "godot", dirs_exist_ok=True)
+def with_editor_runtime_entries(descriptor: str) -> str:
+    """
+    Add an editor_runtime entry beside each desktop release entry of a pack's descriptor.
+
+    The editor that runs a pack has the editor_runtime and debug feature tags, not
+    release, so it loads a release pack's desktop libraries only under these entries.
+    Export templates never have the tag.
+    """
+    groups = []
+    for group, section, key in statement_groups(descriptor):
+        groups.append(group)
+        if key and _is_desktop_release_entry(section, key):
+            separator = "" if group.endswith("\n") else "\n"
+            value = group.split("=", 1)[1].lstrip()
+            groups.append(
+                f"{separator}{key.removesuffix('.release')}.editor_runtime={value}"
+            )
+    return "".join(groups)
+
+
+def pack_descriptors(manifest: dict, runfile: Callable[[str], Path]) -> dict[str, bytes]:
+    """Return the descriptors that replace those of the pack a pack run stages."""
+    replaced = {
+        path: runfile(key).read_bytes()
+        for path, key in manifest.get("pack_descriptors", {}).items()
+    }
+    # Listed for a release pack of a desktop platform only.
+    if manifest.get("release_descriptors"):
+        # The pack names its files with or without res://; a replacement keeps its name.
+        packed = {
+            name.removeprefix("res://"): (name, text)
+            for name, text in pck_file_contents(runfile(manifest["pack"]))[
+                "extension_descriptors"
+            ].items()
+        }
+        for path in manifest["release_descriptors"]:
+            name, text = packed[path]
+            replaced[name] = with_editor_runtime_entries(text).encode("utf-8")
+    return replaced
+
+
+def _stage_pack(manifest: dict, root: Path, runfile: Callable[[str], Path]) -> Path:
+    """Stage a pack run's main pack and the extension files beside it."""
+    pack = root / "main.pck"
+    descriptors = pack_descriptors(manifest, runfile)
+    if descriptors:
+        add_pck_files(runfile(manifest["pack"]), pack, descriptors)
+    else:
+        shutil.copyfile(runfile(manifest["pack"]), pack)
+    for path, key in manifest["extension_resource_paths"].items():
+        copy_file(runfile(key), root / resource_path(path))
+    return pack
+
+
+def _stage_additional_packs(
+    additional_packs: dict[str, str], root: Path, runfile: Callable[[str], Path]
+) -> None:
+    """Stage the packs the project loads itself, relative to its working directory."""
+    for name, key in additional_packs.items():
+        destination = root / resource_path(name)
+        if destination.exists():
+            raise ExecutionError(f"Additional pack {name} collides with a staged file")
+        copy_file(runfile(key), destination)
+
+
+# ==== Error logger ============================================================
+
+
+# The autoload that records the errors Godot reports while the game runs.
+_LOGGER = Path(__file__).parent / "run" / "errors.gd"
+
+# The logger's name beside the project, where Godot reports errors of it.
+_LOGGER_NAME = "rules_godot_errors.gd"
 
 
 def register_logger(directory: Path, work: Path, errors: Path, stop: bool) -> None:
@@ -432,33 +474,44 @@ def recorded_errors(errors: Path) -> list[dict]:
     ]
 
 
-def _exit_status(code: int) -> int:
-    """Godot's exit code; a signal ending Godot maps to the shell's exit status."""
-    return code if code >= 0 else 128 - code
+def _status_without_logger(code: int, log: Path, engine_errors: str) -> int:
+    """
+    The run's status when the logger never started.
+
+    The logger creates its file when the game starts; a Godot that failed before has its
+    own failure status.
+    """
+    if code == 0 and engine_errors == "fail":
+        print(
+            "rules_godot: the run logger did not start, so errors Godot reported were "
+            "not recorded; "
+            + logger_failure(log.read_text(encoding="utf-8", errors="replace")),
+            file=sys.stderr,
+        )
+        return 1
+    return _exit_status(code)
 
 
-def _stage_pack(manifest: dict, root: Path, runfile: Callable[[str], Path]) -> Path:
-    """Stage a pack run's main pack and the extension files beside it."""
-    pack = root / "main.pck"
-    descriptors = pack_descriptors(manifest, runfile)
-    if descriptors:
-        add_pck_files(runfile(manifest["pack"]), pack, descriptors)
-    else:
-        shutil.copyfile(runfile(manifest["pack"]), pack)
-    for path, key in manifest["extension_resource_paths"].items():
-        copy_file(runfile(key), root / resource_path(path))
-    return pack
+def _status_with_errors(code: int, recorded: list[dict], engine_errors: str) -> int:
+    """The run's status after reporting the errors the logger recorded."""
+    if not recorded:
+        return _exit_status(code)
+    first = recorded[0]
+    print(
+        f"rules_godot: Godot reported {len(recorded)} error(s) while the "
+        f"game ran, first at {first['location']}: {first['text']}",
+        file=sys.stderr,
+    )
+    if engine_errors == "fail":
+        return code if code > 0 else 1
+    return _exit_status(code)
 
 
-def _stage_additional_packs(
-    additional_packs: dict[str, str], root: Path, runfile: Callable[[str], Path]
-) -> None:
-    """Stage the packs the project loads itself, relative to its working directory."""
-    for name, key in additional_packs.items():
-        destination = root / resource_path(name)
-        if destination.exists():
-            raise ExecutionError(f"Additional pack {name} collides with a staged file")
-        copy_file(runfile(key), destination)
+# ==== Run =====================================================================
+
+
+# A main scene replaces the project's; any other main runs with --script.
+_SCENES = {".tscn", ".scn"}
 
 
 def _main_arguments(main: str) -> list[str]:
@@ -501,39 +554,6 @@ def _staged_command(
     return command + _main_arguments(main)
 
 
-def _status_without_logger(code: int, log: Path, engine_errors: str) -> int:
-    """
-    The run's status when the logger never started.
-
-    The logger creates its file when the game starts; a Godot that failed before has its
-    own failure status.
-    """
-    if code == 0 and engine_errors == "fail":
-        print(
-            "rules_godot: the run logger did not start, so errors Godot reported were "
-            "not recorded; "
-            + logger_failure(log.read_text(encoding="utf-8", errors="replace")),
-            file=sys.stderr,
-        )
-        return 1
-    return _exit_status(code)
-
-
-def _status_with_errors(code: int, recorded: list[dict], engine_errors: str) -> int:
-    """The run's status after reporting the errors the logger recorded."""
-    if not recorded:
-        return _exit_status(code)
-    first = recorded[0]
-    print(
-        f"rules_godot: Godot reported {len(recorded)} error(s) while the "
-        f"game ran, first at {first['location']}: {first['text']}",
-        file=sys.stderr,
-    )
-    if engine_errors == "fail":
-        return code if code > 0 else 1
-    return _exit_status(code)
-
-
 def _run_in(work: Path, manifest: dict, extra: list[str], env: dict[str, str]) -> int:
     """Stage and run Godot in work; return the run's status."""
     engine_errors = manifest["engine_errors"]
@@ -559,6 +579,12 @@ def _write_runner_report(reports: Path, failure: str | None, started: float) -> 
         + "\n",
         encoding="utf-8",
     )
+
+
+def publish_reports(reports: Path) -> None:
+    destination = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
+    if destination:
+        shutil.copytree(reports, Path(destination) / "godot", dirs_exist_ok=True)
 
 
 def run(
@@ -588,6 +614,9 @@ def run(
             # Preserve even failure diagnostics before deleting the work directory.
             _write_runner_report(reports, failure, started)
             publish_reports(reports)
+
+
+# ==== Command line ============================================================
 
 
 def _env_pair(argv: list[str]) -> str | None:

@@ -3,6 +3,8 @@ Isolated Godot project actions: imports, initialization and editor probes.
 
 The action manifest is the entire input set. Exports are in godot_export.py and
 the staging both share in godot_staging.py.
+
+Sections: Import, Importers.
 """
 
 import argparse
@@ -27,6 +29,8 @@ from tools.godot_staging import (
     staged_project,
     write_archive,
 )
+
+# ==== Import ==================================================================
 
 
 def _files(directory: Path) -> list[Path]:
@@ -152,6 +156,9 @@ def initialize(manifest: dict, output: Path, execroot: Path) -> None:
         output.mkdir(parents=True, exist_ok=True)
         for relative in changed:
             copy_file(root / relative, output / relative)
+
+
+# ==== Importers ===============================================================
 
 
 def _lowered(suffixes: Iterable[object]) -> set[str]:

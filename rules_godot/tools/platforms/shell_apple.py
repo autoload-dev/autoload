@@ -1,4 +1,8 @@
-"""Write the shell files of iOS and macOS applications as Godot's Apple exporters do."""
+"""
+Write the shell files of iOS and macOS applications as Godot's Apple exporters do.
+
+Sections: Plist merging, Info plists, Localization.
+"""
 
 import json
 import plistlib
@@ -9,17 +13,7 @@ from xml.etree import ElementTree
 
 from tools.platforms.shell_common import Facts, fill, release_value, xml
 
-
-def _plist_bool(value: object) -> str:
-    return "<true/>" if value else "<false/>"
-
-
-def _plist_strings(values: list[str], indent: str = "    ") -> str:
-    """A plist array of strings as the value of a dict entry at indent."""
-    if not values:
-        return "<array/>"
-    items = "".join(f"{indent}    <string>{xml(value)}</string>\n" for value in values)
-    return f"<array>\n{items}{indent}</array>"
+# ==== Plist merging ===========================================================
 
 
 class _UniqueKeys(dict):
@@ -90,6 +84,21 @@ def merge_plists(base: str, fragments: list[str]) -> str:
     for fragment in fragments:
         _merge(values, _strict_plist(fragment))
     return plistlib.dumps(values, sort_keys=True).decode("utf-8")
+
+
+# ==== Info plists =============================================================
+
+
+def _plist_bool(value: object) -> str:
+    return "<true/>" if value else "<false/>"
+
+
+def _plist_strings(values: list[str], indent: str = "    ") -> str:
+    """A plist array of strings as the value of a dict entry at indent."""
+    if not values:
+        return "<array/>"
+    items = "".join(f"{indent}    <string>{xml(value)}</string>\n" for value in values)
+    return f"<array>\n{items}{indent}</array>"
 
 
 def _checked(
@@ -312,6 +321,9 @@ def privacy_manifest(facts: Facts, values: Mapping[str, Any]) -> str:
         ),
         "privacy manifest",
     )
+
+
+# ==== Localization ============================================================
 
 
 def localizations(

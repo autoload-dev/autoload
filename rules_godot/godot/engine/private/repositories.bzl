@@ -3,6 +3,8 @@ Engine acquisition: immutable sources and configure-only source recipes.
 
 godot_engines declares these repositories through its source and source_build tags; the
 ruleset's own test fixtures also declare them directly.
+
+Sections: Repository rules, godot_engine_source_build.
 """
 
 load("//godot/engine/private:hub.bzl", "engine_hub")
@@ -15,6 +17,8 @@ load(
 )
 
 visibility(["//..."])
+
+# ==== Repository rules ========================================================
 
 godot_engine_source = repository_rule(
     doc = """
@@ -297,6 +301,8 @@ godot_android_shell = repository_rule(
         "_kotlin_core": attr.label(default = Label("@rules_kotlin//kotlin:core.bzl")),
     },
 )
+
+# ==== godot_engine_source_build ===============================================
 
 # The repository rules that source_build_declarations names.
 _SOURCE_BUILD_RULES = {

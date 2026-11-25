@@ -1,4 +1,8 @@
-"""Extensions, and the extension libraries rules_cc builds for them."""
+"""
+Extensions, and the extension libraries rules_cc builds for them.
+
+Sections: Library classification, Library placement, godot_extension.
+"""
 
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFrameworkImportInfo", "apple_provider")
@@ -19,7 +23,10 @@ load("//godot/private:versions.bzl", "dotted_version", "require_supported_godot_
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "OPERATING_SYSTEM_CONSTRAINTS", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/config:transitions.bzl", "tool_transition")
 
+# ==== Library classification ==================================================
+
 _SHARED = "a shared library (cc_shared_library, cc_import(shared_library), cc_binary(linkshared), one .%s)"
+
 _FRAMEWORK = "a dynamic framework (apple_dynamic_xcframework_import, apple_dynamic_framework_import)"
 
 # What each operating system's runtime loads: the link kinds, the file suffixes of its
@@ -42,54 +49,6 @@ _LOADABLE = {
     ),
 }
 
-def _resource_path(path):
-    segments = path.split("/")
-    rejected = [
-        not path,
-        path.startswith("/"),
-        "\\" in path,
-        ":" in path,
-        ".." in segments,
-        "." in segments,
-        "" in segments,
-    ]
-    if any(rejected):
-        fail(
-            "resource_path must be a nonempty relative res:// path without traversal: " +
-            path,
-        )
-    return path
-
-def _configured_context(ctx):
-    """
-    Return what the configuration fixes for an extension library, and its feature tags.
-
-    The tags are the operating system, Godot's CPU tag, simulator in the iOS Simulator,
-    and the variant.
-    """
-    platform = target_platform(ctx)
-    if not platform.operating_system or not platform.cpu:
-        fail((
-            "%s: an extension library needs a target platform with one of the operating " +
-            "systems %s and one of the CPUs %s"
-        ) % (
-            ctx.label,
-            ", ".join(OPERATING_SYSTEM_CONSTRAINTS),
-            ", ".join([str(row.constraint) for row in CPU_TABLE.values()]),
-        ))
-    tool = ctx.attr._tool[FlagInfo].value
-    selected = variant(ctx)
-    tags = [platform.operating_system, platform.cpu]
-    if platform.environment == "simulator":
-        tags.append("simulator")
-    return struct(
-        operating_system = platform.operating_system,
-        cpu = platform.cpu,
-        environment = platform.environment,
-        tool = tool,
-        tags = ".".join(tags + [selected]),
-    )
-
 def _context_name(context):
     return " ".join([part for part in [
         context.operating_system,
@@ -104,24 +63,6 @@ def _dynamic_file(library):
 
 def _is_shared_library(file, suffixes = ["so", "dylib"], versioned = True):
     return file.extension in suffixes or (versioned and "so" in suffixes and ".so." in file.basename)
-
-def _framework_directory(file):
-    """The path of the .framework directory that contains file, or None."""
-    parts = file.path.split("/")
-    for index in range(len(parts) - 1, -1, -1):
-        if parts[index].endswith(".framework"):
-            return "/".join(parts[:index + 1])
-    return None
-
-def _framework_files(target):
-    """The files of each framework an Apple import bundles, by framework directory."""
-    files = {}
-    if AppleFrameworkImportInfo in target:
-        for file in target[AppleFrameworkImportInfo].framework_imports.to_list():
-            directory = _framework_directory(file)
-            if directory:
-                files.setdefault(directory, []).append(file)
-    return files
 
 def _framework_binary(directory, files):
     """The framework's binary, named after it at its root, or None."""
@@ -273,6 +214,26 @@ def _dependency_libraries(target, classified):
         if _is_shared_library(file) and file.basename != classified.file.basename
     ]
 
+# ==== Library placement =======================================================
+
+def _framework_directory(file):
+    """The path of the .framework directory that contains file, or None."""
+    parts = file.path.split("/")
+    for index in range(len(parts) - 1, -1, -1):
+        if parts[index].endswith(".framework"):
+            return "/".join(parts[:index + 1])
+    return None
+
+def _framework_files(target):
+    """The files of each framework an Apple import bundles, by framework directory."""
+    files = {}
+    if AppleFrameworkImportInfo in target:
+        for file in target[AppleFrameworkImportInfo].framework_imports.to_list():
+            directory = _framework_directory(file)
+            if directory:
+                files.setdefault(directory, []).append(file)
+    return files
+
 def _placement(ctx, context, prefix):
     """Where the runtime files of one configured extension library go, beside the library."""
     return struct(
@@ -281,6 +242,13 @@ def _placement(ctx, context, prefix):
         directory = prefix + "bin/" + context.tags + "/",
         resource_paths = {},
     )
+
+def _place_at(placement, path, file):
+    """Place file at the resource path path and return it."""
+    if path in placement.resource_paths:
+        fail("%s: two runtime files of %s lie at res://%s" % (placement.label, placement.context, path))
+    placement.resource_paths[path] = file
+    return path
 
 def _place(placement, name, file):
     """Place file under name beside the extension library and return its resource path."""
@@ -291,13 +259,6 @@ def _place(placement, name, file):
             name,
         ))
     return _place_at(placement, placement.directory + name, file)
-
-def _place_at(placement, path, file):
-    """Place file at the resource path path and return it."""
-    if path in placement.resource_paths:
-        fail("%s: two runtime files of %s lie at res://%s" % (placement.label, placement.context, path))
-    placement.resource_paths[path] = file
-    return path
 
 def _place_framework(placement, frameworks, own):
     """Place the files of every framework; return the resource paths of those but own."""
@@ -327,6 +288,16 @@ def _archive_file(ctx, context, classified):
 def _is_android_library(file):
     """Whether Android's package manager extracts file: only lib/<abi>/lib*.so."""
     return file.basename.startswith("lib") and _is_shared_library(file, ["so"], versioned = False)
+
+def _is_data_library(ctx, context, file):
+    """Whether a file of data is a shared library the configuration loads; Android takes only those."""
+    if context.operating_system == "android" and not _is_android_library(file):
+        fail("%s: Android applications deliver only shared libraries named lib*.so beside an extension library; %s is not one" % (
+            ctx.label,
+            file.short_path,
+        ))
+    loadable = _LOADABLE[context.operating_system]
+    return _is_shared_library(file, loadable.suffixes, loadable.versioned)
 
 def _place_data(ctx, context, placement, prefix):
     """
@@ -360,16 +331,6 @@ def _place_data(ctx, context, placement, prefix):
             paths.append(path)
             beside_executable.append(path)
     return struct(paths = paths, beside_executable = beside_executable)
-
-def _is_data_library(ctx, context, file):
-    """Whether a file of data is a shared library the configuration loads; Android takes only those."""
-    if context.operating_system == "android" and not _is_android_library(file):
-        fail("%s: Android applications deliver only shared libraries named lib*.so beside an extension library; %s is not one" % (
-            ctx.label,
-            file.short_path,
-        ))
-    loadable = _LOADABLE[context.operating_system]
-    return _is_shared_library(file, loadable.suffixes, loadable.versioned)
 
 def _configured_library(ctx, target, prefix, context):
     """
@@ -420,6 +381,56 @@ def _configured_library(ctx, target, prefix, context):
         ),
         resource_paths = placement.resource_paths,
         dependency_paths = sorted(dependency_paths),
+    )
+
+# ==== godot_extension =========================================================
+
+def _resource_path(path):
+    segments = path.split("/")
+    rejected = [
+        not path,
+        path.startswith("/"),
+        "\\" in path,
+        ":" in path,
+        ".." in segments,
+        "." in segments,
+        "" in segments,
+    ]
+    if any(rejected):
+        fail(
+            "resource_path must be a nonempty relative res:// path without traversal: " +
+            path,
+        )
+    return path
+
+def _configured_context(ctx):
+    """
+    Return what the configuration fixes for an extension library, and its feature tags.
+
+    The tags are the operating system, Godot's CPU tag, simulator in the iOS Simulator,
+    and the variant.
+    """
+    platform = target_platform(ctx)
+    if not platform.operating_system or not platform.cpu:
+        fail((
+            "%s: an extension library needs a target platform with one of the operating " +
+            "systems %s and one of the CPUs %s"
+        ) % (
+            ctx.label,
+            ", ".join(OPERATING_SYSTEM_CONSTRAINTS),
+            ", ".join([str(row.constraint) for row in CPU_TABLE.values()]),
+        ))
+    tool = ctx.attr._tool[FlagInfo].value
+    selected = variant(ctx)
+    tags = [platform.operating_system, platform.cpu]
+    if platform.environment == "simulator":
+        tags.append("simulator")
+    return struct(
+        operating_system = platform.operating_system,
+        cpu = platform.cpu,
+        environment = platform.environment,
+        tool = tool,
+        tags = ".".join(tags + [selected]),
     )
 
 def _require_minimum_os_versions(minimum_os_versions):

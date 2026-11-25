@@ -39,7 +39,7 @@ concrete proposal, the reason, and whether a hook or check would fail without it
 
 | Subagent | Reviews | Effort |
 |---|---|---|
-| Structure | Rules 1 to 3 of [readable files](../../../docs/internal/code-health.md#readable-files): heads, regions, grouping by topic. | medium |
+| Structure | Rules 1 to 3 of [readable files](../../../docs/internal/code-health.md#readable-files): heads, regions, grouping by topic. Where the current order mixes topics, propose moving declarations into the region of their topic, as long as each helper stays above its first caller; do not cut regions around a poor order. | medium |
 | Order and layout | Rules 4 and 5: helpers close above their first caller, the layout of the file's kind, GDScript's method order, which gdlint does not check. | medium |
 | Boundaries | Rule 6 with the history: regions that change apart, files that always change together, a region that hides a split that is due. | high |
 | CodeScene | Each new finding of a declined file, and the findings of files in scope: a refactoring that removes it; its directive only with a reason. | high |

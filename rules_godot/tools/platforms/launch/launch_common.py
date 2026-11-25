@@ -4,6 +4,8 @@ Options, process handling and install policy shared by the launchers of every pl
 The launcher runs on the host with the host's python3 and only the standard library,
 because it drives the host's devices whatever platform executed the build. It keeps
 to Python 3.9, the python3 of macOS's command line tools.
+
+Sections: Options, Running.
 """
 
 from __future__ import annotations
@@ -24,6 +26,9 @@ _T = TypeVar("_T")
 
 class LaunchError(Exception):
     """A failure the launcher reports as one message, without a traceback."""
+
+
+# ==== Options =================================================================
 
 
 @dataclasses.dataclass(frozen=True)
@@ -197,6 +202,9 @@ def parse_options(
                 f"{flags[field.name]} does not apply to {platform} applications"
             )
     return options
+
+
+# ==== Running =================================================================
 
 
 def log(message: str) -> None:

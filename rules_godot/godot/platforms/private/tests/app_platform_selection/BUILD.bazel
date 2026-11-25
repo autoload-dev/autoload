@@ -1,3 +1,6 @@
+# Sections: Run tests, Export features, Desktop apps, Android apps, iOS simulator apps,
+# Debug symbols.
+
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
@@ -42,6 +45,8 @@ _SOURCE_IOS = ["@godot_source_build_ios//toolchains:runtime_ios_arm64_simulator_
 
 app_outputs_test_suite(name = "app_outputs_test_suite")
 
+# ==== Run tests ===============================================================
+
 # Run test: the start pack runs its main scene, which checks the project and the CPU.
 godot_test(
     name = "start_pack_runs_main_scene_test",
@@ -83,6 +88,8 @@ py_test(
     target_compatible_with = _HOST_DESKTOP,
 )
 
+# ==== Export features =========================================================
+
 # Build-output test: the start pack exported for an iOS device has no Simulator feature,
 # exported for the Simulator it has. Both exports are named start_pack.pck, so each is
 # copied to a name of its own.
@@ -123,6 +130,8 @@ py_test(
     main = "ios_environment_test.py",
     deps = ["//tools:pck_lib"],
 )
+
+# ==== Desktop apps ============================================================
 
 # Build-output tests: one application declaration, built for each operating system and
 # configuration, contains only the selected platform's add-on libraries and resources, the
@@ -168,6 +177,8 @@ _DESKTOP_APPS = [
     )
     for operating_system, _, cpus, compatible in _DESKTOP_APPS
 ]
+
+# ==== Android apps ============================================================
 
 # Android: an APK for arm64, and an App Bundle for both CPUs on an export platform that
 # inherits a base platform.
@@ -221,6 +232,8 @@ _DESKTOP_APPS = [
         ("android_dual_abi_bundle", "arm64,x86_64"),
     ]
 ]
+
+# ==== iOS simulator apps ======================================================
 
 # iOS Simulator: the prebuilt x86_64 engine in release and debug, the source-built arm64
 # engine, and both CPUs from the two engines.
@@ -299,6 +312,8 @@ configured_outputs(
         ),
     ]
 ]
+
+# ==== Debug symbols ===========================================================
 
 # Build-output test: the App Bundle for both Android CPUs declares the SDK versions, and its
 # debug symbols are those of the extension libraries it packages for each CPU.

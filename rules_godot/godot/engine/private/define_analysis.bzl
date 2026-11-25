@@ -29,6 +29,8 @@ not Starlark, so the analysis could not preprocess with them.
 Objective-C compiles keep their -D options: they use implicit Clang modules, which see the
 command line's macros but neither a wrapper's nor a forced include's, so a definition
 reported unused can still change a module the source imports.
+
+Sections: godot_source_defines, godot_define_analysis.
 """
 
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
@@ -39,6 +41,8 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:flags.bzl", "FlagInfo")
 
 visibility(["//godot/..."])
+
+# ==== godot_source_defines ====================================================
 
 GodotSourceDefinesInfo = provider(
     doc = "A source's wrapper and the command line that preprocesses it.",
@@ -66,6 +70,7 @@ _CL_COMPILERS = ("msvc-cl", "clang-cl")
 _CANARY = "#define GODOT_DEFINE_ANALYSIS_CANARY 1\n"
 
 _PER_FILE_COPT = "//command_line_option:per_file_copt"
+
 _PER_FILE_COPT_SET = str(Label("//godot/engine/private:per_file_copt_set"))
 
 def _setting_impl(ctx):
@@ -218,6 +223,8 @@ godot_source_defines = rule(
     toolchains = use_cc_toolchain(),
     fragments = ["cpp"],
 )
+
+# ==== godot_define_analysis ===================================================
 
 # Runs the sources' preprocessing on one lane per processor; define_analysis.awk turns
 # each one's diagnostics into its header. A failed preprocessing fails the action.

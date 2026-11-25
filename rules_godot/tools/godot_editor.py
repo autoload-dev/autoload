@@ -1,4 +1,8 @@
-"""Open a declared project in the Godot editor on a view that links into the checkout."""
+"""
+Open a declared project in the Godot editor on a view that links into the checkout.
+
+Sections: Layout, Placement, Reports, Editor session.
+"""
 
 import argparse
 import contextlib
@@ -10,7 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
 from godot.private.project_config import write_back
@@ -34,13 +38,13 @@ from tools.godot_staging import (
 
 # The runner's own state inside a view, beside Godot's.
 STATE = ".godot/rules_godot"
-_GITIGNORE = Path(__file__).parent / "editor_view.gitignore.tpl"
-# Files of Bazel packages, which Godot does not show, in linked directories.
-_BAZEL_FILES = {"BUILD", "BUILD.bazel", "REPO.bazel", "MODULE.bazel", "WORKSPACE"}
 
 
 class EditorError(RuntimeError):
     """A view that cannot be prepared, with the reason for the user."""
+
+
+# ==== Layout ==================================================================
 
 
 def _ancestors(path: str) -> Iterator[str]:
@@ -55,6 +59,26 @@ def linked_parent(path: str, linked: dict[str, str]) -> str | None:
     return next(
         (directory for directory in _ancestors(path) if directory in linked), None
     )
+
+
+def _link_target(directory: str, path: str, source: str) -> str | None:
+    """The workspace directory that holds source as directory holds path, if any."""
+    rest = path[len(directory) + 1 :]
+    # The workspace root itself contains the views and is never linked.
+    return source[: -len(rest) - 1] if source.endswith("/" + rest) else None
+
+
+def _link_candidates(checkout: dict[str, str], owned: set[str]) -> dict[str, str | None]:
+    """Each project directory to its one workspace directory, or None if it has none."""
+    candidates: dict[str, str | None] = {}
+    for path, source in checkout.items():
+        for directory in _ancestors(path):
+            target = _link_target(directory, path, source)
+            if candidates.setdefault(directory, target) != target:
+                candidates[directory] = None
+    for path in owned:
+        candidates.update(dict.fromkeys(_ancestors(path)))
+    return candidates
 
 
 def link_directories(checkout: dict[str, str], owned: set[str]) -> dict[str, str]:
@@ -73,16 +97,7 @@ def link_directories(checkout: dict[str, str], owned: set[str]) -> dict[str, str
     Returns:
         Linked project directories to their workspace directories.
     """
-    candidates: dict[str, str | None] = {}
-    for path, source in checkout.items():
-        for directory in _ancestors(path):
-            rest = path[len(directory) + 1 :]
-            # The workspace root itself contains the views and is never linked.
-            target = source[: -len(rest) - 1] if source.endswith("/" + rest) else None
-            if candidates.setdefault(directory, target) != target:
-                candidates[directory] = None
-    for path in owned:
-        candidates.update(dict.fromkeys(_ancestors(path)))
+    candidates = _link_candidates(checkout, owned)
     linked: dict[str, str] = {}
     for directory in sorted(candidates, key=lambda value: value.count("/")):
         target = candidates[directory]
@@ -148,6 +163,9 @@ def plan_layout(
     return Layout(directories, links, copies, caches)
 
 
+# ==== Placement ===============================================================
+
+
 def _stamp(path: Path) -> str:
     """
     Identify a file's state by its inode, size and modification time, as Git's index does.
@@ -207,12 +225,89 @@ def place_file(
     return [origin, status.st_size, status.st_mtime_ns]
 
 
+def _remove_entries(entries: Iterable[Path], placed: Callable[[Path], bool]) -> set:
+    """Remove the entries that placed accepts, in order; return their directories."""
+    emptied = set()
+    for entry in entries:
+        if placed(entry):
+            entry.unlink()
+            emptied.add(entry.parent)
+    return emptied
+
+
+def _is_empty_directory(directory: Path) -> bool:
+    return directory.is_dir() and not any(directory.iterdir())
+
+
+def _remove_empty(view: Path, emptied: set[Path]) -> None:
+    """
+    Remove the directories that removing entries left empty, and their empty parents.
+
+    So a linked directory can take their place; directories the editor created are
+    left alone.
+    """
+    for directory in sorted(emptied, key=lambda value: len(value.parts), reverse=True):
+        while directory != view and _is_empty_directory(directory):
+            directory.rmdir()
+            directory = directory.parent
+
+
 def _files_below(directory: Path) -> list[str]:
     return sorted(
         str(PurePosixPath(Path(root).relative_to(directory)) / name)
         for root, _, names in os.walk(directory)
         for name in names
     )
+
+
+def _conflict(entry: Path, source: Path, path: str, target: str) -> str | None:
+    """Why what the view holds at res://path cannot give way to a link, if it cannot."""
+    if entry.is_dir():
+        created = ", ".join(f"res://{path}/{name}" for name in _files_below(entry))
+        return (
+            f"res://{path} now links to {target}, but the view holds files "
+            f"created there: {created}; move them to {target} or delete them"
+        )
+    if entry.exists() and not same_content(entry, source):
+        return (
+            f"res://{path} was created in the view and differs from {target}; "
+            "move or delete it"
+        )
+    return None
+
+
+def _clear_for_link(entry: Path, source: Path, path: str, target: str) -> bool:
+    """
+    Make way for a link to source at entry, the view's res://path.
+
+    Returns:
+        Whether the link is there already.
+    """
+    if entry.is_symlink():
+        if Path(os.readlink(entry)) == source:
+            return True
+    elif message := _conflict(entry, source, path, target):
+        raise EditorError(message)
+    entry.unlink(missing_ok=True)
+    return False
+
+
+def _place_link(view: Path, workspace: Path, path: str, target: str) -> None:
+    """Link the view's res://path to the workspace's target."""
+    entry = view / path
+    source = workspace / target
+    if not source.exists():
+        raise EditorError(f"{target} is declared in the project but missing")
+    if _clear_for_link(entry, source, path, target):
+        return
+    entry.parent.mkdir(parents=True, exist_ok=True)
+    entry.symlink_to(source)
+
+
+def _file_mode(path: str, original: Original, layout: Layout) -> int:
+    """The permissions of a file the view copies: copies are read-only."""
+    mode = 0o444 if path in layout.copies else 0o644
+    return mode | (0o111 if executable(original) else 0)
 
 
 def sync(view: Path, workspace: Path, layout: Layout, record: dict) -> dict:
@@ -232,58 +327,34 @@ def sync(view: Path, workspace: Path, layout: Layout, record: dict) -> dict:
     links = {**layout.directories, **layout.links}
     files = {**layout.copies, **layout.caches}
     known = record.get("files", {})
-    emptied = set()
-    for path, target in record.get("links", {}).items():
-        entry = view / path
-        if links.get(path) != target and entry.is_symlink():
-            entry.unlink()
-            emptied.add(entry.parent)
-    for path in known:
-        entry = view / path
-        if path not in files and entry.is_file():
-            entry.unlink()
-            emptied.add(entry.parent)
-    # Remove the directories this left empty, so a linked directory can take
-    # their place; directories the editor created are left alone.
-    for directory in sorted(emptied, key=lambda value: len(value.parts), reverse=True):
-        while directory != view and directory.is_dir() and not any(directory.iterdir()):
-            directory.rmdir()
-            directory = directory.parent
+    stale_links = (
+        view / path
+        for path, target in record.get("links", {}).items()
+        if links.get(path) != target
+    )
+    emptied = _remove_entries(stale_links, Path.is_symlink)
+    stale_files = (view / path for path in known if path not in files)
+    emptied |= _remove_entries(stale_files, Path.is_file)
+    _remove_empty(view, emptied)
     for path, target in sorted(links.items()):
-        entry = view / path
-        source = workspace / target
-        if not source.exists():
-            raise EditorError(f"{target} is declared in the project but missing")
-        if entry.is_symlink():
-            if Path(os.readlink(entry)) == source:
-                continue
-            entry.unlink()
-        elif entry.is_dir():
-            created = ", ".join(f"res://{path}/{name}" for name in _files_below(entry))
-            raise EditorError(
-                f"res://{path} now links to {target}, but the view holds files "
-                f"created there: {created}; move them to {target} or delete them"
-            )
-        elif entry.exists():
-            if not same_content(entry, source):
-                raise EditorError(
-                    f"res://{path} was created in the view and differs from {target}; "
-                    "move or delete it"
-                )
-            entry.unlink()
-        entry.parent.mkdir(parents=True, exist_ok=True)
-        entry.symlink_to(source)
+        _place_link(view, workspace, path, target)
     placed = {
         path: place_file(
             view / path,
             original,
-            (0o444 if path in layout.copies else 0o644)
-            | (0o111 if executable(original) else 0),
+            _file_mode(path, original, layout),
             known.get(path),
         )
         for path, original in files.items()
     }
     return {"links": links, "files": placed}
+
+
+# ==== Reports =================================================================
+
+
+# Files of Bazel packages, which Godot does not show, in linked directories.
+_BAZEL_FILES = {"BUILD", "BUILD.bazel", "REPO.bazel", "MODULE.bazel", "WORKSPACE"}
 
 
 def _move_hint(path: str, sources: dict[str, str]) -> str:
@@ -302,36 +373,45 @@ def source_directories(checkout: dict[str, str]) -> dict[str, str]:
     return directories
 
 
-def view_only(view: Path, layout: Layout, sources: dict[str, str]) -> list[str]:
-    """Describe files and links in the view that its layout did not place."""
-    placed = {*layout.directories, *layout.links, *layout.copies, *layout.caches}
-    messages = []
+def _view_entries(view: Path) -> Iterator[tuple[str, Path]]:
+    """The files and directory links in a view by resource path, but Godot's state."""
     for root, directories, names in os.walk(view):
         relative = Path(root).relative_to(view)
         if relative == Path("."):
             directories[:] = [name for name in directories if name != ".godot"]
             names = [name for name in names if name != "project.godot"]
-        for name in sorted(
-            names + [d for d in directories if (Path(root) / d).is_symlink()]
-        ):
-            path = str(PurePosixPath(relative) / name)
-            entry = Path(root) / name
-            if path in placed or name.startswith("."):
-                continue
-            if entry.is_symlink():
-                messages.append(
-                    f"res://{path} links to {os.readlink(entry)} and was moved in the "
-                    "editor; the checkout keeps it at its declared path"
-                )
-                continue
-            messages.append(
-                f"res://{path} exists only in the view; move it"
-                f"{_move_hint(path, sources)} and declare it"
-            )
-    for path in sorted(placed):
-        # Godot replaces its own state as it pleases.
-        if not path.startswith(".godot/") and not os.path.lexists(view / path):
-            messages.append(f"res://{path} was moved or deleted in the editor")
+        links = [name for name in directories if (Path(root) / name).is_symlink()]
+        for name in sorted(names + links):
+            yield str(PurePosixPath(relative) / name), Path(root) / name
+
+
+def _unplaced(path: str, entry: Path, sources: dict[str, str]) -> str:
+    """Describe a file or link in the view that its layout did not place."""
+    if entry.is_symlink():
+        return (
+            f"res://{path} links to {os.readlink(entry)} and was moved in the "
+            "editor; the checkout keeps it at its declared path"
+        )
+    return (
+        f"res://{path} exists only in the view; move it"
+        f"{_move_hint(path, sources)} and declare it"
+    )
+
+
+def view_only(view: Path, layout: Layout, sources: dict[str, str]) -> list[str]:
+    """Describe files and links in the view that its layout did not place."""
+    placed = {*layout.directories, *layout.links, *layout.copies, *layout.caches}
+    messages = [
+        _unplaced(path, entry, sources)
+        for path, entry in _view_entries(view)
+        if path not in placed and not entry.name.startswith(".")
+    ]
+    # Godot replaces its own state as it pleases.
+    messages += [
+        f"res://{path} was moved or deleted in the editor"
+        for path in sorted(placed)
+        if not path.startswith(".godot/") and not os.path.lexists(view / path)
+    ]
     return messages
 
 
@@ -355,31 +435,65 @@ def changed_sidecars(
     return messages
 
 
+def _is_ignored(relative: PurePosixPath, names: list[str]) -> bool:
+    """Godot's ignore rule (tools/godot_files.py): the project's root is never skipped."""
+    return str(relative) != "." and any(name in names for name in DIRECTORY_MARKERS)
+
+
+def _scanned_directories(
+    root: Path, directory: str
+) -> Iterator[tuple[Path, PurePosixPath, list[str]]]:
+    """Each directory Godot scans below a linked one: its path, resource path and files."""
+    for current, directories, names in os.walk(root):
+        relative = PurePosixPath(directory) / Path(current).relative_to(root)
+        if _is_ignored(relative, names):
+            directories[:] = []
+            continue
+        directories[:] = [name for name in directories if not is_hidden(name)]
+        yield Path(current), relative, names
+
+
+def _is_bazel_file(name: str) -> bool:
+    return name in _BAZEL_FILES or name.endswith(".bzl")
+
+
+def _beside_source(current: Path, name: str) -> bool:
+    """Whether a file is a sidecar whose source file lies beside it."""
+    source = sidecar_source(name)
+    return source is not None and (current / source).exists()
+
+
+def _needs_no_declaration(current: Path, name: str) -> bool:
+    """Whether Godot does not show a file, or the view generates it for its source."""
+    if is_hidden(name) or _is_bazel_file(name):
+        return True
+    return _beside_source(current, name)
+
+
+def _undeclared_below(
+    root: Path, directory: str, checkout: dict[str, str]
+) -> Iterator[str]:
+    """Resource paths of the files below a linked directory that the project lacks."""
+    for current, relative, names in _scanned_directories(root, directory):
+        for name in sorted(names):
+            path = str(relative / name)
+            if path not in checkout and not _needs_no_declaration(current, name):
+                yield path
+
+
 def undeclared(workspace: Path, layout: Layout, checkout: dict[str, str]) -> list[str]:
     """Resource paths of files in linked directories that the project does not declare."""
-    paths = []
-    for directory, target in sorted(layout.directories.items()):
-        root = workspace / target
-        for current, directories, names in os.walk(root):
-            relative = PurePosixPath(directory) / Path(current).relative_to(root)
-            # Godot's ignore rule (tools/godot_files.py): the project's root is never skipped.
-            if str(relative) != "." and any(name in names for name in DIRECTORY_MARKERS):
-                directories[:] = []
-                continue
-            directories[:] = [name for name in directories if not is_hidden(name)]
-            for name in sorted(names):
-                path = str(relative / name)
-                if (
-                    path in checkout
-                    or is_hidden(name)
-                    or name in _BAZEL_FILES
-                    or name.endswith(".bzl")
-                    or (source := sidecar_source(name)) is not None
-                    and (Path(current) / source).exists()
-                ):
-                    continue
-                paths.append(path)
-    return paths
+    return [
+        path
+        for directory, target in sorted(layout.directories.items())
+        for path in _undeclared_below(workspace / target, directory, checkout)
+    ]
+
+
+# ==== Editor session ==========================================================
+
+
+_GITIGNORE = Path(__file__).parent / "editor_view.gitignore.tpl"
 
 
 def reconcile_settings(view: Path, workspace: Path, manifest: dict) -> None:
@@ -446,6 +560,90 @@ def wait(process: subprocess.Popen) -> int:
             continue
 
 
+def _read_record(record_file: Path, label: str, view: Path) -> dict:
+    """What the previous sync placed in the view, which must be the project's own."""
+    record = json.loads(record_file.read_text()) if record_file.is_file() else {}
+    if record and record["label"] != label:
+        raise EditorError(f"{view} belongs to {record['label']}")
+    return record
+
+
+def _metadata_sidecars(manifest: dict, runfile: Callable[[str], Path]) -> list[dict]:
+    """The sidecars the project's metadata lists."""
+    metadata = json.loads(runfile(manifest["metadata"]).read_text(encoding="utf-8"))
+    return [sidecar for sidecar in metadata if sidecar["kind"] == "sidecar"]
+
+
+def _prepare_view(
+    manifest: dict, workspace: Path, view: Path, runfile: Callable[[str], Path]
+) -> tuple[Layout, dict, list[dict]]:
+    """
+    Bring the view to the project's layout.
+
+    Returns:
+        The layout, what the sync placed, and the sidecars the checkout misses.
+    """
+    state = view / STATE
+    record_file = state / "view.json"
+    record = _read_record(record_file, manifest["label"], view)
+    # Changes from a session that ended without the runner, if any.
+    reconcile_settings(view, workspace, manifest)
+    generated = generated_files(manifest, runfile)
+    # Before the editor scans the checkout, which writes its own otherwise.
+    # The editor saves node IDs and resource UIDs itself; only
+    # godot_metadata_sync writes them into the checkout.
+    sidecars = _metadata_sidecars(manifest, runfile)
+    missing = place_metadata(sidecars, workspace, write=manifest["write_sidecars"])
+    layout = plan_layout(
+        manifest["checkout"],
+        {path: runfile(key) for path, key in manifest["copies"].items()},
+        generated,
+        {
+            sidecar["path"]: sidecar["workspace"]
+            for sidecar in sidecars
+            if (workspace / sidecar["workspace"]).exists()
+        },
+    )
+    record = sync(view, workspace, layout, record)
+    record_file.write_text(
+        json.dumps({"label": manifest["label"], **record}, indent=2) + "\n"
+    )
+    project = runfile(manifest["project_file"])
+    place_file(view / "project.godot", project, 0o644)
+    place_file(state / "project.godot", project, 0o644)
+    return layout, record, missing
+
+
+def _start_editor(
+    manifest: dict, view: Path, extra: list[str], runfile: Callable[[str], Path]
+) -> subprocess.Popen:
+    """Run the editor on the view with the project's environment."""
+    environment = dict(os.environ)
+    environment.update(manifest["env"])
+    report(f"opening {view}")
+    return subprocess.Popen(
+        [str(runfile(manifest["editor"])), "--editor", "--path", str(view), *extra],
+        cwd=view,
+        env=environment,
+    )
+
+
+def _missing_messages(missing: list[dict]) -> list[str]:
+    """Describe the sidecars the checkout misses."""
+    return [
+        f"{sidecar['workspace']} is missing; Godot writes its own when it finds the file"
+        for sidecar in missing
+    ]
+
+
+def _undeclared_messages(manifest: dict, workspace: Path, layout: Layout) -> list[str]:
+    """Describe the files in linked directories that the project does not declare."""
+    return [
+        f"res://{path} is in a linked directory but not in {manifest['label']}"
+        for path in undeclared(workspace, layout, manifest["checkout"])
+    ]
+
+
 def open_editor(
     manifest: dict,
     workspace: Path,
@@ -458,65 +656,17 @@ def open_editor(
     check_ignored(workspace, manifest["views"])
     place_file(workspace / manifest["views"] / ".gitignore", _GITIGNORE, 0o644)
     view = workspace / manifest["view"]
-    state = view / STATE
-    state.mkdir(parents=True, exist_ok=True)
+    (view / STATE).mkdir(parents=True, exist_ok=True)
     with locked(view):
-        record_file = state / "view.json"
-        record = json.loads(record_file.read_text()) if record_file.is_file() else {}
-        if record and record["label"] != manifest["label"]:
-            raise EditorError(f"{view} belongs to {record['label']}")
-        checkout = manifest["checkout"]
-        # Changes from a session that ended without the runner, if any.
-        reconcile_settings(view, workspace, manifest)
-        generated = generated_files(manifest, runfile)
-        # Before the editor scans the checkout, which writes its own otherwise.
-        # The editor saves node IDs and resource UIDs itself; only
-        # godot_metadata_sync writes them into the checkout.
-        sidecars = [
-            sidecar
-            for sidecar in json.loads(
-                runfile(manifest["metadata"]).read_text(encoding="utf-8")
-            )
-            if sidecar["kind"] == "sidecar"
-        ]
-        missing = place_metadata(sidecars, workspace, write=manifest["write_sidecars"])
-        layout = plan_layout(
-            checkout,
-            {path: runfile(key) for path, key in manifest["copies"].items()},
-            generated,
-            {
-                sidecar["path"]: sidecar["workspace"]
-                for sidecar in sidecars
-                if (workspace / sidecar["workspace"]).exists()
-            },
-        )
-        record = sync(view, workspace, layout, record)
-        record_file.write_text(
-            json.dumps({"label": manifest["label"], **record}, indent=2) + "\n"
-        )
-        project = runfile(manifest["project_file"])
-        place_file(view / "project.godot", project, 0o644)
-        place_file(state / "project.godot", project, 0o644)
-        environment = dict(os.environ)
-        environment.update(manifest["env"])
-        report(f"opening {view}")
-        process = subprocess.Popen(
-            [str(runfile(manifest["editor"])), "--editor", "--path", str(view), *extra],
-            cwd=view,
-            env=environment,
-        )
+        layout, record, missing = _prepare_view(manifest, workspace, view, runfile)
+        process = _start_editor(manifest, view, extra, runfile)
         # Reports come while the editor starts.
-        sources = source_directories(checkout)
-        for sidecar in missing:
-            report(
-                f"{sidecar['workspace']} is missing; Godot writes its own when it "
-                "finds the file"
-            )
-        for path in undeclared(workspace, layout, checkout):
-            report(
-                f"res://{path} is in a linked directory but not in {manifest['label']}"
-            )
-        for message in view_only(view, layout, sources):
+        sources = source_directories(manifest["checkout"])
+        for message in [
+            *_missing_messages(missing),
+            *_undeclared_messages(manifest, workspace, layout),
+            *view_only(view, layout, sources),
+        ]:
             report(message)
         code = wait(process)
         reconcile_settings(view, workspace, manifest)
@@ -529,7 +679,7 @@ def open_editor(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--manifest", required=True, type=Path)
     # Everything after the manifest is the editor's.
     args = parser.parse_args(sys.argv[1:3])

@@ -3,6 +3,8 @@ The implementations of the source repository rules in godot/engine/private:repos
 
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.
+
+Sections: Engine source, Engine build, Android shell.
 """
 
 load("//godot/private:patches.bzl", "apply_repository_patches")
@@ -12,8 +14,7 @@ load("//godot/private/engine:profiles.bzl", "engine_profile")
 
 visibility(["//godot/..."])
 
-_SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
-_SCONS_SHA256 = "99c0e94a42a2c1182fa6859b0be697953db07ba936ecc9817ae0d218ced20b15"
+# ==== Engine source ===========================================================
 
 _ARCHIVE_SUFFIXES = [".tar.gz", ".tgz", ".tar.xz", ".tar.bz2", ".tar.zst", ".zip"]
 
@@ -58,6 +59,12 @@ def engine_source_impl(ctx, *, _fail = fail):
     # The digest-pinned archive determines the contents, so Bazel's repo contents cache,
     # local or remote, may reuse them.
     return ctx.repo_metadata(reproducible = bool(ctx.attr.sha256))
+
+# ==== Engine build ============================================================
+
+_SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
+
+_SCONS_SHA256 = "99c0e94a42a2c1182fa6859b0be697953db07ba936ecc9817ae0d218ced20b15"
 
 _SCONS_PLATFORMS = {"linux": "linuxbsd", "macos": "macos", "android": "android", "ios": "ios"}
 
@@ -292,6 +299,8 @@ def engine_build_impl(ctx, *, _fail = fail):
     # chooses warning flags by the host compiler's version, so unpinned Linux recipes
     # configure on each host.
     return ctx.repo_metadata(reproducible = pinned or ctx.attr.platform != "linux")
+
+# ==== Android shell ===========================================================
 
 def _descriptor(ctx):
     """Read a godot_engine_source descriptor and extract its archive here."""

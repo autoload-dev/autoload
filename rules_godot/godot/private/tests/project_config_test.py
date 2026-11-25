@@ -1,4 +1,8 @@
-"""Configuration preservation, strict literal handling and the project.godot of each purpose."""
+"""
+Configuration preservation, strict literal handling and the project.godot of each purpose.
+
+Sections: Compose project, Write back.
+"""
 
 import functools
 import json
@@ -24,6 +28,8 @@ from godot.private.project_config import (
     write_back,
 )
 
+# ==== Compose project =========================================================
+
 
 def _runfile(name: str) -> str:
     return (
@@ -36,9 +42,10 @@ def _runfile(name: str) -> str:
 
 # The setting kinds and sections of Godot 4.7, from godot/private/engine/setting_kinds.bzl.
 _TABLE = json.loads(_runfile("setting_kinds.json"))
-KINDS = _TABLE["kinds"]
-SECTIONS = _TABLE["sections"]
 
+KINDS = _TABLE["kinds"]
+
+SECTIONS = _TABLE["sections"]
 
 # Construct with Godot 4.7's setting kinds, as the rules do.
 compose_project = functools.partial(
@@ -592,6 +599,9 @@ class ProjectConfigTest(unittest.TestCase):
                 )
                 self.assertIn(event, text)
                 self.assertIn(typed_array, text)
+
+
+# ==== Write back ==============================================================
 
 
 _AUTHORED = """; authored comment

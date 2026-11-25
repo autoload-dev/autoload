@@ -5,6 +5,9 @@ rules_apple builds the bundle; this launcher installs it with simctl or devicect
 rules_apple's own runner copies the bundle with the host's rsync, whose openrsync on
 macOS ignores --chmod=u+w, so its copy stays read-only and `simctl install` fails with
 NSPOSIXErrorDomain 13. This launcher makes its copy writable itself.
+
+Sections: Application bundle, Device listing, Simulator launch, Device launch, Command
+line.
 """
 
 from __future__ import annotations
@@ -42,8 +45,16 @@ OPTIONS = frozenset(
     }
 )
 
-BOOT_TIMEOUT = 300
 INSTALL_TIMEOUT = 600
+
+
+def xcrun(
+    *args: str, check: bool = True, timeout: float | None = 120
+) -> subprocess.CompletedProcess[str]:
+    return launch_common.run(["xcrun", *args], check=check, timeout=timeout)
+
+
+# ==== Application bundle ======================================================
 
 
 @dataclasses.dataclass(frozen=True)
@@ -105,10 +116,7 @@ def writable_copy(bundle: Bundle, directory: str) -> str:
     return path
 
 
-def xcrun(
-    *args: str, check: bool = True, timeout: float | None = 120
-) -> subprocess.CompletedProcess[str]:
-    return launch_common.run(["xcrun", *args], check=check, timeout=timeout)
+# ==== Device listing ==========================================================
 
 
 def _text(numbers: Sequence[int]) -> str:
@@ -367,6 +375,9 @@ def _show(simulator: Simulator) -> None:
     launch_common.run(command, check=False)
 
 
+BOOT_TIMEOUT = 300
+
+
 def boot(simulator: Simulator, options: launch_common.Options) -> None:
     """Boot the Simulator unless it runs, show it unless --headless, and leave it running."""
     if not simulator.booted:
@@ -374,6 +385,49 @@ def boot(simulator: Simulator, options: launch_common.Options) -> None:
         xcrun("simctl", "bootstatus", simulator.udid, "-b", timeout=BOOT_TIMEOUT)
     if not options.headless:
         _show(simulator)
+
+
+def select_device(options: launch_common.Options, found: Sequence[Device]) -> Device:
+    """
+    Choose the device and check that it can run a development build.
+
+    Raises:
+        LaunchError: The choice is ambiguous, nothing matches, or the device is not ready.
+    """
+    wanted = options.device or os.environ.get("BAZEL_APPLE_DEVICE_UDID")
+    if wanted:
+        device = next(
+            (d for d in found if wanted in (d.identifier, d.udid, d.name)), None
+        )
+        if not device:
+            raise LaunchError(f"no iOS device {wanted}; --list-devices lists them")
+        if not device.connected:
+            raise LaunchError(f"{device.name} is not connected; connect and unlock it")
+    else:
+        device = launch_common.single(
+            [d for d in found if d.connected],
+            "iOS devices",
+            lambda d: f"{d.name} ({d.udid})",
+            "BAZEL_APPLE_DEVICE_UDID",
+        )
+        if not device:
+            raise LaunchError(
+                "no iOS device is connected; connect and unlock one, or build for the Simulator "
+                "with --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64"
+            )
+    if not device.paired:
+        raise LaunchError(
+            f"{device.name} is not paired with this Mac; connect it and trust this computer on the device"
+        )
+    if device.developer_mode != "enabled":
+        raise LaunchError(
+            f"{device.name} has Developer Mode {device.developer_mode}; enable it in "
+            "Settings > Privacy & Security and restart the device"
+        )
+    return device
+
+
+# ==== Simulator launch ========================================================
 
 
 def _conflict(output: str) -> str | None:
@@ -455,44 +509,7 @@ def launch_on_simulator(
     )
 
 
-def select_device(options: launch_common.Options, found: Sequence[Device]) -> Device:
-    """
-    Choose the device and check that it can run a development build.
-
-    Raises:
-        LaunchError: The choice is ambiguous, nothing matches, or the device is not ready.
-    """
-    wanted = options.device or os.environ.get("BAZEL_APPLE_DEVICE_UDID")
-    if wanted:
-        device = next(
-            (d for d in found if wanted in (d.identifier, d.udid, d.name)), None
-        )
-        if not device:
-            raise LaunchError(f"no iOS device {wanted}; --list-devices lists them")
-        if not device.connected:
-            raise LaunchError(f"{device.name} is not connected; connect and unlock it")
-    else:
-        device = launch_common.single(
-            [d for d in found if d.connected],
-            "iOS devices",
-            lambda d: f"{d.name} ({d.udid})",
-            "BAZEL_APPLE_DEVICE_UDID",
-        )
-        if not device:
-            raise LaunchError(
-                "no iOS device is connected; connect and unlock one, or build for the Simulator "
-                "with --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64"
-            )
-    if not device.paired:
-        raise LaunchError(
-            f"{device.name} is not paired with this Mac; connect it and trust this computer on the device"
-        )
-    if device.developer_mode != "enabled":
-        raise LaunchError(
-            f"{device.name} has Developer Mode {device.developer_mode}; enable it in "
-            "Settings > Privacy & Security and restart the device"
-        )
-    return device
+# ==== Device launch ===========================================================
 
 
 def _device_hint(output: str) -> str:
@@ -617,6 +634,9 @@ def launch_on_device(
         env=env,
         stop=lambda: _terminate_on_device(device, bundle),
     )
+
+
+# ==== Command line ============================================================
 
 
 # Entry point.

@@ -15,6 +15,8 @@ the manifest names them.
 An engine also has to contain the code of the CPU it is linked or packaged
 for: an Android AAR its engine library for the ABI, and the static libraries of an
 iOS engine objects of the CPU and SDK.
+
+Sections: Versions, Native libraries, Platform checks, Command line.
 """
 
 import argparse
@@ -30,11 +32,10 @@ from xml.etree import ElementTree
 
 from tools.platforms.native_symbols import native_slices
 
+# ==== Versions ================================================================
+
+
 ANDROID = "{http://schemas.android.com/apk/res/android}"
-_LIBRARY_VERSION = re.compile(
-    rb"Godot Engine v(\d+\.\d+(?:\.\d+)?\.[a-z]+\d*(?:\.[\w-]+)*)"
-)
-_ENGINE_LIBRARY = "libgodot_android.so"
 
 
 @dataclass(frozen=True)
@@ -72,7 +73,17 @@ def manifest_versions(path: Path) -> set[str]:
     }
 
 
+# ==== Native libraries ========================================================
+
+
+_LIBRARY_VERSION = re.compile(
+    rb"Godot Engine v(\d+\.\d+(?:\.\d+)?\.[a-z]+\d*(?:\.[\w-]+)*)"
+)
+
+_ENGINE_LIBRARY = "libgodot_android.so"
+
 _CHUNK = 1 << 24
+
 # Longer than any version string or hash: a match this close to the end of a
 # chunk may continue in the next one, so it is searched again with that.
 _OVERLAP = 128
@@ -169,7 +180,11 @@ def engine_abis(path: Path) -> set[str]:
         }
 
 
+# ==== Platform checks =========================================================
+
+
 _IOS_ENVIRONMENTS = {"ios_device": "device", "ios_simulator": "Simulator"}
+
 _IOS_EXPORT_PLATFORMS = {
     ("arm64", "ios_device"): "ios_arm64",
     ("arm64", "ios_simulator"): "ios_sim_arm64",
@@ -255,6 +270,9 @@ def _check_rendering_method(args: argparse.Namespace) -> None:
         [method for method in args.renderers.split(",") if method],
         "mobile" if mobile else "forward_plus",
     )
+
+
+# ==== Command line ============================================================
 
 
 def _parser() -> argparse.ArgumentParser:

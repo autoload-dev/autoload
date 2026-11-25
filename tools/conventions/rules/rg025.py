@@ -12,13 +12,23 @@ DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 type Definition = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
 
 
+def local_names(definition: Definition) -> set[str]:
+    """The names a definition binds itself: parameters and assigned names."""
+    return {
+        node.arg if isinstance(node, ast.arg) else node.id
+        for node in ast.walk(definition)
+        if isinstance(node, ast.arg)
+        or (isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store))
+    }
+
+
 def callers_of(definitions: Mapping[str, Definition]) -> dict[str, set[str]]:
-    """The module's other definitions that name each definition."""
+    """The module's other definitions that name each definition, not a local of its name."""
     callers: dict[str, set[str]] = {name: set() for name in definitions}
     for caller, definition in definitions.items():
-        for node in ast.walk(definition):
-            if isinstance(node, ast.Name) and node.id in callers and node.id != caller:
-                callers[node.id].add(caller)
+        named = {n.id for n in ast.walk(definition) if isinstance(n, ast.Name)}
+        for name in (named - local_names(definition)) & callers.keys() - {caller}:
+            callers[name].add(caller)
     return callers
 
 

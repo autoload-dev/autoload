@@ -1,3 +1,5 @@
+# Sections: Toolchains, Godot engines, Maven, Test fixtures, BuildBuddy.
+
 module(
     name = "autoload_rules_godot",
     version = "0.1.1",
@@ -34,6 +36,8 @@ local_path_override(
     module_name = "autoload_dev",
     path = "..",
 )
+
+# ==== Toolchains ==============================================================
 
 # Repositories that godot_android_toolchains' generated SDK and toolchain repositories
 # name: this host's SDK, whose API level setting the Linux SDK follows, and rules_java's tools,
@@ -84,6 +88,8 @@ register_toolchains(
     "@androidsdk//:all",
     dev_dependency = True,
 )
+
+# ==== Godot engines ===========================================================
 
 # The ruleset's own development engines; consumers register their own sets.
 godot_engines = use_extension("//godot:extensions.bzl", "godot_engines", dev_dependency = True)
@@ -305,6 +311,8 @@ godot_engine_build(
     source = "@godot_sources//:source.json",
 )
 
+# ==== Maven ===================================================================
+
 # Godot's Gradle declarations for the app template and the Android shell library
 # (platform/android/java/app/config.gradle, app/build.gradle, lib/build.gradle), with the
 # modules whose labels the shell library's aar_import names directly. rules_godot
@@ -428,6 +436,8 @@ maven_development.install(
     resolver = "maven",
 )
 
+# ==== Test fixtures ===========================================================
+
 repository_fixtures = use_extension(
     "//godot/tests/api_contracts/repositories:fixtures.bzl",
     "repository_fixtures",
@@ -465,6 +475,8 @@ http_file(
     sha256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
     urls = ["https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"],
 )
+
+# ==== BuildBuddy ==============================================================
 
 # BuildBuddy's Linux execution platform and C++ toolchain for remote execution, which
 # --config=buildbuddy selects; inert without it.

@@ -4,6 +4,8 @@ Render a configured engine graph as the BUILD file of its recipe repository.
 The graph comes from Godot's SCons configuration, now or from a recipe's pin. Rendering
 reads the extracted tree, but the graph does not depend on it, so a recipe's pin does
 not cover this module: changing how a graph renders keeps every pin.
+
+Sections: Build facts, Unpinned engines, Native rules, Swift and sources, Rendering.
 """
 
 import argparse
@@ -34,6 +36,9 @@ except ImportError:
     from source_tree import SOURCE_SUFFIXES, relative, write_json
 
 
+# ==== Build facts =============================================================
+
+
 def target_constraints(args: argparse.Namespace) -> list[str]:
     operating_system = {
         "macos": "macos",
@@ -57,26 +62,6 @@ def target_constraints(args: argparse.Namespace) -> list[str]:
     if args.platform == "ios":
         result.append(f"{args.apple_repository}//constraints:" + args.environment)
     return result
-
-
-def source_build_facts(args: argparse.Namespace) -> dict[str, str]:
-    """Describe the configured source graph independently of a consumer's build request."""
-    build_target = args.build_target
-    if build_target not in {"editor", "template_debug", "template_release"}:
-        raise ValueError(
-            f"Unknown build target {build_target}; "
-            "expected editor, template_debug or template_release"
-        )
-    return {
-        "canonical_version": args.version,
-        "platform": "linux" if args.platform == "linuxbsd" else args.platform,
-        "cpu": args.cpu,
-        "environment": args.environment,
-        "role": "editor" if build_target == "editor" else "runtime",
-        "variant": ""
-        if build_target == "editor"
-        else build_target.removeprefix("template_"),
-    }
 
 
 def header_ancestors(generated_headers: Iterable[str]) -> frozenset[Path]:
@@ -115,6 +100,9 @@ def object_groups(
     return [(*key, sources) for key, sources in sorted(result.items())]
 
 
+# ==== Unpinned engines ========================================================
+
+
 def engine_targets(platform: str) -> list[str]:
     """The public targets render() declares for a platform's engine."""
     return (
@@ -142,6 +130,9 @@ def render_unpinned(args: argparse.Namespace, status: str, root: Path) -> None:
         ),
     ]
     (root / "BUILD.bazel").write_text("\n".join(lines) + "\n")
+
+
+# ==== Native rules ============================================================
 
 
 def _header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
@@ -383,6 +374,29 @@ def object_rules(
     return lines + define_analysis.analysis_rules(analyzed), labels
 
 
+# ==== Swift and sources =======================================================
+
+
+def source_build_facts(args: argparse.Namespace) -> dict[str, str]:
+    """Describe the configured source graph independently of a consumer's build request."""
+    build_target = args.build_target
+    if build_target not in {"editor", "template_debug", "template_release"}:
+        raise ValueError(
+            f"Unknown build target {build_target}; "
+            "expected editor, template_debug or template_release"
+        )
+    return {
+        "canonical_version": args.version,
+        "platform": "linux" if args.platform == "linuxbsd" else args.platform,
+        "cpu": args.cpu,
+        "environment": args.environment,
+        "role": "editor" if build_target == "editor" else "runtime",
+        "variant": ""
+        if build_target == "editor"
+        else build_target.removeprefix("template_"),
+    }
+
+
 _DEFAULT_SWIFT_OPTIONS: dict[str, Any] = {
     "module_name": "godot_swift_module",
     "bridging_header": "drivers/apple_embedded/bridging_header_apple_embedded.h",
@@ -454,6 +468,9 @@ def _source_rule(
         else ""
     )
     return f"{rule}(name = {name!r}, deps = [{library!r}], version = {graph['version']!r}, build = '_revision/build.txt', hash = '_revision/hash.txt', digest = {digest!r}, customizations = {args.customizations!r}, minimum_os = {graph['minimum_os']!r}, {metadata_arguments}{renderers})"
+
+
+# ==== Rendering ===============================================================
 
 
 def _engine_rules(
