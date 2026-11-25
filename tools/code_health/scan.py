@@ -12,6 +12,8 @@ e.g. "**/*.bzl.py" for Starlark and "**/*.gd.py" for GDScript.
 Requirements: `cs` named by CODESCENE_CLI, as `aspect code-health` names it, or on PATH,
 and either a personal access token in CS_ACCESS_TOKEN or a `cs auth login` session. The
 token is never printed.
+
+Sections: Environment, File selection, Scanning.
 """
 
 from __future__ import annotations
@@ -70,6 +72,14 @@ DEFAULT_EXCLUDES = [
 ]
 
 
+def loc(source: str) -> int:
+    return sum(
+        1
+        for line in source.splitlines()
+        if line.strip() and not line.strip().startswith(("#", "//"))
+    )
+
+
 @dataclass
 class FileResult:
     path: str
@@ -81,7 +91,7 @@ class FileResult:
     error: str | None = None  # why the CodeScene CLI could not score the file
 
 
-# --- environment --------------------------------------------------------------
+# ==== Environment =============================================================
 
 
 class Unavailable(Exception):
@@ -129,7 +139,7 @@ def git(repo: Path, *args: str) -> str:
     return result.stdout
 
 
-# --- file selection -----------------------------------------------------------------
+# ==== File selection ==========================================================
 
 
 def is_analysable(path: str, include_build: bool) -> bool:
@@ -171,44 +181,7 @@ def language_of(path: str) -> str:
     return LANGUAGE.get(Path(path).suffix, Path(path).suffix.lstrip(".") or "other")
 
 
-def loc(source: str) -> int:
-    return sum(
-        1
-        for line in source.splitlines()
-        if line.strip() and not line.strip().startswith(("#", "//"))
-    )
-
-
-# --- scanning -------------------------------------------------------------------
-
-
-@dataclass
-class Scanner:
-    reviewer: Reviewer
-    macro_arguments: bool
-    repo: Path
-
-    def source_of(self, ref: str | None, path: str) -> str:
-        """The file at the ref, in the index for "", or in the working tree for None."""
-        if ref is None:
-            return (self.repo / path).read_text(errors="replace")
-        return git(self.repo, "show", f"{ref}:{path}")
-
-    def scan(self, files: list[tuple[str | None, str]]) -> list[FileResult]:
-        """Score each (ref, path), at the ref or, without one, in the working tree."""
-        with ThreadPoolExecutor() as pool:
-            sources = list(pool.map(lambda file: self.source_of(*file), files))
-        translations = [
-            translate(path, source, self.macro_arguments)
-            for (_, path), source in zip(files, sources, strict=True)
-        ]
-        results = self.reviewer.review(translations)
-        return [
-            file_result(path, source, translation, result)
-            for (_, path), source, translation, result in zip(
-                files, sources, translations, results, strict=True
-            )
-        ]
+# ==== Scanning ================================================================
 
 
 def smells_of(data: dict, translation: Translation) -> list[dict]:
@@ -246,6 +219,35 @@ def file_result(
         macros=translation.macros,
         error=error,
     )
+
+
+@dataclass
+class Scanner:
+    reviewer: Reviewer
+    macro_arguments: bool
+    repo: Path
+
+    def source_of(self, ref: str | None, path: str) -> str:
+        """The file at the ref, in the index for "", or in the working tree for None."""
+        if ref is None:
+            return (self.repo / path).read_text(errors="replace")
+        return git(self.repo, "show", f"{ref}:{path}")
+
+    def scan(self, files: list[tuple[str | None, str]]) -> list[FileResult]:
+        """Score each (ref, path), at the ref or, without one, in the working tree."""
+        with ThreadPoolExecutor() as pool:
+            sources = list(pool.map(lambda file: self.source_of(*file), files))
+        translations = [
+            translate(path, source, self.macro_arguments)
+            for (_, path), source in zip(files, sources, strict=True)
+        ]
+        results = self.reviewer.review(translations)
+        return [
+            file_result(path, source, translation, result)
+            for (_, path), source, translation, result in zip(
+                files, sources, translations, results, strict=True
+            )
+        ]
 
 
 def rules_of(repo: Path, rules: Path | None) -> tuple[str | None, str]:

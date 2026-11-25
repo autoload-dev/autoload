@@ -41,6 +41,12 @@ def addon_modules(root: Path) -> tuple[str, ...]:
     )
 
 
+def bazelignore_entries(text: str) -> tuple[str, ...]:
+    """The directories a `.bazelignore` names, without its blank lines and comments."""
+    lines = (line.strip() for line in text.splitlines())
+    return tuple(line for line in lines if line and not line.startswith("#"))
+
+
 def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
     """
     The modules nested in a module: each directory of its `.bazelignore` that holds a
@@ -59,12 +65,6 @@ def ignored_modules(root: Path, module: str = ".") -> tuple[str, ...]:
     )
 
 
-def bazelignore_entries(text: str) -> tuple[str, ...]:
-    """The directories a `.bazelignore` names, without its blank lines and comments."""
-    lines = (line.strip() for line in text.splitlines())
-    return tuple(line for line in lines if line and not line.startswith("#"))
-
-
 def is_released(module: str | Path) -> bool:
     """Whether a module has release archives: the ruleset and every add-on module."""
     return Path(module) == RULESET or Path(module).parent == Path(ADDONS)
@@ -80,6 +80,14 @@ def is_registry_test_module(module: str | Path) -> bool:
     return Path(module).parent.name == BCR and is_released(Path(module).parent.parent)
 
 
+def module_paths(root: Path) -> tuple[str, ...]:
+    """
+    The root module, every module its `.bazelignore` names, with the modules nested in those,
+    and each add-on module of `addons/`: the root ignores `addons` as a whole.
+    """
+    return (".", *ignored_modules(root), *addon_modules(root))
+
+
 def registry_test_modules(root: Path) -> tuple[str, ...]:
     """
     The registry test modules of the released modules. No lane builds them in place, so
@@ -91,14 +99,6 @@ def registry_test_modules(root: Path) -> tuple[str, ...]:
         if is_released(module)
         for found in sorted((root / module / BCR).glob("*/MODULE.bazel"))
     )
-
-
-def module_paths(root: Path) -> tuple[str, ...]:
-    """
-    The root module, every module its `.bazelignore` names, with the modules nested in those,
-    and each add-on module of `addons/`: the root ignores `addons` as a whole.
-    """
-    return (".", *ignored_modules(root), *addon_modules(root))
 
 
 @dataclass(frozen=True)

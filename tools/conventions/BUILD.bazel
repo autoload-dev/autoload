@@ -8,6 +8,7 @@ py_library(
         "context.py",
         "environment.py",
         "layout.py",
+        "python_modules.py",
     ],
     # The API documentation's checks read Bazel evidence through it (tools/docs).
     visibility = ["//visibility:public"],
@@ -48,6 +49,8 @@ py_library(
         "rules/rg018.py",
         "rules/rg020.py",
         "rules/rg023.py",
+        "rules/rg024.py",
+        "rules/rg025.py",
     ],
     deps = [
         ":context_lib",
@@ -296,6 +299,26 @@ py_test(
     name = "rg023_test",
     size = "small",
     srcs = ["rules/rg023_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg024_test",
+    size = "small",
+    srcs = ["rules/rg024_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "rg025_test",
+    size = "small",
+    srcs = ["rules/rg025_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

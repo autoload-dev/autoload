@@ -204,6 +204,13 @@ def log(message: str) -> None:
     print("rules_godot: " + message, file=sys.stderr, flush=True)
 
 
+def _name(command: Sequence[str]) -> str:
+    return " ".join(
+        os.path.basename(part) if index == 0 else part
+        for index, part in enumerate(command[:3])
+    )
+
+
 def run(
     command: Sequence[str],
     *,
@@ -243,13 +250,6 @@ def run(
             + result.stdout.strip()
         )
     return result
-
-
-def _name(command: Sequence[str]) -> str:
-    return " ".join(
-        os.path.basename(part) if index == 0 else part
-        for index, part in enumerate(command[:3])
-    )
 
 
 def single(
@@ -311,6 +311,25 @@ def install_resolving_conflicts(
         )
 
 
+def end(process: subprocess.Popen, *, group: bool = False) -> None:
+    """End a process, or its process group: SIGTERM, then SIGKILL after two seconds."""
+    for sig, grace in ((signal.SIGTERM, 2), (signal.SIGKILL, None)):
+        if process.poll() is not None:
+            return
+        try:
+            if group:
+                os.killpg(process.pid, sig)
+            else:
+                process.send_signal(sig)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(timeout=grace)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
 def foreground(
     command: Sequence[str],
     *,
@@ -357,25 +376,6 @@ def run_on_host(command: Sequence[str], env: Mapping[str, str], *, detach: bool)
         log(f"started {os.path.basename(command[0])}, process {process.pid}")
         return 0
     return foreground(command, env=env, new_session=True, inherit_stdin=True)
-
-
-def end(process: subprocess.Popen, *, group: bool = False) -> None:
-    """End a process, or its process group: SIGTERM, then SIGKILL after two seconds."""
-    for sig, grace in ((signal.SIGTERM, 2), (signal.SIGKILL, None)):
-        if process.poll() is not None:
-            return
-        try:
-            if group:
-                os.killpg(process.pid, sig)
-            else:
-                process.send_signal(sig)
-        except ProcessLookupError:
-            return
-        try:
-            process.wait(timeout=grace)
-            return
-        except subprocess.TimeoutExpired:
-            continue
 
 
 def interrupt_on_terminate() -> None:

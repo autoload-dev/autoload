@@ -43,6 +43,20 @@ class EditorError(RuntimeError):
     """A view that cannot be prepared, with the reason for the user."""
 
 
+def _ancestors(path: str) -> Iterator[str]:
+    """The directories a resource path lies in, outermost first."""
+    parts = path.split("/")
+    for index in range(1, len(parts)):
+        yield "/".join(parts[:index])
+
+
+def linked_parent(path: str, linked: dict[str, str]) -> str | None:
+    """The linked directory a resource path lies in, if any."""
+    return next(
+        (directory for directory in _ancestors(path) if directory in linked), None
+    )
+
+
 def link_directories(checkout: dict[str, str], owned: set[str]) -> dict[str, str]:
     """
     Choose the project directories a view links as a whole.
@@ -75,20 +89,6 @@ def link_directories(checkout: dict[str, str], owned: set[str]) -> dict[str, str
         if target and linked_parent(directory, linked) is None:
             linked[directory] = target
     return linked
-
-
-def _ancestors(path: str) -> Iterator[str]:
-    """The directories a resource path lies in, outermost first."""
-    parts = path.split("/")
-    for index in range(1, len(parts)):
-        yield "/".join(parts[:index])
-
-
-def linked_parent(path: str, linked: dict[str, str]) -> str | None:
-    """The linked directory a resource path lies in, if any."""
-    return next(
-        (directory for directory in _ancestors(path) if directory in linked), None
-    )
 
 
 @dataclasses.dataclass

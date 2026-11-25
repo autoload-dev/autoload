@@ -1,4 +1,5 @@
 {
+  "editor.minimap.markSectionHeaderRegex": "^\\s*(?:#|//) ={4} (?<label>[^=]+?) =+$",
   "files.associations": {
     "*.axl": "starlark",
     "*.bzl": "starlark",

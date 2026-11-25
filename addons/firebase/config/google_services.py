@@ -28,6 +28,40 @@ class ConfigError(Exception):
     """A configuration file that does not fit the application."""
 
 
+def _package_name(client: dict[str, Any]) -> str | None:
+    return (
+        client.get("client_info", {}).get("android_client_info", {}).get("package_name")
+    )
+
+
+def _client(config: dict[str, Any], application_id: str) -> dict[str, Any]:
+    clients = config.get("client", [])
+    # The first client of a package wins, as in the Gradle plugin.
+    by_package = {
+        package: client
+        for client in reversed(clients)
+        if (package := _package_name(client)) is not None
+    }
+    if application_id in by_package:
+        return by_package[application_id]
+    clients_text = ", ".join(sorted(by_package)) or "no Android clients"
+    raise ConfigError(
+        f"No client for application ID {application_id!r} in google-services.json; it has "
+        f"{clients_text}. Register the app in the Firebase console or download the file of "
+        "the right project."
+    )
+
+
+def _put(
+    values: dict[str, str], name: str, value: object, *, required: bool = False
+) -> None:
+    if value is None or value == "":
+        if required:
+            raise ConfigError(f"google-services.json has no value for {name}")
+        return
+    values[name] = str(value)
+
+
 def android_values(config: dict[str, Any], application_id: str) -> dict[str, str]:
     """
     Return the string resources the Gradle plugin writes for ``application_id``.
@@ -69,38 +103,12 @@ def android_values(config: dict[str, Any], application_id: str) -> dict[str, str
     return values
 
 
-def _package_name(client: dict[str, Any]) -> str | None:
-    return (
-        client.get("client_info", {}).get("android_client_info", {}).get("package_name")
-    )
-
-
-def _client(config: dict[str, Any], application_id: str) -> dict[str, Any]:
-    clients = config.get("client", [])
-    # The first client of a package wins, as in the Gradle plugin.
-    by_package = {
-        package: client
-        for client in reversed(clients)
-        if (package := _package_name(client)) is not None
-    }
-    if application_id in by_package:
-        return by_package[application_id]
-    clients_text = ", ".join(sorted(by_package)) or "no Android clients"
-    raise ConfigError(
-        f"No client for application ID {application_id!r} in google-services.json; it has "
-        f"{clients_text}. Register the app in the Firebase console or download the file of "
-        "the right project."
-    )
-
-
-def _put(
-    values: dict[str, str], name: str, value: object, *, required: bool = False
-) -> None:
-    if value is None or value == "":
-        if required:
-            raise ConfigError(f"google-services.json has no value for {name}")
-        return
-    values[name] = str(value)
+def _android_string(value: str) -> str:
+    """Escape ``value`` for XML and for Android's string resource syntax."""
+    text = escape(value).replace("\\", "\\\\").replace("'", "\\'").replace('"', '\\"')
+    if text[:1] in ("@", "?"):
+        text = "\\" + text
+    return text
 
 
 def android_resource_xml(values: dict[str, str]) -> str:
@@ -123,14 +131,6 @@ def android_resource_xml(values: dict[str, str]) -> str:
     ]
     lines.append("</resources>")
     return "\n".join(lines) + "\n"
-
-
-def _android_string(value: str) -> str:
-    """Escape ``value`` for XML and for Android's string resource syntax."""
-    text = escape(value).replace("\\", "\\\\").replace("'", "\\'").replace('"', '\\"')
-    if text[:1] in ("@", "?"):
-        text = "\\" + text
-    return text
 
 
 def check_ios_plist(plist: dict[str, Any], application_id: str) -> None:

@@ -57,6 +57,10 @@ class Bundle:
     family: str
 
 
+def version(text: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", text))
+
+
 def read_bundle(source: str) -> Bundle:
     """Read the Info.plist of an .app directory or of the application an .ipa holds."""
     source = os.path.realpath(source)
@@ -101,10 +105,6 @@ def writable_copy(bundle: Bundle, directory: str) -> str:
     return path
 
 
-def version(text: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in re.findall(r"\d+", text))
-
-
 def xcrun(
     *args: str, check: bool = True, timeout: float | None = 120
 ) -> subprocess.CompletedProcess[str]:
@@ -131,6 +131,53 @@ class Simulator:
     @property
     def booted(self) -> bool:
         return self.state == "Booted"
+
+
+# Devices.
+
+
+@dataclasses.dataclass(frozen=True)
+class Device:
+    """A physical device devicectl knows."""
+
+    identifier: str
+    name: str
+    udid: str
+    paired: bool
+    developer_mode: str
+    connected: bool
+
+
+def _devicectl_json(*args: str, check: bool = True) -> dict | None:
+    """Run devicectl and return its JSON result, or None when it failed unchecked."""
+    with tempfile.TemporaryDirectory(prefix="rules_godot_devicectl_") as directory:
+        path = os.path.join(directory, "result.json")
+        result = xcrun("devicectl", *args, "--quiet", "--json-output", path, check=check)
+        if result.returncode != 0:
+            return None
+        with open(path, encoding="utf-8") as output:
+            return json.load(output).get("result", {})
+
+
+def devices() -> list[Device]:
+    found = []
+    for entry in (_devicectl_json("list", "devices") or {}).get("devices", []):
+        hardware = entry.get("hardwareProperties", {})
+        if hardware.get("reality") != "physical" or hardware.get("platform") != "iOS":
+            continue
+        connection = entry.get("connectionProperties", {})
+        properties = entry.get("deviceProperties", {})
+        found.append(
+            Device(
+                identifier=entry["identifier"],
+                name=properties.get("name", ""),
+                udid=hardware.get("udid", ""),
+                paired=connection.get("pairingState") == "paired",
+                developer_mode=properties.get("developerModeStatus", "unknown"),
+                connected=connection.get("tunnelState") != "unavailable",
+            )
+        )
+    return found
 
 
 @dataclasses.dataclass(frozen=True)
@@ -196,6 +243,47 @@ def _suits(
     )
 
 
+def create_simulator(
+    options: launch_common.Options, bundle: Bundle, simulators: Simulators
+) -> Simulator:
+    """Create a Simulator of the newest suitable runtime and device type."""
+    pairs = [
+        (version(runtime["version"]), runtime, simulators.type(supported["identifier"]))
+        for runtime in simulators.runtimes
+        for supported in runtime.get("supportedDeviceTypes", [])
+        if _suits(
+            version(runtime["version"]),
+            simulators.type(supported["identifier"]),
+            bundle,
+            options,
+        )
+    ]
+    if not pairs:
+        raise LaunchError(
+            f"no iOS Simulator runtime and device type suit iOS {_text(bundle.minimum_os)} or newer "
+            f"{options.simulator_type or bundle.family} {options.os_version or ''}; install a runtime in "
+            "Xcode's Components settings"
+        )
+    _, runtime, device_type = max(
+        pairs, key=lambda pair: (pair[0], simulators.newness(pair[2]["identifier"]))
+    )
+    log(f"creating Simulator {device_type['name']} with iOS {runtime['version']}")
+    udid = xcrun(
+        "simctl",
+        "create",
+        device_type["name"],
+        device_type["identifier"],
+        runtime["identifier"],
+    ).stdout.strip()
+    return Simulator(
+        udid,
+        device_type["name"],
+        "Shutdown",
+        version(runtime["version"]),
+        device_type["identifier"],
+    )
+
+
 def select_simulator(
     options: launch_common.Options, bundle: Bundle, simulators: Simulators
 ) -> Simulator:
@@ -258,56 +346,6 @@ def select_simulator(
     return create_simulator(options, bundle, simulators)
 
 
-def create_simulator(
-    options: launch_common.Options, bundle: Bundle, simulators: Simulators
-) -> Simulator:
-    """Create a Simulator of the newest suitable runtime and device type."""
-    pairs = [
-        (version(runtime["version"]), runtime, simulators.type(supported["identifier"]))
-        for runtime in simulators.runtimes
-        for supported in runtime.get("supportedDeviceTypes", [])
-        if _suits(
-            version(runtime["version"]),
-            simulators.type(supported["identifier"]),
-            bundle,
-            options,
-        )
-    ]
-    if not pairs:
-        raise LaunchError(
-            f"no iOS Simulator runtime and device type suit iOS {_text(bundle.minimum_os)} or newer "
-            f"{options.simulator_type or bundle.family} {options.os_version or ''}; install a runtime in "
-            "Xcode's Components settings"
-        )
-    _, runtime, device_type = max(
-        pairs, key=lambda pair: (pair[0], simulators.newness(pair[2]["identifier"]))
-    )
-    log(f"creating Simulator {device_type['name']} with iOS {runtime['version']}")
-    udid = xcrun(
-        "simctl",
-        "create",
-        device_type["name"],
-        device_type["identifier"],
-        runtime["identifier"],
-    ).stdout.strip()
-    return Simulator(
-        udid,
-        device_type["name"],
-        "Shutdown",
-        version(runtime["version"]),
-        device_type["identifier"],
-    )
-
-
-def boot(simulator: Simulator, options: launch_common.Options) -> None:
-    """Boot the Simulator unless it runs, show it unless --headless, and leave it running."""
-    if not simulator.booted:
-        log(f"booting Simulator {simulator.name} ({simulator.udid})")
-        xcrun("simctl", "bootstatus", simulator.udid, "-b", timeout=BOOT_TIMEOUT)
-    if not options.headless:
-        _show(simulator)
-
-
 def _show(simulator: Simulator) -> None:
     root = launch_common.run(["xcode-select", "-p"], check=False).stdout.strip()
     simulator_app = os.path.join(root, "Applications", "Simulator.app")
@@ -327,6 +365,29 @@ def _show(simulator: Simulator) -> None:
     else:
         return
     launch_common.run(command, check=False)
+
+
+def boot(simulator: Simulator, options: launch_common.Options) -> None:
+    """Boot the Simulator unless it runs, show it unless --headless, and leave it running."""
+    if not simulator.booted:
+        log(f"booting Simulator {simulator.name} ({simulator.udid})")
+        xcrun("simctl", "bootstatus", simulator.udid, "-b", timeout=BOOT_TIMEOUT)
+    if not options.headless:
+        _show(simulator)
+
+
+def _conflict(output: str) -> str | None:
+    """Why an install failure is one an installed copy causes, or None."""
+    lowered = output.lower()
+    if (
+        "insufficient" in lowered
+        or "enough space" in lowered
+        or "out of space" in lowered
+    ):
+        return "the device has too little free storage"
+    if "mismatchedapplicationidentifierentitlement" in lowered or "upgrade" in lowered:
+        return "it is signed by another team or with other entitlements"
+    return None
 
 
 def install_on_simulator(
@@ -394,53 +455,6 @@ def launch_on_simulator(
     )
 
 
-# Devices.
-
-
-@dataclasses.dataclass(frozen=True)
-class Device:
-    """A physical device devicectl knows."""
-
-    identifier: str
-    name: str
-    udid: str
-    paired: bool
-    developer_mode: str
-    connected: bool
-
-
-def _devicectl_json(*args: str, check: bool = True) -> dict | None:
-    """Run devicectl and return its JSON result, or None when it failed unchecked."""
-    with tempfile.TemporaryDirectory(prefix="rules_godot_devicectl_") as directory:
-        path = os.path.join(directory, "result.json")
-        result = xcrun("devicectl", *args, "--quiet", "--json-output", path, check=check)
-        if result.returncode != 0:
-            return None
-        with open(path, encoding="utf-8") as output:
-            return json.load(output).get("result", {})
-
-
-def devices() -> list[Device]:
-    found = []
-    for entry in (_devicectl_json("list", "devices") or {}).get("devices", []):
-        hardware = entry.get("hardwareProperties", {})
-        if hardware.get("reality") != "physical" or hardware.get("platform") != "iOS":
-            continue
-        connection = entry.get("connectionProperties", {})
-        properties = entry.get("deviceProperties", {})
-        found.append(
-            Device(
-                identifier=entry["identifier"],
-                name=properties.get("name", ""),
-                udid=hardware.get("udid", ""),
-                paired=connection.get("pairingState") == "paired",
-                developer_mode=properties.get("developerModeStatus", "unknown"),
-                connected=connection.get("tunnelState") != "unavailable",
-            )
-        )
-    return found
-
-
 def select_device(options: launch_common.Options, found: Sequence[Device]) -> Device:
     """
     Choose the device and check that it can run a development build.
@@ -479,20 +493,6 @@ def select_device(options: launch_common.Options, found: Sequence[Device]) -> De
             "Settings > Privacy & Security and restart the device"
         )
     return device
-
-
-def _conflict(output: str) -> str | None:
-    """Why an install failure is one an installed copy causes, or None."""
-    lowered = output.lower()
-    if (
-        "insufficient" in lowered
-        or "enough space" in lowered
-        or "out of space" in lowered
-    ):
-        return "the device has too little free storage"
-    if "mismatchedapplicationidentifierentitlement" in lowered or "upgrade" in lowered:
-        return "it is signed by another team or with other entitlements"
-    return None
 
 
 def _device_hint(output: str) -> str:
@@ -564,6 +564,33 @@ def install_on_device(
     )
 
 
+def _terminate_on_device(device: Device, bundle: Bundle) -> None:
+    """End the application's processes on the device, found by its bundle's path."""
+    result = _devicectl_json(
+        "device", "info", "processes", "--device", device.identifier, check=False
+    )
+    marker = (
+        "/"
+        + os.path.basename(bundle.source.rstrip("/"))
+        .removesuffix(".ipa")
+        .removesuffix(".app")
+        + ".app/"
+    )
+    for process in (result or {}).get("runningProcesses", []):
+        if marker in process.get("executable", ""):
+            xcrun(
+                "devicectl",
+                "device",
+                "process",
+                "terminate",
+                "--device",
+                device.identifier,
+                "--pid",
+                str(process["processIdentifier"]),
+                check=False,
+            )
+
+
 def launch_on_device(
     device: Device, bundle: Bundle, options: launch_common.Options
 ) -> int:
@@ -590,33 +617,6 @@ def launch_on_device(
         env=env,
         stop=lambda: _terminate_on_device(device, bundle),
     )
-
-
-def _terminate_on_device(device: Device, bundle: Bundle) -> None:
-    """End the application's processes on the device, found by its bundle's path."""
-    result = _devicectl_json(
-        "device", "info", "processes", "--device", device.identifier, check=False
-    )
-    marker = (
-        "/"
-        + os.path.basename(bundle.source.rstrip("/"))
-        .removesuffix(".ipa")
-        .removesuffix(".app")
-        + ".app/"
-    )
-    for process in (result or {}).get("runningProcesses", []):
-        if marker in process.get("executable", ""):
-            xcrun(
-                "devicectl",
-                "device",
-                "process",
-                "terminate",
-                "--device",
-                device.identifier,
-                "--pid",
-                str(process["processIdentifier"]),
-                check=False,
-            )
 
 
 # Entry point.

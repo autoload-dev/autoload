@@ -628,6 +628,11 @@ class _Scan(_Findings):
         )
 
 
+def _targets(edge: dict) -> list[str]:
+    """The nodes a resolved edge reaches: its file, or every node below its directory."""
+    return edge.get("targets", [edge["target"]])
+
+
 def _undeclared_addon_use(
     edge: dict, nodes: dict, addon_of: dict, uses: dict
 ) -> dict | None:
@@ -787,6 +792,20 @@ def _identify(scan: _Scan, path: str, uid: str, line: int) -> None:
         scan.error("invalid_uid", path, "invalid authored resource UID: " + uid, line)
 
 
+def _scan_external_resource(scan: _Scan, path: str, heading: Heading) -> None:
+    attrs = heading.attrs
+    target = attrs.get("path") or attrs.get("uid")
+    if target:
+        scan.reference(path, target, "resource", heading.line, attrs.get("uid"))
+    else:
+        scan.error(
+            "missing_resource_identity",
+            path,
+            "external resource has neither path nor UID",
+            heading.line,
+        )
+
+
 def _scan_scene(scan: _Scan, path: str, text: str) -> None:
     """Record the external resources of a scene or resource, and diagnose its local IDs."""
     ids: defaultdict[str, set[str]] = defaultdict(set)
@@ -803,20 +822,6 @@ def _scan_scene(scan: _Scan, path: str, text: str) -> None:
             ids[section].add(attrs["id"])
         if section == "ext_resource":
             _scan_external_resource(scan, path, heading)
-
-
-def _scan_external_resource(scan: _Scan, path: str, heading: Heading) -> None:
-    attrs = heading.attrs
-    target = attrs.get("path") or attrs.get("uid")
-    if target:
-        scan.reference(path, target, "resource", heading.line, attrs.get("uid"))
-    else:
-        scan.error(
-            "missing_resource_identity",
-            path,
-            "external resource has neither path nor UID",
-            heading.line,
-        )
 
 
 def _link_uid_sidecar(scan: _Scan, path: str) -> None:
@@ -857,6 +862,19 @@ def _scan_declarations(scan: _Scan) -> None:
             _index_script(scan, path, text)
 
 
+def _add_generated_uids(scan: _Scan, uids: dict[str, str]) -> None:
+    """Identify the files without an authored UID by the UID the index records for them."""
+    identified = {owner for owners in scan.uids.values() for owner in owners}
+    for owner, uid in uids.items():
+        node = "res://" + owner
+        if node in scan.nodes and node not in identified:
+            scan.uids[uid].add(node)
+
+
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _read_metadata_index(scan: _Scan, manifest: dict) -> dict[str, set[str]]:
     """
     Add the UIDs that only generated sidecars declare to the identities.
@@ -879,15 +897,6 @@ def _read_metadata_index(scan: _Scan, manifest: dict) -> dict[str, set[str]]:
         "res://" + path: {"res://" + target for target in entry["uids"]}
         for path, entry in index["resource_uids"].items()
     }
-
-
-def _add_generated_uids(scan: _Scan, uids: dict[str, str]) -> None:
-    """Identify the files without an authored UID by the UID the index records for them."""
-    identified = {owner for owners in scan.uids.values() for owner in owners}
-    for owner, uid in uids.items():
-        node = "res://" + owner
-        if node in scan.nodes and node not in identified:
-            scan.uids[uid].add(node)
 
 
 def _assign_uids(scan: _Scan) -> None:
@@ -1207,6 +1216,12 @@ def _candidate_path(edge: dict) -> str | None:
     return res_path(reference, base)
 
 
+def _below(nodes: Iterable[str], directory: str) -> list[str]:
+    """The sorted nodes below a directory's res:// path."""
+    prefix = directory + "/"
+    return sorted(path for path in nodes if path.startswith(prefix))
+
+
 class _Resolver:
     """Resolves the references of the scanned files to nodes, and diagnoses those that fail."""
 
@@ -1411,37 +1426,6 @@ def _graph_document(manifest: dict, scan: _Scan, edges: list[dict]) -> dict:
     }
 
 
-def build_graph(manifest: dict, execroot: Path | None = None) -> dict:
-    scan = _Scan(execroot or Path.cwd())
-    sources, members = _declared_sources(manifest, scan)
-    _declare_nodes(scan, manifest, sources, {res_path(path) for path in members})
-    _scan_declarations(scan)
-    corrected = _read_metadata_index(scan, manifest)
-    _assign_uids(scan)
-    _diagnose_conflicting_uids(scan)
-    _diagnose_duplicate_classes(scan)
-    _scan_references(scan)
-    declared = _declare_runtime_references(scan, manifest)
-    resolver = _Resolver(scan, declared, corrected)
-    for edge in scan.edges:
-        resolver.resolve(edge)
-    edges = _unique_edges(scan.edges)
-    _diagnose_undeclared_addon_uses(manifest, scan, edges)
-    graph = _graph_document(manifest, scan, edges)
-    return require_declared(graph) if manifest.get("require_declared") else graph
-
-
-def _below(nodes: Iterable[str], directory: str) -> list[str]:
-    """The sorted nodes below a directory's res:// path."""
-    prefix = directory + "/"
-    return sorted(path for path in nodes if path.startswith(prefix))
-
-
-def _targets(edge: dict) -> list[str]:
-    """The nodes a resolved edge reaches: its file, or every node below its directory."""
-    return edge.get("targets", [edge["target"]])
-
-
 def _is_inferred_runtime(edge: dict) -> bool:
     """Whether the scanner inferred a runtime reference, rather than the build or a declaration."""
     return edge["origin"] == "inferred" and edge["dependency_kind"] == "runtime"
@@ -1487,6 +1471,26 @@ def require_declared(graph: dict) -> dict:
         diagnostics=_sorted_diagnostics(diagnostics + undeclared),
         complete=graph["complete"] and not undeclared and not unused_addons,
     )
+
+
+def build_graph(manifest: dict, execroot: Path | None = None) -> dict:
+    scan = _Scan(execroot or Path.cwd())
+    sources, members = _declared_sources(manifest, scan)
+    _declare_nodes(scan, manifest, sources, {res_path(path) for path in members})
+    _scan_declarations(scan)
+    corrected = _read_metadata_index(scan, manifest)
+    _assign_uids(scan)
+    _diagnose_conflicting_uids(scan)
+    _diagnose_duplicate_classes(scan)
+    _scan_references(scan)
+    declared = _declare_runtime_references(scan, manifest)
+    resolver = _Resolver(scan, declared, corrected)
+    for edge in scan.edges:
+        resolver.resolve(edge)
+    edges = _unique_edges(scan.edges)
+    _diagnose_undeclared_addon_uses(manifest, scan, edges)
+    graph = _graph_document(manifest, scan, edges)
+    return require_declared(graph) if manifest.get("require_declared") else graph
 
 
 def _snapshot_uids(snapshot: dict | None) -> defaultdict[str, set[str]]:
@@ -1928,8 +1932,17 @@ def select_from_manifest(
     }
 
 
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+def _run_scan(args: argparse.Namespace) -> int:
+    manifest = read_manifest(args.manifest)
+    if args.addons:
+        uses = read_manifest(args.addons)
+        manifest.update(addons=uses["addons"], addon_uses=uses["addon_uses"])
+    graph = build_graph(manifest, args.execroot)
+    if args.output:
+        args.output.write_text(_json(graph), encoding="utf-8")
+    else:
+        print(_json(graph), end="")
+    return 0
 
 
 def _scan_command(commands: Any) -> None:
@@ -1947,17 +1960,16 @@ def _scan_command(commands: Any) -> None:
     scan.set_defaults(run=_run_scan)
 
 
-def _run_scan(args: argparse.Namespace) -> int:
-    manifest = read_manifest(args.manifest)
-    if args.addons:
-        uses = read_manifest(args.addons)
-        manifest.update(addons=uses["addons"], addon_uses=uses["addon_uses"])
-    graph = build_graph(manifest, args.execroot)
-    if args.output:
-        args.output.write_text(_json(graph), encoding="utf-8")
-    else:
-        print(_json(graph), end="")
-    return 0
+def _run_check(args: argparse.Namespace) -> int:
+    graph = _read_json(args.graph)
+    if args.require_declared:
+        graph = require_declared(graph)
+    args.output.write_text(_json(graph), encoding="utf-8")
+    if not args.validate:
+        return 0
+    for item in graph["diagnostics"]:
+        print(format_diagnostic(item), file=sys.stderr)
+    return int(any(item["severity"] == "error" for item in graph["diagnostics"]))
 
 
 def _check_command(commands: Any) -> None:
@@ -1975,16 +1987,14 @@ def _check_command(commands: Any) -> None:
     check.set_defaults(run=_run_check)
 
 
-def _run_check(args: argparse.Namespace) -> int:
+def _run_query(args: argparse.Namespace) -> int:
     graph = _read_json(args.graph)
-    if args.require_declared:
-        graph = require_declared(graph)
-    args.output.write_text(_json(graph), encoding="utf-8")
-    if not args.validate:
-        return 0
-    for item in graph["diagnostics"]:
-        print(format_diagnostic(item), file=sys.stderr)
-    return int(any(item["severity"] == "error" for item in graph["diagnostics"]))
+    previous = _read_json(args.previous_graph) if args.previous_graph else None
+    result = query_graph(
+        graph, args.paths, reverse=args.direction == "affected", previous=previous
+    )
+    print(_json(result), end="")
+    return 0
 
 
 def _query_command(commands: Any) -> None:
@@ -2002,13 +2012,17 @@ def _query_command(commands: Any) -> None:
     query.set_defaults(run=_run_query)
 
 
-def _run_query(args: argparse.Namespace) -> int:
-    graph = _read_json(args.graph)
-    previous = _read_json(args.previous_graph) if args.previous_graph else None
-    result = query_graph(
-        graph, args.paths, reverse=args.direction == "affected", previous=previous
+def _run_select(args: argparse.Namespace) -> int:
+    selection, content = select_from_manifest(
+        _read_json(args.manifest),
+        _read_json(args.graph),
+        read_manifest(args.project_manifest),
+        args.execroot,
     )
-    print(_json(result), end="")
+    args.output.write_text(_json(selection), encoding="utf-8")
+    args.content.write_text(_json(content), encoding="utf-8")
+    for item in selection["diagnostics"]:
+        print(format_diagnostic(item), file=sys.stderr)
     return 0
 
 
@@ -2042,20 +2056,6 @@ def _select_command(commands: Any) -> None:
     )
     select.add_argument("--execroot", type=Path, default=Path.cwd())
     select.set_defaults(run=_run_select)
-
-
-def _run_select(args: argparse.Namespace) -> int:
-    selection, content = select_from_manifest(
-        _read_json(args.manifest),
-        _read_json(args.graph),
-        read_manifest(args.project_manifest),
-        args.execroot,
-    )
-    args.output.write_text(_json(selection), encoding="utf-8")
-    args.content.write_text(_json(content), encoding="utf-8")
-    for item in selection["diagnostics"]:
-        print(format_diagnostic(item), file=sys.stderr)
-    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:

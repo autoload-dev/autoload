@@ -141,6 +141,12 @@ def _entries(section: str, lines: list[str]) -> tuple[dict[str, str], ...]:
     return tuple(result)
 
 
+def active(rows: Iterable[dict[str, str]], conditions: Iterable[str]) -> list[dict]:
+    """Rows available in a configuration with the given conditions."""
+    conditions = set(conditions)
+    return [row for row in rows if row["availability"] in conditions | {"always"}]
+
+
 def parse(doc: str) -> Contract:
     """Read the typed contract sections of a Bazel-evaluated docstring.
 
@@ -187,12 +193,6 @@ def parse(doc: str) -> Contract:
         if row["reason"] == "none":
             raise ValueError("Generated targets: require concrete reason")
     return contract
-
-
-def active(rows: Iterable[dict[str, str]], conditions: Iterable[str]) -> list[dict]:
-    """Rows available in a configuration with the given conditions."""
-    conditions = set(conditions)
-    return [row for row in rows if row["availability"] in conditions | {"always"}]
 
 
 def provider_identity(key: str) -> str:

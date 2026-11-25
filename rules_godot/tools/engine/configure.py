@@ -215,6 +215,10 @@ def has_renderer_switches(root: Path) -> bool:
     return _RD_SWITCH_OPTION.search(sconstruct) is not None
 
 
+def _yes(value: bool) -> str:
+    return "yes" if value else "no"
+
+
 def renderer_options(
     renderers: Collection[str], platform: str, switches: bool
 ) -> list[str]:
@@ -262,8 +266,11 @@ def engine_renderers(
     return [method for method in RENDERING_METHODS if method in methods]
 
 
-def _yes(value: bool) -> str:
-    return "yes" if value else "no"
+def _needs_shader_compiler(args: argparse.Namespace) -> bool:
+    """Return whether a recipe's renderers need RenderingDevice's shader compiler."""
+    if args.platform == "ios" and args.environment == "simulator":
+        return False
+    return any(method in args.renderers.split(",") for method in _RD_METHODS)
 
 
 def with_renderer_modules(
@@ -280,13 +287,6 @@ def with_renderer_modules(
     if not _needs_shader_compiler(args) or "glslang" not in graph:
         return modules
     return modules if "glslang" in modules else [*modules, "glslang"]
-
-
-def _needs_shader_compiler(args: argparse.Namespace) -> bool:
-    """Return whether a recipe's renderers need RenderingDevice's shader compiler."""
-    if args.platform == "ios" and args.environment == "simulator":
-        return False
-    return any(method in args.renderers.split(",") for method in _RD_METHODS)
 
 
 def require_renderer_options_unset(
@@ -673,6 +673,16 @@ def _passes_env(node: ast.AST) -> TypeGuard[ast.Call]:
     return any(_is_env(argument) for argument in arguments)
 
 
+def _module_function(
+    callee: ast.Attribute, namespace: Mapping[str, object], local_names: set[str]
+) -> object:
+    """Return the function that an attribute of a module in the namespace names."""
+    if not isinstance(callee.value, ast.Name) or callee.value.id in local_names:
+        return None
+    owner = namespace.get(callee.value.id)
+    return getattr(owner, callee.attr, None) if inspect.ismodule(owner) else None
+
+
 def _named_function(
     call: ast.Call, namespace: Mapping[str, object], local_names: set[str]
 ) -> object:
@@ -683,16 +693,6 @@ def _named_function(
     if isinstance(callee, ast.Attribute):
         return _module_function(callee, namespace, local_names)
     return None
-
-
-def _module_function(
-    callee: ast.Attribute, namespace: Mapping[str, object], local_names: set[str]
-) -> object:
-    """Return the function that an attribute of a module in the namespace names."""
-    if not isinstance(callee.value, ast.Name) or callee.value.id in local_names:
-        return None
-    owner = namespace.get(callee.value.id)
-    return getattr(owner, callee.attr, None) if inspect.ismodule(owner) else None
 
 
 def _positional_env_is_named(
@@ -1059,6 +1059,64 @@ def _generator_sources(
     return entries, files
 
 
+def require_one_text_server(modules: Iterable[str]) -> None:
+    """
+    Fail for an engine with more than one of Godot's text servers.
+
+    Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
+    object, so the application's link would fail on them.
+    """
+    servers = sorted(set(modules) & set(_TEXT_SERVERS))
+    if len(servers) > 1:
+        raise ValueError(
+            "An engine links one text server, but this configuration enables "
+            + " and ".join(servers)
+            + ": name one in enabled_modules, or leave text_server_fb out when "
+            + "default_modules starts from Godot's defaults"
+        )
+
+
+def _enabled_modules(
+    link_environment: Any, selected_modules: Collection[str]
+) -> list[str]:
+    """Return the modules Godot enabled, which must include every selected module."""
+    enabled = sorted(link_environment.module_list)
+    missing = sorted(set(selected_modules) - set(enabled))
+    if missing:
+        raise ValueError(
+            "Godot disabled requested modules for this configuration: "
+            + ", ".join(missing)
+        )
+    require_one_text_server(enabled)
+    return enabled
+
+
+def _library_option(library: object) -> str | None:
+    """Return the link option for a library SCons names, or None when it is no linked library."""
+    if not isinstance(library, str):
+        return None
+    if library.startswith("-"):
+        return library
+    return None if library.endswith((".a", ".o", ".lib")) else "-l" + library
+
+
+def _link_settings(
+    link_environment: Any, platform: str, root: Path
+) -> tuple[list[str], str]:
+    """Return the engine's link options and its deployment target, from the link environment."""
+    # SCons includes feature probes, but the action graph never retains host
+    # compiler paths, SDK roots, arch flags, or an implicit SCons cache.
+    linkopts = shlex.split(link_environment.subst("$LINKFLAGS $_LIBDIRFLAGS"))
+    # Godot's Apple platforms put it in CCFLAGS; macOS also in LINKFLAGS.
+    minimum_os = deployment_target(
+        shlex.split(link_environment.subst("$CCFLAGS $LINKFLAGS"))
+    )
+    linkopts, _ = normalize_command(["linker", *linkopts], "", root)
+    libraries = map(_library_option, link_environment.get("LIBS", []))
+    linkopts.extend(option for option in libraries if option is not None)
+    return engine_link_options(platform, linkopts), minimum_os
+
+
 class _Capture:
     """The configured build graph, accumulated from SCons's recorded executors."""
 
@@ -1207,21 +1265,6 @@ class _Capture:
         }
 
 
-def _enabled_modules(
-    link_environment: Any, selected_modules: Collection[str]
-) -> list[str]:
-    """Return the modules Godot enabled, which must include every selected module."""
-    enabled = sorted(link_environment.module_list)
-    missing = sorted(set(selected_modules) - set(enabled))
-    if missing:
-        raise ValueError(
-            "Godot disabled requested modules for this configuration: "
-            + ", ".join(missing)
-        )
-    require_one_text_server(enabled)
-    return enabled
-
-
 # The modules a recipe names when it names none and does not start from Godot's defaults.
 _DEFAULT_MODULES = ("gdscript", "text_server_fb")
 
@@ -1237,49 +1280,6 @@ def requested_modules(modules: str, default_modules: bool) -> list[str]:
     """
     named = [module for module in modules.split(",") if module]
     return named or ([] if default_modules else list(_DEFAULT_MODULES))
-
-
-def require_one_text_server(modules: Iterable[str]) -> None:
-    """
-    Fail for an engine with more than one of Godot's text servers.
-
-    Both define the same SVG-in-OpenType symbols, and the engine's libraries link every
-    object, so the application's link would fail on them.
-    """
-    servers = sorted(set(modules) & set(_TEXT_SERVERS))
-    if len(servers) > 1:
-        raise ValueError(
-            "An engine links one text server, but this configuration enables "
-            + " and ".join(servers)
-            + ": name one in enabled_modules, or leave text_server_fb out when "
-            + "default_modules starts from Godot's defaults"
-        )
-
-
-def _library_option(library: object) -> str | None:
-    """Return the link option for a library SCons names, or None when it is no linked library."""
-    if not isinstance(library, str):
-        return None
-    if library.startswith("-"):
-        return library
-    return None if library.endswith((".a", ".o", ".lib")) else "-l" + library
-
-
-def _link_settings(
-    link_environment: Any, platform: str, root: Path
-) -> tuple[list[str], str]:
-    """Return the engine's link options and its deployment target, from the link environment."""
-    # SCons includes feature probes, but the action graph never retains host
-    # compiler paths, SDK roots, arch flags, or an implicit SCons cache.
-    linkopts = shlex.split(link_environment.subst("$LINKFLAGS $_LIBDIRFLAGS"))
-    # Godot's Apple platforms put it in CCFLAGS; macOS also in LINKFLAGS.
-    minimum_os = deployment_target(
-        shlex.split(link_environment.subst("$CCFLAGS $LINKFLAGS"))
-    )
-    linkopts, _ = normalize_command(["linker", *linkopts], "", root)
-    libraries = map(_library_option, link_environment.get("LIBS", []))
-    linkopts.extend(option for option in libraries if option is not None)
-    return engine_link_options(platform, linkopts), minimum_os
 
 
 def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any]:
@@ -1348,6 +1348,17 @@ def require_expected_version(actual: str, expected: str) -> None:
             f"The source descriptor declares Godot {expected}, "
             f"but the extracted version.py is {actual}"
         )
+
+
+def load_detect(root: Path, platform: str) -> Any:
+    """Load a platform's detect.py; the source root must be on sys.path for its imports."""
+    path = root / "platform" / platform / "detect.py"
+    spec = importlib.util.spec_from_file_location("_godot_detect", path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Cannot load {path}")
+    detect = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(detect)
+    return detect
 
 
 def require_host_platform(root: Path, platform: str) -> None:
@@ -1499,17 +1510,6 @@ _LINUX_PROBES = {
 }
 
 
-def load_detect(root: Path, platform: str) -> Any:
-    """Load a platform's detect.py; the source root must be on sys.path for its imports."""
-    path = root / "platform" / platform / "detect.py"
-    spec = importlib.util.spec_from_file_location("_godot_detect", path)
-    if spec is None or spec.loader is None:
-        raise ValueError(f"Cannot load {path}")
-    detect = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(detect)
-    return detect
-
-
 def stand_in_host(root: Path, platform: str, directory: Path) -> None:
     """
     Replace the host state Godot's configuration probes, so it is the same on every host.
@@ -1624,6 +1624,21 @@ def _add_environment_option(args: argparse.Namespace) -> None:
         raise ValueError("The environment is only valid for iOS recipes")
 
 
+def _add_renderer_options(args: argparse.Namespace, root: Path) -> None:
+    """Add the upstream options of a recipe's renderers and the methods its engine runs."""
+    args.renderers = [method for method in args.renderers.split(",") if method]
+    args.engine_renderers = []
+    if not args.renderers:
+        return
+    switches = has_renderer_switches(root)
+    derived = renderer_options(args.renderers, args.platform, switches)
+    require_renderer_options_unset(derived, args.options)
+    args.options = [*args.options, *derived]
+    args.engine_renderers = engine_renderers(
+        args.renderers, args.platform, args.environment, switches
+    )
+
+
 def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     """Validate the recipe and add what it derives from the source: version, modules, hash."""
     args.version = source_version(root)
@@ -1646,21 +1661,6 @@ def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
     args.customizations = customizations(args)
     _add_environment_option(args)
     args.inputs_hash = inputs_hash(args)
-
-
-def _add_renderer_options(args: argparse.Namespace, root: Path) -> None:
-    """Add the upstream options of a recipe's renderers and the methods its engine runs."""
-    args.renderers = [method for method in args.renderers.split(",") if method]
-    args.engine_renderers = []
-    if not args.renderers:
-        return
-    switches = has_renderer_switches(root)
-    derived = renderer_options(args.renderers, args.platform, switches)
-    require_renderer_options_unset(derived, args.options)
-    args.options = [*args.options, *derived]
-    args.engine_renderers = engine_renderers(
-        args.renderers, args.platform, args.environment, switches
-    )
 
 
 def _install_capture(

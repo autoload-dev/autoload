@@ -236,85 +236,6 @@ def list_devices(adb: Adb, emulator: str | None) -> None:
             print("  " + avd)
 
 
-def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> str:
-    """
-    Choose the device: the one named, the only one running, or an emulator to start.
-
-    Raises:
-        LaunchError: The choice is ambiguous or nothing matches.
-    """
-    wanted = options.device or os.environ.get("ANDROID_SERIAL")
-    running = devices(adb)
-    if wanted:
-        # Serials first: an emulator's AVD name costs a console round trip.
-        named = next((d for d in running if d.serial == wanted), None) or next(
-            (d for d in running if d.emulator and avd_name(adb, d.serial) == wanted), None
-        )
-        if named:
-            return _ready(adb, named)
-        emulator = host_tool("emulator", "emulator")
-        startable = avds(emulator)
-        if options.start_device and wanted in startable:
-            return start_emulator(adb, emulator, wanted, options)
-        raise LaunchError(
-            f"no device or AVD {wanted}; running: "
-            f"{', '.join(d.serial for d in running) or 'none'}; AVDs: {', '.join(startable) or 'none'}"
-        )
-    device = launch_common.single(
-        running,
-        "devices",
-        lambda d: f"{d.serial} ({d.description or d.state})",
-        "ANDROID_SERIAL",
-    )
-    if device:
-        return _ready(adb, device)
-    if not options.start_device:
-        raise LaunchError("no device runs; connect one or start an emulator")
-    emulator = host_tool("emulator", "emulator")
-    return start_emulator(adb, emulator, choose_avd(emulator, apk), options)
-
-
-def _ready(adb: Adb, device: Device) -> str:
-    """The device's serial once it can install; a booting emulator is waited for."""
-    if device.emulator and device.state in ("device", "offline"):
-        if device.state == "offline":
-            log(f"waiting for {device.serial} to boot")
-        _wait_for_boot(adb.device(device.serial), time.monotonic() + BOOT_TIMEOUT)
-        return device.serial
-    if device.state == "device":
-        return device.serial
-    if device.state == "unauthorized":
-        raise LaunchError(
-            f"{device.serial} has not authorized this host; accept the USB debugging prompt on the device"
-        )
-    raise LaunchError(f"{device.serial} is {device.state}")
-
-
-def choose_avd(emulator: str, apk: str | None) -> str:
-    """
-    The AVD to start: medium_phone or the only AVD whose ABI suits the APK, else a new one.
-
-    Raises:
-        LaunchError: Several AVDs suit, or none does and none can be created.
-    """
-    abi = target_abi(apk) if apk else None
-    names = avds(emulator)
-    suitable = [name for name in names if abi is None or _avd_abi(name) in (None, abi)]
-    if DEFAULT_AVD in suitable:
-        return DEFAULT_AVD
-    if len(suitable) == 1:
-        return suitable[0]
-    if suitable:
-        raise LaunchError(
-            f"no device runs and several AVDs exist: {', '.join(suitable)}; choose one with --device=<AVD>"
-        )
-    if DEFAULT_AVD in names:
-        raise LaunchError(
-            f"AVD {DEFAULT_AVD} runs {_avd_abi(DEFAULT_AVD)}, and the APK needs {abi}; choose an AVD with --device=<AVD>"
-        )
-    return create_avd(abi or host_abi(), apk)
-
-
 def _images(abi: str) -> list[tuple[tuple[int, ...], str, str]]:
     """The installed system images of an ABI: version, API directory and tag."""
     root = sdk_root() or ""
@@ -330,16 +251,16 @@ def _images(abi: str) -> list[tuple[tuple[int, ...], str, str]]:
     return images
 
 
-def _aapt2() -> str | None:
-    """The newest aapt2 of the host SDK's build tools."""
-    tools = glob.glob(os.path.join(sdk_root() or "", "build-tools", "*", "aapt2"))
-    return max(tools, key=_version_of_path) if tools else None
-
-
 def _version_of_path(path: str) -> tuple[int, ...]:
     return tuple(
         int(part) for part in re.findall(r"\d+", os.path.basename(os.path.dirname(path)))
     )
+
+
+def _aapt2() -> str | None:
+    """The newest aapt2 of the host SDK's build tools."""
+    tools = glob.glob(os.path.join(sdk_root() or "", "build-tools", "*", "aapt2"))
+    return max(tools, key=_version_of_path) if tools else None
 
 
 def _sdk_versions(apk: str | None) -> tuple[int | None, int | None]:
@@ -416,6 +337,77 @@ def create_avd(abi: str, apk: str | None) -> str:
     return DEFAULT_AVD
 
 
+def choose_avd(emulator: str, apk: str | None) -> str:
+    """
+    The AVD to start: medium_phone or the only AVD whose ABI suits the APK, else a new one.
+
+    Raises:
+        LaunchError: Several AVDs suit, or none does and none can be created.
+    """
+    abi = target_abi(apk) if apk else None
+    names = avds(emulator)
+    suitable = [name for name in names if abi is None or _avd_abi(name) in (None, abi)]
+    if DEFAULT_AVD in suitable:
+        return DEFAULT_AVD
+    if len(suitable) == 1:
+        return suitable[0]
+    if suitable:
+        raise LaunchError(
+            f"no device runs and several AVDs exist: {', '.join(suitable)}; choose one with --device=<AVD>"
+        )
+    if DEFAULT_AVD in names:
+        raise LaunchError(
+            f"AVD {DEFAULT_AVD} runs {_avd_abi(DEFAULT_AVD)}, and the APK needs {abi}; choose an AVD with --device=<AVD>"
+        )
+    return create_avd(abi or host_abi(), apk)
+
+
+def _wait_for_boot(
+    device: Adb, deadline: float, check: Callable[[], None] | None = None
+) -> None:
+    """Wait until Android has booted on the device, then dismiss its keyguard."""
+    while device.shell("getprop", "sys.boot_completed", check=False) != "1":
+        if check:
+            check()
+        if time.monotonic() > deadline:
+            raise LaunchError(
+                f"{device.serial} did not boot within {BOOT_TIMEOUT} seconds"
+            )
+        time.sleep(1)
+    device.shell("wm", "dismiss-keyguard", check=False)
+
+
+def _ready(adb: Adb, device: Device) -> str:
+    """The device's serial once it can install; a booting emulator is waited for."""
+    if device.emulator and device.state in ("device", "offline"):
+        if device.state == "offline":
+            log(f"waiting for {device.serial} to boot")
+        _wait_for_boot(adb.device(device.serial), time.monotonic() + BOOT_TIMEOUT)
+        return device.serial
+    if device.state == "device":
+        return device.serial
+    if device.state == "unauthorized":
+        raise LaunchError(
+            f"{device.serial} has not authorized this host; accept the USB debugging prompt on the device"
+        )
+    raise LaunchError(f"{device.serial} is {device.state}")
+
+
+def _check_emulator(
+    process: subprocess.Popen, avd: str, log_path: str, deadline: float
+) -> None:
+    if process.poll() is not None:
+        with open(log_path, encoding="utf-8", errors="replace") as output:
+            tail = "".join(output.readlines()[-15:])
+        raise LaunchError(
+            f"the emulator of {avd} exited with code {process.returncode}:\n{tail}"
+        )
+    if time.monotonic() > deadline:
+        raise LaunchError(
+            f"the emulator of {avd} did not boot within {BOOT_TIMEOUT} seconds; see {log_path}"
+        )
+
+
 def start_emulator(
     adb: Adb, emulator: str, avd: str, options: launch_common.Options
 ) -> str:
@@ -457,34 +449,42 @@ def start_emulator(
     return serial
 
 
-def _wait_for_boot(
-    device: Adb, deadline: float, check: Callable[[], None] | None = None
-) -> None:
-    """Wait until Android has booted on the device, then dismiss its keyguard."""
-    while device.shell("getprop", "sys.boot_completed", check=False) != "1":
-        if check:
-            check()
-        if time.monotonic() > deadline:
-            raise LaunchError(
-                f"{device.serial} did not boot within {BOOT_TIMEOUT} seconds"
-            )
-        time.sleep(1)
-    device.shell("wm", "dismiss-keyguard", check=False)
+def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> str:
+    """
+    Choose the device: the one named, the only one running, or an emulator to start.
 
-
-def _check_emulator(
-    process: subprocess.Popen, avd: str, log_path: str, deadline: float
-) -> None:
-    if process.poll() is not None:
-        with open(log_path, encoding="utf-8", errors="replace") as output:
-            tail = "".join(output.readlines()[-15:])
-        raise LaunchError(
-            f"the emulator of {avd} exited with code {process.returncode}:\n{tail}"
+    Raises:
+        LaunchError: The choice is ambiguous or nothing matches.
+    """
+    wanted = options.device or os.environ.get("ANDROID_SERIAL")
+    running = devices(adb)
+    if wanted:
+        # Serials first: an emulator's AVD name costs a console round trip.
+        named = next((d for d in running if d.serial == wanted), None) or next(
+            (d for d in running if d.emulator and avd_name(adb, d.serial) == wanted), None
         )
-    if time.monotonic() > deadline:
+        if named:
+            return _ready(adb, named)
+        emulator = host_tool("emulator", "emulator")
+        startable = avds(emulator)
+        if options.start_device and wanted in startable:
+            return start_emulator(adb, emulator, wanted, options)
         raise LaunchError(
-            f"the emulator of {avd} did not boot within {BOOT_TIMEOUT} seconds; see {log_path}"
+            f"no device or AVD {wanted}; running: "
+            f"{', '.join(d.serial for d in running) or 'none'}; AVDs: {', '.join(startable) or 'none'}"
         )
+    device = launch_common.single(
+        running,
+        "devices",
+        lambda d: f"{d.serial} ({d.description or d.state})",
+        "ANDROID_SERIAL",
+    )
+    if device:
+        return _ready(adb, device)
+    if not options.start_device:
+        raise LaunchError("no device runs; connect one or start an emulator")
+    emulator = host_tool("emulator", "emulator")
+    return start_emulator(adb, emulator, choose_avd(emulator, apk), options)
 
 
 def install(device: Adb, apk: str, package: str, options: launch_common.Options) -> None:

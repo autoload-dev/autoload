@@ -166,6 +166,10 @@ def manifest(facts: Facts, values: Mapping[str, Any]) -> str:
     )
 
 
+def _transparent(facts: Facts) -> bool:
+    return bool(facts.setting("display/window/per_pixel_transparency/allowed"))
+
+
 def command_line(facts: Facts, values: Mapping[str, Any]) -> list[str]:
     """Godot's command line flags of its Android export."""
     flags = values["profile"]["command_line"]
@@ -212,10 +216,6 @@ def parse_command_line_file(data: bytes) -> list[str]:
     if offset != len(data):
         raise ValueError(f"{len(data) - offset} bytes follow the last argument")
     return args
-
-
-def _transparent(facts: Facts) -> bool:
-    return bool(facts.setting("display/window/per_pixel_transparency/allowed"))
 
 
 def themes(

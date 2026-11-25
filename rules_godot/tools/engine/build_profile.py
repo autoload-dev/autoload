@@ -66,28 +66,6 @@ def scope(root: Path) -> bool:
     return True
 
 
-def declare(
-    root: Path,
-    graph: Mapping[str, Collection[str]],
-    generated: Mapping[str, Generated],
-    sources: Collection[str],
-) -> tuple[dict[str, frozenset[str]], set[str]]:
-    """
-    Return the include graph with the profile only for registering sources, and those sources.
-
-    class_db.h no longer reaches the profile; a source that can reach a registration
-    includes it directly.
-    """
-    graph = {name: frozenset(includes) for name, includes in graph.items()}
-    if _CLASS_DB in graph:
-        graph[_CLASS_DB] -= {HEADER}
-    registering = _reaching(graph, lambda name: _registers(root, name, generated))
-    users = registering.intersection(sources)
-    for source in users:
-        graph[source] = graph[source] | {HEADER}
-    return graph, users
-
-
 def _registers(root: Path, name: str, generated: Mapping[str, Generated]) -> bool:
     if name == _CLASS_DB:
         return False
@@ -110,3 +88,25 @@ def _reaching(
         if reaches:
             found.update(component)
     return found
+
+
+def declare(
+    root: Path,
+    graph: Mapping[str, Collection[str]],
+    generated: Mapping[str, Generated],
+    sources: Collection[str],
+) -> tuple[dict[str, frozenset[str]], set[str]]:
+    """
+    Return the include graph with the profile only for registering sources, and those sources.
+
+    class_db.h no longer reaches the profile; a source that can reach a registration
+    includes it directly.
+    """
+    graph = {name: frozenset(includes) for name, includes in graph.items()}
+    if _CLASS_DB in graph:
+        graph[_CLASS_DB] -= {HEADER}
+    registering = _reaching(graph, lambda name: _registers(root, name, generated))
+    users = registering.intersection(sources)
+    for source in users:
+        graph[source] = graph[source] | {HEADER}
+    return graph, users

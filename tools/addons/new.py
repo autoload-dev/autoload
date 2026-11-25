@@ -104,6 +104,15 @@ def copy_tree(tree: str, target: Path, tokens: dict[str, str]) -> list[Path]:
     return written
 
 
+def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:
+    """The templates publish-to-bcr reads for the module's releases, written once."""
+    templates = root / registry.templates_directory(directory)
+    written = copy_tree("bcr", templates, tokens)
+    metadata = templates / registry.METADATA
+    metadata.write_text(registry.metadata(directory, root))
+    return [*written, metadata]
+
+
 def generate(
     directory: str, addon: str | None = None, root: Path = ROOT, release: bool = True
 ) -> list[Path]:
@@ -125,15 +134,6 @@ def generate(
         if release:
             written += registry_templates(directory, root, tokens)
     return written + copy_tree("addon", module / names.addon, tokens)
-
-
-def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:
-    """The templates publish-to-bcr reads for the module's releases, written once."""
-    templates = root / registry.templates_directory(directory)
-    written = copy_tree("bcr", templates, tokens)
-    metadata = templates / registry.METADATA
-    metadata.write_text(registry.metadata(directory, root))
-    return [*written, metadata]
 
 
 def main() -> None:

@@ -51,14 +51,6 @@ def resource_path(value: str) -> str:
     return value
 
 
-def validate_staged_paths(resource_paths: dict[str, str]) -> None:
-    """Detect portable-path collisions before a case-insensitive copy can lose data."""
-    prefixes: dict[str, str] = {}
-    files = {portable_identity(path): path for path in resource_paths}
-    for path in resource_paths:
-        _check_prefixes(path, files, prefixes)
-
-
 def _check_prefixes(path: str, files: dict[str, str], prefixes: dict[str, str]) -> None:
     """
     Check each prefix of path against the prefixes seen so far and the files.
@@ -80,12 +72,12 @@ def _check_prefixes(path: str, files: dict[str, str], prefixes: dict[str, str]) 
             )
 
 
-def copy_file(source: Path, destination: Path) -> None:
-    """Copy source's bytes to destination; an executable source stays executable."""
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(source, destination)
-    if executable(source):
-        destination.chmod(destination.stat().st_mode | 0o111)
+def validate_staged_paths(resource_paths: dict[str, str]) -> None:
+    """Detect portable-path collisions before a case-insensitive copy can lose data."""
+    prefixes: dict[str, str] = {}
+    files = {portable_identity(path): path for path in resource_paths}
+    for path in resource_paths:
+        _check_prefixes(path, files, prefixes)
 
 
 # Where a staged file's bytes came from: a file, an archive member or content.
@@ -99,6 +91,14 @@ def executable(original: Original) -> bool:
     if isinstance(original, Path):
         return os.access(original, os.X_OK)
     return bool(original[1].mode & 0o111)
+
+
+def copy_file(source: Path, destination: Path) -> None:
+    """Copy source's bytes to destination; an executable source stays executable."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+    if executable(source):
+        destination.chmod(destination.stat().st_mode | 0o111)
 
 
 @contextlib.contextmanager
@@ -167,11 +167,6 @@ def add_resource_path_manifests(
                 raise ValueError("Conflicting staged sources for " + relative)
 
 
-def write_archive(root: Path, paths: list[str], archive: Path) -> None:
-    """Archive files deterministically so equal results have equal bytes."""
-    write_originals({relative: root / relative for relative in paths}, archive)
-
-
 def _size(original: Original) -> int:
     if isinstance(original, bytes):
         return len(original)
@@ -195,6 +190,11 @@ def write_originals(files: Mapping[str, Original], archive: Path) -> None:
             )
             with open_original(files[relative]) as data:
                 stream.addfile(info, data)
+
+
+def write_archive(root: Path, paths: list[str], archive: Path) -> None:
+    """Archive files deterministically so equal results have equal bytes."""
+    write_originals({relative: root / relative for relative in paths}, archive)
 
 
 def read_original(original: Original) -> bytes:
@@ -221,6 +221,30 @@ def _check_import_uid(
     authored = (execroot / resource_paths[relative]).read_text(encoding="utf-8").strip()
     if authored != read_original(original).decode("utf-8").strip():
         raise ValueError("Cached import UID conflicts with authored sidecar: " + relative)
+
+
+def completed_texts(
+    index: dict, kinds: Iterable[str], staged: Collection[str], read: Callable[[str], str]
+) -> dict[str, str]:
+    """
+    Return the staged text files the metadata kinds of the index change, completed.
+
+    Args:
+        index: The metadata index.
+        kinds: The kinds of metadata to complete, keys of COMPLETIONS.
+        staged: The staged resource paths; the index may name others.
+        read: Returns a staged file's text by its resource path.
+    """
+    texts: dict[str, str] = {}
+    authored: dict[str, str] = {}
+    for kind in kinds:
+        for path, entry in index[kind].items():
+            if path not in staged:
+                continue
+            if path not in texts:
+                texts[path] = authored[path] = read(path)
+            texts[path] = COMPLETIONS[kind](texts[path], path, entry)
+    return {path: text for path, text in texts.items() if text != authored[path]}
 
 
 def _metadata_completions(
@@ -260,6 +284,12 @@ def _merged_import_results(
     return merged
 
 
+def extension_list(paths: Iterable[str]) -> bytes:
+    """EXTENSION_LIST's content for the .gdextension files among paths; empty for none."""
+    extensions = sorted(path for path in paths if path.endswith(".gdextension"))
+    return "".join("res://" + path + "\n" for path in extensions).encode("utf-8")
+
+
 def staged_files(manifest: dict, execroot: Path) -> dict[str, Original]:
     """
     Return the files the project stages, project.godot aside: where each one's bytes come from.
@@ -294,6 +324,18 @@ def staged_files(manifest: dict, execroot: Path) -> dict[str, Original]:
     if "metadata_index" in manifest:
         files.update(_metadata_completions(manifest["metadata_index"], execroot, files))
     return files
+
+
+def _configure(root: Path, plugins: Iterable[str], settings: Mapping[str, str]) -> None:
+    """Enable editor plugins and set settings, such as importers' import settings, in the staged project.godot."""
+    if not plugins and not settings:
+        return
+    project = root / "project.godot"
+    text = project.read_text(encoding="utf-8")
+    plugins = [*plugins, *enabled_plugins(text)]
+    if settings:
+        text = compose_project(text, dict(settings), {}, "")
+    project.write_text(enable_plugins(text, plugins), encoding="utf-8")
 
 
 def stage(manifest: dict, root: Path, execroot: Path) -> dict[str, Original]:
@@ -332,30 +374,6 @@ COMPLETIONS = {
 }
 
 
-def completed_texts(
-    index: dict, kinds: Iterable[str], staged: Collection[str], read: Callable[[str], str]
-) -> dict[str, str]:
-    """
-    Return the staged text files the metadata kinds of the index change, completed.
-
-    Args:
-        index: The metadata index.
-        kinds: The kinds of metadata to complete, keys of COMPLETIONS.
-        staged: The staged resource paths; the index may name others.
-        read: Returns a staged file's text by its resource path.
-    """
-    texts: dict[str, str] = {}
-    authored: dict[str, str] = {}
-    for kind in kinds:
-        for path, entry in index[kind].items():
-            if path not in staged:
-                continue
-            if path not in texts:
-                texts[path] = authored[path] = read(path)
-            texts[path] = COMPLETIONS[kind](texts[path], path, entry)
-    return {path: text for path, text in texts.items() if text != authored[path]}
-
-
 def apply_metadata(
     root: Path, index: dict, kinds: Iterable[str], staged: Collection[str]
 ) -> dict[str, bytes]:
@@ -374,12 +392,6 @@ def apply_metadata(
     for path, text in texts.items():
         (root / resource_path(path)).write_text(text, encoding="utf-8", newline="")
     return {path: text.encode("utf-8") for path, text in texts.items()}
-
-
-def extension_list(paths: Iterable[str]) -> bytes:
-    """EXTENSION_LIST's content for the .gdextension files among paths; empty for none."""
-    extensions = sorted(path for path in paths if path.endswith(".gdextension"))
-    return "".join("res://" + path + "\n" for path in extensions).encode("utf-8")
 
 
 @contextlib.contextmanager
@@ -489,18 +501,6 @@ def join_action(
         encoding="utf-8",
     )
     _configure(root, [f"res://{ACTION_DIRECTORY}/plugin.cfg"], {})
-
-
-def _configure(root: Path, plugins: Iterable[str], settings: Mapping[str, str]) -> None:
-    """Enable editor plugins and set settings, such as importers' import settings, in the staged project.godot."""
-    if not plugins and not settings:
-        return
-    project = root / "project.godot"
-    text = project.read_text(encoding="utf-8")
-    plugins = [*plugins, *enabled_plugins(text)]
-    if settings:
-        text = compose_project(text, dict(settings), {}, "")
-    project.write_text(enable_plugins(text, plugins), encoding="utf-8")
 
 
 def _status(returncode: int) -> str:

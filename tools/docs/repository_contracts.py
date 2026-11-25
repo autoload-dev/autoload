@@ -106,6 +106,27 @@ def repository_errors(
     return errors
 
 
+def toolchain_bound(labels: list[str], rules: Mapping[str, Target]) -> list[str]:
+    """
+    Labels that a toolchain with execution constraints in the same repository implements.
+
+    Query reports a toolchain's implementation in canonical form, so the
+    implementation is matched by its repository-relative label.
+    """
+    implementations = {
+        (label.partition("//")[0], target.labels["toolchain"].partition("//")[2])
+        for label, target in rules.items()
+        if target.kind == "toolchain"
+        and "toolchain" in target.labels
+        and target.label_lists.get("exec_compatible_with")
+    }
+    return [
+        label
+        for label in labels
+        if (label.partition("//")[0], label.partition("//")[2]) in implementations
+    ]
+
+
 def check_repository(
     bazel: EvaluatedBazel,
     case: dict,
@@ -149,27 +170,6 @@ def check_repository(
             module, bound, [*case["options"], "--config=host-execution"]
         )
     return repository_errors(contract, case, rules, sources, observed)
-
-
-def toolchain_bound(labels: list[str], rules: Mapping[str, Target]) -> list[str]:
-    """
-    Labels that a toolchain with execution constraints in the same repository implements.
-
-    Query reports a toolchain's implementation in canonical form, so the
-    implementation is matched by its repository-relative label.
-    """
-    implementations = {
-        (label.partition("//")[0], target.labels["toolchain"].partition("//")[2])
-        for label, target in rules.items()
-        if target.kind == "toolchain"
-        and "toolchain" in target.labels
-        and target.label_lists.get("exec_compatible_with")
-    }
-    return [
-        label
-        for label in labels
-        if (label.partition("//")[0], label.partition("//")[2]) in implementations
-    ]
 
 
 # Evaluated providers that identify each public configuration target kind.

@@ -27,6 +27,8 @@ identities, not authored target declarations.
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
+| [RG024](#rg024) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
+| [RG025](#rg025) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
 [boundary rules](verification-architecture.md#boundary-rules)). Choosing the main entry point
@@ -491,6 +493,43 @@ that are never loaded are allowed: target visibility, `package_group` packages a
 visibility, and the arguments of dev dependencies in `MODULE.bazel`, which only the module's
 own builds evaluate. Modules that are never released, such as the root module, are outside
 it.
+
+## RG024
+
+**Regions start with a region header the file's head names.** A file with several topics is
+divided into regions, so that a reader who scans it finds a topic and skips the rest. A region
+starts with its region header, a line the eye catches: the comment marker, four `=`, the
+region's name, and `=` up to column 80. It runs to the next region header or to the end of
+the file; there is no end marker.
+
+```python
+# ==== Lexer ===================================================================
+```
+
+Python, Starlark (`.bzl`, BUILD files, `MODULE.bazel`) and GDScript start the header with `#`,
+C and C++ with `//`; Markdown's headings are its regions. What the whole file needs stands
+above the first region header. The file's head names the regions in their order: the
+docstring of a Python or Starlark module, the comments above the first region header
+elsewhere, with a line such as `Sections: Lexer, Graph.`
+
+The check reports a region header of another width or marker, an indented one, a comment that
+marks a section in another form, such as `# ---`, `#region` or `MARK:`, and a head whose list
+of regions is missing or differs; in Python it reads comments only, not lines inside strings.
+A Python region declares at least two names. Whether a file
+needs regions at all is a matter of review: a file with one topic has none. The repository's
+`.vscode/settings.json` shows region headers in VS Code's minimap.
+
+## RG025
+
+**Python definitions stand before their first caller.** A module reads from its helpers up to
+what uses them, in the order Starlark requires on its top level; the head and the region
+headers lead a reader to the entry points. A top-level function or class stands above the
+first top-level function or class that names it. Definitions that name each other, directly
+or through others, are exempt, since one of them has to come second.
+
+The check parses every Python module of the repository; one that does not parse fails the
+audit, as for [RG023](#rg023). It reads names, so a definition that passes another on without calling it
+counts as a caller as well. Starlark files are outside it.
 
 ## Run and maintain the checks
 

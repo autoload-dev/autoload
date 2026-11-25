@@ -458,23 +458,6 @@ WORK = (
 )
 
 
-def addon_work(root: Path = ROOT) -> Iterator[Work]:
-    """
-    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
-    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
-    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
-    generator's self-test in every lane. The self-test's desktop build checks the template
-    the same way on every host, so its desktop lane runs on Linux only.
-    """
-    modules = all_modules(root)
-    named = {lane for module in modules for lane in module.lanes}
-    yield from (lane_addon_work(lane) for lane in ADDON_LANES if lane in named)
-    yield from (
-        module_work(lane, module.directory) for module in modules for lane in module.lanes
-    )
-    yield from map(template_work, ADDON_LANES)
-
-
 def lane_addon_work(lane: str) -> Work:
     """Every add-on module of a lane, with one Bazel command."""
     return Work(
@@ -511,6 +494,23 @@ def template_work(lane: str) -> Work:
         # would discard the analysis of the server it runs in.
         profile=TEMPLATE_PROFILE,
     )
+
+
+def addon_work(root: Path = ROOT) -> Iterator[Work]:
+    """
+    The add-on modules' work: in each lane, one piece for every module whose addon.pkl names
+    the lane, a single Bazel command for all of them (tools/addons/lanes.py); one piece per
+    module and lane, `<lane>:addon:<module>`, for running a module alone; then the
+    generator's self-test in every lane. The self-test's desktop build checks the template
+    the same way on every host, so its desktop lane runs on Linux only.
+    """
+    modules = all_modules(root)
+    named = {lane for module in modules for lane in module.lanes}
+    yield from (lane_addon_work(lane) for lane in ADDON_LANES if lane in named)
+    yield from (
+        module_work(lane, module.directory) for module in modules for lane in module.lanes
+    )
+    yield from map(template_work, ADDON_LANES)
 
 
 def all_work(root: Path = ROOT) -> dict[str, Work]:
@@ -560,6 +560,18 @@ def environment() -> dict[str, str]:
     return {**os.environ, "PATH": path}
 
 
+def where(step: In, steps: list[In]) -> str:
+    """A step by its directory, or with its command where other steps share it."""
+    alone = [s.directory for s in steps].count(step.directory) == 1
+    return step.directory if alone else f"{step.directory}$ {step.command}"
+
+
+def changes(ref: str | None) -> Changes | None:
+    """The changes since the merge base with a reference, if one is given."""
+    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
+    return changes_since(ref, ROOT, modules) if ref else None
+
+
 def selected(work: Work, changes: Changes | None) -> list[In]:
     """
     The steps of a piece of work to run: all of them without changes, else those without
@@ -577,12 +589,6 @@ def selected(work: Work, changes: Changes | None) -> list[In]:
                 f"[{work.name}] {where(step, steps)} skipped: no change since {changes.base}"
             )
     return chosen
-
-
-def where(step: In, steps: list[In]) -> str:
-    """A step by its directory, or with its command where other steps share it."""
-    alone = [s.directory for s in steps].count(step.directory) == 1
-    return step.directory if alone else f"{step.directory}$ {step.command}"
 
 
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
@@ -637,6 +643,12 @@ def run_lane(lane: str, root: Path = ROOT) -> None:
     run(lanes(known)[lane], root, known)
 
 
+def print_work() -> None:
+    """List every piece of work with its lane."""
+    for name, work in all_work().items():
+        print(f"{work.lane or '-':14} {name}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -661,18 +673,6 @@ def main() -> None:
             print_work()
     except ValueError as error:
         parser.error(str(error))
-
-
-def changes(ref: str | None) -> Changes | None:
-    """The changes since the merge base with a reference, if one is given."""
-    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
-    return changes_since(ref, ROOT, modules) if ref else None
-
-
-def print_work() -> None:
-    """List every piece of work with its lane."""
-    for name, work in all_work().items():
-        print(f"{work.lane or '-':14} {name}")
 
 
 if __name__ == "__main__":
