@@ -386,11 +386,14 @@ root module's declaration lists it. Each module:
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
-- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and sets only its
-  properties: `lanes` (some of `desktop`, `android`, `ios`), and optionally `desktops` (some
-  of `linux`, `macos`), `testOperations` and `sharedPackages`. The repository does not evaluate the schema's
-  types, so this rule checks the values. A module builds applications when its lanes include
-  `android` or `ios`;
+- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and that the pinned Pkl
+  CLI evaluates: Pkl rejects a property the schema does not declare and a value outside its
+  type, such as a lane other than `desktop`, `android` and `ios`. A module builds
+  applications when its lanes include `android` or `ios`;
+- lists in `addon.pkl`'s `testDependencies` exactly the regular dependencies that only its
+  `tests/` packages load from. The lanes build the module from the root module, where its
+  development dependencies are not active, so a unit test's library is a regular
+  dependency; the list keeps that exception visible;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
   defining the targets `edit` and `pack`, and `app` when the module builds applications;

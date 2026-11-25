@@ -24,8 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.addons.modules import LANES as ADDON_LANES
-from tools.addons.modules import ROOT, all_modules, host
+from tools.addons.modules import ROOT, all_modules, choices, host
 from tools.ci.changes import (
     Changes,
     Inputs,
@@ -444,12 +443,13 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
     the same way on every host, so its desktop lane runs on Linux only.
     """
     modules = all_modules(root)
+    lanes = choices()["lanes"]
     named = {lane for module in modules for lane in module.lanes}
-    yield from (lane_addon_work(lane) for lane in ADDON_LANES if lane in named)
+    yield from (lane_addon_work(lane) for lane in lanes if lane in named)
     yield from (
         module_work(lane, module.directory) for module in modules for lane in module.lanes
     )
-    yield from map(template_work, ADDON_LANES)
+    yield from map(template_work, lanes)
 
 
 def lane_addon_work(lane: str) -> Work:

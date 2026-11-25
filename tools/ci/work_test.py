@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tools.addons.modules import SCHEMA
 from tools.ci.changes import Changes, changes_since
 from tools.ci.work import (
     FAST_TEST_COMMAND,
@@ -31,7 +32,10 @@ from tools.ci.work import (
 
 
 def checkout(root: Path, modules: dict[str, str]) -> None:
-    """A checkout with add-on modules naming their lanes."""
+    """A checkout with add-on modules naming their lanes, and the schema they amend."""
+    schema = root / SCHEMA.relative_to(ROOT)
+    schema.parent.mkdir(parents=True)
+    schema.write_text(SCHEMA.read_text())
     for module, listed in modules.items():
         (root / "addons" / module).mkdir(parents=True)
         (root / "addons" / module / "MODULE.bazel").write_text(

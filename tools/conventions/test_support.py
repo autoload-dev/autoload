@@ -8,6 +8,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import NotRequired, TypedDict
 
+from tools.addons.modules import ROOT, SCHEMA
 from tools.conventions.context import (
     Call,
     Context,
@@ -119,6 +120,8 @@ class RepositoryTest(unittest.TestCase):
         # The root module, which includes the add-on generator's declarations.
         self.write("MODULE.bazel", 'include("//:addons.MODULE.bazel")\n')
         self.write("BUILD.bazel", "")
+        # The schema each addon.pkl amends, by its path in the repository.
+        self.write(SCHEMA.relative_to(ROOT).as_posix(), SCHEMA.read_text())
 
     def write_consumer_modules(self) -> None:
         """

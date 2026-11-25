@@ -2,9 +2,9 @@
 
 from collections.abc import Iterable
 
-from tools.addons.modules import addon_manifest
 from tools.conventions.context import Context, Workspace
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.manifests import module_manifest
 from tools.setup.modules import is_addon_module
 
 # rules_godot's test operation; add-on modules declare theirs in addon.pkl's testOperations.
@@ -13,14 +13,13 @@ OPERATIONS = frozenset({"godot_test"})
 
 def declared_operations(workspace: Workspace) -> frozenset[str]:
     """godot_test and the test operations the add-on modules of the workspace declare."""
-    manifests = [
-        path.as_posix()
+    manifests = (
+        module_manifest(workspace, module)
         for module in workspace.module_paths
         if is_addon_module(module)
-        and (path := module / "addon.pkl").as_posix() in workspace.file_set
-    ]
+    )
     return OPERATIONS.union(
-        *(addon_manifest(workspace.text(path))["testOperations"] for path in manifests)
+        *(manifest["testOperations"] for manifest in manifests if manifest is not None)
     )
 
 

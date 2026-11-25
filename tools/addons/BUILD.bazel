@@ -19,6 +19,7 @@ py_library(
         "//tools/generate:__pkg__",
     ],
     deps = [
+        "//tools/pkl:evaluate_lib",
         "//tools/setup:modules_lib",
     ],
 )

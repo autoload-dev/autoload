@@ -27,6 +27,7 @@ py_library(
     name = "rules_lib",
     srcs = [
         "documents.py",
+        "manifests.py",
         "naming.py",
         "registry.py",
         "rules/rg001.py",
@@ -53,6 +54,7 @@ py_library(
         ":context_lib",
         ":framework_lib",
         "//tools/addons:new_lib",
+        "//tools/pkl:evaluate_lib",
     ],
 )
 
