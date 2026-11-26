@@ -4,12 +4,14 @@ py_library(
     name = "google_services_lib",
     srcs = ["google_services.py"],
     imports = ["."],
+    tags = ["lint-genfiles"],
     visibility = ["//config/tests:__pkg__"],
 )
 
 py_binary(
     name = "google_services",
     srcs = ["google_services.py"],
+    tags = ["lint-genfiles"],
     visibility = ["//visibility:public"],
     deps = [":google_services_lib"],
 )

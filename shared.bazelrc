@@ -45,3 +45,8 @@ test --test_output=errors
 # configuration, which keeps a custom flag only when it is propagated.
 common:editor-debug --@autoload_rules_godot//godot:editor_debug
 common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//godot:editor_debug
+
+# The lint check of Python, which fails a build or test on Ruff's and ty's findings
+# (tools/lint/check.bzl); builds without it ignore them. Only modules that depend on the root
+# module use it, not the registry test modules.
+common:check --aspects=@autoload_dev//tools/lint:check.bzl%python

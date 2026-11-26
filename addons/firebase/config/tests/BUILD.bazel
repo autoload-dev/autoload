@@ -6,5 +6,6 @@ py_test(
     name = "google_services_test",
     srcs = ["google_services_test.py"],
     data = glob(["testdata/*"]),
+    tags = ["lint-genfiles"],
     deps = ["//config:google_services_lib"],
 )

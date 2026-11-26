@@ -27,7 +27,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.addons.modules import ROOT, all_modules, choices, host, release_targets
+from tools.addons.modules import (
+    ROOT,
+    all_modules,
+    choices,
+    host,
+    module_name,
+    release_targets,
+)
 from tools.apps.apps import Application, applications
 from tools.ci.changes import (
     Changes,
@@ -38,7 +45,12 @@ from tools.ci.changes import (
     module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
-from tools.setup.modules import RULESET, module_paths, registry_test_modules
+from tools.setup.modules import (
+    RULESET,
+    addon_modules,
+    module_paths,
+    registry_test_modules,
+)
 
 RULESET_DIR = RULESET.as_posix()
 
@@ -143,40 +155,35 @@ def release_tests(lane: str, suite: str) -> str:
 # ==== Checks ==================================================================
 
 
-# The API documentation's tests, all of them fast, with the API inventory's discovery
-# of new Starlark modules, which a test's sandbox cannot see.
-DOCS_CHECK = "bazel run //tools/docs:check"
+# The lint check (`--config=check`, shared.bazelrc) of a module's targets alone: its
+# stamps, without the targets' outputs and other validations, such as the source-built
+# engines that some tests' applications validate. Incompatible targets are skipped.
+LINT_CHECK = "bazel build --config=check --output_groups=lint_checks --norun_validations"
 
+# The files of a module the lint check reads: its Python and the targets that hold it.
+LINTED = ("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel")
 
-def every_module(
-    command: str, root: Path = ROOT, inputs: Inputs | None = None
-) -> tuple[In, ...]:
-    """A command for each module of the checkout, as the setup checks discover them."""
-    return tuple(In(module, command, inputs) for module in module_paths(root))
-
-
-# A module's Python targets through the lint aspects (.aspect/config.axl), which see only the
-# main repository's sources; the query spares `aspect lint` analysing every other target,
-# such as the Android and iOS applications. Targets incompatible with this host are skipped.
-LINT_COMMAND = (
-    "targets=$(mktemp) && bazel query 'kind(\"py_(binary|library|test)\", //...)'"
-    ' > "$targets" && { [ ! -s "$targets" ] || aspect lint --target-pattern-file="$targets"'
-    " --skip_incompatible_explicit_targets; }"
+# The linters and their configuration, which the root module pins for every module.
+LINTERS = files(
+    "pyproject.toml",
+    "ty.toml",
+    "tools/lint/*",
+    "MODULE.bazel",
+    "MODULE.bazel.lock",
 )
 
-# A module's lint runs for its own Python and the targets that hold it, and for the linters
-# and their configuration, which the root module pins.
-LINT_INPUTS = either(
-    module_files("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel"),
-    files(
-        "pyproject.toml",
-        "ty.toml",
-        "tools/lint/*",
-        ".aspect/config.axl",
-        "MODULE.bazel",
-        "MODULE.bazel.lock",
-    ),
-)
+
+def lint(root: Path = ROOT) -> In:
+    """The root module's lint check, which covers the add-on modules' Python (RG027)."""
+    addons = addon_modules(root)
+    patterns = " ".join(f"@{module_name(Path(addon).name)}//..." for addon in addons)
+    modules = (".", *addons)
+
+    def linted(changes: Changes, _: str) -> bool:
+        return any(changes.in_module(module, LINTED) for module in modules)
+
+    return In(".", f"{LINT_CHECK} //... {patterns}", either(linted, LINTERS))
+
 
 # What shapes the source-built engines' pins (tools/generate/generate.py): the root module's
 # declarations and MODULE.bazel.lock, the ruleset's rules and extensions, and the pins themselves.
@@ -187,6 +194,10 @@ GENERATED_INPUTS = files(
     "*.lock.json",
     "tools/generate/*",
 )
+
+# The API documentation's tests, all of them fast, with the API inventory's discovery
+# of new Starlark modules, which a test's sandbox cannot see.
+DOCS_CHECK = "bazel run //tools/docs:check"
 
 # The API documentation: the ruleset's API, the documentation's tools and the root module's
 # declarations and the Python those tools load.
@@ -332,8 +343,9 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
 WORK = (
     # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
-    # The lint aspects in every module; the workflows' lint is a test.
-    Work("lint", "quality", ".", every_module(LINT_COMMAND, inputs=LINT_INPUTS)),
+    # Python's lint check in the root module and the add-on modules; the ruleset's runs in
+    # the desktop lane, and the workflows' lint is a test.
+    Work("lint", "quality", ".", (lint(),)),
     # The files no lint aspect sees, across the tree: GDScript's declaration order through
     # gdlint (.gdlintrc), and the heading structure of Markdown through rumdl (.rumdl.toml).
     # Both read the checkout's files, which a test's sandbox does not hold.
@@ -398,6 +410,15 @@ WORK = (
         RULESET_DIR,
         ("bazel test --build_tests_only //...",),
         android=True,
+    ),
+    # The ruleset's Python lint check, after its tests, whose analysis it reuses; the
+    # quality lane has no Android NDK, which analysing every target of the ruleset needs.
+    Work(
+        "lint:ruleset",
+        "desktop",
+        RULESET_DIR,
+        (f"{LINT_CHECK} //...",),
+        inputs=either(module_files(*LINTED), LINTERS),
     ),
     # The scenarios' desktop set needs no Android SDK or NDK; an accidental dependency fails
     # here.

@@ -1,8 +1,9 @@
 """
-The repository's linters as rules_lint aspects, which `aspect lint` applies in every module of
-the repository; the others load them from here as @autoload_dev.
-Configured once: Ruff in pyproject.toml, ty in ty.toml. Buildifier lints Starlark in //tools/format, and jactionlint
-the workflows in //tools/lint:workflows_test.
+The repository's linters as rules_lint aspects: the lint check runs them in Bazel's builds
+(check.bzl), `aspect lint` for their fixes; the other modules load them as @autoload_dev.
+
+Configured once: Ruff in pyproject.toml, ty in ty.toml. Buildifier lints Starlark in
+//tools/format, and jactionlint the workflows in //tools/lint:workflows_test.
 """
 
 load("@aspect_rules_lint//lint:ruff.bzl", "lint_ruff_aspect")

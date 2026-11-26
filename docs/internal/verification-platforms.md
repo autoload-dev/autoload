@@ -87,6 +87,13 @@ runs all of them with one Bazel command as the work `<lane>:addons`, and the wor
 `<lane>:addon:<module>` runs one module alone; [add-on guidance](../../addons/AGENTS.md#lanes)
 has the commands. Their iOS work follows the Apple-lane policy below.
 
+Python's lint is a Bazel check: `--config=check` adds the aspect `python` of
+[tools/lint/check.bzl](../../tools/lint/check.bzl) to a build or test, which runs Ruff and
+ty on each Python target the build reaches through `deps` and fails it with their reports.
+The work builds only the check's stamps: `lint` in the quality lane covers the root module and
+the add-on modules ([RG027](conventions.md#rg027)), and `lint:ruleset` in the desktop lane the
+ruleset, whose targets need the Android NDK to be analysed.
+
 ### Source engine workflow
 
 The source-engine lane is the most expensive one and the least likely to change with a

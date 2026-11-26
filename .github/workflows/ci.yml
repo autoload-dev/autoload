@@ -45,8 +45,7 @@ jobs:
           - job: formatting
             name: Source quality
             work: quality
-            # Lint analyses every module's Python targets, the ruleset's applications with them,
-            # which 2 vCPUs did not do within the limit.
+            # Lint analyses every target of the root module and the add-on modules.
             runner: blacksmith-8vcpu-ubuntu-2404
             timeout: 10
           - job: api-docs

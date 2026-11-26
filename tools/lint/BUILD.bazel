@@ -1,6 +1,10 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("@rules_python//python/uv:lock.bzl", "lock")
 
+# The gate of the lint check (check.bzl): it fails with the reports of the linters that found
+# something in a target.
+exports_files(["check.sh"])
+
 # The Python packages of the linters, from PyPI as @lint_pypi (MODULE.bazel). `bazel run
 # //tools/lint:requirements.update` relocks them; the resolution leaves out releases newer
 # than its date, so relocking is reproducible until the date moves. No test compares the
@@ -32,8 +36,16 @@ py_test(
     deps = [":gdscript"],
 )
 
+py_test(
+    name = "check_test",
+    size = "small",
+    srcs = ["check_test.py"],
+    args = ["$(rootpath :check.sh)"],
+    data = [":check.sh"],
+)
+
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
-# Python is linted by the aspects of linters.bzl (`aspect lint`), Starlark by //tools/format.
+# Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format.
 py_test(
     name = "workflows_test",
     size = "small",

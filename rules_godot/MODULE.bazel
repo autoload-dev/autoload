@@ -29,8 +29,8 @@ bazel_dep(name = "bazel_skylib", version = "1.9.2")
 # The Starlark unit and analysis tests of the ruleset's tests packages.
 bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
 
-# The repository's own tooling at its root, whose linters `aspect lint` applies here;
-# consumers never see it.
+# The repository's own tooling at its root, whose linters `--config=check` and `aspect lint`
+# apply here; consumers never see it.
 bazel_dep(name = "autoload_dev", dev_dependency = True)
 local_path_override(
     module_name = "autoload_dev",

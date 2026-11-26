@@ -4,8 +4,8 @@
 # Builds of a module use the rules beside it in this repository rather than a release.
 common --override_module=autoload_rules_godot=../../rules_godot
 
-# The root module builds and tests the modules with their examples; a module is a Bazel root
-# of its own only for its lint, so its server exits soon after.
+# The root module builds, tests and lints the modules with their examples; a module is a Bazel
+# root of its own only for local work, such as `aspect lint --fix`, so its server exits soon after.
 startup --max_idle_secs=600
 
 import %workspace%/../../shared.bazelrc
