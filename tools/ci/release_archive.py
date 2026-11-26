@@ -7,6 +7,11 @@ and runs the registry test module its presubmit.yml names (RG020) with `bazel te
 inside the extracted archive. Without directories, it tests the ruleset and every add-on
 module. It is also how to run a registry test module in this repository.
 
+`--in-place`, as CI's macOS job passes it, runs each registry test module where it is in the
+checkout instead, with the rules beside it, and leaves its Bazel server up for the next run:
+the archive leaves out only files of development, such as the modules' own tests, which no
+registry test module reads.
+
 An add-on module's archive resolves autoload_rules_godot from the registry. In this
 repository it uses the ruleset of this checkout instead, since an add-on may need rules that
 are not released yet; `--registry`, as the release workflow passes it, keeps the version
@@ -93,23 +98,48 @@ def test(directory: str, root: Path = ROOT, registry: bool = False) -> int:
     return status
 
 
+def in_place(directory: str, root: Path = ROOT) -> tuple[Path, list[str]]:
+    """
+    Where and how a module's registry test module runs in the checkout: its settings name
+    the rules beside it (addons/bcr.bazelrc).
+    """
+    return root / directory / test_module(directory, root), ["bazel", "test", "//..."]
+
+
+def test_in_place(directory: str, root: Path = ROOT) -> int:
+    """Test one module's registry test module in the checkout; the result is Bazel's exit status."""
+    cwd, argv = in_place(directory, root)
+    print(f"+ {cwd}$ {' '.join(argv)}", flush=True)
+    return subprocess.run(argv, cwd=cwd, check=False).returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "directories", nargs="*", help="such as rules_godot or addons/<module>"
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--registry",
         action="store_true",
         help="resolve autoload_rules_godot as the module declares it, as a release does",
+    )
+    mode.add_argument(
+        "--in-place",
+        action="store_true",
+        help="run each registry test module in the checkout, without building the archive",
     )
     args = parser.parse_args()
     directories = args.directories or [
         module for module in module_paths(ROOT) if is_released(module)
     ]
-    failed = [d for d in directories if test(d, registry=args.registry) != 0]
+    failed = [
+        d
+        for d in directories
+        if (test_in_place(d) if args.in_place else test(d, registry=args.registry)) != 0
+    ]
     if failed:
-        print(f"Release archives that fail their test module: {', '.join(failed)}")
+        print(f"Modules that fail their registry test module: {', '.join(failed)}")
     return 1 if failed else 0
 
 

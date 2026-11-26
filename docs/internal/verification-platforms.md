@@ -70,15 +70,20 @@ tagged `source_engine` and those of the other host's mobile operating system. A 
 needs Linux's Android toolchains is tagged `android`, one that needs macOS's iOS toolchains
 `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
-hosts, compatibility permitting. The root module and the ruleset each run one `bazel test`,
-one after the other, the root module's over its add-on modules too: two servers that fetch
-the same repository at once can fail to move it into the shared repository contents cache. The
-add-on generator's self-test follows, in a server of its own: it tests a fresh module with
-`--config=ci-<host>` and, on Linux, its `bcr/smoke` module. The merge queue requires both
-jobs, `Linux` and `macOS`, by name. The matrix fails
-fast: the first job to fail cancels the other, so it frees its runner and the merge queue
-removes the entry without waiting for the slower job; the work it finished stays in
-Bazel's caches.
+hosts, compatibility permitting, such as the `<app>_build_test` of each example's desktop
+`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The root module and the
+ruleset each run one `bazel test`, one after the other, the root module's over its add-on
+modules too: two servers that fetch the same repository at once can fail to move it into the
+shared repository contents cache. On Linux the formatter, the checks that are no Bazel
+targets and the lint check of every target run first; the add-on generator's self-test
+follows in a server of its own: it tests a fresh module with `--config=ci-<host>` and, on
+Linux, its `bcr/smoke` module. Last, the macOS job runs every registry test
+module in place with the rules of the checkout (`python3 -m tools.ci.release_archive
+--in-place`), so that a break shows before a release does;
+[develop.axl](../../.aspect/develop.axl) says why only there. The merge queue requires both
+jobs, `Linux` and `macOS`, by name. The matrix fails fast: the first job to fail cancels the
+other, so it frees its runner and the merge queue removes the entry without waiting for the
+slower job; the work it finished stays in Bazel's caches.
 
 The named work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the pieces that are no
 single Bazel command, such as the checks that are no Bazel targets, the Android SDK's setup,

@@ -1,5 +1,6 @@
 load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 package(default_testonly = True)
 
@@ -55,4 +56,16 @@ filegroup(
     srcs = ["BUILD.bazel"],
     tags = ["starlark"],
     visibility = ["//visibility:private"],
+)
+
+# `godot_app` tags its targets `manual`: only this test builds the desktop application.
+# Its engine is built from source: the Source engine workflow runs it.
+build_test(
+    name = "app_build_test",
+    size = "small",
+    tags = [
+        "godot_process",
+        "source_engine",
+    ],
+    targets = ["//examples/petri:app"],
 )

@@ -30,8 +30,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's
   add-ons that registers the official engine, as applications do (RG020). Keep it using the
   module's public targets. In this repository it uses the rules beside it through
-  `addons/bcr.bazelrc`; `python3 -m tools.ci.release_archive addons/<module>` runs it from
-  the module's release archive, as the registry does.
+  `addons/bcr.bazelrc`, as CI's macOS job runs it on every run;
+  `python3 -m tools.ci.release_archive addons/<module>` runs it from the module's release
+  archive, as the registry does.
 - [`examples/addons/<module>/`](../examples/AGENTS.md) in the repository's root module, outside
   the module: its example application, the directory itself or one per scenario in
   subdirectories, each with the targets `edit`, `pack` and, when it builds an application
