@@ -55,4 +55,13 @@ filegroup(
     testonly = True,
     srcs = ["setting_kinds.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

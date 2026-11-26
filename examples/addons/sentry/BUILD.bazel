@@ -76,3 +76,11 @@ filegroup(
 android_release(name = "android_release")
 
 ios_release(name = "ios_release")
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

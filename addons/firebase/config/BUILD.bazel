@@ -15,3 +15,22 @@ py_binary(
     visibility = ["//visibility:public"],
     deps = [":google_services_lib"],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["google_services.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "defs.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

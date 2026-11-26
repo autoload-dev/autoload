@@ -79,4 +79,26 @@ filegroup(
     testonly = True,
     srcs = ["README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "contract.py",
+        "gdunit4_pack_test.py",
+        "gdunit_launcher_test.py",
+        "pck.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

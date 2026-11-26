@@ -1,5 +1,7 @@
 // Package lint is a Gazelle language that declares, in each package, a filegroup per kind of
-// source the lint check reads that has no targets of its own: Markdown and GDScript. Each
+// source the lint check reads: Markdown and GDScript, which have no targets of their own, and
+// Python, Starlark and C++, whose files the convention rules that judge each file on its own
+// read (tools/conventions/files.py). Each
 // filegroup lists the package's files of its kind, those of its subdirectories that are no
 // packages included, and carries the kind as its tag, by which the lint check's aspects find
 // it (tools/lint/check.bzl). Only files that Git lists, tracked or untracked and not ignored,
@@ -12,6 +14,7 @@ import (
 	"flag"
 	"os/exec"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -23,14 +26,34 @@ import (
 
 // ==== Kinds ===================================================================
 
-// A kind of source: the filegroup's name and tag, and the suffix of its files.
+// A kind of source: the filegroup's name and tag, the suffixes of its files and the names of
+// those it holds whatever their suffix.
 type kind struct {
-	name, tag, suffix string
+	name, tag string
+	suffixes  []string
+	names     []string
 }
 
 var kinds = []kind{
-	{name: "gdscript_files", tag: "gdscript", suffix: ".gd"},
-	{name: "markdown_files", tag: "markdown", suffix: ".md"},
+	{name: "cc_files", tag: "cc", suffixes: []string{".cc", ".cpp", ".h"}},
+	{name: "gdscript_files", tag: "gdscript", suffixes: []string{".gd"}},
+	{name: "markdown_files", tag: "markdown", suffixes: []string{".md"}},
+	// rules_lint's Python linters visit filegroups tagged `python` of their own accord.
+	{name: "python_files", tag: "python_files", suffixes: []string{".py"}},
+	{
+		name:     "starlark_files",
+		tag:      "starlark",
+		suffixes: []string{".bzl", "MODULE.bazel"},
+		names:    []string{"BUILD", "BUILD.bazel"},
+	},
+}
+
+// holds reports whether a file, by its path, is of the kind.
+func (k kind) holds(name string) bool {
+	base := path.Base(name)
+	return slices.Contains(k.names, base) || slices.ContainsFunc(k.suffixes, func(suffix string) bool {
+		return strings.HasSuffix(base, suffix)
+	})
 }
 
 // filegroup declares the files of a kind.
@@ -38,8 +61,10 @@ func (k kind) filegroup(files []string) *rule.Rule {
 	r := rule.NewRule("filegroup", k.name)
 	r.SetAttr("srcs", files)
 	r.SetAttr("tags", []string{k.tag})
-	// Only the lint check reads them, and they may hold files of a test scope (RG012).
+	// Only the lint check reads them, as top-level targets: they may hold files of a test
+	// scope (RG012), and they are no API of a package that is public by default.
 	r.SetAttr("testonly", true)
+	r.SetAttr("visibility", []string{"//visibility:private"})
 	return r
 }
 
@@ -87,7 +112,12 @@ func (*lintLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"filegroup": {
 			NonEmptyAttrs:  map[string]bool{"srcs": true},
-			MergeableAttrs: map[string]bool{"srcs": true, "tags": true, "testonly": true},
+			MergeableAttrs: map[string]bool{
+				"srcs":       true,
+				"tags":       true,
+				"testonly":   true,
+				"visibility": true,
+			},
 		},
 	}
 }
@@ -126,7 +156,7 @@ func (l *lintLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	for _, k := range kinds {
 		var matching []string
 		for _, name := range files {
-			if strings.HasSuffix(name, k.suffix) {
+			if k.holds(name) {
 				matching = append(matching, name)
 			}
 		}

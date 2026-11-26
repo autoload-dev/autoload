@@ -125,14 +125,30 @@ def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
 
 
 class Workspace:
-    def __init__(self, root: Path, files: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        root: Path,
+        files: tuple[str, ...],
+        sources: Mapping[str, Path] | None = None,
+    ) -> None:
+        """
+        ``files`` are names relative to the repository's root; ``sources`` says where a file
+        lies that is not at its name below root, such as in a Bazel action's inputs.
+        """
         self.root = root
+        self._sources = MappingProxyType(dict(sources or {}))
         # Git also lists tracked files that were deleted from the working tree.
-        self.files = tuple(sorted({name for name in files if (root / name).is_file()}))
+        self.files = tuple(sorted({name for name in files if self.path(name).is_file()}))
         # Present entries, including links to directories.
-        self.entries = tuple(sorted(n for n in set(files) if os.path.lexists(root / n)))
+        self.entries = tuple(
+            sorted(n for n in set(files) if os.path.lexists(self.path(n)))
+        )
         self._texts: dict[str, str] = {}
         self._strings: dict[str, tuple[StringLiteral, ...]] = {}
+
+    def path(self, name: str) -> Path:
+        """Where a listed file lies."""
+        return self._sources.get(name) or self.root / name
 
     @cached_property
     def file_set(self) -> frozenset[str]:
@@ -240,7 +256,7 @@ class Workspace:
     def text(self, name: str) -> str:
         if name not in self._texts:
             try:
-                self._texts[name] = (self.root / name).read_text()
+                self._texts[name] = self.path(name).read_text()
             except (OSError, UnicodeDecodeError) as error:
                 raise EvidenceError(f"{name}: cannot read: {error}") from error
         return self._texts[name]

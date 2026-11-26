@@ -1,3 +1,11 @@
 # The engine patches of this project's source-built engines; MODULE.bazel passes them to
 # the recipes.
 exports_files(["engine-name.patch"])
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

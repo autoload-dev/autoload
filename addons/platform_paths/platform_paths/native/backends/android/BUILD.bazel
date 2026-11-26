@@ -26,3 +26,19 @@ android_library(
         "@autoload_rules_godot//godot/platforms:android_plugin_api",
     ],
 )
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["android_backend.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

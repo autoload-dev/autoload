@@ -107,3 +107,15 @@ py_test(
     main = DOCS + "bcr_metadata_test.py",
     deps = DOCS_DEPS,
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "modules.bzl",
+        "rules.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

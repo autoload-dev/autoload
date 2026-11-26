@@ -32,3 +32,26 @@ filegroup(
     name = "registration",
     srcs = ["register_types.cc"],
 )
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = [
+        "backend.h",
+        "firestore.cc",
+        "firestore.h",
+        "firestore_task.cc",
+        "firestore_task.h",
+        "register_types.cc",
+    ],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

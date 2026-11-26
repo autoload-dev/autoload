@@ -35,6 +35,20 @@ bzl_library(
     ],
 )
 
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "bindings.bzl",
+        "cc_extension.bzl",
+        "godot_cpp.bzl",
+        "ios_framework.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)
+
 bzl_library(
     name = "bindings",
     srcs = ["bindings.bzl"],

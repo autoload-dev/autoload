@@ -33,6 +33,20 @@ BCR = "bcr"
 SELFTEST = "selftest"
 # The ruleset's directory: its module, and below .bcr/ its registry templates.
 RULESET = Path("rules_godot")
+# The root module's name; the released modules are named autoload_<directory>.
+ROOT_MODULE = "autoload_dev"
+RELEASED_PREFIX = "autoload_"
+
+
+def module_directory(name: str) -> Path:
+    """
+    The directory of a module of the checkout, by its name, relative to the root: the root
+    module, the ruleset, or an add-on module.
+    """
+    if name == ROOT_MODULE:
+        return Path(".")
+    directory = name.removeprefix(RELEASED_PREFIX)
+    return RULESET if directory == RULESET.name else Path(ADDONS) / directory
 
 
 def addon_modules(root: Path) -> tuple[str, ...]:
@@ -183,6 +197,14 @@ def literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
             # A computed value, such as a comprehension's variable.
             continue
     return values
+
+
+def declared_name(source: str) -> str | None:
+    """The name that a MODULE.bazel's module() declares, if any."""
+    for declaration in declarations(source):
+        if declaration.kind == "module":
+            return literals(declaration.keywords).get("name")
+    return None
 
 
 def label_path(root: Path, label: str) -> Path:

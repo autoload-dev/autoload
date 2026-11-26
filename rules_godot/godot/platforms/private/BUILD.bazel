@@ -217,3 +217,28 @@ bzl_library(
         "//godot/private:release",
     ],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "android.bzl",
+        "android_bootstrap.bzl",
+        "android_jni_libraries.bzl",
+        "android_outputs.bzl",
+        "android_platform_libraries.bzl",
+        "android_runtime_bridge.bzl",
+        "android_toolchains.bzl",
+        "desktop.bzl",
+        "ios.bzl",
+        "ios_runtime_bridge.bzl",
+        "launch.bzl",
+        "macos_signing.bzl",
+        "manifest_graph.bzl",
+        "maven.bzl",
+        "shell.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

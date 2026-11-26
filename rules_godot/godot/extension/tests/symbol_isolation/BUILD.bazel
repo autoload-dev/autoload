@@ -68,4 +68,29 @@ filegroup(
     testonly = True,
     srcs = ["main/refs_stay_native.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["native/probe.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["exports_test.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

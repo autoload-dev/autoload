@@ -59,3 +59,14 @@ multirun(
         "addons_check",
     ],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "defs.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

@@ -223,6 +223,20 @@ bzl_library(
     ],
 )
 
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "app.bzl",
+        "defs.bzl",
+        "extensions.bzl",
+        "providers.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)
+
 bzl_library(
     name = "providers",
     srcs = ["providers.bzl"],

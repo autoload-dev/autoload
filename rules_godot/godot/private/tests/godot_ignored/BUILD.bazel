@@ -66,3 +66,19 @@ filegroup(
     srcs = [_FIXTURE + ":unacknowledged_pack"],
     output_group = "selection",
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["ignored_files_test.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

@@ -60,3 +60,28 @@ py_test(
         "@multitool//tools/jactionlint",
     ],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "check_test.py",
+        "gdscript.py",
+        "gdscript_test.py",
+        "workflows_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "check.bzl",
+        "linters.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

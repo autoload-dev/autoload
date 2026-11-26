@@ -71,6 +71,7 @@ filegroup(
     testonly = True,
     srcs = ["math_test.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
@@ -78,4 +79,21 @@ filegroup(
     testonly = True,
     srcs = ["fixtures/README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["pack_membership_test.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

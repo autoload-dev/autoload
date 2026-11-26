@@ -7,7 +7,7 @@ gdlint and rumdl for the filegroups that Gazelle declares for GDScript and Markd
 Sections: Python, Sources without targets.
 """
 
-load(":linters.bzl", "gdlint", "ruff", "rumdl", "ty")
+load(":linters.bzl", "conventions", "gdlint", "ruff", "rumdl", "ty")
 
 # ==== Python ==================================================================
 
@@ -102,7 +102,7 @@ sources = aspect(
     build names, which fails the build with their reports when one of them finds something.
     """,
     implementation = _sources_impl,
-    requires = [gdlint, rumdl],
+    requires = [gdlint, rumdl, conventions],
     attrs = {
         "_check": attr.label(
             default = Label(":check.sh"),

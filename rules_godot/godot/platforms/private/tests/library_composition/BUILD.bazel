@@ -274,4 +274,33 @@ filegroup(
     testonly = True,
     srcs = ["fixtures/README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "android_apps.py",
+        "android_bundles_test.py",
+        "android_composition_test.py",
+        "android_debug_symbols_test.py",
+        "ios_app_test.py",
+        "ios_apps.py",
+        "ios_composition_test.py",
+        "ios_dynamic_framework_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "library_composition_tests.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )
