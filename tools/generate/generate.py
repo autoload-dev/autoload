@@ -162,8 +162,8 @@ def pins() -> int:
 
 def regenerate(paths: list[str]) -> int:
     """
-    Write the root module's declarations of the add-on modules, and regenerate the lock files
-    that depend on the paths, or all of them without paths.
+    Write the root module's declarations of the add-on modules, and regenerate the
+    MODULE.bazel.lock files that depend on the paths, or all of them without paths.
     """
     declarations.write(ROOT)
     everything = not paths

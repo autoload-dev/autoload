@@ -33,7 +33,7 @@ class SelfTestTest(RepositoryTestCase):
         ):
             selftest.run("desktop", self.root)
         registry.assert_called_once_with(self.root)
-        self.assertEqual("lock", seen[0], "the lock file is updated before the lane")
+        self.assertEqual("lock", seen[0], "MODULE.bazel.lock is updated before the lane")
         return seen[1]
 
     def test_the_lane_runs_with_the_module_declared(self) -> None:

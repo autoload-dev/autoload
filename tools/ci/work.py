@@ -191,7 +191,7 @@ LINT_INPUTS = either(
 )
 
 # What shapes the source-built engines' pins (tools/generate/generate.py): the root module's
-# declarations and lock files, the ruleset's rules and extensions, and the pins themselves.
+# declarations and MODULE.bazel.lock, the ruleset's rules and extensions, and the pins themselves.
 GENERATED_INPUTS = files(
     "*MODULE.bazel*",
     f"{RULESET_DIR}/godot/*.bzl",

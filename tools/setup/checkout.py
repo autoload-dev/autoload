@@ -25,7 +25,8 @@ def runfile(path: str) -> Path:
     """A file of the runfiles by its runfiles path, such as `_main/MODULE.bazel`."""
     files = runfiles.Create()
     found = files.Rlocation(path) if files is not None else None
-    if found is None:
+    # A runfiles directory resolves every path, whether or not the file exists.
+    if found is None or not Path(found).exists():
         raise FileNotFoundError(path)
     return Path(found)
 

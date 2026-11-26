@@ -7,7 +7,7 @@ runs the lane; its desktop lane also runs the module's registry test module, bcr
 Its declaration changes the root's module graph, so it updates the root's MODULE.bazel.lock
 before the lane, whose commands fail on a stale one in CI (--config=ci, shared.bazelrc).
 Afterwards it removes both, declares the add-on modules of the checkout alone again and
-restores the lock file, also when the lane fails, so the checkout is as before.
+restores MODULE.bazel.lock, also when the lane fails, so the checkout is as before.
 """
 
 import argparse
@@ -30,7 +30,7 @@ def remove(root: Path) -> None:
 
 
 def update_lock_file(root: Path) -> None:
-    """Update the root's lock file for the module graph with the self-test's module."""
+    """Update the root's MODULE.bazel.lock for the module graph with the self-test's module."""
     command = ["bazel", "mod", "deps", "--lockfile_mode=update"]
     print(f"+ {root}$ {' '.join(command)}", flush=True)
     subprocess.run(command, cwd=root, check=True, stdout=subprocess.DEVNULL)

@@ -26,6 +26,10 @@ class CheckoutTest(unittest.TestCase):
     def test_the_registry_test_modules_come_with_their_module(self) -> None:
         self.assertIn("rules_godot/bcr/smoke", registry_test_modules(self.root))
 
+    def test_a_file_no_test_declares_is_missing(self) -> None:
+        with self.assertRaises(FileNotFoundError):
+            checkout.runfile("autoload_rules_godot/undeclared.txt")
+
     def test_the_copy_is_writable_and_leaves_the_runfiles_alone(self) -> None:
         manifest = self.root / "MODULE.bazel"
         text = manifest.read_text()
