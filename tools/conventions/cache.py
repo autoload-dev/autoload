@@ -8,9 +8,8 @@ one of them is gone, such as after `bazel clean --expunge`, the entry misses.
 
 The key covers the listed files and the contents of every one that loading can read; code that
 builds compile, assets they package and documentation count by name only, since globs list
-them. The ignored
-Bazel rc files that the workspace imports count as well; the environment does not. Entries are
-compressed, and only those of the most recent loading inputs are kept.
+them. The ignored Bazel rc files that the workspace imports count as well; the environment
+does not. Entries are compressed, and only those of the most recent loading inputs are kept.
 """
 
 import gzip

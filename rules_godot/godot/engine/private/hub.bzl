@@ -94,6 +94,15 @@ godot_engine_pin(
 )
 """
 
+def _pin_target(ctx, name, recipes, variants, partial):
+    return _PIN_TARGET.format(
+        name = repr(name),
+        recipes = repr(recipes),
+        variants = repr({label: json.encode(variant) for label, variant in variants.items()}),
+        lock = repr(ctx.attr.lock),
+        partial = repr(partial),
+    )
+
 _PINNED = """
 # Fails with the pin command while a recipe or one of its runtime variants has no current pin
 # in the lock file. Every host builds it, whatever platform the recipes are for.
@@ -103,15 +112,6 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 """
-
-def _pin_target(ctx, name, recipes, variants, partial):
-    return _PIN_TARGET.format(
-        name = repr(name),
-        recipes = repr(recipes),
-        variants = repr({label: json.encode(variant) for label, variant in variants.items()}),
-        lock = repr(ctx.attr.lock),
-        partial = repr(partial),
-    )
 
 def _pin(ctx):
     """

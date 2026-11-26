@@ -43,6 +43,10 @@ def _targets(workspace: str):
         return ["--", "//..."]
     return ["--target_pattern_file=root.targets"]
 
+def _first_failure(codes, ignored = []) -> int:
+    """The first exit code that is neither 0 nor ignored, else 0."""
+    return ([code for code in codes if code != 0 and code not in ignored] + [0])[0]
+
 def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> int:
     """Run a Bazel command with the flags over every workspace's patterns.
 
@@ -70,10 +74,6 @@ def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> i
             codes.append(child.wait().code)
     codes += [child.wait().code for child in children]
     return _first_failure(codes, ignored = [_NO_TESTS])
-
-def _first_failure(codes, ignored = []) -> int:
-    """The first exit code that is neither 0 nor ignored, else 0."""
-    return ([code for code in codes if code != 0 and code not in ignored] + [0])[0]
 
 def bazel_tests(ctx: TaskContext, flags) -> int:
     """Run `bazel test` with the flags over every workspace's patterns at once."""

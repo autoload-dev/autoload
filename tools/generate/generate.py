@@ -27,10 +27,6 @@ from tools.setup.modules import ADDONS, RULESET, module_paths
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def bazel(module: str, *args: str) -> int:
-    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
-
-
 # ==== Lock files ==============================================================
 
 RULESET_DIR = RULESET.as_posix()
@@ -66,6 +62,10 @@ def locked_modules_shaped_by(paths: list[str]) -> list[str]:
     if any(map(is_ruleset_code, paths)):
         shaped.update((".", RULESET_DIR))
     return [module for module in LOCKED_MODULES if module in shaped]
+
+
+def bazel(module: str, *args: str) -> int:
+    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
 
 
 def lock_files(modules: list[str]) -> int:
