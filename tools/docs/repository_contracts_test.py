@@ -33,6 +33,14 @@ def rule(kind: str = "cc_library", **booleans: bool) -> SimpleNamespace:
     )
 
 
+def replace_visibility(
+    target: SimpleNamespace, grants: tuple[str, ...]
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        **vars(target) | {"label_lists": MappingProxyType({"visibility": grants})}
+    )
+
+
 CASE = {"conditions": [], "entrypoints": {"@{repository}//:godot_cpp": [LABEL]}}
 LIBRARY = ConfiguredTarget(LABEL, 1, 0, False, frozenset({"CcInfo"}), frozenset())
 
@@ -52,6 +60,18 @@ class RepositoryContractsTest(unittest.TestCase):
         self.assertIn(
             "undocumented public repository rule: @cpp//:bindings.headers", errors
         )
+
+    def test_grants_within_the_repository_are_not_consumer_access(self) -> None:
+        def granted(*grants: str) -> SimpleNamespace:
+            return replace_visibility(rule("aar_import"), grants)
+
+        internal = "@cpp//android:release_profiled"
+        rules = {LABEL: rule(), internal: granted("@cpp//toolchains:__pkg__")}
+        self.assertEqual([], self.errors(contract(), rules, {LABEL: LIBRARY}))
+        # A grant to a package of another repository still reaches consumers.
+        rules[internal] = granted("@cpp//toolchains:__pkg__", "@app//:__pkg__")
+        errors = self.errors(contract(), rules, {LABEL: LIBRARY})
+        self.assertIn(f"undocumented public repository rule: {internal}", errors)
 
     def test_undocumented_entrypoint_and_default_kind_are_rejected(self) -> None:
         errors = self.errors(

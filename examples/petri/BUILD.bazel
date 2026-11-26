@@ -7,18 +7,13 @@ load(
     "godot_project",
     "godot_run",
 )
-load("//examples/petri/engine:source_engine.bzl", "SOURCE_ENGINE_ONLY")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["project.godot"])
+# Every target that runs Godot names the engine simulation (examples/engines/simulation),
+# Godot with the reaction_diffusion module whose class Petri's scripts use.
 
-# Petri's engine is the build's, as --config=petri selects; engine/source_engine.bzl turns it into
-# the targets' gate.
-config_setting(
-    name = "with_source_engine",
-    flag_values = {"@autoload_rules_godot//godot:engine": "petri"},
-)
+exports_files(["project.godot"])
 
 godot_project(
     name = "petri",
@@ -28,28 +23,29 @@ godot_project(
 
 godot_editor(
     name = "edit",
+    engine = "simulation",
     project = ":petri",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
     deps = ["//examples/petri/main"],
 )
 
 godot_metadata_sync(
     name = "update",
     size = "small",
+    engine = "simulation",
     project = ":petri",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
     deps = ["//examples/petri/main"],
 )
 
 godot_pack(
     name = "pack",
+    engine = "simulation",
     project = ":petri",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
     deps = ["//examples/petri/main"],
 )
 
 godot_run(
     name = "run",
+    engine = "simulation",
     headless = False,
     pack = ":pack",
 )
@@ -57,8 +53,8 @@ godot_run(
 godot_app(
     name = "app",
     application_id = "org.example.rulesgodot.petri",
+    engine = "simulation",
     pack = ":pack",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
 )
 
 godot_project(
@@ -71,8 +67,8 @@ godot_metadata_sync(
     name = "test_update",
     size = "small",
     testonly = True,
+    engine = "simulation",
     project = ":test_project",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
 )
@@ -80,8 +76,8 @@ godot_metadata_sync(
 godot_editor(
     name = "test_edit",
     testonly = True,
+    engine = "simulation",
     project = ":test_project",
-    target_compatible_with = SOURCE_ENGINE_ONLY,
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
 )

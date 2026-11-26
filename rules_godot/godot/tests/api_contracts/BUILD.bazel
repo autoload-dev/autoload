@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resources", "godot_run", "godot_test")
+load("//godot:defs.bzl", "godot_addon", "godot_editor", "godot_metadata_sync", "godot_pack", "godot_project", "godot_resources", "godot_run", "godot_runtime_profile", "godot_test")
 load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
 load("//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
@@ -57,6 +57,13 @@ godot_editor(
 godot_metadata_sync(
     name = "metadata",
     size = "medium",
+    project = ":api_contracts",
+    tags = ["manual"],
+)
+
+godot_runtime_profile(
+    name = "runtime_profile",
+    profile = "runtime.gdbuild",
     project = ":api_contracts",
     tags = ["manual"],
 )

@@ -162,7 +162,11 @@ def plan_rows(name, rows, version = ""):
             _add_android_library(android, name, recipe)
     return struct(recipes = recipes, slots = slots, android = android)
 
-def recipe_declarations(name, source, plan, common, lock_file = None):
+def _recipe_profiles(row, runtime_profiles):
+    """The runtime profiles a recipe declares variants of: a runtime's, not an editor's."""
+    return {} if row.build_target == "editor" else runtime_profiles
+
+def recipe_declarations(name, source, plan, common, lock_file = None, runtime_profiles = {}):
     """
     Return the recipe and Android shell repositories of a plan_rows result.
 
@@ -171,9 +175,11 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
         source: Label of the `:source.json` descriptor of a godot_engine_source repository.
         plan: A plan_rows result.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            custom_modules, patches, patch_strip, renderers, build_profile, build_options, build_name, python and
+            custom_modules, patches, patch_strip, renderers, build_options, build_name, python and
             configure_timeout.
         lock_file: Optional Label of the lock file that pins every recipe.
+        runtime_profiles: The engine's registered runtime profiles: each label string's
+            build options as JSON; each runtime recipe declares a runtime variant of each.
 
     Returns:
         A list of structs with `rule`, the name of a repository rule, and `attrs`, its
@@ -191,6 +197,7 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
             build_target = recipe.row.build_target,
             environment = recipe.row.environment,
             lock_key = recipe.row.name if lock_file else "",
+            runtime_profiles = _recipe_profiles(recipe.row, runtime_profiles),
             **(common | pinning)
         ))
         for recipe in plan.recipes
@@ -204,7 +211,29 @@ def recipe_declarations(name, source, plan, common, lock_file = None):
         )))
     return declarations
 
-def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", *, _fail = fail):
+def _version_source(source, version):
+    """The hub attribute that reads the version from the source descriptor, when no version is known."""
+    return {} if version else {"version_source": source}
+
+def _pinning(plan, lock_file, runtime_profiles):
+    """The hub attributes that let `@<hub>//:pin` write the lock file of a plan's recipes."""
+    if not lock_file:
+        return {}
+    return {
+        "pin_recipes": json.encode({
+            "@%s//:pin" % recipe.repository: recipe.row.name
+            for recipe in plan.recipes
+        }),
+        # Each runtime variant's pin target: its recipe's key and its runtime profile.
+        "pin_variants": json.encode({
+            "@%s//:pin_variant_%d" % (recipe.repository, index): [recipe.row.name, profile]
+            for recipe in plan.recipes
+            for index, profile in enumerate(sorted(_recipe_profiles(recipe.row, runtime_profiles)))
+        }),
+        "lock": "/".join([part for part in [lock_file.package, lock_file.name] if part]),
+    }
+
+def source_build_declarations(name, source, platforms, cpus, build_targets, ios_environments, common, lock_file = None, engine = "", version = "", runtime_profiles = {}, *, _fail = fail):
     """
     Return the repositories godot_engine_source_build declares.
 
@@ -216,12 +245,16 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
         build_targets: As for select_rows.
         ios_environments: As for select_rows.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            custom_modules, patches, patch_strip, renderers, build_profile, build_options, build_name, python and
+            custom_modules, patches, patch_strip, renderers, build_options, build_name, python and
             configure_timeout.
         lock_file: Optional Label of the lock file that pins every recipe; the hub then
             declares `:pin`, which writes it.
         engine: Name of the engine the hub's components belong to; empty for the default
             engine.
+        version: Canonical Godot version of the sources; empty makes the hub read it from
+            the source descriptor, which fetches the source archive.
+        runtime_profiles: The engine's registered runtime profiles: each label string's
+            build options as JSON; each runtime recipe declares a runtime variant of each.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
@@ -231,21 +264,14 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
     rows = select_rows(name, platforms, cpus, build_targets, ios_environments, _fail = _fail)
     if rows == None:
         return None
-    plan = plan_rows(name, rows)
-    declarations = recipe_declarations(name, source, plan, common, lock_file)
+    plan = plan_rows(name, rows, version)
+    declarations = recipe_declarations(name, source, plan, common, lock_file, runtime_profiles)
     hub = dict(
         name = name,
         display_name = name,
         components = json.encode(plan.slots),
         android_runtimes = json.encode(plan.android),
-        version_source = source,
         engine = engine,
     )
-    if lock_file:
-        hub["pin_recipes"] = json.encode({
-            "@%s//:pin" % recipe.repository: recipe.row.name
-            for recipe in plan.recipes
-        })
-        hub["lock"] = "/".join([part for part in [lock_file.package, lock_file.name] if part])
-    declarations.append(struct(rule = "engine_hub", attrs = hub))
+    declarations.append(struct(rule = "engine_hub", attrs = hub | _version_source(source, version) | _pinning(plan, lock_file, runtime_profiles)))
     return declarations

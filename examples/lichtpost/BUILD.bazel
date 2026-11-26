@@ -6,6 +6,7 @@ load(
     "godot_pack",
     "godot_project",
     "godot_run",
+    "godot_runtime_profile",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -31,6 +32,16 @@ godot_metadata_sync(
     deps = ["//examples/lichtpost/main"],
 )
 
+# The classes and build options a smaller runtime leaves out, as Godot's detection finds them
+# in the game; `bazel run :update_profile` writes the file, `:update_profile.test` checks it.
+godot_runtime_profile(
+    name = "update_profile",
+    size = "small",
+    profile = "runtime.gdbuild",
+    project = ":lichtpost",
+    deps = ["//examples/lichtpost/main"],
+)
+
 godot_pack(
     name = "pack",
     project = ":lichtpost",
@@ -46,6 +57,16 @@ godot_run(
 godot_app(
     name = "app",
     application_id = "org.example.rulesgodot.lichtpost",
+    pack = ":pack",
+)
+
+# The same game with a runtime cut to what it uses: the default engine builds it from its
+# release's sources with runtime.gdbuild, which MODULE.bazel registers. Desktop only; the
+# mobile lanes ship :app.
+godot_app(
+    name = "slim_app",
+    application_id = "org.example.rulesgodot.lichtpost",
+    build_profile = "runtime.gdbuild",
     pack = ":pack",
 )
 

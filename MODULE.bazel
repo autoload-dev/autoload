@@ -210,13 +210,14 @@ godot_engines = use_extension(
 )
 
 # The hub builds the runtimes the official 4.7.2 artifacts lack, such as the arm64 Simulator
-# runtimes, from the release's sources, the first time a build selects their slots.
+# runtimes, and every runtime of an application with a build profile from the release's
+# sources, the first time a build selects their slots.
 godot_engines.prebuilt(
     name = "godot",
     version = "4.7.2",
 )
 
-# The release's sources: Petri's engine and the hub's missing runtimes.
+# The release's sources: Petri's engine and the hub's source-built runtimes.
 godot_engines.source(
     name = "godot_sources",
     sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
@@ -245,11 +246,12 @@ godot_engines.source(
     version = "4.7.3-rc",
 )
 
-# Petri's engine, named petri: the 4.7.2 release sources with its reaction_diffusion module,
-# built for the Linux and macOS editors and runtimes. --config=petri registers the hub and
-# selects the engine; nothing is compiled until a Petri build asks for a payload.
+# The engine simulation (examples/engines/simulation): the 4.7.2 release sources with the
+# reaction_diffusion module, built for the Linux and macOS editors and runtimes. Petri's
+# targets select it with their engine attribute; nothing is compiled until a build asks for
+# a payload.
 godot_engines.source_build(
-    name = "godot_petri",
+    name = "godot_simulation",
     # The Compatibility renderer only; Vulkan would need the MoltenVK SDK on macOS hosts.
     build_options = {
         "vulkan": "no",
@@ -259,7 +261,7 @@ godot_engines.source_build(
         "editor",
         "template_release",
     ],
-    custom_modules = {"//examples/petri/engine/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+    custom_modules = {"//examples/engines/simulation/modules/reaction_diffusion:config.py": "reaction_diffusion"},
     # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
     enabled_modules = [
         "gdscript",
@@ -268,12 +270,12 @@ godot_engines.source_build(
         "zip",
         "reaction_diffusion",
     ],
-    # Only builds with --@autoload_rules_godot//godot:engine=petri take these components, and they
-    # take no other engine's.
-    engine = "petri",
-    # Every recipe's build graph, pinned with `bazel run @godot_petri//:pin`, so any host can
+    # Only targets that name the engine simulation take these components, and they take no
+    # other engine's.
+    engine = "simulation",
+    # Every recipe's build graph, pinned with `bazel run @godot_simulation//:pin`, so any host can
     # build any recipe, such as a Mac with remote execution the Linux editor.
-    lock_file = "//examples/petri/engine:godot_petri.lock.json",
+    lock_file = "//examples/engines/simulation:godot_simulation.lock.json",
     platforms = [
         "linux",
         "macos",
@@ -284,9 +286,9 @@ godot_engines.source_build(
 # The patched desktop engines of e2e/rules_godot/patched_engine and its source-built tests; built
 # only by the source-engine lane. Each recipe has its own policy, so each is a source
 # build of one slot; e2e/rules_godot/patched_engine/engines registers their recipes' payloads.
-_BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engine/modules/bazel_probe:config.py": "bazel_probe"}
+_BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engines/patched/modules/bazel_probe:config.py": "bazel_probe"}
 
-_ENGINE_NAME_PATCH = ["//e2e/rules_godot/patched_engine/engine/patches:engine-name.patch"]
+_ENGINE_NAME_PATCH = ["//e2e/rules_godot/patched_engine/engines/patched/patches:engine-name.patch"]
 
 # The snapshot's fuller editor: the same module and patch, without the runtime's
 # template-only reductions, plus the font and SVG support the editor itself uses.
@@ -319,7 +321,9 @@ _REDUCED_RUNTIME = {
     "disable_navigation_3d": "yes",
 }
 
-# The reduced runtime of the snapshot; godot_source_editor is its fuller editor.
+# The reduced runtime of the snapshot; godot_source_editor is its fuller editor. Its engine
+# name keeps the runtime profile below to the patched runtimes; e2e/rules_godot/
+# patched_engine/engines registers their recipes' payloads itself.
 godot_engines.source_build(
     name = "godot_source",
     build_options = _REDUCED_RUNTIME,
@@ -331,6 +335,7 @@ godot_engines.source_build(
         "text_server_fb",
         "bazel_probe",
     ],
+    engine = "patched",
     patches = _ENGINE_NAME_PATCH,
     platforms = ["macos"],
     source = "@godot_sources_snapshot//:source.json",
@@ -347,14 +352,26 @@ godot_engines.source_build(
         "freetype",
         "bazel_probe",
     ],
+    engine = "patched",
     patches = _ENGINE_NAME_PATCH,
     platforms = ["macos"],
     source = "@godot_sources_beta//:source.json",
 )
+
+# A build profile with a build option, for the patched engine's runtime variant: every
+# runtime recipe of the patched engine declares the variant, and only the applications
+# whose build_profile names the file compile it.
+godot_engines.runtime_profile(
+    engine = "patched",
+    profile = "//e2e/rules_godot/patched_engine:no_advanced_gui.gdbuild",
+)
+
+# Lichtpost's runtime profile, as godot_runtime_profile derives it; its slim_app takes it.
+godot_engines.runtime_profile(profile = "//examples/lichtpost:runtime.gdbuild")
 use_repo(
     godot_engines,
     "godot",
-    "godot_petri",
+    "godot_simulation",
     "godot_source_beta_macos_arm64_template_release",
     "godot_source_editor_macos_arm64_editor",
     "godot_source_macos_arm64_template_release",
@@ -363,8 +380,11 @@ use_repo(
     "godot_sources_snapshot",
 )
 
+# Every engine stays registered: a target selects its engine by name, and a hub that no
+# selected engine needs costs no download.
 register_toolchains(
     "@godot//toolchains:all",
+    "@godot_simulation//toolchains:all",
     dev_dependency = True,
 )
 

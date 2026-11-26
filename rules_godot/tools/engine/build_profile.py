@@ -1,5 +1,6 @@
 """
-Give a source-built engine's build profile only to the sources that register classes.
+Read build profiles, and give a source-built engine's profile only to the sources that
+register classes.
 
 Godot's build profile disables classes through core/disabled_classes.gen.h, which
 core/object/class_db.h includes, so nearly every source would depend on it, and changing
@@ -9,16 +10,60 @@ include the profile only where GODOT_DECLARES_BUILD_PROFILE is defined, and defi
 for the sources that can reach a registration. Elsewhere GD_IS_CLASS_ENABLED names an
 undeclared identifier, so a source the scan misses fails to compile instead of
 registering a disabled class.
+
+Sections: Profile files, Scoping.
 """
 
+import json
 import re
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from pathlib import Path
+from typing import Any
 
 try:
     from .include_graph import Generated, components
 except ImportError:
     from include_graph import Generated, components
+
+# ==== Profile files ===========================================================
+
+
+def read_profile(profile: Path) -> dict[str, Any]:
+    """Return a build profile's JSON object."""
+    try:
+        data = json.loads(profile.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"The build profile is not readable JSON: {error}") from error
+    if not isinstance(data, dict):
+        raise TypeError("The build profile must be a JSON object")
+    return data
+
+
+def build_options(profile: Mapping[str, Any]) -> dict[str, Any]:
+    """
+    Return a build profile's build options, the part that shapes a recipe's graph.
+
+    Its class list reaches the engine as an action input instead: the generator of
+    core/disabled_classes.gen.h reads it when it runs.
+    """
+    return dict(profile.get("disabled_build_options") or {})
+
+
+def class_list_spec(
+    spec: Mapping[str, Any], classes: Iterable[str] = ()
+) -> dict[str, Any]:
+    """
+    Return a generator specification with the given class list of a build profile.
+
+    Only the class generator's changes. A pinned graph holds no class list, so it stays
+    valid whatever classes the recipe's or an application's profile disables.
+    """
+    if spec["function"] != "disabled_class_builder":
+        return dict(spec)
+    return dict(spec) | {"sources": [{"value": list(classes)}]}
+
+
+# ==== Scoping =================================================================
 
 HEADER = "core/disabled_classes.gen.h"
 DEFINE = "GODOT_DECLARES_BUILD_PROFILE"
@@ -60,6 +105,9 @@ def scope(root: Path) -> bool:
     """
     path = root / _CLASS_DB
     text = path.read_text() if path.is_file() else ""
+    if text.count(_SCOPED) == 1:
+        # Scoped already, for another runtime variant of the recipe.
+        return True
     if text.count(_UPSTREAM) != 1:
         return False
     path.write_text(text.replace(_UPSTREAM, _SCOPED))

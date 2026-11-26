@@ -4,21 +4,30 @@ package(default_visibility = ["//visibility:public"])
 
 py_binary(
     name = "generator",
-    srcs = ["generator.py"],
+    srcs = [
+        "build_profile.py",
+        "generator.py",
+        "include_graph.py",
+        "source_tree.py",
+    ],
+    main = "generator.py",
 )
 
 # Configures a source recipe into its pin and merges pins into a lock file.
 py_binary(
     name = "pin",
     srcs = [
+        "build_file.py",
         "build_profile.py",
         "configure.py",
         "define_analysis.py",
+        "generators.py",
         "include_graph.py",
         "module_graph.py",
         "pin.py",
         "render.py",
         "source_tree.py",
+        "variants.py",
     ],
     main = "pin.py",
 )
@@ -31,25 +40,31 @@ py_binary(
 py_library(
     name = "support",
     srcs = [
+        "build_file.py",
         "build_profile.py",
         "configure.py",
         "define_analysis.py",
         "generator.py",
+        "generators.py",
         "include_graph.py",
         "module_graph.py",
         "pin.py",
         "render.py",
         "revision.py",
         "source_tree.py",
+        "variants.py",
     ],
 )
 
 exports_files([
+    "build_file.py",
     "build_profile.py",
     "configure.py",
     "define_analysis.py",
+    "generators.py",
     "include_graph.py",
     "module_graph.py",
     "render.py",
     "source_tree.py",
+    "variants.py",
 ])

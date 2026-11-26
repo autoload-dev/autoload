@@ -100,7 +100,7 @@ APPLICATIONS = applications(ROOT)
 
 def example_tests(application: Application) -> str:
     """The command that runs one application's own tests, below its package."""
-    return f"bazel test --build_tests_only{application.flags} {application.package}/..."
+    return f"bazel test --build_tests_only {application.package}/..."
 
 
 def example_work() -> Iterator[Work]:
@@ -244,7 +244,8 @@ def contracts(lane: str) -> Work:
     """
     The API output contract cases of a lane. The checker builds itself and extracts the API
     in the default profile, which the docs work shares; its configured queries of the
-    lane's cases run in the lane's profile (tools/docs/evidence.py).
+    lane's cases run in the lane's profile (tools/docs/evidence.py). Its inputs are the docs
+    work's, since the cases evaluate the same API and generated repositories.
     """
     return Work(
         f"contracts:{lane}",
@@ -253,6 +254,7 @@ def contracts(lane: str) -> Work:
         (contracts_command(lane),),
         android=lane == "android",
         profile=DEFAULT_PROFILE,
+        inputs=DOCS_INPUTS,
     )
 
 
@@ -282,6 +284,7 @@ FAST_TEST_COMMAND = (
 
 PATCHED_ENGINE = (
     f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
+    f" {SCENARIOS}/patched_engine/tests:app_build_profile_test"
     f" --extra_toolchains={SCENARIOS}/patched_engine/engines/{{engine}}:all"
 )
 

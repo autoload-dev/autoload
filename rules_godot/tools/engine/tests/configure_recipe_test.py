@@ -5,14 +5,17 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+from tools.engine.build_profile import class_list_spec
 from tools.engine.configure import (
     check_options,
     customizations,
     inputs_hash,
+    profile_options_digest,
     requested_modules,
     require_consistent_profile,
     require_expected_version,
     require_host_platform,
+    require_known_options,
     require_one_text_server,
     source_version,
     version_name,
@@ -35,6 +38,35 @@ class ConfigureRecipeTest(unittest.TestCase):
             ValueError, "one text server.*text_server_adv and text_server_fb"
         ):
             require_one_text_server(["text_server_fb", "gdscript", "text_server_adv"])
+
+    def test_only_a_build_profiles_options_enter_the_pin(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.gdbuild"
+
+            def digest(content: dict[str, Any]) -> str:
+                profile.write_text(json.dumps({"type": "build_profile"} | content))
+                return profile_options_digest(profile)
+
+            # The class list reaches the engine as an action input, so it needs no pin.
+            self.assertEqual(digest({"disabled_classes": ["Tree"]}), "")
+            options = {"disabled_build_options": {"disable_3d": True}}
+            first = digest(options | {"disabled_classes": ["Tree"]})
+            self.assertRegex(first, "^sha256:")
+            self.assertEqual(digest(options | {"disabled_classes": ["Node3D"]}), first)
+            self.assertNotEqual(
+                digest({"disabled_build_options": {"disable_3d": False}}), first
+            )
+
+    def test_a_pinned_graph_holds_no_class_list(self) -> None:
+        spec = {
+            "code_file": "core/core_builders.py",
+            "function": "disabled_class_builder",
+            "targets": ["core/disabled_classes.gen.h"],
+            "sources": [{"value": ["Tree"]}],
+        }
+        self.assertEqual(class_list_spec(spec)["sources"], [{"value": []}])
+        other = spec | {"function": "make_authors_header"}
+        self.assertEqual(class_list_spec(other), other)
 
     def test_a_build_profile_must_agree_with_the_recipes_options(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -60,6 +92,40 @@ class ConfigureRecipeTest(unittest.TestCase):
             profile.write_text("{")
             with self.assertRaisesRegex(ValueError, "not readable JSON"):
                 require_consistent_profile(profile, [])
+
+    def test_a_build_profile_may_not_set_options_the_ruleset_owns(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "size.gdbuild"
+            for option, message in (
+                ("platform", "controlled by rules_godot: platform"),
+                ("target", "controlled by rules_godot: target"),
+                ("build_profile", "controlled by rules_godot: build_profile"),
+                ("optimize", "optimize=web follows the build's settings"),
+                ("lto", "lto=web follows the build's settings"),
+            ):
+                with self.subTest(option=option):
+                    profile.write_text(
+                        json.dumps({"disabled_build_options": {option: "web"}})
+                    )
+                    with self.assertRaisesRegex(ValueError, message):
+                        require_consistent_profile(profile, [])
+            # A profile switches modules, which a recipe's build_options may not.
+            profile.write_text(
+                json.dumps({"disabled_build_options": {"module_gridmap_enabled": False}})
+            )
+            require_consistent_profile(profile, [])
+
+    def test_a_build_profile_may_only_set_options_godot_has(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "size.gdbuild"
+            options = {"disable_3d": True, "module_gridmap_enabled": False}
+            profile.write_text(json.dumps({"disabled_build_options": options}))
+            require_known_options(profile, ["disable_3d", "module_gridmap_enabled"])
+            profile.write_text(
+                json.dumps({"disabled_build_options": {"rendering_device": False}})
+            )
+            with self.assertRaisesRegex(ValueError, "does not have: rendering_device"):
+                require_known_options(profile, ["disable_3d"])
 
     def test_source_archive_version_is_checked_instead_of_trusting_a_label(
         self,

@@ -1,4 +1,4 @@
-"""Public core rules for resources, add-ons, projects, PCK exports, runs, tests and editor views."""
+"""Public core rules for resources, add-ons, projects, PCK exports, runs, tests, editor views and runtime profiles."""
 
 load("//godot/private:addon.bzl", _godot_addon = "godot_addon")
 load(
@@ -14,6 +14,7 @@ load(
     _godot_run = "godot_run",
     _godot_test = "godot_test",
 )
+load("//godot/private:runtime_profile.bzl", _godot_runtime_profile = "godot_runtime_profile")
 
 godot_resources = _godot_resources
 godot_addon = _godot_addon
@@ -23,3 +24,4 @@ godot_run = _godot_run
 godot_test = _godot_test
 godot_editor = _godot_editor
 godot_metadata_sync = _godot_metadata_sync
+godot_runtime_profile = _godot_runtime_profile

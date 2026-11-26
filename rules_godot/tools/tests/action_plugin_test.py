@@ -128,6 +128,30 @@ class ActionPluginTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "reserved for rules_godot"):
                 join_action(root, work, "features")
 
+    def test_a_further_plugin_joins_the_same_way_at_its_reserved_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / "work"
+            root = work / "project"
+            root.mkdir(parents=True)
+            (root / "project.godot").write_text("config_version=5\n")
+            source = Path(temp) / "plugin"
+            source.mkdir()
+            (source / "plugin.cfg").write_text("[plugin]\n")
+            plugins = {"addons/rules_godot_extra": source}
+            join_action(root, work, "profile", None, plugins)
+            directory = root / "addons/rules_godot_extra"
+            self.assertTrue((directory / "plugin.cfg").exists())
+            self.assertTrue((directory / ".gdignore").exists())
+            project = (root / "project.godot").read_text()
+            self.assertIn("res://addons/rules_godot_extra/plugin.cfg", project)
+            self.assertIn("res://addons/rules_godot_action/plugin.cfg", project)
+            self.assertNotIn("rules_godot_extra", (work / "project.godot").read_text())
+            taken = Path(temp) / "taken"
+            (taken / "project/addons/rules_godot_extra").mkdir(parents=True)
+            (taken / "project/project.godot").write_text("config_version=5\n")
+            with self.assertRaisesRegex(ValueError, "rules_godot_extra is reserved"):
+                join_action(taken / "project", taken, "profile", None, plugins)
+
 
 if __name__ == "__main__":
     unittest.main()

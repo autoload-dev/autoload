@@ -238,6 +238,7 @@ def _ios_extension_libraries_impl(ctx):
         } | pack_facts(pack),
         engine = ctx.attr.runtime,
         values = {"--ios-platform-slice": platform.cpu + ":ios_" + platform.environment},
+        pack = pack,
     )
     linker_input = cc_common.create_linker_input(
         owner = ctx.label,
@@ -544,7 +545,7 @@ def godot_ios_application(
         app_icons: The application's own app icons, which replace those Godot renders.
         launch_storyboard: The application's own launch storyboard, which replaces the
             generated launch screen.
-        engine_settings: The application's engine_optimize, engine_lto and engine_vfe,
+        engine_settings: The application's engine, engine_optimize, engine_lto, engine_vfe and build_profile,
             for the runtime component it resolves.
         visibility: Visibility of the application target.
         **kwargs: Remaining ios_application attributes, including signing options.

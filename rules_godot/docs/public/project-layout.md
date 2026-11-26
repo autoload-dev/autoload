@@ -8,8 +8,11 @@ scenarios, add-ons or configuration variants holds a project per each in subdire
 repository follows this layout: games such as Lichtpost are projects directly in `examples/`.
 
 An application keeps its configuration in its project and its content under `main/`; the
-physical placement of a source decides which project or add-on owns it. A project's custom
-engine modules live in `engine/modules/<name>/` and its engine patches in `engine/patches/`.
+physical placement of a source decides which project or add-on owns it. A custom engine is a shared
+resource, not a part of one application: its modules live in `engines/<engine name>/modules/<module>/`,
+its patches in `engines/<engine name>/patches/` and its source build's lock file beside them, in an
+`engines/` directory anywhere in the repository, such as at the root of a consuming repository.
+A Godot project holds no engine patches or source build lock files.
 An add-on's Godot test project holds its suites in packages named after their topic; a
 condition a test needs to run, such as a real operating system, is a tag of the test, not a
 directory. An application's suites, helpers and fixtures live in its `tests/` package. Native unit tests
@@ -167,12 +170,13 @@ a project-wide operation.
 | `godot_project` | Product configuration | Keep each project beside its `project.godot`. Operations of one project may name different resources; declare a second project, such as `test_project`, only where its operations need other configuration. |
 | `godot_editor` from the core rules | Project development workflow | Keep the normal editor entry beside the project it opens. Additional editor views need a concrete authoring purpose. |
 | `godot_metadata_sync` | Project development workflow | Keep the normal update operation beside its project. The authored sidecars belong with their source resources in the owning packages. |
+| `godot_runtime_profile` | Project development workflow | Keep it beside the project and the application whose runtime its files reduce; the file it writes belongs beside it. |
 | `godot_pack` | Project or independently delivered content | Keep the main PCK with the project. A DLC or other separately delivered content pack may belong to its own package and still use explicit project context. Do not add a pack for every resource package. |
 | `godot_run` | Project or runnable feature/tool | Keep the normal game entry with the project. Put an independently useful scene or tool entry with its owner, supplying its required context. |
 | Application and signing targets | Product delivery | Keep a game's APK/AAB, desktop app, iOS app and signing targets with the project, or in a separate delivery package when its dependencies or ownership justify one. |
 
 Module repositories, engine components and their registration sets belong to workspace
-or shared engine infrastructure, such as an `engines/` package per set. They provide
+or shared engine infrastructure, such as an `engines/<name>/` package per set or custom engine. They provide
 engines and SDK dependencies to projects; they do not belong to a gameplay package merely
 because it uses them. An editor component supplies an executable; the core `godot_editor`
 above opens an editor view of a project.

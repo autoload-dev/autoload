@@ -4,10 +4,17 @@ Paths and files of an extracted engine tree, shared by the configuration and its
 A recipe's pin covers this module, since the configured graph depends on it.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".s", ".S", ".swift"}
+
+
+def digest_of(value: object) -> str:
+    """Return the SHA-256 of a JSON value in canonical form: sorted keys, no spaces."""
+    data = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(data).hexdigest()
 
 
 def write_json(path: Path, value: object, indent: int = 2) -> None:

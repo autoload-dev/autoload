@@ -57,10 +57,6 @@ build:ios-release --objc_enable_binary_stripping
 # Delivery format is independent of operating system, CPUs and C++ optimization
 # (--compilation_mode).
 build:aab --@autoload_rules_godot//godot:android_format=aab
-# Petri's source-built engine, with its reaction_diffusion module, in place of the default
-# one; every Petri command takes --config=petri.
-build:petri --extra_toolchains=@godot_petri//toolchains:all
-build:petri --@autoload_rules_godot//godot:engine=petri
 
 # Opt in to the integration tests, which download the pinned editor.
 test:integration --test_tag_filters=integration

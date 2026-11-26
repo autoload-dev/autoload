@@ -1,0 +1,3 @@
+# The engine simulation: Godot with the reaction_diffusion module, which Petri uses. Its
+# source build godot_simulation in MODULE.bazel names the module and this lock file.
+exports_files(["godot_simulation.lock.json"])

@@ -203,7 +203,7 @@ def _jni_libraries_impl(ctx):
             AndroidNativeLibsInfo,
             "native_libs",
         ),
-    } | pack_facts(pack), engine = ctx.attr.runtime, values = {"--android-abi": abi})
+    } | pack_facts(pack), engine = ctx.attr.runtime, values = {"--android-abi": abi}, pack = pack)
     _android_zip(ctx, libraries, output)
     return [
         DefaultInfo(files = depset([output])),

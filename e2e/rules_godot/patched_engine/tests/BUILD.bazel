@@ -22,6 +22,40 @@ py_test(
     target_compatible_with = ["@platforms//os:macos"],
 )
 
+# A build profile leaves the Tree class out of the same runtime.
+filegroup(
+    name = "app_without_tree_bundle",
+    srcs = ["//e2e/rules_godot/patched_engine:app_without_tree"],
+    output_group = "bundle",
+    tags = ["manual"],
+)
+
+# A registered runtime profile's build option leaves the advanced GUI out of a variant.
+filegroup(
+    name = "app_without_advanced_gui_bundle",
+    srcs = ["//e2e/rules_godot/patched_engine:app_without_advanced_gui"],
+    output_group = "bundle",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "app_build_profile_test",
+    size = "small",
+    srcs = ["app_build_profile_test.py"],
+    args = [
+        "$(rlocationpath :app_bundle)",
+        "$(rlocationpath :app_without_tree_bundle)",
+        "$(rlocationpath :app_without_advanced_gui_bundle)",
+    ],
+    data = [
+        ":app_bundle",
+        ":app_without_advanced_gui_bundle",
+        ":app_without_tree_bundle",
+    ],
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:macos"],
+)
+
 # The editor runs the same probe scene, so the module and patch exist in the editor role.
 godot_test(
     name = "source_built_editor_test",

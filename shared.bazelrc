@@ -5,13 +5,15 @@
 common --module_mirrors=https://bcr.cloudflaremirrors.com
 
 # Path mapping gives actions that do not depend on the target configuration one cache key
-# in every configuration: the dexing and desugaring of Android libraries, and the Godot
-# actions rules_godot opts in, such as the imports and validations of a project's units,
-# which a host test and an Android or macOS application share. Other actions keep their
-# paths: path-mapped Java compilations of tools miss the local action cache on every
-# build, and rules_go's standard library build fails.
+# in every configuration: the dexing and desugaring of Android libraries, the Godot actions
+# rules_godot opts in, such as the imports and validations of a project's units, which a
+# host test and an Android or macOS application share, and the native and define-analysis
+# actions of source-built engines, which applications with different build profiles share.
+# Only the engines' targets opt their C++ actions in. Other actions keep their paths:
+# path-mapped Java compilations of tools miss the local action cache on every build, and
+# rules_go's standard library build fails.
 common --experimental_output_paths=strip
-common --modify_execution_info=(?!DexBuilder$|Desugar$|Godot).*=-supports-path-mapping
+common --modify_execution_info=(?!DexBuilder$|Desugar$|Godot|CppCompile$|CppArchive$|CppLink$|ObjcCompile$|DefineAnalysis$).*=-supports-path-mapping
 
 # Python binaries get no implicit __init__.py files, the coming default of rules_python, also
 # in modules that do not opt in through explicit_init_py, such as rules_apple, rules_android
@@ -31,3 +33,9 @@ common:host-execution --extra_execution_platforms=@bazel_tools//tools:host_platf
 
 # Print the logs of failing tests, which CI does not keep.
 test --test_output=errors
+
+# Source-built editors for a debugger: --config=editor-debug compiles them in Bazel's dbg mode,
+# as rules_godot's docs/public/engine.md describes. Editors build in the execution
+# configuration, which keeps a custom flag only when it is propagated.
+common:editor-debug --@autoload_rules_godot//godot:editor_debug
+common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//godot:editor_debug

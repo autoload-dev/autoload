@@ -8,7 +8,7 @@ Component macros.
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
-load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings", "require_tunable_runtime")
 load("//godot/engine/private:prebuilt.bzl", "PrebuiltArtifactInfo")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "ANDROID_PAYLOAD_ASPECTS")
@@ -265,6 +265,7 @@ _ios_runtime_component = rule(
 
 def _resolved_runtime_impl(ctx):
     godot = engine_toolchain(ctx, "runtime")
+    require_tunable_runtime(ctx.label, ctx.attr, godot.provenance)
     if not godot.runtime:
         fail("%s: the selected runtime component %s has no GodotRuntimeInfo for desktop packaging" % (
             ctx.label,
@@ -347,7 +348,9 @@ def runtime_slot_error(name, platform, environment, _fail = fail):
         _fail("%s: environment is only valid for iOS runtimes" % name)
         return
 
-def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, tags):
+_WITHOUT_BUILD_PROFILE = Label("//godot/private:runtime_without_profile")
+
+def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, without_build_profile, tags):
     runtime_slot_error(name, platform, environment)
     constraints = [OPERATING_SYSTEM_CONSTRAINTS[platform], CPU_CONSTRAINTS[cpu]]
     if environment:
@@ -376,7 +379,10 @@ def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, versi
         toolchain_type = RUNTIME_TOOLCHAIN_TYPE,
         tags = tags,
         target_compatible_with = constraints,
-        target_settings = [_VARIANT_SETTINGS[variant], _engine_setting(name, engine, visibility, tags)],
+        target_settings = [
+            _VARIANT_SETTINGS[variant],
+            _engine_setting(name, engine, visibility, tags),
+        ] + ([_WITHOUT_BUILD_PROFILE] if without_build_profile else []),
         visibility = visibility,
     )
 
@@ -470,8 +476,9 @@ godot_runtime_component = macro(
     Creates the provenance-carrying toolchain implementation `<name>` and Bazel's
     built-in `toolchain()` `<name>.toolchain`, constrained to the target platform's operating
     system, CPU and iOS environment, with `target_settings` on
-    `--@autoload_rules_godot//godot:variant` for the template variant and on
-    `--@autoload_rules_godot//godot:engine` for the engine. The runtime may be a
+    `--@autoload_rules_godot//godot:variant` for the template variant, on
+    `--@autoload_rules_godot//godot:engine` for the engine and, with
+    `without_build_profile`, on the application having no build profile. The runtime may be a
     desktop template file, a target with GodotRuntimeInfo, an iOS XCFramework import or
     `:engine_library`, an Android runtime, a `select()` between prepared same-slot
     payloads, or another runtime component, whose payload and provenance are forwarded.
@@ -532,6 +539,14 @@ godot_runtime_component = macro(
             Optional digest of the artifact behind an opaque payload, such as the archive of
             an XCFramework import or an Android shell AAR, recorded in provenance. Source
             recipes and prebuilt template files supply their own, which take precedence.
+            """,
+            configurable = False,
+        ),
+        "without_build_profile": attr.bool(
+            doc = """
+            Serve only applications without a `build_profile`, as a prebuilt runtime does,
+            which cannot leave classes out. A source-built component of the same slot
+            registered after it then serves the applications with one.
             """,
             configurable = False,
         ),

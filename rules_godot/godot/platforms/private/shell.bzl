@@ -1,5 +1,6 @@
 """Shell files and engine checks that the application rules of all operating systems share."""
 
+load("//godot/engine/private:selection.bzl", "require_pack_engine")
 load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private:release.bzl", "app_version", "build_number")
 
@@ -105,12 +106,13 @@ def _component_values(engine):
         values["--renderers"] = ",".join(component.renderers)
     return values
 
-def check_engine(ctx, files, engine = None, values = {}):
+def check_engine(ctx, files, engine = None, values = {}, pack = None):
     """
     Check an engine's own facts: versions against assertions, platform slices, renderers.
 
     The version of the editor that exported the pack is not compared; editor and runtime
-    are independent. With a pack's export facts among files, see pack_facts, the
+    are independent builds. Their engine is: analysis fails unless the runtime belongs to
+    the engine whose editor exported the pack. With a pack's export facts among files, see pack_facts, the
     project's rendering method must be one a source-built engine with declared renderers
     runs.
 
@@ -121,12 +123,16 @@ def check_engine(ctx, files, engine = None, values = {}):
         engine: Optional resolved engine target; the declared version of its prebuilt
             runtime component is checked against the inspected artifact.
         values: dict of further check_engine_version.py options to strings.
+        pack: Optional GodotPackInfo of the shipped pack, whose editor's engine the
+            runtime's must be.
 
     Returns:
         The check's outputs, for the _validation output group.
     """
     stamp = ctx.actions.declare_file(ctx.label.name + ".engine_version")
     args = ctx.actions.args()
+    if engine and GodotComponentInfo in engine:
+        require_pack_engine(ctx.label, pack, engine[GodotComponentInfo])
     values = _component_values(engine) | values
 
     # Only an engine with declared renderers needs the pack's facts.

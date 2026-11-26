@@ -17,5 +17,7 @@ func _ready() -> void:
 		push_error("The engine source patch was not applied")
 		get_tree().quit(1)
 		return
+	print("rules_godot: Tree registered %s" % ClassDB.class_exists("Tree"))
+	print("rules_godot: CodeEdit registered %s" % ClassDB.class_exists("CodeEdit"))
 	print("rules_godot: source-built engine custom module OK")
 	get_tree().quit(0)

@@ -1,9 +1,11 @@
 """Open a project in the Godot editor on an editor view of the checkout, and sync its metadata."""
 
-load("//godot/private:execution.bzl", "RUN_EXEC_GROUPS", "TEST_EXEC_GROUPS", "exec_group_editor")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
+load("//godot/private:execution.bzl", "RUN_EXEC_GROUPS", "exec_group_editor")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_kinds")
 load("//godot/private:paths.bzl", "with_extensions_for")
 load("//godot/private:run.bzl", "import_results", "launcher")
+load("//godot/private:sync.bzl", "declare_sync", "sync_launcher", "sync_rules")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 
 visibility("//godot/...")
@@ -113,12 +115,13 @@ _godot_editor = rule(
             default = Label("//godot/private:run_launcher.sh.tpl"),
             allow_single_file = True,
         ),
-    },
+    } | ENGINE_ATTRS,
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,
+    cfg = engine_transition,
 )
 
-def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kwargs):
+def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engine = "", **kwargs):
     """
     Open a project in the Godot editor with `bazel run`, editing the checkout.
 
@@ -168,70 +171,52 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, **kw
         write_sidecars: Write the sidecars the checkout lacks before the editor
             opens, as godot_metadata_sync does. Without it, the run names them and Godot
             writes its own when it finds the files, reimporting assets.
+        engine: The engine the operation uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names.
         **kwargs: Common attributes, such as tags and visibility.
     """
     _godot_editor(
         name = name,
-        view = declare_view(name, project, deps, kwargs),
+        view = declare_view(name, project, deps, kwargs, engine = engine),
         env = env,
         write_sidecars = write_sidecars,
+        engine = engine,
         **kwargs
     )
 
 def _metadata_sync_impl(ctx, test):
     project = ctx.attr.view[GodotViewInfo]
-    executable, manifest = launcher(ctx, {
-        "workspace": ctx.workspace_name,
-        "metadata": project.metadata.short_path,
-        "test": test,
-        "writer": ctx.attr.writer,
-        "required": metadata_kinds(ctx, ["require"]),
-    })
-    runfiles = ctx.runfiles(files = [manifest, project.metadata, ctx.executable._runner])
-    runfiles = runfiles.merge(ctx.attr._runner[DefaultInfo].default_runfiles)
-    return [DefaultInfo(executable = executable, runfiles = runfiles)]
+    return sync_launcher(
+        ctx,
+        test,
+        {
+            "metadata": project.metadata.short_path,
+            "required": metadata_kinds(ctx, ["require"]),
+        },
+        ctx.runfiles(files = [project.metadata]),
+    )
 
-def _metadata_sync_writer_impl(ctx):
-    return _metadata_sync_impl(ctx, test = False)
-
-def _metadata_sync_test_impl(ctx):
-    return _metadata_sync_impl(ctx, test = True)
-
-# The godot_metadata_sync macro documents these attributes.
-_METADATA_SYNC_ATTRS = {
-    "view": attr.label(mandatory = True, providers = [GodotViewInfo]),
-    "writer": attr.string(),
-    "_launcher_template": attr.label(
-        default = Label("//godot/private:run_launcher.sh.tpl"),
-        allow_single_file = True,
+_METADATA_SYNC = sync_rules(
+    implementation = _metadata_sync_impl,
+    runner = Label("//tools:godot_metadata_sync"),
+    # The godot_metadata_sync macro documents these attributes.
+    attrs = {"view": attr.label(mandatory = True, providers = [GodotViewInfo])} | METADATA_ATTRS | ENGINE_ATTRS,
+    docs = (
+        "Write a project's missing metadata into the checkout; the rule behind godot_metadata_sync.",
+        "Fail while a project's checkout lacks metadata; the test behind godot_metadata_sync.",
     ),
-} | METADATA_ATTRS
-
-def _metadata_sync_runner(group):
-    """The runner, built for the execution platform of the run's or test's exec group."""
-    return {"_runner": attr.label(
-        default = Label("//tools:godot_metadata_sync"),
-        executable = True,
-        cfg = config.exec(group),
-    )}
-
-_godot_metadata_sync = rule(
-    doc = "Write a project's missing metadata into the checkout; the rule behind godot_metadata_sync.",
-    implementation = _metadata_sync_writer_impl,
-    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("run"),
-    executable = True,
-    exec_groups = RUN_EXEC_GROUPS,
+    editor = True,
+    cfg = engine_transition,
 )
 
-_godot_metadata_sync_test = rule(
-    doc = "Fail while a project's checkout lacks metadata; the test behind godot_metadata_sync.",
-    implementation = _metadata_sync_test_impl,
-    attrs = _METADATA_SYNC_ATTRS | _metadata_sync_runner("test"),
-    test = True,
-    exec_groups = TEST_EXEC_GROUPS,
-)
+_godot_metadata_sync = rule(**_METADATA_SYNC.writer)
 
-def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, **kwargs):
+_godot_metadata_sync_test = rule(**_METADATA_SYNC.test)
+
+_METADATA_SYNC_RULES = struct(writer = _godot_metadata_sync, test = _godot_metadata_sync_test)
+
+def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, engine = "", **kwargs):
     """
     Write the metadata Godot keeps beside a project's checkout files, and test for it.
 
@@ -281,17 +266,15 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, *
         deps: The godot_resources whose checkout files get their metadata.
         size: Bazel test size of `<name>.test`; Bazel's default applies when unset.
         timeout: Bazel test timeout of `<name>.test`; derived from size when unset.
+        engine: The engine the operation uses, by engine name; empty keeps the build's
+            engine, the default one or the one --@autoload_rules_godot//godot:engine
+            names.
         **kwargs: Common attributes of both targets, such as tags and visibility.
     """
-    writer = str(native.package_relative_label(name))
-    view = declare_view(name, project, deps, kwargs)
-    _godot_metadata_sync(name = name, view = view, writer = writer, **kwargs)
-
-    _godot_metadata_sync_test(
-        name = name + ".test",
-        size = size,
-        timeout = timeout,
-        view = view,
-        writer = writer,
-        **kwargs
+    declare_sync(
+        _METADATA_SYNC_RULES,
+        name,
+        {"view": declare_view(name, project, deps, kwargs, engine = engine), "engine": engine},
+        {"size": size, "timeout": timeout},
+        kwargs,
     )

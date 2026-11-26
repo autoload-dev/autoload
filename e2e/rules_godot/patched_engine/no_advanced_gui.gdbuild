@@ -1,0 +1,6 @@
+{
+	"disabled_build_options": {
+		"disable_advanced_gui": true
+	},
+	"type": "build_profile"
+}

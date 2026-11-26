@@ -5,7 +5,7 @@ SCons is used to evaluate the upstream feature logic, not to execute a compiler,
 linker, source generator, or build cache. Compiler actions belong to Bazel.
 
 Sections: Engine version, Recipe options, Renderers, Compile options, Environment reads,
-Capture, Pinning, Command line.
+Capture, Configurations, Pinning, Command line.
 """
 
 import argparse
@@ -35,24 +35,20 @@ from types import FunctionType
 from typing import Any, TypeGuard, cast
 
 try:
+    from . import build_profile
     from .module_graph import module_closure, module_dependencies
-    from .render import render, render_unpinned
-    from .source_tree import SOURCE_SUFFIXES, relative, write_json
+    from .render import Variant, render, render_unpinned
+    from .source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
 except ImportError:
+    import build_profile
     from module_graph import module_closure, module_dependencies
-    from render import render, render_unpinned
-    from source_tree import SOURCE_SUFFIXES, relative, write_json
+    from render import Variant, render, render_unpinned
+    from source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
 
 
 def file_digest(path: Path) -> str:
     """Return the SHA-256 of a file's contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def digest_of(value: object) -> str:
-    """Return the SHA-256 of a JSON value in canonical form: sorted keys, no spaces."""
-    data = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(data).hexdigest()
 
 
 def file_digests(
@@ -222,36 +218,15 @@ def _option_value(value: object) -> str:
     return str(value)
 
 
-def _read_profile(profile: Path) -> dict[str, Any]:
-    """Return a build profile's JSON object."""
-    try:
-        data = json.loads(profile.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"The build profile is not readable JSON: {error}") from error
-    if not isinstance(data, dict):
-        raise TypeError("The build profile must be a JSON object")
-    return data
-
-
-def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
+def profile_options_digest(profile: Path) -> str:
     """
-    Fail for a build profile that is no JSON object or contradicts the recipe's options.
+    Return the digest of what a build profile contributes to the configured graph.
 
-    SCons applies a profile's disabled_build_options before the platform's configuration,
-    so a contradiction would silently override what the recipe asks for.
+    Only its build options shape the graph, so a profile that disables classes alone needs
+    no pin. Empty without options, so earlier digests hold.
     """
-    profiled = dict(_read_profile(profile).get("disabled_build_options", {}))
-    requested = dict(option.partition("=")[::2] for option in options)
-    conflicts = sorted(
-        f"{key}={_option_value(value)} (build_options: {requested[key]})"
-        for key, value in profiled.items()
-        if key in requested and _option_value(value) != _option_value(requested[key])
-    )
-    if conflicts:
-        raise ValueError(
-            "The build profile contradicts the recipe's build_options: "
-            + ", ".join(conflicts)
-        )
+    options = build_profile.build_options(build_profile.read_profile(profile))
+    return "sha256:" + digest_of({"disabled_build_options": options}) if options else ""
 
 
 PROTECTED_OPTIONS = {
@@ -268,8 +243,8 @@ PROTECTED_OPTIONS = {
     # The recipe's explicit iOS environment owns the SDK axis.
     "simulator",
     "ios_simulator",
-    # Raw file paths would be undeclared inputs; use patches, build_options or the
-    # recipe's build_profile attribute instead.
+    # Raw file paths would be undeclared inputs; use patches, build_options or an
+    # application's build profile instead.
     "profile",
     "build_profile",
 }
@@ -297,6 +272,50 @@ def check_options(options: Iterable[str]) -> None:
             )
         if _is_controlled_option(key, bool(separator)):
             raise ValueError(f"Option is controlled by rules_godot: {option}")
+
+
+def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
+    """
+    Fail for a build profile that is no JSON object, sets an option the ruleset owns or
+    contradicts the recipe's options.
+
+    SCons assigns each of a profile's disabled_build_options over the command line's, so
+    such an option would silently override what the recipe or Bazel's settings ask for. A
+    profile may switch modules, as the editor's profiles do.
+    """
+    profiled = build_profile.build_options(build_profile.read_profile(profile))
+    check_options(
+        f"{key}={value}"
+        for key, value in profiled.items()
+        if not (key.startswith("module_") and key.endswith("_enabled"))
+    )
+    requested = dict(option.partition("=")[::2] for option in options)
+    conflicts = sorted(
+        f"{key}={_option_value(value)} (build_options: {requested[key]})"
+        for key, value in profiled.items()
+        if key in requested and _option_value(value) != _option_value(requested[key])
+    )
+    if conflicts:
+        raise ValueError(
+            "The build profile contradicts the recipe's build_options: "
+            + ", ".join(conflicts)
+        )
+
+
+def require_known_options(profile: Path, known: Collection[str]) -> None:
+    """
+    Fail for a build profile that sets options this Godot version's SCons does not have.
+
+    SCons assigns each of a profile's disabled_build_options whatever its name, so a name
+    this version lacks, such as an option of a later version, would change nothing.
+    """
+    options = build_profile.build_options(build_profile.read_profile(profile))
+    unknown = sorted(set(options) - set(known))
+    if unknown:
+        raise ValueError(
+            "The build profile sets options this Godot version does not have: "
+            + ", ".join(unknown)
+        )
 
 
 # The modules a recipe names when it names none and does not start from Godot's defaults.
@@ -446,6 +465,36 @@ def renderer_options(
     return options
 
 
+def _switched_off(platform: str, switches: bool) -> dict[str, Sequence[str]]:
+    """The options that turn rendering methods off: their drivers, and 4.8's switches."""
+    options: dict[str, Sequence[str]] = {
+        "opengl3": ("gl_compatibility",),
+        _RD_DRIVERS[platform]: _RD_METHODS,
+    }
+    return options | (_RD_SWITCHES if switches else {})
+
+
+def profile_renderers(
+    renderers: Sequence[str], options: Mapping[str, object], platform: str, switches: bool
+) -> list[str]:
+    """
+    Return a recipe's rendering methods that a build profile's options leave.
+
+    A profile turns a method's driver off where the project does not use it, such as Metal
+    for a project on the Compatibility renderer; the recipe then builds the others.
+    """
+    gone = {
+        method
+        for option, methods in _switched_off(platform, switches).items()
+        if _option_value(options.get(option, "yes")) == "no"
+        for method in methods
+    }
+    kept = [method for method in renderers if method not in gone]
+    if renderers and not kept:
+        raise ValueError("The build profile leaves the recipe no rendering method")
+    return kept
+
+
 def engine_renderers(
     renderers: Collection[str], platform: str, environment: str, switches: bool
 ) -> list[str]:
@@ -467,7 +516,7 @@ def _needs_shader_compiler(args: argparse.Namespace) -> bool:
     """Return whether a recipe's renderers need RenderingDevice's shader compiler."""
     if args.platform == "ios" and args.environment == "simulator":
         return False
-    return any(method in args.renderers.split(",") for method in _RD_METHODS)
+    return any(method in args.renderers for method in _RD_METHODS)
 
 
 def with_renderer_modules(
@@ -1399,7 +1448,10 @@ class _Capture:
             # By their outputs, so recipes whose SCons visits generators in another order
             # share one list in a lock file.
             "generators": [
-                {"spec": spec, "dependencies": sorted(dependencies)}
+                {
+                    "spec": build_profile.class_list_spec(spec),
+                    "dependencies": sorted(dependencies),
+                }
                 for spec, dependencies in sorted(
                     self.generators, key=lambda item: item[0]["targets"]
                 )
@@ -1425,6 +1477,63 @@ def collect(args: argparse.Namespace, executors: Iterable[Any]) -> dict[str, Any
     return capture.graph(args.selected_modules)
 
 
+# ==== Configurations ==========================================================
+
+
+def _add_environment_option(args: argparse.Namespace) -> None:
+    """Pass an iOS recipe's device or simulator environment to Godot as its option."""
+    if args.platform == "ios":
+        if not args.environment:
+            raise ValueError(
+                "iOS recipes need an explicit device or simulator environment"
+            )
+        simulator = "yes" if args.environment == "simulator" else "no"
+        args.options.append("simulator=" + simulator)
+    elif args.environment:
+        raise ValueError("The environment is only valid for iOS recipes")
+
+
+def _add_renderer_options(args: argparse.Namespace, root: Path) -> None:
+    """Add the upstream options of a recipe's renderers and the methods its engine runs."""
+    args.engine_renderers = []
+    if not args.renderers:
+        return
+    switches = has_renderer_switches(root)
+    if args.build_profile:
+        profiled = build_profile.read_profile(root / args.build_profile)
+        args.renderers = profile_renderers(
+            args.renderers, build_profile.build_options(profiled), args.platform, switches
+        )
+    derived = renderer_options(args.renderers, args.platform, switches)
+    require_renderer_options_unset(derived, args.options)
+    args.options = [*args.options, *derived]
+    args.engine_renderers = engine_renderers(
+        args.renderers, args.platform, args.environment, switches
+    )
+
+
+def _derive(args: argparse.Namespace, root: Path) -> None:
+    """Add what a configuration derives from the recipe and its build profile."""
+    args.options = list(args.requested.options)
+    args.renderers = list(args.requested.renderers)
+    args.modules = list(args.requested.modules)
+    check_options(args.options)
+    _add_renderer_options(args, root)
+    args.modules = with_renderer_modules(args, args.module_graph)
+    args.selected_modules = module_closure(
+        args.modules, args.module_graph, editor=args.build_target == "editor"
+    )
+    # Before SCons for the modules a recipe names; Godot's defaults are checked after it.
+    require_one_text_server(args.selected_modules)
+    args.build_profile_digest = ""
+    if args.build_profile:
+        require_consistent_profile(root / args.build_profile, args.options)
+        args.build_profile_digest = profile_options_digest(root / args.build_profile)
+    args.customizations = customizations(args)
+    _add_environment_option(args)
+    args.inputs_hash = inputs_hash(args)
+
+
 # ==== Pinning =================================================================
 
 
@@ -1434,6 +1543,7 @@ _PIN_TOOLS = (
     Path(__file__).resolve(),
     Path(inspect.getfile(module_closure)).resolve(),
     Path(inspect.getfile(relative)).resolve(),
+    Path(inspect.getfile(build_profile)).resolve(),
 )
 
 # The version of a recipe pin's layout.
@@ -1455,44 +1565,66 @@ def shapes_graph(path: Path) -> bool:
     return path.name == "SCsub" or path.suffix in _GRAPH_FILE_SUFFIXES
 
 
-def pin_digest(args: argparse.Namespace, scons: Path) -> str:
+def pin_inputs(args: argparse.Namespace, scons: Path) -> dict[str, Any]:
+    """
+    Return what a recipe's pin digest covers besides its build profile's options.
+
+    Its runtime variants share it and differ only in their profiles, so a recipe computes
+    the digests of its tools, patches and custom modules once.
+    """
+    tools = [file_digest(path) for path in [*_PIN_TOOLS, scons / "SCons" / "__init__.py"]]
+    return {
+        "format": PIN_FORMAT,
+        "source": args.source_sha256,
+        "patches": [file_digest(path) for path in args.patch],
+        "patch_strip": args.patch_strip,
+        "custom_modules": file_digests(args.custom_modules_root, shapes_graph),
+        "configuration": {
+            "platform": args.platform,
+            "cpu": args.cpu,
+            "build_target": args.build_target,
+            **_module_selection(args),
+            "options": sorted(args.options),
+        },
+        "build_name": args.build_name,
+        "tools": tools,
+    }
+
+
+def pin_digest(
+    args: argparse.Namespace, scons: Path, inputs: Mapping[str, Any] | None = None
+) -> str:
     """
     Return the digest a recipe's pin records: what its configured graph depends on.
 
     It covers the archive digest, the patches, the custom modules' structure, the
-    recipe's platform, CPU, build target, modules and options, its build name, and the
-    SCons release and rules_godot code that capture the graph. Host state is no input: a
-    pin is valid on every host.
+    recipe's platform, CPU, build target, modules and options, its build profile's
+    options, its build name, and the SCons release and rules_godot code that capture the
+    graph. Host state is no input: a pin is valid on every host. inputs, pin_inputs()'s
+    result, spares computing it again.
     """
-    tools = [file_digest(path) for path in [*_PIN_TOOLS, scons / "SCons" / "__init__.py"]]
-    return "sha256:" + digest_of(
-        {
-            "format": PIN_FORMAT,
-            "source": args.source_sha256,
-            "patches": [file_digest(path) for path in args.patch],
-            "patch_strip": args.patch_strip,
-            **_profile_input(args),
-            "custom_modules": file_digests(args.custom_modules_root, shapes_graph),
-            "configuration": {
-                "platform": args.platform,
-                "cpu": args.cpu,
-                "build_target": args.build_target,
-                **_module_selection(args),
-                "options": sorted(args.options),
-            },
-            "build_name": args.build_name,
-            "tools": tools,
-        }
-    )
+    inputs = inputs if inputs is not None else pin_inputs(args, scons)
+    return "sha256:" + digest_of({**inputs, **_profile_input(args)})
+
+
+def read_lock(lock: Path) -> dict[str, Any]:
+    """Return a lock file's pins; none for a missing or empty file."""
+    text = lock.read_text().strip() if lock.is_file() else ""
+    return json.loads(text) if text else {}
 
 
 def pinned_graph(
-    lock: Path, recipe: str, digest: str
+    pins: Mapping[str, Any], recipe: str, digest: str, profile: str = ""
 ) -> tuple[str, dict[str, Any] | None]:
-    """Return a recipe's status in a lock file, missing, stale or pinned, and its graph."""
-    text = lock.read_text().strip() if lock.is_file() else ""
-    pins = json.loads(text) if text else {}
-    entry = pins.get("recipes", {}).get(recipe)
+    """
+    Return a recipe's status in a lock file's pins, missing, stale or pinned, and its graph.
+
+    With a runtime profile, the status and graph of the recipe's variant for it.
+    """
+    if profile:
+        entry = pins.get("variants", {}).get(recipe, {}).get(profile)
+    else:
+        entry = pins.get("recipes", {}).get(recipe)
     if entry is None:
         return "missing", None
     if entry.get("digest") != digest:
@@ -1506,6 +1638,76 @@ def pinned_graph(
 def write_pin(path: Path, digest: str, graph: Mapping[str, Any]) -> None:
     """Write one recipe's pin, the entry a lock file holds for it."""
     write_json(path, {"digest": digest, "graph": graph})
+
+
+def variant_arguments(
+    args: argparse.Namespace, root: Path, profile: str
+) -> argparse.Namespace:
+    """
+    Return a recipe's arguments for its runtime variant of a registered runtime profile.
+
+    The repository writes the variant's profile, the recipe's build options with the runtime
+    profile's, to profile below the source root.
+    """
+    variant = argparse.Namespace(**vars(args))
+    variant.build_profile = profile
+    variant.registered_profile = True
+    _derive(variant, root)
+    return variant
+
+
+_VARIANT_REASONS = {
+    "missing": "has no pin for runtime profile {profile} of",
+    "stale": "pins other sources, patches, modules, options or rules_godot code for "
+    "runtime profile {profile} of",
+}
+
+
+def locked_variants(args: argparse.Namespace, root: Path, scons: Path) -> list[Variant]:
+    """Return a pinned recipe's runtime variants, with the graphs of those with current pins."""
+    pins = read_lock(args.lock)
+    inputs = pin_inputs(args, scons)
+    result = []
+    for label, profile in args.runtime_profile:
+        try:
+            variant = variant_arguments(args, root, profile)
+        except ValueError as error:
+            result.append(Variant(label, args, None, f"{args.recipe}: {error}"))
+            continue
+        digest = pin_digest(variant, scons, inputs)
+        status, graph = pinned_graph(pins, args.recipe, digest, label)
+        reason = _VARIANT_REASONS.get(status, "").format(profile=label)
+        error = args.unpinned_message.format(reason=reason) if graph is None else ""
+        result.append(Variant(label, variant, graph, error))
+    return result
+
+
+def failure(output: str) -> str:
+    """The exception a failed configuration's output reports, or else its last line."""
+    lines = output.strip().splitlines() or ["the configuration failed"]
+    errors = [line for line in lines if "Error: " in line]
+    return (errors or lines)[-1].strip()
+
+
+def captured_variants(args: argparse.Namespace, root: Path) -> list[Variant]:
+    """
+    Return a configured recipe's runtime variants, from the pins of their configurations.
+
+    The repository configures each variant before the recipe, into <index>.json below
+    args.variant_pins, or keeps its output in <index>.error where it could not.
+    """
+    result = []
+    for index, (label, profile) in enumerate(args.runtime_profile):
+        pin = args.variant_pins / f"{index}.json"
+        if not pin.is_file():
+            output = (args.variant_pins / f"{index}.error").read_text(errors="replace")
+            error = f"The runtime profile {label} cannot apply to this recipe: "
+            result.append(Variant(label, args, None, error + failure(output)))
+            continue
+        variant = variant_arguments(args, root, profile)
+        graph = json.loads(pin.read_text())["graph"]
+        result.append(Variant(label, variant, graph))
+    return result
 
 
 # ==== Command line ============================================================
@@ -1559,6 +1761,22 @@ def _argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pin-bzl", default="@autoload_rules_godot//godot/engine/private:pin.bzl"
     )
+    # The engine's registered runtime profiles with graph-shaping build options: each one's
+    # label and the path of its variant's profile below the source root.
+    parser.add_argument(
+        "--runtime-profile",
+        nargs=2,
+        action="append",
+        default=[],
+        metavar=("LABEL", "PATH"),
+    )
+    # Where the repository configured the runtime variants of a recipe without a lock file.
+    parser.add_argument("--variant-pins", type=Path)
+    # The setting whose value, a build profile's label, selects a runtime variant.
+    parser.add_argument(
+        "--build-profile-label",
+        default="@autoload_rules_godot//godot/private:build_profile_label",
+    )
     # Configure and write the recipe's pin here instead of its BUILD file.
     parser.add_argument("--pin-output", type=Path)
     return parser
@@ -1587,56 +1805,29 @@ def _add_custom_modules(args: argparse.Namespace, root: Path) -> None:
         args.custom_modules.append("_custom_modules")
 
 
-def _add_environment_option(args: argparse.Namespace) -> None:
-    """Pass an iOS recipe's device or simulator environment to Godot as its option."""
-    if args.platform == "ios":
-        if not args.environment:
-            raise ValueError(
-                "iOS recipes need an explicit device or simulator environment"
-            )
-        simulator = "yes" if args.environment == "simulator" else "no"
-        args.options.append("simulator=" + simulator)
-    elif args.environment:
-        raise ValueError("The environment is only valid for iOS recipes")
-
-
-def _add_renderer_options(args: argparse.Namespace, root: Path) -> None:
-    """Add the upstream options of a recipe's renderers and the methods its engine runs."""
-    args.renderers = [method for method in args.renderers.split(",") if method]
-    args.engine_renderers = []
-    if not args.renderers:
-        return
-    switches = has_renderer_switches(root)
-    derived = renderer_options(args.renderers, args.platform, switches)
-    require_renderer_options_unset(derived, args.options)
-    args.options = [*args.options, *derived]
-    args.engine_renderers = engine_renderers(
-        args.renderers, args.platform, args.environment, switches
-    )
-
-
-def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
-    """Validate the recipe and add what it derives from the source: version, modules, hash."""
+def _prepare(args: argparse.Namespace, root: Path) -> None:
+    """Check the source and add the custom modules: what every configuration of a recipe shares."""
     args.version = source_version(root)
     require_expected_version(args.version, args.expected_version)
     (root / "engine_manifest.json").unlink(missing_ok=True)
     _add_custom_modules(args, root)
-    graph = module_dependencies(root, [root / path for path in args.custom_modules])
-    args.modules = with_renderer_modules(args, graph)
-    args.selected_modules = module_closure(
-        args.modules, graph, editor=args.build_target == "editor"
+    args.module_graph = module_dependencies(
+        root, [root / path for path in args.custom_modules]
     )
-    # Before SCons for the modules a recipe names; Godot's defaults are checked after it.
-    require_one_text_server(args.selected_modules)
-    check_options(args.options)
-    _add_renderer_options(args, root)
-    args.build_profile_digest = ""
-    if args.build_profile:
-        require_consistent_profile(root / args.build_profile, args.options)
-        args.build_profile_digest = file_digest(root / args.build_profile)
-    args.customizations = customizations(args)
-    _add_environment_option(args)
-    args.inputs_hash = inputs_hash(args)
+    # What the recipe requests, before its build profile and renderers add to it.
+    args.requested = argparse.Namespace(
+        options=list(args.options),
+        renderers=[method for method in args.renderers.split(",") if method],
+        modules=list(args.modules),
+    )
+    args.registered_profile = False
+    args.runtime_profiles = [label for label, _ in args.runtime_profile]
+
+
+def _complete_arguments(args: argparse.Namespace, root: Path) -> None:
+    """Validate the recipe and add what it derives from the source: version, modules, hash."""
+    _prepare(args, root)
+    _derive(args, root)
 
 
 def _install_capture(
@@ -1650,22 +1841,33 @@ def _install_capture(
     sys.path.insert(0, str(scons))
     import SCons.Executor
     import SCons.Script.Main
+    import SCons.Variables
 
     executors: list[Any] = []
     original = SCons.Executor.Executor.__init__
+    # The names of Godot's options, its modules' among them, as SConstruct declares them.
+    options: set[str] = set()
+    original_update = SCons.Variables.Variables.Update
 
     def record(executor: Any, *values: Any, **kwargs: Any) -> None:
         original(executor, *values, **kwargs)
         executors.append(executor)
 
+    def update(variables: Any, *values: Any, **kwargs: Any) -> None:
+        options.update(variables.keys())
+        original_update(variables, *values, **kwargs)
+
     def finish(*_args: Any) -> None:
+        if args.build_profile:
+            require_known_options(root / args.build_profile, options)
         captured = collect(args, executors)
         if args.pin_output:
             write_pin(args.pin_output, digest, captured)
         else:
-            render(args, captured, root)
+            render(args, captured, root, captured_variants(args, root))
 
     SCons.Executor.Executor.__init__ = record
+    SCons.Variables.Variables.Update = update
     SCons.Script.Main._build_targets = finish
     return SCons.Script.Main.main
 
@@ -1785,11 +1987,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     _complete_arguments(args, root)
     digest = pin_digest(args, scons)
     if args.lock:
-        status, pinned = pinned_graph(args.lock, args.recipe, digest)
+        status, pinned = pinned_graph(read_lock(args.lock), args.recipe, digest)
         if pinned is None:
             render_unpinned(args, status, root)
         else:
-            render(args, pinned, root)
+            render(args, pinned, root, locked_variants(args, root, scons))
         return
     if args.pin_output:
         args.pin_output = args.pin_output.resolve()

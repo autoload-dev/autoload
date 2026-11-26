@@ -223,7 +223,7 @@ def _desktop_application_impl(ctx):
         copied_files.append(source)
         copies.append({"source": source.path, "destination": destination, "context": binary_contexts.get(destination)})
     args = ctx.actions.args()
-    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])} | pack_facts(pack), engine = ctx.attr.runtime)
+    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])} | pack_facts(pack), engine = ctx.attr.runtime, pack = pack)
     inputs = [runtime_executable, pack_file, manifest]
     if operating_system == "macos":
         metadata = _macos_metadata(ctx, pack, name)

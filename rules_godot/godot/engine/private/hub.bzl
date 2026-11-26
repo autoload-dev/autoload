@@ -4,7 +4,7 @@ load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
 
-def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = ""):
+def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = "", without_build_profile = False):
     """
     Return a hub slot description.
 
@@ -19,6 +19,8 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         variant: debug or release for runtimes.
         environment: device or simulator for iOS runtimes.
         digest: Integrity of the artifact behind an opaque runtime payload.
+        without_build_profile: For runtimes, whether the component serves only applications
+            without a build profile, as godot_runtime_component's.
 
     Returns:
         A dict the hub repository rule serializes into a component declaration.
@@ -33,28 +35,26 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         "variant": variant,
         "environment": environment,
         "digest": digest,
+        "without_build_profile": without_build_profile,
     }
 
+# The optional attributes of a component, which a slot leaves out when they are empty.
+_OPTIONAL = ["variant", "environment", "digest", "without_build_profile", "visibility"]
+
 def _declaration(slot, engine):
-    attributes = [
-        "    name = %s," % repr(slot["name"]),
-        "    %s = %s," % (slot["role"], repr(slot["payload"])),
-        "    platform = %s," % repr(slot["platform"]),
-        "    cpu = %s," % repr(slot["cpu"]),
-    ]
-    if slot["variant"]:
-        attributes.append("    variant = %s," % repr(slot["variant"]))
-    if slot["environment"]:
-        attributes.append("    environment = %s," % repr(slot["environment"]))
-    if slot.get("digest"):
-        attributes.append("    digest = %s," % repr(slot["digest"]))
-    attributes.append("    version = %s," % repr(slot["version"]))
+    values = [("name", slot["name"]), (slot["role"], slot["payload"])]
+    values += [("platform", slot["platform"]), ("cpu", slot["cpu"])]
+    values += [(key, slot[key]) for key in _OPTIONAL if slot.get(key)]
+    values.append(("version", slot["version"]))
     if engine:
-        attributes.append("    engine = %s," % repr(engine))
+        values.append(("engine", engine))
+    attributes = ["    %s = %s," % (key, repr(value)) for key, value in values]
     return "\ngodot_%s_component(\n%s\n)\n" % (slot["role"], "\n".join(attributes))
 
 def _android_runtime(variant, runtime):
     attributes = ["    name = %r," % variant, "    shell = %r," % runtime["shell"]]
+    if runtime.get("visibility"):
+        attributes.append("    visibility = %r," % runtime["visibility"])
     engine_libraries = runtime.get("engine_libraries", {})
     if engine_libraries:
         # One label per variant serves every CPU; each platform slice repacks its own
@@ -68,14 +68,26 @@ def _android_runtime(variant, runtime):
 _PIN = """
 load({pin_bzl}, "godot_engine_pin")
 
-# Pins every recipe of this source build into its lock file: bazel run //:pin.
+# Pins every recipe of this source build and its runtime variants into its lock file:
+# bazel run //:pin.
 godot_engine_pin(
     name = "pin",
     recipes = {recipes},
+    variants = {variants},
     lock = {lock},
     visibility = ["//visibility:public"],
 )
 """
+
+def _pin(ctx):
+    """The :pin target that writes the lock file of the hub's recipes and runtime variants."""
+    variants = json.decode(ctx.attr.pin_variants or "{}")
+    return _PIN.format(
+        pin_bzl = repr(str(ctx.attr._pin_bzl)),
+        recipes = repr(json.decode(ctx.attr.pin_recipes)),
+        variants = repr({label: json.encode(variant) for label, variant in variants.items()}),
+        lock = repr(ctx.attr.lock),
+    )
 
 def _hub_impl(ctx):
     slots = json.decode(ctx.attr.components)
@@ -87,13 +99,7 @@ def _hub_impl(ctx):
         if slot["name"] in names:
             fail("Godot hub %s declares slot %s twice" % (ctx.name, slot["name"]))
         names[slot["name"]] = True
-    pin = ""
-    if ctx.attr.pin_recipes:
-        pin = _PIN.format(
-            pin_bzl = repr(str(ctx.attr._pin_bzl)),
-            recipes = repr(json.decode(ctx.attr.pin_recipes)),
-            lock = repr(ctx.attr.lock),
-        )
+    pin = _pin(ctx) if ctx.attr.pin_recipes else ""
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
         "{NAME}": ctx.attr.display_name,
         "{PIN}": pin,
@@ -129,6 +135,7 @@ engine_hub = repository_rule(
             """),
         "version_source": attr.label(doc = "A source descriptor whose version fills slots without one."),
         "pin_recipes": attr.string(doc = "JSON object of each recipe's :pin label to its key in the lock file."),
+        "pin_variants": attr.string(doc = "JSON object of each runtime variant's :pin label to its recipe's key and runtime profile."),
         "lock": attr.string(doc = "Workspace-relative path of the lock file that //:pin writes."),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_android_template": attr.label(default = Label("//godot/engine/private:hub_android.BUILD.tpl")),

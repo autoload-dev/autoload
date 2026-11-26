@@ -30,6 +30,18 @@ def _unqualified(label: str) -> str:
     return "@{repository}//" + label.partition("//")[2]
 
 
+def _reaches_consumers(label: str, visibility: tuple[str, ...]) -> bool:
+    """
+    Recognize access from outside the generated repository.
+
+    Consumers live in other repositories, so a grant to another package of the same
+    repository, such as its toolchain registration, keeps a target internal.
+    """
+    repository = label.partition("//")[0] + "//"
+    outside = tuple(grant for grant in visibility if not grant.startswith(repository))
+    return has_consumer_visibility(label, outside)
+
+
 def repository_errors(
     contract: Contract,
     case: dict,
@@ -57,7 +69,7 @@ def repository_errors(
     public = {
         label
         for label, target in rules.items()
-        if has_consumer_visibility(label, target.label_lists.get("visibility", ()))
+        if _reaches_consumers(label, target.label_lists.get("visibility", ()))
     }
     expected = {
         label

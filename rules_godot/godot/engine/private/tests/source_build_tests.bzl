@@ -26,7 +26,7 @@ _COMMON = {
     "configure_timeout": 900,
 }
 
-def _declare(platforms, cpus = [], build_targets = [], ios_environments = [], lock_file = None, engine = ""):
+def _declare(platforms, cpus = [], build_targets = [], ios_environments = [], lock_file = None, engine = "", version = ""):
     errors, fail_ = mocks.errors()
     declarations = source_build_declarations(
         "godot_source_build",
@@ -38,6 +38,7 @@ def _declare(platforms, cpus = [], build_targets = [], ios_environments = [], lo
         _COMMON,
         lock_file = lock_file,
         engine = engine,
+        version = version,
         _fail = fail_,
     )
     return declarations, errors
@@ -159,6 +160,13 @@ def _test_the_engine_name_reaches_the_hub(env):
     unnamed, _ = _declare(["linux"], cpus = ["x86_64"], build_targets = ["editor"])
     env.expect.that_str(unnamed[-1].attrs["engine"]).equals("")
 
+def _test_a_known_version_spares_the_hub_the_source_archive(env):
+    declarations, errors = _declare(["linux"], cpus = ["x86_64"], build_targets = ["editor"], version = "4.7.2")
+    env.expect.that_collection(errors).contains_exactly([])
+    hub = declarations[-1].attrs
+    env.expect.that_dict(hub).keys().not_contains("version_source")
+    env.expect.that_collection([slot["version"] for slot in json.decode(hub["components"])]).contains_exactly(["4.7.2"])
+
 def _test_empty_platforms_fail(env):
     declarations, errors = _declare([])
     env.expect.that_collection(errors).contains_exactly([
@@ -197,6 +205,7 @@ def source_build_test_suite(name):
             _test_desktop_rows_declare_no_shell,
             _test_a_lock_file_pins_every_recipe_and_gives_the_hub_its_pin,
             _test_the_engine_name_reaches_the_hub,
+            _test_a_known_version_spares_the_hub_the_source_archive,
             _test_empty_platforms_fail,
             _test_unknown_filter_value_fails,
             _test_filters_selecting_no_row_fail,

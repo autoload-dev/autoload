@@ -294,7 +294,7 @@ class SelectionTest(unittest.TestCase):
             "MODULE.bazel.lock",
             "rules_godot/godot/defs.bzl",
             "rules_godot/godot/engine/BUILD.bazel",
-            "examples/petri/engine/godot_petri.lock.json",
+            "examples/engines/simulation/godot_simulation.lock.json",
             "tools/generate/generate.py",
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)
@@ -313,6 +313,20 @@ class SelectionTest(unittest.TestCase):
         for path in ("rules_godot/MODULE.bazel", "tools/setup/pins.py"):
             self.assertEqual(2, len(self.run_steps("docs", path)), path)
         self.assertEqual([], self.run_steps("docs", "addons/sentry/a.py"))
+
+    def test_desktop_contracts_check_the_docs_inputs(self) -> None:
+        # The pre-push hook runs them where a change can shape the desktop cases, such as a
+        # generated repository's public targets.
+        for path in (
+            "rules_godot/godot/engine/private/hub.bzl",
+            "tools/docs/contracts.py",
+        ):
+            self.assertEqual(
+                ["bazel run //tools/docs:contracts -- --lane desktop"],
+                [step.command for step in self.run_steps("contracts:desktop", path)],
+                path,
+            )
+        self.assertEqual([], self.run_steps("contracts:desktop", "addons/sentry/a.py"))
 
     def test_the_contract_checker_runs_its_own_test(self) -> None:
         for path in (

@@ -3,6 +3,7 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_metadata_sync")
 load(":editor_view_tests.bzl", "editor_view_test_suite")
 load(":metadata_sync_tests.bzl", "metadata_sync_test_suite")
+load(":runtime_profile_tests.bzl", "runtime_profile_test_suite")
 
 _EDITED = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view:"
 
@@ -43,3 +44,5 @@ godot_metadata_sync(
 editor_view_test_suite(name = "editor_view_test_suite")
 
 metadata_sync_test_suite(name = "metadata_sync_test_suite")
+
+runtime_profile_test_suite(name = "runtime_profile_test_suite")

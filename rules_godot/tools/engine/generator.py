@@ -10,6 +10,17 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+try:
+    from .build_profile import build_options, class_list_spec, read_profile
+except ImportError:
+    # Run as a binary, the tool imports its sibling modules from its own directory.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from build_profile import (  # type: ignore[no-redef]
+        build_options,
+        class_list_spec,
+        read_profile,
+    )
+
 
 class Value:
     def __init__(self, value: object) -> None:
@@ -82,6 +93,31 @@ def value_of(source: dict[str, Any]) -> object:
     return value
 
 
+def with_class_profile(
+    spec: dict[str, Any],
+    profile: Path | None,
+    registration: str = "",
+) -> dict[str, Any]:
+    """
+    Return the class generator's specification with the disabled classes of a build profile.
+
+    The profile is the application's. Build options shape the engine's graph, so it may set
+    them only as a registered runtime profile, whose runtime variant has its own graph;
+    registration, the MODULE.bazel line that registers it, names one that is not.
+    """
+    if profile is None:
+        return spec
+    data = read_profile(profile)
+    options = sorted(build_options(data)) if registration else []
+    if options:
+        raise ValueError(
+            f"The build profile {profile} sets {', '.join(options)}, build "
+            "options that need a runtime variant of the engine. Register the profile in "
+            f"MODULE.bazel: {registration}"
+        )
+    return class_list_spec(spec, data.get("disabled_classes", []))
+
+
 def run(spec: dict[str, Any], inputs: dict[str, str], outputs: dict[str, str]) -> None:
     original = Path.cwd()
     input_paths = {key: Path(value).absolute() for key, value in inputs.items()}
@@ -145,9 +181,18 @@ def main() -> None:
     parser.add_argument("--spec", required=True)
     parser.add_argument("--input", action="append", default=[])
     parser.add_argument("--output", action="append", default=[])
+    # The application's build profile, whose classes the class generator leaves out.
+    parser.add_argument("--class-profile", type=Path)
+    # The MODULE.bazel line that registers the application's profile, which is no
+    # registered runtime profile and so may only disable classes.
+    parser.add_argument("--registration", default="")
     args = parser.parse_args()
     run(
-        json.loads(Path(args.spec).read_text()),
+        with_class_profile(
+            json.loads(Path(args.spec).read_text()),
+            args.class_profile,
+            args.registration,
+        ),
         dict(value.split("=", 1) for value in args.input),
         dict(value.split("=", 1) for value in args.output),
     )

@@ -131,20 +131,72 @@ Editor recipes reject options that apply to templates only, such as `disable_3d`
 
 ## 4. Use a build profile
 
-A build profile removes single classes. Godot's editor writes one: **Project → Tools →
-Engine Compilation Configuration Editor**, then **Detect from Project**, then save the
-`.gdbuild` file into your repository and pass its label:
+A build profile removes single classes from one application's runtime. Godot's editor writes
+one: **Project → Tools → Engine Compilation Configuration Editor**, then **Detect from
+Project**, then save the `.gdbuild` file into your repository and pass its label to the
+application:
 
 ```starlark
-    build_profile = "//engines:game.gdbuild",
+godot_app(
+    name = "app",
+    pack = ":pack",
+    build_profile = "release.gdbuild",
 )
 ```
 
 Detection reads the project's scenes, resources and scripts. It does not see classes that
 code creates by name or that only some paths of the game load. Review the list, and add
 back what the game needs: an application that loads a disabled class fails when it loads
-it, not at build time. A profile's `disabled_build_options` must agree with the recipe's
-`build_options` and `renderers`.
+it, not at build time. Tests, imports and the editor keep every class; see
+[an application's build profile](engine.md#an-applications-build-profile).
+
+A profile that only disables classes needs no pin: the class list reaches the engine's class
+generator when it runs, and only the sources that register classes recompile. A profile with
+build options, such as `disable_3d`, needs `MODULE.bazel` to register it with
+`godot_engines.runtime_profile`, which gives the engine's runtime recipes a variant with
+those options; its options must agree with the recipe's `build_options` and `renderers`. See
+[build options in a build profile](engine.md#build-options-in-a-build-profile).
+
+### Derive the profile from the project
+
+`godot_runtime_profile` runs Godot's detection for you, headless, with the editor of the
+selected engine, and keeps the result in your repository. It needs the editor only, not an
+engine build:
+
+```starlark
+load("@autoload_rules_godot//godot:defs.bzl", "godot_runtime_profile")
+
+godot_runtime_profile(
+    name = "update_profile",
+    project = ":project",
+    deps = ["//path/to/game"],
+    profile = "runtime.gdbuild",
+    keep_classes = ["Camera3D"],
+)
+```
+
+`bazel run //path/to:update_profile` writes `runtime.gdbuild` beside the target; commit it.
+It is one file, as Godot writes it: `disabled_classes` and `disabled_build_options`, which
+holds the build options and the module switches the detection turns off, such as
+`disable_physics_3d` and `module_openxr_enabled`. Register it in `MODULE.bazel` with a
+`godot_engines.runtime_profile` tag, and name it as `godot_app`'s `build_profile`; the
+[engine guide](engine.md#build-options-in-a-build-profile) says what the registration does.
+The profile also turns off the drivers the detection finds unused; they must agree with the
+engine's `renderers` from [step 2](#2-choose-the-renderers).
+
+`bazel test //path/to:update_profile.test` fails while the file is missing or differs from
+the detection, and names the command that writes it, so the profile follows the project.
+
+The profile is the detection minus two sets of classes. The first is a list of classes the
+engine creates itself, such as `Image`, `Script` and `Shader`, which Godot's detection
+names for a project that never mentions them and which an engine cannot start without. The
+ruleset keeps that list for each Godot minor. The second is `keep_classes`, the classes
+your game creates by name, loads on some paths or gets from an add-on's code, which
+detection cannot see. Run the whole game, as [the check below](#check-the-result)
+says, and add what fails.
+
+Applying Lichtpost's whole detection, with its 227 classes, the build options and the modules
+the detection turns off, took the macOS template of Godot 4.7.2 from 61.3 MB to 33.1 MB.
 
 ## 5. Optimize for size
 

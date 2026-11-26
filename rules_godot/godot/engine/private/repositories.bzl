@@ -180,14 +180,6 @@ godot_engine_build = repository_rule(
             method against them; see the engine guide. Empty keeps Godot's drivers.
             """,
         ),
-        "build_profile": attr.label(
-            doc = """
-            A Godot build profile, such as the editor's Engine Compilation Configuration
-            writes: its disabled_classes leave those classes out, and its
-            disabled_build_options must agree with build_options.
-            """,
-            allow_single_file = [".gdbuild"],
-        ),
         "build_options": attr.string_dict(
             doc = """
             Upstream configure options as string values; import_env_vars lists
@@ -224,6 +216,14 @@ godot_engine_build = repository_rule(
             """,
         ),
         "lock_key": attr.string(doc = "The recipe's key in the lock file, such as linux_x86_64_editor."),
+        "runtime_profiles": attr.string_dict(
+            doc = """
+            Registered runtime profiles with build options: each profile's label mapped to
+            its disabled_build_options as a JSON object. The recipe declares a runtime
+            variant of each, its graph configured with those build options, which an
+            application whose build_profile names the profile gets.
+            """,
+        ),
         "repin": attr.string(doc = "The target that repins the lock file, named by a stale recipe's error."),
         "_configure": attr.label(default = Label("//tools/engine:configure.py")),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
@@ -234,6 +234,10 @@ godot_engine_build = repository_rule(
         "_build_profile": attr.label(default = Label("//tools/engine:build_profile.py")),
         "_define_analysis": attr.label(default = Label("//tools/engine:define_analysis.py")),
         "_source_tree": attr.label(default = Label("//tools/engine:source_tree.py")),
+        "_variants": attr.label(default = Label("//tools/engine:variants.py")),
+        "_generators": attr.label(default = Label("//tools/engine:generators.py")),
+        "_build_file": attr.label(default = Label("//tools/engine:build_file.py")),
+        "_build_profile_label": attr.label(default = Label("//godot/private:build_profile_label")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
         "_apple_constraint": attr.label(
@@ -324,13 +328,14 @@ def godot_engine_source_build(
         patches = [],
         patch_strip = 1,
         renderers = [],
-        build_profile = None,
         build_options = {},
         build_name = "custom",
         python = None,
         configure_timeout = 600,
         lock_file = None,
-        engine = ""):
+        engine = "",
+        version = "",
+        runtime_profiles = {}):
     """
     Declare a source build: its source recipes and its hub, from a module extension.
 
@@ -400,7 +405,6 @@ def godot_engine_source_build(
         patches: As for godot_engine_build; Android shell libraries apply them too.
         patch_strip: As for godot_engine_build.
         renderers: As for godot_engine_build.
-        build_profile: As for godot_engine_build.
         build_options: As for godot_engine_build.
         build_name: As for godot_engine_build.
         python: As for godot_engine_build.
@@ -409,6 +413,12 @@ def godot_engine_source_build(
             godot_engines.source_build. The hub then declares `:pin`, which writes it.
         engine: Name of the engine the hub's components belong to; empty joins the
             default engine. See godot_engines.source_build.
+        version: Canonical Godot version of the sources, as their godot_engine_source
+            declares it; empty makes the hub read it from the source descriptor, which
+            fetches the source archive whenever the hub is registered.
+        runtime_profiles: Registered runtime profiles with build options, each label mapped
+            to its disabled_build_options as JSON; every runtime recipe declares a runtime
+            variant of each, as godot_engines' runtime_profile tags do.
     """
     common = {
         "enabled_modules": enabled_modules,
@@ -417,7 +427,6 @@ def godot_engine_source_build(
         "patches": patches,
         "patch_strip": patch_strip,
         "renderers": renderers,
-        "build_profile": build_profile,
         "build_options": build_options,
         "build_name": build_name,
         "python": python,
@@ -433,5 +442,7 @@ def godot_engine_source_build(
         common,
         lock_file = lock_file,
         engine = engine,
+        version = version,
+        runtime_profiles = runtime_profiles,
     ):
         _SOURCE_BUILD_RULES[declaration.rule](**declaration.attrs)

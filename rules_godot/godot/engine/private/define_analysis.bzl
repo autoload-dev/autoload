@@ -38,6 +38,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolcha
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("//godot/private:actions.bzl", "PATH_MAPPING")
 load("//godot/private:flags.bzl", "FlagInfo")
 
 visibility(["//godot/..."])
@@ -176,6 +177,18 @@ def _command(ctx, toolchain, features, wrapper, context):
     }
     return [tool] + arguments, env, requirements
 
+def _included_path(source, wrapper):
+    """
+    The path the wrapper includes its source by.
+
+    A source file keeps its execution root path. A generated source lies in the wrapper's
+    output directory, which path mapping renames, so the wrapper names it relative to itself.
+    """
+    if source.is_source:
+        return source.path
+    depth = len(wrapper.dirname[len(wrapper.root.path) + 1:].split("/"))
+    return "../" * depth + source.path[len(source.root.path) + 1:]
+
 def _source_defines_impl(ctx):
     toolchain = find_cc_toolchain(ctx)
     features = cc_common.configure_features(
@@ -191,7 +204,7 @@ def _source_defines_impl(ctx):
     lines += [_definition(option) for option in _tokens(ctx.attr.defines)]
     definitions = "".join([line + "\n" for line in lines])
     wrapper = ctx.actions.declare_file("_macros/{}.wrapper.{}".format(ctx.label.name, source.extension))
-    ctx.actions.write(wrapper, _CANARY + definitions + '#include "{}"\n'.format(source.path))
+    ctx.actions.write(wrapper, _CANARY + definitions + '#include "{}"\n'.format(_included_path(source, wrapper)))
     context = cc_common.merge_compilation_contexts(
         compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
     )
@@ -231,6 +244,7 @@ godot_source_defines = rule(
 _SCRIPT = """\
 set -eu
 program=$1
+{ROOTS}
 analyze() {
   out=$1; wrapper=$2; shift 2
   if ! log=$("$@" 2>&1 >/dev/null); then printf '%s\\n' "$log" >&2; exit 1; fi
@@ -272,22 +286,83 @@ def _case(index, info, header):
         " ".join([_quote(argument) for argument in info.command]),
     )
 
-def _analyze(ctx, analyzed):
-    """Run the analysis of the sources that have a command, as (info, header) pairs."""
-    cases = [_case(index, info, header) for index, (info, header) in enumerate(analyzed)]
+def _root_path(file):
+    return file.root.path
+
+def _output_roots(text):
+    """The output directories, such as bazel-out/<configuration>/bin, that text names, in order."""
+    roots = []
+    for part in text.split("bazel-out/")[1:]:
+        root = "bazel-out/" + part.split("/")[0] + "/bin"
+        if root not in roots:
+            roots.append(root)
+    return roots
+
+def _first_by_root(files, by_root):
+    """The first of the files in each output directory, added to by_root's."""
+    result = dict(by_root)
+    for file in files:
+        result.setdefault(file.root.path, file)
+    return result
+
+def _root_files(label, roots, candidates, toolchain_files):
+    """
+    One file of each output directory, whose root path mapping rewrites.
+
+    The analysis' own headers and wrappers lie in the directories its sources name; only a
+    directory none of them lies in takes a file of the C++ toolchain, whose files are many.
+    """
+    by_root = _first_by_root(candidates, {})
+    if [root for root in roots if root not in by_root]:
+        by_root = _first_by_root(toolchain_files.to_list(), by_root)
+    missing = [root for root in roots if root not in by_root]
+    if missing:
+        fail("%s: no input or output lies in %s" % (label, missing[0]))
+    return [by_root[root] for root in roots]
+
+def _portable_script(ctx, analyzed, candidates, toolchain_files):
+    """
+    Write the analysis script with ${ROOT<n>} for each output directory it names.
+
+    Returns the script and one file of each output directory, in the order of n.
+    """
+    cases = "\n".join([_case(index, info, header) for index, (info, header) in enumerate(analyzed)])
+    roots = _output_roots(cases)
+    for index, root in enumerate(roots):
+        cases = cases.replace(root, "'\"${ROOT%d}\"'" % index)
+    root_lines = "".join(["ROOT%d=$%d\n" % (index, index + 2) for index in range(len(roots))])
+    content = _SCRIPT.replace("{ROOTS}\n", root_lines).replace("{CASES}", cases)
     script = ctx.actions.declare_file("_macros/{}.sh".format(ctx.label.name))
-    ctx.actions.write(script, _SCRIPT.replace("{CASES}", "\n".join(cases)).replace("{COUNT}", str(len(cases))))
-    env, requirements = {}, {}
+    ctx.actions.write(script, content.replace("{COUNT}", str(len(analyzed))))
+    return script, _root_files(ctx.label, roots, candidates, toolchain_files)
+
+def _analyze(ctx, analyzed):
+    """
+    Run the analysis of the sources that have a command, as (info, header) pairs.
+
+    The script names no output directory: each becomes ${ROOT<n>}, whose value an argument
+    takes from a file of that directory. Path mapping rewrites the argument, so the script
+    and the action's command are the same in every configuration.
+    """
+    toolchain_files = find_cc_toolchain(ctx).all_files
+    candidates = [header for _, header in analyzed] + [info.wrapper for info, _ in analyzed]
+    script, representatives = _portable_script(ctx, analyzed, candidates, toolchain_files)
+    env, requirements = {}, dict(PATH_MAPPING)
     for info, _ in analyzed:
         env |= info.env
         requirements |= info.execution_requirements
+    arguments = ctx.actions.args()
+    arguments.add(script)
+    arguments.add(ctx.file._program)
+    arguments.add_all(representatives, map_each = _root_path)
     ctx.actions.run_shell(
-        command = "bash {} {}".format(script.path, ctx.file._program.path),
+        command = 'bash "$@"',
+        arguments = [arguments],
         env = env,
         execution_requirements = requirements,
         inputs = depset(
             [script, ctx.file._program],
-            transitive = [info.inputs for info, _ in analyzed] + [find_cc_toolchain(ctx).all_files],
+            transitive = [info.inputs for info, _ in analyzed] + [toolchain_files],
         ),
         outputs = [header for _, header in analyzed],
         mnemonic = "DefineAnalysis",

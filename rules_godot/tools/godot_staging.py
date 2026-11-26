@@ -477,11 +477,22 @@ _ACTION_TIMEOUT_SECONDS = 300
 _RECORD_GRACE_SECONDS = 20
 
 
+def _stage_plugin(root: Path, directory: str, source: Path) -> str:
+    """Stage a plugin at a reserved resource directory with a .gdignore; return its plugin.cfg."""
+    destination = root / directory
+    if destination.exists():
+        raise ValueError(f"res://{directory} is reserved for rules_godot")
+    shutil.copytree(source, destination)
+    (destination / ".gdignore").touch()
+    return f"res://{directory}/plugin.cfg"
+
+
 def join_action(
     root: Path,
     work: Path,
     operation: str,
     parameters: Mapping[str, object] | None = None,
+    plugins: Mapping[str, Path] | None = None,
 ) -> None:
     """
     Stage the action plugin for an operation and enable it in the staged project.
@@ -495,16 +506,21 @@ def join_action(
         work: The action's work directory, which receives the record.
         operation: What the plugin records, see tools/action/plugin.gd.
         parameters: More fields of the plugin's action.json.
+        plugins: Plugins of the operation to stage and enable the same way, by the
+            resource directory each takes, such as `addons/rules_godot_profile`, and
+            the directory it is copied from.
+
+    Raises:
+        ValueError: A plugin's resource directory exists in the project.
     """
-    directory = root / ACTION_DIRECTORY
-    if directory.exists():
-        raise ValueError(f"res://{ACTION_DIRECTORY} is reserved for rules_godot")
-    shutil.copytree(_ACTION, directory)
-    (directory / ".gdignore").touch()
+    enabled = [_stage_plugin(root, ACTION_DIRECTORY, _ACTION)]
+    enabled += [
+        _stage_plugin(root, name, source) for name, source in (plugins or {}).items()
+    ]
     project = root / "project.godot"
     authored = work / "project.godot"
     shutil.copyfile(project, authored)
-    (directory / "action.json").write_text(
+    (root / ACTION_DIRECTORY / "action.json").write_text(
         json.dumps(
             {
                 **(parameters or {}),
@@ -515,7 +531,7 @@ def join_action(
         ),
         encoding="utf-8",
     )
-    _configure(root, [f"res://{ACTION_DIRECTORY}/plugin.cfg"], {})
+    _configure(root, enabled, {})
 
 
 def _status(returncode: int) -> str:

@@ -1,10 +1,21 @@
 import argparse
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
+from tools.engine.build_file import rule_text
+from tools.engine.generators import generator_rule
 from tools.engine.render import (
+    Includes,
+    Variant,
+    engine_dependencies,
+    header_rules,
     include_rules,
     object_groups,
     object_library_name,
+    object_rules,
+    render,
     source_build_facts,
     target_constraints,
 )
@@ -174,7 +185,7 @@ class RenderTest(unittest.TestCase):
             target_constraints(recipe_args("android", "unknown"))
 
     def test_each_set_of_included_files_becomes_one_header_target(self) -> None:
-        lines, targets = include_rules(
+        rules, targets = include_rules(
             {
                 "main.cpp": {"a.h"},
                 "a.h": {"b.h", "c.h"},
@@ -183,7 +194,7 @@ class RenderTest(unittest.TestCase):
             }
         )
         self.assertEqual(
-            lines,
+            [rule_text(rule) for rule in rules],
             [
                 "godot_source_headers(name = '_includes/c.h', hdrs = ['c.h'], deps = [])",
                 (
@@ -198,3 +209,174 @@ class RenderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ClassProfileRenderTest(unittest.TestCase):
+    def test_the_class_generator_reads_the_class_profile(self) -> None:
+        spec = {
+            "code_file": "core/core_builders.py",
+            "function": "disabled_class_builder",
+            "targets": ["core/disabled_classes.gen.h"],
+            "sources": [{"value": []}],
+        }
+
+        attributes = generator_rule(spec, {}).attrs
+        self.assertIs(attributes["class_profile"], True)
+        other = generator_rule(spec | {"function": "make_authors_header"}, {})
+        self.assertNotIn("class_profile", other.attrs)
+        # Its name follows its first output, the same in every runtime variant.
+        self.assertEqual(other.name, "_generate__core__disabled_classes.gen.h")
+
+    def test_objects_that_read_no_class_profile_share_one_configuration(self) -> None:
+        deps, rules = engine_dependencies(
+            [":a", ":register", ":b"], {":register"}, scoped=True
+        )
+        self.assertEqual(deps, [":register", ":_profile_independent_objects"])
+        self.assertEqual(len(rules), 1)
+        self.assertIn(
+            "godot_profile_independent(name = '_profile_independent_objects'",
+            rule_text(rules[0]),
+        )
+        self.assertEqual(rules[0].attrs["deps"], [":a", ":b"])
+        # A fork whose class_db.h gives the profile to every source normalizes nothing.
+        self.assertEqual(
+            engine_dependencies([":a", ":b"], set(), scoped=False), ([":a", ":b"], [])
+        )
+
+
+class PathMappingTest(unittest.TestCase):
+    def test_native_rules_support_path_mapping(self) -> None:
+        graph = {"core/a.cpp": set(), "platform/ios/b.mm": set()}
+        groups = [
+            ("cc", ("-Wall",), (".",), ["core/a.cpp"]),
+            ("objc", ("-Wall",), (".",), ["platform/ios/b.mm"]),
+        ]
+        objects = object_rules(groups, Includes(graph, {}, set()))
+        libraries = [
+            rule for rule in objects.rules if rule.kind in ("cc_library", "objc_library")
+        ]
+        self.assertEqual(len(libraries), 2)
+        for library in libraries:
+            self.assertEqual(library.attrs["tags"], ["supports-path-mapping"])
+
+    def test_the_package_compiles_without_module_maps(self) -> None:
+        args = argparse.Namespace(
+            cc_repository="@rules_cc",
+            swift_repository="@rules_swift",
+            generator_bzl="@autoload_rules_godot//godot/engine/private:generator.bzl",
+            build_name="custom",
+            inputs_hash="0",
+        )
+        package = [
+            line for line in header_rules(args, False) if line.startswith("package(")
+        ]
+        self.assertEqual(len(package), 1)
+        self.assertIn('features = ["-module_maps", "-layering_check"]', package[0])
+
+
+def _variant_args(**changes: object) -> argparse.Namespace:
+    values: dict[str, object] = {
+        "platform": "macos",
+        "cpu": "arm64",
+        "environment": "",
+        "build_target": "template_release",
+        "version": "4.7.2",
+        "modules": [],
+        "options": [],
+        "platforms_repository": "@platforms",
+        "apple_repository": "@apple_support",
+        "cc_repository": "@rules_cc",
+        "swift_repository": "@rules_swift",
+        "generator_bzl": "@rules_godot//godot/engine/private:generator.bzl",
+        "pin_bzl": "@rules_godot//godot/engine/private:pin.bzl",
+        "build_name": "custom",
+        "inputs_hash": "base",
+        "source_sha256": "",
+        "customizations": {},
+        "renderers": [],
+        "engine_renderers": [],
+        "registered_profile": False,
+        "runtime_profiles": ["@@//app:small.gdbuild", "@@//app:new.gdbuild"],
+        "build_profile_label": "@rules_godot//godot/private:build_profile_label",
+    }
+    return argparse.Namespace(**(values | changes))
+
+
+# The class generator, which every graph has.
+_CLASS_GENERATOR = {
+    "spec": {
+        "code_file": "core/core_builders.py",
+        "function": "disabled_class_builder",
+        "targets": ["core/disabled_classes.gen.h"],
+        "sources": [{"value": []}],
+    },
+    "dependencies": [],
+}
+
+
+def _graph(groups: list[object]) -> dict[str, object]:
+    return {
+        "groups": groups,
+        "generators": [_CLASS_GENERATOR],
+        "swift_sources": [],
+        "swift_options": None,
+        "version": "4.7.2",
+        "linkopts": [],
+        "minimum_os": "",
+        "modules": [],
+    }
+
+
+class RuntimeVariantRenderTest(unittest.TestCase):
+    def test_variants_share_one_package_and_select_on_the_build_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "core").mkdir()
+            for name in ["a.cpp", "b.cpp", "core_builders.py"]:
+                (root / "core" / name).write_text("int x;\n")
+            base = _graph([["cc", ["-DX"], ["."], ["core/a.cpp"]]])
+            small = _graph([["cc", ["-DX", "-DY"], ["."], ["core/a.cpp", "core/b.cpp"]]])
+            render(
+                _variant_args(),
+                base,
+                root,
+                [
+                    Variant(
+                        "@@//app:small.gdbuild",
+                        _variant_args(inputs_hash="v", registered_profile=True),
+                        small,
+                    ),
+                    Variant("@@//app:new.gdbuild", _variant_args(), None, "no pin"),
+                ],
+            )
+            build = (root / "BUILD.bazel").read_text()
+            self.assertIn(
+                "config_setting(name = '_variant_0', visibility = ['//visibility:private'], "
+                "flag_values = {'@rules_godot//godot/private:build_profile_label': "
+                "'@@//app:small.gdbuild'})",
+                build,
+            )
+            # Each object keeps one name; what differs selects on the variant.
+            self.assertEqual(build.count("cc_library(name = '_objects__core__a.cpp'"), 1)
+            self.assertIn("cc_library(name = '_objects__core__b.cpp'", build)
+            self.assertIn("inputs_hash = select({':_variant_0': 'v'", build)
+            # The class generator lets a registered runtime profile set build options.
+            self.assertIn(
+                "registered_profile = select({':_variant_0': True, "
+                + "'//conditions:default': False})",
+                build,
+            )
+            # Only the small variant compiles b.cpp, so its analysis is a shard of its own.
+            self.assertIn("name = '_macros__core'", build)
+            self.assertRegex(build, r"name = '_macros__p\d__core'")
+            # The variant without a pin fails with its message.
+            self.assertIn(
+                "alias(name = 'godot', actual = select({':_variant_1': ':_unpinned_1_godot'",
+                build,
+            )
+            self.assertIn("godot_unpinned_recipe(name = '_unpinned_1_godot'", build)
+            manifest = json.loads((root / "engine_manifest.json").read_text())
+            self.assertEqual(
+                manifest["runtime_variants"],
+                {"@@//app:small.gdbuild": "configured", "@@//app:new.gdbuild": "no pin"},
+            )

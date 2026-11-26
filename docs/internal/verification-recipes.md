@@ -75,7 +75,10 @@ the critical path and action timings. Keep these files only for the investigatio
 ## API documentation
 
 For API source changes, run the `docs` work, `aspect work docs`: it checks the
-inventory, the docstrings and the contracts the registry's documentation relies on. See
+inventory, the docstrings and the contracts the registry's documentation relies on. Its
+contract cases are those that need no lane: the cases of generated repositories, such as a
+prebuilt engine's hub, run in the lanes' `contracts:<lane>` work, `aspect work
+contracts:desktop` on a desktop host, which the pre-push hook runs too. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
 ## Profiles

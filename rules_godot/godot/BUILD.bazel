@@ -9,9 +9,11 @@ toolchain_type(name = "editor_toolchain_type")
 # Target-platform Godot runtimes; godot_runtime_component registers candidates.
 toolchain_type(name = "runtime_toolchain_type")
 
-# The engine a build uses, by name, such as --@autoload_rules_godot//godot:engine=petri: only the
-# components whose engine has this name fill its slots. Empty selects the default engine,
-# the components that name none, as the hubs of godot_engines do unless their tag names one.
+# The engine of the targets that name none, by name, such as
+# --@autoload_rules_godot//godot:engine=simulation: only the components whose engine has this
+# name fill its slots. A target's engine attribute sets it for that target and its
+# dependencies. Empty selects the default engine, the components that name none, as the hubs
+# of godot_engines do unless their tag names one.
 string_flag(
     name = "engine",
     build_setting_default = "",
@@ -40,6 +42,15 @@ string_flag(
 # Virtual function elimination of source-built engines under -c opt; see docs/public/engine.md.
 bool_flag(
     name = "engine_vfe",
+    build_setting_default = False,
+)
+
+# Whether source-built editors compile for a debugger: in Bazel's dbg mode, with debug
+# information, without optimization and unstripped. Editors build in the execution
+# configuration, which keeps the flag only with --experimental_propagate_custom_flag; see
+# docs/public/engine.md.
+bool_flag(
+    name = "editor_debug",
     build_setting_default = False,
 )
 

@@ -1,11 +1,12 @@
 """
-How a source-built engine compiles under -c opt: the engine_optimize, engine_lto and
-engine_vfe settings.
+How a source-built engine compiles: under -c opt, the engine_optimize, engine_lto and
+engine_vfe settings, and a source-built editor with editor_debug.
 
 The engine rules' transitions apply these options to the engine's native graph only, so
 extensions and application code keep the build's own levels.
 """
 
+load("//godot/engine/private:selection.bzl", "ENGINE", "ENGINE_ATTRS", "selected_engine")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
@@ -14,6 +15,34 @@ visibility(["//godot/..."])
 _ENGINE_OPTIMIZE = str(Label("//godot:engine_optimize"))
 _ENGINE_LTO = str(Label("//godot:engine_lto"))
 _ENGINE_VFE = str(Label("//godot:engine_vfe"))
+
+# The build profile of the runtime an application packages; see //godot/private:build_profile.
+BUILD_PROFILE = str(Label("//godot/private:build_profile"))
+
+# Its value without one.
+NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
+
+# Its label as a string, empty without one, which selects a runtime variant and keeps
+# prebuilt runtimes out; see //godot/private:build_profile_label.
+BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
+
+# The settings profile_settings returns, for the transitions that set them.
+PROFILE_SETTINGS = [BUILD_PROFILE, BUILD_PROFILE_LABEL]
+
+def profile_settings(profile):
+    """
+    Return the settings of a build profile.
+
+    Args:
+        profile: The label string of the build profile, or NO_BUILD_PROFILE.
+
+    Returns:
+        BUILD_PROFILE and BUILD_PROFILE_LABEL.
+    """
+    return {
+        BUILD_PROFILE: profile,
+        BUILD_PROFILE_LABEL: "" if profile == NO_BUILD_PROFILE else profile,
+    }
 
 # The compiler options of Godot's optimize levels, as its SConstruct sets them, and of
 # the ruleset's size_min.
@@ -83,6 +112,33 @@ def engine_optimization(settings, attr):
     vfe = _VFE_OPTIONS if settings[_ENGINE_VFE] else []
     return {COPT: copts + _OPTIMIZE_OPTIONS[level] + lto + vfe, LINKOPT: linkopts + lto} | _RESET
 
+_EDITOR_DEBUG = str(Label("//godot:editor_debug"))
+
+# The settings a source-built editor's native graph reads and resets for debugging.
+EDITOR_DEBUG_INPUTS = [_EDITOR_DEBUG]
+
+EDITOR_DEBUG_OUTPUTS = [COMPILATION_MODE, _EDITOR_DEBUG]
+
+def editor_debugging(settings, attr):
+    """
+    Return the compilation mode of an engine's native graph and reset //godot:editor_debug.
+
+    With editor_debug, a source-built editor compiles in Bazel's dbg mode: with debug
+    information, without optimization and unstripped. Runtimes keep the build's mode, and
+    the reset setting keeps their graph's configuration whatever its value.
+
+    Args:
+        settings: Transition inputs: the compilation mode and editor_debug.
+        attr: Attributes of the engine rule: role.
+
+    Returns:
+        The compilation mode and editor_debug of the engine's native graph.
+    """
+    mode = str(settings[COMPILATION_MODE])
+    if attr.role == "editor" and settings[_EDITOR_DEBUG]:
+        mode = "dbg"
+    return {COMPILATION_MODE: mode, _EDITOR_DEBUG: False}
+
 def optimization_error(compilation_mode, lto, vfe):
     """
     Return why the engine settings cannot apply together, or None.
@@ -126,7 +182,7 @@ def check_optimization(ctx):
         fail("%s: %s" % (ctx.label, error))
 
 # The attributes of the rules that resolve an application's runtime component.
-ENGINE_SETTINGS_ATTRS = {
+ENGINE_SETTINGS_ATTRS = ENGINE_ATTRS | {
     "engine_optimize": attr.string(
         doc = "The engine_optimize of this application's source-built engine; empty keeps the build's.",
         values = [""] + OPTIMIZE_VALUES,
@@ -139,11 +195,28 @@ ENGINE_SETTINGS_ATTRS = {
         doc = "Whether this application's source-built engine drops unreachable virtual functions: on, off, or empty to keep the build's.",
         values = VFE_VALUES,
     ),
+    "build_profile": attr.label(
+        doc = "The build profile whose disabled classes this application's source-built runtime leaves out; None keeps the build's.",
+        allow_single_file = [".gdbuild"],
+    ),
 }
 
-def _engine_settings_impl(settings, attr):
+def tuned_engine_settings(settings, attr):
+    """
+    Return the engine settings an application sets at the edge to its runtime component.
+
+    Args:
+        settings: Transition inputs: the engine name, the optimization settings and the
+            build profile.
+        attr: Attributes of the runtime target, ENGINE_SETTINGS_ATTRS; empty values keep
+            the build's.
+
+    Returns:
+        The settings the runtime component resolves and compiles with.
+    """
     vfe = attr.engine_vfe
-    return {
+    profile = str(attr.build_profile) if attr.build_profile else str(settings[BUILD_PROFILE])
+    return selected_engine(settings, attr) | profile_settings(profile) | {
         _ENGINE_OPTIMIZE: attr.engine_optimize or settings[_ENGINE_OPTIMIZE],
         _ENGINE_LTO: attr.engine_lto or settings[_ENGINE_LTO],
         _ENGINE_VFE: vfe == "on" if vfe else settings[_ENGINE_VFE],
@@ -152,7 +225,26 @@ def _engine_settings_impl(settings, attr):
 # Sets an application's engine settings where its runtime component is resolved, so the
 # engine compiles with them and the rest of the application keeps the build's.
 engine_settings = transition(
-    implementation = _engine_settings_impl,
-    inputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
-    outputs = [_ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE],
+    implementation = tuned_engine_settings,
+    inputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE, BUILD_PROFILE],
+    outputs = [ENGINE, _ENGINE_OPTIMIZE, _ENGINE_LTO, _ENGINE_VFE] + PROFILE_SETTINGS,
 )
+
+def require_tunable_runtime(label, attr, provenance):
+    """
+    Fail for a build profile on a runtime that cannot leave classes out.
+
+    Only a source recipe's class generator reads the profile; a prebuilt runtime would ship
+    every class without a word.
+
+    Args:
+        label: Label of the runtime target, for the message.
+        attr: Its attributes, ENGINE_SETTINGS_ATTRS.
+        provenance: GodotComponentInfo of the resolved runtime component.
+    """
+    if attr.build_profile and provenance.kind != "source":
+        fail((
+            "%s: build_profile needs a runtime built from source, but the selected runtime " +
+            "component %s is prebuilt. Register a source build for the slot, use a " +
+            "prebuilt engine whose source_runtimes builds it, or leave build_profile unset."
+        ) % (label, provenance.component))

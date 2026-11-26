@@ -97,42 +97,125 @@ def _unpinned_message(ctx):
         "can execute actions for %s recipes, such as one with remote execution"
     ) % (ctx.attr.name, ctx.attr.lock_file, ctx.attr.lock_key, ctx.attr.repin, ctx.attr.platform)
 
-# Where a recipe's build profile lies in its repository, which is also Godot's source root.
-_BUILD_PROFILE = "_build_profile.gdbuild"
-
 def _pin_sources(ctx):
     """The globs of the recipe repository's files a pin action copies into its source tree."""
     sources = ["_custom_modules/**", "_scons/**"]
-    return sources + [_BUILD_PROFILE] if ctx.attr.build_profile else sources
+    if ctx.attr.runtime_profiles:
+        sources.append("_variant_*.gdbuild")
+    return sources
+
+def profile_options(options, version):
+    """
+    Return a build profile's options as the recipe's Godot version reads them.
+
+    The editor writes switches that a version's SCons lacks, such as 4.7's renderer
+    switches, which change nothing there; a version may also need an option another one
+    implies.
+
+    Args:
+        options: A profile's disabled_build_options.
+        version: The canonical Godot version of the recipe's sources.
+
+    Returns:
+        The options without the version's editor-only switches, with the options they imply.
+    """
+    table = engine_profile(version)["build_profile"]
+    result = {key: value for key, value in options.items() if key not in table["editor_only_options"]}
+    for implied in table["implied_options"]:
+        if version in implied["versions"] and result.get(implied["option"]):
+            result = implied["implies"] | result
+    return result
+
+def _write_profile(ctx, path, profile, version):
+    """Write a build profile with the options the recipe's version reads."""
+    options = profile_options(profile.get("disabled_build_options", {}), version)
+    ctx.file(path, json.encode_indent(profile | {"disabled_build_options": options}) + "\n")
+
+# Where a recipe without a lock file configures its runtime variants, one pin each.
+_VARIANT_PINS = "_variant_pins"
+
+def _variant_profiles(ctx, version):
+    """
+    Write each runtime variant's build profile and return its runtime profile and path.
+
+    A variant's profile has its runtime profile's build options, which configure beside the
+    recipe's build_options; its classes stay with the application, whose profile the class
+    generator reads.
+    """
+    variants = []
+    for index, label in enumerate(sorted(ctx.attr.runtime_profiles)):
+        path = "_variant_%d.gdbuild" % index
+        options = json.decode(ctx.attr.runtime_profiles[label])
+        _write_profile(ctx, path, {"type": "build_profile", "disabled_build_options": options}, version)
+        variants.append((label, path))
+    return variants
+
+def _profile_arguments(path):
+    """The configure arguments of a build profile, none without one."""
+    return ["--build-profile", path] if path else []
+
+def _variant_arguments(ctx, command, variants):
+    """
+    The configure arguments that render a recipe's runtime variants beside its graph.
+
+    A recipe without a lock file configures each variant first.
+    """
+    arguments = ["--build-profile-label", str(ctx.attr._build_profile_label)]
+    if variants and not ctx.attr.lock_file:
+        arguments.extend(_configure_variants(ctx, command, variants))
+    for label, path in variants:
+        arguments.extend(["--runtime-profile", label, path])
+    return arguments
+
+def _quoted(argument):
+    """A shell word for an argument."""
+    return "'" + argument.replace("'", "'\\''") + "'"
+
+def _configure_variants(ctx, command, variants):
+    """
+    Configure the runtime variants of a recipe without a lock file, together, one pin each.
+
+    A variant that cannot configure, such as one whose profile contradicts the recipe's
+    build options, records its output instead; only the applications that select it fail.
+    """
+    lines = []
+    for index, (_, path) in enumerate(variants):
+        pin = "%s/%d" % (_VARIANT_PINS, index)
+        configure = command + _profile_arguments(path) + ["--pin-output", pin + ".json"]
+        lines.append("(%s > %s.log 2>&1 || mv %s.log %s.error) &" % (
+            " ".join([_quoted(argument) for argument in configure]),
+            pin,
+            pin,
+            pin,
+        ))
+    ctx.file(_VARIANT_PINS + "/configure.sh", "\n".join(lines + ["wait", ""]))
+    ctx.execute(
+        ["/bin/sh", _VARIANT_PINS + "/configure.sh"],
+        timeout = ctx.attr.configure_timeout,
+        quiet = True,
+    )
+    return ["--variant-pins", str(ctx.path(_VARIANT_PINS))]
 
 def _selection_arguments(ctx):
-    """
-    Return the configure arguments of Godot's default modules, renderers and build profile.
-
-    It also writes the build profile to the source root, where SCons reads it and a pin
-    action's declared tree copies it.
-    """
+    """Return the configure arguments of Godot's default modules and renderers."""
     arguments = ["--default-modules"] if ctx.attr.default_modules else []
     if ctx.attr.renderers:
         arguments.extend(["--renderers", ",".join(ctx.attr.renderers)])
-    if ctx.attr.build_profile:
-        ctx.file(_BUILD_PROFILE, ctx.read(ctx.path(ctx.attr.build_profile)))
-        arguments.extend(["--build-profile", _BUILD_PROFILE])
     return arguments
 
 def _repository(label):
     """The canonical repository of a label, such as @@platforms, for generated BUILD files."""
     return str(label).split("//")[0]
 
-def _pin_target(ctx, archive, strip_prefix, arguments):
-    """The :pin target that configures this recipe on its execution platform."""
+def _pin_target(ctx, descriptor, arguments, name = "pin"):
+    """The :pin target that configures this recipe, or one of its variants, on its execution platform."""
     execution = _PIN_EXECUTION.get(ctx.attr.platform)
     constraints = [str(OPERATING_SYSTEM_CONSTRAINTS[execution])] if execution else []
     return """
 load(%r, "godot_recipe_pin")
 
 godot_recipe_pin(
-    name = "pin",
+    name = %r,
     archive = %r,
     strip_prefix = %r,
     patches = %r,
@@ -144,13 +227,21 @@ godot_recipe_pin(
 )
 """ % (
         str(ctx.attr._pin_bzl),
-        str(archive),
-        strip_prefix,
+        name,
+        str(ctx.attr.source.same_package_label(descriptor["archive"])),
+        descriptor["strip_prefix"],
         [str(patch) for patch in ctx.attr.patches],
         _pin_sources(ctx),
         arguments,
         constraints,
     )
+
+def _pin_targets(ctx, descriptor, arguments, variants):
+    """The :pin target of the recipe and the :pin_variant_<n> target of each runtime variant."""
+    return _pin_target(ctx, descriptor, arguments) + "".join([
+        _pin_target(ctx, descriptor, arguments + _profile_arguments(path), name = "pin_variant_%d" % index)
+        for index, (_, path) in enumerate(variants)
+    ])
 
 def _watch_tools(ctx):
     """Configure again when the code that captures or renders a recipe's graph changes."""
@@ -161,57 +252,33 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._build_profile))
     ctx.watch(ctx.path(ctx.attr._define_analysis))
     ctx.watch(ctx.path(ctx.attr._include_graph))
+    ctx.watch(ctx.path(ctx.attr._variants))
+    ctx.watch(ctx.path(ctx.attr._generators))
+    ctx.watch(ctx.path(ctx.attr._build_file))
 
-def engine_build_impl(ctx, *, _fail = fail):
-    """
-    Extract and patch one source recipe and render its build graph.
+def _recipe_error(ctx):
+    """Why a recipe's attributes cannot configure it, or None."""
+    is_ios = ctx.attr.platform == "ios"
+    if is_ios and not ctx.attr.environment:
+        return "%s: iOS recipes need environment = \"device\" or \"simulator\"" % ctx.attr.name
+    if ctx.attr.environment and not is_ios:
+        return "%s: environment is only valid for iOS recipes" % ctx.attr.name
+    if not ctx.attr.lock_file:
+        return None
+    if not ctx.attr.lock_key or not ctx.attr.repin:
+        return "%s: lock_file needs lock_key and repin, as godot_engine_source_build sets them" % ctx.attr.name
+    return None
 
-    Without a lock file the recipe is configured here, with SCons; with one, the graph comes
-    from the recipe's pin, and nothing is configured on this host.
+def _read_environment(ctx):
+    """Read the host environment a configuration here reads; a pinned recipe reads none."""
+    if ctx.attr.lock_file:
+        return
+    imported = ctx.attr.build_options.get("import_env_vars", "").split(",")
+    for name in _CONFIGURE_ENVIRONMENT + [name for name in imported if name]:
+        ctx.getenv(name)
 
-    Args:
-        ctx: Repository rule context of godot_engine_build.
-        _fail: Replaces fail in Starlark unit tests.
-
-    Returns:
-        The repository's metadata: reproducible except for unpinned Linux recipes.
-    """
-    _watch_tools(ctx)
-    if ctx.attr.platform == "ios" and not ctx.attr.environment:
-        _fail("%s: iOS recipes need environment = \"device\" or \"simulator\"" % ctx.attr.name)
-        return None
-    if ctx.attr.platform != "ios" and ctx.attr.environment:
-        _fail("%s: environment is only valid for iOS recipes" % ctx.attr.name)
-        return None
-    pinned = bool(ctx.attr.lock_file)
-    if pinned and not (ctx.attr.lock_key and ctx.attr.repin):
-        _fail("%s: lock_file needs lock_key and repin, as godot_engine_source_build sets them" % ctx.attr.name)
-        return None
-    if not pinned:
-        # The host environment a configuration here reads; a pinned recipe reads none.
-        imported = ctx.attr.build_options.get("import_env_vars", "").split(",")
-        for name in _CONFIGURE_ENVIRONMENT + [name for name in imported if name]:
-            ctx.getenv(name)
-    descriptor = json.decode(ctx.read(ctx.path(ctx.attr.source)))
-    archive = ctx.path(ctx.attr.source.same_package_label(descriptor["archive"]))
-    ctx.extract(archive, stripPrefix = descriptor["strip_prefix"])
-    if not apply_repository_patches(ctx, _fail = _fail):
-        return None
-    ctx.download_and_extract(
-        url = _SCONS_URL,
-        sha256 = _SCONS_SHA256,
-        stripPrefix = "scons-4.10.1",
-        output = "_scons",
-    )
-    python = ctx.path(ctx.attr.python) if ctx.attr.python else ctx.which("python3")
-    if not python:
-        _fail(
-            "Godot source graph configuration needs Python 3.9+; " +
-            "set python to a declared executable label",
-        )
-        return None
-
-    # The recipe's own arguments, which its pin action repeats on another host.
+def _recipe_arguments(ctx, descriptor):
+    """The recipe's own configure arguments, which its pin action repeats on another host."""
     arguments = [
         "--platform",
         _SCONS_PLATFORMS[ctx.attr.platform],
@@ -235,7 +302,11 @@ def engine_build_impl(ctx, *, _fail = fail):
     arguments.extend(_selection_arguments(ctx))
     for option in sorted(ctx.attr.build_options):
         arguments.extend(["--option", option + "=" + ctx.attr.build_options[option]])
-    command = [
+    return arguments
+
+def _host_command(ctx, python, arguments):
+    """The configure command on this host: the tools' paths, then the recipe's arguments."""
+    return [
         str(python),
         str(ctx.path(ctx.attr._configure)),
         "--source",
@@ -253,52 +324,111 @@ def engine_build_impl(ctx, *, _fail = fail):
         "--swift-repository",
         _repository(ctx.attr._swift_library),
     ] + arguments
+
+def _add_custom_modules(ctx, command, arguments):
+    """Add the custom modules to the command and the pin's arguments; return an error or None."""
     for module, name in ctx.attr.custom_modules.items():
         marker = ctx.path(module)
         if marker.basename != "config.py":
-            _fail("custom_modules keys must name each module's config.py: %s" % module)
-            return None
+            return "custom_modules keys must name each module's config.py: %s" % module
         ctx.watch_tree(marker.dirname)
         command.extend(["--custom-module-source", name + "=" + str(marker.dirname)])
         arguments.extend(["--custom-module-name", name])
-    for patch in ctx.attr.patches:
-        command.extend(["--patch", str(ctx.path(patch))])
-    if pinned:
-        lock = ctx.path(ctx.attr.lock_file)
-        ctx.watch(lock)
-        command.extend([
-            "--lock",
-            str(lock),
-            "--recipe",
-            ctx.attr.lock_key,
-            "--unpinned-message",
-            _unpinned_message(ctx),
-            "--pin-bzl",
-            str(ctx.attr._pin_bzl),
-        ])
-    result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True)
-    if result.return_code:
-        _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
-        return None
-    if pinned:
-        ctx.file("BUILD.bazel", ctx.read("BUILD.bazel") + _pin_target(
-            ctx,
-            ctx.attr.source.same_package_label(descriptor["archive"]),
-            descriptor["strip_prefix"],
-            arguments,
-        ))
+    return None
+
+def _lock_arguments(ctx):
+    """The configure arguments that render a pinned recipe from its lock file; none without."""
+    if not ctx.attr.lock_file:
+        return []
+    lock = ctx.path(ctx.attr.lock_file)
+    ctx.watch(lock)
+    return [
+        "--lock",
+        str(lock),
+        "--recipe",
+        ctx.attr.lock_key,
+        "--unpinned-message",
+        _unpinned_message(ctx),
+        "--pin-bzl",
+        str(ctx.attr._pin_bzl),
+    ]
+
+def _extract_sources(ctx, descriptor, _fail):
+    """Extract and patch the sources and add SCons; False after an error."""
+    archive = ctx.path(ctx.attr.source.same_package_label(descriptor["archive"]))
+    ctx.extract(archive, stripPrefix = descriptor["strip_prefix"])
+    if not apply_repository_patches(ctx, _fail = _fail):
+        return False
+    ctx.download_and_extract(
+        url = _SCONS_URL,
+        sha256 = _SCONS_SHA256,
+        stripPrefix = "scons-4.10.1",
+        output = "_scons",
+    )
+    return True
+
+def _finish(ctx, descriptor, arguments, variants):
+    """Add a pinned recipe's pin targets, or drop what a configuration here leaves behind."""
+    if ctx.attr.lock_file:
+        ctx.file("BUILD.bazel", ctx.read("BUILD.bazel") + _pin_targets(ctx, descriptor, arguments, variants))
     else:
         # Upstream dumps its configured environment, with this host's SDK paths, for editor
         # integrations; no target reads it.
         ctx.delete(".scons_env.json")
     ctx.file("WORKSPACE.bazel", "")
 
+def engine_build_impl(ctx, *, _fail = fail):
+    """
+    Extract and patch one source recipe and render its build graph.
+
+    Without a lock file the recipe is configured here, with SCons; with one, the graph comes
+    from the recipe's pin, and nothing is configured on this host.
+
+    Args:
+        ctx: Repository rule context of godot_engine_build.
+        _fail: Replaces fail in Starlark unit tests.
+
+    Returns:
+        The repository's metadata: reproducible except for unpinned Linux recipes.
+    """
+    _watch_tools(ctx)
+    error = _recipe_error(ctx)
+    if error:
+        _fail(error)
+        return None
+    _read_environment(ctx)
+    descriptor = json.decode(ctx.read(ctx.path(ctx.attr.source)))
+    if not _extract_sources(ctx, descriptor, _fail):
+        return None
+    python = ctx.path(ctx.attr.python) if ctx.attr.python else ctx.which("python3")
+    if not python:
+        _fail(
+            "Godot source graph configuration needs Python 3.9+; " +
+            "set python to a declared executable label",
+        )
+        return None
+    arguments = _recipe_arguments(ctx, descriptor)
+    command = _host_command(ctx, python, arguments)
+    error = _add_custom_modules(ctx, command, arguments)
+    if error:
+        _fail(error)
+        return None
+    for patch in ctx.attr.patches:
+        command.extend(["--patch", str(ctx.path(patch))])
+    variants = _variant_profiles(ctx, descriptor["version"])
+    command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
+    result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True)
+    if result.return_code:
+        _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
+        return None
+    _finish(ctx, descriptor, arguments, variants)
+
     # A pinned recipe depends only on the recipe, the sources and the lock file, and Android
     # and Apple configurations only on those and the environment recorded above, so Bazel's
     # repo contents cache, local or remote, may reuse them. Godot's Linux configuration
     # chooses warning flags by the host compiler's version, so unpinned Linux recipes
     # configure on each host.
-    return ctx.repo_metadata(reproducible = pinned or ctx.attr.platform != "linux")
+    return ctx.repo_metadata(reproducible = bool(ctx.attr.lock_file) or ctx.attr.platform != "linux")
 
 # ==== Android shell ===========================================================
 

@@ -4,7 +4,12 @@ import unittest
 from pathlib import Path
 
 from tools.engine.configure import write_json
-from tools.engine.generator import File, run, safe_relative
+from tools.engine.generator import (
+    File,
+    run,
+    safe_relative,
+    with_class_profile,
+)
 
 
 class GeneratorTest(unittest.TestCase):
@@ -113,3 +118,53 @@ class GeneratorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+_CLASS_SPEC = {
+    "code_file": "core/core_builders.py",
+    "function": "disabled_class_builder",
+    "targets": ["core/disabled_classes.gen.h"],
+    "sources": [{"value": []}],
+}
+
+
+def _profile(root: Path, name: str, content: dict) -> Path:
+    path = root / name
+    path.write_text(json.dumps(content))
+    return path
+
+
+class ClassProfileTest(unittest.TestCase):
+    def test_an_application_profile_names_the_disabled_classes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            app = _profile(
+                Path(directory),
+                "app.gdbuild",
+                {"disabled_classes": ["Tree", "GraphEdit"]},
+            )
+            spec = with_class_profile(_CLASS_SPEC, app)
+            self.assertEqual(spec["sources"], [{"value": ["Tree", "GraphEdit"]}])
+            self.assertEqual(spec["targets"], _CLASS_SPEC["targets"])
+            # Without an application's profile, the engine keeps every class.
+            self.assertEqual(with_class_profile(_CLASS_SPEC, None), _CLASS_SPEC)
+
+    def test_an_unregistered_application_profile_with_build_options_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            app = _profile(
+                Path(directory),
+                "app.gdbuild",
+                {
+                    "disabled_classes": ["Tree"],
+                    "disabled_build_options": {"disable_3d": True},
+                },
+            )
+            registration = 'godot_engines.runtime_profile(profile = "//app:app.gdbuild")'
+            with self.assertRaisesRegex(
+                ValueError, r"disable_3d.*MODULE\.bazel.*runtime_profile\(profile"
+            ):
+                with_class_profile(_CLASS_SPEC, app, registration)
+            # A registered runtime profile's variant compiles its options.
+            self.assertEqual(
+                with_class_profile(_CLASS_SPEC, app)["sources"],
+                [{"value": ["Tree"]}],
+            )
