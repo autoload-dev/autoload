@@ -35,8 +35,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's
   add-ons that registers the official engine, as applications do (RG020). Keep it using the
   module's public targets. In this repository it uses the rules beside it through
-  `addons/bcr.bazelrc`; `python3 -m tools.ci.release_archive addons/<module>` runs it from
-  the module's release archive, as the registry does.
+  `addons/bcr.bazelrc`, as CI's macOS job runs it on every run;
+  `python3 -m tools.ci.release_archive addons/<module>` runs it from the module's release
+  archive, as the registry does.
 - [`examples/addons/<module>/`](../examples/AGENTS.md) in the repository's root module, outside
   the module: its example application, the directory itself or one per scenario in
   subdirectories, each with the targets `edit`,
@@ -45,9 +46,11 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   `addons.MODULE.bazel`, and the rules of this repository the same way, so an add-on always
   builds against the rules it is changed with. `aspect generate` and the generator write the
   segment from `addons/` (`tools/addons/declarations.py`), together with `addons.bzl`, the
-  modules' repositories, whose `module_files` the setup checks' tests read. The root ignores
-  `addons/`, so no Bazel target can derive or diff-check the two files: Bazel itself rejects
-  a stale segment, and `tools/setup/checkout.py` a list that misses a module.
+  modules' repositories, whose `module_files` the setup checks' tests read, and
+  `root.targets`, the root module's target patterns, which the development verbs pass to
+  Bazel. The root ignores `addons/`, so no Bazel target can derive or diff-check the files:
+  Bazel itself rejects a stale segment, `tools/setup/checkout.py` a list that misses a
+  module, and `//tools/addons:root_targets_test` target patterns that differ from the list.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
   root; the root holds only the module's files,
   [`third_party/`](../docs/internal/glossary.md#modules-and-tests), `tests/`, `bcr/` and

@@ -2,6 +2,7 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 
 # buildifier: disable=bzl-visibility
 load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_test")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 package(default_testonly = True)
 
@@ -42,4 +43,12 @@ filegroup(
     srcs = ["BUILD.bazel"],
     tags = ["starlark"],
     visibility = ["//visibility:private"],
+)
+
+# `godot_app` tags its targets `manual`: only this test builds the desktop application.
+build_test(
+    name = "app_build_test",
+    size = "small",
+    tags = ["godot_process"],
+    targets = ["//examples/addons/firebase:app"],
 )

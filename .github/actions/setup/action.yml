@@ -1,43 +1,30 @@
 name: Set up repository
 description: >-
   Install Bazelisk and the Aspect CLI, reuse SDK components, and configure Bazel
-  repository caching and cleanup. A persistent runner keeps its tools, SDK
-  components and repository cache on its own disk between jobs, shares a Bazel
-  cache server with its host, and its machine configures Bazel, so the cache
-  service and ~/.bazelrc steps are left out there.
-
-inputs:
-  android-cache:
-    description: Cache Android SDK components missing from the runner.
-    default: "false"
-  cache-name:
-    description: >-
-      The name that keeps this job's caches apart from other jobs'. A matrix's
-      jobs share one job id, so each passes a name of its own.
-    default: ${{ github.job }}
+  repository caching and cleanup. A fresh Linux runner keeps its repository
+  cache on a sticky disk and its missing SDK components in the cache service. A
+  persistent runner keeps its tools, SDK components and repository cache on its
+  own disk between jobs, shares a Bazel cache server with its host, and its
+  machine configures Bazel, so the cache and ~/.bazelrc steps are left out
+  there.
 
 runs:
   using: composite
   steps:
-    # GitHub's and Blacksmith's runners start every job fresh: caches come from the
-    # cache service and Bazel settings go into ~/.bazelrc. A persistent runner, such as
+    # Blacksmith's runners start every job fresh: the repository cache comes from a
+    # sticky disk and Bazel settings go into ~/.bazelrc. A persistent runner, such as
     # the macos-ci runners, keeps its disk between jobs and runs jobs side by side; its
     # machine sets PERSISTENT_RUNNER and BAZEL_REPOSITORY_CACHE in the runner's
     # environment and configures Bazel in /etc/bazel.bazelrc, whose remote cache is the
-    # Bazel cache server on the VM's host (autoload-dev/macos-ci). Linux runners' sticky
-    # disk, like a persistent runner's disk, keeps the repository cache between jobs.
-    # Blacksmith's runners count as self-hosted to GitHub, so runner.environment
-    # cannot tell the two kinds apart.
+    # Bazel cache server on the VM's host (autoload-dev/macos-ci). Blacksmith's
+    # runners count as self-hosted to GitHub, so runner.environment cannot tell the
+    # two kinds apart.
     - name: Classify runner
       id: runner
       shell: bash
       run: |
         fresh=$([[ "${PERSISTENT_RUNNER:-}" == true ]] && echo false || echo true)
-        persistent=$([[ "$fresh" == false || "$RUNNER_OS" == Linux ]] && echo true || echo false)
-        {
-          echo "fresh=$fresh"
-          echo "persistent-disk=$persistent"
-        } >> "$GITHUB_OUTPUT"
+        echo "fresh=$fresh" >> "$GITHUB_OUTPUT"
     # Runner images may select an older NDK. Empty values let the Aspect CLI apply the
     # repository default (.aspect/config.axl) while preserving its local override policy.
     - name: Clear runner NDK defaults
@@ -84,51 +71,20 @@ runs:
     - name: Locate cache
       id: cache
       shell: bash
-      env:
-        CACHE_NAME: ${{ inputs.cache-name }}
       run: |
         cache=${BAZEL_REPOSITORY_CACHE:-$HOME/.cache/bazel-repository}
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
-        echo "downloads-key=bazel-downloads-v1-$RUNNER_OS-$RUNNER_ARCH-$CACHE_NAME-" >> "$GITHUB_OUTPUT"
-    # Hosted macOS runners have no sticky disk: the cache service keeps a job's
-    # downloads, such as the export templates, without the extracted
-    # repositories. A key ends in the digest of the entry's file list; the
-    # newest entry is restored, and save-downloads saves at the job's end.
-    - name: Restore downloads
-      if: steps.runner.outputs.persistent-disk == 'false'
-      id: downloads
-      uses: actions/cache/restore@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
-      with:
-        path: ${{ steps.cache.outputs.path }}/content_addressable
-        key: ${{ steps.cache.outputs.downloads-key }}
-        restore-keys: ${{ steps.cache.outputs.downloads-key }}
-    - name: Record restored downloads
-      if: steps.runner.outputs.persistent-disk == 'false'
-      shell: bash
-      env:
-        DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
-        KEY_PREFIX: ${{ steps.cache.outputs.downloads-key }}
-        RESTORED_KEY: ${{ steps.downloads.outputs.cache-matched-key }}
-      run: |
-        {
-          echo "BAZEL_DOWNLOADS=$DOWNLOADS"
-          echo "BAZEL_DOWNLOADS_KEY_PREFIX=$KEY_PREFIX"
-          echo "BAZEL_DOWNLOADS_RESTORED_KEY=$RESTORED_KEY"
-        } >> "$GITHUB_ENV"
-    # One disk per job: jobs fetch different repositories, and each job
-    # commits its own clone of the disk.
     - name: Mount cache from sticky disk
       if: >-
         runner.os == 'Linux'
         && steps.runner.outputs.fresh == 'true'
       uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
       with:
-        key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-name }}
+        key: ${{ github.repository }}-bazel-repository-${{ runner.os }}-${{ runner.arch }}
         path: ${{ steps.cache.outputs.path }}
     # Bazel refreshes a download's modification time on every cache hit.
     - name: Prune unused downloads
-      if: steps.runner.outputs.persistent-disk == 'true'
       shell: bash
       env:
         DOWNLOADS: ${{ steps.cache.outputs.path }}/content_addressable
@@ -145,7 +101,7 @@ runs:
       run: printf '%s\n' "$REPOSITORY_BAZELRC" >> "$HOME/.bazelrc"
     # After the repository cache is configured: finding them builds Bazel's Python.
     - name: Find missing Android SDK components
-      if: inputs.android-cache == 'true' && steps.runner.outputs.fresh == 'true'
+      if: steps.runner.outputs.fresh == 'true'
       id: sdk-cache
       shell: bash
       run: |

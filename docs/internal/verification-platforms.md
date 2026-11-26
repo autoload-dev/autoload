@@ -67,15 +67,19 @@ per host, each `aspect ci <host>`: `linux` runs the quality, desktop and android
 lane. A test that needs the Android lane's machine is tagged `android`, one that needs the
 iOS lane's `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
-hosts, compatibility permitting. The root module and the ruleset each run one `bazel test`,
-one after the other, the root module's over its add-on modules too: two servers that fetch
-the same repository at once can fail to move it into the shared repository contents cache. On
-Linux the formatter, the checks that are no Bazel targets and the lint check of every
-target run first; the add-on generator's self-tests follow, each lane's in a server of its
-own. The merge queue requires both jobs, `Linux` and `macOS`, by name. The matrix fails
-fast: the first job to fail cancels the other, so it frees its runner and the merge queue
-removes the entry without waiting for the slower job; the work it finished stays in
-Bazel's caches.
+hosts, compatibility permitting, such as the `<app>_build_test` of each example's desktop
+`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The root module and the
+ruleset each run one `bazel test`, one after the other, the root module's over its add-on
+modules too: two servers that fetch the same repository at once can fail to move it into the
+shared repository contents cache. On Linux the formatter, the checks that are no Bazel
+targets and the lint check of every target run first; the add-on generator's self-tests
+follow, each lane's in a server of its own. Last, the macOS job runs every registry test
+module in place with the rules of the checkout (`python3 -m tools.ci.release_archive
+--in-place`), so that a break shows before a release does;
+[develop.axl](../../.aspect/develop.axl) says why only there. The merge queue requires both
+jobs, `Linux` and `macOS`, by name. The matrix fails fast: the first job to fail cancels the
+other, so it frees its runner and the merge queue removes the entry without waiting for the
+slower job; the work it finished stays in Bazel's caches.
 
 The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
 each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
@@ -136,6 +140,6 @@ CI's `Linux` and `macOS` jobs are the merge queue's required checks: a pull requ
 whose jobs fail there leaves the queue and does not reach main. The ruleset of main, which
 requires the merge queue and those checks, is managed in the repository settings. Main receives the merge group's commit unchanged, so its
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
-caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
+caches that later runs read, such as the Linux job's repository cache: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
 group's entries.

@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.addons.modules import all_modules, choices
+from tools.addons.modules import choices
 from tools.addons.test_support import checkout
 from tools.apps.apps import lanes as app_lanes
 from tools.ci.lanes import LANES
@@ -178,10 +178,19 @@ class CallersTest(unittest.TestCase):
         self.assertLessEqual({"format", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
-    def test_the_root_lint_names_every_add_on_module(self) -> None:
+    def test_the_root_lint_covers_the_generated_target_patterns(self) -> None:
         command = all_work(ROOT)["lint"].steps()[0].command
-        for module in all_modules(ROOT):
-            self.assertIn(f"@autoload_{module.directory}//...", command)
+        self.assertIn("--target_pattern_file=root.targets", command)
+
+    def test_the_source_engine_workflow_runs_every_example_test_tagged_source_engine(
+        self,
+    ) -> None:
+        # Such as Lichtpost's slim_app_build_test, whose application lanes leave it out.
+        commands = [step.command for step in all_work(ROOT)["source-engine:full"].steps()]
+        self.assertIn(
+            "bazel test --build_tests_only --test_tag_filters=source_engine //examples/...",
+            commands,
+        )
 
 
 if __name__ == "__main__":

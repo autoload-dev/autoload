@@ -8,7 +8,7 @@ and `fast`, run in the two workspaces of development: the root module, which bui
 add-on modules and the consumers, and the ruleset with its own tests.
 """
 
-load("./work.axl", "run", "run_work", "spawn")
+load("./work.axl", "python", "run", "run_work", "spawn")
 
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
@@ -33,21 +33,15 @@ TIERS = ["fast", "all"]
 # The argument that lets a task's steps go on after one fails.
 KEEP_GOING = args.boolean(default = False, short = "k", description = "Run every step even after one fails")
 
-def _patterns(ctx: TaskContext, workspace: str):
-    """A workspace's target patterns, with the add-on modules' in the root module.
+def _targets(workspace: str):
+    """A workspace's targets: the ruleset's own, the root module's with the add-on modules'.
 
-    The root module builds, tests and lints the add-on modules from there (RG027).
+    The root module builds, tests and lints the add-on modules from there (RG027); its target
+    patterns are generated with their declarations (root.targets, tools/addons/declarations.py).
     """
     if workspace != ".":
-        return ["//..."]
-    addons = ctx.std.env.aspect_root_dir() + "/addons"
-    names = [
-        entry.path.rpartition("/")[2]
-        for entry in ctx.std.fs.read_dir(addons)
-        if not entry.is_file
-    ]
-    modules = [name for name in names if ctx.std.fs.exists(addons + "/" + name + "/MODULE.bazel")]
-    return ["//..."] + ["@autoload_{}//...".format(module) for module in sorted(modules)]
+        return ["--", "//..."]
+    return ["--target_pattern_file=root.targets"]
 
 def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> int:
     """Run a Bazel command with the flags over every workspace's patterns.
@@ -69,7 +63,7 @@ def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> i
     codes = []
     children = []
     for workspace in WORKSPACES:
-        child = spawn(ctx, "bazel", [command] + list(flags) + ["--"] + _patterns(ctx, workspace), env = env, directory = workspace)
+        child = spawn(ctx, "bazel", [command] + list(flags) + _targets(workspace), env = env, directory = workspace)
         if parallel:
             children.append(child)
         else:
@@ -152,8 +146,9 @@ check = task(
 SELFTESTS = ["desktop:addon-template", "android:addon-template", "ios:addon-template"]
 
 def _ci_steps(ctx: TaskContext, host: str):
-    """A host's CI job: on Linux every check and the lint, then the host's tests and self-tests.
+    """A host's CI job: its checks, tests and self-tests.
 
+    On Linux every check and the lint run first, on macOS the registry test modules last.
     The tests are every test of both workspaces that the host's config `ci-<host>` selects
     (shared.bazelrc); the add-on generator's self-tests run each lane of a fresh module.
     """
@@ -174,7 +169,12 @@ def _ci_steps(ctx: TaskContext, host: str):
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
         # Each runs where its work allows it (tools/ci/work.py).
         ("selftests", lambda: run_work(ctx, *SELFTESTS)),
-    ])
+    ] + ([] if linux else [
+        # The registry test modules in place (tools/ci/release_archive.py), on macOS only:
+        # its persistent runners keep each module's Bazel server warm, where the Linux job
+        # would start a server per module in every run.
+        ("registry", lambda: python(ctx, ["-m", "tools.ci.release_archive", "--in-place"])),
+    ]))
 
 def _ci_task(host: str, summary: str):
     return task(
