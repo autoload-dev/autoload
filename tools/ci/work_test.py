@@ -244,36 +244,6 @@ class SelectionTest(unittest.TestCase):
     def directories(self, name: str, *paths: str) -> list[str]:
         return [step.directory for step in self.run_steps(name, *paths)]
 
-    def test_the_root_lints_its_own_python_and_the_add_on_modules(self) -> None:
-        for path in ("addons/sentry/a.py", "tools/BUILD.bazel", "tools/addons/new.py"):
-            self.assertEqual(["."], self.directories("lint", path), path)
-            self.assertEqual([], self.directories("lint:ruleset", path), path)
-        self.assertEqual([], self.directories("lint"))
-
-    def test_the_ruleset_lints_its_own_python(self) -> None:
-        path = "rules_godot/tools/BUILD.bazel"
-        self.assertEqual(["rules_godot"], self.directories("lint:ruleset", path))
-        self.assertEqual([], self.directories("lint", path))
-
-    def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
-        for name in ("lint", "lint:ruleset"):
-            self.assertEqual(
-                [],
-                self.directories(
-                    name, "addons/sentry/README.md", "rules_godot/a.md", "docs/a.md"
-                ),
-            )
-
-    def test_a_linter_or_its_configuration_lints_both_workspaces(self) -> None:
-        for path in (
-            "pyproject.toml",
-            "ty.toml",
-            "tools/lint/linters.bzl",
-            "MODULE.bazel",
-        ):
-            self.assertEqual(["."], self.directories("lint", path), path)
-            self.assertEqual(["rules_godot"], self.directories("lint:ruleset", path))
-
     def test_the_root_lint_names_every_add_on_module(self) -> None:
         command = all_work(ROOT)["lint"].steps()[0].command
         for module in all_modules(ROOT):
@@ -357,12 +327,13 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual([], self.run_steps("gazelle", "rules_godot/tools/pck.py"))
 
     def test_some_work_always_runs(self) -> None:
-        for name in ("conventions", "test:tools"):
+        # The lint checks run whole: Bazel's cache skips unchanged targets.
+        for name in ("conventions", "test:tools", "lint", "lint:ruleset"):
             self.assertEqual(all_work(ROOT)[name].steps(), self.run_steps(name), name)
 
     def test_without_changes_every_step_runs(self) -> None:
-        lint = all_work(ROOT)["lint"]
-        self.assertEqual(lint.steps(), selected(lint, None))
+        docs = all_work(ROOT)["docs"]
+        self.assertEqual(docs.steps(), selected(docs, None))
 
     def test_a_skipped_step_is_reported(self) -> None:
         printed = io.StringIO()
@@ -372,11 +343,6 @@ class SelectionTest(unittest.TestCase):
             "[docs] .$ bazel run //tools/docs:check skipped: no change since abc1234",
             printed.getvalue(),
         )
-        printed = io.StringIO()
-        with contextlib.redirect_stdout(printed):
-            selected(all_work(ROOT)["lint:ruleset"], changed("addons/sentry/a.py"))
-        self.assertIn("[lint:ruleset] rules_godot", printed.getvalue())
-        self.assertIn("skipped: no change since abc1234", printed.getvalue())
 
 
 # ==== Changes =================================================================

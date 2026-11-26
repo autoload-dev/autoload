@@ -9,9 +9,10 @@ The add-on modules' work comes from their addon.pkl: the same generic commands f
 module (tools/addons/lanes.py), and the add-on generator's self-test in every lane. The
 source-engine lane runs in its own scheduled workflow, the others in CI.
 
-A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook runs it, skips
-the steps whose inputs did not change since the merge base with the reference
-(tools/ci/changes.py). Lanes and named work without the option run every step.
+A step may name its inputs: `run --changed-since <ref>`, as `aspect check` runs the checks
+that are no Bazel targets yet (.aspect/develop.axl), skips the steps whose inputs did not
+change since the merge base with the reference (tools/ci/changes.py). Lanes and named work
+without the option run every step.
 
 Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Selection,
 Execution, Command line.
@@ -40,9 +41,7 @@ from tools.ci.changes import (
     Changes,
     Inputs,
     changes_since,
-    either,
     files,
-    module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
 from tools.setup.modules import (
@@ -160,29 +159,12 @@ def release_tests(lane: str, suite: str) -> str:
 # engines that some tests' applications validate. Incompatible targets are skipped.
 LINT_CHECK = "bazel build --config=check --output_groups=lint_checks --norun_validations"
 
-# The files of a module the lint check reads: its Python and the targets that hold it.
-LINTED = ("*.py", "BUILD", "BUILD.bazel", "*.bzl", "MODULE.bazel")
-
-# The linters and their configuration, which the root module pins for every module.
-LINTERS = files(
-    "pyproject.toml",
-    "ty.toml",
-    "tools/lint/*",
-    "MODULE.bazel",
-    "MODULE.bazel.lock",
-)
-
 
 def lint(root: Path = ROOT) -> In:
     """The root module's lint check, which covers the add-on modules' Python (RG027)."""
     addons = addon_modules(root)
     patterns = " ".join(f"@{module_name(Path(addon).name)}//..." for addon in addons)
-    modules = (".", *addons)
-
-    def linted(changes: Changes, _: str) -> bool:
-        return any(changes.in_module(module, LINTED) for module in modules)
-
-    return In(".", f"{LINT_CHECK} //... {patterns}", either(linted, LINTERS))
+    return In(".", f"{LINT_CHECK} //... {patterns}")
 
 
 # What shapes the source-built engines' pins (tools/generate/generate.py): the root module's
@@ -426,7 +408,6 @@ WORK = (
         "desktop",
         RULESET_DIR,
         (f"{LINT_CHECK} //...",),
-        inputs=either(module_files(*LINTED), LINTERS),
     ),
     # The scenarios' desktop set needs no Android SDK or NDK; an accidental dependency fails
     # here.

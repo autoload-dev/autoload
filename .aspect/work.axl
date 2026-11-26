@@ -22,22 +22,38 @@ _BUILT = {
     _PKL: "PKL_CLI",
 }
 
-def run(ctx: TaskContext, program: str, arguments, env = {}) -> int:
-    """Run a program in the repository root.
+def spawn(ctx: TaskContext, program: str, arguments, env = {}, directory = "."):
+    """Start a program in a directory of the repository, without waiting for it.
 
     Args:
         ctx: the running task's context.
         program: the program to run, a path or a name on PATH.
         arguments: its arguments.
         env: environment variables to set beside the task's own.
+        directory: the directory, relative to the repository root.
 
     Returns:
-        The program's exit code.
+        The running child, whose `wait().code` is its exit code.
     """
     command = ctx.std.process.command(program).args(list(arguments))
     for name, value in env.items():
         command = command.env(name, value)
-    return command.current_dir(ctx.std.env.aspect_root_dir()).spawn().wait().code
+    return command.current_dir(ctx.std.env.aspect_root_dir() + "/" + directory).spawn()
+
+def run(ctx: TaskContext, program: str, arguments, env = {}, directory = ".") -> int:
+    """Run a program in a directory of the repository, the root by default.
+
+    Args:
+        ctx: the running task's context.
+        program: the program to run, a path or a name on PATH.
+        arguments: its arguments.
+        env: environment variables to set beside the task's own.
+        directory: the directory, relative to the repository root.
+
+    Returns:
+        The program's exit code.
+    """
+    return spawn(ctx, program, arguments, env, directory).wait().code
 
 def output(ctx: TaskContext, program: str, arguments) -> str:
     """Run a program in the repository root and return its stdout, failing the task on an error.
