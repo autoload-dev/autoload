@@ -47,7 +47,8 @@ From the repository root:
 ./bootstrap.sh                            # once per clone: install bazel and aspect, the Git hooks and Android SDK packages
 aspect doctor                             # check the setup and say what is missing
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
-aspect lint                               # lint the current module's Python with Ruff and ty
+aspect work lint lint:ruleset             # lint Python with Ruff and ty: the root module with the add-ons, the ruleset
+aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
 aspect work lint:gdscript lint:markdown   # lint GDScript's declaration order and Markdown's headings
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
 aspect work docs                          # after changing the ruleset's public API

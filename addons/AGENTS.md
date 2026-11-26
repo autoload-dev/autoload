@@ -113,6 +113,12 @@ For a module, that means:
   as a host or a device are tags, not directories.
 - Demo tests live in `examples/addons/<module>/tests/`, never in the project's root package.
 
+The root module lints the modules' Python too, in the work `lint` over `@autoload_<module>//...`.
+rules_lint lints an external repository's sources only for targets tagged `lint-genfiles`, so
+every `py_binary`, `py_library` and `py_test` of a module carries that tag (RG027). Findings
+name the files as `external/autoload_<module>+/...`; Ruff's fixes apply only through
+`aspect lint --fix` in the module's own directory.
+
 Every project is named like its directory (RG019), so `//examples/addons/<module>` and
 `//e2e/addons/<module>` name the projects. CI runs every module's
 [lanes](../docs/internal/verification-platforms.md#lanes-and-execution);

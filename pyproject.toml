@@ -18,7 +18,7 @@ ignore = ["ANN401"]
 "*_test.py" = ["D100"]
 "**/tests/**" = ["D100", "D104"]
 
-# The lint aspects (`aspect lint`, tools/lint/linters.bzl) see only the sources of one target,
+# The lint aspects (tools/lint/linters.bzl) see only the sources of one target,
 # so the first-party packages are named rather than discovered.
 [tool.ruff.lint.isort]
 known-first-party = ["e2e", "godot", "tools"]

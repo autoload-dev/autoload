@@ -35,6 +35,7 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [RG024](#rg024) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [RG025](#rg025) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
+| [RG027](#rg027) | The add-on modules' Python targets carry `lint-genfiles` | Required | Every `py_binary`, `py_library` and `py_test` of every add-on module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
 [boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
@@ -576,6 +577,25 @@ The check queries each module's tests that depend on a Godot toolchain type (the
 runtime or the target execution toolchain type of `@autoload_rules_godot//godot`) and reports
 such a test without the tag, a test with the tag that depends on none, and a smoke test with
 the tag. Registry test modules are outside it.
+
+## RG027
+
+**The add-on modules' Python targets carry `lint-genfiles`.** The root module lints the add-on
+modules' Python with its own, in the work `lint` over their repositories
+(`tools/lint/linters.bzl`), so the add-on modules need no Bazel server of their own for it.
+rules_lint lints only the main repository's sources, unless a target carries the tag
+`lint-genfiles`; without it, an add-on module's Python would pass the lint unseen.
+
+```starlark
+py_library(
+    name = "google_services_lib",
+    srcs = ["google_services.py"],
+    tags = ["lint-genfiles"],
+)
+```
+
+The check reports every `py_binary`, `py_library` and `py_test` of an add-on module without
+the tag, as Bazel evaluates them, macros' targets included.
 
 ## Run and maintain the checks
 

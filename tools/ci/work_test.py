@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.addons.modules import choices
+from tools.addons.modules import all_modules, choices
 from tools.addons.test_support import copy_schemas
 from tools.apps.apps import lanes as app_lanes
 from tools.ci.changes import Changes, changes_since
@@ -242,46 +242,46 @@ class SelectionTest(unittest.TestCase):
 
     def run_steps(self, name: str, *paths: str) -> list[In]:
         """The steps of a piece of work that run for the changed paths."""
-        work = all_work(ROOT)[name]
-        work = Work(name, work.lane, ".", tuple(self.lint_steps(work)))
         with contextlib.redirect_stdout(io.StringIO()):
-            return selected(work, changed(*paths))
-
-    def lint_steps(self, work: Work) -> list[In]:
-        """A lint over the test's modules instead of the checkout's."""
-        if work.name != "lint":
-            return work.steps()
-        step = work.steps()[0]
-        return [In(module, step.command, step.inputs) for module in MODULES]
+            return selected(all_work(ROOT)[name], changed(*paths))
 
     def directories(self, name: str, *paths: str) -> list[str]:
         return [step.directory for step in self.run_steps(name, *paths)]
 
-    def test_lint_runs_in_the_modules_with_changes(self) -> None:
-        self.assertEqual(
-            ["addons/sentry"], self.directories("lint", "addons/sentry/a.py")
-        )
-        self.assertEqual(
-            ["rules_godot"], self.directories("lint", "rules_godot/tools/BUILD.bazel")
-        )
-        self.assertEqual(["."], self.directories("lint", "tools/BUILD.bazel"))
-        # No other module imports the root module's Python.
-        self.assertEqual(["."], self.directories("lint", "tools/addons/new.py"))
+    def test_the_root_lints_its_own_python_and_the_add_on_modules(self) -> None:
+        for path in ("addons/sentry/a.py", "tools/BUILD.bazel", "tools/addons/new.py"):
+            self.assertEqual(["."], self.directories("lint", path), path)
+            self.assertEqual([], self.directories("lint:ruleset", path), path)
         self.assertEqual([], self.directories("lint"))
 
-    def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
-        self.assertEqual(
-            [], self.directories("lint", "addons/sentry/README.md", "docs/a.md")
-        )
+    def test_the_ruleset_lints_its_own_python(self) -> None:
+        path = "rules_godot/tools/BUILD.bazel"
+        self.assertEqual(["rules_godot"], self.directories("lint:ruleset", path))
+        self.assertEqual([], self.directories("lint", path))
 
-    def test_a_lint_input_lints_every_module(self) -> None:
+    def test_lint_skips_files_that_are_no_python_or_targets(self) -> None:
+        for name in ("lint", "lint:ruleset"):
+            self.assertEqual(
+                [],
+                self.directories(
+                    name, "addons/sentry/README.md", "rules_godot/a.md", "docs/a.md"
+                ),
+            )
+
+    def test_a_linter_or_its_configuration_lints_both_workspaces(self) -> None:
         for path in (
             "pyproject.toml",
             "ty.toml",
             "tools/lint/linters.bzl",
             "MODULE.bazel",
         ):
-            self.assertEqual(list(MODULES), self.directories("lint", path))
+            self.assertEqual(["."], self.directories("lint", path), path)
+            self.assertEqual(["rules_godot"], self.directories("lint:ruleset", path))
+
+    def test_the_root_lint_names_every_add_on_module(self) -> None:
+        command = all_work(ROOT)["lint"].steps()[0].command
+        for module in all_modules(ROOT):
+            self.assertIn(f"@autoload_{module.directory}//...", command)
 
     def test_gdscript_lint_runs_for_scripts_and_its_linter(self) -> None:
         for path in ("examples/lichtpost/main/game.gd", "tools/lint/gdscript.py"):
@@ -364,13 +364,10 @@ class SelectionTest(unittest.TestCase):
             printed.getvalue(),
         )
         printed = io.StringIO()
-        lint = Work("lint", None, ".", tuple(self.lint_steps(all_work(ROOT)["lint"])))
         with contextlib.redirect_stdout(printed):
-            selected(lint, changed("addons/sentry/a.py"))
-        self.assertIn(
-            "[lint] rules_godot skipped: no change since abc1234",
-            printed.getvalue(),
-        )
+            selected(all_work(ROOT)["lint:ruleset"], changed("addons/sentry/a.py"))
+        self.assertIn("[lint:ruleset] rules_godot", printed.getvalue())
+        self.assertIn("skipped: no change since abc1234", printed.getvalue())
 
 
 # ==== Changes =================================================================

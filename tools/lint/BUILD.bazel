@@ -32,8 +32,20 @@ py_test(
     deps = [":gdscript"],
 )
 
+# The gate of the lint check (linters.bzl): it fails with the reports of the linters that
+# found something in a target.
+exports_files(["check.sh"])
+
+py_test(
+    name = "check_test",
+    size = "small",
+    srcs = ["check_test.py"],
+    args = ["$(rootpath :check.sh)"],
+    data = [":check.sh"],
+)
+
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
-# Python is linted by the aspects of linters.bzl (`aspect lint`), Starlark by //tools/format.
+# Python is linted by the aspects of linters.bzl (`--config=check`), Starlark by //tools/format.
 py_test(
     name = "workflows_test",
     size = "small",

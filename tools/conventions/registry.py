@@ -24,6 +24,7 @@ from tools.conventions.rules.rg023 import ReleasedWithoutTests
 from tools.conventions.rules.rg024 import RegionHeaders
 from tools.conventions.rules.rg025 import ReadingOrder
 from tools.conventions.rules.rg026 import GodotProcessTests
+from tools.conventions.rules.rg027 import LintedAddonPython
 
 RULES: tuple[Rule, ...] = (
     PackageNames(),
@@ -49,6 +50,7 @@ RULES: tuple[Rule, ...] = (
     RegionHeaders(),
     ReadingOrder(),
     GodotProcessTests(),
+    LintedAddonPython(),
 )
 
 
