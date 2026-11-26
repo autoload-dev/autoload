@@ -51,13 +51,16 @@ multirun(
     ],
 )
 
+# The checks only read, so they run at once, each module's output kept apart.
 multirun(
     name = "check",
+    buffer_output = True,
     commands = [
         "rules_godot_check",
         "root_check",
         "addons_check",
     ],
+    jobs = 0,
 )
 
 filegroup(

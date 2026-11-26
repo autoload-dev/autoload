@@ -106,8 +106,9 @@ bazel run //tools/gazelle:update
 
 `bazel run //tools/gazelle:check` prints the difference and fails where a BUILD file is
 stale; `//tools/gazelle:rules_godot`, `root` and `addons.<directory>`, each with `_check`,
-do the same for one module. The quality lane's `gazelle` work, which the
-pre-push hook runs too, runs the check. Markdown and scripts outside every package, such as
+do the same for one module; each module's check runs at once. Gazelle reads every
+directory, so the check is no Bazel test: `aspect check`, which the pre-push hook runs, and
+CI's Linux job run it beside the conventions tool. Markdown and scripts outside every package, such as
 in `addons/` itself or in the registry test modules, are outside the lint check.
 
 ## Profiles

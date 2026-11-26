@@ -113,7 +113,6 @@ class WorkTest(unittest.TestCase):
             ("source-engine", "source-engine"),
             ("test:example:petri", "source-engine"),
             ("test:bazel", None),
-            ("generated", None),
         ):
             self.assertEqual(profile, work[name].bazel_profile, name)
 
@@ -176,10 +175,7 @@ class CallersTest(unittest.TestCase):
             text = task.read_text()
             for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
                 names.update(re.findall(r'"([^"]+)"', call))
-            # The tool checks of `aspect check`, a list it passes on.
-            for listed in re.findall(r"_CHECKS = \[([^\]]*)\]", text):
-                names.update(re.findall(r'"([^"]+)"', listed))
-        self.assertLessEqual({"format", "conventions", "android:setup"}, names)
+        self.assertLessEqual({"format", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
     def test_the_root_lint_names_every_add_on_module(self) -> None:

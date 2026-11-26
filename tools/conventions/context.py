@@ -90,8 +90,8 @@ def run_tool(
 
 def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
     """The deepest root that contains path: a nested root owns its files, not the outer one."""
-    owners = [root for root in roots if path.is_relative_to(root)]
-    return max(owners, key=lambda root: len(root.parts)) if owners else None
+    candidates = frozenset(roots)
+    return next((p for p in (path, *path.parents) if p in candidates), None)
 
 
 @dataclass(frozen=True)

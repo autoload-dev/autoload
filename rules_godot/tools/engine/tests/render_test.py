@@ -207,10 +207,6 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(targets["b.h"], ":_includes/a.h")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ClassProfileRenderTest(unittest.TestCase):
     def test_the_class_generator_reads_the_class_profile(self) -> None:
         spec = {
@@ -328,6 +324,17 @@ def _graph(groups: list[object]) -> dict[str, object]:
 
 
 class RuntimeVariantRenderTest(unittest.TestCase):
+    def test_a_pinned_recipe_declares_pinned_for_every_host(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "core").mkdir()
+            for name in ["a.cpp", "core_builders.py"]:
+                (root / "core" / name).write_text("int x;\n")
+            base = _graph([["cc", ["-DX"], ["."], ["core/a.cpp"]]])
+            render(_variant_args(runtime_profiles=[]), base, root)
+            build = (root / "BUILD.bazel").read_text()
+            self.assertIn("filegroup(name = 'pinned')", build)
+
     def test_variants_share_one_package_and_select_on_the_build_profile(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -375,8 +382,16 @@ class RuntimeVariantRenderTest(unittest.TestCase):
                 build,
             )
             self.assertIn("godot_unpinned_recipe(name = '_unpinned_1_godot'", build)
+            # So does :pinned, on every host.
+            self.assertIn(
+                "godot_unpinned_recipe(name = 'pinned', message = 'no pin')", build
+            )
             manifest = json.loads((root / "engine_manifest.json").read_text())
             self.assertEqual(
                 manifest["runtime_variants"],
                 {"@@//app:small.gdbuild": "configured", "@@//app:new.gdbuild": "no pin"},
             )
+
+
+if __name__ == "__main__":
+    unittest.main()

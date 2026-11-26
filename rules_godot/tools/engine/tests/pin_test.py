@@ -24,6 +24,7 @@ from tools.engine.render import render_unpinned
 
 class PinTest(unittest.TestCase):
     def test_an_unpinned_recipe_fails_each_engine_target_with_the_reason(self) -> None:
+        # :pinned fails on every host, which the hub's :pinned collects.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for platform, targets in [
@@ -41,9 +42,11 @@ class PinTest(unittest.TestCase):
                 self.assertIn(
                     'load("@@autoload_rules_godot+//godot/engine/private:pin.bzl"', build
                 )
-                for target in targets:
+                for target in [*targets, "pinned"]:
                     self.assertIn(f"godot_unpinned_recipe(name = {target!r}", build)
-                self.assertEqual(build.count("godot_unpinned_recipe(name"), len(targets))
+                self.assertEqual(
+                    build.count("godot_unpinned_recipe(name"), len(targets) + 1
+                )
                 self.assertIn("the lock file pins other sources, patches", build)
             render_unpinned(args, "missing", root)
             self.assertIn(

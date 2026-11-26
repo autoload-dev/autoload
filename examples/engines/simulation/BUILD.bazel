@@ -1,6 +1,16 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
 # The engine simulation: Godot with the reaction_diffusion module, which Petri uses.
 # MODULE.bazel registers it with this module and this lock file.
 exports_files(["simulation.lock.json"])
+
+# Fails while the lock file has no current pin for one of the engine's recipes, naming the
+# pin command, as after a change of its modules, options or rules_godot's code. Every host
+# runs it, whatever platform the recipes are for.
+build_test(
+    name = "pinned_test",
+    targets = ["@simulation//:pinned"],
+)
 
 filegroup(
     name = "markdown_files",

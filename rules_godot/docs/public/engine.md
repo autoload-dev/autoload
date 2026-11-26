@@ -372,7 +372,19 @@ bazel run @my_engine//:pin_linux --config=remote
 bazel run @my_engine//:pin_macos
 ```
 
-A recipe without a pin fails only when a build needs it, naming the pin command.
+A recipe without a pin fails only when a build needs it, naming the pin command. The hub's
+`:pinned` fails while any recipe or runtime variant has no current pin, on every host,
+whatever platform the recipes are for; a `build_test` of it beside the lock file checks
+the pins in `bazel test //...`:
+
+```starlark
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+build_test(
+    name = "pinned_test",
+    targets = ["@my_engine//:pinned"],
+)
+```
 
 Each pin records the digest of what its graph depends on: the archive, the patches, the
 recipe's platform, CPU, target, modules and options, for a runtime variant its runtime

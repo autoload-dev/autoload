@@ -139,14 +139,12 @@ work = task(
 )
 
 def _generate_impl(ctx: TaskContext) -> int:
-    flags = ["--check"] if ctx.args.check else []
-    return python(ctx, ["-m", "tools.generate.generate"] + flags + ctx.args.files)
+    return python(ctx, ["-m", "tools.generate.generate"] + ctx.args.files)
 
 generate = task(
     implementation = _generate_impl,
     summary = "Regenerate the add-on modules' declarations and MODULE.bazel.lock; with files, the MODULE.bazel.lock files that depend on them.",
     args = {
-        "check": args.boolean(default = False, description = "Check the source-built engines' pins instead"),
         "files": args.positional(minimum = 0, maximum = 512, default = []),
     },
 )

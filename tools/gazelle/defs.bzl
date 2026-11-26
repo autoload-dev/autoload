@@ -3,6 +3,15 @@
 load("@gazelle//:def.bzl", "gazelle")
 load("@rules_multirun//:defs.bzl", "multirun")
 
+def _parallel(suffix):
+    """
+    The multirun attributes of a mode.
+
+    The checks only read, so they run at once with their output kept apart; updates run one
+    after another, since a module's languages write the same BUILD files.
+    """
+    return {"buffer_output": True, "jobs": 0} if suffix == "_check" else {}
+
 def module_gazelle(name, directory, languages):
     """
     Gazelle for the module in directory.
@@ -29,7 +38,7 @@ def module_gazelle(name, directory, languages):
             )
             runs.append(run)
         if len(languages) > 1:
-            multirun(name = name + suffix, commands = runs)
+            multirun(name = name + suffix, commands = runs, **_parallel(suffix))
 
 def addon_gazelles(name, repositories):
     """
@@ -54,4 +63,5 @@ def addon_gazelles(name, repositories):
         multirun(
             name = name + suffix,
             commands = ["%s.%s%s" % (name, directory, suffix) for directory in directories],
+            **_parallel(suffix)
         )
