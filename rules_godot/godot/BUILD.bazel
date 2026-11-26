@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load(
     "//godot/engine/private:optimization.bzl",
     "LTO_DEFAULT",
@@ -176,4 +177,53 @@ config_setting(
     name = "macos_signing_unsigned",
     flag_values = {":macos_signing": "unsigned"},
     visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "app",
+    srcs = ["app.bzl"],
+    deps = [
+        "//godot/engine/private:components",
+        "//godot/engine/private:optimization",
+        "//godot/platforms/private:android",
+        "//godot/platforms/private:desktop",
+        "//godot/platforms/private:ios",
+        "//godot/platforms/private:macos_signing",
+        "//godot/private:run",
+        "//godot/private:versions",
+        "//godot/private/config:application",
+        "//godot/private/config:settings",
+    ],
+)
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    deps = [
+        "//godot/private:addon",
+        "//godot/private:editor",
+        "//godot/private:pack",
+        "//godot/private:project",
+        "//godot/private:resources",
+        "//godot/private:run",
+        "//godot/private:runtime_profile",
+    ],
+)
+
+bzl_library(
+    name = "extensions",
+    srcs = ["extensions.bzl"],
+    deps = [
+        "//godot/engine/private:archives",
+        "//godot/engine/private:extension_plan",
+        "//godot/engine/private:hub",
+        "//godot/engine/private:repositories",
+        "//godot/platforms/private:android_toolchains",
+        "@bazel_tools//tools/build_defs/repo:http.bzl",
+    ],
+)
+
+bzl_library(
+    name = "providers",
+    srcs = ["providers.bzl"],
 )

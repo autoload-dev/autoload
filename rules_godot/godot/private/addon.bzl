@@ -553,7 +553,7 @@ _godot_addon = rule(
         ),
         # The context of the operation that reached the add-on; its parts import under it.
         "_project": attr.label(
-            default = Label("//godot/private:project"),
+            default = Label("//godot/private:project_setting"),
             providers = [GodotProjectInfo],
         ),
         "_actions": attr.label(

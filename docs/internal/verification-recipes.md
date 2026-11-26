@@ -6,6 +6,7 @@ The [verification policy](verification.md) determines when evidence is needed, a
 
 - New environment or missing SDKs: [toolchains](#toolchains).
 - API source changes: [API documentation](#api-documentation).
+- New or moved Starlark modules: [generated BUILD declarations](#generated-build-declarations).
 - Platform Paths operating-system integration:
   [runtime acceptance](#platform-paths-runtime-acceptance).
 - Offloading work and tests to BuildBuddy: [remote execution](#remote-execution-with-buildbuddy).
@@ -80,6 +81,21 @@ contract cases are those that need no lane: the cases of generated repositories,
 engine's hub, run in the lanes' `contracts:<lane>` work, `aspect work
 contracts:desktop` on a desktop host, which the pre-push hook runs too. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
+
+## Generated BUILD declarations
+
+[Gazelle](../../tools/gazelle/BUILD.bazel) generates the ruleset's `bzl_library` targets, one
+per Starlark module outside its `tests` packages, named after the file. Its directives,
+including where an external load's library lives, are in the ruleset's root
+[BUILD file](../../rules_godot/BUILD.bazel). After adding, moving or changing the loads of a
+module, regenerate them from the repository root:
+
+```sh
+bazel run //tools/gazelle:rules_godot
+```
+
+`bazel run //tools/gazelle:rules_godot_check` prints the difference and fails where a BUILD
+file is stale; the quality lane's `gazelle` work, which the pre-push hook runs too, runs it.
 
 ## Profiles
 

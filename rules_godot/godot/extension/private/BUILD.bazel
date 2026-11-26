@@ -1,3 +1,10 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+# The ruleset's packages may depend on this package's implementation libraries, such as
+# the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
+# who loads its modules.
+package(default_visibility = ["//godot:__subpackages__"])
+
 # The repository's root module lists these files in the Starlark library it extracts the API
 # documentation with (tools/docs/api). Their load visibility still restricts who loads them.
 exports_files(
@@ -8,4 +15,39 @@ exports_files(
         "ios_framework.bzl",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "cc_extension",
+    srcs = ["cc_extension.bzl"],
+    deps = [
+        "@bazel_skylib//rules:write_file",
+        "@rules_cc//cc:cc_binary",
+        "@rules_cc//cc:cc_library",
+    ],
+)
+
+bzl_library(
+    name = "godot_cpp",
+    srcs = ["godot_cpp.bzl"],
+    deps = [
+        "//godot/private:patches",
+        "//godot/private:repository_templates",
+    ],
+)
+
+bzl_library(
+    name = "ios_framework",
+    srcs = ["ios_framework.bzl"],
+    deps = [
+        "//godot/private/config:settings",
+        "//godot/private/config:transitions",
+        "@apple_support//lib:apple_support",
+        "@rules_apple//apple",
+    ],
+)
+
+bzl_library(
+    name = "bindings",
+    srcs = ["bindings.bzl"],
 )

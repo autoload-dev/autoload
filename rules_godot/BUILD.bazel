@@ -1,5 +1,26 @@
 package(default_visibility = ["//visibility:public"])
 
+# Gazelle (`bazel run //tools/gazelle:rules_godot` at the repository's root) generates a
+# bzl_library per Starlark module of the ruleset's packages, named after its file; the
+# white-box tests' modules stay out.
+# It names the library of an external load after the loaded file; these loads resolve to the
+# library that the module behind them declares instead.
+# gazelle:exclude **/tests
+# gazelle:resolve starlark @autoload_rules_godot//godot:defs.bzl //godot:defs
+# gazelle:resolve starlark @autoload_rules_godot//godot:providers.bzl //godot:providers
+# gazelle:resolve starlark @platforms//host:constraints.bzl @platforms//host:constraints_lib
+# gazelle:resolve starlark @rules_android//providers:providers.bzl @rules_android//rules:bzl
+# gazelle:resolve starlark @rules_android//rules:android_neverlink_aspect.bzl @rules_android//rules:bzl
+# gazelle:resolve starlark @rules_android//rules:android_split_transition.bzl @rules_android//rules:bzl
+# gazelle:resolve starlark @rules_android//rules:dex_desugar_aspect.bzl @rules_android//rules:bzl
+# gazelle:resolve starlark @rules_android//rules:rules.bzl @rules_android//rules:bzl
+# gazelle:resolve starlark @rules_android_ndk//:rules.bzl @rules_android_ndk//:rules.bzl
+# gazelle:resolve starlark @rules_apple//apple/internal/aspects:resource_aspect.bzl @rules_apple//apple:aspects
+# gazelle:resolve starlark @rules_apple//apple/internal/aspects:swift_usage_aspect.bzl @rules_apple//apple:aspects
+# gazelle:resolve starlark @rules_java//java/common:java_common.bzl @rules_java//java/common:common
+# gazelle:resolve starlark @rules_java//java/common:java_info.bzl @rules_java//java/common:common
+# gazelle:resolve starlark @rules_java//java/common:proguard_spec_info.bzl @rules_java//java/common:proguard_spec_info_bzl
+
 exports_files([
     "README.md",
 ])

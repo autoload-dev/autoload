@@ -18,6 +18,22 @@ bazel_dep(name = "buildifier_prebuilt", version = "10.2.0")
 bazel_dep(name = "aspect_rules_lint", version = "2.9.1")
 bazel_dep(name = "rules_multitool", version = "1.0.0")
 
+# Gazelle generates BUILD declarations (tools/gazelle): the bzl_library targets of
+# bazel_skylib's plugin. It runs from this module for every module, so the others' graphs
+# keep their own Gazelle; this one is the version this module's graph already holds.
+bazel_dep(name = "gazelle", version = "0.51.3", dev_dependency = True)
+bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.9.2", dev_dependency = True)
+
+# The plugin names the library of every external load after the loaded file, which few
+# modules declare; the patch lets a `# gazelle:resolve starlark <load> <library>` directive
+# name it, as for loads of this repository. Gazelle runs from this module for every module
+# (tools/gazelle), so only this module applies it.
+single_version_override(
+    module_name = "bazel_skylib_gazelle_plugin",
+    patch_strip = 1,
+    patches = ["//tools/gazelle:bazel_skylib_gazelle_plugin_resolve.patch"],
+)
+
 # The rules_go of the formatters' graph, 0.42, predates Bazel 9. This is the version the
 # ruleset's graph resolves: the ruleset depends on this module for development, and a newer
 # one would change the Go SDK its Android tools build with.

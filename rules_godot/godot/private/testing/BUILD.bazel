@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 # Test rules that inspect a built Android App Bundle or iOS application for the ruleset's
@@ -61,4 +62,24 @@ py_binary(
     ],
     main = "inspect_ios_app.py",
     deps = [":native_symbols"],
+)
+
+# The Starlark libraries of the test rules, by hand: Gazelle's bzl_library plugin leaves out
+# modules named like tests. `keep` stops Gazelle from emptying their attributes.
+bzl_library(
+    name = "android_bundle_test",
+    srcs = ["android_bundle_test.bzl"],  # keep
+    visibility = ["//godot:__subpackages__"],
+    # keep
+    deps = [
+        "@rules_android//rules:bzl",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "ios_app_test",
+    srcs = ["ios_app_test.bzl"],  # keep
+    visibility = ["//godot:__subpackages__"],
+    deps = ["@rules_apple//apple:providers"],  # keep
 )

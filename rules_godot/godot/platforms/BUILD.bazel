@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_android//rules:rules.bzl", "android_library")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "plugin_api_android")
 load(":defs.bzl", "godot_export_platform")
@@ -139,4 +140,10 @@ plugin_api_android(
     name = "android_shell",
     target_compatible_with = ["@platforms//os:android"],
     visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    deps = ["//godot/private/config:settings"],
 )

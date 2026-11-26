@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 package(default_visibility = ["//godot:__subpackages__"])
 
 exports_files(glob(["*.bzl"]))
@@ -21,4 +23,16 @@ filegroup(
 filegroup(
     name = "android_maven_graphs",
     srcs = glob(["android/*_install.json"]),
+)
+
+bzl_library(
+    name = "profiles",
+    srcs = ["profiles.bzl"],
+    deps = ["//godot/private:versions"],
+)
+
+bzl_library(
+    name = "setting_kinds",
+    srcs = ["setting_kinds.bzl"],
+    deps = ["//godot/private:versions"],
 )

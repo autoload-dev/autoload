@@ -347,6 +347,19 @@ class SelectionTest(unittest.TestCase):
                 path,
             )
 
+    def test_gazelle_checks_the_ruleset_s_starlark_and_build_files(self) -> None:
+        for path in (
+            "rules_godot/godot/private/pack.bzl",
+            "rules_godot/godot/BUILD.bazel",
+            "tools/gazelle/BUILD.bazel",
+        ):
+            self.assertEqual(
+                ["bazel run //tools/gazelle:rules_godot_check"],
+                [step.command for step in self.run_steps("gazelle", path)],
+                path,
+            )
+        self.assertEqual([], self.run_steps("gazelle", "rules_godot/tools/pck.py"))
+
     def test_some_work_always_runs(self) -> None:
         for name in ("conventions", "test:fast", "test:tools"):
             self.assertEqual(all_work(ROOT)[name].steps(), self.run_steps(name), name)

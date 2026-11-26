@@ -16,7 +16,7 @@ load(":manifests.bzl", "manifest_content", "written_file")
 load(":views.bzl", "run_view")
 
 _FIXTURE = "//godot/private/tests/fixtures/project_with_shared_unit"
-_PROJECT_SETTING = str(Label("//godot/private:project"))
+_PROJECT_SETTING = str(Label("//godot/private:project_setting"))
 
 def _under(project):
     return {_PROJECT_SETTING: str(Label(project))}

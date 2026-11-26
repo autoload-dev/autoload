@@ -1,4 +1,4 @@
-# Sections: Toolchains, Godot engines, Maven, Test fixtures, BuildBuddy.
+# Sections: Toolchains, Godot engines, Maven, Starlark libraries, Test fixtures, BuildBuddy.
 
 module(
     name = "autoload_rules_godot",
@@ -446,6 +446,25 @@ maven_development.install(
         "https://repo1.maven.org/maven2",
     ],
     resolver = "maven",
+)
+
+# ==== Starlark libraries ======================================================
+
+# The bzl_library targets that Gazelle generates (tools/gazelle at the repository's root)
+# depend on the Starlark libraries of the modules whose files they load. rules_android 0.8.1
+# exports its API files but keeps the transitive Starlark library private; rules_android_ndk
+# 0.1.5 exports no files. Each patch changes BUILD visibility only; an override applies only
+# where this module is the root.
+single_version_override(
+    module_name = "rules_android",
+    patch_strip = 1,
+    patches = ["//third_party/rules_android:doc_visibility.patch"],
+)
+
+single_version_override(
+    module_name = "rules_android_ndk",
+    patch_strip = 1,
+    patches = ["//third_party/rules_android_ndk:doc_visibility.patch"],
 )
 
 # ==== Test fixtures ===========================================================
