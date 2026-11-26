@@ -21,9 +21,11 @@ filegroup(
 )
 
 # Fails while the lock file has no current pin for one of the engine's recipes, naming the
-# pin command, as after a change of its modules, options or rules_godot's code. Every host
-# runs it, whatever platform the recipes are for.
+# pin command, as after a change of its modules, options or rules_godot's code. The check is
+# the same on every host, so CI's Linux job runs it alone: its tag keeps it out of the macOS
+# job (shared.bazelrc), whose runners configure the recipes again in every run.
 build_test(
     name = "pinned_test",
+    tags = ["engine_pins"],
     targets = ["@simulation//:pinned"],
 )
