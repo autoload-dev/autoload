@@ -16,13 +16,6 @@ py_library(
     ],
 )
 
-py_test(
-    name = "modules_test",
-    size = "small",
-    srcs = ["modules_test.py"],
-    deps = [":modules_lib"],
-)
-
 # A checkout-shaped copy of the modules' files a test declares, for the setup checks' tests.
 py_library(
     name = "checkout_lib",
@@ -33,6 +26,13 @@ py_library(
         ":modules_lib",
         "@rules_python//python/runfiles",
     ],
+)
+
+py_test(
+    name = "modules_test",
+    size = "small",
+    srcs = ["modules_test.py"],
+    deps = [":modules_lib"],
 )
 
 py_test(

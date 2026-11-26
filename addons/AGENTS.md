@@ -42,10 +42,12 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   subdirectories, each with the targets `edit`,
   `pack` and, for a module that builds applications, `app`. The root module consumes the
   module like an external application, through a `local_path_override` in
-  `addons.MODULE.bazel`, which `aspect generate` and the generator write from `addons/`
-  (`tools/addons/declarations.py`) together with `addons.bzl`, the list of the modules'
-  repositories that the setup checks' tests read each module's `module_files` from, and the rules of this repository the same way, so an add-on always builds against
-  the rules it is changed with.
+  `addons.MODULE.bazel`, and the rules of this repository the same way, so an add-on always
+  builds against the rules it is changed with. `aspect generate` and the generator write the
+  segment from `addons/` (`tools/addons/declarations.py`), together with `addons.bzl`, the
+  modules' repositories, whose `module_files` the setup checks' tests read. The root ignores
+  `addons/`, so no Bazel target can derive or diff-check the two files: Bazel itself rejects
+  a stale segment, and `tools/setup/checkout.py` a list that misses a module.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
   root; the root holds only the module's files,
   [`third_party/`](../docs/internal/glossary.md#modules-and-tests), `tests/`, `bcr/` and
