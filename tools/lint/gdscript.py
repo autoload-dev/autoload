@@ -5,6 +5,7 @@ that a .gdlintrc keeps, on the given scripts; it prints each problem and exits 1
 """
 
 import sys
+import tempfile
 from pathlib import Path
 from types import MappingProxyType
 
@@ -13,9 +14,10 @@ import yaml
 from gdtoolkit.linter import DEFAULT_CONFIG, lint_code
 from gdtoolkit.parser import parser
 
-# gdtoolkit caches its compiled grammar in the user's cache directory, which a Bazel action
-# neither declares nor may write.
-parser.disable_grammar_caching()
+# gdtoolkit caches its compiled grammars below the user's home, which a Bazel action neither
+# declares nor may write: Linux's sandbox mounts it read-only. It always writes the cache, even
+# with disable_grammar_caching(), so the cache goes to the action's own temporary directory.
+parser._cache_dirpath = tempfile.mkdtemp(prefix="gdtoolkit")
 
 # Scripts that are not checked, by their path in the ruleset's module, each with its reason.
 EXCLUDED = (
