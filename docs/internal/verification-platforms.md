@@ -76,10 +76,10 @@ targets and the lint check of every target run first; the add-on generator's sel
 follow, each lane's in a server of its own. Last, the macOS job runs every registry test
 module in place with the rules of the checkout (`python3 -m tools.ci.release_archive
 --in-place`), so that a break shows before a release does;
-[develop.axl](../../.aspect/develop.axl) says why only there. `Finalize` fails when either
-job failed or was cancelled. The matrix fails fast: the first job to fail cancels the other,
-so it frees its runner and `Finalize` fails at once, which in the merge queue removes the
-entry without waiting for the slower job; the work it finished stays in Bazel's caches.
+[develop.axl](../../.aspect/develop.axl) says why only there. The merge queue requires both
+jobs, `Linux` and `macOS`, by name. The matrix fails fast: the first job to fail cancels the
+other, so it frees its runner and the merge queue removes the entry without waiting for the
+slower job; the work it finished stays in Bazel's caches.
 
 The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
 each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
@@ -135,11 +135,9 @@ server on the VM's host with the host's own builds. The VM, its runners and its
 BuildBuddy executor are set up in the private repository `autoload-dev/macos-ci`; a change
 there takes effect through a new image and a replaced VM, done only while no job runs on
 it. CI runs the Apple lanes like the other lanes, on pull requests and in the merge queue.
-A pull request from a fork runs no Apple lane: the VM also holds caches and the BuildBuddy
-executor's key, so a fork's code reaches it only in the merge queue. CI's `Finalize` is the
-merge queue's required check: a pull request whose lanes fail there leaves the queue and
-does not reach main. The ruleset of main, which requires the merge queue and that check, is
-managed in the repository settings. Main receives the merge group's commit unchanged, so its
+CI's `Linux` and `macOS` jobs are the merge queue's required checks: a pull request
+whose jobs fail there leaves the queue and does not reach main. The ruleset of main, which
+requires the merge queue and those checks, is managed in the repository settings. Main receives the merge group's commit unchanged, so its
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
 caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge

@@ -15,8 +15,8 @@ permissions:
 # root module and the ruleset that the host's config `ci-<host>` selects by tag
 # (shared.bazelrc), in one `bazel test` per module. The source engines run on their own schedule
 # (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
-# their repository cache and Bazel servers between jobs, share a Bazel cache server with
-# their host, and run no code of a fork's pull request.
+# their repository cache and Bazel servers between jobs and share a Bazel cache server with
+# their host.
 # Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
@@ -29,14 +29,16 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The merge queue requires both jobs by name, Linux and macOS (the repository's ruleset for
+# main).
 jobs:
   hosts:
     name: ${{ matrix.host.name }}
     runs-on: ${{ matrix.host.runner }}
     timeout-minutes: 60
     strategy:
-      # The first job to fail cancels the other, which frees its runner and lets Finalize
-      # fail at once; the work it finished stays in the caches.
+      # The first job to fail cancels the other, which frees its runner and fails the merge
+      # queue's entry at once; the work it finished stays in the caches.
       fail-fast: true
       matrix:
         host:
@@ -48,14 +50,6 @@ jobs:
           - id: macos
             name: macOS
             runner: macos-ci
-        # A fork's pull request reaches the self-hosted runners only in the merge queue.
-        # An entry matches an exclusion on the fields the exclusion names.
-        exclude:
-          - host:
-              runner: >-
-                ${{ github.event_name == 'pull_request'
-                && github.event.pull_request.head.repo.full_name != github.repository
-                && 'macos-ci' || 'none' }}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,18 +71,3 @@ jobs:
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
 
-  # The merge queue's required check: one name, whichever jobs the workflow has.
-  verification:
-    name: Finalize
-    if: always()
-    needs: [hosts]
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 5
-    steps:
-      - name: Require every job to succeed
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        env:
-          RESULTS: ${{ toJSON(needs.*.result) }}
-        run: |
-          echo "A job did not succeed: $RESULTS" >&2
-          exit 1
