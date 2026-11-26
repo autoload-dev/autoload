@@ -116,20 +116,17 @@ def run_work_tool(ctx: TaskContext, arguments, module = "tools.ci.work") -> int:
     _built(ctx, _PKL)
     return python(ctx, ["-m", module] + arguments)
 
-def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
+def run_work(ctx: TaskContext, *names) -> int:
     """Run pieces of the lanes' work by name.
 
     Args:
         ctx: the running task's context.
         *names: the pieces, in order.
-        changed_since: a reference; if given, only the steps whose inputs changed since
-            the merge base with it run.
 
     Returns:
         The work's exit code.
     """
-    selection = ["--changed-since", changed_since] if changed_since else []
-    return run_work_tool(ctx, ["run"] + selection + list(names))
+    return run_work_tool(ctx, ["run"] + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
     return run_work(ctx, *ctx.args.names)
@@ -139,17 +136,6 @@ work = task(
     summary = "Run pieces of the lanes' work by name, such as test:tools; none lists them.",
     args = {
         "names": args.positional(minimum = 0, maximum = 512, default = []),
-    },
-)
-
-def _lane_impl(ctx: TaskContext) -> int:
-    return run_work_tool(ctx, ["lane"] + ctx.args.lane)
-
-lane = task(
-    implementation = _lane_impl,
-    summary = "Run one CI lane's work on this host, as CI runs it.",
-    args = {
-        "lane": args.positional(minimum = 1, maximum = 1),
     },
 )
 

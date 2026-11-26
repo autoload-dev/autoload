@@ -76,8 +76,7 @@ Bazel's caches.
 The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
 each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
 self-test in each add-on lane. Locally, `aspect ci <host>` runs a host's job,
-`aspect lane <lane>` a single lane on this host, `aspect work <name>...` single pieces, and
-`aspect work` lists them. Where a piece is one Bazel command, the documentation shows that
+`aspect work <name>...` single pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation shows that
 command instead. The pre-push hook runs the checks that need no lane machine, as the
 [verification policy](verification.md#when-to-verify) describes.
 

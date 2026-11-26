@@ -9,105 +9,110 @@ once; one `bazel test` in the root module covers the scenarios, the add-on modul
 lanes and the mobile release builds and smoke tests, so Bazel schedules them together. The
 add-on generator's self-tests follow, each in a server of its own (`addon-template`).
 
-Sections: Targets, Commands, Execution.
+Sections: Hosts, Commands, Execution.
 """
 
 import argparse
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
-from tools.addons.lanes import desktop_patterns, releases
-from tools.addons.modules import ROOT, all_modules, release_targets
-from tools.apps.apps import applications
-from tools.ci.work import (
-    ANDROID_SETUP,
-    LINT_CHECK,
-    RULESET_DIR,
-    SCENARIOS,
-    In,
-    Work,
-    all_work,
-    argv,
-    environment,
-    lint,
-    require_android_environment,
-)
-from tools.ci.work import run as run_work
+from tools.addons.lanes import NO_TESTS, desktop_patterns, releases
+from tools.addons.modules import ROOT, AddonModule, all_modules, release_targets
+from tools.apps.apps import Application, applications
+from tools.ci import work
+from tools.ci.work import LINT_CHECK, RULESET_DIR, SCENARIOS, In, Work
 
-# The lanes of each host's job, in the order of LANES.
-HOST_LANES = {
-    "linux": ("quality", "desktop", "android"),
-    "macos": ("desktop", "ios"),
+# ==== Hosts ===================================================================
+
+
+@dataclass(frozen=True)
+class Host:
+    """The lanes of one host's job: the quality lane or not, the desktop lane, one mobile lane."""
+
+    quality: bool
+    mobile: str
+
+    @property
+    def lanes(self) -> tuple[str, ...]:
+        return (*(("quality",) if self.quality else ()), "desktop", self.mobile)
+
+
+HOSTS = {
+    "linux": Host(quality=True, mobile="android"),
+    "macos": Host(quality=False, mobile="ios"),
 }
 
-# The mobile lane each host builds releases for.
-MOBILE = {"linux": "android", "macos": "ios"}
 
-# ==== Targets =================================================================
+@dataclass(frozen=True)
+class Manifests:
+    """The applications' and the add-on modules' manifests, each evaluated once."""
 
+    apps: tuple[Application, ...]
+    modules: tuple[AddonModule, ...]
 
-def example_tests(root: Path) -> list[str]:
-    """The patterns of the desktop applications' own tests."""
-    return [f"{app.package}/..." for app in applications(root) if "desktop" in app.lanes]
+    @classmethod
+    def load(cls, root: Path) -> Manifests:
+        return cls(applications(root), all_modules(root))
 
+    def example_tests(self) -> list[str]:
+        """The patterns of the desktop applications' own tests."""
+        return [f"{app.package}/..." for app in self.apps if "desktop" in app.lanes]
 
-def mobile_targets(lane: str, root: Path) -> list[str]:
-    """
-    A mobile lane's release builds, with their debug symbols, of the applications and the
-    add-on modules' examples that name it, and its smoke suite.
-    """
-    apps = [
-        target
-        for app in applications(root)
-        if lane in app.lanes
-        for target in release_targets(lane, app.package)
-    ]
-    addons = [
-        target
-        for module in all_modules(root)
-        if lane in module.lanes
-        for target in releases(lane, module)
-    ]
-    return [*apps, *addons, f"{SCENARIOS}:{lane}"]
+    def mobile_targets(self, lane: str) -> list[str]:
+        """
+        A mobile lane's release builds, with their debug symbols, of the applications and
+        the add-on modules' examples that name it, and its smoke suite.
+        """
+        apps = [
+            target
+            for app in self.apps
+            if lane in app.lanes
+            for target in release_targets(lane, app.package)
+        ]
+        addons = [
+            target
+            for module in self.modules
+            if lane in module.lanes
+            for target in releases(lane, module)
+        ]
+        return [*apps, *addons, f"{SCENARIOS}:{lane}"]
 
-
-def addon_patterns(host: str, root: Path) -> list[str]:
-    """The desktop lanes of the add-on modules that cover this host's desktop system."""
-    return [
-        pattern
-        for module in all_modules(root)
-        if "desktop" in module.lanes and host in module.desktops
-        for pattern in desktop_patterns(module)
-    ]
+    def addon_patterns(self, host: str) -> list[str]:
+        """The desktop lanes of the add-on modules that cover this host's desktop system."""
+        return [
+            pattern
+            for module in self.modules
+            if "desktop" in module.lanes and host in module.desktops
+            for pattern in desktop_patterns(module)
+        ]
 
 
 # ==== Commands ================================================================
 
 
-def ruleset_steps() -> list[In]:
-    """The ruleset's desktop set, its Android packaging tests included, then its lint."""
-    return [
-        In(RULESET_DIR, "bazel test --build_tests_only //..."),
-        In(RULESET_DIR, f"{LINT_CHECK} //..."),
-    ]
+def ruleset_steps(host: str) -> list[In]:
+    """The ruleset's desktop set, its Android packaging tests included; on Linux its lint."""
+    lint = [In(RULESET_DIR, f"{LINT_CHECK} //...")] if HOSTS[host].quality else []
+    return [In(RULESET_DIR, "bazel test --build_tests_only //..."), *lint]
 
 
-def root_steps(host: str, root: Path) -> list[In]:
+def root_steps(host: str, manifests: Manifests, root: Path = ROOT) -> list[In]:
     """
     The root module's commands: on Linux the lint check first; then the tests of the
     tooling and the applications without their apps; then one `bazel test` of the
     scenarios, the add-on modules and the host's mobile lane.
     """
-    lint_check = [lint(root)] if "quality" in HOST_LANES[host] else []
-    tools = ["//tools/..."] if "quality" in HOST_LANES[host] else []
-    own_tests = " ".join([*tools, *example_tests(root)])
+    quality = HOSTS[host].quality
+    lint_check, tools = ([work.lint(root)], ["//tools/..."]) if quality else ([], [])
+    own_tests = " ".join([*tools, *manifests.example_tests()])
     together = " ".join(
         [
             f"{SCENARIOS}/...",
-            *mobile_targets(MOBILE[host], root),
-            *addon_patterns(host, root),
+            *manifests.mobile_targets(HOSTS[host].mobile),
+            *manifests.addon_patterns(host),
         ]
     )
     return [
@@ -117,15 +122,12 @@ def root_steps(host: str, root: Path) -> list[In]:
     ]
 
 
-def selftests(host: str, root: Path = ROOT) -> list[str]:
-    """The add-on generator's self-test in each lane of the host that has one."""
-    known = all_work(root)
-    return [
-        name
-        for lane in HOST_LANES[host]
-        if (name := f"{lane}:addon-template") in known
-        and (not known[name].hosts or host in known[name].hosts)
-    ]
+def selftests(host: str) -> list[str]:
+    """
+    The add-on generator's self-test in each lane of the host but quality; the work skips
+    those limited to other hosts.
+    """
+    return [f"{lane}:addon-template" for lane in HOSTS[host].lanes if lane != "quality"]
 
 
 # ==== Execution ===============================================================
@@ -135,18 +137,15 @@ def selftests(host: str, root: Path = ROOT) -> list[str]:
 # includes its Android packaging tests.
 JOB = Work("ci", None, ".", (), android=True)
 
-# `bazel test` with no test among the targets exits with 4 after a successful build.
-NO_TESTS = 4
-
 
 def run_steps(steps: list[In], root: Path) -> int:
     """Run one server's commands in order; the first failing one's code, else 0."""
     for step in steps:
         print(f"[ci] {step.directory}$ {step.command}", flush=True)
         code = subprocess.run(
-            argv(JOB, step.command, step.directory),
+            work.argv(JOB, step.command, step.directory),
             cwd=root / step.directory,
-            env=environment(),
+            env=work.environment(),
             check=False,
         ).returncode
         if code not in (0, NO_TESTS):
@@ -154,26 +153,27 @@ def run_steps(steps: list[In], root: Path) -> int:
     return 0
 
 
-def run(host: str, root: Path = ROOT) -> int:
+def run_host(host: str, root: Path = ROOT) -> int:
     """
     Run a host's job: the Android SDK's setup, both servers' commands at once, then the
     self-tests. Returns the first failing code.
     """
-    require_android_environment([JOB], environment())
-    run_work([ANDROID_SETUP], root)
-    servers = [ruleset_steps(), root_steps(host, root)]
+    work.require_android_environment([JOB], work.environment())
+    work.run([work.ANDROID_SETUP], root)
+    manifests = Manifests.load(root)
+    servers = [ruleset_steps(host), root_steps(host, manifests, root)]
     with ThreadPoolExecutor(len(servers)) as pool:
         codes = list(pool.map(lambda steps: run_steps(steps, root), servers))
-    if failed := [code for code in codes if code]:
-        return failed[0]
-    run_work(selftests(host, root), root)
+    if failed := next((code for code in codes if code), 0):
+        return failed
+    work.run(selftests(host), root)
     return 0
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("host", choices=sorted(HOST_LANES))
-    sys.exit(run(parser.parse_args().host))
+    parser.add_argument("host", choices=sorted(HOSTS))
+    sys.exit(run_host(parser.parse_args().host))
 
 
 if __name__ == "__main__":

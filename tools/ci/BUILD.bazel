@@ -10,10 +10,7 @@ py_library(
 
 py_library(
     name = "work_lib",
-    srcs = [
-        "changes.py",
-        "work.py",
-    ],
+    srcs = ["work.py"],
     # The add-on modules' lanes, from their addon.pkl, the applications', from their app.pkl,
     # and the change since origin/main as Code Health reads it.
     deps = [

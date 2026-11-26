@@ -1,14 +1,7 @@
-"""
-The lanes' work: the repository's own, the add-on modules' from their addon.pkl.
+"""The lanes' work: the repository's own, the add-on modules' from their addon.pkl."""
 
-Sections: Work and callers, Selection, Changes.
-"""
-
-import contextlib
-import io
 import os
 import re
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,7 +11,6 @@ from unittest import mock
 from tools.addons.modules import all_modules, choices
 from tools.addons.test_support import checkout
 from tools.apps.apps import lanes as app_lanes
-from tools.ci.changes import Changes, changes_since, files
 from tools.ci.lanes import LANES
 from tools.ci.work import (
     ROOT,
@@ -29,13 +21,9 @@ from tools.ci.work import (
     all_work,
     argv,
     environment,
-    lanes,
     run,
     runs_on,
-    selected,
 )
-
-# ==== Work and callers ========================================================
 
 
 class WorkTest(unittest.TestCase):
@@ -48,24 +36,17 @@ class WorkTest(unittest.TestCase):
             {"widget": '"desktop", "ios"', "gadget": '"desktop", "android"'},
         )
 
-    def test_every_lane_plans_its_work_and_the_add_on_modules_lanes(self) -> None:
-        planned = lanes(all_work(self.root))
-        self.assertIn("test:bazel", planned["desktop"])
-        # One piece runs every module of a lane; the pieces per module run when named.
+    def test_every_add_on_lane_has_its_work_and_each_module_its_own(self) -> None:
+        work = all_work(self.root)
+        # One piece runs every module of a lane, one each module alone.
+        for lane in ("desktop", "android", "ios"):
+            self.assertIn(f"{lane}:addons", work)
+            self.assertIn(f"{lane}:addon-template", work)
         self.assertEqual(
-            planned["desktop"][-2:], ["desktop:addons", "desktop:addon-template"]
+            work["ios:addons"].steps()[0].command, "python3 -m tools.addons.lanes ios"
         )
-        self.assertEqual(
-            planned["android"][-2:], ["android:addons", "android:addon-template"]
-        )
-        self.assertEqual(planned["ios"][-2:], ["ios:addons", "ios:addon-template"])
-        self.assertEqual(
-            all_work(self.root)["ios:addons"].steps()[0].command,
-            "python3 -m tools.addons.lanes ios",
-        )
-        # Work without a lane runs only when named.
-        for name in ("inspect:mobile", "desktop:addon:widget", "ios:addon:widget"):
-            self.assertFalse(any(name in names for names in planned.values()), name)
+        for name in ("desktop:addon:widget", "ios:addon:widget", "android:addon:gadget"):
+            self.assertIn(name, work)
 
     def test_add_on_work_runs_in_the_default_profile(self) -> None:
         # Its release builds carry their configuration (examples/releases.bzl).
@@ -190,8 +171,6 @@ class CallersTest(unittest.TestCase):
         for task in (ROOT / ".aspect").glob("*.axl"):
             text = task.read_text()
             for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
-                # Keyword arguments, such as changed_since, name no work.
-                call = re.sub(r'\w+ = "[^"]*"', "", call)
                 names.update(re.findall(r'"([^"]+)"', call))
             # The tool checks of `aspect check`, a list it passes on.
             for listed in re.findall(r"TOOL_CHECKS = \[([^\]]*)\]", text):
@@ -199,188 +178,10 @@ class CallersTest(unittest.TestCase):
         self.assertLessEqual({"conventions", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
-
-# ==== Selection ===============================================================
-
-
-# The modules of a checkout with one add-on module, as `tools/setup/modules.py` finds them.
-MODULES = (
-    ".",
-    "rules_godot",
-    "addons/sentry",
-)
-
-
-def changed(*paths: str) -> Changes:
-    return Changes(frozenset(paths), "abc1234", MODULES)
-
-
-class SelectionTest(unittest.TestCase):
-    """The pre-push hook runs only the steps whose inputs changed since the merge base."""
-
-    def run_steps(self, name: str, *paths: str) -> list[In]:
-        """The steps of a piece of work that run for the changed paths."""
-        with contextlib.redirect_stdout(io.StringIO()):
-            return selected(all_work(ROOT)[name], changed(*paths))
-
-    def directories(self, name: str, *paths: str) -> list[str]:
-        return [step.directory for step in self.run_steps(name, *paths)]
-
     def test_the_root_lint_names_every_add_on_module(self) -> None:
         command = all_work(ROOT)["lint"].steps()[0].command
         for module in all_modules(ROOT):
             self.assertIn(f"@autoload_{module.directory}//...", command)
-
-    def test_generated_runs_for_what_shapes_the_engine_pins(self) -> None:
-        self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
-        for path in (
-            "rules_godot/MODULE.bazel",
-            "MODULE.bazel.lock",
-            "rules_godot/godot/defs.bzl",
-            "rules_godot/godot/engine/BUILD.bazel",
-            "examples/engines/simulation/simulation.lock.json",
-            "tools/generate/generate.py",
-        ):
-            self.assertEqual(1, len(self.run_steps("generated", path)), path)
-
-    def test_gazelle_checks_every_module_s_declarations(self) -> None:
-        for path in (
-            "rules_godot/godot/private/pack.bzl",
-            "rules_godot/godot/BUILD.bazel",
-            "examples/lichtpost/main/game.gd",
-            "addons/sqlite/README.md",
-            "tools/gazelle/BUILD.bazel",
-        ):
-            self.assertEqual(
-                ["bazel run //tools/gazelle:check"],
-                [step.command for step in self.run_steps("gazelle", path)],
-                path,
-            )
-        self.assertEqual([], self.run_steps("gazelle", "rules_godot/tools/pck.py"))
-
-    def test_some_work_always_runs(self) -> None:
-        # The lint checks run whole: Bazel's cache skips unchanged targets.
-        for name in ("conventions", "test:tools", "lint", "lint:ruleset"):
-            self.assertEqual(all_work(ROOT)[name].steps(), self.run_steps(name), name)
-
-    def test_without_changes_every_step_runs(self) -> None:
-        gazelle = all_work(ROOT)["gazelle"]
-        self.assertEqual(gazelle.steps(), selected(gazelle, None))
-
-    def test_a_skipped_step_is_reported(self) -> None:
-        printed = io.StringIO()
-        with contextlib.redirect_stdout(printed):
-            selected(
-                Work("docs", None, ".", (In(".", "check", files("docs/*")), "run")),
-                changed("addons/sentry/a.py"),
-            )
-        self.assertIn(
-            "[docs] .$ check skipped: no change since abc1234",
-            printed.getvalue(),
-        )
-
-
-# ==== Changes =================================================================
-
-
-def git(root: Path, *args: str) -> str:
-    return subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=t",
-            "-c",
-            "user.email=t@t",
-            "-c",
-            "commit.gpgsign=false",
-            *args,
-        ],
-        cwd=root,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
-
-class ChangesTest(unittest.TestCase):
-    """The changed files since the merge base with a reference, as Git reports them."""
-
-    def setUp(self) -> None:
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
-        git(self.root, "init", "--quiet", "--initial-branch=main")
-        self.write("README.md", "README.md", "addons/sentry/a.py")
-        git(self.root, "add", ".")
-        git(self.root, "commit", "--quiet", "-m", "base")
-        self.base = git(self.root, "rev-parse", "HEAD")[:9]
-        git(self.root, "switch", "--quiet", "-c", "topic")
-
-    def write(self, *paths: str) -> None:
-        for path in paths:
-            (self.root / path).parent.mkdir(parents=True, exist_ok=True)
-            (self.root / path).write_text(path + str(len(list(self.root.iterdir()))))
-
-    def changes(self, ref: str = "main") -> Changes | None:
-        with contextlib.redirect_stdout(io.StringIO()) as printed:
-            found = changes_since(ref, self.root, MODULES)
-        self.printed = printed.getvalue()
-        return found
-
-    def test_committed_staged_unstaged_and_untracked_files_count(self) -> None:
-        self.write("committed.md")
-        git(self.root, "add", ".")
-        git(self.root, "commit", "--quiet", "-m", "topic")
-        self.write("staged.md")
-        git(self.root, "add", "staged.md")
-        self.write("README.md", "untracked.md")
-        found = self.changes()
-        assert found is not None
-        self.assertEqual(
-            {"committed.md", "staged.md", "README.md", "untracked.md"}, found.paths
-        )
-        self.assertEqual(self.base, found.base)
-        self.assertEqual(MODULES, found.modules)
-
-    def test_a_deleted_file_counts(self) -> None:
-        (self.root / "addons/sentry/a.py").unlink()
-        found = self.changes()
-        assert found is not None
-        self.assertEqual({"addons/sentry/a.py"}, found.paths)
-
-    def test_a_renamed_file_changes_both_paths(self) -> None:
-        git(self.root, "mv", "addons/sentry/a.py", "b.py")
-        found = self.changes()
-        assert found is not None
-        self.assertEqual({"addons/sentry/a.py", "b.py"}, found.paths)
-
-    def test_main_moving_on_changes_nothing_here(self) -> None:
-        git(self.root, "switch", "--quiet", "main")
-        self.write("upstream.md")
-        git(self.root, "add", ".")
-        git(self.root, "commit", "--quiet", "-m", "upstream")
-        git(self.root, "switch", "--quiet", "topic")
-        found = self.changes()
-        assert found is not None
-        self.assertEqual(frozenset(), found.paths)
-
-    def test_without_a_merge_base_everything_runs(self) -> None:
-        self.assertIsNone(self.changes("origin/main"))
-        self.assertIn("no merge base with origin/main", self.printed)
-
-    def test_the_verification_tooling_selects_everything(self) -> None:
-        for path in (
-            "tools/ci/work.py",
-            ".aspect/hooks.axl",
-            "shared.bazelrc",
-            ".bazelversion",
-            "tools/bazel",
-            "rules_godot/tools/bazel",
-        ):
-            self.write(path)
-            self.assertIsNone(self.changes(), path)
-            self.assertIn(f"{path} changed", self.printed)
-            (self.root / path).unlink()
 
 
 if __name__ == "__main__":

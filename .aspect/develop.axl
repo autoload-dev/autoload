@@ -13,8 +13,7 @@ load("./work.axl", "run", "run_work", "run_work_tool", "spawn")
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
 
-# The checks that are no Bazel targets yet: the lanes' work runs them, where their inputs
-# changed unless every check runs (tools/ci/work.py).
+# The checks that are no Bazel targets: the lanes' work runs them whole (tools/ci/work.py).
 TOOL_CHECKS = [
     "generated",
     "gazelle",
@@ -98,23 +97,21 @@ def run_checks(ctx: TaskContext, every: bool):
 
     Args:
         ctx: the running task's context, with the `keep_going` argument.
-        every: whether every check runs on the whole tree, as CI's do, or only the formatter
-            on the changed files and the tool checks whose inputs changed since the merge
-            base with origin/main, as the pre-push hook's do.
+        every: whether the formatter covers the whole tree, as CI's does, or the files
+            changed since the merge base with origin/main, as the pre-push hook's does.
 
     Returns:
         The task's conclusion.
     """
     aspect = ctx.std.env.current_exe()
     scope = ["--scope=all"] if every else []
-    since = None if every else "origin/main"
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"] + scope)),
         # The lint check of the filegroups that Gazelle declares for Markdown and GDScript,
         # which are no tests (tools/lint/check.bzl); the tag filters keep the analysis.
         ("lint", lambda: bazel(ctx, "build", ["--config=check", "--build_tag_filters=gdscript,markdown"])),
         ("bazel", lambda: bazel_tests(ctx, ["--config=check", "--config=fast"])),
-        ("tools", lambda: run_work(ctx, changed_since = since, *TOOL_CHECKS)),
+        ("tools", lambda: run_work(ctx, *TOOL_CHECKS)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ])
 
@@ -125,35 +122,28 @@ check = task(
     implementation = _check_impl,
     summary = "Run every check and the fast tests: formatting, lint, generated files, conventions, API documentation, Code Health.",
     args = {
-        "all": args.boolean(default = False, description = "Check the whole tree and every tool check, as CI does, not only what changed since origin/main"),
+        "all": args.boolean(default = False, description = "Format the whole tree, as CI does, not only what changed since origin/main"),
         "keep_going": KEEP_GOING,
     },
 )
 
 def _ci_steps(ctx: TaskContext, host: str):
     """A host's CI job: on Linux every check first, then the host's lanes (tools/ci/hosts.py)."""
-    build = [("bazel", lambda: run_work_tool(ctx, [host], module = "tools.ci.hosts"))]
-    if host != "linux":
-        return steps(ctx, build)
-    aspect = ctx.std.env.current_exe()
-    return steps(ctx, [
-        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail", "--scope=all"])),
-        ("tools", lambda: run_work(ctx, *TOOL_CHECKS)),
-    ] + build)
+    checks = ["format"] + TOOL_CHECKS if host == "linux" else []
+    return steps(ctx, [(check, lambda check = check: run_work(ctx, check)) for check in checks] + [
+        ("bazel", lambda: run_work_tool(ctx, [host], module = "tools.ci.hosts")),
+    ])
 
-linux = task(
-    group = ["ci"],
-    implementation = lambda ctx: _ci_steps(ctx, "linux"),
-    summary = "Run CI's Linux job: every check, then the quality, desktop and android lanes.",
-    args = {"keep_going": KEEP_GOING},
-)
+def _ci_task(host: str, summary: str):
+    return task(
+        group = ["ci"],
+        implementation = lambda ctx: _ci_steps(ctx, host),
+        summary = summary,
+        args = {"keep_going": KEEP_GOING},
+    )
 
-macos = task(
-    group = ["ci"],
-    implementation = lambda ctx: _ci_steps(ctx, "macos"),
-    summary = "Run CI's macOS job: the desktop and ios lanes.",
-    args = {"keep_going": KEEP_GOING},
-)
+linux = _ci_task("linux", "Run CI's Linux job: every check, then the quality, desktop and android lanes.")
+macos = _ci_task("macos", "Run CI's macOS job: the desktop and ios lanes.")
 
 def _test_impl(ctx: TaskContext) -> int:
     return bazel_tests(ctx, ["--config=" + ctx.args.tier])
