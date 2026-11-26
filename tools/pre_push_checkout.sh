@@ -3,7 +3,8 @@
 # changes. The pre-push hook's checks (`aspect pre-push`) read the working tree,
 # not the pushed commits. Reads Git's pre-push lines on stdin and prints the
 # pushed branches' commits on the remote, which `aspect pre-push` counts the
-# changes from, read from AUTOLOAD_REMOTE_TIPS (tools/ci/changes.py).
+# changes from, read from AUTOLOAD_REMOTE_TIPS (tools/ci/changes.py); nothing
+# else goes to stdout.
 set -euo pipefail
 
 fail() {

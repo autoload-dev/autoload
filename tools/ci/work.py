@@ -11,9 +11,8 @@ source-engine lane runs in its own scheduled workflow, the others in CI.
 
 A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook runs it, skips
 the steps whose inputs did not change since the merge base with the reference
-(tools/ci/changes.py). With `--remote-tip`, the pushed branch's commit on the remote, a push
-counts from that commit instead, when HEAD descends from it. Lanes and named work without
-the options run every step.
+(tools/ci/changes.py), or, given `--remote-tip`, since the pushed branch's commit on the
+remote. Lanes and named work without the options run every step.
 
 Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Selection,
 Execution, Command line.

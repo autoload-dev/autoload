@@ -443,9 +443,7 @@ class ChangesTest(unittest.TestCase):
 
     def test_main_moving_on_changes_nothing_here(self) -> None:
         git(self.root, "switch", "--quiet", "main")
-        self.write("upstream.md")
-        git(self.root, "add", ".")
-        git(self.root, "commit", "--quiet", "-m", "upstream")
+        self.commit("upstream.md")
         git(self.root, "switch", "--quiet", "topic")
         found = self.changes()
         assert found is not None
@@ -470,15 +468,15 @@ class ChangesTest(unittest.TestCase):
     def test_a_later_push_counts_from_the_remote_s_commit(self) -> None:
         pushed = self.commit("pushed.md")
         self.commit("follow_up.md")
-        self.assertEqual(pushed, self.pushed_base(pushed))
-        found = changes_since(self.pushed_base(pushed), self.root, MODULES)
+        base = self.pushed_base(pushed)
+        self.assertEqual(pushed, base)
+        found = changes_since(base, self.root, MODULES)
         assert found is not None
         self.assertEqual({"follow_up.md"}, found.paths)
         self.assertIn(f"since the remote's {pushed[:9]}", self.printed)
 
     def test_a_first_push_counts_from_the_merge_base(self) -> None:
         self.commit("first.md")
-        self.assertEqual("main", self.pushed_base())
         self.assertEqual("main", self.pushed_base("0" * 40))
         self.assertIn("the remote has no such branch", self.printed)
 

@@ -94,17 +94,19 @@ def pushed_base(ref: str, remote_tips: Iterable[str], root: Path) -> str:
     printed. A remote tip of zeros stands for a branch the remote does not have yet.
     """
     tips = set(remote_tips)
-    if not tips or any(set(tip) == {"0"} for tip in tips):
-        reason = "the remote has no such branch"
-    elif len(tips) > 1:
-        reason = "several pushed branches are on different commits"
-    elif run_git(
-        root, "merge-base", "--is-ancestor", tip := tips.pop(), "HEAD"
-    ).returncode:
-        reason = f"the remote's {tip[:9]} is not in HEAD's history"
-    else:
-        print(f"[work] counting changes since the remote's {tip[:9]}", flush=True)
-        return tip
+    if any(set(tip) == {"0"} for tip in tips):
+        return fallback(ref, "the remote has no such branch")
+    if len(tips) > 1:
+        return fallback(ref, "several pushed branches are on different commits")
+    (tip,) = tips
+    if run_git(root, "merge-base", "--is-ancestor", tip, "HEAD").returncode:
+        return fallback(ref, f"the remote's {tip[:9]} is not in HEAD's history")
+    print(f"[work] counting changes since the remote's {tip[:9]}", flush=True)
+    return tip
+
+
+def fallback(ref: str, reason: str) -> str:
+    """The reference itself, with the reason a push counts from its merge base printed."""
     print(
         f"[work] {reason}: counting changes since the merge base with {ref}", flush=True
     )
