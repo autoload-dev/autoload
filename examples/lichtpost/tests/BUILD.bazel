@@ -1,5 +1,6 @@
 load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources", "godot_test")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 package(default_testonly = True)
 
@@ -103,4 +104,23 @@ filegroup(
     srcs = ["BUILD.bazel"],
     tags = ["starlark"],
     visibility = ["//visibility:private"],
+)
+
+# `godot_app` tags its targets `manual`: only this test builds the desktop application.
+build_test(
+    name = "app_build_test",
+    size = "small",
+    tags = ["godot_process"],
+    targets = ["//examples/lichtpost:app"],
+)
+
+# The same for the application whose runtime is built from source with runtime.gdbuild.
+build_test(
+    name = "slim_app_build_test",
+    size = "small",
+    tags = [
+        "godot_process",
+        "source_engine",
+    ],
+    targets = ["//examples/lichtpost:slim_app"],
 )

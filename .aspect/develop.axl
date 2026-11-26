@@ -142,10 +142,44 @@ CI_CHECKS = ["format"] + TOOL_CHECKS
 # The add-on generator's self-tests, a fresh module's lanes.
 SELFTESTS = ["desktop:addon-template", "android:addon-template", "ios:addon-template"]
 
-def _ci_steps(ctx: TaskContext, host: str):
-    """A host's CI job: on Linux every check and the lint, then the host's tests and self-tests.
+def _registry_test_modules(ctx: TaskContext):
+    """The registry test modules of the released modules, `<module>/bcr/<name>/` (RG020)."""
+    root = ctx.std.env.aspect_root_dir()
+    modules = ["rules_godot"] + [
+        "addons/" + entry.path.rpartition("/")[2]
+        for entry in ctx.std.fs.read_dir(root + "/addons")
+        if not entry.is_file
+    ]
+    found = []
+    for module in modules:
+        bcr = module + "/bcr"
+        if not ctx.std.fs.exists(root + "/" + bcr):
+            continue
+        for entry in ctx.std.fs.read_dir(root + "/" + bcr):
+            directory = bcr + "/" + entry.path.rpartition("/")[2]
+            if not entry.is_file and ctx.std.fs.exists(root + "/" + directory + "/MODULE.bazel"):
+                found.append(directory)
+    return sorted(found)
 
-    The tests are every test of both workspaces that the host's config `ci-<host>` selects
+def registry_tests(ctx: TaskContext) -> int:
+    """Run every registry test module in place, as the registry runs it from the release archive.
+
+    Each is a workspace of its own, which uses the rules of this checkout (addons/bcr.bazelrc),
+    so that a break shows before a release does. They run one after the other, since two
+    servers that fetch the same repository at once into the shared repository contents cache
+    can fail to move it there.
+
+    Returns:
+        0, or the first failing module's exit code.
+    """
+    codes = [run(ctx, "bazel", ["test", "//..."], directory = d) for d in _registry_test_modules(ctx)]
+    failed = [code for code in codes if code != 0]
+    return failed[0] if failed else 0
+
+def _ci_steps(ctx: TaskContext, host: str):
+    """A host's CI job: its checks, tests and self-tests.
+
+    On Linux every check and the lint run first, on macOS the registry test modules last. The tests are every test of both workspaces that the host's config `ci-<host>` selects
     (shared.bazelrc); the add-on generator's self-tests run each lane of a fresh module.
     """
     linux = host == "linux"
@@ -163,7 +197,11 @@ def _ci_steps(ctx: TaskContext, host: str):
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
         # Each runs where its work allows it (tools/ci/work.py).
         ("selftests", lambda: run_work(ctx, *SELFTESTS)),
-    ])
+    ] + ([] if linux else [
+        # macOS only: its persistent runners keep each module's Bazel server warm, where the
+        # Linux job would start a server per module in every run.
+        ("registry", lambda: registry_tests(ctx)),
+    ]))
 
 def _ci_task(host: str, summary: str):
     return task(
