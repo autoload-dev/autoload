@@ -153,8 +153,8 @@ validations. A case's `requires` names what its host needs, and each requirement
 test of its own: `contracts_test` for the cases any development host analyzes, together with
 the coverage of the public APIs, their behavior tests and the public configuration targets;
 `contracts_android_sdk_test` for those that need the Android SDK and `contracts_macos_test`
-for the Apple platforms. The latter two are skipped where the host lacks them; the desktop
-sets of CI run them ([lanes](../../../docs/internal/verification-platforms.md#lanes-and-execution)).
+for the Apple platforms. The latter two are skipped where the host lacks them; CI's
+host jobs run them ([verification hosts](../../../docs/internal/verification-platforms.md#host-jobs-and-execution)).
 `evaluated_mismatch_test` proves that real mismatches between fixtures and their
 documentation fail the same checks.
 

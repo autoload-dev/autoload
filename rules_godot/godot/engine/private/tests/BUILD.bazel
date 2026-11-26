@@ -190,7 +190,7 @@ source_build_inputs_test_suite(name = "source_build_inputs_test_suite")
 
 # The godot entrypoint of a desktop godot_engine_build recipe: an executable runtime that
 # links through CcInfo. Fetching configures the macOS recipe, so it runs in the
-# source-engine lane.
+# Source engine workflow.
 repository_test(
     name = "test_engine_build_godot_is_an_executable_runtime",
     cc = True,

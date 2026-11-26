@@ -4,7 +4,7 @@ The release builds of the repository's applications, declared beside each one's 
 `android_release` and `ios_release` build an application and its debug symbols as
 `godot_configured_app` does, under the settings of the `.bazelrc` configurations
 `android-release`, `multi_abi` and `aab`, and of `ios-release`. Each also declares
-`<name>.build_test`, which builds both, tagged with its lane: CI's host jobs run it in the
+`<name>.build_test`, which builds both, tagged with its mobile operating system, `android` or `ios`: CI's host jobs run it in the
 same Bazel invocation and configuration as everything else (shared.bazelrc).
 """
 
@@ -18,12 +18,12 @@ load(
 )
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
-def _release_test(name, lane, target_compatible_with = []):
-    """Build a release and its debug symbols as a test of its lane, which starts Godot."""
+def _release_test(name, os_tag, target_compatible_with = []):
+    """Build a release and its debug symbols as a test tagged with its mobile operating system, which starts Godot."""
     build_test(
         name = name + ".build_test",
         size = "small",
-        tags = [lane, "godot_process"],
+        tags = [os_tag, "godot_process"],
         target_compatible_with = target_compatible_with,
         targets = [name, name + ".debug_symbols"],
     )

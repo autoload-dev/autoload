@@ -1,23 +1,10 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# The lanes alone, without the work's dependencies: the ruleset's API contract cases run per
-# lane (rules_godot/docs).
-py_library(
-    name = "lanes_lib",
-    srcs = ["lanes.py"],
-    visibility = ["//visibility:public"],
-)
-
 py_library(
     name = "work_lib",
     srcs = ["work.py"],
-    # The add-on modules' lanes, from their addon.pkl, the applications', from their app.pkl,
-    # and the change since origin/main as Code Health reads it.
     deps = [
-        ":lanes_lib",
         "//tools/addons:new_lib",
-        "//tools/apps:apps_lib",
-        "//tools/code_health:codescene_lib",
         "//tools/setup:modules_lib",
     ],
 )
@@ -85,7 +72,6 @@ filegroup(
     name = "python_files",
     testonly = True,
     srcs = [
-        "lanes.py",
         "release_archive.py",
         "release_archive_test.py",
         "release_module.py",

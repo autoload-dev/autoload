@@ -1,4 +1,4 @@
-# The Aspect CLI's tasks, which name pieces of the lanes' work, and the root module's target
+# The Aspect CLI's tasks, which name pieces of the named work, and the root module's target
 # patterns they pass to Bazel.
 filegroup(
     name = "aspect_tasks",

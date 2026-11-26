@@ -1,22 +1,12 @@
 /// What an add-on module of addons/ declares about itself: `addons/<module>/addon.pkl`
-/// amends this module (addons/AGENTS.md). The lanes' work (tools/ci/work.py), the lanes
-/// (tools/addons/lanes.py) and the conventions read it as the pinned Pkl CLI evaluates it
-/// (tools/pkl/evaluate.py), with the defaults and types below.
+/// amends this module (addons/AGENTS.md). The add-on tools and the conventions read it as
+/// the pinned Pkl CLI evaluates it (tools/pkl/evaluate.py), with the defaults and types below.
 module Addon
 
-import "pkl:reflect"
-
-typealias Lane = "desktop" | "android" | "ios"
-typealias Desktop = "linux" | "macos"
-
-/// The lanes that verify the module when it changes. A module without the android and ios
-/// lanes builds no application: its examples need no `app` target and no Android SDK or
-/// Maven graph.
-lanes: List<Lane>(!isEmpty, isDistinct)
-
-/// The desktop systems the module's desktop lane builds and tests for, each on a CI runner of
-/// that system.
-desktops: List<Desktop>(!isEmpty, isDistinct) = List("linux", "macos")
+/// Whether the module's examples build applications: each example project has an `app` and
+/// declares its Android and iOS release builds (examples/releases.bzl). A module without
+/// them, such as a test-only add-on, needs no Android SDK or Maven graph.
+apps: Boolean = true
 
 /// The macros of the module that create Godot tests, such as `gdunit_test`. RG007 requires
 /// their targets to be test-only, as for rules_godot's `godot_test`.
@@ -27,18 +17,8 @@ testOperations: List<String> = List()
 sharedPackages: List<String> = List()
 
 /// The packages that only the module's unit tests load from and that it still declares as
-/// regular dependencies, since the lanes build it from the root module, where its development
+/// regular dependencies, since CI builds it from the root module, where its development
 /// dependencies are not active. RG015 allows a dependency that only tests use only when it is
 /// listed here. Public rules are tested from `e2e/addons/<module>/` instead, so keep this
 /// for real exceptions.
 testDependencies: List<String> = List()
-
-/// The members of the string unions above, which the tools offer as choices.
-hidden fixed choices: Mapping<String, List<String>> = new {
-  ["lanes"] = members(Lane)
-  ["desktops"] = members(Desktop)
-}
-
-local function members(alias: TypeAlias): List<String> =
-  (reflect.TypeAlias(alias).referent as reflect.UnionType).members
-    .map((member) -> (member as reflect.StringLiteralType).value)

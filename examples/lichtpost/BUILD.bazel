@@ -65,7 +65,7 @@ godot_app(
 
 # The same game with a runtime cut to what it uses: the default engine builds it from its
 # release's sources with runtime.gdbuild, which MODULE.bazel registers. Desktop only; the
-# mobile lanes ship :app.
+# mobile releases ship :app.
 godot_app(
     name = "slim_app",
     application_id = "org.example.rulesgodot.lichtpost",

@@ -2,7 +2,7 @@
 
 Use the section needed for the task at hand; this page is not a checklist to execute in full.
 The [verification policy](verification.md) determines when evidence is needed, and
-[verification lanes](verification-platforms.md) determines the representative scope.
+[verification hosts](verification-platforms.md) determines the representative scope.
 
 - New environment or missing SDKs: [toolchains](#toolchains).
 - API source changes: [API documentation](#api-documentation).
@@ -79,7 +79,7 @@ For API source changes, run the ruleset's documentation tests in `rules_godot/`:
 `bazel test //godot/tests/api/... //godot/tests/api_contracts/...` checks the inventory, the
 docstrings and the contracts the registry's documentation relies on. They belong to the fast
 tests, which the pre-push hook runs. A contract test whose cases need the Android SDK or
-macOS is skipped on a host without them, and runs in the desktop sets of CI. See
+macOS is skipped on a host without them, and runs in CI's host jobs. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
 ## Generated BUILD declarations
@@ -106,7 +106,7 @@ bazel run //tools/gazelle:update
 
 `bazel run //tools/gazelle:check` prints the difference and fails where a BUILD file is
 stale; `//tools/gazelle:rules_godot`, `root` and `addons.<directory>`, each with `_check`,
-do the same for one module. The quality lane's `gazelle` work, which the
+do the same for one module. The Linux job's `gazelle` work, which the
 pre-push hook runs too, runs the check. Markdown and scripts outside every package, such as
 in `addons/` itself or in the registry test modules, are outside the lint check.
 
@@ -116,7 +116,7 @@ A Bazel server keeps the analysis of one configuration: a command that changes t
 options, such as `--config=android`, discards the analysis of the previous one. So that
 desktop and mobile work keep theirs, [tools/bazel](../../tools/bazel) runs each profile in an
 output base and server of its own. `AUTOLOAD_BAZEL_PROFILE` names the profile; without it,
-Bazel uses the workspace's own output base, the `default` profile. The lanes' work sets the
+Bazel uses the workspace's own output base, the `default` profile. The named work sets the
 profile of the source-engine work, `source-engine` ([tools/ci/work.py](../../tools/ci/work.py)),
 so the pre-push hook and the desktop work stay warm in `default`. The mobile release builds and smoke tests need no
 profile: their applications carry their configuration (`godot_configured_app`,
@@ -184,7 +184,7 @@ tasks and of the build tools under `tools/`; the command's own flags win. A Baze
 started without Bazelisk ignores the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work test:bazel
+RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect tests --tier=all
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
 ```
 
@@ -203,7 +203,7 @@ Android versions of [sdk.json](../../tools/android/sdk.json), which `//tools/and
 For settings on every invocation, such as `common --config=buildbuddy`, create
 `user.bazelrc` at the repository root. Every module imports it, and git ignores it.
 
-CI's lanes write `ci.bazelrc` at the repository root, which the root module and the ruleset
+CI's host jobs write `ci.bazelrc` at the repository root, which the root module and the ruleset
 import, to set `--config=ci` (shared.bazelrc) on every command: a stale `MODULE.bazel.lock`
 then fails the command instead of being rewritten. Locally, Bazel updates the file, and
 `aspect generate` regenerates it; `--config=ci` reproduces CI's check, at the price of a
@@ -354,7 +354,7 @@ bazel test //e2e/rules_godot/smoke/linux/... //e2e/rules_godot/smoke/macos/...
 application, requiring both extensions to load and register their Godot class and the
 imported texture to load from the pack. On macOS, `app_is_adhoc_signed_test` verifies the
 archived bundle's ad hoc signature, of the application `godot_configured_app` signs ad hoc.
-The desktop lane runs them as `test:gdextension`.
+CI's host jobs run them.
 
 ### Mobile artifact checks
 
@@ -363,8 +363,8 @@ code they test, such as `//godot/platforms/private/tests/library_composition`,
 `//godot/platforms/private/tests/app_platform_selection` and
 `//godot/platforms/private/tests/engine_probe`. Each builds its fixture application through a
 test-only transition that selects the platform, CPUs, format, variant or release settings it
-needs, so they run without `--config` in the work `test:bazel`, the desktop set, which
-provisions the Android SDK and NDK. Android tests are skipped where rules_android finds no
+needs, so they run without `--config` in CI's host jobs, which
+provision the Android SDK and NDK. Android tests are skipped where rules_android finds no
 SDK; iOS tests need macOS with Xcode. Release tests compare Android Build IDs and DWARF and
 iOS executable/dSYM UUIDs. The platform-library cases check delivered classes, resources,
 permissions, symbols and Info.plist fragments. The prebuilt beta engine's tests inspect their
@@ -385,7 +385,7 @@ bazel test --test_tag_filters=ios //e2e/rules_godot/...
 | `android` | an arm64 App Bundle | the Android smoke bundle: engine, extension library and pack |
 | `ios` | x86_64 Simulator applications of the official templates | the iOS smoke apps' embedded extension framework and statically linked extension entry |
 
-The `android` and `ios` work of their lanes runs these suites. To record artifact-level evidence
+CI's host jobs run these tests. To record artifact-level evidence
 of the smoke applications, build them, then inspect them:
 
 ```sh
@@ -404,7 +404,7 @@ input of the action that must rerun, an unrelated one is not, and a configuratio
 not matter leaves actions unchanged. They are the `*_inputs_tests.bzl` and
 `configuration_invariance_tests.bzl` suites of `godot/private/tests`,
 `godot/platforms/private/tests`, `godot/extension/tests` and `godot/engine/private/tests`,
-and run with `aspect work test:bazel`.
+and run with the ruleset's other tests.
 `//godot/private/tests:import_and_pack_outputs_are_reproducible_test` imports and exports a
 project twice and compares the bytes. For the actions one change actually ran, compare the
 execution logs of two invocations as the [verification

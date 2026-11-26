@@ -2,8 +2,8 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The application boots with the patched runtime that --extra_toolchains registers and
-# reports the custom module's answer and the patched engine name. The source-engine lane
-# runs it with each registration set: engines/stable, engines/beta and engines/source, the
+# reports the custom module's answer and the patched engine name. The Source engine
+# workflow runs it with each registration set: engines/stable, engines/beta and engines/source, the
 # last with a fuller editor and a reduced runtime of one snapshot.
 filegroup(
     name = "app_bundle",

@@ -2,7 +2,7 @@
 # repositories, Tooling.
 
 """
-The repository's own tooling: formatting, linting, conventions, the lanes' work, add-on
+The repository's own tooling: formatting, linting, conventions, the named CI work, add-on
 scaffolding and setup checks across every component. It is never published; the components
 live in their own modules, such as rules_godot/ and addons/<module>/, which this module
 ignores (.bazelignore). The other modules load its linters as a development dependency;
@@ -258,7 +258,7 @@ godot_engines.build(
 )
 
 # The patched desktop engines of e2e/rules_godot/patched_engine and its source-built tests;
-# built only by the source-engine lane, whose engines packages compose their recipes into
+# built only by the Source engine workflow, whose engines packages compose their recipes into
 # components. The snapshot of the 4.7 maintenance branch, a fork's stand-in: an immutable
 # commit archive whose version.py names 4.7.3-rc, with a reduced runtime and a fuller
 # editor; both have the bazel_probe module and the engine-name patch.

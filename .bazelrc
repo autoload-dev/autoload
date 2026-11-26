@@ -6,8 +6,7 @@ import %workspace%/shared.bazelrc
 # Bazel's own, as the ruleset's modules set it; the host's Java is not needed.
 
 # The Godot applications (examples/) and the ruleset's consumer scenarios (e2e/rules_godot/) build as
-# a consumer of the ruleset does, with the mobile configurations of their lanes and API
-# contract cases.
+# a consumer of the ruleset does.
 build --incompatible_strict_action_env
 # Application settings must not create separate compiler/code-generator builds.
 build --incompatible_exclude_starlark_flags_from_exec_config
@@ -61,8 +60,8 @@ build:buildbuddy --workspace_status_command="bash buildbuddy_status.sh"
 # Tell this module's invocations apart in BuildBuddy's history and trends.
 build:buildbuddy --build_metadata=TAGS=autoload_dev
 
-# CI's lanes write ci.bazelrc at the repository root to set --config=ci (shared.bazelrc);
-# git ignores it.
+# CI's jobs write ci.bazelrc at the repository root to set --config=ci (shared.bazelrc); git
+# ignores it.
 try-import %workspace%/ci.bazelrc
 
 # Personal settings for every module of this repository, such as `common --config=buildbuddy`,
