@@ -47,6 +47,9 @@ From the repository root:
 ```sh
 ./bootstrap.sh                            # once per clone: install bazel and aspect, the Git hooks and Android SDK packages
 aspect doctor                             # check the setup and say what is missing
+aspect check                              # every check and the fast tests, as the pre-push hook runs them (--all as CI)
+aspect tests                              # the fast tests of the root module and the ruleset (--tier=all for every test)
+aspect fix                                # format the changed files and regenerate what the checks compare
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
 aspect work lint lint:ruleset             # lint Python with Ruff and ty: the root module with the add-ons, the ruleset
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory

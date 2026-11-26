@@ -20,10 +20,6 @@ test:source-engine --test_tag_filters=source_engine
 test:source-engine-main --config=source-engine
 test:source-engine-main --test_tag_filters=source_engine,-source_engine_extended
 
-# The fast tests, which the pre-push hook runs: every test but those that start a Godot
-# process (RG026), the smoke tests included.
-test:fast --build_tests_only
-test:fast --test_tag_filters=-godot_process,-source_engine
 
 # Cross compilation still requires the matching C++ SDK/toolchain.
 build:linux --platforms=//godot/platforms:linux_x86_64

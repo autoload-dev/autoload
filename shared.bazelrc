@@ -50,3 +50,11 @@ common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//
 # (tools/lint/check.bzl); builds without it ignore them. Only modules that depend on the root
 # module use it, not the registry test modules.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%python
+
+# The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
+# start a Godot process (RG026), the smoke tests included, which `aspect check` and the
+# pre-push hook run; the ruleset's source-engine tests stay out, as its .bazelrc's default
+# filter keeps them. all: every test this host can run.
+test:fast --build_tests_only
+test:fast --test_tag_filters=-godot_process,-source_engine
+test:all --build_tests_only

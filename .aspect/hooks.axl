@@ -4,7 +4,8 @@ formatted, its lock files current and its Code Health from declining; `aspect pr
 the pushed checkout as CI's quality and documentation lanes would, on this host.
 """
 
-load("./work.axl", "output", "python", "run", "run_work")
+load("./develop.axl", "KEEP_GOING", "run_checks", "steps")
+load("./work.axl", "output", "python", "run")
 
 def _lines(text: str) -> list:
     return [line for line in text.split("\n") if line]
@@ -12,19 +13,6 @@ def _lines(text: str) -> list:
 def _diff(ctx: TaskContext, path: str) -> str:
     """A file's changes that are not staged."""
     return output(ctx, "git", ["diff", "--", path])
-
-def _steps(ctx: TaskContext, steps):
-    """Run named steps in order; stop at the first failure unless asked to keep going."""
-    failed = []
-    for name, step in steps:
-        ctx.task.phase(name, description = name)
-        if step() != 0:
-            failed.append(name)
-            if not ctx.args.keep_going:
-                break
-    if failed:
-        return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
-    return 0
 
 def _format_staged(ctx: TaskContext, aspect: str, staged) -> int:
     """Format the staged files and stage the result.
@@ -59,7 +47,7 @@ def _pre_commit_impl(ctx: TaskContext):
     if not staged:
         return 0
     aspect = ctx.std.env.current_exe()
-    return _steps(ctx, [
+    return steps(ctx, [
         ("format", lambda: _format_staged(ctx, aspect, staged)),
         ("generate", lambda: _generate_staged(ctx, staged)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--staged", "--if-available"])),
@@ -69,30 +57,20 @@ pre_commit = task(
     implementation = _pre_commit_impl,
     summary = "Before a commit: format and stage the staged files, regenerate their lock files, review their Code Health.",
     args = {
-        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+        "keep_going": KEEP_GOING,
     },
 )
 
 def _pre_push_impl(ctx: TaskContext):
-    aspect = ctx.std.env.current_exe()
-
-    # Each step runs alone as well. The work covers lint, the ruleset's too, GDScript and
-    # Markdown, the source-built engines' pins, Gazelle's BUILD declarations, the conventions,
-    # the ruleset's fast tests, its API documentation's and contract tests among them, and the
-    # repository tooling's tests, the setup checks and the setup action's among them. Only the
-    # steps whose inputs changed since the merge base with origin/main run
-    # (tools/ci/changes.py).
-    return _steps(ctx, [
-        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
-        ("work", lambda: run_work(ctx, "lint", "lint:ruleset", "lint:gdscript", "lint:markdown", "generated", "gazelle", "conventions", "test:fast", "test:tools", changed_since = "origin/main")),
-        ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
-    ])
+    # The pushed checkout gets `aspect check` (.aspect/develop.axl): the formatter and the
+    # tool checks only where the change since origin/main reaches.
+    return run_checks(ctx, False)
 
 pre_push = task(
     implementation = _pre_push_impl,
     summary = "Before a push: check the checkout's formatting, lint, engine pins, conventions, tests, API documentation and Code Health.",
     args = {
-        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+        "keep_going": KEEP_GOING,
         # The hook's remote name and URL, which Git appends; the checks read the checkout.
         "remote": args.positional(minimum = 0, maximum = 2, default = []),
     },

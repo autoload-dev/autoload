@@ -74,16 +74,6 @@ def files(*patterns: str) -> Inputs:
     return lambda changes, _: changes.touch(patterns)
 
 
-def module_files(*names: str) -> Inputs:
-    """Inputs of the module a step runs in: its files whose names match the patterns."""
-    return lambda changes, directory: changes.in_module(directory, names)
-
-
-def either(*inputs: Inputs) -> Inputs:
-    """Inputs of each of the given inputs."""
-    return lambda changes, directory: any(i(changes, directory) for i in inputs)
-
-
 def changes_since(ref: str, root: Path, modules: tuple[str, ...]) -> Changes | None:
     """
     The changes since the merge base of HEAD and a reference, or none, with the reason

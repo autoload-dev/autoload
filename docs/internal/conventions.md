@@ -569,7 +569,8 @@ counts as a caller as well. Starlark files are outside it.
 
 **Tests that start a Godot process carry the `godot_process` tag.** A Godot process, in the
 test's build or in the test itself, is what makes a test expensive to rerun; the fast tests
-(`--config=fast` of the ruleset, which the pre-push hook runs) are every test without the tag.
+(`--config=fast` of the root module and the ruleset, which `aspect check` runs) are every
+test without the tag.
 A smoke test starts one and still runs with the fast tests, so it carries no tag; analysis
 tests start none, and `manual` tests run only when named.
 
