@@ -79,6 +79,9 @@ class AddonModuleLayoutTest(RepositoryTest):
         # A package that only names itself, and one that no label names.
         self.write("addons/widget/stray/BUILD.bazel", 'alias(actual = "//stray:x")\n')
         self.write("addons/widget/lonely/BUILD.bazel", "")
+        # A directory that is no package, though a label names a package below it.
+        self.write("addons/widget/misc/tools/BUILD.bazel", "")
+        self.write("addons/widget/widget/tools.bzl", 'TOOLS = "//misc/tools:t"\n')
         self.write("addons/widget/notes.txt", "")
         root = "the module's root holds only its files, its add-ons, bcr/, tests/, third_party/"
         referenced = "and packages that other packages load by label"
@@ -86,6 +89,7 @@ class AddonModuleLayoutTest(RepositoryTest):
             sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
             [
                 f"addons/widget/lonely: {root} {referenced}",
+                f"addons/widget/misc: {root} {referenced}",
                 f"addons/widget/notes.txt: {root} {referenced}",
                 f"addons/widget/stray: {root} {referenced}",
             ],

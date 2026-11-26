@@ -32,7 +32,6 @@ ROOT_DIRECTORIES = frozenset({"third_party", "tests", BCR})
 ROOT_ENTRIES = ", ".join(
     ["its files", "its add-ons", *(f"{name}/" for name in sorted(ROOT_DIRECTORIES))]
 )
-STARLARK_FILES = ("BUILD", "BUILD.bazel", ".bzl", "MODULE.bazel")
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
 # The targets each example project defines.
@@ -66,6 +65,14 @@ def declared_names(context: Context) -> dict[str, set[str | None]]:
     return names
 
 
+def is_starlark(name: str) -> bool:
+    """Whether a file is a BUILD file, a MODULE.bazel or a .bzl file."""
+    path = Path(name)
+    return (
+        path.name in BUILD_FILES or path.name == "MODULE.bazel" or path.suffix == ".bzl"
+    )
+
+
 def names_package(value: str, labels: tuple[str, ...]) -> bool:
     """Whether a string is one of the labels or a label below them."""
     return any(
@@ -81,7 +88,7 @@ def referenced_by_label(workspace: Workspace, module: Path, package: Path) -> bo
     local = f"//{package.name}"
     remote = f"@{module_name(module.name)}{local}"
     for name in workspace.files:
-        if not name.endswith(STARLARK_FILES) or Path(name).is_relative_to(package):
+        if not is_starlark(name) or Path(name).is_relative_to(package):
             continue
         labels = (local, remote) if workspace.owner(name) == module else (remote,)
         if any(names_package(s.value, labels) for s in workspace.strings(name)):
@@ -105,10 +112,11 @@ def allowed_entry(
         return name in ROOT_FILES
     path = module / name
     builds = ((path / build).as_posix() for build in BUILD_FILES)
-    return (
-        name in ROOT_DIRECTORIES
-        or any(name in names[build] for build in builds)
-        or referenced_by_label(workspace, module, path)
+    if name in ROOT_DIRECTORIES:
+        return True
+    package = [build for build in builds if build in workspace.file_set]
+    return any(name in names[build] for build in package) or (
+        bool(package) and referenced_by_label(workspace, module, path)
     )
 
 
@@ -150,7 +158,7 @@ def starlark_files(workspace: Workspace, module: Path) -> list[str]:
         name
         for name in workspace.files
         if name.startswith(prefix)
-        and name.endswith(STARLARK_FILES)
+        and is_starlark(name)
         and workspace.owner(name) == module
     ]
 

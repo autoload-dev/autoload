@@ -189,9 +189,11 @@ value, including package defaults, without requiring a literal attribute.
 then protects the marked targets from production consumers.
 
 Applicability comes from the evaluated `generator_function` metadata of these
-operations, including source aliases and comprehensions. A macro is a test operation when
-one of its targets anywhere in the loaded modules has the rule class `_godot_test`, which
-`godot_test` creates; no list names them. Each attributed rule target is
+operations, including source aliases and comprehensions. A macro is a test operation when a
+call of it anywhere in the loaded modules declares a target of the rule class
+`_godot_test`, which `godot_test` creates, under the call's own name; no list names them. A
+suite macro whose Godot tests are fixtures with names of their own, as in the ruleset's
+analysis tests, is none. Each attributed rule target is
 checked. Each false flag is reported at the call with the affected target label. Missing
 scalar flags or missing generator evidence for a directly named operation are reported as
 not checked. Other targets at the same authored call with an unknown or different generator
