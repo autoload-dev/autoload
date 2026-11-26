@@ -24,12 +24,6 @@ godot_engines.engine(
 )
 use_repo(godot_engines, "godot")
 
-# Builds in this directory, such as `bazel test //...`; applications register their own.
-register_toolchains(
-    "@godot//toolchains:all",
-    dev_dependency = True,
-)
-
 # The add-ons' own godot-cpp, with the classes their native code uses.
 godot_cpp_bindings = use_repo_rule(
     "@autoload_rules_godot//godot/extension:repositories.bzl",
