@@ -85,8 +85,6 @@ filegroup(
     name = "python_files",
     testonly = True,
     srcs = [
-        "hosts.py",
-        "hosts_test.py",
         "lanes.py",
         "release_archive.py",
         "release_archive_test.py",
