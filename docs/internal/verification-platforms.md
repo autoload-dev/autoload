@@ -59,20 +59,26 @@ all source suites in every release configuration.
 ## Lanes and execution
 
 CI runs every lane on every run: pull requests, the merge queue and a manual dispatch.
-Bazel's caches keep unchanged work cheap. The lanes' work lives in
-[`tools/ci/work.py`](../../tools/ci/work.py): the repository's own, each add-on module's
-lanes as its `addon.pkl` names them and the add-on generator's self-test in each add-on lane.
-Each job of [CI](../../.github/workflows/ci.yml)'s lane matrix runs one lane on its host with
-`aspect lane <lane>`, which leaves out add-on work whose `addon.pkl` excludes the host, and
-`Finalize` fails when any job failed or was cancelled.
-The matrix fails fast: the first job to fail cancels the others, so they free their runners
-and `Finalize` fails at once, which in the merge queue removes the entry without waiting for
-the slowest lane; the work they finished stays in Bazel's caches.
+Bazel's caches keep unchanged work cheap. [CI](../../.github/workflows/ci.yml) has one job
+per host, each `aspect ci <host>`: `linux` runs the quality, desktop and android lanes,
+`macos` the desktop and ios lanes. [`tools/ci/hosts.py`](../../tools/ci/hosts.py) combines a
+host's lanes into a few Bazel commands: the ruleset's tests and lint on its own server, and
+in the root module, at the same time, the lint check, the tests of the tooling and the
+applications, then one `bazel test` of the scenarios, the add-on modules' desktop lanes and
+the host's mobile release builds and smoke tests, which Bazel schedules together. The
+add-on generator's self-tests follow, each lane's in a server of its own. On Linux the
+formatter and the checks that are no Bazel targets run first. `Finalize` fails when either
+job failed or was cancelled. The matrix fails fast: the first job to fail cancels the
+other, so it frees its runner and `Finalize` fails at once, which in the merge queue
+removes the entry without waiting for the slower job; the work it finished stays in
+Bazel's caches.
 
-Locally, `aspect lane <lane>` runs a whole lane on this host, `aspect work <name>...` single
-pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation
-shows that command instead. The pre-push hook runs the checks that need no lane machine, as
-the [verification policy](verification.md#when-to-verify) describes.
+The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
+each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
+self-test in each add-on lane. Locally, `aspect ci <host>` runs a host's job,
+`aspect work <name>...` single pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation shows that
+command instead. The pre-push hook runs the checks that need no lane machine, as the
+[verification policy](verification.md#when-to-verify) describes.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
 unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
@@ -102,9 +108,9 @@ commit, so CI has no job for it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs the whole lane,
 `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned engine's
-toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
+before it merges, or carries the label `source-engine`, which runs it on each push. Stale
+recipe pins need no dispatch to show: the quality lane's `generated` work, which the
+pre-push hook runs too, analyses each pinned engine's toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the

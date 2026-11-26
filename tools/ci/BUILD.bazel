@@ -10,10 +10,7 @@ py_library(
 
 py_library(
     name = "work_lib",
-    srcs = [
-        "changes.py",
-        "work.py",
-    ],
+    srcs = ["work.py"],
     # The add-on modules' lanes, from their addon.pkl, the applications', from their app.pkl,
     # and the change since origin/main as Code Health reads it.
     deps = [
@@ -22,6 +19,26 @@ py_library(
         "//tools/apps:apps_lib",
         "//tools/code_health:codescene_lib",
         "//tools/setup:modules_lib",
+    ],
+)
+
+# CI's host jobs: the lanes of one kind of machine in a few Bazel commands.
+py_library(
+    name = "hosts_lib",
+    srcs = ["hosts.py"],
+    deps = [
+        ":work_lib",
+        "//tools/addons:lanes_lib",
+    ],
+)
+
+py_test(
+    name = "hosts_test",
+    size = "small",
+    srcs = ["hosts_test.py"],
+    deps = [
+        ":hosts_lib",
+        "//tools/addons:test_support",
     ],
 )
 

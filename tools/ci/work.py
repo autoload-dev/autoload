@@ -2,20 +2,16 @@
 The repository's verification work: what each lane runs, where and how.
 
 Each piece of work is a few shell commands, each run in a module directory.
-`aspect lane <lane>` runs a lane on this host, as each of CI's jobs does; `aspect work
-<name>...` runs single pieces. Both run this module with Bazel's Python (.aspect/work.axl).
+`aspect work <name>...` runs pieces with Bazel's Python (.aspect/work.axl). CI's host jobs
+combine the lanes of one kind of machine into a few Bazel commands (tools/ci/hosts.py) and
+run the add-on generator's self-tests and the checks that are no Bazel targets from here;
+the Source engine workflow runs `source-engine:full`.
 
 The add-on modules' work comes from their addon.pkl: the same generic commands for each
-module (tools/addons/lanes.py), and the add-on generator's self-test in every lane. The
-source-engine lane runs in its own scheduled workflow, the others in CI.
+module (tools/addons/lanes.py), and the add-on generator's self-test in every lane.
 
-A step may name its inputs: `run --changed-since <ref>`, as `aspect check` runs the checks
-that are no Bazel targets yet (.aspect/develop.axl), skips the steps whose inputs did not
-change since the merge base with the reference (tools/ci/changes.py). Lanes and named work
-without the option run every step.
-
-Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Selection,
-Execution, Command line.
+Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Execution,
+Command line.
 """
 
 import argparse
@@ -37,18 +33,10 @@ from tools.addons.modules import (
     release_targets,
 )
 from tools.apps.apps import Application, applications
-from tools.ci.changes import (
-    Changes,
-    Inputs,
-    changes_since,
-    files,
-)
-from tools.ci.lanes import LANES, PROFILE, profile
+from tools.ci.lanes import PROFILE, profile
 from tools.setup.modules import (
     RULESET,
     addon_modules,
-    module_paths,
-    registry_test_modules,
 )
 
 RULESET_DIR = RULESET.as_posix()
@@ -58,13 +46,11 @@ ANDROID_SETUP = "android:setup"
 
 class In(NamedTuple):
     """
-    A command that runs in another directory than the rest of its work, or with other
-    inputs; without inputs it always runs.
+    A command that runs in another directory than the rest of its work.
     """
 
     directory: str
     command: str
-    inputs: Inputs | None = None
 
 
 @dataclass(frozen=True)
@@ -84,7 +70,6 @@ class Work:
     android: bool = False
     hosts: tuple[str, ...] = ()
     env: tuple[tuple[str, str], ...] = ()
-    inputs: Inputs | None = None
     profile: str | None = None
 
     @property
@@ -93,11 +78,9 @@ class Work:
         return self.profile or profile(self.lane)
 
     def steps(self) -> list[In]:
-        """Each command with the directory it runs in and its inputs."""
+        """Each command with the directory it runs in."""
         return [
-            command
-            if isinstance(command, In)
-            else In(self.directory, command, self.inputs)
+            command if isinstance(command, In) else In(self.directory, command)
             for command in self.commands
         ]
 
@@ -166,16 +149,6 @@ def lint(root: Path = ROOT) -> In:
     patterns = " ".join(f"@{module_name(Path(addon).name)}//..." for addon in addons)
     return In(".", f"{LINT_CHECK} //... {patterns}")
 
-
-# What shapes the source-built engines' pins (tools/generate/generate.py): the root module's
-# declarations and MODULE.bazel.lock, the ruleset's rules and extensions, and the pins themselves.
-GENERATED_INPUTS = files(
-    "*MODULE.bazel*",
-    f"{RULESET_DIR}/godot/*.bzl",
-    f"{RULESET_DIR}/godot/engine/*",
-    "*.lock.json",
-    "tools/generate/*",
-)
 
 # ==== Ruleset tests ===========================================================
 
@@ -277,7 +250,6 @@ WORK = (
         "quality",
         ".",
         ("python3 -m tools.generate.generate --check",),
-        inputs=GENERATED_INPUTS,
     ),
     # The BUILD declarations that Gazelle generates (tools/gazelle) in every module: the
     # ruleset's bzl_library targets and the lint check's filegroups.
@@ -286,9 +258,6 @@ WORK = (
         "quality",
         ".",
         ("bazel run //tools/gazelle:check",),
-        inputs=files(
-            "*.bzl", "*BUILD*", "*.md", "*.gd", "tools/gazelle/*", "MODULE.bazel*"
-        ),
     ),
     # The repository tooling's tests; the examples' and scenarios' tests run in the desktop
     # lane.
@@ -405,60 +374,17 @@ WORK = (
 )
 
 
-def lanes(known: dict[str, Work]) -> dict[str, list[str]]:
-    """The names of each lane's work, in order."""
-    planned: dict[str, list[str]] = {lane: [] for lane in LANES}
-    for work in known.values():
-        if work.lane is not None:
-            planned[work.lane].append(work.name)
-    return planned
-
-
 def all_work(root: Path = ROOT) -> dict[str, Work]:
     """Every piece of work, by name: the repository's own and the add-on modules'."""
     return {work.name: work for work in (*WORK, *addon_work(root))}
 
 
-# ==== Selection ===============================================================
+# ==== Execution ===============================================================
 
 
 def runs_on(work: Work, host: str) -> bool:
     """Whether a host may run this work: host-limited work runs on its hosts only."""
     return not work.hosts or host in work.hosts
-
-
-def changes(ref: str | None) -> Changes | None:
-    """The changes since the merge base with a reference, if one is given."""
-    modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
-    return changes_since(ref, ROOT, modules) if ref else None
-
-
-def where(step: In, steps: list[In]) -> str:
-    """A step by its directory, or with its command where other steps share it."""
-    alone = [s.directory for s in steps].count(step.directory) == 1
-    return step.directory if alone else f"{step.directory}$ {step.command}"
-
-
-def selected(work: Work, changes: Changes | None) -> list[In]:
-    """
-    The steps of a piece of work to run: all of them without changes, else those without
-    inputs or whose inputs changed. Each skipped step is reported.
-    """
-    steps = work.steps()
-    if changes is None:
-        return steps
-    chosen = []
-    for step in steps:
-        if step.inputs is None or step.inputs(changes, step.directory):
-            chosen.append(step)
-        else:
-            print(
-                f"[{work.name}] {where(step, steps)} skipped: no change since {changes.base}"
-            )
-    return chosen
-
-
-# ==== Execution ===============================================================
 
 
 def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
@@ -508,12 +434,10 @@ def run(
     names: Iterable[str],
     root: Path = ROOT,
     known: dict[str, Work] | None = None,
-    changes: Changes | None = None,
 ) -> None:
     """
     Run pieces of work in order; unknown names fail before any work starts, and work
-    limited to other hosts is skipped. Android work provisions the SDK first. With
-    changes, only the selected steps run.
+    limited to other hosts is skipped. Android work provisions the SDK first.
     """
     known = known or all_work(root)
     here = host()
@@ -525,7 +449,7 @@ def run(
         if not runs_on(work, here):
             print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)
             continue
-        for step in selected(work, changes):
+        for step in work.steps():
             print(f"[{name}] {step.directory}$ {step.command}", flush=True)
             subprocess.run(
                 argv(work, step.command, step.directory),
@@ -533,12 +457,6 @@ def run(
                 env=env,
                 check=True,
             )
-
-
-def run_lane(lane: str, root: Path = ROOT) -> None:
-    """Run a lane's work: on this host, all but the work limited to other hosts."""
-    known = all_work(root)
-    run(lanes(known)[lane], root, known)
 
 
 # ==== Command line ============================================================
@@ -553,23 +471,14 @@ def print_work() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    lane = commands.add_parser("lane", help="Run one lane's work for this host")
-    lane.add_argument("lane", choices=LANES)
     pieces = commands.add_parser(
         "run", help="Run pieces of work by name; without names, list them by lane"
     )
     pieces.add_argument("names", nargs="*")
-    pieces.add_argument(
-        "--changed-since",
-        metavar="REF",
-        help="skip the steps whose inputs did not change since the merge base with REF",
-    )
     args = parser.parse_args()
     try:
-        if args.command == "lane":
-            run_lane(args.lane)
-        elif args.names:
-            run(args.names, changes=changes(args.changed_since))
+        if args.names:
+            run(args.names)
         else:
             print_work()
     except ValueError as error:

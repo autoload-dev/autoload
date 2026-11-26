@@ -19,7 +19,7 @@ silently claim success or build a new test framework.
 | During editing | Follow the test-first cycle below for behavior changes; use focused checks when their feedback helps the next decision | A suite after every file edit; rerunning successful checks with unchanged relevant inputs |
 | Before claiming a local change complete | Review the diff; run the smallest existing behavior check that addresses the change | Every lane, a clean rebuild, or a new test for every edit |
 | Before committing | Keep the pre-commit hook (`aspect bootstrap` installs it) enabled; it formats and restages the staged files, regenerates the lock files they shape and reviews the staged change's Code Health; retain relevant evidence | A second suite just because a commit is about to happen |
-| Before pushing | Keep the pre-push hook (`aspect bootstrap` installs it) enabled; it runs `aspect check` ([`.aspect/develop.axl`](../../.aspect/develop.axl)) on the pushed checkout: the formatter, then `bazel test --config=check --config=fast //...` in the root module and the ruleset, which lints and runs the fast tests and every check that is a Bazel target, then the checks that are no Bazel targets yet, and the branch's Code Health. Bazel's caches skip what the change does not reach; the formatter and those other checks run only where the change since the merge base with `origin/main` reaches, as [`tools/ci/work.py`](../../tools/ci/work.py) declares their inputs | App builds, non-desktop lane suites and cache experiments in the hook |
+| Before pushing | Keep the pre-push hook (`aspect bootstrap` installs it) enabled; it runs `aspect check` ([`.aspect/develop.axl`](../../.aspect/develop.axl)) on the pushed checkout: the formatter, then `bazel test --config=check --config=fast //...` in the root module and the ruleset, which lints and runs the fast tests and every check that is a Bazel target, then the checks that are no Bazel targets, whole, and the branch's Code Health. Bazel's caches skip what the change does not reach; the formatter covers the files changed since the merge base with `origin/main` | App builds, non-desktop lane suites and cache experiments in the hook |
 | PR/review readiness | Require CI's results, the [Apple lanes](verification-platforms.md#apple-lanes) included | Duplicating CI suites locally once CI is the execution environment |
 | Merging | The merge queue runs every lane, including the Apple lanes, on the result of the merge, and saves the caches later runs read; main receives that commit unchanged, with the queue's checks | A second run on main |
 | Status update, question or partial handoff | State relevant pending/failed checks if they affect the handoff | Running checks just to send a message or finish a turn |
@@ -30,8 +30,9 @@ changed, a read-only review does not require test execution.
 
 The fast tests are the tests of the root module and the ruleset that start no Godot process,
 their `smoke` tests included: `bazel test --config=fast //...` in each, or `aspect tests`
-([test size](verification-architecture.md#test-size)). CI runs every lane on every run; to
-verify a lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not
+([test size](verification-architecture.md#test-size)). CI runs every host's job on every run; to
+verify one locally, run `aspect ci linux` or `aspect ci macos`, or single `aspect work`
+pieces. Do not
 repeat a successful check merely because its changes were committed.
 
 A result remains usable when its relevant source, dependencies, configuration and execution

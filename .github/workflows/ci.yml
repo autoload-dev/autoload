@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # The merge queue runs every lane on the result of the merge. Main
+  # The merge queue runs every job on the result of the merge. Main
   # then receives that commit unchanged, so a push to main runs nothing again.
   merge_group:
   workflow_dispatch:
@@ -10,12 +10,12 @@ on:
 permissions:
   contents: read
 
-# Every run runs every lane; Bazel's caches keep unchanged work cheap. Each job
-# runs one lane's work (tools/ci/work.py) for its host; the source engines run
-# on their own schedule (source-engine.yml). The jobs that need a macOS runner
-# run on the self-hosted macos-ci runners, which keep their repository cache and
-# Bazel servers between jobs, share a Bazel cache server with their host, and run
-# no code of a fork's pull request.
+# Every run runs every host's job; Bazel's caches keep unchanged work cheap. Each job runs
+# `aspect ci <host>` (.aspect/develop.axl): the lanes of one kind of machine in a few Bazel
+# commands (tools/ci/hosts.py). The source engines run on their own schedule
+# (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
+# their repository cache and Bazel servers between jobs, share a Bazel cache server with
+# their host, and run no code of a fork's pull request.
 # Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
@@ -29,53 +29,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lanes:
-    name: ${{ matrix.lane.name }}
-    runs-on: ${{ matrix.lane.runner }}
-    timeout-minutes: ${{ matrix.lane.timeout }}
+  hosts:
+    name: ${{ matrix.host.name }}
+    runs-on: ${{ matrix.host.runner }}
+    timeout-minutes: 60
     strategy:
-      # The first lane to fail cancels the others, which frees their runners and
-      # lets Finalize fail at once; the work they finished stays in the caches.
+      # The first job to fail cancels the other, which frees its runner and lets Finalize
+      # fail at once; the work it finished stays in the caches.
       fail-fast: true
-      # Each lane keeps the caches of the job it was before the matrix (job).
-      # Uncached Godot imports and exports, Java and dex actions are CPU-bound;
-      # 4 vCPUs ran 4 at a time, so the lanes that build them take 8.
       matrix:
-        lane:
-          - job: formatting
-            name: Source quality
-            work: quality
-            # Lint analyses every target of the root module and the add-on modules.
-            runner: blacksmith-8vcpu-ubuntu-2404
-            timeout: 10
-          - job: tests-linux
-            name: Tests (Linux)
-            work: desktop
-            runner: blacksmith-8vcpu-ubuntu-2404
-            timeout: 30
-            # The ruleset's desktop set includes its Android packaging tests.
-            android-cache: "true"
-          - job: tests-macos
-            name: Tests (macOS)
-            work: desktop
+        host:
+          # Checks, desktop and Android: uncached Godot imports and exports, Java and dex
+          # actions are CPU-bound.
+          - id: linux
+            name: Linux
+            runner: blacksmith-16vcpu-ubuntu-2404
+          - id: macos
+            name: macOS
             runner: macos-ci
-            timeout: 30
-            android-cache: "true"
-          - job: android
-            name: Android
-            work: android
-            runner: blacksmith-8vcpu-ubuntu-2404
-            timeout: 60
-            android-cache: "true"
-          - job: ios
-            name: iOS
-            work: ios
-            runner: macos-ci
-            timeout: 60
-        # A fork's pull request reaches the self-hosted runners only in the merge
-        # queue. An entry matches an exclusion on the fields the exclusion names.
+        # A fork's pull request reaches the self-hosted runners only in the merge queue.
+        # An entry matches an exclusion on the fields the exclusion names.
         exclude:
-          - lane:
+          - host:
               runner: >-
                 ${{ github.event_name == 'pull_request'
                 && github.event.pull_request.head.repo.full_name != github.repository
@@ -88,14 +63,15 @@ jobs:
       - name: Set up repository
         uses: ./.github/actions/setup
         with:
-          android-cache: ${{ matrix.lane.android-cache || 'false' }}
-          cache-name: ${{ matrix.lane.job }}
-      # A stale MODULE.bazel.lock fails every Bazel command of the lane, in the root
+          # Both jobs test the ruleset's Android packaging.
+          android-cache: "true"
+          cache-name: ${{ matrix.host.id }}
+      # A stale MODULE.bazel.lock fails every Bazel command of the job, in the root
       # module and the ruleset, rather than be rewritten (--config=ci, shared.bazelrc).
       - name: Check MODULE.bazel.lock
         run: echo "common --config=ci" > ci.bazelrc
-      - name: Run the lane's work
-        run: aspect lane ${{ matrix.lane.work }}
+      - name: Run the host's job
+        run: aspect ci ${{ matrix.host.id }}
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads
@@ -104,7 +80,7 @@ jobs:
   verification:
     name: Finalize
     if: always()
-    needs: [lanes]
+    needs: [hosts]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
