@@ -212,7 +212,7 @@ class CallersTest(unittest.TestCase):
                 # Keyword arguments, such as changed_since, name no work.
                 call = re.sub(r'\w+ = "[^"]*"', "", call)
                 names.update(re.findall(r'"([^"]+)"', call))
-        self.assertLessEqual({"generated", "test:fast", "android:setup"}, names)
+        self.assertLessEqual({"test:fast", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
 

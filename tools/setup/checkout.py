@@ -47,8 +47,17 @@ def overrides(root: Path) -> Iterator[tuple[str, str]]:
 
 
 def _copy_tree(source: Path, destination: Path) -> None:
-    """Copy a runfiles tree as plain files, so that a test may change them."""
-    shutil.copytree(source, destination, symlinks=False, dirs_exist_ok=True)
+    """
+    Copy a runfiles tree as plain files, so that a test may change them, without the test's
+    virtual environment, whose interpreter is no file of a module.
+    """
+    shutil.copytree(
+        source,
+        destination,
+        symlinks=False,
+        ignore=shutil.ignore_patterns("*.venv"),
+        dirs_exist_ok=True,
+    )
 
 
 def copy(destination: Path) -> Path:

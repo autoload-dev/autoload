@@ -18,7 +18,7 @@ class GenerateTest(unittest.TestCase):
         mapping = {"simulation": "autoload_rules_godot++godot_engines+simulation"}
         with (
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
-            mock.patch.object(generate, "segment", return_value=0),
+            mock.patch.object(generate.declarations, "write"),
             mock.patch.object(generate, "repo_mapping", return_value=mapping),
             contextlib.redirect_stderr(io.StringIO()),
         ):
@@ -50,13 +50,13 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
         )
 
-    def test_the_segment_is_written(self) -> None:
+    def test_the_add_on_declarations_are_written(self) -> None:
         with (
             mock.patch.object(generate, "bazel", return_value=0),
-            mock.patch.object(generate, "segment", return_value=0) as segment,
+            mock.patch.object(generate.declarations, "write") as write,
         ):
             generate.regenerate(["tools/ci/work.py"])
-        segment.assert_called_once()
+        write.assert_called_once_with(generate.ROOT)
 
     def test_the_check_covers_the_pinned_engines_alone(self) -> None:
         (pins,) = self.runs("check")

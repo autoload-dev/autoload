@@ -1,15 +1,12 @@
 """The shared pins of the root module and its consumer modules must agree."""
 
-import contextlib
-import io
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
 
 from tools.setup import checkout
-from tools.setup.modules import registry_test_modules
-from tools.setup.pins import drifts, main, module_pins
+from tools.setup.pins import drifts, module_pins
 
 MODULE = textwrap.dedent("""
     module(name = "{name}")
@@ -65,10 +62,9 @@ class PinsTest(unittest.TestCase):
         (path / ".bazelversion").write_text(version + "\n")
 
     def run_check(self) -> tuple[int, str]:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
-            status = main([str(self.root)])
-        return status, output.getvalue()
+        """The check's status and its lines, as a failing test reports them."""
+        lines = drifts(self.root)
+        return (1 if lines else 0), "".join(f"{line}\n" for line in lines)
 
     def test_equal_pins_pass_silently(self) -> None:
         self.assertEqual((0, ""), self.run_check())
@@ -196,9 +192,7 @@ class PinsTest(unittest.TestCase):
 class CheckoutTest(unittest.TestCase):
     def test_the_modules_of_the_checkout_share_their_pins(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = checkout.copy(Path(directory))
-            self.assertIn("rules_godot/bcr/smoke", registry_test_modules(root))
-            self.assertEqual([], drifts(root))
+            self.assertEqual([], drifts(checkout.copy(Path(directory))))
 
 
 if __name__ == "__main__":

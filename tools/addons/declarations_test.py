@@ -9,7 +9,7 @@ class DeclarationsTest(RepositoryTestCase):
     def test_each_add_on_module_is_declared_once_by_its_own_name(self) -> None:
         generate("widget", root=self.root, release=False)
         generate("gadget", root=self.root, release=False)
-        text = declarations.segment(self.root)
+        text = declarations.segment(declarations.modules(self.root))
         self.assertTrue(text.startswith(declarations.HEADER))
         self.assertEqual(text.count("bazel_dep("), 2)
         self.assertIn(
@@ -32,9 +32,9 @@ class DeclarationsTest(RepositoryTestCase):
     def test_a_module_s_version_is_left_to_its_override(self) -> None:
         generate("widget", root=self.root, release=False)
         manifest = self.root / "addons/widget/MODULE.bazel"
-        before = declarations.segment(self.root)
+        before = declarations.segment(declarations.modules(self.root))
         manifest.write_text(manifest.read_text().replace('"0.1.0"', '"0.2.0"'))
-        self.assertEqual(before, declarations.segment(self.root))
+        self.assertEqual(before, declarations.segment(declarations.modules(self.root)))
 
 
 if __name__ == "__main__":

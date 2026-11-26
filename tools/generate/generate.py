@@ -11,7 +11,7 @@ Regenerate the repository's generated files, or check the pins of source-built e
 (`aspect pre-commit`) passes the staged ones, or everything without paths. Bazel runs in each
 file's own module.
 
-Sections: Lock files, Pinned engines, Segment and entry points.
+Sections: Lock files, Pinned engines, Entry points.
 """
 
 from __future__ import annotations
@@ -157,20 +157,18 @@ def pins() -> int:
     return status
 
 
-# ==== Segment and entry points ================================================
-
-
-def segment() -> int:
-    """Write the root module's declarations of the add-on modules."""
-    declarations.write(ROOT)
-    return 0
+# ==== Entry points ============================================================
 
 
 def regenerate(paths: list[str]) -> int:
-    """Regenerate what depends on the paths, or everything without paths."""
+    """
+    Write the root module's declarations of the add-on modules, and regenerate the lock files
+    that depend on the paths, or all of them without paths.
+    """
+    declarations.write(ROOT)
     everything = not paths
     modules = list(LOCKED_MODULES) if everything else locked_modules_shaped_by(paths)
-    return segment() | lock_files(modules)
+    return lock_files(modules)
 
 
 def check() -> int:

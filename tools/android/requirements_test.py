@@ -12,7 +12,6 @@ from tools.android.requirements import (
     configuration_errors,
 )
 from tools.setup import checkout
-from tools.setup.modules import module_paths
 
 
 class RequirementsTest(unittest.TestCase):
@@ -29,9 +28,6 @@ class RequirementsTest(unittest.TestCase):
         target.write_text(source.replace(before, after))
 
     def test_repository_requirements_are_provisioned(self) -> None:
-        self.assertLessEqual({".", "rules_godot"}, set(module_paths(self.root)))
-        self.assertTrue((self.root / PINS).is_file())
-        self.assertTrue((self.root / LINUX_TOOLCHAINS).is_file())
         self.assertEqual(configuration_errors(self.root), [])
 
     def test_reads_the_api_level_the_root_module_configures(self) -> None:

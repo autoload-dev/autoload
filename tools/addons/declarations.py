@@ -64,20 +64,21 @@ def declaration(name: str, path: str) -> str:
     )
 
 
-def segment(root: Path, extra: Iterable[str] = ()) -> str:
-    """The segment for the add-on modules of the checkout and the extra directories."""
-    return HEADER + "".join(f"\n{declaration(*m)}" for m in modules(root, extra))
+def segment(found: list[tuple[str, str]]) -> str:
+    """The segment that declares the modules, each by name and directory."""
+    return HEADER + "".join(f"\n{declaration(*module)}" for module in found)
 
 
-def repositories(root: Path, extra: Iterable[str] = ()) -> str:
-    """The .bzl file that lists the repositories of the segment's modules."""
-    names = "".join(f'    "@{name}",\n' for name, _ in modules(root, extra))
+def repositories(found: list[tuple[str, str]]) -> str:
+    """The .bzl file that lists the repositories of the modules."""
+    names = "".join(f'    "@{name}",\n' for name, _ in found)
     return f"{REPOSITORIES_HEADER}\nADDON_REPOSITORIES = [\n{names}]\n"
 
 
 def write(root: Path, extra: Iterable[str] = ()) -> list[Path]:
     """Write the segment and its repositories, with the extra directories' modules too."""
-    files = {SEGMENT: segment(root, extra), REPOSITORIES: repositories(root, extra)}
+    found = modules(root, extra)
+    files = {SEGMENT: segment(found), REPOSITORIES: repositories(found)}
     for path, text in files.items():
         (root / path).write_text(text)
     return [root / path for path in files]

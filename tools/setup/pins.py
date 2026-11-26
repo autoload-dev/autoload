@@ -6,7 +6,6 @@ cannot see that they drift apart. This check reads every MODULE.bazel with Pytho
 ast and compares each pin that two or more modules declare.
 """
 
-import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
@@ -106,15 +105,3 @@ def drifts(root: Path) -> list[str]:
                     f"{other}: {key} is {_format(actual)}, {location} has {_format(value)}"
                 )
     return lines
-
-
-def main(argv: list[str]) -> int:
-    root = Path(argv[0]) if argv else Path(__file__).resolve().parents[2]
-    lines = drifts(root)
-    for line in lines:
-        print(line)
-    return 1 if lines else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

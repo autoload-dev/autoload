@@ -15,9 +15,12 @@ class CheckoutTest(unittest.TestCase):
         self.root = checkout.copy(Path(directory.name))
 
     def test_each_overridden_module_is_at_its_directory(self) -> None:
-        modules = module_paths(self.root)
-        self.assertIn("rules_godot", modules)
-        self.assertIn("addons/gdunit", modules)
+        overrides = dict(checkout.overrides(self.root))
+        self.assertEqual("rules_godot", overrides["autoload_rules_godot"])
+        self.assertEqual("addons/gdunit", overrides["autoload_gdunit"])
+        self.assertLessEqual(
+            {"rules_godot", "addons/gdunit"}, set(module_paths(self.root))
+        )
         self.assertTrue((self.root / "rules_godot/.bazelversion").is_file())
 
     def test_the_registry_test_modules_come_with_their_module(self) -> None:
@@ -29,11 +32,6 @@ class CheckoutTest(unittest.TestCase):
         manifest.write_text("changed")
         self.assertFalse(manifest.is_symlink())
         self.assertEqual(text, checkout.runfile("_main/MODULE.bazel").read_text())
-
-    def test_overrides_are_read_from_the_included_segments(self) -> None:
-        overrides = dict(checkout.overrides(self.root))
-        self.assertEqual("rules_godot", overrides["autoload_rules_godot"])
-        self.assertEqual("addons/gdunit", overrides["autoload_gdunit"])
 
 
 if __name__ == "__main__":
