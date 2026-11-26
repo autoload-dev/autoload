@@ -139,3 +139,13 @@ ios_app_test(
     symbols = ["native_counter_init"],
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/main.gd",
+        "main/native_counter/counter.gd",
+    ],
+    tags = ["gdscript"],
+)

@@ -24,3 +24,10 @@ gdunit_test(
     suites = [":suites"],
     tags = ["godot_process"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["PathContractTest.gd"],
+    tags = ["gdscript"],
+)

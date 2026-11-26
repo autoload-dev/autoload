@@ -51,3 +51,20 @@ godot_pack(
     tags = ["manual"],
     deps = [":main"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/main.gd",
+        "sentry/sentry_logger.gd",
+    ],
+    tags = ["gdscript"],
+)
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["README.md"],
+    tags = ["markdown"],
+)

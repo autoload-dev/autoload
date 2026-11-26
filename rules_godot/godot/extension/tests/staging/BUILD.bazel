@@ -32,3 +32,10 @@ py_test(
     tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

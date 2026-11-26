@@ -378,3 +378,13 @@ godot_export_platform(
     ],
     operating_system = "android",
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/libraries/android_addon.gd",
+        "main/main.gd",
+    ],
+    tags = ["gdscript"],
+)

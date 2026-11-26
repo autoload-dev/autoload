@@ -12,3 +12,10 @@ godot_resources(
     prefix = "main",
     deps = ["@autoload_sentry//sentry"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["demo.gd"],
+    tags = ["gdscript"],
+)

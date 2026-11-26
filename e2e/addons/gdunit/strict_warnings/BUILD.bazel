@@ -19,3 +19,10 @@ godot_resources(
     tags = ["manual"],
     deps = ["@autoload_gdunit//gdunit"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["suites/StrictTest.gd"],
+    tags = ["gdscript"],
+)

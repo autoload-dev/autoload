@@ -12,3 +12,10 @@ godot_resources(
     ],
     prefix = "main/dish",
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["dish.gd"],
+    tags = ["gdscript"],
+)

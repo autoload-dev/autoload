@@ -24,3 +24,10 @@ godot_pack(
     tags = ["manual"],
     deps = [":main"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/main.gd"],
+    tags = ["gdscript"],
+)

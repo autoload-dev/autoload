@@ -88,3 +88,15 @@ godot_project(
     setting_overrides = {"application/config/name": '"Configured"'},
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "import_input_configuration/state.gd",
+        "main/configuration.gd",
+        "main/configured_test.gd",
+        "main/other.gd",
+    ],
+    tags = ["gdscript"],
+)

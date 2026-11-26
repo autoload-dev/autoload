@@ -78,3 +78,20 @@ godot_test(
     tags = ["manual"],
     deps = [":recorder"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "GameFixture.gd",
+        "InputTest.gd",
+        "LayoutTest.gd",
+        "LevelTest.gd",
+        "ReplayTest.gd",
+        "RouteTest.gd",
+        "SceneTest.gd",
+        "SoundTest.gd",
+        "record.gd",
+    ],
+    tags = ["gdscript"],
+)

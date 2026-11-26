@@ -244,15 +244,21 @@ class SelectionTest(unittest.TestCase):
         for module in all_modules(ROOT):
             self.assertIn(f"@autoload_{module.directory}//...", command)
 
-    def test_gdscript_lint_runs_for_scripts_and_its_linter(self) -> None:
-        for path in ("examples/lichtpost/main/game.gd", "tools/lint/gdscript.py"):
-            self.assertEqual(["."], self.directories("lint:gdscript", path))
-        self.assertEqual([], self.directories("lint:gdscript", "docs/a.md", "a.py"))
-
-    def test_markdown_lint_runs_for_markdown_and_its_configuration(self) -> None:
-        for path in ("rules_godot/docs/public/engine.md", ".rumdl.toml"):
-            self.assertEqual(["."], self.directories("lint:markdown", path))
-        self.assertEqual([], self.directories("lint:markdown", "a.gd", "a.py"))
+    def test_the_lint_check_runs_for_scripts_documents_and_their_linters(self) -> None:
+        for path in (
+            "examples/lichtpost/main/game.gd",
+            "docs/internal/README.md",
+            ".gdlintrc",
+            ".rumdl.toml",
+        ):
+            self.assertEqual(["."], self.directories("lint", path), path)
+        self.assertEqual(
+            [], self.directories("lint", "rules_godot/docs/public/engine.md")
+        )
+        self.assertEqual(
+            [RULESET_DIR],
+            self.directories("lint:ruleset", "rules_godot/docs/public/engine.md"),
+        )
 
     def test_generated_runs_for_what_shapes_the_engine_pins(self) -> None:
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
@@ -266,14 +272,16 @@ class SelectionTest(unittest.TestCase):
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)
 
-    def test_gazelle_checks_the_ruleset_s_starlark_and_build_files(self) -> None:
+    def test_gazelle_checks_every_module_s_declarations(self) -> None:
         for path in (
             "rules_godot/godot/private/pack.bzl",
             "rules_godot/godot/BUILD.bazel",
+            "examples/lichtpost/main/game.gd",
+            "addons/sqlite/README.md",
             "tools/gazelle/BUILD.bazel",
         ):
             self.assertEqual(
-                ["bazel run //tools/gazelle:rules_godot_check"],
+                ["bazel run //tools/gazelle:check"],
                 [step.command for step in self.run_steps("gazelle", path)],
                 path,
             )

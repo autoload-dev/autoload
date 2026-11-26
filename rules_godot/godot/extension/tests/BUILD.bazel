@@ -213,3 +213,10 @@ godot_extension(
     resource_path = "native/variant.gdextension",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

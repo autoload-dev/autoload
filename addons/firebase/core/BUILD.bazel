@@ -41,3 +41,10 @@ godot_cc_extension(
         "//conditions:default": ["//core/native/backends/unsupported"],
     }),
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["firebase.gd"],
+    tags = ["gdscript"],
+)

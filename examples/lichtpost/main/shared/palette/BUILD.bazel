@@ -19,3 +19,10 @@ godot_resources(
     ],
     prefix = "main/shared/palette",
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["palette.gd"],
+    tags = ["gdscript"],
+)

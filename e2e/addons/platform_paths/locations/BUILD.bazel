@@ -35,3 +35,10 @@ godot_resources(
     ],
     prefix = "locations",
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["PlatformPathsTest.gd"],
+    tags = ["gdscript"],
+)

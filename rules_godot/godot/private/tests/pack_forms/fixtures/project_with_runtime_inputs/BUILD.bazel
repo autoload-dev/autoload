@@ -29,3 +29,13 @@ godot_pack(
     tags = ["manual"],
     deps = [":main"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/check.gd",
+        "main/greeter.gd",
+    ],
+    tags = ["gdscript"],
+)

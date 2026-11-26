@@ -268,3 +268,10 @@ build_test(
     target_compatible_with = _REQUIRES_MACOS,
     targets = [":ios_prebuilt_xcframework_app_builds_test_app"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

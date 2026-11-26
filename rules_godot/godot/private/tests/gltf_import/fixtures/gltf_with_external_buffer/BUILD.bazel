@@ -48,3 +48,10 @@ godot_pack(
         ":main",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/main.gd"],
+    tags = ["gdscript"],
+)

@@ -84,18 +84,30 @@ macOS is skipped on a host without them, and runs in the desktop sets of CI. See
 
 ## Generated BUILD declarations
 
-[Gazelle](../../tools/gazelle/BUILD.bazel) generates the ruleset's `bzl_library` targets, one
-per Starlark module outside its `tests` packages, named after the file. Its directives,
-including where an external load's library lives, are in the ruleset's root
-[BUILD file](../../rules_godot/BUILD.bazel). After adding, moving or changing the loads of a
-module, regenerate them from the repository root:
+[Gazelle](../../tools/gazelle/BUILD.bazel) generates two kinds of BUILD declarations:
+
+- the ruleset's `bzl_library` targets, one per Starlark module outside its `tests` packages,
+  named after the file. Their directives, including where an external load's library lives,
+  are in the ruleset's root [BUILD file](../../rules_godot/BUILD.bazel);
+- in every package of the root module, the ruleset and the add-on modules, the filegroups
+  `markdown_files` and `gdscript_files` of the files Git lists, those of subdirectories that
+  are no packages included ([lint.go](../../tools/gazelle/lint/lint.go)). The lint check's
+  aspects `markdown` and `gdscript` lint them with rumdl (`.rumdl.toml`) and gdlint
+  (`.gdlintrc`) in every build with `--config=check` that names them, such as the `lint`
+  work's.
+
+After adding, moving or removing a Starlark module, a Markdown file or a script, regenerate
+them from the repository root:
 
 ```sh
-bazel run //tools/gazelle:rules_godot
+bazel run //tools/gazelle:update
 ```
 
-`bazel run //tools/gazelle:rules_godot_check` prints the difference and fails where a BUILD
-file is stale; the quality lane's `gazelle` work, which the pre-push hook runs too, runs it.
+`bazel run //tools/gazelle:check` prints the difference and fails where a BUILD file is
+stale; `//tools/gazelle:rules_godot`, `root` and `addons.<directory>`, each with `_check`,
+do the same for one module. The quality lane's `gazelle` work, which the
+pre-push hook runs too, runs the check. Markdown and scripts outside every package, such as
+in `addons/` itself or in the registry test modules, are outside the lint check.
 
 ## Profiles
 

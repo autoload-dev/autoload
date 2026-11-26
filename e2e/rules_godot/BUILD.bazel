@@ -16,3 +16,10 @@ test_suite(
         "//e2e/rules_godot/smoke/ios:static_app_links_extension_test",
     ],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["AGENTS.md"],
+    tags = ["markdown"],
+)

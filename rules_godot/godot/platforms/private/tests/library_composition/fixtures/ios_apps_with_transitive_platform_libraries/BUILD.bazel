@@ -449,3 +449,13 @@ godot_app(
     platform_resources = ["app_notice.txt"],
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/libraries/ios_addon.gd",
+        "main/main.gd",
+    ],
+    tags = ["gdscript"],
+)

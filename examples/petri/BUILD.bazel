@@ -83,3 +83,10 @@ godot_editor(
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["README.md"],
+    tags = ["markdown"],
+)

@@ -48,3 +48,10 @@ godot_test(
         _FIXTURE + ":overridden_consumer",
     ],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

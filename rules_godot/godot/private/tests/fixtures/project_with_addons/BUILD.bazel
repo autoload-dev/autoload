@@ -150,3 +150,16 @@ godot_addon(
     tags = ["manual"],
     deps = [":inventory_native"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "inventory/inventory.gd",
+        "main/main.gd",
+        "main/other.gd",
+        "tool/plugin.gd",
+        "utility/utility.gd",
+    ],
+    tags = ["gdscript"],
+)

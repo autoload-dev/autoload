@@ -46,3 +46,10 @@ godot_resources(
     srcs = ["@external_release//data:foreign"],
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["local.gd"],
+    tags = ["gdscript"],
+)

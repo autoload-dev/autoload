@@ -62,3 +62,10 @@ filegroup(
     output_group = "bundle",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/main.gd"],
+    tags = ["gdscript"],
+)

@@ -2,10 +2,9 @@ package(default_visibility = ["//visibility:public"])
 
 # Gazelle (`bazel run //tools/gazelle:rules_godot` at the repository's root) generates a
 # bzl_library per Starlark module of the ruleset's packages, named after its file; the
-# white-box tests' modules stay out.
+# white-box tests' modules stay out (tools/gazelle/BUILD.bazel).
 # It names the library of an external load after the loaded file; these loads resolve to the
 # library that the module behind them declares instead.
-# gazelle:exclude **/tests
 # gazelle:resolve starlark @autoload_rules_godot//godot:defs.bzl //godot:defs
 # gazelle:resolve starlark @autoload_rules_godot//godot:providers.bzl //godot:providers
 # gazelle:resolve starlark @platforms//host:constraints.bzl @platforms//host:constraints_lib
@@ -38,4 +37,39 @@ filegroup(
         "bcr/smoke/.bazelversion",
         "bcr/smoke/MODULE.bazel",
     ],
+)
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = [
+        "README.md",
+        "docs/internal/README.md",
+        "docs/internal/android-shell.md",
+        "docs/internal/api-reference.md",
+        "docs/internal/architecture.md",
+        "docs/internal/capabilities.md",
+        "docs/internal/export-option-inventory.md",
+        "docs/internal/export-plugin-hook-inventory.md",
+        "docs/internal/godot-pipeline/README.md",
+        "docs/internal/godot-pipeline/artifacts.md",
+        "docs/internal/godot-pipeline/dependencies.md",
+        "docs/internal/godot-pipeline/evidence.md",
+        "docs/internal/godot-pipeline/operations.md",
+        "docs/internal/maintainer-tools.md",
+        "docs/internal/principles.md",
+        "docs/public/AGENTS.md",
+        "docs/public/README.md",
+        "docs/public/configuration.md",
+        "docs/public/development.md",
+        "docs/public/engine.md",
+        "docs/public/engine-size.md",
+        "docs/public/gdextension.md",
+        "docs/public/installation.md",
+        "docs/public/platforms.md",
+        "docs/public/project-layout.md",
+        "docs/public/resources.md",
+        "docs/public/versions.md",
+    ],
+    tags = ["markdown"],
 )

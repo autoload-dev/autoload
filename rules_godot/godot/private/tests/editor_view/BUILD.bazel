@@ -48,3 +48,10 @@ editor_view_test_suite(name = "editor_view_test_suite")
 metadata_sync_test_suite(name = "metadata_sync_test_suite")
 
 runtime_profile_test_suite(name = "runtime_profile_test_suite")
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

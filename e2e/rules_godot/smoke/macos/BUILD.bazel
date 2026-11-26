@@ -121,3 +121,10 @@ py_test(
     tags = ["godot_process"],
     target_compatible_with = _MACOS,
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/main.gd"],
+    tags = ["gdscript"],
+)

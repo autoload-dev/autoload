@@ -40,3 +40,10 @@ godot_pack(
         ":loaded",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/loaded.gd"],
+    tags = ["gdscript"],
+)

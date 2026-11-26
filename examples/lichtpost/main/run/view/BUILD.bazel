@@ -23,3 +23,10 @@ godot_resources(
         "//examples/lichtpost/main/shared/palette",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["run_view.gd"],
+    tags = ["gdscript"],
+)

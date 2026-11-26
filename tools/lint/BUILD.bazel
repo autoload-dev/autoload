@@ -19,12 +19,16 @@ lock(
     ],
 )
 
-# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py); the work
-# lint:gdscript runs it.
+# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py), which the aspect
+# `gdlint` runs (linters.bzl).
 py_binary(
     name = "gdscript",
     srcs = ["gdscript.py"],
-    deps = ["@lint_pypi//gdtoolkit"],
+    deps = [
+        "@lint_pypi//gdtoolkit",
+        "@lint_pypi//lark",
+        "@lint_pypi//pyyaml",
+    ],
 )
 
 py_test(

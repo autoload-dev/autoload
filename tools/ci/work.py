@@ -266,32 +266,9 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
 WORK = (
     # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
-    # Python's lint check in the root module and the add-on modules; the ruleset's runs in
-    # the desktop lane, and the workflows' lint is a test.
+    # The lint check of Python, Markdown and GDScript in the root module and the add-on
+    # modules; the ruleset's runs in the desktop lane, and the workflows' lint is a test.
     Work("lint", "quality", ".", (lint(),)),
-    # The files no lint aspect sees, across the tree: GDScript's declaration order through
-    # gdlint (.gdlintrc), and the heading structure of Markdown through rumdl (.rumdl.toml).
-    # Both read the checkout's files, which a test's sandbox does not hold.
-    Work(
-        "lint:gdscript",
-        "quality",
-        ".",
-        ("bazel run //tools/lint:gdscript",),
-        inputs=files(
-            "*.gd",
-            ".gdlintrc",
-            "tools/lint/gdscript*",
-            "tools/lint/requirements.txt",
-            "tools/lint/BUILD.bazel",
-        ),
-    ),
-    Work(
-        "lint:markdown",
-        "quality",
-        ".",
-        ("bazel run @multitool//tools/rumdl:workspace_root -- check",),
-        inputs=files("*.md", ".rumdl.toml", "multitool.lock.json"),
-    ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
     # The source-built engines' pins. Bazel checks the other generated files: MODULE.bazel.lock
     # in every CI command (--config=ci), the add-on modules' declarations when it loads them.
@@ -302,18 +279,15 @@ WORK = (
         ("python3 -m tools.generate.generate --check",),
         inputs=GENERATED_INPUTS,
     ),
-    # The BUILD declarations that Gazelle generates (tools/gazelle): the ruleset's
-    # bzl_library targets.
+    # The BUILD declarations that Gazelle generates (tools/gazelle) in every module: the
+    # ruleset's bzl_library targets and the lint check's filegroups.
     Work(
         "gazelle",
         "quality",
         ".",
-        ("bazel run //tools/gazelle:rules_godot_check",),
+        ("bazel run //tools/gazelle:check",),
         inputs=files(
-            f"{RULESET_DIR}/*.bzl",
-            f"{RULESET_DIR}/*BUILD*",
-            "tools/gazelle/*",
-            "MODULE.bazel*",
+            "*.bzl", "*BUILD*", "*.md", "*.gd", "tools/gazelle/*", "MODULE.bazel*"
         ),
     ),
     # The repository tooling's tests; the examples' and scenarios' tests run in the desktop

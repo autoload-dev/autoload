@@ -146,3 +146,14 @@ py_test(
     tags = ["godot_process"],
     target_compatible_with = _LINUX,
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/addons/native_counter/counter.gd",
+        "main/main.gd",
+        "tests/CounterTest.gd",
+    ],
+    tags = ["gdscript"],
+)

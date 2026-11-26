@@ -32,3 +32,10 @@ py_test(
     main = "reported_error_test.py",
     tags = ["godot_process"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)
