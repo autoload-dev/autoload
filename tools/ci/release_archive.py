@@ -138,7 +138,7 @@ def main() -> int:
         if (test_in_place(d) if args.in_place else test(d, registry=args.registry)) != 0
     ]
     if failed:
-        print(f"Release archives that fail their test module: {', '.join(failed)}")
+        print(f"Modules that fail their registry test module: {', '.join(failed)}")
     return 1 if failed else 0
 
 
