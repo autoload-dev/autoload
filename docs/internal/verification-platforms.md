@@ -72,9 +72,8 @@ one after the other, the root module's over its add-on modules too: two servers 
 the same repository at once can fail to move it into the shared repository contents cache. On
 Linux the formatter, the checks that are no Bazel targets and the lint check of every
 target run first; the add-on generator's self-tests follow, each lane's in a server of its
-own. `Finalize` fails when either
-job failed or was cancelled. The matrix fails fast: the first job to fail cancels the
-other, so it frees its runner and `Finalize` fails at once, which in the merge queue
+own. The merge queue requires both jobs, `Linux` and `macOS`, by name. The matrix fails
+fast: the first job to fail cancels the other, so it frees its runner and the merge queue
 removes the entry without waiting for the slower job; the work it finished stays in
 Bazel's caches.
 
@@ -132,11 +131,9 @@ server on the VM's host with the host's own builds. The VM, its runners and its
 BuildBuddy executor are set up in the private repository `autoload-dev/macos-ci`; a change
 there takes effect through a new image and a replaced VM, done only while no job runs on
 it. CI runs the Apple lanes like the other lanes, on pull requests and in the merge queue.
-A pull request from a fork runs no Apple lane: the VM also holds caches and the BuildBuddy
-executor's key, so a fork's code reaches it only in the merge queue. CI's `Finalize` is the
-merge queue's required check: a pull request whose lanes fail there leaves the queue and
-does not reach main. The ruleset of main, which requires the merge queue and that check, is
-managed in the repository settings. Main receives the merge group's commit unchanged, so its
+CI's `Linux` and `macOS` jobs are the merge queue's required checks: a pull request
+whose jobs fail there leaves the queue and does not reach main. The ruleset of main, which
+requires the merge queue and those checks, is managed in the repository settings. Main receives the merge group's commit unchanged, so its
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
 caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
