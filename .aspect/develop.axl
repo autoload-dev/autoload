@@ -191,12 +191,15 @@ def _fix_impl(ctx: TaskContext):
     aspect = ctx.std.env.current_exe()
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=info"])),
+        # The BUILD declarations Gazelle generates, such as the lint check's filegroups, which
+        # a deleted or renamed file leaves stale.
+        ("gazelle", lambda: run(ctx, "bazel", ["run", "//tools/gazelle:update"])),
         ("generate", lambda: run(ctx, aspect, ["generate"])),
     ])
 
 fix = task(
     implementation = _fix_impl,
-    summary = "Format the changed files and regenerate the lock and generated files the checks compare.",
+    summary = "Format the changed files and regenerate the BUILD declarations, lock and generated files the checks compare.",
     args = {
         "keep_going": KEEP_GOING,
     },
