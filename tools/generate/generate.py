@@ -12,7 +12,7 @@ Regenerate the repository's generated files, or check that they are current.
 every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each
 file's own module.
 
-Sections: Lock files, Pinned engines, Entry points.
+Sections: Lock files, Pinned engines, Segment and entry points.
 """
 
 from __future__ import annotations
@@ -187,7 +187,7 @@ def pins() -> int:
     return status
 
 
-# ==== Entry points ============================================================
+# ==== Segment and entry points ================================================
 
 
 def segment(check: bool = False) -> int:
