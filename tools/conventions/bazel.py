@@ -36,7 +36,6 @@ class Bazel:
         self._rules: dict[Module, tuple[Target, ...]] = {}
         self._facts: dict[Module, dict[str, Fact]] = {}
         self._invocations: dict[Module, Mapping[str, tuple[tuple[str, str], ...]]] = {}
-        self._tests: dict[Module, frozenset[str]] = {}
 
     def query(self, module: Module, expression: str) -> ET.Element:
         """Run a loading query and return its XML with default attribute values."""
@@ -63,12 +62,6 @@ class Bazel:
             self.root / module.path,
         )
         return frozenset(output.split())
-
-    def module_tests(self, module: Module) -> frozenset[str]:
-        """The module's tests, manual ones included."""
-        if module not in self._tests:
-            self._tests[module] = self.labels(module, "tests(//...)")
-        return self._tests[module]
 
     def dependent_tests(self, module: Module, labels: tuple[str, ...]) -> frozenset[str]:
         """The module's tests that depend on one of the labels, in their loading graph."""

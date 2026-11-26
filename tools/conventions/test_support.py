@@ -36,8 +36,7 @@ class StaticTools:
         self.call_requests = 0
         self.rule_requests = 0
         self.facts: dict[str, Fact] = {target.label: target for target in targets}
-        # The tests of every module, and those that depend on the labels a rule asks for.
-        self.test_labels: frozenset[str] = frozenset()
+        # The tests that depend on the labels a rule asks for.
         self.dependents: frozenset[str] = frozenset()
 
     def calls(self, module: Module) -> tuple[Call, ...]:
@@ -56,9 +55,6 @@ class StaticTools:
         self.rule_requests += 1
         builds = {build.as_posix() for build in module.builds}
         return tuple(target for target in self._targets if target.location.path in builds)
-
-    def module_tests(self, module: Module) -> frozenset[str]:
-        return self.test_labels
 
     def dependent_tests(self, module: Module, labels: tuple[str, ...]) -> frozenset[str]:
         return self.dependents

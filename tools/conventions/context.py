@@ -412,7 +412,12 @@ class Target:
     label_lists: Mapping[str, tuple[str, ...]]
     label_keyed_strings: Mapping[str, Mapping[str, str]]
     outputs: tuple[str, ...]
-    string_lists: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+    string_lists: Mapping[str, tuple[str, ...]]
+
+    @property
+    def is_test(self) -> bool:
+        """Bazel requires test rule class names, and only those, to end in ``_test``."""
+        return self.kind.endswith("_test")
 
     @property
     def origin(self) -> Location:
@@ -450,21 +455,12 @@ def _valued(rule: ET.Element, tag: str) -> dict[str, str]:
     }
 
 
-def _label_lists(rule: ET.Element) -> dict[str, tuple[str, ...]]:
-    """The list attributes whose every element is a label with a value."""
+def _lists(rule: ET.Element, tag: str) -> dict[str, tuple[str, ...]]:
+    """The list attributes whose every element is of one type with a value, such as labels."""
     return {
         item.attrib["name"]: tuple(child.attrib["value"] for child in item)
         for item in rule.findall("list")
-        if all(child.tag == "label" and "value" in child.attrib for child in item)
-    }
-
-
-def _string_lists(rule: ET.Element) -> dict[str, tuple[str, ...]]:
-    """The list attributes whose every element is a string with a value, such as tags."""
-    return {
-        item.attrib["name"]: tuple(child.attrib["value"] for child in item)
-        for item in rule.findall("list")
-        if all(child.tag == "string" and "value" in child.attrib for child in item)
+        if all(child.tag == tag and "value" in child.attrib for child in item)
     }
 
 
@@ -503,10 +499,10 @@ def _query_target(root: Path, module: Module, rule: ET.Element) -> Target:
         generator_location=generator_location(root, module, rule, origin),
         kind=rule.attrib["class"],
         labels=MappingProxyType(_valued(rule, "label")),
-        label_lists=MappingProxyType(_label_lists(rule)),
+        label_lists=MappingProxyType(_lists(rule, "label")),
         label_keyed_strings=MappingProxyType(_label_keyed_strings(rule)),
         outputs=tuple(item.attrib["name"] for item in rule.findall("rule-output")),
-        string_lists=MappingProxyType(_string_lists(rule)),
+        string_lists=MappingProxyType(_lists(rule, "string")),
     )
 
 
@@ -565,8 +561,6 @@ class BazelTool(Protocol):
     def invocations(
         self, module: Module
     ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
-
-    def module_tests(self, module: Module) -> frozenset[str]: ...
 
     def dependent_tests(
         self, module: Module, labels: tuple[str, ...]

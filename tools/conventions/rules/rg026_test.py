@@ -25,7 +25,6 @@ class GodotProcessTestsTest(RepositoryTest):
 
     def findings(self, *records: Record, godot: frozenset[str]) -> list[str]:
         context = self.context(records=list(records))
-        self.tools.test_labels = frozenset(record["name"] for record in records)
         self.tools.dependents = godot
         return [
             f"{item.location.line}: {item.message}"
@@ -52,6 +51,18 @@ class GodotProcessTestsTest(RepositoryTest):
         self.assertEqual(
             self.findings(test("unit_test", TAG), godot=frozenset()),
             [f"1: //tests:unit_test starts no Godot process: remove {TAG}"],
+        )
+
+    def test_targets_a_macro_tags_beside_its_test_are_not_tests(self) -> None:
+        view: Record = {
+            "name": "//tests:exports_test.view",
+            "path": "tests/BUILD.bazel",
+            "kind": "godot_view",
+            "string_lists": {"tags": [TAG]},
+        }
+        self.assertEqual(
+            self.findings(test("exports_test", TAG), view, godot=frozenset({GODOT})),
+            [],
         )
 
     def test_a_smoke_test_runs_with_the_fast_tests(self) -> None:
