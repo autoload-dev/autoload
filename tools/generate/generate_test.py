@@ -50,59 +50,17 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
         )
 
-    def test_the_segment_is_written_and_checked(self) -> None:
+    def test_the_segment_is_written(self) -> None:
         with (
             mock.patch.object(generate, "bazel", return_value=0),
-            mock.patch.object(generate, "repo_mapping", return_value={"simulation": "x"}),
+            mock.patch.object(generate, "segment", return_value=0) as segment,
         ):
-            for call, args in (("regenerate", (["tools/ci/work.py"],)), ("check", ())):
-                with (
-                    self.subTest(call=call),
-                    mock.patch.object(generate, "segment", return_value=0) as segment,
-                ):
-                    getattr(generate, call)(*args)
-                    segment.assert_called_once()
+            generate.regenerate(["tools/ci/work.py"])
+        segment.assert_called_once()
 
-    def check_lock_files(self, rewrite: str | None, *, missing: bool = False) -> int:
-        """
-        Check the lock files in a scratch checkout whose Bazel rewrites the ruleset's
-        lock file, or none; with `missing`, the ruleset has none before.
-        """
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            for module in generate.LOCKED_MODULES:
-                (root / module).mkdir(parents=True, exist_ok=True)
-                if not (missing and module == "rules_godot"):
-                    (root / module / "MODULE.bazel.lock").write_text("{}")
-
-            def bazel(module: str, *args: str) -> int:
-                if rewrite is not None and module == "rules_godot":
-                    (root / module / "MODULE.bazel.lock").write_text(rewrite)
-                return 0
-
-            with (
-                mock.patch.object(generate, "ROOT", root),
-                mock.patch.object(generate, "bazel", side_effect=bazel),
-                contextlib.redirect_stderr(io.StringIO()),
-            ):
-                return generate.check_lock_files()
-
-    def test_current_lock_files_pass_the_check(self) -> None:
-        self.assertEqual(0, self.check_lock_files(rewrite=None))
-        self.assertEqual(0, self.check_lock_files(rewrite="{}"))
-
-    def test_a_lock_file_bazel_rewrites_fails_the_check(self) -> None:
-        self.assertNotEqual(0, self.check_lock_files(rewrite='{"stale": false}'))
-
-    def test_a_lock_file_bazel_writes_first_fails_the_check(self) -> None:
-        self.assertNotEqual(0, self.check_lock_files(rewrite="{}", missing=True))
-
-    def test_the_check_covers_lock_files_and_pins(self) -> None:
-        commands = self.runs("check")
-        self.assertIn(("rules_godot", "mod", "deps", "--lockfile_mode=update"), commands)
-        (pins,) = [
-            command for command in commands if command[1:3] == ("build", "--nobuild")
-        ]
+    def test_the_check_covers_the_pinned_engines_alone(self) -> None:
+        (pins,) = self.runs("check")
+        self.assertEqual(("build", "--nobuild"), pins[1:3])
         self.assertIn(
             "@@autoload_rules_godot++godot_engines+simulation_macos_arm64_editor//:engine_library",
             pins,

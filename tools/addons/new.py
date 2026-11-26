@@ -130,7 +130,7 @@ def generate(
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
         written += copy_tree("examples", root / examples_path(directory), tokens)
-        written.append(declarations.write(root))
+        written += declarations.write(root)
         if release:
             written += registry_templates(directory, root, tokens)
     return written + copy_tree("addon", module / names.addon, tokens)

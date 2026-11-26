@@ -1,15 +1,14 @@
 """
-Regenerate the repository's generated files, or check that they are current.
+Regenerate the repository's generated files, or check the pins of source-built engines.
 
-| Generated files | Regenerated here | Checked here |
+| Generated files | Regenerated here | Checked |
 |---|---|---|
-| The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
-| The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
-| The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing each recipe the lock file pins, which fails on a stale pin |
+| The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | by Bazel itself, which fails to load a stale one (see there) |
+| The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | by every CI command, whose `--config=ci` sets `--lockfile_mode=error` (shared.bazelrc) |
+| The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | here with `--check`, analysing each recipe the lock file pins, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
-(`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
-every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each
+(`aspect pre-commit`) passes the staged ones, or everything without paths. Bazel runs in each
 file's own module.
 
 Sections: Lock files, Pinned engines, Segment and entry points.
@@ -75,35 +74,6 @@ def lock_files(modules: list[str]) -> int:
     status = 0
     for module in modules:
         status |= bazel(module, "mod", "deps", "--lockfile_mode=update")
-    return status
-
-
-def lock_file(module: str) -> bytes | None:
-    """A module's lock file, or none before Bazel writes it."""
-    path = ROOT / module / "MODULE.bazel.lock"
-    return path.read_bytes() if path.is_file() else None
-
-
-def check_lock_files() -> int:
-    """
-    Regenerate every lock file and fail when one changes or appears. Bazel's default mode,
-    `update`, as every other command uses it, not `--lockfile_mode=error`: a server whose
-    lock file mode changes reloads every package on its next command, which later checks
-    would pay for.
-    """
-    before = {module: lock_file(module) for module in LOCKED_MODULES}
-    status = lock_files(list(LOCKED_MODULES))
-    stale = [
-        f"{module}/MODULE.bazel.lock"
-        for module, text in before.items()
-        if lock_file(module) != text
-    ]
-    if stale:
-        print(
-            f"Stale lock files, now regenerated; commit them: {', '.join(stale)}",
-            file=sys.stderr,
-        )
-        return 1
     return status
 
 
@@ -190,18 +160,10 @@ def pins() -> int:
 # ==== Segment and entry points ================================================
 
 
-def segment(check: bool = False) -> int:
-    """Write the root module's declarations of the add-on modules, or check them."""
-    if not check:
-        declarations.write(ROOT)
-        return 0
-    if declarations.is_current(ROOT):
-        return 0
-    print(
-        f"Stale {declarations.SEGMENT}; regenerate it with `aspect generate`.",
-        file=sys.stderr,
-    )
-    return 1
+def segment() -> int:
+    """Write the root module's declarations of the add-on modules."""
+    declarations.write(ROOT)
+    return 0
 
 
 def regenerate(paths: list[str]) -> int:
@@ -212,8 +174,8 @@ def regenerate(paths: list[str]) -> int:
 
 
 def check() -> int:
-    """Check every generated file."""
-    return segment(check=True) | check_lock_files() | pins()
+    """Check the pins of the source-built engines; Bazel checks the other generated files."""
+    return pins()
 
 
 def main() -> int:
@@ -221,7 +183,9 @@ def main() -> int:
     parser.add_argument(
         "paths", nargs="*", help="changed files; none regenerates everything"
     )
-    parser.add_argument("--check", action="store_true", help="check every generated file")
+    parser.add_argument(
+        "--check", action="store_true", help="check the pins of the source-built engines"
+    )
     args = parser.parse_args()
     return check() if args.check else regenerate(args.paths)
 

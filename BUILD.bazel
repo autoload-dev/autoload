@@ -5,6 +5,25 @@ filegroup(
     visibility = ["//tools/ci:__pkg__"],
 )
 
+# The root module's declarations and Bazel settings, with those it shares with the other
+# modules, which the setup checks read (tools/setup/checkout.py).
+filegroup(
+    name = "module_files",
+    srcs = [
+        ".bazelignore",
+        ".bazelrc",
+        ".bazelversion",
+        "MODULE.bazel",
+        "addons.MODULE.bazel",
+        "buildbuddy.bazelrc",
+        "shared.bazelrc",
+    ],
+    visibility = [
+        "//tools/android:__pkg__",
+        "//tools/setup:__pkg__",
+    ],
+)
+
 exports_files(
     [
         ".bazelversion",

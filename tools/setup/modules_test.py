@@ -1,5 +1,6 @@
 """The setup checks find the checkout's modules and their declarations alike."""
 
+import ast
 import tempfile
 import textwrap
 import unittest
@@ -91,6 +92,13 @@ class DeclarationsTest(unittest.TestCase):
                 for declaration in declarations(source)
                 if declaration.kind not in ("use_extension", "use_repo_rule")
             ],
+        )
+
+    def test_positional_arguments_are_kept(self) -> None:
+        (include,) = declarations('include("//:addons.MODULE.bazel")\n')
+        self.assertEqual(
+            ("include", ["//:addons.MODULE.bazel"]),
+            (include.kind, [ast.literal_eval(a) for a in include.arguments]),
         )
 
     def test_a_label_names_a_file_of_the_module(self) -> None:

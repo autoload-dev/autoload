@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//tools/setup:module_files.bzl", "MODULE_FILES")
 
 # The checkout's modules and their declarations, as the setup checks read them.
 py_library(
@@ -22,6 +23,26 @@ py_test(
     deps = [":modules_lib"],
 )
 
+# A checkout-shaped copy of the modules' files a test declares, for the setup checks' tests.
+py_library(
+    name = "checkout_lib",
+    testonly = True,
+    srcs = ["checkout.py"],
+    visibility = ["//tools/android:__pkg__"],
+    deps = [
+        ":modules_lib",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "checkout_test",
+    size = "small",
+    srcs = ["checkout_test.py"],
+    data = MODULE_FILES,
+    deps = [":checkout_lib"],
+)
+
 # The Bazel wrapper that Bazelisk runs in place of Bazel, with its slots and profiles.
 py_test(
     name = "bazel_wrapper_test",
@@ -31,8 +52,7 @@ py_test(
     data = ["//:tools/bazel"],
 )
 
-# The shared-pin check of the root module and its consumer modules; `aspect work test:setup`
-# runs pins.py on the checkout.
+# The shared-pin check of the root module and its consumer modules, on a copy of their files.
 py_test(
     name = "pins_test",
     size = "small",
@@ -40,7 +60,11 @@ py_test(
         "pins.py",
         "pins_test.py",
     ],
-    deps = [":modules_lib"],
+    data = MODULE_FILES,
+    deps = [
+        ":checkout_lib",
+        ":modules_lib",
+    ],
 )
 
 # The setup check `aspect doctor` runs as a script (.aspect/work.axl).

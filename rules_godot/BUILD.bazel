@@ -3,3 +3,18 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     "README.md",
 ])
+
+# The module's declarations and Bazel settings with those of its registry test module, which
+# the root module's setup checks read (tools/setup/checkout.py). bcr/ is ignored, so its files
+# belong to this package.
+filegroup(
+    name = "module_files",
+    srcs = [
+        ".bazelignore",
+        ".bazelrc",
+        ".bazelversion",
+        "MODULE.bazel",
+        "bcr/smoke/.bazelversion",
+        "bcr/smoke/MODULE.bazel",
+    ],
+)

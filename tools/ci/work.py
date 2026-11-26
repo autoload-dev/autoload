@@ -190,20 +190,13 @@ LINT_INPUTS = either(
     ),
 )
 
-# What shapes the lock files and the source-built engines' pins (tools/generate/generate.py):
-# the modules' declarations, the ruleset's rules and extensions, and the pins themselves.
+# What shapes the source-built engines' pins (tools/generate/generate.py): the root module's
+# declarations and lock files, the ruleset's rules and extensions, and the pins themselves.
 GENERATED_INPUTS = files(
     "*MODULE.bazel*",
-    "*.bazelignore",
     f"{RULESET_DIR}/godot/*.bzl",
     f"{RULESET_DIR}/godot/engine/*",
-    # Files that module extensions read and the lock files record: tool and engine pins,
-    # Maven and Swift package resolutions.
     "*.lock.json",
-    "third_party/maven/*",
-    f"{RULESET_DIR}/third_party/maven/*",
-    "*Package.resolved",
-    "*Package.swift",
     "tools/generate/*",
 )
 
@@ -378,22 +371,14 @@ WORK = (
         inputs=files("*.md", ".rumdl.toml", "multitool.lock.json"),
     ),
     Work("conventions", "quality", ".", ("bazel run //tools/conventions",)),
-    # The generated files: lock files and the source-built engines' pins.
+    # The source-built engines' pins. Bazel checks the other generated files: MODULE.bazel.lock
+    # in every CI command (--config=ci), the add-on modules' declarations when it loads them.
     Work(
         "generated",
         "quality",
         ".",
         ("python3 -m tools.generate.generate --check",),
         inputs=GENERATED_INPUTS,
-    ),
-    Work(
-        "test:setup",
-        "quality",
-        ".",
-        (
-            "python3 -m tools.android.requirements",
-            "python3 -m tools.setup.pins",
-        ),
     ),
     # The repository tooling's tests but the API documentation's, which the docs work runs;
     # the examples' and scenarios' tests run in the desktop lane.

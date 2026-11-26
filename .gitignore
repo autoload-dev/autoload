@@ -6,6 +6,8 @@
 /addons/*/bcr/*/bazel-*
 # Personal Bazel settings every module of this repository imports.
 /user.bazelrc
+# The settings of CI's lanes (shared.bazelrc, --config=ci).
+/ci.bazelrc
 # The Bazel slot a Codex worktree leased (tools/codex/worktree.sh).
 /.bazel-slot
 

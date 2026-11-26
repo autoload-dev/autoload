@@ -119,7 +119,7 @@ def _work_impl(ctx: TaskContext) -> int:
 
 work = task(
     implementation = _work_impl,
-    summary = "Run pieces of the lanes' work by name, such as test:setup; none lists them.",
+    summary = "Run pieces of the lanes' work by name, such as test:tools; none lists them.",
     args = {
         "names": args.positional(minimum = 0, maximum = 512, default = []),
     },
@@ -142,9 +142,9 @@ def _generate_impl(ctx: TaskContext) -> int:
 
 generate = task(
     implementation = _generate_impl,
-    summary = "Regenerate the lock files; with files, those that depend on them.",
+    summary = "Regenerate the add-on modules' declarations and the lock files; with files, the lock files that depend on them.",
     args = {
-        "check": args.boolean(default = False, description = "Fail instead of writing"),
+        "check": args.boolean(default = False, description = "Check the source-built engines' pins instead"),
         "files": args.positional(minimum = 0, maximum = 512, default = []),
     },
 )

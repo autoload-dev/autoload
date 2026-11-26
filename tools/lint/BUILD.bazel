@@ -3,7 +3,8 @@ load("@rules_python//python/uv:lock.bzl", "lock")
 
 # The Python packages of the linters, from PyPI as @lint_pypi (MODULE.bazel). `bazel run
 # //tools/lint:requirements.update` relocks them; the resolution leaves out releases newer
-# than its date, so relocking is reproducible until the date moves.
+# than its date, so relocking is reproducible until the date moves. No test compares the
+# lock with its sources: rules_python's lock action needs the network and is never cached.
 lock(
     name = "requirements",
     srcs = ["requirements.in"],

@@ -7,7 +7,9 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from tools.setup.pins import main, module_pins
+from tools.setup import checkout
+from tools.setup.modules import registry_test_modules
+from tools.setup.pins import drifts, main, module_pins
 
 MODULE = textwrap.dedent("""
     module(name = "{name}")
@@ -189,6 +191,14 @@ class PinsTest(unittest.TestCase):
             },
             module_pins(MODULE.format(fragment="1.8.6", name="root", android="0.8.0")),
         )
+
+
+class CheckoutTest(unittest.TestCase):
+    def test_the_modules_of_the_checkout_share_their_pins(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = checkout.copy(Path(directory))
+            self.assertIn("rules_godot/bcr/smoke", registry_test_modules(root))
+            self.assertEqual([], drifts(root))
 
 
 if __name__ == "__main__":

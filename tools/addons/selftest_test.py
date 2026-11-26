@@ -19,17 +19,22 @@ class SelfTestTest(RepositoryTestCase):
         """Run the self-test with a lane that returns the segment it ran with."""
         seen = []
 
-        def lane(*_: object) -> None:
-            seen.append((self.root / SEGMENT).read_text())
+        def lock(root: object) -> None:
+            seen.append("lock")
             self.lock.write_text('{"changed": true}\n')
 
+        def lane(*_: object) -> None:
+            seen.append((self.root / SEGMENT).read_text())
+
         with (
+            mock.patch.object(selftest, "update_lock_file", side_effect=lock),
             mock.patch.object(selftest.lanes, "run", side_effect=lane),
             mock.patch.object(selftest, "test_registry_module") as registry,
         ):
             selftest.run("desktop", self.root)
         registry.assert_called_once_with(self.root)
-        return seen[0]
+        self.assertEqual("lock", seen[0], "the lock file is updated before the lane")
+        return seen[1]
 
     def test_the_lane_runs_with_the_module_declared(self) -> None:
         self.assertIn('module_name = "autoload_selftest"', self.run_lane())

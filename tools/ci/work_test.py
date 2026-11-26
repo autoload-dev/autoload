@@ -212,7 +212,7 @@ class CallersTest(unittest.TestCase):
                 # Keyword arguments, such as changed_since, name no work.
                 call = re.sub(r'\w+ = "[^"]*"', "", call)
                 names.update(re.findall(r'"([^"]+)"', call))
-        self.assertLessEqual({"test:setup", "test:fast", "android:setup"}, names)
+        self.assertLessEqual({"generated", "test:fast", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
 
@@ -287,7 +287,7 @@ class SelectionTest(unittest.TestCase):
             self.assertEqual(["."], self.directories("lint:markdown", path))
         self.assertEqual([], self.directories("lint:markdown", "a.gd", "a.py"))
 
-    def test_generated_runs_for_what_shapes_a_generated_file(self) -> None:
+    def test_generated_runs_for_what_shapes_the_engine_pins(self) -> None:
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
         for path in (
             "rules_godot/MODULE.bazel",
@@ -342,7 +342,7 @@ class SelectionTest(unittest.TestCase):
             )
 
     def test_some_work_always_runs(self) -> None:
-        for name in ("conventions", "test:setup", "test:fast", "test:tools"):
+        for name in ("conventions", "test:fast", "test:tools"):
             self.assertEqual(all_work(ROOT)[name].steps(), self.run_steps(name), name)
 
     def test_without_changes_every_step_runs(self) -> None:
