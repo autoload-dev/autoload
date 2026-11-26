@@ -11,7 +11,9 @@ source-engine lane runs in its own scheduled workflow, the others in CI.
 
 A step may name its inputs: `run --changed-since <ref>`, as the pre-push hook runs it, skips
 the steps whose inputs did not change since the merge base with the reference
-(tools/ci/changes.py). Lanes and named work without the option run every step.
+(tools/ci/changes.py). With `--remote-tip`, the pushed branch's commit on the remote, a push
+counts from that commit instead, when HEAD descends from it. Lanes and named work without
+the options run every step.
 
 Sections: Applications, Checks, Ruleset tests, Add-on work, Work table, Selection,
 Execution, Command line.
@@ -36,6 +38,7 @@ from tools.ci.changes import (
     either,
     files,
     module_files,
+    pushed_base,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
 from tools.setup.modules import RULESET, module_paths, registry_test_modules
@@ -586,10 +589,16 @@ def runs_on(work: Work, host: str) -> bool:
     return not work.hosts or host in work.hosts
 
 
-def changes(ref: str | None) -> Changes | None:
-    """The changes since the merge base with a reference, if one is given."""
+def changes(ref: str | None, remote_tips: Iterable[str] = ()) -> Changes | None:
+    """
+    The changes since the merge base with a reference, if one is given; with the pushed
+    branches' commits on the remote, the changes since those (tools/ci/changes.py).
+    """
+    if not ref:
+        return None
     modules = (*module_paths(ROOT), *registry_test_modules(ROOT))
-    return changes_since(ref, ROOT, modules) if ref else None
+    base = pushed_base(ref, remote_tips, ROOT) if remote_tips else ref
+    return changes_since(base, ROOT, modules)
 
 
 def where(step: In, steps: list[In]) -> str:
@@ -723,12 +732,20 @@ def main() -> None:
         metavar="REF",
         help="skip the steps whose inputs did not change since the merge base with REF",
     )
+    pieces.add_argument(
+        "--remote-tip",
+        metavar="COMMIT",
+        action="append",
+        default=[],
+        help="a pushed branch's commit on the remote, zeros for a new branch; with "
+        "--changed-since, count from it when HEAD descends from it",
+    )
     args = parser.parse_args()
     try:
         if args.command == "lane":
             run_lane(args.lane)
         elif args.names:
-            run(args.names, changes=changes(args.changed_since))
+            run(args.names, changes=changes(args.changed_since, args.remote_tip))
         else:
             print_work()
     except ValueError as error:

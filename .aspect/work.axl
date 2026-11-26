@@ -99,7 +99,7 @@ def run_work_tool(ctx: TaskContext, arguments) -> int:
     _built(ctx, _PKL)
     return python(ctx, ["-m", "tools.ci.work"] + arguments)
 
-def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
+def run_work(ctx: TaskContext, *names, changed_since = None, remote_tips = []) -> int:
     """Run pieces of the lanes' work by name.
 
     Args:
@@ -107,11 +107,15 @@ def run_work(ctx: TaskContext, *names, changed_since = None) -> int:
         *names: the pieces, in order.
         changed_since: a reference; if given, only the steps whose inputs changed since
             the merge base with it run.
+        remote_tips: the pushed branches' commits on the remote; with changed_since, the
+            changes count from them when HEAD descends from them.
 
     Returns:
         The work's exit code.
     """
     selection = ["--changed-since", changed_since] if changed_since else []
+    for tip in remote_tips:
+        selection += ["--remote-tip", tip]
     return run_work_tool(ctx, ["run"] + selection + list(names))
 
 def _work_impl(ctx: TaskContext) -> int:
@@ -190,13 +194,14 @@ def _launcher(ctx: TaskContext) -> str:
 def _bootstrap_impl(ctx: TaskContext) -> int:
     if ctx.args.hooks:
         # The hooks name the launcher by its path, so a Git client with a short PATH runs them,
-        # and the worktree hooks find it in aspect.launcher. Git passes pre-push its stdin.
+        # and the worktree hooks find it in aspect.launcher. Git passes pre-push its stdin; the
+        # checkout check reads it and prints the pushed branches' commits on the remote.
         # Bazelisk lies beside the launcher, where bootstrap.sh places both.
         launcher = _launcher(ctx)
         aspect = 'PATH="{}:$PATH" "{}"'.format(launcher.rpartition("/")[0], launcher)
         hooks = {
             "pre-commit": aspect + " pre-commit",
-            "pre-push": "bash tools/pre_push_checkout.sh && " + aspect + " pre-push",
+            "pre-push": 'tips="$(bash tools/pre_push_checkout.sh)" && AUTOLOAD_REMOTE_TIPS="$tips" ' + aspect + " pre-push",
         }
         settings = [("aspect.launcher", launcher)]
         for event, command in hooks.items():

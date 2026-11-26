@@ -79,11 +79,15 @@ def _pre_push_impl(ctx: TaskContext):
     # Each step runs alone as well. The work covers lint, GDScript and Markdown included, the
     # generated files, the conventions, the setup contracts, the ruleset's fast tests, the API
     # documentation with its contract cases, the desktop lane's included, and the repository
-    # tooling's tests, the setup action's among them. Only the steps whose inputs changed since the merge base with
-    # origin/main run (tools/ci/changes.py).
+    # tooling's tests, the setup action's among them. Only the steps whose inputs changed run
+    # (tools/ci/changes.py): since the pushed branch's commit on the remote, which this hook
+    # checked when it was pushed, as long as HEAD descends from it; for a branch's first push
+    # or one that rewrites history the remote has not seen, since the merge base with
+    # origin/main. The hook passes those commits in a variable, which older checkouts ignore.
+    remote_tips = (ctx.std.env.var("AUTOLOAD_REMOTE_TIPS") or "").split()
     return _steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
-        ("work", lambda: run_work(ctx, "lint", "lint:gdscript", "lint:markdown", "generated", "conventions", "test:setup", "test:fast", "docs", "contracts:desktop", "test:tools", changed_since = "origin/main")),
+        ("work", lambda: run_work(ctx, "lint", "lint:gdscript", "lint:markdown", "generated", "conventions", "test:setup", "test:fast", "docs", "contracts:desktop", "test:tools", changed_since = "origin/main", remote_tips = remote_tips)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ])
 

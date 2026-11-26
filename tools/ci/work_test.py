@@ -18,7 +18,7 @@ from unittest import mock
 from tools.addons.modules import choices
 from tools.addons.test_support import copy_schemas
 from tools.apps.apps import lanes as app_lanes
-from tools.ci.changes import Changes, changes_since
+from tools.ci.changes import Changes, changes_since, pushed_base
 from tools.ci.lanes import LANES
 from tools.ci.work import (
     FAST_TEST_COMMAND,
@@ -454,6 +454,52 @@ class ChangesTest(unittest.TestCase):
     def test_without_a_merge_base_everything_runs(self) -> None:
         self.assertIsNone(self.changes("origin/main"))
         self.assertIn("no merge base with origin/main", self.printed)
+
+    def commit(self, *paths: str) -> str:
+        self.write(*paths)
+        git(self.root, "add", ".")
+        git(self.root, "commit", "--quiet", "-m", "topic")
+        return git(self.root, "rev-parse", "HEAD")
+
+    def pushed_base(self, *remote_tips: str) -> str:
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            found = pushed_base("main", remote_tips, self.root)
+        self.printed = printed.getvalue()
+        return found
+
+    def test_a_later_push_counts_from_the_remote_s_commit(self) -> None:
+        pushed = self.commit("pushed.md")
+        self.commit("follow_up.md")
+        self.assertEqual(pushed, self.pushed_base(pushed))
+        found = changes_since(self.pushed_base(pushed), self.root, MODULES)
+        assert found is not None
+        self.assertEqual({"follow_up.md"}, found.paths)
+        self.assertIn(f"since the remote's {pushed[:9]}", self.printed)
+
+    def test_a_first_push_counts_from_the_merge_base(self) -> None:
+        self.commit("first.md")
+        self.assertEqual("main", self.pushed_base())
+        self.assertEqual("main", self.pushed_base("0" * 40))
+        self.assertIn("the remote has no such branch", self.printed)
+
+    def test_rewritten_history_counts_from_the_merge_base(self) -> None:
+        pushed = self.commit("pushed.md")
+        git(self.root, "reset", "--quiet", "--hard", "HEAD~1")
+        self.commit("rewritten.md")
+        self.assertEqual("main", self.pushed_base(pushed))
+        self.assertIn(f"{pushed[:9]} is not in HEAD's history", self.printed)
+
+    def test_a_remote_commit_unknown_here_counts_from_the_merge_base(self) -> None:
+        self.commit("pushed.md")
+        self.assertEqual("main", self.pushed_base("1" * 40))
+        self.assertIn("is not in HEAD's history", self.printed)
+
+    def test_branches_on_different_commits_count_from_the_merge_base(self) -> None:
+        first = self.commit("first.md")
+        second = self.commit("second.md")
+        self.assertEqual("main", self.pushed_base(first, second))
+        self.assertIn("several", self.printed)
+        self.assertEqual(second, self.pushed_base(second, second))
 
     def test_the_verification_tooling_selects_everything(self) -> None:
         for path in (
