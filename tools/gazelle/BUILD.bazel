@@ -51,7 +51,7 @@ multirun(
     ],
 )
 
-# The checks only read, so they run at once, each module's output kept apart.
+# The checks only read, so they run at once, as each module's do (defs.bzl).
 multirun(
     name = "check",
     buffer_output = True,

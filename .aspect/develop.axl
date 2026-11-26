@@ -69,8 +69,11 @@ def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> i
         else:
             codes.append(child.wait().code)
     codes += [child.wait().code for child in children]
-    failed = [code for code in codes if code not in (0, _NO_TESTS)]
-    return failed[0] if failed else 0
+    return _first_failure(codes, ignored = [_NO_TESTS])
+
+def _first_failure(codes, ignored = []) -> int:
+    """The first exit code that is neither 0 nor ignored, else 0."""
+    return ([code for code in codes if code != 0 and code not in ignored] + [0])[0]
 
 def bazel_tests(ctx: TaskContext, flags) -> int:
     """Run `bazel test` with the flags over every workspace's patterns at once."""
@@ -83,8 +86,7 @@ def tool_checks(ctx: TaskContext) -> int:
         0, or the first failing check's exit code.
     """
     children = [spawn(ctx, "bazel", ["run", target]) for target in TOOL_CHECKS]
-    failed = [code for code in [child.wait().code for child in children] if code != 0]
-    return failed[0] if failed else 0
+    return _first_failure([child.wait().code for child in children])
 
 def steps(ctx: TaskContext, steps):
     """Run named steps in order; stop at the first failure unless asked to keep going.

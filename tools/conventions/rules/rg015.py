@@ -17,7 +17,7 @@ from tools.addons.modules import (
 from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.manifests import module_manifests
+from tools.conventions.manifests import module_manifest
 from tools.conventions.rules.rg023 import TESTS
 from tools.pkl.evaluate import PklError
 from tools.setup.modules import ADDONS as ADDON_DIRECTORY
@@ -196,7 +196,7 @@ class AddonModuleLayout:
         yield from self.imports(workspace, module)
         yield from self.addon_pkl(workspace, module / "addon.pkl")
         # The rest needs the manifest; the checks above report one that is missing or wrong.
-        if (manifest := module_manifests(workspace)[module]) is None:
+        if (manifest := module_manifest(workspace, module)) is None:
             return
         yield from self.root_entries(workspace, module, names, manifest["sharedPackages"])
         yield from self.projects(workspace, module, builds_apps(manifest["lanes"]))
