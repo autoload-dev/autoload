@@ -58,23 +58,23 @@ class EngineLayoutTest(RepositoryTest):
                 *self.module(
                     "examples/engines/simulation/modules/field", "config.py", "SCsub"
                 ),
-                "examples/engines/simulation/godot_simulation.lock.json",
+                "examples/engines/simulation/simulation.lock.json",
                 "examples/engines/simulation/BUILD.bazel",
                 "e2e/rules_godot/scenario/engines/stable/BUILD.bazel",
                 "e2e/rules_godot/scenario/engines/source/components.bzl",
             ),
         )
 
-    def test_a_source_build_s_lock_file_in_a_project_is_reported(self) -> None:
+    def test_an_engine_s_lock_file_in_a_project_is_reported(self) -> None:
         root = "examples/petri"
         self.assertEqual(
             [
                 (
-                    f"{root}/godot_petri.lock.json: a source build's lock file must live "
+                    f"{root}/simulation.lock.json: an engine's lock file must live "
                     "under engines/<name>/, not in a Godot project"
                 )
             ],
-            self.evaluate(*self.project(root, "godot_petri.lock.json")),
+            self.evaluate(*self.project(root, "simulation.lock.json")),
         )
 
     def test_lock_files_and_patches_outside_projects_are_not_engine_files(self) -> None:

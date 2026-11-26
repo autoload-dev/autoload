@@ -1,10 +1,13 @@
-"""One generated hub layout for prebuilt engines and source builds: one component per slot."""
+"""
+The generated repositories of engines: each engine's hub, one component per slot, and the
+extension's toolchains repository of every engine's components.
+"""
 
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
 
-def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = "", without_build_profile = False):
+def component(role, name, payload, platform, cpu, version, variant = "", environment = "", digest = "", untuned_only = False):
     """
     Return a hub slot description.
 
@@ -14,13 +17,12 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         payload: Label string of the payload in a sibling repository.
         platform: Slot operating system.
         cpu: Slot CPU, a CPU table key such as arm64 or x86_64.
-        version: Canonical Godot version of the payload; empty takes the hub's
-            version_source descriptor.
+        version: Canonical Godot version of the payload.
         variant: debug or release for runtimes.
         environment: device or simulator for iOS runtimes.
         digest: Integrity of the artifact behind an opaque runtime payload.
-        without_build_profile: For runtimes, whether the component serves only applications
-            without a build profile, as godot_runtime_component's.
+        untuned_only: For runtimes, whether the component serves only builds whose runtime
+            needs no tuning, as godot_runtime_component's.
 
     Returns:
         A dict the hub repository rule serializes into a component declaration.
@@ -35,21 +37,29 @@ def component(role, name, payload, platform, cpu, version, variant = "", environ
         "variant": variant,
         "environment": environment,
         "digest": digest,
-        "without_build_profile": without_build_profile,
+        "untuned_only": untuned_only,
     }
 
 # The optional attributes of a component, which a slot leaves out when they are empty.
-_OPTIONAL = ["variant", "environment", "digest", "without_build_profile", "visibility"]
+_OPTIONAL = ["variant", "environment", "digest", "untuned_only", "visibility"]
 
-def _declaration(slot, engine):
+def _call(function, values):
+    """A generated BUILD file's call of a macro or rule with the given (name, value) pairs."""
+    attributes = ["    %s = %s," % (key, repr(value)) for key, value in values]
+    return "\n%s(\n%s\n)\n" % (function, "\n".join(attributes))
+
+def _engine_values(engine, default_engine):
+    """The engine attributes of a component or its toolchains; none for an unnamed engine."""
+    if not engine:
+        return []
+    return [("engine", engine)] + ([("default_engine", True)] if default_engine else [])
+
+def _declaration(slot, engine, default_engine):
     values = [("name", slot["name"]), (slot["role"], slot["payload"])]
     values += [("platform", slot["platform"]), ("cpu", slot["cpu"])]
     values += [(key, slot[key]) for key in _OPTIONAL if slot.get(key)]
     values.append(("version", slot["version"]))
-    if engine:
-        values.append(("engine", engine))
-    attributes = ["    %s = %s," % (key, repr(value)) for key, value in values]
-    return "\ngodot_%s_component(\n%s\n)\n" % (slot["role"], "\n".join(attributes))
+    return _call("godot_%s_component" % slot["role"], values + _engine_values(engine, default_engine))
 
 def _android_runtime(variant, runtime):
     attributes = ["    name = %r," % variant, "    shell = %r," % runtime["shell"]]
@@ -68,32 +78,49 @@ def _android_runtime(variant, runtime):
 _PIN = """
 load({pin_bzl}, "godot_engine_pin")
 
-# Pins every recipe of this source build and its runtime variants into its lock file:
-# bazel run //:pin.
+# Pins every recipe of this engine and its runtime variants into its lock file:
+# bazel run //:pin. Each :pin_<platform> pins one platform's into it and keeps the others,
+# for a host whose execution platforms configure only some platforms' recipes.
+"""
+
+_PIN_TARGET = """
 godot_engine_pin(
-    name = "pin",
+    name = {name},
     recipes = {recipes},
     variants = {variants},
     lock = {lock},
+    partial = {partial},
     visibility = ["//visibility:public"],
 )
 """
 
-def _pin(ctx):
-    """The :pin target that writes the lock file of the hub's recipes and runtime variants."""
-    variants = json.decode(ctx.attr.pin_variants or "{}")
-    return _PIN.format(
-        pin_bzl = repr(str(ctx.attr._pin_bzl)),
-        recipes = repr(json.decode(ctx.attr.pin_recipes)),
+def _pin_target(ctx, name, recipes, variants, partial):
+    return _PIN_TARGET.format(
+        name = repr(name),
+        recipes = repr(recipes),
         variants = repr({label: json.encode(variant) for label, variant in variants.items()}),
         lock = repr(ctx.attr.lock),
+        partial = repr(partial),
     )
+
+def _pin(ctx):
+    """The :pin and :pin_<platform> targets that write the lock file of the hub's recipes and runtime variants."""
+    recipes = json.decode(ctx.attr.pin_recipes)
+    variants = json.decode(ctx.attr.pin_variants or "{}")
+    platforms = json.decode(ctx.attr.pin_platforms)
+    targets = [_PIN.format(pin_bzl = repr(str(ctx.attr._pin_bzl))), _pin_target(ctx, "pin", recipes, variants, False)]
+    for platform in sorted({platform: True for platform in platforms.values()}):
+        targets.append(_pin_target(
+            ctx,
+            "pin_" + platform,
+            {label: key for label, key in recipes.items() if platforms[key] == platform},
+            {label: variant for label, variant in variants.items() if platforms[variant[0]] == platform},
+            True,
+        ))
+    return "".join(targets)
 
 def _hub_impl(ctx):
     slots = json.decode(ctx.attr.components)
-    if ctx.attr.version_source:
-        version = json.decode(ctx.read(ctx.path(ctx.attr.version_source)))["version"]
-        slots = [slot | {"version": slot["version"] or version} for slot in slots]
     names = {}
     for slot in slots:
         if slot["name"] in names:
@@ -103,6 +130,7 @@ def _hub_impl(ctx):
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
         "{NAME}": ctx.attr.display_name,
         "{PIN}": pin,
+        "{TOOLCHAINS_REPOSITORY}": '        "@%s//",\n' % ctx.attr.toolchains_repository if ctx.attr.toolchains_repository else "",
     })
     android = json.decode(ctx.attr.android_runtimes) if ctx.attr.android_runtimes else {}
     if android:
@@ -119,7 +147,7 @@ def _hub_impl(ctx):
         })
     ctx.template("toolchains/BUILD.bazel", ctx.attr._toolchains_template, substitutions = {
         "{DEFS_BZL}": repr(str(ctx.attr._defs_bzl)),
-        "{COMPONENTS}": "".join([_declaration(slot, ctx.attr.engine) for slot in sorted(slots, key = lambda s: s["name"])]),
+        "{COMPONENTS}": "".join([_declaration(slot, ctx.attr.engine, ctx.attr.default_engine) for slot in sorted(slots, key = lambda s: s["name"])]),
     })
 
 engine_hub = repository_rule(
@@ -128,14 +156,16 @@ engine_hub = repository_rule(
         "components": attr.string(doc = "JSON list of slot descriptions from component().", mandatory = True),
         "display_name": attr.string(doc = "Apparent hub name for the generated comment.", mandatory = True),
         "engine": attr.string(doc = "Name of the engine every component belongs to; empty for the default engine."),
+        "default_engine": attr.bool(doc = "Whether the named engine is also the default engine, which builds that name none take."),
+        "toolchains_repository": attr.string(doc = "The extension's repository of every engine's toolchains, which registers the hub's components."),
         "android_runtimes": attr.string(doc = """
             JSON object of variant to {"shell": label, "engine_libraries": {CPU: label}};
             each becomes //android:<variant>, and //android:plugin_api exports one of them
             for compilation only.
             """),
-        "version_source": attr.label(doc = "A source descriptor whose version fills slots without one."),
         "pin_recipes": attr.string(doc = "JSON object of each recipe's :pin label to its key in the lock file."),
         "pin_variants": attr.string(doc = "JSON object of each runtime variant's :pin label to its recipe's key and runtime profile."),
+        "pin_platforms": attr.string(doc = "JSON object of each recipe's key to its platform, which groups the :pin_<platform> targets."),
         "lock": attr.string(doc = "Workspace-relative path of the lock file that //:pin writes."),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_android_template": attr.label(default = Label("//godot/engine/private:hub_android.BUILD.tpl")),
@@ -144,5 +174,49 @@ engine_hub = repository_rule(
         "_android_bzl": attr.label(default = Label("//godot/platforms/private:android.bzl")),
         "_build_template": attr.label(default = Label("//godot/engine/private:hub.BUILD.tpl")),
         "_toolchains_template": attr.label(default = Label("//godot/engine/private:hub_toolchains.BUILD.tpl")),
+    },
+)
+
+# The extension's toolchains repository, which rules_godot registers.
+
+_TOOLCHAINS = """# Generated by godot_engines: the toolchains of every registered engine's components, which
+# rules_godot's module registers with @godot_engines_toolchains//:all. Each engine's
+# components lie in its hub, @<engine>//toolchains; their toolchains sort by engine, then by
+# slot, so a slot's tuned component follows its prebuilt one.
+load({REGISTRATION_BZL}, "component_toolchains")
+{TOOLCHAINS}"""
+
+def _component_toolchains(engine, slot):
+    values = [
+        ("name", "%s__%s" % (engine["name"], slot["name"])),
+        ("component", "@%s//toolchains:%s" % (engine["name"], slot["name"])),
+        ("role", slot["role"]),
+        ("platform", slot["platform"]),
+        ("cpu", slot["cpu"]),
+    ]
+    values += [(key, slot[key]) for key in ["environment", "variant", "untuned_only"] if slot.get(key)]
+    return _call("component_toolchains", values + _engine_values(engine["name"], engine["default_engine"]))
+
+def _engine_toolchains_impl(ctx):
+    engines = sorted(json.decode(ctx.attr.engines), key = lambda engine: engine["name"])
+    ctx.file("REPO.bazel", "")
+    ctx.file("BUILD.bazel", _TOOLCHAINS.format(
+        REGISTRATION_BZL = repr(str(ctx.attr._registration_bzl)),
+        TOOLCHAINS = "".join([
+            _component_toolchains(engine, slot)
+            for engine in engines
+            for slot in sorted(engine["slots"], key = lambda slot: slot["name"])
+        ]),
+    ))
+
+engine_toolchains = repository_rule(
+    doc = "Generate the toolchains of every engine's components in one repository, which rules_godot registers.",
+    implementation = _engine_toolchains_impl,
+    attrs = {
+        "engines": attr.string(doc = """
+            JSON list of each engine's {"name", "default_engine", "slots"}, its hub's slot
+            descriptions from component().
+            """),
+        "_registration_bzl": attr.label(default = Label("//godot/engine/private:registration.bzl")),
     },
 )

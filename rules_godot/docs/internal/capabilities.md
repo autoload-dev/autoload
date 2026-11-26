@@ -272,7 +272,7 @@ The editor and runtime tools run on Linux and macOS hosts:
 | Runnable application: APP-11; APP-01 to APP-05 | tree, archive | app, archive | APK, AAB | device and simulator app | Required runtime, ABI and platform tools and providers [PLAT] |
 | Extension library delivery and linking: EXT-03 to EXT-05 | I | I | I | I | Shared libraries on desktop, ABI delivery on Android, static or framework integration on iOS [EXT] |
 | Target runtime from prebuilt artifacts: ENG-02 | I | I | I | I | Platform slices follow the selected archive, not every CPU or simulator variant [PLAT] [ENG] |
-| Target runtime from supported source build: ENG-04 | I | I | I | I | Supported configure and build scope and SDK constraints [ENG] |
+| Target runtime built from supported sources: ENG-04 | I | I | I | I | Supported configure and build scope and SDK constraints [ENG] |
 | Native symbol products: APP-08 | I | I | I | I | Only supplied or compiled debug data is retained [PLAT] [ENG] |
 | Application signing: APP-09 | — | I | APK | I | Apple signing needs an identity and provisioning [PLAT] |
 | Android plugin and lifecycle integration: ADD-06 | — | — | I | — | Registration and context plumbing [PATHS] |

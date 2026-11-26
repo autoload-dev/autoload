@@ -60,8 +60,8 @@ constraint values: `armv7`, `aarch64`, `x86_32`, `x86_64` and `riscv64`, which r
 maps to Godot's CPU feature tags and to Android ABIs. Desktops take one CPU, an iOS device
 `aarch64`, and the iOS Simulator `aarch64` or `x86_64`. A CPU builds when a runtime component
 is registered for it; otherwise analysis fails, naming the target platform that no runtime
-component matches. The prebuilt engines register every CPU the official export templates
-ship.
+component matches. An engine registers every valid CPU: the official export templates'
+CPUs come prebuilt, and a catalogued engine builds the others from source.
 Do not request extra platform slices for a known local device. Engine and library selectors
 must supply every requested platform slice. Device and Simulator are separate iOS environments.
 `bazel test` with a desktop export platform runs its tests on an execution platform of the
@@ -126,8 +126,8 @@ owns instead.
 Godot's debug export does, with its `debug` and `template_debug` feature tags,
 extensions deliver their debug-tagged libraries, and each platform slice packages the
 registered debug runtime. The prebuilt Android shell libraries are release builds, so an
-Android debug app needs a debug runtime from a [source build](engine.md#declare-a-source-build)
-or a [pinned debug shell library](engine.md#use-a-prebuilt-engine).
+Android debug app takes a debug runtime that its engine builds from source, or a
+[pinned debug shell library](engine.md#use-other-sources-or-binaries).
 
 As Godot's pack loader, an engine loads packs of its own major.minor version
 and older ones. Bazel validation actions check that an Android engine AAR ships its declared engine
@@ -255,7 +255,7 @@ environment variables do not reach the application, `--env` does.
 
 ## Linux and macOS
 
-The [registered engines](engine.md#use-a-prebuilt-engine) supply the runtime of each
+The [registered engines](engine.md#register-an-engine) supply the runtime of each
 operating system; the large export-templates archive is fetched only when an app needs it,
 and only the templates of the app's operating system are extracted from it.
 Declare one pack and app:
@@ -492,22 +492,24 @@ export platform matching the device.
 
 ### Use a source-built engine
 
-A source-built engine comes from a [source build](engine.md#declare-a-source-build), registered
-ahead of the prebuilt engine; the app declaration stays the same. The runtime's AAR manifest names
+A source-built engine is an engine with a [`build` tag](engine.md#build-an-engine-from-source);
+the app selects it with its `engine` attribute, or a build with
+`--@autoload_rules_godot//godot:engine`. The runtime's AAR manifest names
 the engine's [version stamp](engine.md#version-stamp) as
 `org.godotengine.library.version`. Engine source, Android shell library and extension ABI must
-agree; a source build builds the shell library and engine from the same source. Replace `//path/to` with your
-package and the set with your registration:
+agree; the engine builds the shell library and engine from the same source. Replace `//path/to` with your
+package and `my_engine` with your engine's name:
 
 ```sh
-bazel build //path/to:app --config=android --config=aab --extra_toolchains=@godot_source_build//toolchains:all
+bazel build //path/to:app --config=android --config=aab --@autoload_rules_godot//godot:engine=my_engine
 ```
 
 ### Use a prerelease engine
 
-Declare the prerelease with [explicit pins](engine.md#use-a-prebuilt-engine); its Android
-shell AAR is a release asset rather than a Maven artifact. Prioritize it for a build with
-`--extra_toolchains=@godot_beta//toolchains:all`, which selects the matching editor for
+Register the prerelease as an [engine of its own](engine.md#name-an-engine), such as `beta`;
+its Android shell AAR is a release asset rather than a Maven artifact, which its
+[`binaries` tag](engine.md#use-other-sources-or-binaries) pins. Select it for a build with
+`--@autoload_rules_godot//godot:engine=beta`, which selects the matching editor for
 imports and export as well as the runtime. The beta AAR uses Java APIs from Android SDK
 platform 36; install it alongside the stable platform and select it with
 `--@androidsdk//:api_level=36`.
@@ -525,12 +527,12 @@ bazel build //examples/addons/sqlite:app --config=official
 ```
 
 `official` selects x86_64 Simulator, the CPU of the official templates' Simulator
-libraries; see [prebuilt engines](engine.md#use-a-prebuilt-engine). Select the
+libraries; see [register an engine](engine.md#register-an-engine). Select the
 export platform for the runtime you supply; it configures compiler CPU flags
 and the iOS environment together. A device build needs `ios_arm64`, a matching runtime,
 provisioning and signing configuration through `rules_apple`.
 
-The [registered engines](engine.md#use-a-prebuilt-engine) supply the official
+The [registered engines](engine.md#register-an-engine) supply the official
 templates' XCFrameworks for device and simulator slots, with the MoltenVK, AccessKit and
 camera frameworks the archive carries:
 
@@ -563,13 +565,14 @@ Extensions use [embedded dynamic frameworks](gdextension.md#ios-frameworks), whi
 
 ### Source-built engines
 
-A catalogued prebuilt engine builds the ARM64 Simulator runtimes the official templates
-lack from the release's sources; [prebuilt engines](engine.md#use-a-prebuilt-engine) has the
+A catalogued engine builds the ARM64 Simulator runtimes the official templates
+lack from the release's sources; [register an engine](engine.md#register-an-engine) has the
 details and limits.
-To use other modules, patches or options, register a [source build](engine.md#declare-a-source-build) with
-`platforms = ["ios"]` and `ios_environments = ["simulator"]` ahead of the
-prebuilt engine, or a `godot_runtime_component` of a prebuilt arm64 Simulator engine
-library, such as one of [godot-ios-builds](https://github.com/godot-mobile-plugins/godot-ios-builds).
+To use other modules, patches or options, give an engine a
+[`build` tag](engine.md#build-an-engine-from-source), or register a
+`godot_runtime_component` of a prebuilt arm64 Simulator engine library, such as one of
+[godot-ios-builds](https://github.com/godot-mobile-plugins/godot-ios-builds),
+[ahead of the engine's](engine.md#replace-slots).
 
 A source-built iOS engine library compiles for one
 [deployment target](engine.md#build-an-engine-from-source), whatever
@@ -582,9 +585,10 @@ bazel build //path/to:app --platforms=@autoload_rules_godot//godot/platforms:ios
 
 ### Use a prerelease engine
 
-Register the prerelease [prebuilt engine](engine.md#use-a-prebuilt-engine) or a source build
-from its sources ahead of the stable one, or prioritize it with `--extra_toolchains`. For
-an ARM64 device build with the prebuilt engine, declare the app with your provisioning profile,
+Register the prerelease as an [engine of its own](engine.md#name-an-engine), such as `beta`,
+and select it with an application's `engine` attribute or a build's
+`--@autoload_rules_godot//godot:engine`. For an ARM64 device build with its prebuilt
+templates, declare the app with your provisioning profile,
 which must match the bundle ID and a signing identity available to `rules_apple`:
 
 ```starlark
@@ -602,7 +606,7 @@ godot_app(
 Replace `//path/to` with the package where you put it:
 
 ```sh
-bazel build //path/to:ios_device_app --platforms=@autoload_rules_godot//godot/platforms:ios_arm64 --extra_toolchains=@godot_beta//toolchains:all
+bazel build //path/to:ios_device_app --platforms=@autoload_rules_godot//godot/platforms:ios_arm64 --@autoload_rules_godot//godot:engine=beta
 ```
 
 Statically linked iOS extension libraries follow the

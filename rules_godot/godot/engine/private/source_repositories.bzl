@@ -131,6 +131,10 @@ def _write_profile(ctx, path, profile, version):
     options = profile_options(profile.get("disabled_build_options", {}), version)
     ctx.file(path, json.encode_indent(profile | {"disabled_build_options": options}) + "\n")
 
+# The longest a configure-only SCons run of a recipe may take, in seconds: a cold run on a
+# slow host takes minutes.
+_CONFIGURE_TIMEOUT = 1800
+
 # Where a recipe without a lock file configures its runtime variants, one pin each.
 _VARIANT_PINS = "_variant_pins"
 
@@ -191,7 +195,7 @@ def _configure_variants(ctx, command, variants):
     ctx.file(_VARIANT_PINS + "/configure.sh", "\n".join(lines + ["wait", ""]))
     ctx.execute(
         ["/bin/sh", _VARIANT_PINS + "/configure.sh"],
-        timeout = ctx.attr.configure_timeout,
+        timeout = _CONFIGURE_TIMEOUT,
         quiet = True,
     )
     return ["--variant-pins", str(ctx.path(_VARIANT_PINS))]
@@ -400,13 +404,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     descriptor = json.decode(ctx.read(ctx.path(ctx.attr.source)))
     if not _extract_sources(ctx, descriptor, _fail):
         return None
-    python = ctx.path(ctx.attr.python) if ctx.attr.python else ctx.which("python3")
-    if not python:
-        _fail(
-            "Godot source graph configuration needs Python 3.9+; " +
-            "set python to a declared executable label",
-        )
-        return None
+    python = ctx.path(ctx.attr._python)
     arguments = _recipe_arguments(ctx, descriptor)
     command = _host_command(ctx, python, arguments)
     error = _add_custom_modules(ctx, command, arguments)
@@ -417,7 +415,7 @@ def engine_build_impl(ctx, *, _fail = fail):
         command.extend(["--patch", str(ctx.path(patch))])
     variants = _variant_profiles(ctx, descriptor["version"])
     command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
-    result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True)
+    result = ctx.execute(command, timeout = _CONFIGURE_TIMEOUT, quiet = True)
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None

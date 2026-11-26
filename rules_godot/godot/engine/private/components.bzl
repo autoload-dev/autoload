@@ -10,12 +10,13 @@ load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
 load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS", "engine_settings", "require_tunable_runtime")
 load("//godot/engine/private:prebuilt.bzl", "PrebuiltArtifactInfo")
-load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
+load("//godot/engine/private:registration.bzl", "component_toolchains")
+load("//godot/engine/private:resolution.bzl", "RUNTIME_TOOLCHAIN_TYPE", "engine_toolchain")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "ANDROID_PAYLOAD_ASPECTS")
 load("//godot/platforms/private:ios_runtime_bridge.bzl", "IOS_PAYLOAD_ASPECTS")
 load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private:versions.bzl", "require_supported_godot_version", "require_supported_source_version")
-load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "CPU_TABLE", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
+load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
 
@@ -283,33 +284,11 @@ resolved_runtime = rule(
 
 # ==== Component macros ========================================================
 
-_VARIANT_SETTINGS = {
-    "debug": Label("//godot:debug"),
-    "release": Label("//godot:release"),
-}
+def _provenance_engine(engine, default_engine):
+    """The engine a component's provenance names: none for the default engine, as packs record it."""
+    return "" if default_engine else engine
 
-_ENGINE_FLAG = Label("//godot:engine")
-
-_DEFAULT_ENGINE = Label("//godot:default_engine")
-
-def _engine_setting(name, engine, visibility, tags):
-    """
-    Return the setting a component's toolchain requires: its engine is the selected one.
-
-    A component that names no engine belongs to the default engine; a named one gets its
-    own `<name>.engine` setting on --@autoload_rules_godot//godot:engine.
-    """
-    if not engine:
-        return _DEFAULT_ENGINE
-    native.config_setting(
-        name = name + ".engine",
-        flag_values = {_ENGINE_FLAG: engine},
-        visibility = visibility,
-        tags = tags,
-    )
-    return ":%s.engine" % name
-
-def _editor_macro_impl(name, visibility, editor, platform, cpu, version, origin, engine, tags):
+def _editor_macro_impl(name, visibility, editor, platform, cpu, version, origin, engine, default_engine, tags):
     _editor_component(
         name = name,
         editor = editor,
@@ -317,16 +296,18 @@ def _editor_macro_impl(name, visibility, editor, platform, cpu, version, origin,
         cpu = cpu,
         version = version,
         origin = origin,
-        engine = engine,
+        engine = _provenance_engine(engine, default_engine),
         visibility = visibility,
         tags = tags,
     )
-    native.toolchain(
-        name = name + ".toolchain",
-        toolchain = ":" + name,
-        toolchain_type = EDITOR_TOOLCHAIN_TYPE,
-        exec_compatible_with = [OPERATING_SYSTEM_CONSTRAINTS[platform], CPU_CONSTRAINTS[cpu]],
-        target_settings = [_engine_setting(name, engine, visibility, tags)],
+    component_toolchains(
+        name = name,
+        component = ":" + name,
+        role = "editor",
+        platform = platform,
+        cpu = cpu,
+        engine = engine,
+        default_engine = default_engine,
         visibility = visibility,
         tags = tags,
     )
@@ -348,13 +329,8 @@ def runtime_slot_error(name, platform, environment, _fail = fail):
         _fail("%s: environment is only valid for iOS runtimes" % name)
         return
 
-_WITHOUT_BUILD_PROFILE = Label("//godot/private:runtime_without_profile")
-
-def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, without_build_profile, tags):
+def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, version, environment, origin, digest, engine, default_engine, untuned_only, tags):
     runtime_slot_error(name, platform, environment)
-    constraints = [OPERATING_SYSTEM_CONSTRAINTS[platform], CPU_CONSTRAINTS[cpu]]
-    if environment:
-        constraints.append(ENVIRONMENT_CONSTRAINTS[environment])
     component = {
         "android": _android_runtime_component,
         "ios": _ios_runtime_component,
@@ -369,21 +345,23 @@ def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, versi
         version = version,
         origin = origin,
         digest = digest,
-        engine = engine,
+        engine = _provenance_engine(engine, default_engine),
         visibility = visibility,
         tags = tags,
     )
-    native.toolchain(
-        name = name + ".toolchain",
-        toolchain = ":" + name,
-        toolchain_type = RUNTIME_TOOLCHAIN_TYPE,
-        tags = tags,
-        target_compatible_with = constraints,
-        target_settings = [
-            _VARIANT_SETTINGS[variant],
-            _engine_setting(name, engine, visibility, tags),
-        ] + ([_WITHOUT_BUILD_PROFILE] if without_build_profile else []),
+    component_toolchains(
+        name = name,
+        component = ":" + name,
+        role = "runtime",
+        platform = platform,
+        cpu = cpu,
+        environment = environment,
+        variant = variant,
+        engine = engine,
+        default_engine = default_engine,
+        untuned_only = untuned_only,
         visibility = visibility,
+        tags = tags,
     )
 
 _COMMON = {
@@ -407,6 +385,14 @@ _COMMON = {
         Name of the engine the slot belongs to; the component fills it only in builds whose
         --@autoload_rules_godot//godot:engine names that engine. Empty, the default, joins the
         default engine, which builds use when the flag is empty.
+        """,
+        configurable = False,
+    ),
+    "default_engine": attr.bool(
+        doc = """
+        Whether the named engine is also the default engine, so the component also fills
+        its slot in builds that name no engine, as the default engine of godot_engines
+        does.
         """,
         configurable = False,
     ),
@@ -448,11 +434,6 @@ godot_editor_component = macro(
       - purpose: analysis_boundary
       - visibility: caller
       - testonly: inherit
-    - `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
-      - purpose: analysis_boundary
-      - visibility: caller
-      - testonly: inherit
-      - availability: engine named
     """,
     implementation = _editor_macro_impl,
     attrs = _COMMON | {
@@ -505,11 +486,6 @@ godot_runtime_component = macro(
       - purpose: analysis_boundary
       - visibility: caller
       - testonly: inherit
-    - `{name}.engine` (metadata): the config_setting on --@autoload_rules_godot//godot:engine that the toolchain requires for a named engine
-      - purpose: analysis_boundary
-      - visibility: caller
-      - testonly: inherit
-      - availability: engine named
     """,
     implementation = _runtime_macro_impl,
     attrs = _COMMON | {
@@ -542,11 +518,13 @@ godot_runtime_component = macro(
             """,
             configurable = False,
         ),
-        "without_build_profile": attr.bool(
+        "untuned_only": attr.bool(
             doc = """
-            Serve only applications without a `build_profile`, as a prebuilt runtime does,
-            which cannot leave classes out. A source-built component of the same slot
-            registered after it then serves the applications with one.
+            Serve only builds whose runtime needs no tuning, as a prebuilt runtime does,
+            which can neither leave classes out nor compile otherwise: the application has
+            no `build_profile`, and the runtime compiles outside `-c opt` or with the default
+            engine optimization. A source-built component of the same slot registered after
+            it then serves the other builds.
             """,
             configurable = False,
         ),

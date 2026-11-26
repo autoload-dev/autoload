@@ -2,8 +2,9 @@
 The rules of source recipe pins that generated engine repositories declare.
 
 A recipe repository declares `:pin`, the action that configures its recipe on an execution
-platform Godot accepts for it, and a source build's hub declares `:pin`, which merges its
-recipes' pins into the lock file. Generated repositories with consumer-chosen names load
+platform Godot accepts for it, and an engine's hub declares `:pin`, which merges its
+recipes' pins into the lock file, and `:pin_<platform>` for each platform, which merges one
+platform's into it and keeps the others. Generated repositories with consumer-chosen names load
 this file, so its load visibility is public.
 """
 
@@ -59,11 +60,18 @@ if [[ -z "${{BUILD_WORKSPACE_DIRECTORY:-}}" ]]; then
   exit 1
 fi
 runfiles="${{RUNFILES_DIR:-$0.runfiles}}"
+export RUNFILES_DIR="$runfiles"
 mkdir -p "$(dirname "$BUILD_WORKSPACE_DIRECTORY/{lock}")"
-cp "$runfiles/{merged}" "$BUILD_WORKSPACE_DIRECTORY/{lock}"
+{write}
 chmod 644 "$BUILD_WORKSPACE_DIRECTORY/{lock}"
 echo "Pinned {count} recipes and runtime variants in {lock}"
 """
+
+# Replaces the lock file with every recipe's pins.
+_REPLACE = 'cp "$runfiles/{merged}" "$BUILD_WORKSPACE_DIRECTORY/{lock}"'
+
+# Merges some recipes' pins into the lock file and keeps the others.
+_UPDATE = '"$runfiles/{tool}" update --lock "$BUILD_WORKSPACE_DIRECTORY/{lock}" --pins "$runfiles/{merged}"'
 
 def _engine_pin_impl(ctx):
     merged = ctx.actions.declare_file(ctx.label.name + ".lock.json")
@@ -84,26 +92,37 @@ def _engine_pin_impl(ctx):
         progress_message = "Merging the recipe pins of %{label}",
     )
     launcher = ctx.actions.declare_file(ctx.label.name + ".sh")
-    ctx.actions.write(launcher, _LAUNCHER.format(
+    tool = ctx.attr._update[DefaultInfo]
+    write = (_UPDATE if ctx.attr.partial else _REPLACE).format(
         lock = ctx.attr.lock,
         merged = runfile_key(ctx, merged),
+        tool = runfile_key(ctx, ctx.executable._update),
+    )
+    ctx.actions.write(launcher, _LAUNCHER.format(
+        lock = ctx.attr.lock,
+        write = write,
         count = len(ctx.attr.recipes) + len(ctx.attr.variants),
     ), is_executable = True)
+    runfiles = ctx.runfiles(files = [merged])
+    if ctx.attr.partial:
+        runfiles = runfiles.merge(tool.default_runfiles)
     return [DefaultInfo(
         executable = launcher,
         files = depset([merged]),
-        runfiles = ctx.runfiles(files = [merged]),
+        runfiles = runfiles,
     )]
 
 godot_engine_pin = rule(
-    doc = "Pin every recipe of a source build into its lock file: bazel run @<hub>//:pin.",
+    doc = "Pin an engine's recipes into its lock file: bazel run @<hub>//:pin, or :pin_<platform> for one platform's.",
     implementation = _engine_pin_impl,
     executable = True,
     attrs = {
         "recipes": attr.label_keyed_string_dict(doc = "Each recipe's :pin target and its key in the lock file."),
         "variants": attr.label_keyed_string_dict(doc = "Each runtime variant's :pin target, with its recipe's key and its runtime profile as a JSON list."),
         "lock": attr.string(doc = "Path of the lock file relative to the workspace root.", mandatory = True),
+        "partial": attr.bool(doc = "Whether the recipes are some of the lock file's, whose other pins it keeps."),
         "_pin": attr.label(default = _PIN_TOOL, cfg = "exec", executable = True),
+        "_update": attr.label(default = _PIN_TOOL, cfg = "target", executable = True),
     },
 )
 

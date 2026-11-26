@@ -1,5 +1,5 @@
 """
-Bzlmod setup of Godot engines (prebuilt releases, sources and source builds) and of
+Bzlmod setup of Godot engines, from their sources or prebuilt binaries, and of
 experimental Android toolchains for each execution platform.
 
 Sections: godot_engines, godot_android_toolchains.
@@ -8,13 +8,12 @@ Sections: godot_engines, godot_android_toolchains.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 load("//godot/engine/private:archives.bzl", "godot_editor_archive", "godot_export_templates_archive")
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
-load("//godot/engine/private:hub.bzl", "engine_hub")
+load("//godot/engine/private:hub.bzl", "engine_hub", "engine_toolchains")
 load(
     "//godot/engine/private:repositories.bzl",
     "godot_android_shell",
     "godot_engine_build",
     "godot_engine_source",
-    "godot_engine_source_build",
 )
 load(
     "//godot/platforms/private:android_toolchains.bzl",
@@ -24,22 +23,57 @@ load(
 
 # ==== godot_engines ===========================================================
 
-_ENGINE_ATTR = attr.string(doc = """
-    Name of the engine the hub's components belong to, such as `simulation`; targets select
-    it with their `engine` attribute, such as `engine = "simulation"`, or a build with
-    `--@autoload_rules_godot//godot:engine=simulation`, and only then do these components fill
-    slots. Empty, the default, joins the default engine.
-    """)
+_ENGINE_REFERENCE_ATTR = attr.string(
+    doc = "Name of the engine this tag completes, as its godot_engines.engine names it.",
+    mandatory = True,
+)
 
-_PREBUILT_ATTRS = {
+_ENGINE_ATTRS = {
     "name": attr.string(
-        doc = "Hub repository name; editor and template repositories use it as prefix.",
+        doc = """
+        Name of the engine: targets select it with their `engine` attribute, such as
+        `engine = "simulation"`. It also names the engine's hub repository, `@<name>`, which
+        `register_toolchains("@<name>//toolchains:all")` registers, prefixes its other
+        repositories and is the build name the engines built from source report in their
+        version, such as 4.7.2.stable.simulation. Letters, digits and underscores, starting
+        with a letter.
+        """,
         mandatory = True,
     ),
     "version": attr.string(
-        doc = "Exact canonical Godot version, such as 4.7.2 or 4.8.0-beta1.",
+        doc = """
+        Exact canonical Godot version, such as 4.7.2 or 4.8.0-beta1. A catalogued version
+        brings Godot's official sources and, without a build tag, its official editors,
+        export templates and Android shell.
+        """,
         mandatory = True,
     ),
+    "default": attr.bool(doc = """
+        Whether targets that name no engine take this one; it can still be named. The root
+        module's default engine wins; a dependency's counts only when the root module names
+        none, and at most one engine is the default.
+        """),
+    "lock_file": attr.label(doc = """
+        Optional lock file that pins the build graph of every recipe built from source, such
+        as `//engines/simulation:simulation.lock.json`. With it, no recipe is configured on
+        this host; `bazel run @<name>//:pin` writes it, configuring each recipe on an
+        execution platform Godot accepts, such as a remote Linux executor for Linux recipes.
+        """),
+}
+
+_SOURCE_ATTRS = {
+    "engine": _ENGINE_REFERENCE_ATTR,
+    "urls": attr.string_list(doc = "Ordered mirror URLs of the same source archive.", mandatory = True),
+    "sha256": attr.string(doc = "SHA-256 digest of the archive.", mandatory = True),
+    "strip_prefix": attr.string(doc = "Top-level directory removed on extraction."),
+    "version": attr.string(doc = """
+        Canonical Godot version of the sources as their version.py names it, such as
+        4.8.0-beta for the sources of 4.8.0-beta1; empty takes the engine's version.
+        """),
+}
+
+_BINARIES_ATTRS = {
+    "engine": _ENGINE_REFERENCE_ATTR,
     "editor_urls": attr.string_list_dict(
         doc = "Editor archive URLs by editor platform, such as linux_x86_64, linux_arm64, macos (universal), macos_arm64 or macos_x86_64; replaces the catalogue's editors.",
     ),
@@ -76,42 +110,10 @@ _PREBUILT_ATTRS = {
     "android_debug_shell_integrity": attr.string(
         doc = "Subresource Integrity digest of the AAR in android_debug_shell_urls.",
     ),
-    "source_runtimes": attr.bool(
-        doc = """
-            Build runtimes from the release's sources: the runtime slots the prebuilt
-            artifacts lack, such as the arm64 iOS simulator runtimes of 4.7.2 or the Android
-            debug runtimes, and, for applications with a `build_profile`, which a prebuilt
-            runtime cannot apply, every runtime slot. Each recipe is configured and compiled
-            only when a build selects its slot. Catalogued versions with pinned sources only;
-            none when templates_urls or editor_urls pin a fork's artifacts, and no Android
-            runtimes when android_shell_urls does.
-            """,
-        default = True,
-    ),
-    "engine": _ENGINE_ATTR,
 }
 
-_SOURCE_ATTRS = {
-    "name": attr.string(doc = "Repository name; source_build tags name its `:source.json`.", mandatory = True),
-    "urls": attr.string_list(doc = "Ordered mirror URLs of the same archive.", mandatory = True),
-    "sha256": attr.string(doc = "SHA-256 digest of the archive.", mandatory = True),
-    "strip_prefix": attr.string(doc = "Top-level directory removed on extraction."),
-    "version": attr.string(
-        doc = "Canonical Godot version of the sources, as their version.py names it.",
-        mandatory = True,
-    ),
-}
-
-_SOURCE_BUILD_ATTRS = {
-    "name": attr.string(doc = "Hub repository name and prefix of the recipe repositories.", mandatory = True),
-    "source": attr.label(
-        doc = "The `:source.json` of a godot_engines.source or godot_engine_source repository.",
-        mandatory = True,
-    ),
-    "platforms": attr.string_list(doc = "Nonempty list of linux, macos, android or ios.", mandatory = True),
-    "cpus": attr.string_list(doc = "Optional arm64/x86_64 filter; empty selects all."),
-    "build_targets": attr.string_list(doc = "Optional editor/template_debug/template_release filter; empty selects all."),
-    "ios_environments": attr.string_list(doc = "Optional device/simulator filter for iOS rows; empty selects both."),
+_BUILD_ATTRS = {
+    "engine": _ENGINE_REFERENCE_ATTR,
     "enabled_modules": attr.string_list(
         doc = "Enabled Godot modules and their default, as for godot_engine_build.",
     ),
@@ -131,15 +133,22 @@ _SOURCE_BUILD_ATTRS = {
         doc = "Godot's rendering methods every recipe's engine runs, as for godot_engine_build.",
     ),
     "build_options": attr.string_dict(doc = "Upstream configure options, as for godot_engine_build."),
-    "build_name": attr.string(doc = "Build name the engines report in their version.", default = "custom"),
-    "python": attr.label(doc = "Optional declared Python for configure-only graph capture.", allow_single_file = True),
-    "configure_timeout": attr.int(doc = "Maximum configure duration per recipe, in seconds.", default = 600),
-    "engine": _ENGINE_ATTR,
-    "lock_file": attr.label(doc = """
-        Optional lock file that pins every recipe's build graph, such as
-        `//engines:godot_custom.lock.json`. With it, no recipe is configured on this host;
-        `bazel run @<name>//:pin` writes it, configuring each recipe on an execution platform
-        Godot accepts, such as a remote Linux executor for Linux recipes.
+}
+
+_EDITOR_ATTRS = {
+    "engine": _ENGINE_REFERENCE_ATTR,
+    "enabled_modules": attr.string_list(doc = """
+        Enabled Godot modules of the engine's editors, which replace the build tag's
+        enabled_modules and default_modules for them; empty keeps the build tag's.
+        """),
+    "default_modules": attr.bool(doc = """
+        Also enable every module Godot enables by default in the engine's editors; with
+        enabled_modules, it replaces the build tag's module selection for them.
+        """),
+    "build_options": attr.string_dict(doc = """
+        Upstream configure options of the engine's editors, which replace the build tag's
+        build_options for them, such as without its template-only options; empty keeps the
+        build tag's.
         """),
 }
 
@@ -153,25 +162,27 @@ _RUNTIME_PROFILE_ATTRS = {
         allow_single_file = [".gdbuild"],
     ),
     "engine": attr.string(doc = """
-        Name of the engine whose source recipes build the variant, as the engine of a
-        godot_engines tag; empty for the default engine.
+        Name of the engine whose source recipes build the variant, as its
+        godot_engines.engine names it; empty for the default engine.
         """),
 }
 
 _ENGINE_TAG_ATTRIBUTES = {
-    "prebuilt": _PREBUILT_ATTRS.keys(),
+    "engine": _ENGINE_ATTRS.keys(),
     "source": _SOURCE_ATTRS.keys(),
-    "source_build": _SOURCE_BUILD_ATTRS.keys(),
+    "binaries": _BINARIES_ATTRS.keys(),
+    "build": _BUILD_ATTRS.keys(),
+    "editor": _EDITOR_ATTRS.keys(),
 }
 
 # The repository rules and macros that plan_engines declarations name.
 _ENGINE_RULES = {
     "engine_hub": engine_hub,
+    "engine_toolchains": engine_toolchains,
     "godot_android_shell": godot_android_shell,
     "godot_editor_archive": godot_editor_archive,
     "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,
-    "godot_engine_source_build": godot_engine_source_build,
     "godot_export_templates_archive": godot_export_templates_archive,
     "http_file": http_file,
 }
@@ -186,73 +197,76 @@ def _engines_impl(module_ctx):
 
 godot_engines = module_extension(
     doc = """
-    Declare Godot engines and generate their registration hubs.
+    Register Godot engines and generate their registration hubs.
 
-    The prebuilt tag acquires one version's editors and export templates, from the
-    built-in catalogue or from explicit pins, and generates a hub whose `toolchains`
-    package declares one public component per slot. The source tag acquires an immutable
-    source archive; the source_build tag builds source recipes from it for the slots it selects and generates a hub
-    of the same layout. Register hubs from the root module; registration order decides
-    between candidates for the same slot. Hubs use only public primitives: the archive,
-    source and recipe repository rules and the component macros. Downloads and
-    configuration happen only for payloads a build requests.
+    An engine is one `engine` tag, completed by the `source`, `binaries`, `build`, `editor`
+    and `runtime_profile` tags that name it. What it can do follows from what it has:
+
+    | Tags | Prebuilt binaries | Built from source |
+    | --- | --- | --- |
+    | `engine` of a catalogued version | Godot's official ones | the slots they lack, and every runtime of an application with a build profile or of an optimized release |
+    | + `build` | none of the catalogue's | every slot |
+    | + `binaries` | these, which match the engine's sources and build | as above, beside them; with pinned editors or templates, a fork's, only from a `source` tag's sources |
+    | + `source` | as above | from these sources instead of the catalogue's |
+    | `binaries` of an uncatalogued version, no `source` | these | none: build profiles fail analysis, and engine optimization leaves the binaries unchanged |
+
+    Each engine's hub `@<name>` has one component per slot in its `toolchains` package:
+    an editor per editor platform and a runtime per platform, CPU, iOS environment and
+    variant. The extension also generates `@godot_engines_toolchains`, the toolchains of
+    every engine's components, which rules_godot's own module registers: a module that
+    registers an engine registers no toolchains itself. A root module's own registrations
+    and `--extra_toolchains` come first; `@<name>//toolchains:all` registers one engine
+    alone. Downloads and configuration happen only for payloads a build requests, so slots
+    of platforms a build never targets cost nothing.
 
     Example (MODULE.bazel):
     ```starlark
     godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-    godot_engines.prebuilt(name = "godot_prebuilt", version = "4.7.2")
-    godot_engines.source(
-        name = "godot_sources",
-        sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
-        strip_prefix = "godot-4.7.2-stable",
-        urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
+
+    # Godot's official 4.7.2, which targets without an engine take.
+    godot_engines.engine(name = "godot", version = "4.7.2", default = True)
+
+    # The same release's sources with a module of the game's own.
+    godot_engines.engine(
+        name = "simulation",
         version = "4.7.2",
+        lock_file = "//engines/simulation:simulation.lock.json",
     )
-    godot_engines.source_build(
-        name = "godot_source_build",
-        platforms = ["ios"],
-        source = "@godot_sources//:source.json",
-    )
-    use_repo(godot_engines, "godot_source_build", "godot_prebuilt", "godot_sources")
-    register_toolchains(
-        "@godot_source_build//toolchains:all",  # wins for the iOS slots it covers
-        "@godot_prebuilt//toolchains:all",
+    godot_engines.build(
+        engine = "simulation",
+        custom_modules = {"//engines/simulation/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+        enabled_modules = ["gdscript", "text_server_fb", "reaction_diffusion"],
     )
     ```
 
-    A root request owns its name; identical dependency requests share repositories and
-    conflicting ones fail. See [engines](../../engine.md).
+    A module completes only the engines it registers. A root request owns its name;
+    identical dependency requests share repositories and conflicting ones fail. See
+    [engines](../../engine.md).
 
     ### Default outputs
     - repository (none): repository creation; generated entrypoints described above
 
     ### Generated targets
     - `@{repository}//toolchains:editor_{platform}_{cpu}` (files): the editor component of one editor slot; register the package with :all
-      - prerequisites: editor archive for the editor platform
+      - prerequisites: editor archive for the editor platform, or the engine's sources
     - `@{repository}//toolchains:runtime_linux_{cpu}_{variant}` (files): the Linux runtime component of one runtime slot
-      - prerequisites: template archive contains the slot
+      - prerequisites: template archive contains the slot, or the engine's sources
       - availability: desktop
     - `@{repository}//toolchains:runtime_macos_{cpu}_{variant}` (files): the macOS runtime component of one runtime slot
-      - prerequisites: template archive contains the slot
+      - prerequisites: template archive contains the slot, or the engine's sources
       - availability: desktop
     - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-      - prerequisites: template archive contains the slot, or source_runtimes with catalogued sources
+      - prerequisites: template archive contains the slot, or the engine's sources
       - availability: ios
     - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-      - prerequisites: Android shell AAR pinned, or source_runtimes with catalogued sources
+      - prerequisites: Android shell AAR pinned, or the engine's sources
       - availability: android_shell
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-      - prerequisites: Android shell library pinned, a source build with Android rows, or source_runtimes with catalogued sources
+      - prerequisites: Android shell library pinned, or the engine's sources
       - availability: android_shell
     - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
-      - prerequisites: Android shell library pinned or a source build with Android rows
+      - prerequisites: Android shell library pinned, or the engine's sources
       - availability: android_shell
-    - `@{repository}//:source.json` (files): the descriptor of a source tag, for source_build tags and godot_engine_build recipes
-      - prerequisites: source tag
-      - availability: source
-    - `@{repository}//:{archive}` (files): the archive of a source tag
-      - prerequisites: source tag
-      - availability: source
     - `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone, ahead of or instead of the whole set
       - purpose: analysis_boundary
     - `@{repository}//toolchains:runtime_linux_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set
@@ -270,23 +284,45 @@ godot_engines = module_extension(
     """,
     implementation = _engines_impl,
     tag_classes = {
-        "prebuilt": tag_class(
+        "engine": tag_class(
             doc = """
-            Acquire one version's prebuilt editors and export templates and generate a hub.
-            Catalogued versions need only version; explicit pins replace catalogue entries.
+            Register an engine by name and Godot version. A catalogued version needs no other
+            tag: its official binaries and sources come with it.
             """,
-            attrs = _PREBUILT_ATTRS,
+            attrs = _ENGINE_ATTRS,
         ),
         "source": tag_class(
-            doc = "Acquire one immutable source archive, as godot_engine_source does.",
+            doc = """
+            Build an engine from these sources instead of the catalogue's, such as a fork's
+            immutable archive. An uncatalogued version needs them to build from source.
+            """,
             attrs = _SOURCE_ATTRS,
         ),
-        "source_build": tag_class(
+        "binaries": tag_class(
             doc = """
-            Build one source build and generate its hub, as godot_engine_source_build does:
-            one source recipe and one component per valid slot the filters select.
+            Take an engine's prebuilt editors, export templates or Android shells from these
+            pins, each replacing the catalogue's. Declaring them states that they match the
+            engine's sources and build, such as a fork's release artifacts; slots they lack
+            are built from source. Pinned editors or templates are a fork's, so only a source
+            tag's sources build beside them, never the catalogue's.
             """,
-            attrs = _SOURCE_BUILD_ATTRS,
+            attrs = _BINARIES_ATTRS,
+        ),
+        "build": tag_class(
+            doc = """
+            Build an engine's recipes with this policy instead of the modules of Godot's
+            official builds. The catalogue's binaries then no longer serve the engine: every
+            slot its binaries tag does not pin is built from source.
+            """,
+            attrs = _BUILD_ATTRS,
+        ),
+        "editor": tag_class(
+            doc = """
+            Build an engine's editors with other modules or options than its runtimes, such
+            as a fuller editor beside reduced runtimes. Patches and custom modules stay the
+            build tag's.
+            """,
+            attrs = _EDITOR_ATTRS,
         ),
         "runtime_profile": tag_class(
             doc = """

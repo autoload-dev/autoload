@@ -1,5 +1,7 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
+load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
 load(":context.bzl", "no_project")
 load(":flags.bzl", "bool_value", "string_flag")
 
@@ -124,12 +126,43 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-# The runtime an application packages has no build profile. A prebuilt runtime cannot
-# leave classes out, so where a hub builds the slot from source too, its prebuilt component
-# requires this and the source-built one registered after it serves the others.
+# The runtime an application packages needs no tuning: it has no build profile, and it
+# compiles outside -c opt or with the default engine optimization. A prebuilt runtime can
+# neither leave classes out nor compile otherwise, so where a hub builds the slot from
+# source too, its prebuilt component requires :untuned, one of these, and the source-built
+# one registered after it serves the other builds.
 config_setting(
-    name = "runtime_without_profile",
+    name = "untuned_fastbuild",
     flag_values = {":build_profile_label": ""},
+    values = {"compilation_mode": "fastbuild"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "untuned_dbg",
+    flag_values = {":build_profile_label": ""},
+    values = {"compilation_mode": "dbg"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "untuned_defaults",
+    flag_values = {
+        ":build_profile_label": "",
+        "//godot:engine_optimize": OPTIMIZE_DEFAULT,
+        "//godot:engine_lto": LTO_DEFAULT,
+        "//godot:engine_vfe": str(VFE_DEFAULT),
+    },
+    visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    name = "untuned",
+    match_any = [
+        ":untuned_fastbuild",
+        ":untuned_dbg",
+        ":untuned_defaults",
+    ],
     visibility = ["//visibility:public"],
 )
 

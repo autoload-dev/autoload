@@ -1,14 +1,12 @@
 """
 Engine acquisition: immutable sources and configure-only source recipes.
 
-godot_engines declares these repositories through its source and source_build tags; the
-ruleset's own test fixtures also declare them directly.
+godot_engines declares these repositories for each engine it registers; the ruleset's own
+test fixtures also declare them directly.
 
-Sections: Repository rules, godot_engine_source_build.
+Sections: Repository rules.
 """
 
-load("//godot/engine/private:hub.bzl", "engine_hub")
-load("//godot/engine/private:source_build_rows.bzl", "source_build_declarations")
 load(
     "//godot/engine/private:source_repositories.bzl",
     "android_shell_impl",
@@ -77,7 +75,7 @@ godot_engine_build = repository_rule(
     applies the patches, adds the modules and captures the upstream build graph; SCons
     never compiles. Compilation runs later as Bazel actions, only for the outputs a build
     requests. The recipe registers nothing: name its outputs as component payloads.
-    Fetching needs host Python 3.9+ (or the python attribute), patch when patches are
+    Fetching runs rules_python's Python 3.14, needs patch when patches are
     supplied, and the target operating system's SDK. Bazel's repo contents cache, local
     or remote (--experimental_remote_repo_contents_cache), reuses Android, iOS and macOS
     recipes; Linux recipes configure on every host, because Godot enables Linux features
@@ -197,17 +195,6 @@ godot_engine_build = repository_rule(
             """,
             default = "custom",
         ),
-        "python": attr.label(
-            doc = """
-            Optional declared Python executable for configure-only graph translation;
-            otherwise uses python3 on PATH (Python 3.9+).
-            """,
-            allow_single_file = True,
-        ),
-        "configure_timeout": attr.int(
-            doc = "Maximum configure-only subprocess duration in seconds.",
-            default = 600,
-        ),
         "lock_file": attr.label(
             doc = """
             The lock file that pins this recipe's build graph, as a source build's lock_file
@@ -226,6 +213,7 @@ godot_engine_build = repository_rule(
         ),
         "repin": attr.string(doc = "The target that repins the lock file, named by a stale recipe's error."),
         "_configure": attr.label(default = Label("//tools/engine:configure.py")),
+        "_python": attr.label(default = Label("@python_3_14_host//:python")),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_generator": attr.label(default = Label("//godot/engine/private:generator.bzl")),
         "_module_graph": attr.label(default = Label("//tools/engine:module_graph.py")),
@@ -305,144 +293,3 @@ godot_android_shell = repository_rule(
         "_kotlin_core": attr.label(default = Label("@rules_kotlin//kotlin:core.bzl")),
     },
 )
-
-# ==== godot_engine_source_build ===============================================
-
-# The repository rules that source_build_declarations names.
-_SOURCE_BUILD_RULES = {
-    "engine_hub": engine_hub,
-    "godot_android_shell": godot_android_shell,
-    "godot_engine_build": godot_engine_build,
-}
-
-def godot_engine_source_build(
-        name,
-        source,
-        platforms,
-        cpus = [],
-        build_targets = [],
-        ios_environments = [],
-        enabled_modules = [],
-        default_modules = False,
-        custom_modules = {},
-        patches = [],
-        patch_strip = 1,
-        renderers = [],
-        build_options = {},
-        build_name = "custom",
-        python = None,
-        configure_timeout = 600,
-        lock_file = None,
-        engine = "",
-        version = "",
-        runtime_profiles = {}):
-    """
-    Declare a source build: its source recipes and its hub, from a module extension.
-
-    Call during a module extension's implementation; the helper declares repositories and
-    cannot run in BUILD files. It applies one build policy to the valid rows its filters
-    select: one godot_engine_build per row, named `<name>_<platform>_<cpu>[_<environment>]_<build_target>`,
-    for Android one godot_android_shell named `<name>_android_shell` with the same patches,
-    and the hub `<name>` with one component per slot in `@<name>//toolchains`, registered
-    through `@<name>//toolchains:all`. Common inputs apply to every row; declaring the
-    source build configures no recipe until a build requests its payload.
-
-    Example (an extension implementation):
-    ```starlark
-    godot_engine_source_build(
-        name = "godot_source_build",
-        source = "@godot_sources//:source.json",
-        platforms = ["macos", "ios"],
-        build_targets = ["editor", "template_release"],
-    )
-    ```
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//toolchains:editor_{platform}_{cpu}` (files): the editor component of one selected editor row
-      - prerequisites: editor row selected
-      - availability: editor
-    - `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}` (files): the runtime component of one selected Linux or macOS template row
-      - prerequisites: desktop row selected
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the runtime component of one selected iOS template row
-      - prerequisites: iOS row selected
-      - availability: ios
-    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the runtime component of one selected Android template row
-      - prerequisites: Android row selected
-      - availability: android
-    - `@{repository}//android:{variant}` (files): the Android runtime of one template variant: the source build's Android shell library with each CPU's engine library
-      - prerequisites: Android row selected
-      - availability: android
-    - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
-      - prerequisites: Android row selected
-      - availability: android
-    - `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone
-      - purpose: analysis_boundary
-      - availability: editor
-    - `@{repository}//toolchains:runtime_{platform}_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
-      - purpose: analysis_boundary
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain` (metadata): register one runtime slot alone
-      - purpose: analysis_boundary
-      - availability: ios
-    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone
-      - purpose: analysis_boundary
-      - availability: android
-
-    Args:
-        name: Hub repository name and the prefix of the generated repositories.
-        source: Label of the `:source.json` descriptor of a godot_engine_source repository.
-        platforms: Nonempty list of linux, macos, android or ios.
-        cpus: Optional arm64/x86_64 filter; empty selects every valid CPU.
-        build_targets: Optional editor/template_debug/template_release filter; empty selects all.
-        ios_environments: Optional device/simulator filter for iOS rows; empty selects both.
-        enabled_modules: As for godot_engine_build.
-        default_modules: As for godot_engine_build.
-        custom_modules: As for godot_engine_build.
-        patches: As for godot_engine_build; Android shell libraries apply them too.
-        patch_strip: As for godot_engine_build.
-        renderers: As for godot_engine_build.
-        build_options: As for godot_engine_build.
-        build_name: As for godot_engine_build.
-        python: As for godot_engine_build.
-        configure_timeout: As for godot_engine_build.
-        lock_file: Optional Label of the lock file that pins every recipe; see
-            godot_engines.source_build. The hub then declares `:pin`, which writes it.
-        engine: Name of the engine the hub's components belong to; empty joins the
-            default engine. See godot_engines.source_build.
-        version: Canonical Godot version of the sources, as their godot_engine_source
-            declares it; empty makes the hub read it from the source descriptor, which
-            fetches the source archive whenever the hub is registered.
-        runtime_profiles: Registered runtime profiles with build options, each label mapped
-            to its disabled_build_options as JSON; every runtime recipe declares a runtime
-            variant of each, as godot_engines' runtime_profile tags do.
-    """
-    common = {
-        "enabled_modules": enabled_modules,
-        "default_modules": default_modules,
-        "custom_modules": custom_modules,
-        "patches": patches,
-        "patch_strip": patch_strip,
-        "renderers": renderers,
-        "build_options": build_options,
-        "build_name": build_name,
-        "python": python,
-        "configure_timeout": configure_timeout,
-    }
-    for declaration in source_build_declarations(
-        name,
-        source,
-        platforms,
-        cpus,
-        build_targets,
-        ios_environments,
-        common,
-        lock_file = lock_file,
-        engine = engine,
-        version = version,
-        runtime_profiles = runtime_profiles,
-    ):
-        _SOURCE_BUILD_RULES[declaration.rule](**declaration.attrs)

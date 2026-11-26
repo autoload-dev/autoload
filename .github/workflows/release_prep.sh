@@ -37,9 +37,8 @@ if [ "$NAME" = autoload_rules_godot ]; then
     popd > /dev/null
     SETUP='
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.prebuilt(name = "godot", version = "4.7.2")
-use_repo(godot_engines, "godot")
-register_toolchains("@godot//toolchains:all")'
+godot_engines.engine(name = "godot", default = True, version = "4.7.2")
+'
 fi
 # A module that is not on the Bazel Central Registry resolves from this release's archive.
 if [ "$(field bcr)" != true ]; then

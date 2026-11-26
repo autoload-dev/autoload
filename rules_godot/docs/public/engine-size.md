@@ -1,7 +1,7 @@
 # Make the engine small
 
 Godot's official export templates contain every module, class and renderer, so the engine
-is often the largest part of an application. A [source build](engine.md#build-an-engine-from-source)
+is often the largest part of an application. An [engine built from source](engine.md#build-an-engine-from-source)
 contains only what you choose. This guide goes through the levers from the largest to the
 smallest effect. Each lever removes something your application might need, so run the
 whole game after each step.
@@ -27,11 +27,10 @@ Sizes are of the device executable without symbols, as an App Store build ships 
 
 ## Before you start
 
-Declare a [source build](engine.md#declare-a-source-build) for the platforms you ship, and
-build release applications with `-c opt`. The steps below change the `source_build` tag
-and, for step 5, build settings. Every recipe of a source build shares these choices; if
-two applications need different engines, give each its own source build and
-[name the engines](engine.md#name-an-engine).
+Give the engine a [`build` tag](engine.md#build-an-engine-from-source), and build release
+applications with `-c opt`. The steps below change the `build` tag and, for step 5, build
+settings. Every recipe of an engine shares these choices; if two applications need
+different engines, register each as its own [named engine](engine.md#name-an-engine).
 
 To compare steps, build the application with `-c opt` and compare what you ship: the APK or
 AAB, the `.app` or IPA, or the desktop archive. Compressed sizes tell you the download;
@@ -43,11 +42,8 @@ uncompressed sizes tell you install size, memory and load time.
 builds only `gdscript` and `text_server_fb`.
 
 ```starlark
-godot_engines.source_build(
-    name = "my_engine",
-    source = "@godot_sources//:source.json",
-    platforms = ["android", "ios"],
-    build_targets = ["template_release"],
+godot_engines.build(
+    engine = "my_engine",
     enabled_modules = ["gdscript", "text_server_fb", "freetype", "webp"],
 )
 ```
@@ -127,7 +123,9 @@ With `brotli = "no"`, Godot's default theme has no font, and text without a font
 project's own stays invisible. Set a TrueType or OpenType font as the project's default
 theme font before you turn it off.
 
-Editor recipes reject options that apply to templates only, such as `disable_3d`.
+Editor recipes reject options that apply to templates only, such as `disable_3d`: give
+the editors their own `build_options` with an
+[`editor` tag](engine.md#build-the-editors-differently).
 
 ## 4. Use a build profile
 
@@ -222,6 +220,12 @@ godot_app(
     engine_lto = "full",
 )
 ```
+
+These settings need a runtime built from source. An application of a catalogued engine
+without a `build` tag gets one too: under `-c opt` with settings other than the defaults,
+it takes the runtime the engine builds from the release's sources instead of the official
+template. An engine with binaries but no sources keeps its prebuilt runtimes and ignores
+the settings.
 
 The iOS engine from the start of this guide, after steps 1 to 3:
 

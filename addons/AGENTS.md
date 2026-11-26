@@ -33,7 +33,7 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
 - `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's
-  add-ons that registers the prebuilt engine, as applications do (RG020). Keep it using the
+  add-ons that registers the official engine, as applications do (RG020). Keep it using the
   module's public targets. In this repository it uses the rules beside it through
   `addons/bcr.bazelrc`; `python3 -m tools.ci.release_archive addons/<module>` runs it from
   the module's release archive, as the registry does.

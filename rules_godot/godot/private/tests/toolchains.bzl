@@ -8,7 +8,7 @@ A test selects in one of three ways, each for one kind of subject:
   A test that needs only them selects nothing; an analysis test merges `own_toolchains()`
   so that the caller's extra toolchains and execution platforms do not change what it
   analyzes.
-- A whole engine by name: another complete development engine, such as `@godot_beta`, is
+- A whole engine by name: another complete development engine, such as `@beta`, is
   registered under an engine name, and a test selects it with `--//godot:engine`, as a
   consumer selects a named engine. `DEVELOPMENT_ENGINES` lists them; the `engine` attribute
   of `configured_outputs` and of the compatibility tests' `engine_test` takes its keys.
@@ -50,7 +50,7 @@ ENGINE = str(Label("//godot:engine"))
 # registers and the engine name that selects it, empty for the default engine. Selection uses
 # the name only; `hub` serves the engine upgrade tests, which need its repository name.
 DEVELOPMENT_ENGINES = {
-    "beta": struct(hub = Label("@godot_beta//toolchains:all"), name = "beta"),
+    "beta": struct(hub = Label("@beta//toolchains:all"), name = "beta"),
     "stable": struct(hub = Label("@godot//toolchains:all"), name = ""),
 }
 

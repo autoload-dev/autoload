@@ -88,14 +88,6 @@ API_CASES = {
     },
     "//godot/engine:defs.bzl%godot_editor_component": {"target": _FIXTURES + "editor_component"},
     "//godot/engine:defs.bzl%godot_runtime_component": {"target": _FIXTURES + "runtime_component"},
-    "//godot/engine:defs.bzl%godot_editor_component#engine": {
-        "target": _FIXTURES + "editor_component_named",
-        "conditions": ["engine named"],
-    },
-    "//godot/engine:defs.bzl%godot_runtime_component#engine": {
-        "target": _FIXTURES + "runtime_component_named",
-        "conditions": ["engine named"],
-    },
     "//godot/platforms:defs.bzl%godot_export_platform": {"target": "//godot/platforms:linux_x86_64"},
     "//godot:app.bzl%godot_app": {
         "lane": "desktop",

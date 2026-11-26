@@ -39,9 +39,8 @@ _ATTRS = {
     "renderers": [],
     "build_options": {},
     "build_name": "custom",
-    "python": None,
-    "configure_timeout": 600,
     "_configure": "tools/engine/configure.py",
+    "_python": _PYTHON,
     "_module_graph": "tools/engine/module_graph.py",
     "_include_graph": "tools/engine/include_graph.py",
     "_render": "tools/engine/render.py",
@@ -253,27 +252,18 @@ def _test_environment_outside_ios_recipe_fails(env):
         ["watch"] * 10,
     )
 
-def _test_declared_python_runs_configure(env):
-    ctx, errors = _build(python = "@@python_3_12//:python3", which = {})
+# Configuration runs rules_python's interpreter, whatever Python the host's PATH has.
+def _test_rules_python_runs_configure(env):
+    ctx, errors = _build(which = {"python3": "/opt/bin/python3", "patch": _PATCH})
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_bool(_configure(ctx, "@@python_3_12//:python3") != None).equals(True)
-    ctx, errors = _build(which = {"python3": "/opt/bin/python3"})
-    env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_bool(_configure(ctx, "/opt/bin/python3") != None).equals(True)
+    env.expect.that_bool(_configure(ctx) != None).equals(True)
+    env.expect.that_bool(_configure(ctx, "/opt/bin/python3") != None).equals(False)
 
-def _test_missing_python_fails(env):
-    ctx, errors = _build(which = {})
-    env.expect.that_collection(errors).contains_exactly([
-        "Godot source graph configuration needs Python 3.9+; " +
-        "set python to a declared executable label",
-    ])
-    env.expect.that_collection(mocks.calls(ctx, "execute")).contains_exactly([])
-    env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
-
-def _test_configure_timeout_bounds_configure(env):
-    ctx, errors = _build(configure_timeout = 45)
+# Configuration ends after a fixed timeout.
+def _test_a_fixed_timeout_bounds_configure(env):
+    ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 45, "quiet": True})
+    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 1800, "quiet": True})
 
 def _test_failed_configure_fails(env):
     ctx, errors = _build(execute = {_PYTHON: {"return_code": 1, "stdout": "out", "stderr": "err"}})
@@ -422,9 +412,8 @@ def engine_build_test_suite(name):
             _test_custom_module_key_not_config_py_fails,
             _test_ios_recipe_without_environment_fails,
             _test_environment_outside_ios_recipe_fails,
-            _test_declared_python_runs_configure,
-            _test_missing_python_fails,
-            _test_configure_timeout_bounds_configure,
+            _test_rules_python_runs_configure,
+            _test_a_fixed_timeout_bounds_configure,
             _test_failed_configure_fails,
             _test_rejected_patch_stops_the_recipe,
             _test_a_lock_file_renders_without_configuring_on_this_host,

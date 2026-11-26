@@ -1,0 +1,66 @@
+# The source-built runtimes of the engine probe, composed from the recipes MODULE.bazel
+# declares: its tests add one with --extra_toolchains beside the registered engines'
+# editors. The default engine's runtimes name no engine; the beta's name the beta.
+
+load("//godot/engine:defs.bzl", "godot_runtime_component")
+load("//godot/platforms/private:android.bzl", "godot_android_runtime")
+
+package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+
+godot_android_runtime(
+    name = "android_release",
+    engine_library = select({"@platforms//cpu:aarch64": "@probe_android_arm64_template_release//:godot"}),
+    shell = "@probe_android_shell//:release.aar",
+    tags = ["manual"],
+)
+
+godot_runtime_component(
+    name = "android",
+    cpu = "arm64",
+    platform = "android",
+    runtime = ":android_release",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_runtime_component(
+    name = "ios",
+    cpu = "arm64",
+    environment = "simulator",
+    platform = "ios",
+    runtime = "@probe_ios_arm64_simulator_template_release//:engine_library",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.7.2",
+)
+
+godot_android_runtime(
+    name = "beta_android_release",
+    engine_library = select({"@platforms//cpu:aarch64": "@beta_probe_android_arm64_template_release//:godot"}),
+    shell = "@beta_probe_android_shell//:release.aar",
+    tags = ["manual"],
+)
+
+godot_runtime_component(
+    name = "beta_android",
+    cpu = "arm64",
+    engine = "beta",
+    platform = "android",
+    runtime = ":beta_android_release",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.8.0-beta",
+)
+
+godot_runtime_component(
+    name = "beta_ios",
+    cpu = "arm64",
+    engine = "beta",
+    environment = "simulator",
+    platform = "ios",
+    runtime = "@beta_probe_ios_arm64_simulator_template_release//:engine_library",
+    tags = ["manual"],
+    variant = "release",
+    version = "4.8.0-beta",
+)

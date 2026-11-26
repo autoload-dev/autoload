@@ -23,9 +23,9 @@ MODULE = textwrap.dedent("""
     toolchains.configure(ndk_api_level = 24)
 
     godot_engines = use_extension("//godot:extensions.bzl", "godot_engines")
-    godot_engines.prebuilt(name = "godot", version = "4.7.2")
+    godot_engines.engine(name = "godot", default = True, version = "4.7.2")
     godot_engines.source(
-        name = "godot_sources",
+        engine = "godot",
         sha256 = "abc",
         strip_prefix = "godot-4.7.2-stable",
         urls = ["https://example.com/godot.tar.gz"],
@@ -130,7 +130,7 @@ class PinsTest(unittest.TestCase):
         self.write(
             "tests",
             MODULE.format(fragment="1.8.6", name="tests", android="0.8.0")
-            + 'godot_engines.prebuilt(name = "godot_beta", version = "4.8.0-beta1")\n'
+            + 'godot_engines.engine(name = "beta", version = "4.8.0-beta1")\n'
             + 'http_file(name = "bundletool", sha256 = "x", urls = ["https://b"])\n',
         )
         self.assertEqual((0, ""), self.run_check())
@@ -176,13 +176,11 @@ class PinsTest(unittest.TestCase):
                 "android_sdk_repository_extension.configure:api_level": 35,
                 "android_sdk_repository_extension.configure:build_tools_version": "35.0.0",
                 "godot_android_toolchains.configure:ndk_api_level": 24,
-                "godot_engines.prebuilt:godot.version": "4.7.2",
-                "godot_engines.source:godot_sources.sha256": "abc",
-                "godot_engines.source:godot_sources.strip_prefix": "godot-4.7.2-stable",
-                "godot_engines.source:godot_sources.urls": [
-                    "https://example.com/godot.tar.gz"
-                ],
-                "godot_engines.source:godot_sources.version": "4.7.2",
+                "godot_engines.engine:godot.version": "4.7.2",
+                "godot_engines.source:godot.sha256": "abc",
+                "godot_engines.source:godot.strip_prefix": "godot-4.7.2-stable",
+                "godot_engines.source:godot.urls": ["https://example.com/godot.tar.gz"],
+                "godot_engines.source:godot.version": "4.7.2",
                 "http_archive:gdunit4.sha256": "def",
                 "http_archive:gdunit4.urls": ["https://example.com/gdunit.tar.gz"],
                 "godot_cpp_bindings:godot_cpp.api_path": "gdextension/extension_api-4-7.json",

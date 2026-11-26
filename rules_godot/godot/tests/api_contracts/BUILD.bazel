@@ -121,26 +121,6 @@ godot_runtime_component(
     version = "4.7.2",
 )
 
-# Components of a named engine, which also declare their <name>.engine setting.
-godot_editor_component(
-    name = "editor_component_named",
-    cpu = "x86_64",
-    editor = ":fake_editor",
-    engine = "contract",
-    platform = "linux",
-    version = "4.7.2",
-)
-
-godot_runtime_component(
-    name = "runtime_component_named",
-    cpu = "x86_64",
-    engine = "contract",
-    platform = "linux",
-    runtime = ":fake_editor",
-    variant = "release",
-    version = "4.7.2",
-)
-
 godot_pack(
     name = "reachable_pack",
     packing = "reachable",

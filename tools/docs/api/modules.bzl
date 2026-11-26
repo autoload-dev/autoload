@@ -43,6 +43,7 @@ CROSS_REPOSITORY_MODULES = {
     "//godot/engine/private:prebuilt.bzl": "Payload rules loaded by generated prebuilt archive BUILD files; requires cross-repository load access.",
     "//godot/engine/private:generator.bzl": "Implementation loaded by generated engine BUILD files; requires cross-repository load access.",
     "//godot/engine/private:pin.bzl": "Recipe pin rules loaded by generated engine and hub BUILD files; requires cross-repository load access.",
+    "//godot/engine/private:registration.bzl": "Toolchain registrations of engine components, loaded by the generated toolchains repository of godot_engines; requires cross-repository load access.",
     "//godot/extension/private:bindings.bzl": "Implementation loaded by generated godot-cpp BUILD files; requires cross-repository load access.",
     "//godot/private:adapter.bzl": "Test adapter macro of test framework modules such as autoload_gdunit, which load it across repositories; not supported API.",
     "//godot/private/testing:android_bundle_test.bzl": "Artifact test rule of the repository's consumer scenarios, which load it across repositories; not supported API.",
@@ -60,6 +61,7 @@ SUPPORT_MODULES = [
     "//godot/engine/private:components.bzl",
     "//godot/engine/private:extension_plan.bzl",
     "//godot/engine/private:hub.bzl",
+    "//godot/engine/private:engine_selection.bzl",
     "//godot/engine/private:source_repositories.bzl",
     "//godot/engine/private:optimization.bzl",
     "//godot/engine/private:selection.bzl",
@@ -123,6 +125,7 @@ SUPPORT_MODULES = [
 ]
 
 EXTERNAL_LOADS = [
+    "@bazel_skylib//lib:selects",
     "@bazel_skylib//rules:common_settings",
     "@bazel_skylib//rules:write_file",
     "@rules_android//rules:bzl",

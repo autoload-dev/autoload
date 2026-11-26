@@ -4,11 +4,11 @@ Pin source engine recipes: configure one recipe into its pin, or merge pins into
 `recipe` runs in a build action on an execution platform whose host Godot accepts for the
 recipe, such as a remote Linux executor for a Linux recipe. It extracts and patches the
 source archive as the recipe repository does, adds the repository's custom modules, and
-configures the result. `merge` writes the lock file a source build's `lock_file` names.
+configures the result. `merge` and `update` write the lock file an engine's `lock_file`
+names, as lock.py does.
 """
 
 import argparse
-import json
 import shutil
 import subprocess
 import sys
@@ -16,14 +16,15 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Any
 
 try:
     from . import configure
+    from .lock import merge, update
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import configure  # type: ignore[no-redef]
+    from lock import merge, update  # type: ignore[no-redef]
 
 
 def copy_tree(root: Path, files: list[str], destination: Path) -> None:
@@ -96,44 +97,6 @@ def recipe(arguments: argparse.Namespace, configure_arguments: list[str]) -> Non
         )
 
 
-def merge(arguments: argparse.Namespace) -> None:
-    """
-    Write the lock file of a source build's recipe pins.
-
-    Recipes of one build target share their generators whatever the platform or CPU, so
-    the lock stores each distinct generator list once, by its digest. A recipe's runtime
-    variants pin in the lock's variants table, by recipe and runtime profile.
-    """
-    generators: dict[str, object] = {}
-
-    def stored(path: str) -> dict[str, Any]:
-        pin = json.loads(Path(path).read_text())
-        shared = pin["graph"]["generators"]
-        reference = "sha256:" + configure.digest_of(shared)
-        generators[reference] = shared
-        pin["graph"]["generators"] = reference
-        return pin
-
-    recipes = {}
-    for declaration in arguments.recipe:
-        key, _, path = declaration.partition("=")
-        recipes[key] = stored(path)
-    variants: dict[str, dict[str, object]] = {}
-    for key, profile, path in arguments.variant:
-        variants.setdefault(key, {})[profile] = stored(path)
-    lock: dict[str, object] = {
-        "generators": dict(sorted(generators.items())),
-        "recipes": dict(sorted(recipes.items())),
-    }
-    if variants:
-        # Each recipe's runtime variants, by the label of their runtime profile.
-        lock["variants"] = {
-            key: dict(sorted(pins.items())) for key, pins in sorted(variants.items())
-        }
-    # Only the tables are sorted; one space per level keeps the lock small.
-    configure.write_json(Path(arguments.output), lock, indent=1)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
@@ -158,9 +121,18 @@ def main() -> None:
         metavar=("KEY", "PROFILE", "PIN"),
         help="a recipe's runtime variant: its key, runtime profile label and pin file",
     )
+    partial = commands.add_parser("update")
+    partial.add_argument(
+        "--lock", required=True, type=Path, help="The lock file to update."
+    )
+    partial.add_argument(
+        "--pins", required=True, type=Path, help="A merged partial lock."
+    )
     arguments, rest = parser.parse_known_args()
     if arguments.command == "recipe":
         recipe(arguments, rest)
+    elif arguments.command == "update":
+        update(arguments.lock, arguments.pins)
     else:
         merge(arguments)
 

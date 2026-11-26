@@ -1,4 +1,11 @@
-load("//godot/engine/private:optimization.bzl", "LTO_VALUES", "OPTIMIZE_VALUES")
+load(
+    "//godot/engine/private:optimization.bzl",
+    "LTO_DEFAULT",
+    "LTO_VALUES",
+    "OPTIMIZE_DEFAULT",
+    "OPTIMIZE_VALUES",
+    "VFE_DEFAULT",
+)
 load("//godot/private:flags.bzl", "bool_flag", "int_flag", "string_flag")
 
 package(default_visibility = ["//visibility:public"])
@@ -28,21 +35,21 @@ config_setting(
 # The optimization level of source-built engines under -c opt; see docs/public/engine.md.
 string_flag(
     name = "engine_optimize",
-    build_setting_default = "auto",
+    build_setting_default = OPTIMIZE_DEFAULT,
     values = OPTIMIZE_VALUES,
 )
 
 # Link-time optimization of source-built engines under -c opt; see docs/public/engine.md.
 string_flag(
     name = "engine_lto",
-    build_setting_default = "none",
+    build_setting_default = LTO_DEFAULT,
     values = LTO_VALUES,
 )
 
 # Virtual function elimination of source-built engines under -c opt; see docs/public/engine.md.
 bool_flag(
     name = "engine_vfe",
-    build_setting_default = False,
+    build_setting_default = VFE_DEFAULT,
 )
 
 # Whether source-built editors compile for a debugger: in Bazel's dbg mode, with debug

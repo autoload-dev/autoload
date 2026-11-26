@@ -66,6 +66,9 @@ use_repo(java_toolchains, "remote_java_tools")
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.14")
 
+# The host interpreter that configures source recipes during repository fetching.
+use_repo(python, "python_3_14_host")
+
 # Python targets of this module import only packages that have an __init__.py of their own.
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
@@ -91,10 +94,21 @@ register_toolchains(
 
 # ==== Godot engines ===========================================================
 
-# The ruleset's own development engines; consumers register their own sets.
+# Every engine a module registers with godot_engines has its toolchains in one repository,
+# which this module registers, so no module registers an engine's toolchains itself. A root
+# module's own registrations and --extra_toolchains come first.
+godot_engine_toolchains = use_extension("//godot:extensions.bzl", "godot_engines")
+use_repo(godot_engine_toolchains, "godot_engines_toolchains")
+
+register_toolchains("@godot_engines_toolchains//:all")
+
+# The ruleset's own development engines; consumers register their own.
 godot_engines = use_extension("//godot:extensions.bzl", "godot_engines", dev_dependency = True)
-godot_engines.prebuilt(
+
+# Godot's official 4.7.2, which targets that name no engine take.
+godot_engines.engine(
     name = "godot",
+    default = True,
     version = "4.7.2",
 )
 
@@ -105,17 +119,35 @@ godot_engines.prebuilt(
 # into exec configurations of their own; only builds that name the engine fetch its editor
 # and templates. The prerelease shell AAR is a GitHub release asset, not a catalogued Maven
 # artifact.
-godot_engines.prebuilt(
-    name = "godot_beta",
+godot_engines.engine(
+    name = "beta",
+    version = "4.8.0-beta1",
+)
+godot_engines.binaries(
     android_shell_integrity = "sha256-G1KpV92jFIn4OirzO17zy2euXFLyE40BSATgYs9MI5Y=",
     android_shell_urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-lib.4.8.beta1.template_release.aar"],
     engine = "beta",
-    version = "4.8.0-beta1",
+)
+use_repo(
+    godot_engines,
+    "beta",
+    "beta_templates_ios",
+    "godot",
+    "godot_editor_linux_arm64",
+    "godot_editor_linux_x86_64",
+    "godot_editor_macos",
 )
 
-# Sources of the white-box tests and API contract fixtures; fetched only when needed.
-godot_engines.source(
+# Sources of the white-box tests, the engine probe's recipes and API contract fixtures;
+# fetched only when needed.
+godot_engine_source = use_repo_rule(
+    "//godot/engine/private:repositories.bzl",
+    "godot_engine_source",
+)
+
+godot_engine_source(
     name = "godot_sources",
+    dev_dependency = True,
     sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
     strip_prefix = "godot-4.7.2-stable",
     urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
@@ -123,8 +155,9 @@ godot_engines.source(
 )
 
 # Next-minor compatibility probe; the archive's version.py names the unnumbered beta.
-godot_engines.source(
+godot_engine_source(
     name = "godot_sources_beta",
+    dev_dependency = True,
     sha256 = "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
     strip_prefix = "godot-4.8-beta1",
     urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-4.8-beta1.tar.xz"],
@@ -133,149 +166,134 @@ godot_engines.source(
 
 # A non-release snapshot of the 4.7 maintenance branch: an immutable commit archive whose
 # version.py names 4.7.3-rc, which the Android shell review checks.
-godot_engines.source(
+godot_engine_source(
     name = "godot_sources_snapshot",
+    dev_dependency = True,
     sha256 = "90ef5ad9f4c59750004813813534527eb3f82f1975789fb5b79b609fe841beb8",
     strip_prefix = "godot-2ea68c77c3157c95793987569dc44662fe4f83cf",
     urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
     version = "4.7.3-rc",
 )
 
-# The source-built engines of //godot/platforms/private/tests/engine_probe, which selects
-# each with a test transition; not registered, so only those tests fetch and build them.
-# Android and iOS differ in renderer options and modules; the beta builds add the ruleset's
-# own bazel_probe module and engine patch, and join the beta engine, whose other slots they
-# take from @godot_beta.
-godot_engines.source_build(
-    name = "godot_source_build_android",
-    build_options = {
-        "vulkan": "no",
-        "opengl3": "yes",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
-    },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
-    platforms = ["android"],
+# The source-built runtimes of //godot/platforms/private/tests/engine_probe, which its
+# engines package composes into components and its tests add with --extra_toolchains;
+# beside the registered engines' editors, only those tests fetch and build them. Android
+# and iOS differ in renderer options and modules; the beta recipes add the ruleset's own
+# bazel_probe module and engine patch.
+godot_engine_build = use_repo_rule(
+    "//godot/engine/private:repositories.bzl",
+    "godot_engine_build",
+)
+
+godot_android_shell = use_repo_rule(
+    "//godot/engine/private:repositories.bzl",
+    "godot_android_shell",
+)
+
+_REDUCED = {
+    "vulkan": "no",
+    "opengl3": "yes",
+    "disable_3d": "yes",
+    "disable_physics_2d": "yes",
+    "disable_navigation_2d": "yes",
+    "disable_navigation_3d": "yes",
+}
+
+godot_engine_build(
+    name = "probe_android_arm64_template_release",
+    build_options = _REDUCED,
+    build_target = "template_release",
+    cpu = "arm64",
+    dev_dependency = True,
+    platform = "android",
     source = "@godot_sources//:source.json",
 )
-godot_engines.source_build(
-    name = "godot_source_build_ios",
-    build_options = {
-        "metal": "no",
-        "vulkan": "no",
-        "opengl3": "yes",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
-    },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
+
+godot_android_shell(
+    name = "probe_android_shell",
+    dev_dependency = True,
+    source = "@godot_sources//:source.json",
+)
+
+godot_engine_build(
+    name = "probe_ios_arm64_simulator_template_release",
+    build_options = _REDUCED | {"metal": "no"},
+    build_target = "template_release",
+    cpu = "arm64",
+    dev_dependency = True,
     enabled_modules = [
         "gdscript",
         "text_server_fb",
         "freetype",
         "webp",
     ],
-    ios_environments = ["simulator"],
-    platforms = ["ios"],
+    environment = "simulator",
+    platform = "ios",
     source = "@godot_sources//:source.json",
 )
-godot_engines.source_build(
-    name = "godot_beta_source_build_android",
-    build_options = {
-        "vulkan": "no",
-        "opengl3": "yes",
-        "rendering_device": "no",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
-    },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
+
+godot_engine_build(
+    name = "beta_probe_android_arm64_template_release",
+    build_options = _REDUCED | {"rendering_device": "no"},
+    build_target = "template_release",
+    cpu = "arm64",
     custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe:config.py": "bazel_probe"},
+    dev_dependency = True,
     enabled_modules = [
         "gdscript",
         "text_server_fb",
         "freetype",
         "bazel_probe",
     ],
-    engine = "beta",
     patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
-    platforms = ["android"],
+    platform = "android",
     source = "@godot_sources_beta//:source.json",
 )
-godot_engines.source_build(
-    name = "godot_beta_source_build_ios",
-    build_options = {
+
+godot_android_shell(
+    name = "beta_probe_android_shell",
+    dev_dependency = True,
+    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
+    source = "@godot_sources_beta//:source.json",
+)
+
+godot_engine_build(
+    name = "beta_probe_ios_arm64_simulator_template_release",
+    build_options = _REDUCED | {
         "metal": "no",
-        "vulkan": "no",
-        "opengl3": "yes",
-        "disable_3d": "yes",
-        "disable_physics_2d": "yes",
-        "disable_navigation_2d": "yes",
-        "disable_navigation_3d": "yes",
         "accesskit": "no",
         "rendering_device": "no",
     },
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
+    build_target = "template_release",
+    cpu = "arm64",
     custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe:config.py": "bazel_probe"},
+    dev_dependency = True,
     enabled_modules = [
         "gdscript",
         "text_server_fb",
         "freetype",
         "bazel_probe",
     ],
-    engine = "beta",
-    ios_environments = ["simulator"],
+    environment = "simulator",
     patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
-    platforms = ["ios"],
+    platform = "ios",
     source = "@godot_sources_beta//:source.json",
 )
-use_repo(
-    godot_engines,
-    "godot",
-    "godot_beta",
-    "godot_beta_source_build_android",
-    # The source-built beta engines' configuration manifests, which the engine probe's
-    # tests inspect.
-    "godot_beta_source_build_android_android_arm64_template_release",
-    "godot_beta_source_build_ios",
-    "godot_beta_source_build_ios_ios_arm64_simulator_template_release",
-    "godot_beta_templates_ios",
-    "godot_editor_linux_arm64",
-    "godot_editor_linux_x86_64",
-    "godot_editor_macos",
-    "godot_source_build_android",
-    "godot_source_build_ios",
-    "godot_sources",
-    "godot_sources_beta",
-    "godot_sources_snapshot",
-)
 
-register_toolchains(
-    "@godot//toolchains:all",
-    "@godot_beta//toolchains:all",
+# A source recipe with its editor beside it, as an engine of godot_engines declares them:
+# //godot/engine/private/tests checks the entrypoints of its macOS release recipe.
+godot_engine_build(
+    name = "godot_source_build_fixture_macos_arm64_template_release",
+    build_options = {
+        "vulkan": "no",
+        "metal": "no",
+        "opengl3": "no",
+    },
+    build_target = "template_release",
+    cpu = "arm64",
     dev_dependency = True,
-)
-
-# A consumer extension calling the source build helper; built only when requested explicitly.
-# Its macOS release recipe is the godot_engine_build repository whose entrypoints
-# //godot/engine/private/tests checks.
-source_build_fixture = use_extension(
-    "//godot/tests/api_contracts/source_build:extension.bzl",
-    "source_build_fixture",
-    dev_dependency = True,
-)
-use_repo(
-    source_build_fixture,
-    "godot_source_build_fixture",
-    "godot_source_build_fixture_macos_arm64_template_release",
+    platform = "macos",
+    source = "@godot_sources//:source.json",
 )
 
 # Desktop export platform tests run on an execution platform of their operating system and
@@ -292,12 +310,6 @@ godot_cpp_bindings = use_repo_rule(
 godot_cpp_bindings(
     name = "godot_cpp",
     enabled_classes = ["Node"],
-)
-
-# A source recipe of the engine tests; acquisition is lazy until explicitly built.
-godot_engine_build = use_repo_rule(
-    "//godot/engine/private:repositories.bzl",
-    "godot_engine_build",
 )
 
 # Fails if ever configured: select_recipe_test proves an unselected recipe stays lazy.

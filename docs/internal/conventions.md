@@ -20,7 +20,7 @@ identities, not authored target declarations.
 | [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
-| [RG014](#rg014) | Engine modules, patches and source build files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
+| [RG014](#rg014) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
@@ -330,13 +330,13 @@ and destinations containing whitespace or nested parentheses need review.
 
 ## RG014
 
-**Engine modules, patches and source build files live under `engines/<name>/`.** A custom
+**Engine modules, patches and lock files live under `engines/<name>/`.** A custom
 engine is a shared resource of the repository, not a part of one application: its directory
 `engines/<engine name>/` may lie anywhere in a consumer module, such as `engines/` at the
 root of a consuming repository or beside the scenarios that register it, and every
 application and test that names the engine uses it. It keeps each custom engine module in
 `modules/<module>/`, each engine patch as a `.patch` or `.diff` file directly in
-`patches/`, its source build's lock file, `<hub>.lock.json`, and the `.bzl` files of the
+`patches/`, its lock file, `<engine name>.lock.json`, and the `.bzl` files of the
 engine, such as a gate that keeps targets out of builds with another engine, directly in
 the directory. A `README.md` and a BUILD file also belong there. Registration sets that
 only declare engine components, such as `engines/stable/`, follow the same layout with a
@@ -347,7 +347,7 @@ place, separate from the application content under `main/`.
 engines/<engine name>/
   BUILD.bazel
   README.md
-  <hub>.lock.json             # the source build's lock file
+  <engine name>.lock.json     # the engine's lock file
   <gate>.bzl
   modules/
     <module>/                 # config.py, SCsub, register_types.cpp, sources, BUILD.bazel
@@ -472,7 +472,7 @@ recognizable by its place:
   or each project lies directly in one of its directories, which
   [RG009](#rg009) checks.
 
-A test module registers the prebuilt engine itself, as an application does; the add-on
+A test module registers the official engine itself, as an application does; the add-on
 modules register none for consumers. The add-on generator writes `bcr/smoke` with every new
 module. `python3 -m tools.ci.release_archive` runs each test module from its module's release
 archive, as the release workflow and the registry do.

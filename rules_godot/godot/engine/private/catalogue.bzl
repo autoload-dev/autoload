@@ -1,4 +1,4 @@
-"""Built-in pins of official Godot releases for godot_engines.prebuilt."""
+"""Built-in pins of official Godot releases, which godot_engines.engine takes for a catalogued version."""
 
 visibility(["//godot/..."])
 

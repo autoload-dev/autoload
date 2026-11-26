@@ -87,8 +87,8 @@ def _test_the_engine_selects_the_editor(name):
     )
 
 def _the_engine_selects_the_editor(env, targets):
-    env.expect.that_str(_editor_of(targets.named)).contains("godot_beta")
-    env.expect.that_bool("godot_beta" in _editor_of(targets.default)).equals(False)
+    env.expect.that_str(_editor_of(targets.named)).contains("+beta_editor_")
+    env.expect.that_bool("+beta_editor_" in _editor_of(targets.default)).equals(False)
 
 # <name> writes the profile and <name>.test compares it; both name the writer, which the
 # test's report tells the user to run.

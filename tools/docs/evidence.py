@@ -59,10 +59,10 @@ def decode_configured(output: str) -> dict[str, ConfiguredTarget]:
                 f"invalid evaluated configured evidence: {error}"
             ) from error
         name = unqualified(target.label)
-        if name in result:
-            raise EvidenceError(
-                f"{target.label}: configured in more than one configuration"
-            )
+        # A target reached in several configurations, such as a config_setting that a
+        # select() reaches in each, is one target while its facts agree.
+        if result.get(name, target) != target:
+            raise EvidenceError(f"{target.label}: other facts in another configuration")
         result[name] = target
     return result
 

@@ -76,8 +76,8 @@ the critical path and action timings. Keep these files only for the investigatio
 
 For API source changes, run the `docs` work, `aspect work docs`: it checks the
 inventory, the docstrings and the contracts the registry's documentation relies on. Its
-contract cases are those that need no lane: the cases of generated repositories, such as a
-prebuilt engine's hub, run in the lanes' `contracts:<lane>` work, `aspect work
+contract cases are those that need no lane: the cases of generated repositories, such as an
+engine's hub, run in the lanes' `contracts:<lane>` work, `aspect work
 contracts:desktop` on a desktop host, which the pre-push hook runs too. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
@@ -198,7 +198,7 @@ docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.b
 
 | The test needs | It uses |
 | --- | --- |
-| The default engine `@godot` or the Android SDK and NDK | Nothing: MODULE.bazel registers them. |
+| The default engine `@godot` or the Android SDK and NDK | Nothing: MODULE.bazel registers them and their toolchains. |
 | Another complete development engine, such as the beta engine | The engine's name: the `engine` attribute of `configured_outputs` or `engine_test`. |
 | A few slots of its own, a source-built hub, or registration order as its subject | `--extra_toolchains`: `own_toolchains` in an analysis test, the `extra_toolchains` attribute of `configured_outputs` in a build-output test. |
 
@@ -279,7 +279,7 @@ cd tests
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/stable:all
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/beta:all
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test //e2e/rules_godot/patched_engine/tests:source_built_editor_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/source:all
-bazel aquery 'mnemonic("CppCompile|ObjcCompile|GodotGenerate", @godot_source_macos_arm64_template_release//:godot)'
+bazel aquery 'mnemonic("CppCompile|ObjcCompile|GodotGenerate", @patched_macos_arm64_template_release//:godot)'
 ```
 
 The patch changes the engine banner. The `BazelProbe` module registers a class

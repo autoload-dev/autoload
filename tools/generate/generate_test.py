@@ -15,9 +15,11 @@ RULESET_MODULES = ("rules_godot",)
 class GenerateTest(unittest.TestCase):
     def runs(self, call: str, *args: object) -> list[tuple[str, ...]]:
         """The Bazel commands one call of generate runs, each as (module, *arguments)."""
+        mapping = {"simulation": "autoload_rules_godot++godot_engines+simulation"}
         with (
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
             mock.patch.object(generate, "segment", return_value=0),
+            mock.patch.object(generate, "repo_mapping", return_value=mapping),
             contextlib.redirect_stderr(io.StringIO()),
         ):
             getattr(generate, call)(*args)
@@ -43,7 +45,10 @@ class GenerateTest(unittest.TestCase):
         )
 
     def test_the_segment_is_written_and_checked(self) -> None:
-        with mock.patch.object(generate, "bazel", return_value=0):
+        with (
+            mock.patch.object(generate, "bazel", return_value=0),
+            mock.patch.object(generate, "repo_mapping", return_value={"simulation": "x"}),
+        ):
             for call, args in (("regenerate", (["tools/ci/work.py"],)), ("check", ())):
                 with (
                     self.subTest(call=call),
@@ -61,16 +66,44 @@ class GenerateTest(unittest.TestCase):
     def test_the_check_covers_lock_files_and_pins(self) -> None:
         commands = self.runs("check")
         self.assertIn(("rules_godot", "mod", "deps", "--lockfile_mode=update"), commands)
+        (pins,) = [
+            command for command in commands if command[1:3] == ("build", "--nobuild")
+        ]
         self.assertIn(
-            (
-                ".",
-                "build",
-                "--nobuild",
-                "--keep_going",
-                "@godot_petri//toolchains:all",
-            ),
-            commands,
+            "@@autoload_rules_godot++godot_engines+simulation_macos_arm64_editor//:engine_library",
+            pins,
         )
+
+    def test_an_engine_the_root_does_not_use_fails_the_pin_check(self) -> None:
+        with (
+            mock.patch.object(generate, "repo_mapping", return_value={}),
+            mock.patch.object(generate, "bazel", return_value=0),
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+        ):
+            self.assertEqual(1, generate.pins())
+        self.assertIn("does not use_repo", stderr.getvalue())
+
+    def test_the_pin_check_covers_only_the_pinned_recipes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            engine = root / "examples/engines/simulation"
+            engine.mkdir(parents=True)
+            lock = engine / "simulation.lock.json"
+            lock.write_text(
+                '{"recipes": {"macos_arm64_editor": {}, "linux_x86_64_editor": {}}}'
+            )
+            (root / "examples/engines/other").mkdir()
+            (root / "examples/engines/other/README.md").write_text("")
+            self.assertEqual((("simulation", lock),), generate.pinned_engines(root))
+            self.assertEqual(
+                [
+                    "@@ext+simulation_linux_x86_64_editor//:engine_library",
+                    "@@ext+simulation_macos_arm64_editor//:engine_library",
+                ],
+                generate.pinned_payloads(
+                    "simulation", lock, {"simulation": "ext+simulation"}
+                ),
+            )
 
     def check_lock_files(self, rewrite: str | None, *, missing: bool = False) -> int:
         """

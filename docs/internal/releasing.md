@@ -63,7 +63,7 @@ repository's `LICENSE`. Each module's `.gitattributes` leaves every `tests/` dir
 of it (RG023); the ruleset's also leaves out its guides in `docs/` and the link to the
 repository's Bazelisk wrapper. `bcr/` stays in, because the registry's presubmit builds the
 module's registry test module, `bcr/<name>/`, from the archive (RG020). Each test module is
-a consumer of its module with a flat project, which registers the prebuilt engine itself;
+a consumer of its module with a flat project, which registers the official engine itself;
 the add-on modules register none for consumers.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the

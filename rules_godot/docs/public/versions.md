@@ -32,11 +32,11 @@ identify the preview used for compatibility checks. Preview releases are an
 explicit opt-in:
 
 ```starlark
-godot_engines.prebuilt(name = "godot", version = "4.8.0-beta1")
+godot_engines.engine(name = "godot", default = True, version = "4.8.0-beta1")
 ```
 
 4.8 beta 1 ships separate ARM64 and x86_64 macOS templates; the catalogue records the
-layout, and explicit `templates_urls` describe theirs with `templates_macos_cpus`,
+layout, and the `templates_urls` of a `binaries` tag describe theirs with `templates_macos_cpus`,
 by default `["universal"]`. Catalogued versions also record the CPUs of their iOS
 simulator slice and their Android shell AAR.
 
@@ -45,16 +45,17 @@ by `-devN`, `-betaN` or `-rcN`. Include the zero patch component, even when the
 upstream tag omits it: `4.8.0-beta1`, not `4.8-beta1`. A preview of 4.7.2 is below
 the stable 4.7.2 floor and remains unsupported.
 
-For a compatible release without built-in digests, pin its artifacts on the same tag:
-`editor_urls`, `editor_integrity` and `editor_binaries` per editor platform,
-`templates_urls` and `templates_integrity`, and optionally the Android shell AAR. This
-extends the download catalogue without changing the compatibility policy. For example,
-an explicit Linux x86_64 editor and its templates:
+For a compatible release without built-in digests, pin its artifacts with a `binaries`
+tag that names the engine: `editor_urls`, `editor_integrity` and `editor_binaries` per
+editor platform, `templates_urls` and `templates_integrity`, and optionally the Android
+shell AAR. This extends the download catalogue without changing the compatibility policy.
+Without a `source` tag, such an engine builds nothing from source. For example, an
+explicit Linux x86_64 editor and its templates:
 
 ```starlark
-godot_engines.prebuilt(
-    name = "godot_beta",
-    version = "4.8.0-beta1",
+godot_engines.engine(name = "beta", version = "4.8.0-beta1")
+godot_engines.binaries(
+    engine = "beta",
     editor_urls = {"linux_x86_64": ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/Godot_v4.8-beta1_linux.x86_64.zip"]},
     editor_integrity = {"linux_x86_64": "sha512-ruTL88X4bu6HXA8vd8ydgWo/uyIHdOb/yV/VpVemxeyRfythGMCqIAi9EPSyoCEiXceLp7fFR0VBHg8nIfcKZw=="},
     editor_binaries = {"linux_x86_64": "Godot_v4.8-beta1_linux.x86_64"},
@@ -66,7 +67,8 @@ godot_engines.prebuilt(
 
 Replace the templates URL and digest with a real pinned archive. For another
 compatible release, change the version, URLs, binary paths and verified integrity
-together. For source-built engines, see [engines](engine.md#build-an-engine-from-source).
+together. For sources and source-built engines, see
+[engines](engine.md#use-other-sources-or-binaries).
 
 ## Keep the extension API independent
 

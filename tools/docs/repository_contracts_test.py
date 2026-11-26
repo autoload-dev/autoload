@@ -65,7 +65,7 @@ class RepositoryContractsTest(unittest.TestCase):
         def granted(*grants: str) -> SimpleNamespace:
             return replace_visibility(rule("aar_import"), grants)
 
-        internal = "@cpp//android:release_profiled"
+        internal = "@cpp//android:release_tuned"
         rules = {LABEL: rule(), internal: granted("@cpp//toolchains:__pkg__")}
         self.assertEqual([], self.errors(contract(), rules, {LABEL: LIBRARY}))
         # A grant to a package of another repository still reaches consumers.

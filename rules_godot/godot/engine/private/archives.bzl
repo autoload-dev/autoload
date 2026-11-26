@@ -365,7 +365,7 @@ TEMPLATES_ARCHIVE_RULE_ATTRS = TEMPLATES_ARCHIVE_ATTRS | {
 
 # ==== Repository rules ========================================================
 
-# The repository rules godot_engines.prebuilt declares for catalogued and declared releases.
+# The repository rules godot_engines declares for the prebuilt binaries of an engine.
 
 godot_editor_archive = repository_rule(
     doc = """

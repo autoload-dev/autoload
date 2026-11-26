@@ -1,4 +1,4 @@
-"""RG014: a consumer's engine modules, patches and source build files sit under engines/<name>/."""
+"""RG014: a consumer's engine modules, patches and lock files sit under engines/<name>/."""
 
 from collections import defaultdict
 from collections.abc import Iterable
@@ -135,7 +135,7 @@ def project_problem(path: Path, projects: list[Path]) -> str | None:
         )
     if path.name.endswith(LOCK_SUFFIX):
         return (
-            "a source build's lock file must live under engines/<name>/, "
+            "an engine's lock file must live under engines/<name>/, "
             "not in a Godot project"
         )
     return None
@@ -177,7 +177,7 @@ def finding(path: Path, message: str) -> Finding:
 class EngineLayout:
     info = RuleInfo(
         "RG014",
-        "Engine modules, patches and source build files live under engines/<name>/",
+        "Engine modules, patches and lock files live under engines/<name>/",
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
