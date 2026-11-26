@@ -48,14 +48,14 @@ def _flattened(groups):
     """The labels of all groups, each once, in order."""
     return list(collections.uniq([label for labels in groups for label in labels]))
 
-def _queries(name, loaded, tests):
+def _queries(name, loaded, tests, common):
     """Declare the genqueries of the loading facts and behavior tests, by their test flag."""
     native.genquery(
         name = name + ".loading",
         expression = "siblings(set(%s))" % " ".join(loaded),
         opts = ["--output=xml", "--xml:default_values"],
         scope = loaded,
-        testonly = True,
+        **common
     )
     if not tests:
         return {"--loading": ":%s.loading" % name}
@@ -63,7 +63,7 @@ def _queries(name, loaded, tests):
         name = name + ".behavior",
         expression = "tests(set(%s))" % " ".join(tests),
         scope = tests,
-        testonly = True,
+        **common
     )
     return {"--loading": ":%s.loading" % name, "--behavior": ":%s.behavior" % name}
 
@@ -83,7 +83,7 @@ def _configurations(cases, libraries, public_targets):
         configurations.setdefault(json.encode({}), []).extend(public_targets)
     return configurations
 
-def _evidence(name, configurations):
+def _evidence(name, configurations, common):
     """Declare one contract_evidence per configuration; return their labels."""
     evidence = []
     for index, (settings, labels) in enumerate(sorted(configurations.items())):
@@ -94,7 +94,7 @@ def _evidence(name, configurations):
             labels = labels,
             settings = json.decode(settings),
             targets = labels,
-            testonly = True,
+            **common
         )
     return evidence
 
@@ -147,7 +147,13 @@ def api_contract_test(
     cases = _requiring(cases, requires)
     libraries = _requiring(libraries, requires)
     configurations = _configurations(cases, libraries, public_targets)
-    evidence = _evidence(name, configurations)
+
+    # The test's helper targets need what its host needs too: `//...` builds them anyway.
+    common = {
+        "target_compatible_with": REQUIREMENTS[requires].get("target_compatible_with", []),
+        "testonly": True,
+    }
+    evidence = _evidence(name, configurations, common)
     loaded = _flattened(configurations.values())
     tests = _flattened(behavior.values())
     write_file(
@@ -160,9 +166,9 @@ def api_contract_test(
             "libraries": libraries,
             "public_targets": public_targets,
         })],
-        testonly = True,
+        **common
     )
-    inputs = _queries(name, loaded, tests) | {"--plan": ":%s.plan" % name}
+    inputs = _queries(name, loaded, tests, common) | {"--plan": ":%s.plan" % name}
     if manifest:
         inputs["--manifest"] = manifest
     if extracted == None:
