@@ -11,8 +11,14 @@ _LintChecksInfo = provider(
     fields = {"stamps": "depset of File: a stamp per linted target"},
 )
 
-def _reports(target):
-    """Pairs of exit code file and report of the linters that ran on the target."""
+def _reports(target, ctx):
+    """Pairs of exit code file and report of the linters that ran on the target.
+
+    None for a target outside the main repository whose sources rules_lint skips, such as a
+    PyPI package.
+    """
+    if target.label.workspace_name and "lint-genfiles" not in ctx.rule.attr.tags:
+        return []
     groups = target[OutputGroupInfo] if OutputGroupInfo in target else None
     if not hasattr(groups, "rules_lint_human"):
         return []
@@ -40,7 +46,7 @@ def _check(target, ctx, reports):
 def _python_impl(target, ctx):
     deps = getattr(ctx.rule.attr, "deps", [])
     stamps = [dep[_LintChecksInfo].stamps for dep in deps if _LintChecksInfo in dep]
-    reports = _reports(target)
+    reports = _reports(target, ctx)
     if not reports and not stamps:
         return []
     checks = depset([_check(target, ctx, reports)] if reports else [], transitive = stamps)
