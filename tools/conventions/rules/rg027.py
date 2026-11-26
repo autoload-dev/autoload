@@ -6,8 +6,8 @@ from tools.conventions.context import Context
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import is_addon_module
 
-# The kinds rules_lint's Ruff and ty aspects visit by default, as tools/lint/linters.bzl
-# keeps them.
+# The kinds rules_lint's Ruff and ty aspects visit by default, as
+# tools/lint/linters.bzl keeps them.
 PYTHON = frozenset({"py_binary", "py_library", "py_test"})
 
 # The tag that has rules_lint lint the sources of a target outside the main repository.

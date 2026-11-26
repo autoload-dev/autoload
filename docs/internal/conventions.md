@@ -582,7 +582,7 @@ the tag. Registry test modules are outside it.
 
 **The add-on modules' Python targets carry `lint-genfiles`.** The root module lints the add-on
 modules' Python with its own, in the work `lint` over their repositories
-(`tools/lint/linters.bzl`), so the add-on modules need no Bazel server of their own for it.
+(`tools/lint/check.bzl`), so the add-on modules need no Bazel server of their own for it.
 rules_lint lints only the main repository's sources, unless a target carries the tag
 `lint-genfiles`; without it, an add-on module's Python would pass the lint unseen.
 

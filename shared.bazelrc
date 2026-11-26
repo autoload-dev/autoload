@@ -47,6 +47,6 @@ common:editor-debug --@autoload_rules_godot//godot:editor_debug
 common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//godot:editor_debug
 
 # The lint check of Python, which fails a build or test on Ruff's and ty's findings
-# (tools/lint/linters.bzl); builds without it ignore them. Only modules that depend on the root
+# (tools/lint/check.bzl); builds without it ignore them. Only modules that depend on the root
 # module use it, not the registry test modules.
-common:check --aspects=@autoload_dev//tools/lint:linters.bzl%python
+common:check --aspects=@autoload_dev//tools/lint:check.bzl%python

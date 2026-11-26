@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The gate of the lint check, which the aspect `python` of linters.bzl runs for each linted
+# The gate of the lint check, which the aspect `python` of check.bzl runs for each linted
 # target: it prints the report of every linter that found something and then fails, or writes
 # its stamp when all of them passed.
 # Usage: check.sh <stamp> [<exit code file> <report>]...

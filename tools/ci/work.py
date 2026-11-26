@@ -155,11 +155,6 @@ def release_tests(lane: str, suite: str) -> str:
 # ==== Checks ==================================================================
 
 
-# The API documentation's tests, all of them fast, with the API inventory's discovery
-# of new Starlark modules, which a test's sandbox cannot see.
-DOCS_CHECK = "bazel run //tools/docs:check"
-
-
 # The lint check (`--config=check`, shared.bazelrc) of a module's targets alone: its
 # stamps, without the targets' outputs and other validations, such as the source-built
 # engines that some tests' applications validate. Incompatible targets are skipped.
@@ -199,6 +194,10 @@ GENERATED_INPUTS = files(
     "*.lock.json",
     "tools/generate/*",
 )
+
+# The API documentation's tests, all of them fast, with the API inventory's discovery
+# of new Starlark modules, which a test's sandbox cannot see.
+DOCS_CHECK = "bazel run //tools/docs:check"
 
 # The API documentation: the ruleset's API, the documentation's tools and the root module's
 # declarations and the Python those tools load.
@@ -412,8 +411,8 @@ WORK = (
         ("bazel test --build_tests_only //...",),
         android=True,
     ),
-    # The ruleset's Python lint check, after its tests, whose analysis it reuses; the quality
-    # lane has no Android NDK, which analysing every target of the ruleset needs.
+    # The ruleset's Python lint check, after its tests, whose analysis it reuses; the
+    # quality lane has no Android NDK, which analysing every target of the ruleset needs.
     Work(
         "lint:ruleset",
         "desktop",

@@ -1,5 +1,5 @@
 """
-The lint check's gate (check.sh), which the aspect `python` of linters.bzl runs for each
+The lint check's gate (check.sh), which the aspect `python` of check.bzl runs for each
 linted target: it fails with the reports of the linters that found something.
 The test's argument is the gate.
 """
