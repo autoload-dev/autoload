@@ -21,3 +21,14 @@ desktop_runtimes(
     payloads = {"macos/arm64/release": "@patched_macos_arm64_template_release//:godot"},
     version = "4.7.3-rc",
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "components.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

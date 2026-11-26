@@ -33,3 +33,11 @@ godot_linux_application(
     runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:linux_runtime",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

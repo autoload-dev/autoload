@@ -27,4 +27,16 @@ filegroup(
         "README.md",
     ],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "releases.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

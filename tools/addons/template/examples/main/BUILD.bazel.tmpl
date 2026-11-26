@@ -12,10 +12,3 @@ godot_resources(
     prefix = "main",
     deps = ["@{{module_name}}//{{addon}}"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["demo.gd"],
-    tags = ["gdscript"],
-)

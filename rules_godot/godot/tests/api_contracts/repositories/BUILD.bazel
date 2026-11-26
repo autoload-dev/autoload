@@ -2,3 +2,22 @@ exports_files([
     "fixtures.bzl",
     "split_templates.zip",
 ])
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["templates_fixture.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "fixtures.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

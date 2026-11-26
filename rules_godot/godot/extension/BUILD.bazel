@@ -40,3 +40,15 @@ bzl_library(
     srcs = ["repositories.bzl"],
     deps = ["//godot/extension/private:godot_cpp"],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "defs.bzl",
+        "repositories.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

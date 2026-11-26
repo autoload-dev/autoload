@@ -19,18 +19,15 @@ import re
 import sys
 from pathlib import Path
 
-from tools.addons.modules import ROOT, module_attributes, module_name, module_path
-from tools.setup.modules import RULESET
+from tools.addons.modules import ROOT, module_attributes
+from tools.setup.modules import module_directory
 
 TAG = re.compile(r"([a-z][a-z0-9_]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)")
-RULESET_NAME = module_name(RULESET.name)
 
 
 def module_root(name: str, root: Path = ROOT) -> Path:
     """The directory of the module the name declares, relative to the repository."""
-    directory = (
-        RULESET if name == RULESET_NAME else module_path(name.removeprefix("autoload_"))
-    )
+    directory = module_directory(name)
     manifest = root / directory / "MODULE.bazel"
     if (
         not manifest.is_file()

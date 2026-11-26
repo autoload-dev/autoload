@@ -1,2 +1,10 @@
 # The engine patch of the ruleset's own source-built engines; the recipes apply it.
 exports_files(["engine-name.patch"])
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

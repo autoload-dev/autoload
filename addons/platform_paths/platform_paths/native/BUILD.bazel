@@ -27,3 +27,26 @@ filegroup(
     name = "registration",
     srcs = ["register_types.cc"],
 )
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = [
+        "backend.h",
+        "platform_path_result.cc",
+        "platform_path_result.h",
+        "platform_paths.cc",
+        "platform_paths.h",
+        "register_types.cc",
+    ],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

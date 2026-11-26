@@ -10,7 +10,7 @@ from tools.conventions.bazel import Bazel, Scope
 from tools.conventions.cache import QueryCache, cache_directory, loading_inputs
 from tools.conventions.context import Buildozer, Context, Workspace, run_tool
 from tools.conventions.framework import run
-from tools.conventions.registry import select
+from tools.conventions.registry import ALL_RULES, select
 from tools.setup.modules import is_addon_module
 
 
@@ -45,7 +45,7 @@ def main() -> int:
     try:
         rules = select(args.rule)
         if args.list_rules:
-            for rule in rules:
+            for rule in rules if args.rule else ALL_RULES:
                 print(f"{rule.info.id}: {rule.info.title} ({rule.info.documentation})")
             return 0
         root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])

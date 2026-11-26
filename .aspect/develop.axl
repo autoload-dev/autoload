@@ -115,9 +115,9 @@ def run_checks(ctx: TaskContext, every: bool):
     scope = ["--scope=all"] if every else []
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"] + scope)),
-        # The lint check of the filegroups that Gazelle declares for Markdown and GDScript,
-        # which are no tests (tools/lint/check.bzl); the tag filters keep the analysis.
-        ("lint", lambda: bazel(ctx, "build", ["--config=check", "--build_tag_filters=gdscript,markdown"])),
+        # The lint check of the filegroups that Gazelle declares per package, which are no
+        # tests (tools/lint/check.bzl): Markdown, GDScript and the per-file convention rules.
+        ("lint", lambda: bazel(ctx, "build", ["--config=check", "--config=sources"])),
         ("bazel", lambda: bazel_tests(ctx, ["--config=check", "--config=fast"])),
         ("tools", lambda: run_work(ctx, *TOOL_CHECKS)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),

@@ -70,3 +70,34 @@ exports_files([
     "source_tree.py",
     "variants.py",
 ])
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "build_file.py",
+        "build_profile.py",
+        "configure.py",
+        "define_analysis.py",
+        "generator.py",
+        "generators.py",
+        "include_graph.py",
+        "lock.py",
+        "module_graph.py",
+        "pin.py",
+        "render.py",
+        "revision.py",
+        "source_tree.py",
+        "variants.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

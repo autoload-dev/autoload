@@ -6,3 +6,11 @@ dart_library(
     srcs = glob(["lib/**/*.dart"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

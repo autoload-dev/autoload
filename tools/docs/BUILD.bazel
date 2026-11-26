@@ -166,3 +166,44 @@ py_test(
     ],
     deps = [":contracts_lib"],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "api_docs.py",
+        "bcr_metadata_test.py",
+        "contracts.py",
+        "contracts_test.py",
+        "coverage.py",
+        "coverage_test.py",
+        "coverage_unit_test.py",
+        "evaluated_extraction_test.py",
+        "evaluated_mismatch_test.py",
+        "evidence.py",
+        "evidence_test.py",
+        "inventory_test.py",
+        "output_contracts.py",
+        "output_contracts_test.py",
+        "public_contracts.py",
+        "public_contracts_test.py",
+        "repository_contracts.py",
+        "repository_contracts_test.py",
+        "ruleset.py",
+        "surface.py",
+        "surface_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "undocumented.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

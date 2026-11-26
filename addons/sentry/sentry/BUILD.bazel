@@ -58,3 +58,11 @@ godot_extension(
         "macos",
     ]
 ]
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

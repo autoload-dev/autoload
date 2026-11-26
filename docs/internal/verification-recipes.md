@@ -89,15 +89,16 @@ macOS is skipped on a host without them, and runs in the desktop sets of CI. See
 - the ruleset's `bzl_library` targets, one per Starlark module outside its `tests` packages,
   named after the file. Their directives, including where an external load's library lives,
   are in the ruleset's root [BUILD file](../../rules_godot/BUILD.bazel);
-- in every package of the root module, the ruleset and the add-on modules, the filegroups
-  `markdown_files` and `gdscript_files` of the files Git lists, those of subdirectories that
-  are no packages included ([lint.go](../../tools/gazelle/lint/lint.go)). The lint check's
-  aspects `markdown` and `gdscript` lint them with rumdl (`.rumdl.toml`) and gdlint
-  (`.gdlintrc`) in every build with `--config=check` that names them, such as the `lint`
-  work's.
+- in every package of the root module, the ruleset and the add-on modules, the test-only
+  filegroups `markdown_files`, `gdscript_files`, `python_files`, `starlark_files` and
+  `cc_files` of the files Git lists, those of subdirectories that are no packages included
+  ([lint.go](../../tools/gazelle/lint/lint.go)). The lint check's aspect `sources` runs
+  rumdl (`.rumdl.toml`), gdlint (`.gdlintrc`) and the convention rules that judge each file
+  on its own on them in every build with `--config=check` that names them, such as the
+  `lint` work's or one with `--config=sources`, which `aspect check` runs.
 
-After adding, moving or removing a Starlark module, a Markdown file or a script, regenerate
-them from the repository root:
+After adding, moving or removing a file of one of those kinds, regenerate them from the
+repository root:
 
 ```sh
 bazel run //tools/gazelle:update

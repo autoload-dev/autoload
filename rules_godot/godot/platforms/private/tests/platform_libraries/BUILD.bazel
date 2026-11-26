@@ -7,4 +7,17 @@ filegroup(
     testonly = True,
     srcs = ["fixtures/README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "library_fixtures.bzl",
+        "platform_library_propagation_tests.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

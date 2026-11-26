@@ -1,1 +1,9 @@
 # The patch of the module override in MODULE.bazel.
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

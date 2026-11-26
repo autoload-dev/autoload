@@ -29,3 +29,11 @@ string_flag(
     build_setting_default = "sync",
     values = _VALUES,
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)
