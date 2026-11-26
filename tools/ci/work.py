@@ -134,22 +134,19 @@ def addon_app_packages(lane: str, root: Path = ROOT) -> tuple[str, ...]:
     )
 
 
-def apps(packages: Iterable[str]) -> str:
-    """The packages' apps and their debug symbols as Bazel targets."""
-    suffixes = (":app", ":app.debug_symbols")
-    return " ".join(package + suffix for package in packages for suffix in suffixes)
-
-
-def release_builds(lane: str, flags: str) -> str:
+def release_builds(lane: str) -> str:
     """
     The release builds of every application of a mobile lane with their debug symbols: the
-    applications that name the lane and the add-on modules' examples.
+    applications that name the lane and the add-on modules' examples. Each package declares
+    them as `<lane>_release`, which carries its own configuration (examples/releases.bzl).
     """
     packages = (
         *(app.package for app in APPLICATIONS if lane in app.lanes),
         *addon_app_packages(lane),
     )
-    return f"bazel build {apps(packages)}{flags}"
+    suffixes = (f":{lane}_release", f":{lane}_release.debug_symbols")
+    targets = " ".join(package + suffix for package in packages for suffix in suffixes)
+    return f"bazel build {targets}"
 
 
 # ==== Checks ==================================================================
@@ -289,18 +286,18 @@ def lane_addon_work(lane: str) -> Work:
         ".",
         (f"python3 -m tools.addons.lanes {lane}",),
         android=lane == "android",
+        profile=DEFAULT_PROFILE,
     )
 
 
 def module_work(lane: str, directory: str) -> Work:
-    """One add-on module's lane alone, run only when named, in its lane's profile."""
+    """One add-on module's lane alone, run only when named."""
     return Work(
         f"{lane}:addon:{directory}",
         None,
         ".",
         (f"python3 -m tools.addons.lanes {lane} {directory}",),
         android=lane == "android",
-        profile=profile(lane),
     )
 
 
@@ -422,50 +419,33 @@ WORK = (
         env=(("ANDROID_HOME", ""), ("ANDROID_NDK_HOME", "")),
     ),
     # Each desktop smoke scenario is compatible with its own host only; the other is
-    # skipped. On macOS the scenario also runs ad hoc signed.
+    # skipped. On macOS the scenario also signs its application ad hoc.
     Work(
         "test:gdextension",
         "desktop",
         ".",
         (f"bazel test {SCENARIOS}/smoke/linux/... {SCENARIOS}/smoke/macos/...",),
     ),
-    Work(
-        "test:gdextension:signed",
-        "desktop",
-        ".",
-        (
-            (
-                f"bazel test {SCENARIOS}/smoke/macos/..."
-                " --@autoload_rules_godot//godot:macos_signing=adhoc"
-            ),
-        ),
-        hosts=("macos",),
-    ),
     *example_work(),
     contracts("android"),
-    # Each mobile lane's work ends on the configuration of the add-on modules' lanes that
-    # follow it in its profile, so that they keep its analysis.
+    # The mobile lanes' release builds and smoke tests carry their configuration
+    # (godot_configured_app), so they keep the workspace's own server; only their contract
+    # cases evaluate in the lane's profile.
     Work(
         "android",
         "android",
         ".",
-        (
-            release_builds(
-                "android", " --config=android-release --config=multi_abi --config=aab"
-            ),
-            f"bazel test {SCENARIOS}:android_aab --config=android --config=aab",
-        ),
+        (release_builds("android"), f"bazel test {SCENARIOS}:android"),
         android=True,
+        profile=DEFAULT_PROFILE,
     ),
     contracts("ios"),
     Work(
         "ios",
         "ios",
         ".",
-        (
-            release_builds("ios", " --config=ios-release"),
-            f"bazel test {SCENARIOS}:ios_official --config=official",
-        ),
+        (release_builds("ios"), f"bazel test {SCENARIOS}:ios"),
+        profile=DEFAULT_PROFILE,
     ),
     contracts("source-engine"),
     # Every source-engine case, the applications' it verifies included. CI runs it in the

@@ -7,6 +7,7 @@ load(
     "godot_project",
     "godot_run",
 )
+load("//examples:releases.bzl", "android_release", "ios_release")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -55,3 +56,7 @@ godot_app(
     macos_minimum_os_version = "12.0",
     pack = ":pack",
 )
+
+android_release(name = "android_release")
+
+ios_release(name = "ios_release")

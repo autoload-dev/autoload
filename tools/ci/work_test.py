@@ -83,9 +83,11 @@ class WorkTest(unittest.TestCase):
         for name in ("inspect:mobile", "desktop:addon:widget", "ios:addon:widget"):
             self.assertFalse(any(name in names for names in planned.values()), name)
 
-    def test_a_module_s_own_work_runs_in_its_lane_s_profile(self) -> None:
+    def test_a_module_s_own_work_runs_in_the_default_profile(self) -> None:
+        # Its release builds carry their configuration (examples/releases.bzl).
         work = all_work(self.root)
-        self.assertEqual("ios", work["ios:addon:widget"].bazel_profile)
+        self.assertIsNone(work["ios:addon:widget"].bazel_profile)
+        self.assertEqual("default", work["ios:addons"].bazel_profile)
         self.assertIsNone(work["desktop:addon:widget"].bazel_profile)
         self.assertTrue(work["android:addon:gadget"].android)
 
@@ -138,13 +140,16 @@ class WorkTest(unittest.TestCase):
         )
         self.assertNotIn("AUTOLOAD_BAZEL_PROFILE", argv(plain, "true")[-1])
 
-    def test_mobile_and_source_engine_work_run_in_their_profiles(self) -> None:
+    def test_mobile_work_keeps_the_default_profile_and_source_engine_work_its_own(
+        self,
+    ) -> None:
         work = all_work(ROOT)
         for name, profile in (
-            ("android", "android"),
+            # Mobile applications carry their configuration (godot_configured_app).
+            ("android", "default"),
             # The checker picks the lane's profile for its cases' configured queries.
             ("contracts:android", "default"),
-            ("ios", "ios"),
+            ("ios", "default"),
             ("contracts:ios", "default"),
             ("source-engine", "source-engine"),
             ("test:example:petri", "source-engine"),

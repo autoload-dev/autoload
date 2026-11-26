@@ -88,19 +88,21 @@ options, such as `--config=android`, discards the analysis of the previous one. 
 desktop and mobile work keep theirs, [tools/bazel](../../tools/bazel) runs each profile in an
 output base and server of its own. `AUTOLOAD_BAZEL_PROFILE` names the profile; without it,
 Bazel uses the workspace's own output base, the `default` profile. The lanes' work sets the
-profile of the mobile and source-engine work, `android`, `ios` or `source-engine`
-([tools/ci/work.py](../../tools/ci/work.py)), so the pre-push hook and the desktop work stay
-warm in `default` while a lane builds an application:
+profile of the source-engine work, `source-engine`, and of the mobile lanes' contract cases,
+`android` or `ios` ([tools/ci/work.py](../../tools/ci/work.py)), so the pre-push hook and the
+desktop work stay warm in `default`. The mobile release builds and smoke tests need no
+profile: their applications carry their configuration (`godot_configured_app`,
+[examples/releases.bzl](../../examples/releases.bzl)):
 
 ```sh
-AUTOLOAD_BAZEL_PROFILE=android aspect exec -- bazel build //examples/lichtpost:app --config=android
+AUTOLOAD_BAZEL_PROFILE=source-engine aspect exec -- bazel test //examples/petri/...
 ```
 
 A profile's output base lies beside the default one, named by the MD5 of it and the profile,
 so `aspect output-bases` and `aspect gc` treat it like any other. Its server exits after
 `AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS`, 15 minutes by default. Actions do not run twice:
-`~/.bazelrc`'s `--disk_cache`, where set, and path mapping share their results across
-profiles. Profiles belong to the root module: the ruleset and the add-on modules keep their
+the remote or disk cache that `~/.bazelrc` sets, such as the macos-ci host's Bazel cache
+server, and path mapping share their results across profiles. Profiles belong to the root module: the ruleset and the add-on modules keep their
 own server, also for the commands that root-module work starts there.
 
 ## Remote execution with BuildBuddy
@@ -164,7 +166,7 @@ formatters that `bazel run` starts here. Adding `--config=host-execution` from
 remote cache still applies.
 
 Android builds of `examples/` and `tests/` run their actions on BuildBuddy's
-executors: their `android-toolchains` config registers the toolchains of
+executors: the root module registers the toolchains of
 [`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
 [android_toolchains.bzl](../../rules_godot/godot/platforms/private/android_toolchains.bzl) follow the
@@ -272,8 +274,7 @@ bazel test //e2e/addons/gdunit/...
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
-`aspect exec -- bazel test //e2e/rules_godot/smoke/android:bundle_packages_extension_and_pack_test --config=android --config=aab`
-or `bazel test //:ios_official --config=official`.
+`aspect exec -- bazel test //e2e/rules_godot:android` or `bazel test //e2e/rules_godot:ios`.
 
 ### Source-built engine applications
 
@@ -319,15 +320,13 @@ host only:
 
 ```sh
 bazel test //e2e/rules_godot/smoke/linux/... //e2e/rules_godot/smoke/macos/...
-bazel test //e2e/rules_godot/smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc
 ```
 
 `app_boots_with_extensions_test` inspects the desktop archive and boots the exported
 application, requiring both extensions to load and register their Godot class and the
 imported texture to load from the pack. On macOS, `app_is_adhoc_signed_test` verifies the
-archived bundle's ad hoc signature; it runs only in a build that selects ad hoc signing, as
-the second command does. The desktop lane runs the first as `test:gdextension` and, on macOS, the second as
-`test:gdextension:signed`.
+archived bundle's ad hoc signature, of the application `godot_configured_app` signs ad hoc.
+The desktop lane runs them as `test:gdextension`.
 
 ### Mobile artifact checks
 
@@ -345,18 +344,18 @@ declared application, engine and tool inputs; `official_beta_ios_link_links_sele
 checks an unsigned device executable, which is not a signed device IPA.
 
 The scenarios' mobile smoke tests are `manual`, so `bazel test //e2e/rules_godot/...` stays the
-desktop set. The configuration suites of `e2e/rules_godot/BUILD.bazel` list them per `.bazelrc`
-configuration; test a suite with `--config` set to its configuration:
+desktop set. Their applications carry their configuration (`godot_configured_app`), and the
+suites of `e2e/rules_godot/BUILD.bazel` list the tests per operating system:
 
 ```sh
-aspect exec -- bazel test //e2e/rules_godot:android_aab --config=android --config=aab
-bazel test //e2e/rules_godot:ios_official --config=official
+aspect exec -- bazel test //e2e/rules_godot:android
+bazel test //e2e/rules_godot:ios
 ```
 
-| Suite | Configuration | Checks |
+| Suite | Application | Checks |
 | --- | --- | --- |
-| `android_aab` | `android aab` | the Android smoke bundle: engine, extension library and pack |
-| `ios_official` | `official` | the iOS smoke apps' embedded extension framework and statically linked extension entry |
+| `android` | an arm64 App Bundle | the Android smoke bundle: engine, extension library and pack |
+| `ios` | x86_64 Simulator applications of the official templates | the iOS smoke apps' embedded extension framework and statically linked extension entry |
 
 The `android` and `ios` work of their lanes runs these suites. To record artifact-level evidence
 of the smoke applications, build them, then inspect them:

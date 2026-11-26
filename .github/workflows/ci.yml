@@ -13,8 +13,9 @@ permissions:
 # Every run runs every lane; Bazel's caches keep unchanged work cheap. Each job
 # runs one lane's work (tools/ci/work.py) for its host; the source engines run
 # on their own schedule (source-engine.yml). The jobs that need a macOS runner
-# run on the self-hosted macos-ci runners, which keep their caches between jobs
-# and run no code of a fork's pull request.
+# run on the self-hosted macos-ci runners, which keep their repository cache and
+# Bazel servers between jobs, share a Bazel cache server with their host, and run
+# no code of a fork's pull request.
 # Policy: docs/internal/verification-platforms.md#apple-lanes.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job

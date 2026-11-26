@@ -25,15 +25,10 @@ build --tool_java_runtime_version=remotejdk_21
 build --java_language_version=21
 build --tool_java_language_version=21
 
-# The SDK and NDK toolchains of this host and of remote Linux executors.
-build:android-toolchains --extra_toolchains=@androidsdk//:all
-build:android-toolchains --extra_toolchains=@android_toolchains//:all
 # Runs an application from its sources with the editor: bazel run --config=editor //path/to:app
 build:editor --@autoload_rules_godot//godot:variant=editor
 
-build:android --config=android-toolchains
 build:android --platforms=@autoload_rules_godot//godot/platforms:android_arm64
-build:multi_abi --config=android-toolchains
 build:multi_abi --platforms=//examples:android_distribution
 build:android-release --config=android
 build:android-release -c opt

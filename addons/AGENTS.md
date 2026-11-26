@@ -85,14 +85,16 @@ names it with one Bazel command, `<lane>:addons`; one module alone runs as
 
 ```sh
 aspect work desktop:addon:<module>      # module tests and example targets but apps
-aspect work android:addon:<module>   # each example project's app for Android
-aspect work ios:addon:<module>       # each example project's app for the iOS Simulator
+aspect work android:addon:<module>   # each example project's Android release build
+aspect work ios:addon:<module>       # each example project's iOS Simulator release build
 aspect work desktop:addons              # every module's desktop lane at once
 ```
 
-`android` and `ios` also run the example projects' tests tagged with the lane's name, such as
-an `ios_app_test` of the app (`e2e/rules_godot/AGENTS.md`, "Artifact test rules"); the tag
-`manual` keeps them out of `desktop`.
+Each example project declares its release builds, `android_release` and `ios_release`
+([examples/releases.bzl](../examples/releases.bzl)), which carry their configuration. A test
+of a mobile application, such as an `ios_app_test` of `ios_release`
+(`e2e/rules_godot/AGENTS.md`, "Artifact test rules"), runs in `desktop` on the hosts it is
+compatible with: an iOS test on macOS.
 
 `desktop` runs `bazel test` over `@autoload_<module>//...`, all of
 `examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a

@@ -7,9 +7,10 @@ which consume the modules like applications:
 - desktop: the modules' tests, their end-to-end tests in e2e/addons/<module>/ and every
   target of their examples but the projects' apps, for the editor and this machine's
   desktop system, on the desktop systems each addon.pkl names;
-- android and ios: each example project's `app`, for Android and the iOS Simulator, and the
-  tests of the example projects tagged with the lane's name, such as an `ios_app_test` of
-  the app; `manual` keeps them out of the desktop lane.
+- android and ios: each example project's release build with its debug symbols,
+  `<lane>_release` (examples/releases.bzl), which carries its own configuration. Tests of
+  an example's mobile application, such as an `ios_app_test`, run in the desktop lane of
+  the hosts they are compatible with.
 
 `python3 -m tools.addons.lanes <lane> [<module>...]` runs the lane of the named modules, or
 of every module whose addon.pkl names it, with one Bazel command for all of them, so their
@@ -30,29 +31,20 @@ from tools.addons.modules import (
     module_path,
 )
 
-# The Bazel configuration of each mobile lane, from the root module's .bazelrc.
-APP_CONFIGS = {"android": "--config=android", "ios": "--config=official"}
 # `bazel test` with no test among the targets exits with 4 after a successful build.
 NO_TESTS = 4
 
 
-def apps(module: AddonModule) -> list[str]:
-    """The apps of the module's example projects."""
+def projects(module: AddonModule) -> tuple[str, ...]:
+    """The module's example projects; a lane needs at least one."""
     if not module.projects:
         raise ValueError(f"{module.path}: no example project in {module.examples}/")
-    return [f"{module.project_package(project)}:app" for project in module.projects]
+    return module.projects
 
 
-def lane_tests_query(lane: str, modules: Sequence[AddonModule]) -> list[str]:
-    """The Bazel query for the example projects' tests that a mobile lane runs."""
-    examples = " + ".join(f"{module.package}/..." for module in modules)
-    return [
-        "bazel",
-        "query",
-        "--output=label",
-        # Query renders tags as "[a, b]": match a whole element, not a tag like no-ios.
-        f'attr(tags, "[\\[ ]{lane}[,\\]]", tests({examples}))',
-    ]
+def apps(module: AddonModule) -> list[str]:
+    """The apps of the module's example projects."""
+    return [f"{module.project_package(project)}:app" for project in projects(module)]
 
 
 def desktop_patterns(module: AddonModule) -> list[str]:
@@ -62,17 +54,21 @@ def desktop_patterns(module: AddonModule) -> list[str]:
     return [f"@{module.name}//...", f"{module.package}/...", *tests, *excluded]
 
 
-def command(
-    lane: str, modules: Sequence[AddonModule], tests: list[str] | None = None
-) -> list[str]:
-    """The Bazel command of one lane, run in the root module, with a mobile lane's tests."""
+def releases(lane: str, module: AddonModule) -> list[str]:
+    """The release builds of a mobile lane of the module's example projects."""
+    return [
+        f"{module.project_package(project)}:{lane}_release{suffix}"
+        for project in projects(module)
+        for suffix in ("", ".debug_symbols")
+    ]
+
+
+def command(lane: str, modules: Sequence[AddonModule]) -> list[str]:
+    """The Bazel command of one lane, run in the root module."""
     if lane == "desktop":
         patterns = [p for module in modules for p in desktop_patterns(module)]
         return ["bazel", "test", "--", *patterns]
-    targets = [app for module in modules for app in apps(module)]
-    if not tests:
-        return ["bazel", "build", APP_CONFIGS[lane], *targets]
-    return ["bazel", "test", APP_CONFIGS[lane], "--", *targets, *tests]
+    return ["bazel", "build", *[t for module in modules for t in releases(lane, module)]]
 
 
 def runnable(lane: str, modules: Sequence[AddonModule]) -> list[AddonModule]:
@@ -98,15 +94,7 @@ def run(lane: str, modules: Sequence[AddonModule]) -> None:
     modules = runnable(lane, modules)
     if not modules:
         return
-    tests = None
-    if lane != "desktop":
-        query = lane_tests_query(lane, modules)
-        print("+", " ".join(query), flush=True)
-        found = subprocess.run(
-            query, cwd=ROOT, check=True, capture_output=True, text=True
-        )
-        tests = found.stdout.split()
-    argv = command(lane, modules, tests)
+    argv = command(lane, modules)
     print("+", " ".join(argv), flush=True)
     status = subprocess.run(argv, cwd=ROOT, check=False).returncode
     if status not in ({0, NO_TESTS} if lane == "desktop" else {0}):

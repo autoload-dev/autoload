@@ -6,6 +6,9 @@ build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/
 build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io
 build:buildbuddy --remote_cache=grpcs://remote.buildbuddy.io
 build:buildbuddy --remote_executor=grpcs://remote.buildbuddy.io
+# A failed remote action fails the build instead of running here: a local cache server's
+# settings, such as the macos-ci host's, enable the fallback for every remote.
+build:buildbuddy --noremote_local_fallback
 build:buildbuddy --remote_timeout=10m
 build:buildbuddy --remote_cache_compression
 # Transfer only changed chunks of large blobs such as editor binaries and packs.

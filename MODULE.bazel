@@ -203,6 +203,15 @@ godot_android_toolchains = use_extension(
 godot_android_toolchains.configure(ndk_api_level = 24)
 use_repo(godot_android_toolchains, "android_toolchains")
 
+# Registered here rather than with --extra_toolchains, so that applications built under an
+# Android configuration of their own (godot_configured_app) find them in every build. The
+# hub's precede the host SDK's.
+register_toolchains(
+    "@android_toolchains//:all",
+    "@androidsdk//:all",
+    dev_dependency = True,
+)
+
 godot_engines = use_extension(
     "@autoload_rules_godot//godot:extensions.bzl",
     "godot_engines",

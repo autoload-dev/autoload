@@ -1,18 +1,15 @@
-# Configuration suites: the mobile tests of each Bazel configuration of .bazelrc, run as
-# `bazel test //e2e/rules_godot:<suite> --config=<configuration>` from the repository root. Each suite is
-# manual, so //e2e/rules_godot/... stays the desktop set; a test is listed in every suite whose
-# configuration it runs under.
+# The mobile smoke tests, run as `bazel test //e2e/rules_godot:<suite>` from the repository
+# root. Their applications carry their Android or iOS configuration (godot_configured_app);
+# each suite is manual, so //e2e/rules_godot/... stays the desktop set.
 
-# --config=android --config=aab
 test_suite(
-    name = "android_aab",
+    name = "android",
     tags = ["manual"],
     tests = ["//e2e/rules_godot/smoke/android:bundle_packages_extension_and_pack_test"],
 )
 
-# --config=official
 test_suite(
-    name = "ios_official",
+    name = "ios",
     tags = ["manual"],
     tests = [
         "//e2e/rules_godot/smoke/ios:app_embeds_extension_framework_test",

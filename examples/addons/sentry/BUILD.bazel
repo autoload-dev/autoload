@@ -7,6 +7,7 @@ load(
     "godot_project",
     "godot_run",
 )
+load("//examples:releases.bzl", "android_release", "ios_release")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -71,3 +72,7 @@ filegroup(
         allow_empty = True,
     ),
 )
+
+android_release(name = "android_release")
+
+ios_release(name = "ios_release")

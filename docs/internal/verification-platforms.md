@@ -109,7 +109,8 @@ applications whose `app.pkl` names the lane join them in `source-engine:full`.
 The lanes that need a macOS runner are the Apple lanes: the desktop tests on macOS, the apps
 with source-built engines and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
-their tools and Bazel caches on their own disk between jobs. The VM, its runners and its
+their tools and repository cache on their own disk between jobs and share a Bazel cache
+server on the VM's host with the host's own builds. The VM, its runners and its
 BuildBuddy executor are set up in the private repository `autoload-dev/macos-ci`; a change
 there takes effect through a new image and a replaced VM, done only while no job runs on
 it. CI runs the Apple lanes like the other lanes, on pull requests and in the merge queue.

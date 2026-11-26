@@ -2,8 +2,9 @@ name: Set up repository
 description: >-
   Install Bazelisk and the Aspect CLI, reuse SDK components, and configure Bazel
   repository caching and cleanup. A persistent runner keeps its tools, SDK
-  components and Bazel caches on its own disk between jobs, and its machine
-  configures Bazel, so the cache service and ~/.bazelrc steps are left out there.
+  components and repository cache on its own disk between jobs, shares a Bazel
+  cache server with its host, and its machine configures Bazel, so the cache
+  service and ~/.bazelrc steps are left out there.
 
 inputs:
   android-cache:
@@ -22,7 +23,8 @@ runs:
     # cache service and Bazel settings go into ~/.bazelrc. A persistent runner, such as
     # the macos-ci runners, keeps its disk between jobs and runs jobs side by side; its
     # machine sets PERSISTENT_RUNNER and BAZEL_REPOSITORY_CACHE in the runner's
-    # environment and configures Bazel in /etc/bazel.bazelrc. Linux runners' sticky
+    # environment and configures Bazel in /etc/bazel.bazelrc, whose remote cache is the
+    # Bazel cache server on the VM's host (autoload-dev/macos-ci). Linux runners' sticky
     # disk, like a persistent runner's disk, keeps the repository cache between jobs.
     # Blacksmith's runners count as self-hosted to GitHub, so runner.environment
     # cannot tell the two kinds apart.
