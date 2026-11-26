@@ -430,7 +430,7 @@ godot_editor_component = macro(
     - files (many): build the editor payload and its runfiles; no run behavior
 
     ### Generated targets
-    - `{name}.toolchain` (metadata): register the slot with editor_toolchain_type for its engine by name; a named default engine's empty-flag registration lies beside it, so register the package with :all; toolchain resolution is a separate boundary
+    - `{name}.toolchain` (metadata): register the slot with editor_toolchain_type; toolchain resolution is a separate boundary
       - purpose: analysis_boundary
       - visibility: caller
       - testonly: inherit
@@ -482,7 +482,7 @@ godot_runtime_component = macro(
     - files (many): build the runtime payload; no run behavior
 
     ### Generated targets
-    - `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type for its engine by name and, with untuned_only, under -c opt with the default engine optimization; the other settings' registrations lie beside it, so register the package with :all; toolchain resolution is a separate boundary
+    - `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary
       - purpose: analysis_boundary
       - visibility: caller
       - testonly: inherit

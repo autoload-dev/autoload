@@ -7,6 +7,7 @@ registers. Generated repositories with consumer-chosen names load this file, so 
 visibility is public.
 """
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE")
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 
@@ -21,36 +22,37 @@ _VARIANT_SETTINGS = {
     "release": Label("//godot:release"),
 }
 
-# The settings under which a prebuilt runtime serves: the application has no build profile,
-# and its runtime compiles outside -c opt or with the default engine optimization. A
-# prebuilt runtime cannot leave classes out or compile otherwise, so in any other build the
-# engine's runtime built from source, registered after it, serves.
-_UNTUNED = {
-    "fastbuild": Label("//godot/private:untuned_fastbuild"),
-    "dbg": Label("//godot/private:untuned_dbg"),
-    "defaults": Label("//godot/private:untuned_defaults"),
-}
+# The builds a prebuilt runtime serves: its runtime needs no tuning, no build profile and
+# outside -c opt or with the default engine optimization. A prebuilt runtime cannot leave
+# classes out or compile otherwise, so in any other build the engine's runtime built from
+# source, registered after it, serves.
+_UNTUNED = Label("//godot/private:untuned")
 
-def _engine_settings(name, engine, default_engine, tags):
+def _engine_setting(name, engine, default_engine, tags):
     """
-    Return the engine settings a component's toolchains require, one toolchain each, by name.
+    Return the engine setting a component's toolchain requires.
 
     A component that names no engine belongs to the default engine. A named one requires its
     own private `<name>.engine` setting on --@autoload_rules_godot//godot:engine; a named
-    default engine's component also serves builds that name no engine.
+    default engine's component also serves builds that name no engine, through
+    `<name>.default_engine`, which matches either.
     """
     if not engine:
-        return {"": _DEFAULT_ENGINE}
+        return _DEFAULT_ENGINE
     native.config_setting(
         name = name + ".engine",
         flag_values = {_ENGINE_FLAG: engine},
         visibility = ["//visibility:private"],
         tags = tags,
     )
-    settings = {"": ":%s.engine" % name}
-    if default_engine:
-        settings["default"] = _DEFAULT_ENGINE
-    return settings
+    if not default_engine:
+        return ":%s.engine" % name
+    selects.config_setting_group(
+        name = name + ".default_engine",
+        match_any = [":%s.engine" % name, _DEFAULT_ENGINE],
+        visibility = ["//visibility:private"],
+    )
+    return ":%s.default_engine" % name
 
 def component_toolchains(
         name,
@@ -68,10 +70,8 @@ def component_toolchains(
     """
     Register the toolchains of one engine component.
 
-    Declares `<name>.toolchain` and, where the component serves more than one engine
-    setting or tuning, private registrations named after their settings, such as
-    `<name>.toolchain_default_dbg`: a registration set's `:all` pattern registers them all,
-    and a slot's other components, whose names extend the component's, after them.
+    Declares `<name>.toolchain`, constrained to the slot's platform and to the settings it
+    serves: its engine and, with untuned_only, the builds whose runtime needs no tuning.
 
     Args:
         name: Prefix of the declared targets, such as the component's name.
@@ -97,19 +97,13 @@ def component_toolchains(
     if role == "runtime":
         placement = {"target_compatible_with": constraints}
         common = [_VARIANT_SETTINGS[variant]]
-    tunings = _UNTUNED if untuned_only else {"": None}
-    combinations = [
-        ([key for key in [engine_key, tuning_key] if key], common + [setting] + ([tuning] if tuning else []))
-        for engine_key, setting in _engine_settings(name, engine, default_engine, tags).items()
-        for tuning_key, tuning in tunings.items()
-    ]
-    for index, (keys, settings) in enumerate(combinations):
-        native.toolchain(
-            name = name + ".toolchain" + "".join(["_" + key for key in keys] if index else []),
-            toolchain = component,
-            toolchain_type = EDITOR_TOOLCHAIN_TYPE if role == "editor" else RUNTIME_TOOLCHAIN_TYPE,
-            target_settings = settings,
-            visibility = visibility if index == 0 else ["//visibility:private"],
-            tags = tags,
-            **placement
-        )
+    settings = common + [_engine_setting(name, engine, default_engine, tags)]
+    native.toolchain(
+        name = name + ".toolchain",
+        toolchain = component,
+        toolchain_type = EDITOR_TOOLCHAIN_TYPE if role == "editor" else RUNTIME_TOOLCHAIN_TYPE,
+        target_settings = settings + ([_UNTUNED] if untuned_only else []),
+        visibility = visibility,
+        tags = tags,
+        **placement
+    )

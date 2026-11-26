@@ -224,8 +224,8 @@ godot_engines.engine(
 # is compiled until a build asks for a payload.
 godot_engines.engine(
     name = "simulation",
-    # The build graphs of the Linux and macOS recipes, pinned with
-    # `bazel run @simulation//:pin_linux --config=buildbuddy` and `:pin_macos`, so any host
+    # The build graph of every recipe, pinned on a Mac with
+    # `bazel run @simulation//:pin --config=buildbuddy`, so any host
     # can build them, such as a Mac with remote execution the Linux editor.
     lock_file = "//examples/engines/simulation:simulation.lock.json",
     version = "4.7.2",

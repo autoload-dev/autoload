@@ -125,6 +125,7 @@ SUPPORT_MODULES = [
 ]
 
 EXTERNAL_LOADS = [
+    "@bazel_skylib//lib:selects",
     "@bazel_skylib//rules:common_settings",
     "@bazel_skylib//rules:write_file",
     "@rules_android//rules:bzl",

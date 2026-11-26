@@ -20,9 +20,18 @@ class EvidenceTest(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceError, "invalid evaluated configured"):
             decode_configured('{"label":"//:app"}')
 
-    def test_a_label_in_two_configurations_is_an_error(self) -> None:
-        with self.assertRaisesRegex(EvidenceError, "more than one configuration"):
-            decode_configured(APP + "\n" + APP)
+    def test_a_label_with_other_facts_in_another_configuration_is_an_error(self) -> None:
+        other = APP.replace('"files":1', '"files":3')
+        with self.assertRaisesRegex(
+            EvidenceError, "other facts in another configuration"
+        ):
+            decode_configured(APP + "\n" + other)
+
+    def test_a_label_with_the_same_facts_in_two_configurations_is_one_target(
+        self,
+    ) -> None:
+        # Such as a config_setting that a select() reaches in each configuration.
+        self.assertEqual(decode_configured(APP), decode_configured(APP + "\n" + APP))
 
     def test_aliases_are_configured_separately_under_their_own_label(self) -> None:
         module = Module(Path("."), ())

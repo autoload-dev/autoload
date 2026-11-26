@@ -9,7 +9,7 @@ the repository can name it with `engine = "simulation"`.
 | --- | --- | --- |
 | Module | [`modules/reaction_diffusion/`](modules/reaction_diffusion) | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the class |
 | Engine | `godot_engines.engine(name = "simulation")` and its `build` tag in [`MODULE.bazel`](../../../MODULE.bazel) | Every slot built from the release sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
-| Lock file | [`simulation.lock.json`](simulation.lock.json) | The build graphs of the Linux and macOS recipes; `bazel run @simulation//:pin_linux --config=buildbuddy` and `bazel run @simulation//:pin_macos` rewrite them |
+| Lock file | [`simulation.lock.json`](simulation.lock.json) | The build graph of every recipe; on a Mac, `bazel run @simulation//:pin --config=buildbuddy` rewrites them, configuring the Linux recipes on BuildBuddy's executors and the others on the Mac |
 
 A changed `SCsub` or `config.py`, or an added or removed module file, needs those repins;
 until then the engine's recipes fail with the command.

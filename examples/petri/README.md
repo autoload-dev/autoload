@@ -34,7 +34,7 @@ names the engine `simulation`, built from the Godot 4.7.2 sources with the modul
 command needs a flag. The first command compiles that editor and runtime; Bazel caches
 the result. With `--config=buildbuddy`, a Mac compiles Petri's Linux editor on
 BuildBuddy's Linux executors and runs its editor actions there; the engine's lock file
-pins its Linux and macOS recipes, so no host configures them.
+pins every recipe, so no host configures them.
 
 1. `bazel run //examples/petri:run` opens the dish. Tap it.
 2. `bazel test //examples/petri/...` validates the scripts and runs the field, dish,
@@ -58,7 +58,7 @@ the official engine `godot`, which has no `GrayScottField`, so a Petri target wi
 | --- | --- | --- |
 | Module | [`examples/engines/simulation/modules/reaction_diffusion/`](../engines/simulation/modules/reaction_diffusion) | Godot's usual module layout: `config.py`, `SCsub`, `register_types` and the `GrayScottField` class |
 | Engine | `godot_engines.engine(name = "simulation")` and its `build` tag in [`MODULE.bazel`](../../MODULE.bazel) | Every slot built from the 4.7.2 release sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
-| Lock file | [`examples/engines/simulation/simulation.lock.json`](../engines/simulation/simulation.lock.json) | The build graphs of the Linux and macOS recipes; `bazel run @simulation//:pin_linux --config=buildbuddy` and `bazel run @simulation//:pin_macos` rewrite them |
+| Lock file | [`examples/engines/simulation/simulation.lock.json`](../engines/simulation/simulation.lock.json) | The build graph of every recipe; on a Mac, `bazel run @simulation//:pin --config=buildbuddy` rewrites them, configuring the Linux recipes on BuildBuddy's executors and the others on the Mac |
 | Selection | `engine = "simulation"` in [`BUILD.bazel`](BUILD.bazel) and [`tests/BUILD.bazel`](tests/BUILD.bazel) | Each target that runs Godot selects the engine by name; `MODULE.bazel` registers it beside the official engine `godot` |
 | Dish | `main/dish/` | The only scripts that name the module's class: steps the field, maps taps into it, paints the texture |
 | HUD | `main/hud/` | Chips, buttons and stats inside the display's safe area |
@@ -70,9 +70,8 @@ the Compatibility renderer. `get_image()` returns one RGBA8 `Image`, repainted o
 each call with a fixed palette, so a script only updates an `ImageTexture`.
 `get_value(x, y)` reads the second chemical of one cell.
 
-The engine has a slot for every platform, but its lock file pins only the Linux and macOS
-recipes: an Android or iOS build of Petri fails with the command that pins them,
-`bazel run @simulation//:pin_android` or `:pin_ios` on a Mac. The
+The engine has a slot for every platform, and its lock file pins every recipe: Android and
+iOS builds of Petri need no host configuration either. The
 [engine guide](../../rules_godot/docs/public/engine.md#pin-the-recipes) explains pinning.
 
 ## Working on Petri
@@ -83,8 +82,7 @@ recipes: an Android or iOS build of Petri fails with the command that pins them,
 - Change the module's code under `examples/engines/simulation/modules/reaction_diffusion/`; the next
   Petri build recompiles the module and relinks both engines. A changed
   `SCsub` or `config.py`, or an added or removed file, needs a repin with
-  `bazel run @simulation//:pin_linux --config=buildbuddy` and
-  `bazel run @simulation//:pin_macos`; until then the engine's recipes fail with those
-  commands.
+  `bazel run @simulation//:pin --config=buildbuddy` on a Mac; until then the engine's
+  recipes fail with that command.
 - Add a preset in `main/dish/dish.gd`; the HUD builds its chips from that list.
 - For target placement, read the [project layout guide](../../rules_godot/docs/public/project-layout.md).
