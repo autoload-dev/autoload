@@ -64,6 +64,13 @@ build:lint --config=check
 build:lint --output_groups=lint_checks
 build:lint --norun_validations
 
+# The tests tagged source_engine build an engine from source, such as an application's that
+# run in an editor built with its module: they run only with --config=source-engine, which
+# `aspect ci source-engine` passes.
+test --test_tag_filters=-source_engine
+test:source-engine --build_tests_only
+test:source-engine --test_tag_filters=source_engine
+
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
 # start a Godot process (RG026) or need a mobile operating system's toolchains, the desktop smoke tests
 # included, which `aspect check` and the pre-push hook run. all: every test this host can

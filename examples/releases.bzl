@@ -18,12 +18,12 @@ load(
 )
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
-def _release_test(name, lane, target_compatible_with = []):
+def _release_test(name, os_tag, target_compatible_with = []):
     """Build a release and its debug symbols as a test tagged with its mobile operating system, which starts Godot."""
     build_test(
         name = name + ".build_test",
         size = "small",
-        tags = [lane, "godot_process"],
+        tags = [os_tag, "godot_process"],
         target_compatible_with = target_compatible_with,
         targets = [name, name + ".debug_symbols"],
     )

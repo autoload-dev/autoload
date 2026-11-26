@@ -73,7 +73,7 @@ def hook_findings(
 
 
 def android_findings(env: Mapping[str, str]) -> list[Finding]:
-    """The pinned Android SDK packages, which Android builds and the lanes need."""
+    """The pinned Android SDK packages, which Android builds and CI's host jobs need."""
     sdk = env.get("ANDROID_SDK_ROOT") or env.get("ANDROID_HOME")
     if not sdk:
         return [warning("No Android SDK is selected: run aspect bootstrap")]
