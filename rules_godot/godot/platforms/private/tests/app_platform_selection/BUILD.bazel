@@ -52,6 +52,7 @@ godot_test(
     name = "start_pack_runs_main_scene_test",
     size = "medium",
     pack = _DESKTOP + "start_pack",
+    tags = ["godot_process"],
 )
 
 # Run test: the host's exported application runs its start pack's main scene. Its smoke tag
@@ -85,6 +86,7 @@ py_test(
     args = ["$(rootpaths :editor_app)"],
     data = [":editor_app"],
     main = "editor_app_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _HOST_DESKTOP,
 )
 
@@ -128,6 +130,7 @@ py_test(
         ":ios_start_pack_ios_sim_arm64",
     ],
     main = "ios_environment_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )
 
@@ -168,6 +171,7 @@ _DESKTOP_APPS = [
         ] + cpus + ["$(rootpaths :%s_selected_app)" % operating_system],
         data = [":%s_selected_app" % operating_system],
         main = "selected_app_test.py",
+        tags = ["godot_process"],
         target_compatible_with = compatible,
         deps = [
             "//tools:pck_lib",
@@ -220,6 +224,7 @@ _DESKTOP_APPS = [
             "@android_toolchains//:aapt",
         ],
         main = "selected_app_test.py",
+        tags = ["godot_process"],
         target_compatible_with = _ANDROID_SDK,
         deps = [
             "//tools:pck_lib",
@@ -281,7 +286,7 @@ configured_outputs(
         ],
         data = [":%s_selected_app" % name],
         main = "selected_app_test.py",
-        tags = tags,
+        tags = tags + ["godot_process"],
         target_compatible_with = _MACOS,
         deps = [
             "//tools:pck_lib",
@@ -296,7 +301,6 @@ configured_outputs(
             "ios_source_simulator",
             "arm64",
             [
-                "manual",
                 "source_engine",
                 "source_engine_extended",
             ],
@@ -305,7 +309,6 @@ configured_outputs(
             "ios_dual_simulator",
             "arm64,x86_64",
             [
-                "manual",
                 "source_engine",
                 "source_engine_extended",
             ],
@@ -346,6 +349,7 @@ android_bundle_test(
         "arm64-v8a/libhello_native.so",
         "x86_64/libhello_native.so",
     ],
+    tags = ["godot_process"],
     target_compatible_with = _ANDROID_SDK,
 )
 
@@ -372,5 +376,6 @@ ios_app_test(
     size = "medium",
     app = ":ios_release_symbols_app",
     debug_symbols = ":ios_release_symbols_app_debug_symbols",
+    tags = ["godot_process"],
     target_compatible_with = _MACOS,
 )

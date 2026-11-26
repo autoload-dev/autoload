@@ -5,7 +5,8 @@ import os
 import sys
 from pathlib import Path
 
-from tools.conventions.context import Bazel, Buildozer, Context, Workspace, run_tool
+from tools.conventions.bazel import Bazel
+from tools.conventions.context import Buildozer, Context, Workspace, run_tool
 from tools.conventions.framework import run
 from tools.conventions.registry import select
 

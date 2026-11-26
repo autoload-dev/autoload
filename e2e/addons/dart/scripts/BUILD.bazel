@@ -35,4 +35,5 @@ gdunit_test(
     size = "small",
     project = "//e2e/addons/dart",
     suites = [":suites"],
+    tags = ["godot_process"],
 )

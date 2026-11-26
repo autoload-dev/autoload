@@ -23,6 +23,7 @@ from tools.conventions.rules.rg022 import NoComponentNames
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
 from tools.conventions.rules.rg024 import RegionHeaders
 from tools.conventions.rules.rg025 import ReadingOrder
+from tools.conventions.rules.rg026 import GodotProcessTests
 
 RULES: tuple[Rule, ...] = (
     PackageNames(),
@@ -47,6 +48,7 @@ RULES: tuple[Rule, ...] = (
     ReleasedWithoutTests(),
     RegionHeaders(),
     ReadingOrder(),
+    GodotProcessTests(),
 )
 
 

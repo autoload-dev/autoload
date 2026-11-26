@@ -33,6 +33,7 @@ godot_metadata_sync(
     size = "small",
     engine = "simulation",
     project = ":petri",
+    tags = ["godot_process"],
     deps = ["//examples/petri/main"],
 )
 
@@ -69,6 +70,7 @@ godot_metadata_sync(
     testonly = True,
     engine = "simulation",
     project = ":test_project",
+    tags = ["godot_process"],
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
 )

@@ -9,6 +9,7 @@ godot_test(
     size = "medium",
     engine_errors = "report",
     project = _FIXTURE,
+    tags = ["godot_process"],
     deps = [_FIXTURE + ":main"],
 )
 
@@ -29,4 +30,5 @@ py_test(
     args = ["$(rootpath :failing_test)"],
     data = [":failing_test"],
     main = "reported_error_test.py",
+    tags = ["godot_process"],
 )

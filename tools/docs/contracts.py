@@ -21,7 +21,6 @@ from tools.docs.evidence import (
     RULESET_DIR,
     EvaluatedBazel,
     behavior_tests,
-    is_test,
     unqualified,
 )
 from tools.docs.output_contracts import (
@@ -104,7 +103,7 @@ def companion_errors(
     errors = kind_errors(
         row["kind"],
         target,
-        test=is_test(loaded),
+        test=loaded.is_test,
         shared_library=is_shared_library(loaded.kind, loaded.booleans),
     )
     expected = (
@@ -190,7 +189,7 @@ def check_case(
         compare(
             api.contract,
             observed[label],
-            test=is_test(root_fact),
+            test=root_fact.is_test,
             shared_library=is_shared_library(root_fact.kind, root_fact.booleans),
             companions=discovered_companions(label.rpartition(":")[2], api, facts.loaded),
             conditions=case["conditions"],

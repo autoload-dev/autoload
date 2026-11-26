@@ -40,6 +40,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":sqlite",
+    tags = ["godot_process"],
     deps = ["//examples/addons/sqlite/main"],
 )
 

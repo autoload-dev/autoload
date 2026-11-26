@@ -1,6 +1,9 @@
 """Provide cached, read-only workspace, Starlark and Bazel facts to convention rules.
 
-Sections: Workspace, Starlark syntax, Bazel evidence, Context.
+The Bazel tool that runs the loading queries is tools/conventions/bazel.py; this module
+decodes their output.
+
+Sections: Workspace, Starlark syntax, Bazel evidence, Source labels, Context.
 """
 
 import io
@@ -53,21 +56,6 @@ class Module:
                 build.parent.relative_to(self.path).as_posix() for build in self.builds
             )
         )
-
-
-def location(root: Path, base: Path, value: str) -> Location:
-    """Resolve a ``path:line:column`` value; relative paths start at base."""
-    path, line, _column = value.rsplit(":", 2)
-    source = Path(path)
-    if not source.is_absolute():
-        source = base / source
-    source = source.resolve()
-    name = (
-        source.relative_to(root).as_posix()
-        if source.is_relative_to(root)
-        else str(source)
-    )
-    return Location(name, int(line))
 
 
 def run_tool(
@@ -371,6 +359,21 @@ class Buildozer:
 # ==== Bazel evidence ==========================================================
 
 
+def location(root: Path, base: Path, value: str) -> Location:
+    """Resolve a ``path:line:column`` value; relative paths start at base."""
+    path, line, _column = value.rsplit(":", 2)
+    source = Path(path)
+    if not source.is_absolute():
+        source = base / source
+    source = source.resolve()
+    name = (
+        source.relative_to(root).as_posix()
+        if source.is_relative_to(root)
+        else str(source)
+    )
+    return Location(name, int(line))
+
+
 def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
     """
     Return the root of the repository declaring a rule.
@@ -409,6 +412,12 @@ class Target:
     label_lists: Mapping[str, tuple[str, ...]]
     label_keyed_strings: Mapping[str, Mapping[str, str]]
     outputs: tuple[str, ...]
+    string_lists: Mapping[str, tuple[str, ...]]
+
+    @property
+    def is_test(self) -> bool:
+        """Bazel requires test rule class names, and only those, to end in ``_test``."""
+        return self.kind.endswith("_test")
 
     @property
     def origin(self) -> Location:
@@ -446,12 +455,12 @@ def _valued(rule: ET.Element, tag: str) -> dict[str, str]:
     }
 
 
-def _label_lists(rule: ET.Element) -> dict[str, tuple[str, ...]]:
-    """The list attributes whose every element is a label with a value."""
+def _lists(rule: ET.Element, tag: str) -> dict[str, tuple[str, ...]]:
+    """The list attributes whose every element is of one type with a value, such as labels."""
     return {
         item.attrib["name"]: tuple(child.attrib["value"] for child in item)
         for item in rule.findall("list")
-        if all(child.tag == "label" and "value" in child.attrib for child in item)
+        if all(child.tag == tag and "value" in child.attrib for child in item)
     }
 
 
@@ -490,9 +499,10 @@ def _query_target(root: Path, module: Module, rule: ET.Element) -> Target:
         generator_location=generator_location(root, module, rule, origin),
         kind=rule.attrib["class"],
         labels=MappingProxyType(_valued(rule, "label")),
-        label_lists=MappingProxyType(_label_lists(rule)),
+        label_lists=MappingProxyType(_lists(rule, "label")),
         label_keyed_strings=MappingProxyType(_label_keyed_strings(rule)),
         outputs=tuple(item.attrib["name"] for item in rule.findall("rule-output")),
+        string_lists=MappingProxyType(_lists(rule, "string")),
     )
 
 
@@ -528,150 +538,7 @@ def query_files(root: Path, module: Module, query: ET.Element) -> dict[str, Fact
     return files
 
 
-def evaluated_frames(stack: Iterable[str]) -> tuple[tuple[str, str], ...]:
-    """Retain named Starlark call frames supplied by Bazel, without source guessing."""
-    result = []
-    for frame in stack:
-        file, _, _, function = frame.rsplit(":", 3)
-        if file.endswith(".bzl") and function.strip() != "<toplevel>":
-            result.append((file, function.strip()))
-    return tuple(result)
-
-
-class Bazel:
-    def __init__(self, root: Path) -> None:
-        self.root = root
-        self._rules: dict[Module, tuple[Target, ...]] = {}
-        self._facts: dict[Module, dict[str, Fact]] = {}
-        self._invocations: dict[Module, Mapping[str, tuple[tuple[str, str], ...]]] = {}
-
-    def query(self, module: Module, expression: str) -> ET.Element:
-        """Run a loading query and return its XML with default attribute values."""
-        output = run_tool(
-            [
-                "bazel",
-                "query",
-                expression,
-                "--output=xml",
-                "--xml:default_values",
-                "--noshow_progress",
-            ],
-            self.root / module.path,
-        )
-        try:
-            return ET.fromstring(output)
-        except ET.ParseError as error:
-            raise EvidenceError(f"cannot parse Bazel query output: {error}") from error
-
-    def invocations(self, module: Module) -> Mapping[str, tuple[tuple[str, str], ...]]:
-        """Evaluated source/function frames, including each outermost macro owner."""
-        if module not in self._invocations:
-            patterns = ["//" + package + ":all" for package in module.packages]
-            output = run_tool(
-                [
-                    "bazel",
-                    "query",
-                    "kind(rule, set(" + " ".join(patterns) + "))",
-                    "--output=streamed_jsonproto",
-                    "--proto:instantiation_stack",
-                    "--noshow_progress",
-                ],
-                self.root / module.path,
-            )
-            result = {}
-            for line in output.splitlines():
-                try:
-                    value = json.loads(line)["rule"]
-                    result[value["name"]] = evaluated_frames(
-                        value.get("instantiationStack", [])
-                    )
-                except (ValueError, KeyError) as error:
-                    raise EvidenceError(
-                        f"invalid evaluated instantiation evidence: {error}"
-                    ) from error
-            self._invocations[module] = MappingProxyType(result)
-        return self._invocations[module]
-
-    def rules(self, module: Module) -> tuple[Target, ...]:
-        if module in self._rules:
-            return self._rules[module]
-        patterns = ["//" + package + ":all" for package in module.packages]
-        query = self.query(module, "kind(rule, set(" + " ".join(patterns) + "))")
-        self._rules[module] = query_targets(self.root, module, query)
-        self._facts.setdefault(module, {}).update(
-            {target.label: target for target in self._rules[module]}
-        )
-        return self._rules[module]
-
-    def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]:
-        """Resolve explicit labels, including external repositories, without analysis."""
-        cache = self._facts.setdefault(module, {})
-        missing = sorted(set(labels) - cache.keys())
-        if missing:
-            query = self.query(
-                module, "set(" + " ".join(json.dumps(label) for label in missing) + ")"
-            )
-            cache.update(
-                {
-                    target.label: target
-                    for target in query_targets(self.root, module, query)
-                }
-            )
-            cache.update(query_files(self.root, module, query))
-            unresolved = set(missing) - cache.keys()
-            if unresolved:
-                raise EvidenceError(
-                    "Bazel did not resolve labels: " + ", ".join(sorted(unresolved))
-                )
-        return MappingProxyType({label: cache[label] for label in labels})
-
-
-# ==== Context =================================================================
-
-
-@dataclass(frozen=True)
-class Declaration:
-    call: Call
-    targets: tuple[Target, ...]
-
-
-class StarlarkTool(Protocol):
-    def calls(self, module: Module) -> tuple[Call, ...]: ...
-
-    def module_name(self, module: Module) -> str: ...
-
-
-class BazelTool(Protocol):
-    def rules(self, module: Module) -> tuple[Target, ...]: ...
-
-    def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]: ...
-
-    def invocations(
-        self, module: Module
-    ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
-
-
-def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaration, ...]:
-    """Attach each evaluated target to the one authored BUILD call it came from."""
-    by_location: dict[Location, list[Call]] = defaultdict(list)
-    for call in calls:
-        by_location[call.location].append(call)
-    targets: dict[Location, list[Target]] = defaultdict(list)
-    for target in rules:
-        origin = target.origin
-        # Macro implementation calls are generated, not authored BUILD declarations.
-        if Path(origin.path).name not in BUILD_FILES:
-            continue
-        candidates = by_location.get(origin, [])
-        if len(candidates) != 1:
-            raise EvidenceError(
-                f"{origin.path}:{origin.line}: expected one parsed declaration, found {len(candidates)}"
-            )
-        targets[origin].append(target)
-    return tuple(
-        Declaration(by_location[origin][0], tuple(items))
-        for origin, items in targets.items()
-    )
+# ==== Source labels ===========================================================
 
 
 def main_label(path: Path) -> str:
@@ -721,6 +588,58 @@ def evaluated_source_label(root: Path, module: Module, file: str) -> str:
     if "/external/" in file or file.startswith("external/"):
         return _external_source_label(file)
     return main_label(_main_path(file, main))
+
+
+# ==== Context =================================================================
+
+
+@dataclass(frozen=True)
+class Declaration:
+    call: Call
+    targets: tuple[Target, ...]
+
+
+class StarlarkTool(Protocol):
+    def calls(self, module: Module) -> tuple[Call, ...]: ...
+
+    def module_name(self, module: Module) -> str: ...
+
+
+class BazelTool(Protocol):
+    def rules(self, module: Module) -> tuple[Target, ...]: ...
+
+    def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]: ...
+
+    def invocations(
+        self, module: Module
+    ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
+
+    def dependent_tests(
+        self, module: Module, labels: tuple[str, ...], excluded_tags: tuple[str, ...]
+    ) -> frozenset[str]: ...
+
+
+def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaration, ...]:
+    """Attach each evaluated target to the one authored BUILD call it came from."""
+    by_location: dict[Location, list[Call]] = defaultdict(list)
+    for call in calls:
+        by_location[call.location].append(call)
+    targets: dict[Location, list[Target]] = defaultdict(list)
+    for target in rules:
+        origin = target.origin
+        # Macro implementation calls are generated, not authored BUILD declarations.
+        if Path(origin.path).name not in BUILD_FILES:
+            continue
+        candidates = by_location.get(origin, [])
+        if len(candidates) != 1:
+            raise EvidenceError(
+                f"{origin.path}:{origin.line}: expected one parsed declaration, found {len(candidates)}"
+            )
+        targets[origin].append(target)
+    return tuple(
+        Declaration(by_location[origin][0], tuple(items))
+        for origin, items in targets.items()
+    )
 
 
 class Context:

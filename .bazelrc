@@ -58,9 +58,6 @@ build:ios-release --objc_enable_binary_stripping
 # (--compilation_mode).
 build:aab --@autoload_rules_godot//godot:android_format=aab
 
-# Opt in to the integration tests, which download the pinned editor.
-test:integration --test_tag_filters=integration
-
 # Opt in to BuildBuddy with --config=buildbuddy.
 import %workspace%/buildbuddy.bazelrc
 build:buildbuddy --workspace_status_command="bash buildbuddy_status.sh"

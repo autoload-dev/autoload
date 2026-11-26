@@ -43,6 +43,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":app_auth",
+    tags = ["godot_process"],
     deps = ["//examples/addons/app_auth/main"],
 )
 

@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from tools.ci.lanes import PROFILE
+from tools.conventions.bazel import Bazel
 from tools.conventions.context import (
-    Bazel,
     EvidenceError,
     Module,
     Target,
@@ -233,8 +233,3 @@ def behavior_tests(behavior: Mapping[str, list[Any]]) -> dict[str, set[str]]:
                     test["target"]
                 )
     return modules
-
-
-def is_test(target: Target) -> bool:
-    """Bazel requires test rule class names, and only those, to end in ``_test``."""
-    return target.kind.endswith("_test")

@@ -29,6 +29,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":lichtpost",
+    tags = ["godot_process"],
     deps = ["//examples/lichtpost/main"],
 )
 
@@ -39,6 +40,7 @@ godot_runtime_profile(
     size = "small",
     profile = "runtime.gdbuild",
     project = ":lichtpost",
+    tags = ["godot_process"],
     deps = ["//examples/lichtpost/main"],
 )
 
@@ -81,6 +83,7 @@ godot_metadata_sync(
     size = "small",
     testonly = True,
     project = ":test_project",
+    tags = ["godot_process"],
     visibility = ["//visibility:private"],
     deps = ["//examples/lichtpost/tests:suites"],
 )

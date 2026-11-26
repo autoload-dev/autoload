@@ -42,6 +42,7 @@ godot_test(
     name = "refs_stay_in_their_extension_test",
     size = "medium",
     main = "main/refs_stay_native.gd",
+    tags = ["godot_process"],
     deps = [
         ":alpha",
         ":beta",

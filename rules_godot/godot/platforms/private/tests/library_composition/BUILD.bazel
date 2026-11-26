@@ -67,6 +67,7 @@ py_test(
         ":android_multi_abi_bundles_carry_platform_libraries_test_app",
     ],
     main = "android_bundles_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_ANDROID_SDK,
     toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
     deps = [":android_apps"],
@@ -116,6 +117,7 @@ py_test(
         ":android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
     ],
     main = "android_debug_symbols_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_ANDROID_SDK,
     toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
     deps = [":android_apps"],
@@ -168,6 +170,7 @@ py_test(
         for role in _ANDROID_COMPOSITION
     ],
     main = "android_composition_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_ANDROID_SDK,
     deps = [":android_apps"],
 )
@@ -191,6 +194,7 @@ py_test(
     args = ["$(rootpaths :ios_app_carries_project_platform_libraries_test_app)"],
     data = [":ios_app_carries_project_platform_libraries_test_app"],
     main = "ios_app_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_MACOS,
     deps = [":ios_apps"],
 )
@@ -230,6 +234,7 @@ py_test(
         for role in _IOS_COMPOSITION
     ],
     main = "ios_composition_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_MACOS,
     deps = [":ios_apps"],
 )
@@ -258,6 +263,7 @@ py_test(
     args = ["$(rootpaths :ios_dynamic_framework_app_embeds_framework_test_app)"],
     data = [":ios_dynamic_framework_app_embeds_framework_test_app"],
     main = "ios_dynamic_framework_test.py",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_MACOS,
     deps = [
         ":ios_apps",
@@ -270,6 +276,7 @@ py_test(
 build_test(
     name = "ios_prebuilt_xcframework_app_builds_test",
     size = "medium",
+    tags = ["godot_process"],
     target_compatible_with = _REQUIRES_MACOS,
     targets = [":ios_prebuilt_xcframework_app_builds_test_app"],
 )

@@ -14,6 +14,7 @@ gdunit_test(
     project = _SUITES,
     shard_count = 2,
     suites = [_SUITES + ":passing_suites"],
+    tags = ["godot_process"],
 )
 
 # Run test: the GdUnit adapter runs a suite in a project that treats every GDScript warning
@@ -23,6 +24,7 @@ gdunit_test(
     size = "small",
     project = _STRICT,
     suites = [_STRICT + ":suites"],
+    tags = ["godot_process"],
 )
 
 # The drivers' helpers: running a test target as Bazel does, and reading a pack.
@@ -55,6 +57,7 @@ py_test(
         _SUITES + ":skipped_suite",
     ],
     main = "gdunit_launcher_test.py",
+    tags = ["godot_process"],
     deps = [":support"],
 )
 
@@ -67,5 +70,6 @@ py_test(
     args = ["$(rootpath %s:gdunit4_pack)" % _SUITES],
     data = [_SUITES + ":gdunit4_pack"],
     main = "gdunit4_pack_test.py",
+    tags = ["godot_process"],
     deps = [":support"],
 )

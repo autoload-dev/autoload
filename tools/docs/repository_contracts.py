@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.conventions.context import Module, Target
-from tools.docs.evidence import RULESET_MODULE, EvaluatedBazel, is_test
+from tools.docs.evidence import RULESET_MODULE, EvaluatedBazel
 from tools.docs.output_contracts import (
     CONTRACT_LANES,
     ConfiguredTarget,
@@ -114,7 +114,7 @@ def repository_errors(
                 for error in kind_errors(
                     row["kind"],
                     target,
-                    test=rule is not None and is_test(rule),
+                    test=rule is not None and rule.is_test,
                     shared_library=rule is not None
                     and is_shared_library(rule.kind, rule.booleans),
                 )

@@ -52,6 +52,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":firebase",
+    tags = ["godot_process"],
     deps = ["//examples/addons/firebase/main"],
 )
 

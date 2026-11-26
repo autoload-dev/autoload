@@ -8,4 +8,5 @@ godot_test(
     size = "small",
     headless = True,
     pack = "//examples/addons/sentry:pack",
+    tags = ["godot_process"],
 )

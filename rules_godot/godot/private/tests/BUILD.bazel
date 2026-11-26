@@ -131,6 +131,7 @@ import_and_pack_reproducibility_test(
     name = "import_and_pack_outputs_are_reproducible_test",
     size = "medium",
     pack = "//godot/private/tests/fixtures/reproducible_project:pack",
+    tags = ["godot_process"],
     units = [
         "icon",
         "other",

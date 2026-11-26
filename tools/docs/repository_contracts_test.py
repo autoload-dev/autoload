@@ -38,6 +38,7 @@ def contract(kind: str = "library", testonly: str = "false") -> Contract:
 def rule(kind: str = "cc_library", **booleans: bool) -> SimpleNamespace:
     return SimpleNamespace(
         kind=kind,
+        is_test=kind.endswith("_test"),
         booleans=MappingProxyType(booleans),
         label_lists=MappingProxyType({"visibility": ("//visibility:public",)}),
     )

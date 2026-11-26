@@ -26,6 +26,7 @@ py_test(
         _FIXTURE + ":pack",
     ],
     main = "ignored_files_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )
 
@@ -36,6 +37,7 @@ godot_test(
     size = "medium",
     main = "main/reader.gd",
     project = _FIXTURE,
+    tags = ["godot_process"],
     deps = [_FIXTURE + ":reader"],
 )
 
@@ -43,6 +45,7 @@ godot_test(
 godot_metadata_sync(
     name = "update",
     project = _FIXTURE,
+    tags = ["godot_process"],
     deps = [_FIXTURE + ":reader"],
 )
 

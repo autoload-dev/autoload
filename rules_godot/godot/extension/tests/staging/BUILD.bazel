@@ -16,6 +16,7 @@ godot_test(
     ],
     main = "main/loaded.gd",
     pack = _FIXTURE + ":enabled_pack",
+    tags = ["godot_process"],
 )
 
 # Build-output test: which extension descriptors and extension lists the packs carry.
@@ -28,5 +29,6 @@ py_test(
         _FIXTURE + ":hello",
     ],
     main = "pack_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )

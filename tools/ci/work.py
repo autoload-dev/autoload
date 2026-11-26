@@ -264,23 +264,9 @@ def contracts(lane: str) -> Work:
 # The ruleset's consumer scenarios, by package.
 SCENARIOS = "//e2e/rules_godot"
 
-SOURCE_ENGINE_TESTS = 'attr(tags, "\\bsource_engine\\b", tests(//godot/...))'
-
-# The fast tests of a module, which `aspect pre-push` runs in the ruleset: the unit tests
-# by their size, the analysis tests by rules_testing's tag, and the few smoke tests
-# (docs/internal/verification-architecture.md, "Test size").
-FAST_TESTS = (
-    "(attr(size, small, tests(//...))"
-    ' union attr(tags, "\\b(starlark_analysis_test|smoke)\\b", tests(//...)))'
-    ' except attr(tags, "\\b(manual|source_engine)\\b", tests(//...))'
-)
-
-# The query names its tests explicitly, so tests incompatible with this host, such as the
-# macOS-only analysis tests on Linux, are skipped rather than rejected.
-FAST_TEST_COMMAND = (
-    f"bazel query '{FAST_TESTS}' | xargs bazel test --build_tests_only"
-    " --skip_incompatible_explicit_targets"
-)
+# The ruleset's fast tests, which `aspect pre-push` runs: every test but those that start a
+# Godot process, the smoke tests included (rules_godot/.bazelrc, RG026).
+FAST_TEST_COMMAND = "bazel test --config=fast //..."
 
 PATCHED_ENGINE = (
     f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
@@ -438,7 +424,7 @@ WORK = (
         "test:bazel",
         "desktop",
         RULESET_DIR,
-        ("bazel test --build_tests_only --test_tag_filters=-source_engine //...",),
+        ("bazel test --build_tests_only //...",),
         android=True,
     ),
     # The scenarios' desktop set needs no Android SDK or NDK; an accidental dependency fails
@@ -504,7 +490,7 @@ WORK = (
         "source-engine",
         ".",
         (
-            In(RULESET_DIR, f"bazel query '{SOURCE_ENGINE_TESTS}' | xargs bazel test"),
+            In(RULESET_DIR, "bazel test --config=source-engine //..."),
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
@@ -519,12 +505,7 @@ WORK = (
         None,
         ".",
         (
-            In(
-                RULESET_DIR,
-                f"bazel query '{SOURCE_ENGINE_TESTS} except"
-                ' attr(tags, "\\bsource_engine_extended\\b", tests(//godot/...))\''
-                " | xargs bazel test",
-            ),
+            In(RULESET_DIR, "bazel test --config=source-engine-main //..."),
             PATCHED_EDITOR,
         ),
         android=True,

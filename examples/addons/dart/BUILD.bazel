@@ -46,5 +46,6 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":dart",
+    tags = ["godot_process"],
     deps = ["//examples/addons/dart/main"],
 )

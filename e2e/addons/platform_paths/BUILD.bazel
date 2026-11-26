@@ -29,6 +29,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":platform_paths",
+    tags = ["godot_process"],
     deps = [
         "//e2e/addons/platform_paths/locations:suites",
         "//e2e/addons/platform_paths/results:suites",

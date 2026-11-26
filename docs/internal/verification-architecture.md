@@ -181,17 +181,22 @@ the test's dependencies. For the kinds above:
 
 | Kind | Size |
 |---|---|
-| Starlark unit test, analysis test | No effect: they run no action. Select them by rules_testing's `starlark_analysis_test` tag |
+| Starlark unit test, analysis test | No effect: they run no action. They start no Godot process, so they are fast tests |
 | Build-tool unit test, repository-tooling test | `small` |
 | Build-output test, run test | `medium`: it builds or runs Godot |
 | Consumer scenario, example test | `medium` or `large`, as their run time needs |
 
 To check sizes against run times, run the tests in question with
 `--test_verbose_timeout_warnings`; it is not on by default, because it would flag every
-analysis test. The `smoke` tag marks the few integration tests that the pre-push hook
-runs beside the `small` and analysis tests, as Bazel's encyclopedia defines it: run before
-committing code changes. Keep it to an end-to-end path whose failure the other fast tests
-would miss.
+analysis test.
+
+Size says nothing about the cost of a test's build, so it does not select the fast tests.
+A test whose build or run starts a Godot process carries the `godot_process` tag
+([RG026](conventions.md#rg026)); the ruleset's fast tests, `bazel test --config=fast //...`,
+which the pre-push hook runs, are every other test. The `smoke` tag marks the few
+integration tests that run with them anyway, as Bazel's encyclopedia defines it: run before
+committing code changes. A smoke test carries no `godot_process` tag. Keep it to an
+end-to-end path whose failure the other fast tests would miss.
 
 ## Ruleset and consumer modules
 

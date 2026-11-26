@@ -28,7 +28,8 @@ A local completion report can say CI/lane verification is pending. It is not a m
 claim. Do not wait for unrelated checks before asking a question. If no code or configuration
 changed, a read-only review does not require test execution.
 
-The fast tests are the `small`, analysis and `smoke` tests of the ruleset
+The fast tests are the ruleset's tests that start no Godot process, its `smoke` tests
+included: `bazel test --config=fast //...` in `rules_godot/`
 ([test size](verification-architecture.md#test-size)); the root module's tests run whole, as
 in the quality lane. CI runs every lane on every run; to
 verify a lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not

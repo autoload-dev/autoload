@@ -39,6 +39,7 @@ py_test(
         for role in _ANDROID_APPS
     ],
     main = "android_overrides_test.py",
+    tags = ["godot_process"],
     target_compatible_with = ["//godot/platforms/private/tests:requires_android_sdk"],
 )
 
@@ -75,6 +76,7 @@ py_test(
         for role in _IOS_APPS
     ],
     main = "ios_overrides_test.py",
+    tags = ["godot_process"],
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//tools/platforms:apple_bundle_lib"],
 )

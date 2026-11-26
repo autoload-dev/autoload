@@ -35,6 +35,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":dart",
+    tags = ["godot_process"],
     deps = [
         "//e2e/addons/dart/scripts:suites",
     ],

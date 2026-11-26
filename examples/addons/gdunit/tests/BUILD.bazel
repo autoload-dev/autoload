@@ -18,4 +18,5 @@ gdunit_test(
     size = "small",
     project = "//examples/addons/gdunit",
     suites = [":suites"],
+    tags = ["godot_process"],
 )

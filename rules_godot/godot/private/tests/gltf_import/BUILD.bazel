@@ -9,6 +9,7 @@ godot_test(
     name = "gltf_imported_with_buffer_input_instantiates_test",
     size = "medium",
     pack = _FIXTURE + "pack",
+    tags = ["godot_process"],
 )
 
 # Build-output test: the import input's .bin is absent from the pack.
@@ -19,5 +20,6 @@ py_test(
     args = ["$(rootpath %spack)" % _FIXTURE],
     data = [_FIXTURE + "pack"],
     main = "gltf_pack_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )
