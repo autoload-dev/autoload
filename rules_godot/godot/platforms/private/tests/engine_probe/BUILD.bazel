@@ -90,7 +90,7 @@ configured_outputs(
     configured_outputs(
         name = "source_built_android_bundle_packages_engine_and_symbols_test_" + output,
         android_format = "aab",
-        extra_toolchains = ["@godot_source_build_android//toolchains:all"],
+        extra_toolchains = ["//godot/platforms/private/tests/engine_probe/engines:android.toolchain"],
         platform = _ANDROID,
         tags = ["manual"],
         target = _PROBE + target,
@@ -156,7 +156,7 @@ configured_outputs(
     name = "source_built_beta_android_app_packages_patched_engine_test_app",
     android_api_level = "36",
     engine = _BETA,
-    extra_toolchains = ["@godot_beta_source_build_android//toolchains:all"],
+    extra_toolchains = ["//godot/platforms/private/tests/engine_probe/engines:beta_android.toolchain"],
     platform = _ANDROID,
     tags = ["manual"],
     target = _PROBE + "android_beta_source_built_app",
@@ -169,7 +169,7 @@ beta_engine_test(
     apksigner = "@androidsdk//:apksigner",
     app = ":source_built_beta_android_app_packages_patched_engine_test_app",
     cc_toolchain_files = ":android_ndk_host_tools",
-    engine_manifest = "@godot_beta_source_build_android_android_arm64_template_release//:engine_manifest.json",
+    engine_manifest = "@beta_probe_android_arm64_template_release//:engine_manifest.json",
     inspector = ":validate_android_beta",
     kind = "source",
     operating_system = "android",
@@ -208,7 +208,7 @@ beta_engine_test(
 configured_outputs(
     name = "source_built_beta_ios_app_links_patched_engine_test_app",
     engine = _BETA,
-    extra_toolchains = ["@godot_beta_source_build_ios//toolchains:all"],
+    extra_toolchains = ["//godot/platforms/private/tests/engine_probe/engines:beta_ios.toolchain"],
     platform = "//godot/platforms:ios_sim_arm64",
     tags = ["manual"],
     target = _PROBE + "ios_beta_source_built_app",
@@ -218,7 +218,7 @@ beta_engine_test(
     name = "source_built_beta_ios_app_links_patched_engine_test",
     size = "medium",
     app = ":source_built_beta_ios_app_links_patched_engine_test_app",
-    engine_manifest = "@godot_beta_source_build_ios_ios_arm64_simulator_template_release//:engine_manifest.json",
+    engine_manifest = "@beta_probe_ios_arm64_simulator_template_release//:engine_manifest.json",
     inspector = ":validate_ios_beta",
     kind = "source",
     operating_system = "ios",
@@ -234,7 +234,7 @@ beta_engine_test(
 # defines its godot-cpp extension's entry symbol.
 configured_outputs(
     name = "source_built_ios_app_defines_extension_entry_test_app",
-    extra_toolchains = ["@godot_source_build_ios//toolchains:all"],
+    extra_toolchains = ["//godot/platforms/private/tests/engine_probe/engines:ios.toolchain"],
     platform = "//godot/platforms:ios_sim_arm64",
     tags = ["manual"],
     target = _PROBE + "ios_source_built_app",

@@ -29,7 +29,7 @@ ATTRIBUTES = {
     "godot_cpp_bindings": ("api_path",),
     "android_sdk_repository_extension.configure": ("api_level", "build_tools_version"),
     "godot_android_toolchains.configure": ("ndk_api_level",),
-    "godot_engines.prebuilt": ("version",),
+    "godot_engines.engine": ("version",),
     "godot_engines.source": ("version", "sha256", "urls", "strip_prefix"),
 }
 MAVEN = "maven.install"
@@ -52,7 +52,8 @@ def module_pins(source: str) -> dict[str, Any]:
     for declaration in declarations(source):
         kind = declaration.kind
         values = literals(declaration.keywords)
-        name = values.get("name")
+        # A tag that completes an engine names it with its engine attribute.
+        name = values.get("name", values.get("engine"))
         if kind == MAVEN:
             # Maven coordinates group:artifact[:packaging[:classifier]]:version.
             for coordinate in values.get("artifacts", []):

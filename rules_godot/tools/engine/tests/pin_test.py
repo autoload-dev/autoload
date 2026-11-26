@@ -17,7 +17,8 @@ from tools.engine.configure import (
     read_lock,
     stand_in_host,
 )
-from tools.engine.pin import copy_tree, extract, merge
+from tools.engine.lock import merge, update
+from tools.engine.pin import copy_tree, extract
 from tools.engine.render import render_unpinned
 
 
@@ -316,6 +317,65 @@ class PinTest(unittest.TestCase):
                     0
                 ],
                 "missing",
+            )
+
+    def test_a_partial_pin_updates_its_recipes_and_keeps_the_others(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lock = root / "engine.lock.json"
+            old = {"function": "old", "sources": []}
+            new = {"function": "new", "sources": []}
+            lock.write_text(
+                json.dumps(
+                    {
+                        "generators": {"sha256:old": [{"spec": old}], "sha256:gone": []},
+                        "recipes": {
+                            "linux_x86_64_editor": {
+                                "digest": "l",
+                                "graph": {"generators": "sha256:old"},
+                            },
+                            "macos_arm64_editor": {
+                                "digest": "m1",
+                                "graph": {"generators": "sha256:gone"},
+                            },
+                        },
+                        "variants": {
+                            "linux_x86_64_template_release": {
+                                "@@//a:p.gdbuild": {
+                                    "digest": "v",
+                                    "graph": {"generators": "sha256:old"},
+                                }
+                            }
+                        },
+                    }
+                )
+            )
+            partial = root / "partial.json"
+            partial.write_text(
+                json.dumps(
+                    {
+                        "generators": {"sha256:new": [{"spec": new}]},
+                        "recipes": {
+                            "macos_arm64_editor": {
+                                "digest": "m2",
+                                "graph": {"generators": "sha256:new"},
+                            }
+                        },
+                    }
+                )
+            )
+            update(lock, partial)
+            result = json.loads(lock.read_text())
+            self.assertEqual(result["recipes"]["macos_arm64_editor"]["digest"], "m2")
+            self.assertEqual(result["recipes"]["linux_x86_64_editor"]["digest"], "l")
+            self.assertIn("linux_x86_64_template_release", result["variants"])
+            # Generator lists no pin refers to any longer leave the lock.
+            self.assertEqual(sorted(result["generators"]), ["sha256:new", "sha256:old"])
+            # Without a lock file, the partial pin is the lock.
+            lock.unlink()
+            update(lock, partial)
+            self.assertEqual(
+                sorted(json.loads(lock.read_text())["recipes"]), ["macos_arm64_editor"]
             )
 
 

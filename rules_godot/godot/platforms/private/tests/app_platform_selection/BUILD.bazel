@@ -40,8 +40,8 @@ _LINUX_CPU = select({
     "//conditions:default": ["x86_64"],
 })
 
-# extra_toolchains takes labels, so the hub's one registered toolchain rather than :all.
-_SOURCE_IOS = ["@godot_source_build_ios//toolchains:runtime_ios_arm64_simulator_release.toolchain"]
+# extra_toolchains takes labels, so the engine probe's one registered toolchain.
+_SOURCE_IOS = ["//godot/platforms/private/tests/engine_probe/engines:ios.toolchain"]
 
 app_outputs_test_suite(name = "app_outputs_test_suite")
 

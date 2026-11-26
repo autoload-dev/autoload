@@ -10,9 +10,9 @@ repository follows this layout: games such as Lichtpost are projects directly in
 An application keeps its configuration in its project and its content under `main/`; the
 physical placement of a source decides which project or add-on owns it. A custom engine is a shared
 resource, not a part of one application: its modules live in `engines/<engine name>/modules/<module>/`,
-its patches in `engines/<engine name>/patches/` and its source build's lock file beside them, in an
+its patches in `engines/<engine name>/patches/` and its lock file beside them, in an
 `engines/` directory anywhere in the repository, such as at the root of a consuming repository.
-A Godot project holds no engine patches or source build lock files.
+A Godot project holds no engine patches or engine lock files.
 An add-on's Godot test project holds its suites in packages named after their topic; a
 condition a test needs to run, such as a real operating system, is a tag of the test, not a
 directory. An application's suites, helpers and fixtures live in its `tests/` package. Native unit tests

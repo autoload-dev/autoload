@@ -16,7 +16,7 @@ Godot features are covered from one passing cell.
 |---|---|---|---|
 | Linux desktop: ruleset behavior and desktop app | Linux CI; local Linux for focused feedback | CI runner CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
 | macOS desktop: ruleset behavior and desktop app | macOS CI; local macOS for focused feedback | Host CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
-| Source-built engines | Source-engine lane: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | Pinned stable and next-minor preview source builds with patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
+| Source-built engines | Source-engine lane: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
 | Android packaging | The ruleset's tests in the Linux and macOS desktop sets, with SDK/NDK and Java 21; the Android lane on Linux CI for the consumer | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle and the Android API contract cases |
 | Android release symbols | The desktop sets, with Android packaging | Optimized native compilation, debug information and stripping, selected by the test's transition | Match retained symbols/Build IDs/DWARF to delivered libraries |
 | iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS desktop set; the iOS lane for the consumer | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the source-engine lane | Build-output tests of configured products; the consumer's iOS smoke app and the iOS API contract cases; a device link is not a provisioned device IPA |
@@ -92,7 +92,7 @@ commit, so CI has no job for it. The
 its contract cases and `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned source build's
+`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned engine's
 toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built

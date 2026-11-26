@@ -42,9 +42,7 @@ tests and every application package.
    bazel_dep(name = "autoload_rules_godot", version = "<version>")
 
    godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-   godot_engines.prebuilt(name = "godot", version = "4.7.2")
-   use_repo(godot_engines, "godot")
-   register_toolchains("@godot//toolchains:all")
+   godot_engines.engine(name = "godot", default = True, version = "4.7.2")
    ```
 
 2. Add these options to your `.bazelrc`; [Installation](docs/public/installation.md)

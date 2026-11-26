@@ -2,38 +2,63 @@
 
 A Godot build needs two engines: the **editor**, which imports and exports projects, and
 the **runtime**, the export template an application packages. rules_godot resolves both
-as Bazel toolchains, so projects, packs and apps need not name one. Register Godot's official
-builds, build an engine from a pinned source with your own modules and patches, or mix
-both: each role, platform and CPU, plus, for runtimes, the iOS environment and the
-variant, is one slot, and the first registered candidate for a slot wins. A target uses
-one engine, the default one or the one it [names](#name-an-engine), and takes no other
+as Bazel toolchains, so projects, packs and apps need not name one. Register each engine by
+name and Godot version: a catalogued release brings Godot's official editors and
+templates, and the tags that name the engine add your own sources, binaries, modules,
+patches and options. Each role, platform and CPU, plus, for runtimes, the iOS environment
+and the variant, is one slot, and the first registered candidate for a slot wins. A target
+uses one engine, the default one or the one it [names](#name-an-engine), and takes no other
 engine's components.
 
 | You want | Use |
 | --- | --- |
-| The official editors and templates of a release | [`godot_engines.prebuilt`](#use-a-prebuilt-engine) |
-| Your own modules, patches or a fork in some slots | [A source recipe and a component](#build-an-engine-from-source), registered ahead |
-| Source-built engines for many slots, with one build policy | [`godot_engines.source_build`](#declare-a-source-build) |
-| Components of different sources in one engine | [`--extra_toolchains`](#replace-slots) or [`select()`](#choose-between-prepared-recipes) |
+| The official editors and templates of a release | [An `engine` tag](#register-an-engine) |
+| Your own modules, patches or options | [A `build` tag](#build-an-engine-from-source) |
+| A fuller editor beside reduced runtimes | [An `editor` tag](#build-the-editors-differently) |
+| A fork, or a release outside the catalogue | [`source` and `binaries` tags](#use-other-sources-or-binaries) |
 | An engine that only the targets naming it use, such as one with your own module | [An engine name](#name-an-engine) |
-| Your own engine for every target that names none | [Replace the default engine](#replace-the-default-engine) |
+| Components of different sources in one engine | [`--extra_toolchains`](#replace-slots) or [`select()`](#choose-between-prepared-recipes) |
 
 The supported versions are **>=4.7.2 <5.0.0**; [versions](versions.md) lists the built-in
 release pins.
 
-## Use a prebuilt engine
+## Register an engine
 
-1. Declare a prebuilt engine and register its components in `MODULE.bazel`:
+1. Register an engine in `MODULE.bazel`:
 
    ```starlark
    godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-   godot_engines.prebuilt(name = "godot", version = "4.7.2")
-   use_repo(godot_engines, "godot")
-   register_toolchains("@godot//toolchains:all")
+   godot_engines.engine(name = "godot", default = True, version = "4.7.2")
    ```
 
 2. Build a pack or app as usual; `bazel build //path/to:app` downloads only the editor
    of your host and the templates the app needs.
+
+An engine is one `engine` tag, completed by the `source`, `binaries`, `build`, `editor` and
+`runtime_profile` tags that name it with `engine = "<name>"`. Its `name` is what targets
+[select](#name-an-engine), the name of its hub repository `@<name>`, whose `toolchains`
+package holds its components, and the prefix of its other repositories. `default = True`
+makes it the engine of every target that names none; at most one engine of a module is the
+default. The root module's default wins; a dependency's, such as an add-on module's own
+engine, counts only when the root module names none. What an engine can do follows from
+its tags:
+
+| Tags | Prebuilt binaries | Built from source |
+| --- | --- | --- |
+| `engine` of a catalogued version | Godot's official ones | the slots they lack, and every runtime of an application with a build profile or of an optimized release |
+| + [`build`](#build-an-engine-from-source) | none of the catalogue's | every slot |
+| + [`binaries`](#use-other-sources-or-binaries) | these | as above, beside them; with pinned editors or templates, a fork's, only from a `source` tag's sources |
+| + [`source`](#use-other-sources-or-binaries) | as above | from these sources instead of the catalogue's |
+| `binaries` of an uncatalogued version, no `source` | these | none: build profiles fail analysis, and [engine optimization](#optimization) leaves the binaries unchanged |
+
+The hub has a component for every valid slot: an editor per editor platform and a runtime
+per platform, CPU, iOS environment and variant. You register no toolchains yourself: the
+extension also generates `@godot_engines_toolchains`, the toolchains of every registered
+engine's components, which rules_godot's own module registers. `use_repo` is needed only
+for the repositories you reference directly, such as `@godot//android:plugin_api`, a
+recipe or `@<name>//:pin`. Declaring the components costs nothing: an engine downloads,
+configures and compiles only the payloads a build requests, so slots of platforms a build
+never targets are never fetched.
 
 For a catalogued version, `version` is enough: the hub covers the official editors per
 editor platform, the Linux and macOS runtimes, the iOS device and simulator runtimes and
@@ -41,8 +66,8 @@ the Android runtimes. Where the official artifacts lack a runtime slot, the hub 
 from the release's sources:
 
 - Official Android shell AARs are release builds, so the Android debug runtimes are
-  source-built, unless you pin `android_debug_shell_urls` and
-  `android_debug_shell_integrity`.
+  source-built, unless the engine's [`binaries`](#use-other-sources-or-binaries) pin
+  `android_debug_shell_urls` and `android_debug_shell_integrity`.
 - The official Simulator Godot libraries contain x86_64 objects, although the 4.7.2
   XCFramework metadata advertises an ARM64 slice. In 4.8-beta1, the required AccessKit
   library contains ARM64 objects, so those Simulator libraries cannot link together at
@@ -52,30 +77,53 @@ from the release's sources:
   4.8-beta1 sources do not bundle the AccessKit SDK, so its source-built Simulator
   runtimes have no screen reader support; device builds keep the official template's.
 
-These source recipes enable the modules Godot's official builds enable by default
-(`default_modules` of a [source build](#declare-a-source-build)); iOS recipes leave out Vulkan, which would need
-the MoltenVK SDK on the configuring Mac, and keep Metal and OpenGL. Like any
-[source build](#declare-a-source-build), a recipe downloads the sources, configures and
-compiles only when a build selects its slot, on a host Godot accepts for its platform, such
-as a Mac for iOS. The prebuilt slots keep the official artifacts, except for applications
-with a [build profile](#an-applications-build-profile): a prebuilt runtime cannot leave
-classes out, so the hub builds every runtime slot from the same sources for them, as its
-`runtime_<slot>_profiled` components. To fail the missing slots instead, or to fill them
-with your own engine, set `source_runtimes = False`, or register your components
-[ahead of the hub](#replace-slots). Only catalogued releases with pinned sources build
-runtimes from source. A hub that pins its own templates or editors builds none, and one
-that pins its own Android shell builds no Android runtimes, since the upstream sources
-would not match a fork's artifacts. `bazel fetch --all` and `bazel vendor` configure every recipe, including the iOS
-ones, which only a Mac can; fetch the targets you build instead, or set
-`source_runtimes = False` where you need a whole-module fetch.
+These recipes enable the modules Godot's official builds enable by default
+(`default_modules` of a [`build` tag](#build-an-engine-from-source)); iOS recipes leave out
+Vulkan, which would need the MoltenVK SDK on the configuring Mac, and keep Metal and
+OpenGL. Like every recipe, one configures and compiles only when a build selects its slot,
+on a host Godot accepts for its platform, such as a Mac for iOS. The prebuilt slots keep
+the official artifacts only for builds whose runtime needs no tuning: a prebuilt runtime
+cannot leave classes out or compile differently, so for an application with a
+[build profile](#an-applications-build-profile), or under `-c opt` with
+[engine optimization](#optimization) other than the defaults, the hub builds every runtime
+slot from the same sources, as its `runtime_<slot>_tuned` components. To fill such slots with your own engine instead,
+register your components [ahead of the engine's](#replace-slots). `bazel fetch --all` and
+`bazel vendor` configure every recipe that no [lock file](#pin-the-recipes) pins,
+including the iOS ones, which only a Mac can; fetch the targets you build instead, or pin
+the recipes.
 
-For a release outside the catalogue, or an archive built elsewhere, pin each artifact.
-Digests are Subresource Integrity strings; explicit values replace catalogue entries:
+## Use other sources or binaries
+
+A `source` tag builds the engine from an immutable archive other than the catalogue's,
+such as a fork's or a snapshot of a maintenance branch:
 
 ```starlark
-godot_engines.prebuilt(
-    name = "godot_beta",
-    version = "4.8.0-beta1",
+godot_engines.engine(name = "patched", version = "4.7.3-rc1")
+godot_engines.source(
+    engine = "patched",
+    sha256 = "90ef5ad9f4c59750004813813534527eb3f82f1975789fb5b79b609fe841beb8",
+    strip_prefix = "godot-2ea68c77c3157c95793987569dc44662fe4f83cf",
+    urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
+    version = "4.7.3-rc",
+)
+```
+
+The engine's `version` is its exact canonical version, which must be numbered, such as
+`4.7.3-rc1`. The source tag's `version` is what the archive's `version.py` names, such as
+`4.7.3-rc` or `4.8.0-beta` for an unnumbered prerelease; empty takes the engine's. A
+recipe whose sources say otherwise fails.
+
+A `binaries` tag pins prebuilt editors, export templates or Android shells, each part
+replacing the catalogue's. Declaring them states that they match the engine's sources and
+build, such as a fork's release artifacts: the engine builds only the slots they lack.
+Pinned editors or templates are a fork's, so the engine then builds only from a `source`
+tag's sources, never from the catalogue's upstream sources; without one, it builds nothing.
+Digests are Subresource Integrity strings:
+
+```starlark
+godot_engines.engine(name = "beta", version = "4.8.0-beta1")
+godot_engines.binaries(
+    engine = "beta",
     android_shell_urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-lib.4.8.beta1.template_release.aar"],
     android_shell_integrity = "sha256-G1KpV92jFIn4OirzO17zy2euXFLyE40BSATgYs9MI5Y=",
 )
@@ -84,32 +132,40 @@ godot_engines.prebuilt(
 `editor_urls`, `editor_integrity` and `editor_binaries` are keyed by editor platform
 (`linux_x86_64`, `linux_arm64`, `macos`, `macos_arm64` or `macos_x86_64`);
 `templates_urls`, `templates_integrity`, `templates_macos_cpus`, `templates_linux_cpus` and
-`ios_simulator_cpus` describe the export templates. The
-[API documentation](https://registry.bazel.build/modules/autoload_rules_godot) of `godot_engines` lists every attribute and the
-generated targets. Names are shared with the `source` and `source_build` tags: a root module's
-request owns its name, identical requests from dependencies share one hub, and
-conflicting ones fail.
+`ios_simulator_cpus` describe the export templates; `android_shell_urls` and
+`android_debug_shell_urls` pin the release and debug Android shells. An uncatalogued
+version without a `source` tag needs the editors of its `binaries` and builds nothing from
+source. The [API documentation](https://registry.bazel.build/modules/autoload_rules_godot)
+of `godot_engines` lists every attribute and the generated targets.
+
+A module completes only the engines it registers. The root module's request owns its
+engine name, identical requests from dependencies share one engine, and conflicting ones
+fail.
 
 ## Replace slots
 
-Registration order decides between the candidates of one engine for a slot. Register a set
-before the one it overrides; it replaces only the slots it covers:
+Registration order decides between the candidates of one engine for a slot. A root
+module's own `register_toolchains` and `--extra_toolchains` come before the engines'
+toolchains, so a set you register replaces only the slots it covers:
 
 ```starlark
-register_toolchains(
-    "//engines/custom:all",         # wins for its slots
-    "@godot//toolchains:all",       # every other slot
-)
+register_toolchains("//engines/custom:all")  # wins for its slots; the engine keeps the others
 ```
 
-A registration set is any package of components. For one invocation,
-`--extra_toolchains=//path/to/engines:all` puts a set ahead of every registered one;
-`--extra_toolchains` gives its last entry priority. Each component also has a
+A registration set is any package of components; each component joins the engine its
+`engine` attribute names, or the default engine without one, and `default_engine = True`
+lets a named default engine's components also serve targets that name none, as the
+default engine's hub does. For one
+invocation, `--extra_toolchains=//path/to/engines:all` puts a set ahead of every registered
+one; `--extra_toolchains` gives its last entry priority. Each component also has a
 `<name>.toolchain` target, so one slot can be prioritized alone, such as only the editor:
 
 ```sh
 bazel build //path/to:app --extra_toolchains=//path/to/engines:editor_macos_arm64.toolchain
 ```
+
+`@<name>//toolchains:all` holds the components of one engine alone, for a build that
+registers that engine's slots ahead of the others.
 
 The editor and runtime of one build may come from different sets, versions or sources.
 They are not compared: the editor exports the pack, and the runtime that loads it must
@@ -132,18 +188,15 @@ editor loads is described in
 
 An engine name keeps an engine apart: its components fill slots only for targets that
 select it, and such a target takes no component of another engine, whatever the
-registration order. Components that name no engine form the default engine. Name the
-engine on its tag, or on each component of your own registration set with `engine`, and
-register its hub beside the others:
+registration order. Register each engine beside the others:
 
 ```starlark
-godot_engines.source_build(
-    name = "godot_studio",
+godot_engines.engine(name = "godot", default = True, version = "4.7.2")
+godot_engines.engine(name = "studio", version = "4.7.2")
+godot_engines.build(
     engine = "studio",
-    # ... sources, modules and platforms
+    # ... modules, patches and options
 )
-use_repo(godot_engines, "godot", "godot_studio")
-register_toolchains("@godot//toolchains:all", "@godot_studio//toolchains:all")
 ```
 
 A target selects an engine with its `engine` attribute: `godot_editor`,
@@ -159,9 +212,16 @@ godot_app(name = "app", engine = "studio", pack = ":pack")
 
 An empty `engine` keeps the build's engine: the default engine, or the one
 `--@autoload_rules_godot//godot:engine` names for a whole invocation, such as a check of
-every target against a newer engine. A run of a pack and an application name the engine
-their pack was exported with. Registering an engine downloads nothing until a target
-selects it.
+every target against a newer engine. The default engine also answers to its name, so
+`engine = "godot"` and an empty `engine` select the same components. A run of a pack and
+an application name the engine their pack was exported with. Registering an engine
+downloads nothing until a target selects it.
+
+To give the whole repository your own engine, set `default = True` on it instead of on the
+official one. Keep each engine's inputs in a directory of its own, `engines/<engine name>/`:
+its modules in `modules/<module>/`, its patches in `patches/` and its lock file beside them.
+Engines are shared by the applications that name them, so they live apart from every
+project; [project layout](project-layout.md) shows the place in a repository.
 
 A slot the named engine does not cover has no candidate: a target platform it lacks fails
 analysis with the missing role, rather than taking the default engine's runtime. An
@@ -169,69 +229,55 @@ execution platform it has no editor for is skipped: Bazel resolves the actions t
 editor on the next execution platform with one, such as this host behind a remote Linux
 executor, and the build's other actions stay where they are.
 
-## Replace the default engine
-
-Components that name no engine form the default engine, which every target without an
-`engine` uses. To give the whole repository your own engine, declare its source build
-without `engine` and register it instead of the prebuilt hub, or ahead of it so that the
-prebuilt one fills only the slots yours lacks:
-
-```starlark
-godot_engines.source_build(
-    name = "godot_studio",
-    # no engine: these components are the default engine
-    source = "@godot_sources//:source.json",
-    custom_modules = {"//engines/studio/modules/terrain:config.py": "terrain"},
-    lock_file = "//engines/studio:godot_studio.lock.json",
-)
-register_toolchains("@godot_studio//toolchains:all", "@godot//toolchains:all")
-```
-
-Keep each engine's inputs in a directory of its own, `engines/<engine name>/`: its modules
-in `modules/<module>/`, its patches in `patches/` and its source build's lock file beside
-them. Engines are shared by the applications that name them, so they live apart from
-every project; [project layout](project-layout.md) shows the place in a repository.
-
 ## Build an engine from source
 
-A source build compiles Godot from an immutable archive, an upstream release or a fork,
-with your modules, patches and options. The `source` tag of `godot_engines` pins the
-archive by digest and its version; the `source_build` tag configures one recipe per slot
-from it: SCons evaluates the feature graph once, and Bazel compiles each object and runs
-each code generator as its own cached action.
+A `build` tag compiles the engine from its sources, the catalogue's or a
+[`source` tag's](#use-other-sources-or-binaries), with your modules, patches and options,
+and the catalogue's binaries then no longer serve it: every slot its `binaries` tag does
+not pin is built. The engine declares one source recipe per row: SCons evaluates the
+feature graph once, and Bazel compiles each object and runs each code generator as its own
+cached action.
 
 ```starlark
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.source(
-    name = "godot_sources",
-    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
-    strip_prefix = "godot-4.7.2-stable",
-    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
-    version = "4.7.2",
-)
-godot_engines.source_build(
+godot_engines.engine(
     name = "my_engine",
-    source = "@godot_sources//:source.json",
-    platforms = ["macos"],
-    cpus = ["arm64"],
-    build_targets = ["template_release"],
+    version = "4.7.2",
+    lock_file = "//engines/my_engine:my_engine.lock.json",
+)
+godot_engines.build(
+    engine = "my_engine",
     enabled_modules = ["gdscript", "text_server_fb", "my_module"],
-    custom_modules = {"//native/my_module:config.py": "my_module"},
-    patches = ["//engine:fix.patch"],
+    custom_modules = {"//engines/my_engine/modules/my_module:config.py": "my_module"},
+    patches = ["//engines/my_engine/patches:fix.patch"],
     renderers = ["gl_compatibility"],
 )
-use_repo(godot_engines, "godot_sources", "my_engine")
-register_toolchains("@my_engine//toolchains:all")
 ```
 
-`version` is the archive's canonical version as its `version.py` names it, such as `4.7.2`
-or `4.8.0-beta` for an unnumbered beta; a recipe whose sources say otherwise fails.
-`build_targets` are `editor`, `template_debug` and `template_release`; iOS recipes add
-`ios_environments`, `device` or `simulator`. Editors compile for the execution platform.
-macOS and iOS recipes compile for the deployment target Godot's own build sets, raised to what the libc++ of current Xcode supports: 11.0 on macOS (Godot sets 10.13 on Intel Macs) and 15.0 on iOS (Godot sets 14.0), whatever
-the build's `--macos_minimum_os` or the application's minimum says, so one engine build
-serves every application; an application's minimum is its bundle's and its extension
-libraries', set by [`macos_minimum_os_version`](platforms.md#linux-and-macos) and
+Every recipe of an engine shares its build policy; slots with different policies belong
+to separate engines, or, for the editors, to an [`editor` tag](#build-the-editors-differently).
+Declaring the engine configures nothing: a recipe is configured, with its operating
+system's SDK, only when a build needs its payload. Godot configures a recipe only on a host
+its build scripts accept for that platform; macOS, for example, configures no Linux recipe.
+A build on macOS that registers a Linux execution or target platform, such as a remote
+executor, selects the hub's Linux slots and fails, rather than taking another engine's
+editor; [pin the recipes](#pin-the-recipes) so that any host builds every slot.
+
+Hub components are named `editor_<platform>_<cpu>` and
+`runtime_<platform>_<cpu>[_<environment>]_<variant>`. The engine's other repositories are
+`@<name>_source`, its sources; `@<name>_<row>`, one source recipe per row, such as
+`@my_engine_macos_arm64_editor` or `@my_engine_ios_arm64_simulator_template_release`;
+`@<name>_source_android_shell`, the Android shell library built from source; and, for
+pinned binaries, `@<name>_editor_<platform>`, `@<name>_templates_<platform>`,
+`@<name>_android_shell` and `@<name>_android_debug_shell`. Name a recipe's outputs to
+[compose components of your own](#choose-between-prepared-recipes).
+
+Editors compile for the execution platform. macOS and iOS recipes compile for the
+deployment target Godot's own build sets, raised to what the libc++ of current Xcode
+supports: 11.0 on macOS (Godot sets 10.13 on Intel Macs) and 15.0 on iOS (Godot sets
+14.0), whatever the build's `--macos_minimum_os` or the application's minimum says, so one
+engine build serves every application; an application's minimum is its bundle's and its
+extension libraries', set by [`macos_minimum_os_version`](platforms.md#linux-and-macos) and
 `ios_minimum_os_version`, and may not fall below the recipe's target.
 
 The `my_module` and patch entries are optional; remove them if unused. Export
@@ -258,14 +304,15 @@ defaults, which include `text_server_adv`. Editor builds also include upstream's
 `freetype`, `regex` and `svg` modules. Misspelled modules, cycles, unreadable dynamic
 dependency declarations and modules rejected by Godot's configuration fail with an error.
 
-A source build takes no build profile. Options that the editor and every runtime of the
+A `build` tag takes no build profile. Options that the editor and every runtime of the
 engine share belong in `build_options`, `enabled_modules` and `renderers`; classes and
 options that cut one game's runtime belong in that application's
 [build profile](#an-applications-build-profile), so the editor, imports and tests keep
 them.
 
 Patches use the host `patch` executable with fuzz disabled and strip level 1
-(`patch_strip`); every hunk must apply. `build_options` accepts upstream options;
+(`patch_strip`); every hunk must apply, to every recipe and to the Android shell library.
+`build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
 simulator switch, module selection, raw `profile` and `build_profile` paths (an
 application's [build profile](#an-applications-build-profile) takes their place),
@@ -275,72 +322,58 @@ Builders must read literal keys from `env` or pass it directly to named Python
 helpers with an `env` parameter. Dynamic callbacks, environment aliases and
 unsupported forwarding fail configuration instead of silently omitting inputs.
 
-## Declare a source build
+### Build the editors differently
 
-A source build applies one build policy (sources, modules, patches and options) to every
-slot you select: the `source_build` tag declares one source recipe per slot and a hub with
-the same layout as a prebuilt one, `@<name>//toolchains:all`. The `source` tag declares the
-archive in the same extension:
+An `editor` tag replaces the build tag's `enabled_modules`, `default_modules` and
+`build_options` for the engine's editor recipes only, such as a fuller editor beside
+reduced runtimes; patches and custom modules stay the build tag's:
 
 ```starlark
-godot_engines.source(
-    name = "godot_sources",
-    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
-    strip_prefix = "godot-4.7.2-stable",
-    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
-    version = "4.7.2",
+godot_engines.editor(
+    engine = "my_engine",
+    enabled_modules = ["gdscript", "text_server_adv", "zip", "my_module"],
+    build_options = {"vulkan": "no"},
 )
-godot_engines.source_build(
-    name = "godot_source_build",
-    source = "@godot_sources//:source.json",
-    platforms = ["android", "ios"],
-    cpus = ["arm64"],
-    build_targets = ["template_release"],
-    ios_environments = ["simulator"],
-    build_options = {"vulkan": "no", "opengl3": "yes"},
-)
-use_repo(godot_engines, "godot_source_build", "godot_sources")
-register_toolchains("@godot_source_build//toolchains:all", "@godot//toolchains:all")
 ```
 
-`platforms` is required; empty `cpus`, `build_targets` and `ios_environments`
-select every valid slot, and the source build never generates invalid ones such as an iOS
-editor. Every recipe of a source build shares its modules, patches and options; slots with
-different policies belong to separate source builds. Declaring one configures nothing:
-a recipe is configured, with its operating system's SDK, only when a build needs its
-payload. Godot configures a recipe only on a host its build scripts accept for that
-platform; macOS, for example, configures no Linux recipe. A build on macOS that registers
-a Linux execution or target platform, such as a remote executor, selects the hub's Linux
-slots and fails, rather than taking another engine's editor; [pin the
-recipes](#pin-the-recipes) so that any host builds every slot. Hub components are named
-`editor_<platform>_<cpu>` and `runtime_<platform>_<cpu>[_<environment>]_<variant>`; the
-recipes are `<name>_<platform>_<cpu>[_<environment>]_<build_target>`.
+The editor imports and exports what the runtimes then load, so keep the modules a project
+uses in both.
 
 ### Pin the recipes
 
-A lock file pins the build graph of every recipe of a source build, as `maven_install.json`
+A lock file pins the build graph of every recipe of an engine, as `maven_install.json`
 pins a Maven resolution: the recipe repositories read it and configure nothing on the
 host, so a Mac declares the Linux editor's actions and a remote Linux executor compiles
-them. Name the file with `lock_file` and write it with the hub's `:pin`:
+them. Name the file with the engine's `lock_file` and write it with the hub's `:pin`,
+which the module reaches through `use_repo`:
 
 ```starlark
-godot_engines.source_build(
-    name = "godot_source_build",
-    lock_file = "//engines:godot_source_build.lock.json",
-    # ... as above
+godot_engines.engine(
+    name = "my_engine",
+    version = "4.7.2",
+    lock_file = "//engines/my_engine:my_engine.lock.json",
 )
+use_repo(godot_engines, "my_engine")
 ```
 
 ```bash
-bazel run @godot_source_build//:pin --config=remote
+bazel run @my_engine//:pin --config=remote
 ```
 
-The package of `lock_file` must exist; the file itself is created by the first pin, and
-until then every recipe fails with the pin command. `:pin` configures each recipe in a
-build action on an execution platform of an operating system Godot accepts for it: Linux
-recipes on a Linux executor, macOS and iOS recipes on a Mac, Android recipes on any.
-Without a Linux execution platform, such as a remote executor, a Mac cannot pin Linux
-recipes; a Linux CI job can run the same command.
+The package of `lock_file` must exist; the file itself is created by the first pin. `:pin`
+configures each recipe in a build action on an execution platform of an operating system
+Godot accepts for it: Linux recipes on a Linux executor, macOS and iOS recipes on a Mac,
+Android recipes on any. A host whose execution platforms reach only some of them pins one
+platform's recipes with `:pin_linux`, `:pin_macos`, `:pin_android` or `:pin_ios`, which
+writes them into the lock file and keeps the others; a Linux CI job can pin the Linux
+recipes, and a Mac the macOS ones:
+
+```bash
+bazel run @my_engine//:pin_linux --config=remote
+bazel run @my_engine//:pin_macos
+```
+
+A recipe without a pin fails only when a build needs it, naming the pin command.
 
 Each pin records the digest of what its graph depends on: the archive, the patches, the
 recipe's platform, CPU, target, modules and options, for a runtime variant its runtime
@@ -355,8 +388,8 @@ becomes Bazel targets. Commit the lock file with the change that requires it.
 ### Android shell libraries
 
 An Android runtime is Godot's Java/Kotlin library, the Android shell library, with the
-engine library inside. Android source builds build the shell library from the same patched
-source, so a fork's Java changes come with its sources.
+engine library inside. An engine that builds Android runtimes from source builds the shell
+library from the same patched sources, so a fork's Java changes come with its sources.
 rules_godot adds the shell library's Maven dependencies, including `kotlin-stdlib` at
 Godot's Kotlin version, to your shared `maven` repository; repin it after adding
 rules_godot (`RULES_JVM_EXTERNAL_REPIN=1 bazel run @maven//:pin`). The contribution pins
@@ -366,14 +399,16 @@ artifact instead. Java and Kotlin target Godot's level per target, so no Kotlin 
 is registered.
 
 An Android plugin that compiles against Godot's classes, such as `GodotPlugin`, depends
-on the hub's `@godot//android:plugin_api`. It supplies the shell library's classes for
+on the hub's `@godot//android:plugin_api`, with `use_repo(godot_engines, "godot")` in
+`MODULE.bazel`. It supplies the shell library's classes for
 compilation only; the application packages the runtime its variant selects, so the
 classes appear once in the app.
 
 ## Choose between prepared recipes
 
-The payload of a component may be a `select()`, so a build setting can choose between
-recipes of the same slot; only the selected recipe is configured:
+A component's payload may be a source recipe's output, such as
+`@my_engine_macos_arm64_template_release//:godot`, or a `select()`, so a build setting can
+choose between recipes of the same slot; only the selected recipe is configured:
 
 ```starlark
 godot_runtime_component(
@@ -383,7 +418,7 @@ godot_runtime_component(
     variant = "release",
     version = "4.7.2",
     runtime = select({
-        ":minimal": "@godot_minimal//toolchains:runtime_macos_arm64_release",
+        ":minimal": "@minimal_macos_arm64_template_release//:godot",
         "//conditions:default": "@godot//toolchains:runtime_macos_arm64_release",
     }),
 )
@@ -415,21 +450,22 @@ Provider keys use the canonical repository name; `providers(target).keys()` list
 
 A source-built engine names its base version, a build name with the origin of its
 hash, and the hash in Godot's version scheme, such as
-`4.7.2.stable.custom-git.d33b04459`. `Engine.get_version_info()` returns the
+`4.7.2.stable.simulation-git.d33b04459`. `Engine.get_version_info()` returns the
 build name as `build` and the full hash as `hash`, the startup line and crash
 reports print them, and on Android the engine AAR's manifest names the same
 version (see [Android shell libraries](#android-shell-libraries)).
 This tells a crash report's engine apart from the official build of the same
-version and from other custom builds. The recipe's `build_name` attribute sets the
-build name, `custom` by default.
+version and from other custom builds. The build name is the engine's name, here `simulation`; a recipe that
+`godot_engine_build` declares directly takes its `build_name` attribute, `custom` by
+default.
 
 The hash and Godot's version time stamp take the place of a Git commit and its
 time. Which ones the engine names depends on Bazel's stamping:
 
 | Build | Origin | Hash | Time stamp | Example |
 | --- | --- | --- | --- | --- |
-| `--stamp` with `STABLE_GIT_COMMIT` in the workspace status | `git` | That commit | `STABLE_GIT_COMMIT_TIMESTAMP`, else none | `4.7.2.stable.custom-git.d33b04459` |
-| Otherwise | `bazel` | Hash of the engine's declared inputs | None | `4.7.2.stable.custom-bazel.c5058d28e` |
+| `--stamp` with `STABLE_GIT_COMMIT` in the workspace status | `git` | That commit | `STABLE_GIT_COMMIT_TIMESTAMP`, else none | `4.7.2.stable.simulation-git.d33b04459` |
+| Otherwise | `bazel` | Hash of the engine's declared inputs | None | `4.7.2.stable.simulation-bazel.c5058d28e` |
 
 With a time stamp, the startup line and the editor show the commit's time in
 UTC, and `Engine.get_version_info()` returns it as `timestamp`.
@@ -494,7 +530,15 @@ any other `engine_lto` fails the build. The setting is off by default;
 The settings apply to the engine's own code only, after the build's `--copt` and `--linkopt`, so
 their level wins over the toolchain's and the command line's there, while extensions and
 application code keep the build's flags. Other compilation modes keep Bazel's levels: `-c dbg`
-debugs the engine unoptimized whatever the settings say. Prebuilt engines are unaffected.
+debugs the engine unoptimized whatever the settings say.
+
+A prebuilt runtime cannot apply these settings. Under `-c opt` with any setting other
+than the defaults (`engine_optimize=auto`, `engine_lto=none`, `engine_vfe` off), an
+application takes the runtime its engine builds from source instead, as the
+`runtime_<slot>_tuned` components of a [catalogued engine](#register-an-engine) provide;
+in `fastbuild` and `dbg`, the prebuilt runtime stays. An engine with binaries but no
+sources has no such runtime, so the settings leave its prebuilt runtimes unchanged.
+Prebuilt editors are unaffected.
 
 `godot_app`'s `engine_optimize`, `engine_lto` and `engine_vfe` (`on`, `off`, or empty to
 keep the build's) override the build's settings for the application's own engine; one
@@ -527,9 +571,10 @@ profile as upstream does, rules_godot lets it include the profile only in the so
 includes reach a `GDREGISTER_*` macro or `GD_IS_CLASS_ENABLED`, and any other source that
 evaluates a class's state fails to compile instead of ignoring the profile.
 
-The runtime must be built from source, such as a [source build](#declare-a-source-build) or
-the runtimes a [prebuilt engine](#use-a-prebuilt-engine) builds from its release's
-sources for applications with a profile: a prebuilt runtime has no class generator, and an
+The runtime must be built from source, such as one of an engine with a
+[`build` tag](#build-an-engine-from-source) or the runtimes a
+[catalogued engine](#register-an-engine) builds from its release's sources for
+applications that need tuning: a prebuilt runtime has no class generator, and an
 application with a `build_profile` whose runtime component is prebuilt fails analysis
 naming it. Before you ship, run the whole game: an application that loads a disabled class
 fails when it loads it, not at build time.
@@ -538,15 +583,14 @@ fails when it loads it, not at build time.
 
 A profile's `disabled_build_options`, such as `disable_3d` or `module_gridmap_enabled`,
 shape the engine's graph, so they need a runtime variant of the engine with its own graph.
-Register the profile in `MODULE.bazel` for the engine whose runtimes apply it, with the
-`engine` of its `godot_engines` tags; empty, the default, is the default engine:
+Register the profile in `MODULE.bazel` for the engine whose runtimes apply it, with its
+`engine` naming that engine; empty, the default, is the default engine:
 
 ```starlark
 godot_engines.runtime_profile(profile = "//game:release.gdbuild")
 ```
 
-Every runtime recipe of that engine, of its source builds and of the runtimes its prebuilt
-engines build from source, then declares a runtime variant: the recipe configured with the
+Every runtime recipe of that engine then declares a runtime variant: the recipe configured with the
 recipe's own build options with the profile's beside them. The variant lives in the recipe's repository
 beside the recipe's own graph; the targets the two declare alike keep one label, and the
 attributes that differ select on the application's profile. An application whose
@@ -569,7 +613,7 @@ To switch single options or modules, write a small profile with only them:
 ```
 
 With a [lock file](#pin-the-recipes), each variant has its own pin beside its recipe's;
-`bazel run @<hub>//:pin` writes both, and an application that selects a variant without a
+`bazel run @<name>//:pin` writes both, and an application that selects a variant without a
 current pin fails with that command. Without one, the recipe's repository configures each
 variant before the recipe. A profile that names an option the recipe's Godot version does
 not have, sets an option rules_godot controls, as `build_options` may not (`platform`,
@@ -601,7 +645,7 @@ crash reports name engine frames compiles with `-c opt --copt=-g`, the
 [store release](platforms.md#debug-symbols) of the platform guide; to give only
 the engine debug information, match its sources. In this command template,
 replace `//path/to:target` with your application's label and `my_engine` with
-your source build's name:
+your engine's name:
 
 ```sh
 bazel build //path/to:target -c opt --per_file_copt='external/autoload_rules_godot[+][+]godot_engines[+]my_engine_.*@-g'
@@ -681,7 +725,7 @@ as `-c opt`'s `NDEBUG`, stay on every command line, and the analysis preprocesse
 them. Starlark cannot read `--per_file_copt`, so with it set every source keeps all of its
 definitions.
 
-A build with `--experimental_output_paths=strip` shares more: a source build's native
+A build with `--experimental_output_paths=strip` shares more: a source recipe's native
 targets declare `supports-path-mapping`, compile without module maps, and its define
 analysis and code generators name output files only through their arguments, so an action
 keeps one cache key in every configuration whose command and inputs it shares. Applications
@@ -704,9 +748,8 @@ transitively. Builder Python files are conservatively shared inputs: changing
 them can rerun generators, while unchanged generated bytes preserve downstream
 compile cache hits.
 
-Recipe configuration uses a local Python 3.9+ and target SDK/compiler feature
-probes. The `python` attribute can supply a declared executable instead of PATH
-discovery. SDK provisioning and this configure phase are not fully hermetic;
+Recipe configuration runs rules_python's Python 3.14 host interpreter and target
+SDK/compiler feature probes, and stops after 30 minutes. SDK provisioning and this configure phase are not fully hermetic;
 the target SDK must be available on the configuring host, which for
 [pinned recipes](#pin-the-recipes) is the execution platform of `:pin`. Compilation uses
 Bazel's selected C++ toolchains and generators use the execution Python

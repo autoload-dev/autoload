@@ -24,7 +24,6 @@ load(":select_tests.bzl", "select_test_suite")
 load(":selection_tests.bzl", "selection_test_suite")
 load(":slot_replacement_tests.bzl", "slot_replacement_test_suite")
 load(":source_build_inputs_tests.bzl", "source_build_inputs_test_suite")
-load(":source_build_tests.bzl", "source_build_test_suite")
 
 package(default_visibility = ["//godot/engine/private/tests:__subpackages__"])
 
@@ -188,8 +187,6 @@ selection_test_suite(name = "selection_test_suite")
 slot_replacement_test_suite(name = "slot_replacement_test_suite")
 
 source_build_inputs_test_suite(name = "source_build_inputs_test_suite")
-
-source_build_test_suite(name = "source_build_test_suite")
 
 # The godot entrypoint of a desktop godot_engine_build recipe: an executable runtime that
 # links through CcInfo. Fetching configures the macOS recipe, so it runs in the

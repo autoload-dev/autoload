@@ -209,58 +209,33 @@ godot_engines = use_extension(
     dev_dependency = True,
 )
 
-# The hub builds the runtimes the official 4.7.2 artifacts lack, such as the arm64 Simulator
-# runtimes, and every runtime of an application with a build profile from the release's
-# sources, the first time a build selects their slots.
-godot_engines.prebuilt(
+# Godot's official 4.7.2, which targets that name no engine take. Its hub builds the runtimes
+# the official artifacts lack, such as the arm64 Simulator runtimes, and every runtime of an
+# application with a build profile from the release's sources, the first time a build
+# selects their slots.
+godot_engines.engine(
     name = "godot",
+    default = True,
     version = "4.7.2",
-)
-
-# The release's sources: Petri's engine and the hub's source-built runtimes.
-godot_engines.source(
-    name = "godot_sources",
-    sha256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a",
-    strip_prefix = "godot-4.7.2-stable",
-    urls = ["https://github.com/godotengine/godot/archive/refs/tags/4.7.2-stable.tar.gz"],
-    version = "4.7.2",
-)
-
-# Source archives of the scenarios; fetched only when a lane's targets or API contract cases
-# need them. The beta archive's version.py names the unnumbered beta.
-godot_engines.source(
-    name = "godot_sources_beta",
-    sha256 = "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
-    strip_prefix = "godot-4.8-beta1",
-    urls = ["https://github.com/godotengine/godot-builds/releases/download/4.8-beta1/godot-4.8-beta1.tar.xz"],
-    version = "4.8.0-beta",
-)
-
-# A non-release snapshot of the 4.7 maintenance branch, the patched desktop recipes' fork
-# stand-in: an immutable commit archive whose version.py names 4.7.3-rc.
-godot_engines.source(
-    name = "godot_sources_snapshot",
-    sha256 = "90ef5ad9f4c59750004813813534527eb3f82f1975789fb5b79b609fe841beb8",
-    strip_prefix = "godot-2ea68c77c3157c95793987569dc44662fe4f83cf",
-    urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
-    version = "4.7.3-rc",
 )
 
 # The engine simulation (examples/engines/simulation): the 4.7.2 release sources with the
-# reaction_diffusion module, built for the Linux and macOS editors and runtimes. Petri's
-# targets select it with their engine attribute; nothing is compiled until a build asks for
-# a payload.
-godot_engines.source_build(
-    name = "godot_simulation",
+# reaction_diffusion module. Petri's targets select it with their engine attribute; nothing
+# is compiled until a build asks for a payload.
+godot_engines.engine(
+    name = "simulation",
+    # The build graphs of the Linux and macOS recipes, pinned with
+    # `bazel run @simulation//:pin_linux --config=buildbuddy` and `:pin_macos`, so any host
+    # can build them, such as a Mac with remote execution the Linux editor.
+    lock_file = "//examples/engines/simulation:simulation.lock.json",
+    version = "4.7.2",
+)
+godot_engines.build(
     # The Compatibility renderer only; Vulkan would need the MoltenVK SDK on macOS hosts.
     build_options = {
         "vulkan": "no",
         "opengl3": "yes",
     },
-    build_targets = [
-        "editor",
-        "template_release",
-    ],
     custom_modules = {"//examples/engines/simulation/modules/reaction_diffusion:config.py": "reaction_diffusion"},
     # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
     enabled_modules = [
@@ -270,46 +245,17 @@ godot_engines.source_build(
         "zip",
         "reaction_diffusion",
     ],
-    # Only targets that name the engine simulation take these components, and they take no
-    # other engine's.
     engine = "simulation",
-    # Every recipe's build graph, pinned with `bazel run @godot_simulation//:pin`, so any host can
-    # build any recipe, such as a Mac with remote execution the Linux editor.
-    lock_file = "//examples/engines/simulation:godot_simulation.lock.json",
-    platforms = [
-        "linux",
-        "macos",
-    ],
-    source = "@godot_sources//:source.json",
 )
 
-# The patched desktop engines of e2e/rules_godot/patched_engine and its source-built tests; built
-# only by the source-engine lane. Each recipe has its own policy, so each is a source
-# build of one slot; e2e/rules_godot/patched_engine/engines registers their recipes' payloads.
+# The patched desktop engines of e2e/rules_godot/patched_engine and its source-built tests;
+# built only by the source-engine lane, whose engines packages compose their recipes into
+# components. The snapshot of the 4.7 maintenance branch, a fork's stand-in: an immutable
+# commit archive whose version.py names 4.7.3-rc, with a reduced runtime and a fuller
+# editor; both have the bazel_probe module and the engine-name patch.
 _BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engines/patched/modules/bazel_probe:config.py": "bazel_probe"}
 
 _ENGINE_NAME_PATCH = ["//e2e/rules_godot/patched_engine/engines/patched/patches:engine-name.patch"]
-
-# The snapshot's fuller editor: the same module and patch, without the runtime's
-# template-only reductions, plus the font and SVG support the editor itself uses.
-godot_engines.source_build(
-    name = "godot_source_editor",
-    # Metal and OpenGL stay; Vulkan would need the MoltenVK SDK on the configuring host.
-    build_options = {"vulkan": "no"},
-    build_targets = ["editor"],
-    cpus = ["arm64"],
-    custom_modules = _BAZEL_PROBE,
-    enabled_modules = [
-        "gdscript",
-        "text_server_fb",
-        "freetype",
-        "svg",
-        "bazel_probe",
-    ],
-    patches = _ENGINE_NAME_PATCH,
-    platforms = ["macos"],
-    source = "@godot_sources_snapshot//:source.json",
-)
 
 _REDUCED_RUNTIME = {
     "vulkan": "no",
@@ -321,14 +267,19 @@ _REDUCED_RUNTIME = {
     "disable_navigation_3d": "yes",
 }
 
-# The reduced runtime of the snapshot; godot_source_editor is its fuller editor. Its engine
-# name keeps the runtime profile below to the patched runtimes; e2e/rules_godot/
-# patched_engine/engines registers their recipes' payloads itself.
-godot_engines.source_build(
-    name = "godot_source",
+godot_engines.engine(
+    name = "patched",
+    version = "4.7.3-rc1",
+)
+godot_engines.source(
+    engine = "patched",
+    sha256 = "90ef5ad9f4c59750004813813534527eb3f82f1975789fb5b79b609fe841beb8",
+    strip_prefix = "godot-2ea68c77c3157c95793987569dc44662fe4f83cf",
+    urls = ["https://github.com/godotengine/godot/archive/2ea68c77c3157c95793987569dc44662fe4f83cf.tar.gz"],
+    version = "4.7.3-rc",
+)
+godot_engines.build(
     build_options = _REDUCED_RUNTIME,
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
     custom_modules = _BAZEL_PROBE,
     enabled_modules = [
         "gdscript",
@@ -337,14 +288,31 @@ godot_engines.source_build(
     ],
     engine = "patched",
     patches = _ENGINE_NAME_PATCH,
-    platforms = ["macos"],
-    source = "@godot_sources_snapshot//:source.json",
 )
-godot_engines.source_build(
-    name = "godot_source_beta",
+
+# The fuller editor: without the runtime's template-only reductions, plus the font and SVG
+# support the editor itself uses. Metal and OpenGL stay; Vulkan would need the MoltenVK SDK
+# on the configuring host.
+godot_engines.editor(
+    build_options = {"vulkan": "no"},
+    enabled_modules = [
+        "gdscript",
+        "text_server_fb",
+        "freetype",
+        "svg",
+        "bazel_probe",
+    ],
+    engine = "patched",
+)
+
+# The same reduced runtime from the 4.8 beta's sources, whose version.py names the
+# unnumbered beta.
+godot_engines.engine(
+    name = "patched_beta",
+    version = "4.8.0-beta1",
+)
+godot_engines.build(
     build_options = _REDUCED_RUNTIME,
-    build_targets = ["template_release"],
-    cpus = ["arm64"],
     custom_modules = _BAZEL_PROBE,
     enabled_modules = [
         "gdscript",
@@ -352,17 +320,19 @@ godot_engines.source_build(
         "freetype",
         "bazel_probe",
     ],
-    engine = "patched",
+    engine = "patched_beta",
     patches = _ENGINE_NAME_PATCH,
-    platforms = ["macos"],
-    source = "@godot_sources_beta//:source.json",
 )
 
-# A build profile with a build option, for the patched engine's runtime variant: every
-# runtime recipe of the patched engine declares the variant, and only the applications
+# A build profile with a build option, for the patched engines' runtime variants: every
+# runtime recipe of the patched engines declares the variant, and only the applications
 # whose build_profile names the file compile it.
 godot_engines.runtime_profile(
     engine = "patched",
+    profile = "//e2e/rules_godot/patched_engine:no_advanced_gui.gdbuild",
+)
+godot_engines.runtime_profile(
+    engine = "patched_beta",
     profile = "//e2e/rules_godot/patched_engine:no_advanced_gui.gdbuild",
 )
 
@@ -371,21 +341,10 @@ godot_engines.runtime_profile(profile = "//examples/lichtpost:runtime.gdbuild")
 use_repo(
     godot_engines,
     "godot",
-    "godot_simulation",
-    "godot_source_beta_macos_arm64_template_release",
-    "godot_source_editor_macos_arm64_editor",
-    "godot_source_macos_arm64_template_release",
-    "godot_sources",
-    "godot_sources_beta",
-    "godot_sources_snapshot",
-)
-
-# Every engine stays registered: a target selects its engine by name, and a hub that no
-# selected engine needs costs no download.
-register_toolchains(
-    "@godot//toolchains:all",
-    "@godot_simulation//toolchains:all",
-    dev_dependency = True,
+    "patched_beta_macos_arm64_template_release",
+    "patched_macos_arm64_editor",
+    "patched_macos_arm64_template_release",
+    "simulation",
 )
 
 # ==== Supporting repositories =================================================

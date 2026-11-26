@@ -25,13 +25,11 @@ with the version filled in.
 bazel_dep(name = "autoload_rules_godot", version = "<version>")
 
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.prebuilt(name = "godot", version = "4.7.2")
-use_repo(godot_engines, "godot")
-register_toolchains("@godot//toolchains:all")
+godot_engines.engine(name = "godot", default = True, version = "4.7.2")
 ```
 
-Register the engines in the consuming root module; the ruleset's own development engines
-are a development dependency. [Engines](engine.md) covers source builds and replacing
+Register the engines in the consuming root module; rules_godot registers their toolchains,
+and the ruleset's own development engines are a development dependency. [Engines](engine.md) covers engines built from source and replacing
 single slots, [Versions](versions.md) version ranges and exact pins.
 
 ### Use an unreleased revision

@@ -10,12 +10,10 @@ local_path_override(
 
 bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
 
-# An application registers its engine; the add-on modules register none for consumers.
+# An application registers its engine, whose toolchains rules_godot registers.
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.prebuilt(
+godot_engines.engine(
     name = "godot",
+    default = True,
     version = "4.7.2",
 )
-use_repo(godot_engines, "godot")
-
-register_toolchains("@godot//toolchains:all")

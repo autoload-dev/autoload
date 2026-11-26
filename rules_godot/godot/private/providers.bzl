@@ -92,7 +92,7 @@ GodotComponentInfo = provider(
     doc = """The provenance of one engine component slot. Produced by godot_editor_component/godot_runtime_component; carried as provenance on the resolved editor and runtime toolchains for diagnostics, never as a compatibility condition.""",
     fields = {
         "component": "string: label of the component that declares the payload",
-        "engine": "string: name of the engine the component belongs to; empty for the default engine",
+        "engine": "string: name of the engine the component belongs to; empty for the default engine, named or not",
         "role": "string: editor or runtime",
         "platform": "string: the Godot platform, that is the operating system of the editor platform for editors and of the target platform for runtimes: linux, macos, ios or android",
         "cpu": "string: arm64 or x86_64",

@@ -12,7 +12,7 @@ Build, edit, check, test and package Godot projects with Bazel. Start with the r
 | Place Project Settings, Preset Settings and Export Options | [Godot configuration](configuration.md) |
 | Build desktop, Android and iOS applications and their debug symbols | [Application platforms](platforms.md) |
 | Build or consume extensions | [GDExtensions](gdextension.md) |
-| Select prebuilt engines or build them from source | [Engines](engine.md) |
+| Register Godot's official engines or build them from source | [Engines](engine.md) |
 | Make a source-built engine as small as the application allows | [Make the engine small](engine-size.md) |
 | Pin compatible engine and extension API versions | [Versions](versions.md) |
 | Look up public rules, providers and module extensions | [API documentation on the Bazel Central Registry](https://registry.bazel.build/modules/autoload_rules_godot) |

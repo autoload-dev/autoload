@@ -5,7 +5,7 @@ Regenerate the repository's generated files, or check that they are current.
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
-| The lock files of source-built engines, such as an application's | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing the hub's toolchains, which fails on a stale pin |
+| The lock files of source-built engines, those of examples/engines/ | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing each recipe the lock file pins, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
 (`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
@@ -15,6 +15,7 @@ every generated file, as the pre-push hook and CI's quality lane do. Bazel runs 
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -33,12 +34,37 @@ LOCKED_MODULES = tuple(
 )
 
 
-def pinned_engines(root: Path = ROOT) -> tuple[str, ...]:
-    """The hubs of the source builds with a lock file: those of the applications' engine/."""
+def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
+    """The engines of examples/engines/ with a lock file, <name>/<name>.lock.json, by name."""
     return tuple(
-        path.name.removesuffix(LOCK_SUFFIX)
-        for path in sorted((root / EXAMPLES).glob(f"*/engine/*{LOCK_SUFFIX}"))
+        (path.name.removesuffix(LOCK_SUFFIX), path)
+        for path in sorted((root / EXAMPLES / "engines").glob(f"*/*{LOCK_SUFFIX}"))
+        if path.parent.name == path.name.removesuffix(LOCK_SUFFIX)
     )
+
+
+def repo_mapping() -> dict[str, str]:
+    """The root module's repository mapping: each apparent name's canonical name."""
+    result = subprocess.run(
+        ["bazel", "mod", "dump_repo_mapping", ""],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def pinned_payloads(hub: str, lock: Path, mapping: dict[str, str]) -> list[str]:
+    """
+    The engine library of each recipe a lock file pins, by canonical label.
+
+    A recipe the lock file leaves unpinned, such as one of a platform no execution platform
+    configured, fails only when a build needs it, so the check leaves it out.
+    """
+    text = lock.read_text().strip()
+    recipes = json.loads(text).get("recipes", {}) if text else {}
+    return [f"@@{mapping[hub]}_{key}//:engine_library" for key in sorted(recipes)]
 
 
 def bazel(module: str, *args: str) -> int:
@@ -108,14 +134,34 @@ def check_lock_files() -> int:
 
 def pins() -> int:
     status = 0
-    for hub in pinned_engines():
+    engines = pinned_engines()
+    mapping = repo_mapping() if engines else {}
+    for hub, lock in engines:
+        if hub not in mapping:
+            print(
+                f"{lock.relative_to(ROOT)} pins the engine {hub}, which the root module's "
+                f"MODULE.bazel does not use_repo; add it.",
+                file=sys.stderr,
+            )
+            status = 1
+            continue
+        payloads = pinned_payloads(hub, lock, mapping)
+        if not payloads:
+            continue
+        # A recipe's targets are compatible with its own platform only.
         failed = bazel(
-            ".", "build", "--nobuild", "--keep_going", f"@{hub}//toolchains:all"
+            ".",
+            "build",
+            "--nobuild",
+            "--keep_going",
+            "--skip_incompatible_explicit_targets",
+            *payloads,
         )
         if failed:
             print(
-                f"a pin of @{hub} is stale or the hub does not analyse; pin it with "
-                f"`bazel run @{hub}//:pin --config=buildbuddy`.",
+                f"a pin of @{hub} is stale or its recipes do not analyse; pin them with "
+                f"`bazel run @{hub}//:pin --config=buildbuddy`, or one platform's with "
+                f"`:pin_<platform>`.",
                 file=sys.stderr,
             )
         status |= failed

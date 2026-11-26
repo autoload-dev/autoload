@@ -190,22 +190,23 @@ def _test_the_registration_names_the_selected_engine_impl(env, target):
     arguments = _class_generator_arguments(target)
     env.expect.that_str(arguments[arguments.index("--registration") + 1]).contains('engine = "petri"')
 
-# A prebuilt hub's slot leaves applications with a build profile to its source-built runtime.
-def _test_a_profiled_runtime_skips_prebuilt_components(name):
+# A slot with a prebuilt and a source-built runtime leaves applications with a build profile
+# to the source-built one.
+def _test_a_tuned_runtime_skips_prebuilt_components(name):
     analysis_test(
         name = name,
         target = _TESTS + "profiled_runtime",
-        impl = _test_a_profiled_runtime_skips_prebuilt_components_impl,
+        impl = _test_a_tuned_runtime_skips_prebuilt_components_impl,
         expect_failure = True,
         config_settings = {
             "//command_line_option:platforms": str(Label(_TESTS + "linux_x86_64")),
-        } | own_toolchains([_FIXTURES + "/profiled_slot:all"]),
+        } | own_toolchains([_FIXTURES + "/tuned_slot:all"]),
     )
 
-def _test_a_profiled_runtime_skips_prebuilt_components_impl(env, target):
-    # The fixture's profiled component is a file too, so it fails, naming itself.
+def _test_a_tuned_runtime_skips_prebuilt_components_impl(env, target):
+    # The fixture's tuned component is a file too, so it fails, naming itself.
     env.expect.that_target(target).failures().contains_predicate(
-        matching.contains("runtime_linux_x86_64_release_profiled"),
+        matching.contains("runtime_linux_x86_64_release_tuned"),
     )
 
 def _test_an_unprofiled_runtime_takes_the_prebuilt_component(name):
@@ -215,13 +216,38 @@ def _test_an_unprofiled_runtime_takes_the_prebuilt_component(name):
         impl = _test_an_unprofiled_runtime_takes_the_prebuilt_component_impl,
         config_settings = {
             "//command_line_option:platforms": str(Label(_TESTS + "linux_x86_64")),
-        } | own_toolchains([_FIXTURES + "/profiled_slot:all"]),
+        } | own_toolchains([_FIXTURES + "/tuned_slot:all"]),
     )
 
 def _test_an_unprofiled_runtime_takes_the_prebuilt_component_impl(env, target):
     env.expect.that_str(target[GodotComponentInfo].component).equals(
-        str(Label(_FIXTURES + "/profiled_slot:runtime_linux_x86_64_release")),
+        str(Label(_FIXTURES + "/tuned_slot:runtime_linux_x86_64_release")),
     )
+
+# Engine optimization tunes the runtime under -c opt only: there the slot's source-built
+# runtime serves, elsewhere the prebuilt one, whose optimization is fixed.
+def _tuning_test(name, compilation_mode, optimize, expected):
+    analysis_test(
+        name = name,
+        target = _TESTS + "resolved_runtime",
+        impl = lambda env, target: env.expect.that_str(target[GodotComponentInfo].component).equals(
+            str(Label(_FIXTURES + "/tuned_slot:" + expected)),
+        ),
+        config_settings = {
+            "//command_line_option:platforms": str(Label(_TESTS + "linux_x86_64")),
+            "//command_line_option:compilation_mode": compilation_mode,
+            str(Label("//godot:engine_optimize")): optimize,
+        } | own_toolchains([_FIXTURES + "/tuned_slot:all"]),
+    )
+
+def _test_an_optimized_release_takes_the_tuned_runtime(name):
+    _tuning_test(name, "opt", "size", "runtime_linux_x86_64_release_tuned")
+
+def _test_a_release_with_default_optimization_takes_the_prebuilt_runtime(name):
+    _tuning_test(name, "opt", "auto", "runtime_linux_x86_64_release")
+
+def _test_optimization_outside_opt_keeps_the_prebuilt_runtime(name):
+    _tuning_test(name, "fastbuild", "size", "runtime_linux_x86_64_release")
 
 def build_profile_test_suite(name):
     test_suite(
@@ -238,7 +264,10 @@ def build_profile_test_suite(name):
             _test_an_unregistered_profile_names_its_registration,
             _test_a_registered_profile_may_set_build_options,
             _test_the_registration_names_the_selected_engine,
-            _test_a_profiled_runtime_skips_prebuilt_components,
+            _test_a_tuned_runtime_skips_prebuilt_components,
             _test_an_unprofiled_runtime_takes_the_prebuilt_component,
+            _test_an_optimized_release_takes_the_tuned_runtime,
+            _test_a_release_with_default_optimization_takes_the_prebuilt_runtime,
+            _test_optimization_outside_opt_keeps_the_prebuilt_runtime,
         ],
     )

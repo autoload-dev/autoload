@@ -1,21 +1,21 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
-# A slot as a prebuilt hub with source runtimes registers it: the prebuilt runtime serves
-# applications without a build profile, the profiled component, registered after it in
-# the order of the names, the others.
+# A slot as an engine hub with binaries and sources registers it: the prebuilt runtime
+# serves the builds whose runtime needs no tuning, the tuned component, registered after it
+# in the order of the names, the others.
 
 godot_runtime_component(
     name = "runtime_linux_x86_64_release",
     cpu = "x86_64",
     platform = "linux",
     runtime = "//godot/engine/private/tests/fixtures:linux_x86_64_release.bin",
+    untuned_only = True,
     variant = "release",
     version = "4.7.2",
-    without_build_profile = True,
 )
 
 godot_runtime_component(
-    name = "runtime_linux_x86_64_release_profiled",
+    name = "runtime_linux_x86_64_release_tuned",
     cpu = "x86_64",
     platform = "linux",
     runtime = "//godot/engine/private/tests/fixtures:linux_x86_64_release.bin",

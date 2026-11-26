@@ -1,26 +1,38 @@
 """
 The tag evaluation of the godot_engines module extension.
 
-The planner takes the extension's modules and returns the repositories to declare; the
-extension instantiates them. Errors go through `_fail`, so a Starlark unit test with mocked
-modules collects them; the planner returns None after an error.
+engine_selection.bzl settles one configuration per engine name. The planner takes the
+extension's modules and returns the repositories to declare; the extension instantiates
+them. Errors go through `_fail`, so a
+Starlark unit test with mocked modules collects them; the planner returns None after an
+error.
 
-Sections: Prebuilt plan, Prebuilt slots, Source runtimes, Runtime profiles, Tag selection,
-Declarations.
+Sections: Binaries, Binary slots, Source recipes, Runtime profiles, Declarations.
 """
 
 load("//godot/engine/private:archives.bzl", "template_target")
 load("//godot/engine/private:catalogue.bzl", "EDITOR_PLATFORMS", "RELEASES", "TEMPLATE_CPUS")
+load("//godot/engine/private:engine_selection.bzl", "selected_engines")
 load("//godot/engine/private:hub.bzl", "component")
-load("//godot/engine/private:source_build_rows.bzl", "ROWS", "plan_rows", "recipe_declarations")
+load(
+    "//godot/engine/private:source_build_rows.bzl",
+    "ROWS",
+    "pinning",
+    "plan_rows",
+    "recipe_declarations",
+    "slot_name",
+)
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
 
+# The repository of every engine's toolchains, which rules_godot's module registers.
+TOOLCHAINS_REPOSITORY = "godot_engines_toolchains"
+
 def _declaration(rule, **attrs):
     return struct(rule = rule, attrs = attrs)
 
-# ==== Prebuilt plan ===========================================================
+# ==== Binaries ================================================================
 
 def _release_urls(tag, slug):
     """Godot's CDN URL, then the GitHub release URL, of Godot_v<tag>_<slug>."""
@@ -30,160 +42,174 @@ def _release_urls(tag, slug):
         "https://github.com/godotengine/godot-builds/releases/download/%s/Godot_v%s_%s" % (tag, tag, slug),
     ]
 
-def _editor(tag, release, editor_platform, _fail):
-    """Return the archive of one editor platform: pinned on the tag or catalogued; None after an error."""
+def _pins(engine, binaries, release):
+    """What an engine's binaries come from: its binaries tag, or None, and the catalogue's release, or None."""
+    return struct(name = engine.name, binaries = binaries, release = release)
+
+def _pinned(pins, attribute):
+    """A binaries tag's value, None without the tag."""
+    return getattr(pins.binaries, attribute) if pins.binaries else None
+
+def _editor(pins, editor_platform, _fail):
+    """Return the archive of one editor platform: pinned on the binaries tag or catalogued; None after an error."""
     if editor_platform not in EDITOR_PLATFORMS:
-        return _fail("godot_engines.prebuilt %r: unknown editor platform %r; expected one of %s" % (tag.name, editor_platform, sorted(EDITOR_PLATFORMS)))
+        return _fail("godot_engines.binaries of %r: unknown editor platform %r; expected one of %s" % (pins.name, editor_platform, sorted(EDITOR_PLATFORMS)))
     layout = EDITOR_PLATFORMS[editor_platform]
-    if not tag.editor_urls:
+    release = pins.release
+    if not _pinned(pins, "editor_urls"):
         return struct(
             urls = _release_urls(release["tag"], layout.suffix + ".zip"),
             integrity = release[editor_platform],
             binary = layout.binary.format(tag = release["tag"]),
             layout = layout,
         )
-    if editor_platform not in tag.editor_integrity:
-        return _fail("godot_engines.prebuilt %r: editor_integrity lacks %r" % (tag.name, editor_platform))
-    binary = tag.editor_binaries.get(editor_platform, layout.binary.format(tag = release["tag"]) if release else "")
+    binaries = pins.binaries
+    if editor_platform not in binaries.editor_integrity:
+        return _fail("godot_engines.binaries of %r: editor_integrity lacks %r" % (pins.name, editor_platform))
+    binary = binaries.editor_binaries.get(editor_platform, layout.binary.format(tag = release["tag"]) if release else "")
     if not binary:
-        return _fail("godot_engines.prebuilt %r: editor_binaries lacks %r" % (tag.name, editor_platform))
+        return _fail("godot_engines.binaries of %r: editor_binaries lacks %r" % (pins.name, editor_platform))
     return struct(
-        urls = tag.editor_urls[editor_platform],
-        integrity = tag.editor_integrity[editor_platform],
+        urls = binaries.editor_urls[editor_platform],
+        integrity = binaries.editor_integrity[editor_platform],
         binary = binary,
         layout = layout,
     )
 
-def _editors(tag, release, _fail):
-    """Return the editor archives of a prebuilt tag by editor platform, or None after an error."""
-    editor_platforms = sorted(tag.editor_urls) if tag.editor_urls else (release["editor_platforms"] if release else [])
-    if not editor_platforms:
-        return _fail((
-            "Godot %s has no built-in pins; set editor_urls/editor_integrity/editor_binaries " +
-            "and templates_urls/templates_integrity on godot_engines.prebuilt(name = %r)"
-        ) % (tag.version, tag.name))
+def _editor_platforms(pins):
+    """The editor platforms of an engine's binaries: those its binaries tag pins, or the catalogue's."""
+    if _pinned(pins, "editor_urls"):
+        return sorted(pins.binaries.editor_urls)
+    return pins.release["editor_platforms"] if pins.release else []
+
+def _editors(pins, _fail):
+    """Return the editor archives of an engine by editor platform, or None after an error."""
     editors = {}
-    for editor_platform in editor_platforms:
-        editor = _editor(tag, release, editor_platform, _fail)
+    for editor_platform in _editor_platforms(pins):
+        editor = _editor(pins, editor_platform, _fail)
         if editor == None:
             return None
         editors[editor_platform] = editor
     return editors
 
-def _pinned_templates(tag, _fail):
-    """Return the export-template archive a tag pins with templates_urls, or None after an error."""
-    if not tag.templates_integrity:
-        return _fail("godot_engines.prebuilt %r: templates_integrity is required with templates_urls" % tag.name)
+def _pinned_templates(pins, _fail):
+    """Return the export-template archive a binaries tag pins with templates_urls, or None after an error."""
+    binaries = pins.binaries
+    if not binaries.templates_integrity:
+        return _fail("godot_engines.binaries of %r: templates_integrity is required with templates_urls" % pins.name)
     return struct(
-        urls = tag.templates_urls,
-        integrity = tag.templates_integrity,
-        macos_cpus = tag.templates_macos_cpus or ["universal"],
-        linux_cpus = tag.templates_linux_cpus or TEMPLATE_CPUS["linux"],
+        urls = binaries.templates_urls,
+        integrity = binaries.templates_integrity,
+        macos_cpus = binaries.templates_macos_cpus or ["universal"],
+        linux_cpus = binaries.templates_linux_cpus or TEMPLATE_CPUS["linux"],
     )
 
-def _templates(tag, release, _fail):
-    """Return the export-template archive of a prebuilt tag and its layout, or None after an error."""
-    if tag.templates_urls:
-        return _pinned_templates(tag, _fail)
-    layouts = [attribute for attribute in ["templates_macos_cpus", "templates_linux_cpus"] if getattr(tag, attribute)]
-    if layouts:
-        return _fail("godot_engines.prebuilt %r: %s describes templates_urls; set both" % (tag.name, layouts[0]))
-    if release:
-        return struct(
-            urls = _release_urls(release["tag"], "export_templates.tpz"),
-            integrity = release["templates"],
-            macos_cpus = release["macos_cpus"],
-            linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
-        )
-    return _fail("godot_engines.prebuilt %r: Godot %s needs templates_urls and templates_integrity" % (tag.name, tag.version))
+def _templates(pins, _fail):
+    """
+    Return the export-template archive of an engine and its layout.
 
-# The Android shell AARs of a prebuilt engine: the variant each serves and the prefix of
-# its tag attributes, catalogue key and repository name. The shells of official releases
-# are template_release builds with every ABI's engine library, so the catalogue has no
-# debug shell today and a debug shell is an explicit pin.
+    Returns:
+        The templates, False without any, or None after an error.
+    """
+    if _pinned(pins, "templates_urls"):
+        return _pinned_templates(pins, _fail)
+    layouts = [attribute for attribute in ["templates_macos_cpus", "templates_linux_cpus"] if _pinned(pins, attribute)]
+    if layouts:
+        return _fail("godot_engines.binaries of %r: %s describes templates_urls; set both" % (pins.name, layouts[0]))
+    release = pins.release
+    if not release:
+        return False
+    return struct(
+        urls = _release_urls(release["tag"], "export_templates.tpz"),
+        integrity = release["templates"],
+        macos_cpus = release["macos_cpus"],
+        linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
+    )
+
+# The Android shell AARs of an engine's binaries: the variant each serves and the prefix of
+# its binaries attributes, catalogue key and repository name. The shells of official
+# releases are template_release builds with every ABI's engine library, so the catalogue
+# has no debug shell today and a debug shell is an explicit pin.
 _SHELL_PINS = [("release", "android_shell"), ("debug", "android_debug_shell")]
 
-def _shell_error(tag):
+def _shell_error(pins):
     """The error of a shell AAR pinned without its integrity, or None."""
     for _, pin in _SHELL_PINS:
-        if getattr(tag, pin + "_urls") and not getattr(tag, pin + "_integrity"):
-            return "godot_engines.prebuilt %r: %s_integrity is required with %s_urls" % (tag.name, pin, pin)
+        if _pinned(pins, pin + "_urls") and not _pinned(pins, pin + "_integrity"):
+            return "godot_engines.binaries of %r: %s_integrity is required with %s_urls" % (pins.name, pin, pin)
     return None
 
-def _android_shells(tag, release):
+def _android_shells(pins):
     """
-    Return the shell AARs of a prebuilt tag by variant, in _SHELL_PINS order.
+    Return the shell AARs of an engine by variant, in _SHELL_PINS order.
 
-    Each is pinned on the tag with `<pin>_urls` and `<pin>_integrity` or catalogued under
-    `<pin>`; a struct of its pin, urls and integrity.
+    Each is pinned on the binaries tag with `<pin>_urls` and `<pin>_integrity` or
+    catalogued under `<pin>`; a struct of its pin, urls and integrity.
     """
     shells = {}
+    release = pins.release or {}
     for variant, pin in _SHELL_PINS:
-        urls = getattr(tag, pin + "_urls")
+        urls = _pinned(pins, pin + "_urls")
         if urls:
-            shells[variant] = struct(pin = pin, urls = urls, integrity = getattr(tag, pin + "_integrity"))
-        elif release and pin in release:
+            shells[variant] = struct(pin = pin, urls = urls, integrity = _pinned(pins, pin + "_integrity"))
+        elif pin in release:
             shells[variant] = struct(pin = pin, **release[pin])
     return shells
 
-def _source_runtime_source(tag, release):
-    """The catalogued sources of runtimes built from source; none for a fork's pinned artifacts."""
-    pins_fork_artifacts = any([tag.templates_urls, tag.editor_urls])
-    if not tag.source_runtimes or pins_fork_artifacts:
-        return None
-    return (release or {}).get("source")
-
-def prebuilt_plan(tag, *, _fail = fail):
+def binaries_plan(engine, binaries, release, *, _fail = fail):
     """
-    Return editor archives, the templates archive and macOS layout of a prebuilt tag.
+    Return the prebuilt editors, export templates and Android shells of an engine.
+
+    Each part comes from the engine's binaries tag where it pins one, and otherwise from the
+    catalogue's release.
 
     Args:
-        tag: A godot_engines.prebuilt tag.
+        engine: A godot_engines.engine tag.
+        binaries: The engine's godot_engines.binaries tag, or None.
+        release: The catalogue's release of the engine's version, or None where its
+            binaries may not serve, such as with a build policy of the engine's own.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
-        A struct of editors, templates, the Android shells by variant, iOS simulator CPUs
-        and the source archive that builds runtimes from source, or None after an error.
+        A struct of editors by editor platform, templates (False without any), the Android
+        shells by variant, iOS simulator CPUs and Android CPUs; None after an error.
     """
-    error = godot_version_error(tag.version)
-    if error:
-        return _fail(error)
-    release = RELEASES.get(tag.version)
-    editors = _editors(tag, release, _fail)
+    pins = _pins(engine, binaries, release)
+    editors = _editors(pins, _fail)
     if editors == None:
         return None
-    templates = _templates(tag, release, _fail)
+    templates = _templates(pins, _fail)
     if templates == None:
         return None
-    error = _shell_error(tag)
+    error = _shell_error(pins)
     if error:
         return _fail(error)
+    simulator_cpus = binaries.ios_simulator_cpus if binaries else []
     return struct(
         editors = editors,
         templates = templates,
-        android_shells = _android_shells(tag, release),
-        ios_simulator_cpus = tag.ios_simulator_cpus or (release["ios_simulator_cpus"] if release else []),
+        android_shells = _android_shells(pins),
+        ios_simulator_cpus = simulator_cpus or (release["ios_simulator_cpus"] if release else []),
         android_cpus = (release or {}).get("android_cpus", TEMPLATE_CPUS["android"]),
-        source = _source_runtime_source(tag, release),
     )
 
-# ==== Prebuilt slots ==========================================================
+# ==== Binary slots ============================================================
 
-def _editor_slots(tag, editors):
+def _editor_slots(engine, editors):
     return [
         component(
             role = "editor",
             name = "editor_%s_%s" % (editor.layout.platform, cpu),
-            payload = "@%s_editor_%s//:editor" % (tag.name, editor_platform),
+            payload = "@%s_editor_%s//:editor" % (engine.name, editor_platform),
             platform = editor.layout.platform,
             cpu = cpu,
-            version = tag.version,
+            version = engine.version,
         )
         for editor_platform, editor in editors.items()
         for cpu in editor.layout.cpus
     ]
 
-def _runtime_slot(tag, platform, cpu, variant, payload, environment = "", digest = ""):
+def _runtime_slot(engine, platform, cpu, variant, payload, environment = "", digest = ""):
     """A runtime slot, named runtime_<platform>_<cpu>[_<environment>]_<variant>."""
     return component(
         role = "runtime",
@@ -191,19 +217,19 @@ def _runtime_slot(tag, platform, cpu, variant, payload, environment = "", digest
         payload = payload,
         platform = platform,
         cpu = cpu,
-        version = tag.version,
+        version = engine.version,
         variant = variant,
         environment = environment,
         digest = digest,
     )
 
-def _templates_repository(tag, platform):
+def _templates_repository(engine, platform):
     """The name of the repository of a Godot platform's export templates."""
-    return "%s_templates_%s" % (tag.name, platform)
+    return "%s_templates_%s" % (engine.name, platform)
 
-def _template_payload(tag, platform, target):
+def _template_payload(engine, platform, target):
     """The label of a target in the export-template repository of a platform."""
-    return "@%s//:%s" % (_templates_repository(tag, platform), target)
+    return "@%s//:%s" % (_templates_repository(engine, platform), target)
 
 def _macos_target(macos_cpus, cpu, variant):
     """The macOS runtime target that serves a CPU, or None when the templates lack it."""
@@ -211,7 +237,7 @@ def _macos_target(macos_cpus, cpu, variant):
         return template_target("macos", "universal", variant)
     return template_target("macos", cpu, variant) if cpu in macos_cpus else None
 
-def _desktop_runtime_slots(tag, templates):
+def _desktop_runtime_slots(engine, templates):
     slots = []
     for variant in ["release", "debug"]:
         targets = [("linux", cpu, template_target("linux", cpu, variant)) for cpu in templates.linux_cpus] + [
@@ -219,21 +245,21 @@ def _desktop_runtime_slots(tag, templates):
             for cpu in ["arm64", "x86_64"]
         ]
         slots.extend([
-            _runtime_slot(tag, platform, cpu, variant, _template_payload(tag, platform, target))
+            _runtime_slot(engine, platform, cpu, variant, _template_payload(engine, platform, target))
             for platform, cpu, target in targets
             if target
         ])
     return slots
 
-def _ios_runtime_slots(tag, templates, simulator_cpus):
+def _ios_runtime_slots(engine, templates, simulator_cpus):
     """The device slot and one simulator slot per CPU of each variant; one XCFramework serves them all."""
     return [
         _runtime_slot(
-            tag,
+            engine,
             "ios",
             cpu,
             variant,
-            _template_payload(tag, "ios", template_target("ios", "", variant)),
+            _template_payload(engine, "ios", template_target("ios", "", variant)),
             environment = environment,
             digest = templates.integrity,
         )
@@ -241,36 +267,35 @@ def _ios_runtime_slots(tag, templates, simulator_cpus):
         for cpu, environment in [("arm64", "device")] + [(cpu, "simulator") for cpu in simulator_cpus]
     ]
 
-def _android_runtime_slots(tag, plan):
+def _android_runtime_slots(engine, plan):
     return [
-        _runtime_slot(tag, "android", cpu, variant, "//android:" + variant, digest = shell.integrity)
+        _runtime_slot(engine, "android", cpu, variant, "//android:" + variant, digest = shell.integrity)
         for variant, shell in plan.android_shells.items()
         for cpu in plan.android_cpus
     ]
 
-def prebuilt_slots(tag, plan):
+def binary_slots(engine, plan):
     """
-    Return the hub slots of a prebuilt plan.
+    Return the hub slots of an engine's binaries.
 
     Args:
-        tag: The godot_engines.prebuilt tag of the plan.
-        plan: The result of prebuilt_plan.
+        engine: The godot_engines.engine tag.
+        plan: The result of binaries_plan.
 
     Returns:
         A list of hub component descriptions.
     """
-    return (
-        _editor_slots(tag, plan.editors) +
-        _desktop_runtime_slots(tag, plan.templates) +
-        _ios_runtime_slots(tag, plan.templates, plan.ios_simulator_cpus) +
-        _android_runtime_slots(tag, plan)
-    )
+    slots = _editor_slots(engine, plan.editors)
+    if plan.templates:
+        slots += _desktop_runtime_slots(engine, plan.templates)
+        slots += _ios_runtime_slots(engine, plan.templates, plan.ios_simulator_cpus)
+    return slots + _android_runtime_slots(engine, plan)
 
-# ==== Source runtimes =========================================================
+# ==== Source recipes ==========================================================
 
-# The build policy of the runtimes a prebuilt engine builds from its release's sources: the
-# modules of Godot's official builds.
-_SOURCE_RUNTIME_POLICY = {
+# The build policy of an engine without a build tag: the modules of Godot's official
+# builds.
+_OFFICIAL_POLICY = {
     "enabled_modules": [],
     "default_modules": True,
     "custom_modules": {},
@@ -278,105 +303,153 @@ _SOURCE_RUNTIME_POLICY = {
     "patch_strip": 1,
     "renderers": [],
     "build_options": {},
-    "build_name": "custom",
-    "python": None,
-    "configure_timeout": 600,
 }
 
-# The rendering methods of those runtimes where they are not Godot's drivers. Apple's run
-# every method on Metal and OpenGL; Vulkan would need the MoltenVK SDK on the configuring
-# Mac. Declaring them lets applications check their project's method against them.
-_SOURCE_RUNTIME_RENDERERS = {
+# The rendering methods of an official policy's recipes where they are not Godot's drivers.
+# Apple's run every method on Metal and OpenGL; Vulkan would need the MoltenVK SDK on the
+# configuring Mac. Declaring them lets applications check their project's method against
+# them.
+_OFFICIAL_RENDERERS = {
     "ios": ["gl_compatibility", "mobile", "forward_plus"],
     "macos": ["gl_compatibility", "mobile", "forward_plus"],
 }
 
-# The suffix of the slots and Android runtimes that serve applications with a build profile
-# where a prebuilt runtime serves the others.
-_PROFILED = "_profiled"
+# The suffix of the slots and Android runtimes that serve the builds whose runtime needs
+# tuning, a build profile or engine optimization, where a prebuilt runtime serves the others.
+_TUNED = "_tuned"
 
-# The visibility of the profiled slots' targets: the hub's own registration, not an
-# entrypoint. Their payloads are configured from source on the first analysis, which only
-# a host that Godot's configuration accepts can do.
-_PROFILED_VISIBILITY = ["//toolchains:__pkg__"]
+# The visibility of the tuned slots' targets: the registrations of the hub and of the
+# extension's toolchains repository, not an entrypoint. Their payloads are configured from
+# source on the first analysis, which only a host that Godot's configuration accepts can do.
+_TUNED_VISIBILITY = ["//:registration"]
 
-def _source_rows(tag):
-    """The runtime rows a prebuilt engine builds from source; a pinned shell AAR may be a fork's, so Android stays unbuilt."""
-    return [
-        row
-        for row in ROWS
-        if row.build_target != "editor" and not (row.platform == "android" and tag.android_shell_urls)
-    ]
+def _policy(engine, build):
+    """The godot_engine_build attributes of an engine's recipes: its build tag's, or the official policy."""
+    policy = dict(_OFFICIAL_POLICY)
+    if build:
+        policy = {attribute: getattr(build, attribute) for attribute in _OFFICIAL_POLICY}
+    return policy | {"build_name": engine.name}
 
-def _profiled_slots(rows_plan, covered):
+def _editor_policy(policy, editor):
+    """The policy of an engine's editor recipes: the editor tag's modules and options replace the build's."""
+    if not editor:
+        return policy
+    result = dict(policy)
+    if editor.enabled_modules or editor.default_modules:
+        result["enabled_modules"] = editor.enabled_modules
+        result["default_modules"] = editor.default_modules
+    if editor.build_options:
+        result["build_options"] = editor.build_options
+    return result
+
+# The binaries tag's pins that make the binaries a fork's, whose sources the catalogue lacks.
+_FORK_PINS = ["editor_urls", "templates_urls"]
+
+def _source(engine, source, binaries, release):
+    """
+    Return the godot_engine_source attributes of an engine's sources, None without.
+
+    They are its source tag's, or the catalogue's unless its binaries tag pins a fork's
+    editors or templates.
+    """
+    if source:
+        return dict(
+            urls = source.urls,
+            sha256 = source.sha256,
+            strip_prefix = source.strip_prefix,
+            version = source.version or engine.version,
+        )
+    if binaries and any([getattr(binaries, pin) for pin in _FORK_PINS]):
+        return None
+    return (release or {}).get("source")
+
+def _tuned_slots(rows_plan, covered):
     """
     Return the source-built slots, their Android runtimes and the covered slots' names.
 
     A slot that a prebuilt runtime covers takes the source-built runtime under the slot's
-    name with _PROFILED, for applications with a build profile, which a prebuilt runtime
+    name with _TUNED, for builds whose runtime needs tuning, which a prebuilt runtime
     cannot apply. Its name sorts after the prebuilt one's, so it is registered after it.
     """
     android = {}
     for variant, runtime in rows_plan.android.items():
         if covered.get("android_" + variant):
-            android[variant + _PROFILED] = runtime | {"visibility": _PROFILED_VISIBILITY}
+            android[variant + _TUNED] = runtime | {"visibility": _TUNED_VISIBILITY}
         else:
             android[variant] = runtime
     slots = [
-        _profiled_slot(slot) if slot["name"] in covered else slot
+        _tuned_slot(slot) if slot["name"] in covered else slot
         for slot in rows_plan.slots
     ]
-    profiled = [slot["name"] for slot in rows_plan.slots if slot["name"] in covered]
-    return slots, android, profiled
+    tuned = [slot["name"] for slot in rows_plan.slots if slot["name"] in covered]
+    return slots, android, tuned
 
-def _profiled_slot(slot):
-    """Return a covered slot renamed with _PROFILED and visible only to the hub's registration."""
-    payload = slot["payload"] + _PROFILED if slot["platform"] == "android" else slot["payload"]
+def _tuned_slot(slot):
+    """Return a covered slot renamed with _TUNED and visible only to the hub's registration."""
+    payload = slot["payload"] + _TUNED if slot["platform"] == "android" else slot["payload"]
     return slot | {
-        "name": slot["name"] + _PROFILED,
+        "name": slot["name"] + _TUNED,
         "payload": payload,
-        "visibility": _PROFILED_VISIBILITY,
+        "visibility": _TUNED_VISIBILITY,
     }
 
-def source_runtimes(tag, plan, slots, profiles = {}):
-    """
-    Return the source declarations, slots and Android runtimes of the runtimes a prebuilt builds.
+def _recipe_policies(declarations, build, editor_policy):
+    """Give the editor recipes their policy and an official policy's recipes their renderers."""
+    for declaration in declarations:
+        attrs = declaration.attrs
+        if declaration.rule != "godot_engine_build":
+            continue
+        if attrs["build_target"] == "editor":
+            attrs.update(editor_policy)
+        if not build and attrs["platform"] in _OFFICIAL_RENDERERS:
+            attrs["renderers"] = _OFFICIAL_RENDERERS[attrs["platform"]]
 
-    It builds from its release's sources the runtimes its artifacts lack, and, for
-    applications with a build profile, those they cover.
+def source_recipes(parts, source, covered, profiles = {}):
+    """
+    Return the source declarations, slots and Android runtimes of an engine's source recipes.
+
+    The engine builds from its sources every slot its binaries lack, and, for applications
+    whose runtime needs tuning, the runtimes they cover. An editor its binaries cover is not
+    built.
 
     Args:
-        tag: The godot_engines.prebuilt tag of the plan.
-        plan: The result of prebuilt_plan.
-        slots: The prebuilt slots of the plan.
+        parts: The engine's tags by tag class, as selected_engines returns them.
+        source: The engine's godot_engine_source attributes.
+        covered: The names of the binary slots, and android_<variant> of each Android
+            shell its binaries pin, as keys.
         profiles: The engine's registered runtime profiles: each label string's build
             options, as runtime_profiles returns them.
 
     Returns:
         A struct of `declarations`, the source archive and recipe repositories, `slots`,
-        the source-built hub slots, `android`, their Android runtimes by name, and
-        `profiled`, the prebuilt slots an application with a build profile leaves to them;
-        None without a source archive.
+        the source-built hub slots, `android`, their Android runtimes by name, `tuned`,
+        the binary slots a build whose runtime needs tuning leaves to them, and `pinning`,
+        the hub attributes of its lock file.
     """
-    if not plan.source:
-        return None
-
-    # A double underscore keeps the recipes apart from the repositories of a source build.
-    name = tag.name + "__source"
-    source = "@%s_archive//:source.json" % name
-
-    # The catalogue knows the sources' version, so the hub need not read the archive.
-    rows_plan = plan_rows(name, _source_rows(tag), version = plan.source["version"])
-    covered = {slot["name"]: True for slot in slots}
-    covered.update({"android_" + variant: True for variant in plan.android_shells})
-    declarations = [_declaration("godot_engine_source", name = name + "_archive", **plan.source)]
-    for declaration in recipe_declarations(name, source, rows_plan, _SOURCE_RUNTIME_POLICY, runtime_profiles = profiles):
-        renderers = _SOURCE_RUNTIME_RENDERERS.get(declaration.attrs.get("platform"))
-        if renderers:
-            declaration.attrs["renderers"] = renderers
-        declarations.append(declaration)
-    source_slots, android, profiled = _profiled_slots(rows_plan, covered)
-    return struct(declarations = declarations, slots = source_slots, android = android, profiled = profiled)
+    engine = parts["engine"]
+    build = parts.get("build")
+    rows = [row for row in ROWS if not (row.build_target == "editor" and slot_name(row) in covered)]
+    rows_plan = plan_rows(engine.name, rows, version = source["version"])
+    archive = engine.name + "_source"
+    policy = _policy(engine, build)
+    lock_file = engine.lock_file
+    declarations = recipe_declarations(
+        engine.name,
+        "@%s//:source.json" % archive,
+        rows_plan,
+        policy,
+        lock_file,
+        runtime_profiles = profiles,
+    )
+    _recipe_policies(declarations, build, _editor_policy(policy, parts.get("editor")))
+    source_slots, android, tuned = _tuned_slots(rows_plan, covered)
+    return struct(
+        declarations = [_declaration("godot_engine_source", name = archive, **source)] + declarations,
+        slots = source_slots,
+        android = android,
+        tuned = tuned,
+        pinning = pinning(rows_plan, lock_file, profiles),
+    )
 
 # ==== Runtime profiles ========================================================
 
@@ -418,73 +491,6 @@ def runtime_profiles(modules, read):
         for engine, options in profiles.items()
     }
 
-# ==== Tag selection ===========================================================
-
-def _scalar(value):
-    return str(value) if type(value) == "Label" else value
-
-def _plain(value):
-    """A JSON-encodable form of a tag value; labels compare by their canonical form."""
-    if type(value) == "list":
-        return [_scalar(item) for item in value]
-    if type(value) == "dict":
-        return {str(key): _scalar(item) for key, item in value.items()}
-    return _scalar(value)
-
-def _signature(kind, tag, attributes):
-    values = {"kind": kind}
-    for attribute in sorted(attributes):
-        values[attribute] = _plain(getattr(tag, attribute))
-    return json.encode(values)
-
-def _requests(modules, tag_attributes):
-    """Every tag of the three tag classes, which share one namespace of names, with its module."""
-    return [
-        struct(
-            kind = kind,
-            tag = tag,
-            signature = _signature(kind, tag, tag_attributes[kind]),
-            module = mod.name,
-            is_root = mod.is_root,
-        )
-        for mod in modules
-        for kind in ["prebuilt", "source", "source_build"]
-        for tag in getattr(mod.tags, kind)
-    ]
-
-def selected_tags(modules, *, tag_attributes, _fail = fail):
-    """
-    Select one request per name.
-
-    Root requests own their names, identical dependency requests coalesce, and conflicting
-    ones fail.
-
-    Args:
-        modules: module_ctx.modules.
-        tag_attributes: The attribute names of each tag class, keyed by tag class.
-        _fail: Replaces fail in Starlark unit tests.
-
-    Returns:
-        A list of structs with kind, tag, module and is_root, sorted by name, or None after
-        an error.
-    """
-    requests = {}
-    for request in _requests(modules, tag_attributes):
-        requests.setdefault(request.tag.name, []).append(request)
-    selected = []
-    for name in sorted(requests):
-        candidates = requests[name]
-        effective = [candidate for candidate in candidates if candidate.is_root] or candidates
-        first = effective[0]
-        conflicts = [candidate for candidate in effective[1:] if candidate.signature != first.signature]
-        if conflicts:
-            return _fail((
-                "Conflicting Godot requests named %r from %s and %s. " +
-                "Pin one configuration with this name in the root module."
-            ) % (name, first.module, conflicts[0].module))
-        selected.append(first)
-    return selected
-
 # ==== Declarations ============================================================
 
 # The file name of a downloaded export-template archive. The platform repositories
@@ -492,23 +498,25 @@ def selected_tags(modules, *, tag_attributes, _fail = fail):
 # target.
 _ARCHIVE_FILE = "export_templates.tpz"
 
-def _templates_declarations(tag, templates):
+def _templates_declarations(engine, templates):
     """
-    Return the export-template repositories of a prebuilt tag.
+    Return the export-template repositories of an engine's binaries.
 
     One repository downloads the archive, and one per Godot platform extracts that
     platform's templates from it: a build extracts only the templates of the platforms it
     uses, and downloads the archive once however many it uses.
 
     Args:
-        tag: The godot_engines.prebuilt tag.
-        templates: The templates of the tag's prebuilt plan.
+        engine: The godot_engines.engine tag.
+        templates: The templates of the engine's binaries plan, or False.
 
     Returns:
         The http_file declaration of the archive, then the godot_export_templates_archive
-        declarations.
+        declarations; none without templates.
     """
-    archive = _templates_repository(tag, "archive")
+    if not templates:
+        return []
+    archive = _templates_repository(engine, "archive")
     return [_declaration(
         "http_file",
         name = archive,
@@ -518,42 +526,36 @@ def _templates_declarations(tag, templates):
     )] + [
         _declaration(
             "godot_export_templates_archive",
-            name = _templates_repository(tag, platform),
+            name = _templates_repository(engine, platform),
             archive = "@%s//file:%s" % (archive, _ARCHIVE_FILE),
             integrity = templates.integrity,
-            version = tag.version,
+            version = engine.version,
             platform = platform,
             cpus = cpus,
         )
         for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
     ]
 
-# The repository rule that each source tag class declares.
-_SOURCE_RULES = {
-    "source": "godot_engine_source",
-    "source_build": "godot_engine_source_build",
-}
-
-def _editor_declarations(tag, editors):
+def _editor_declarations(engine, editors):
     return [
         _declaration(
             "godot_editor_archive",
-            name = "%s_editor_%s" % (tag.name, editor_platform),
+            name = "%s_editor_%s" % (engine.name, editor_platform),
             urls = editor.urls,
             integrity = editor.integrity,
             binary = editor.binary,
-            version = tag.version,
+            version = engine.version,
         )
         for editor_platform, editor in editors.items()
     ]
 
-def _shell_declarations(tag, shells):
+def _shell_declarations(engine, shells):
     """
-    Return the repositories of a prebuilt tag's shell AARs and the hub's Android runtimes.
+    Return the repositories of an engine's shell AARs and the hub's Android runtimes.
 
     Args:
-        tag: The godot_engines.prebuilt tag.
-        shells: The shell AARs of the tag's prebuilt plan, by variant.
+        engine: The godot_engines.engine tag.
+        shells: The shell AARs of the engine's binaries plan, by variant.
 
     Returns:
         A tuple of the http_file declarations and, by variant, the Android runtime of the
@@ -562,7 +564,7 @@ def _shell_declarations(tag, shells):
     declarations = []
     android_runtimes = {}
     for variant, shell in shells.items():
-        name = "%s_%s" % (tag.name, shell.pin)
+        name = "%s_%s" % (engine.name, shell.pin)
         declarations.append(_declaration(
             "http_file",
             name = name,
@@ -573,45 +575,113 @@ def _shell_declarations(tag, shells):
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
 
-def _prebuilt_declarations(tag, profiles, _fail):
-    """Return the editor, template, shell and hub repositories of a prebuilt tag, or None after an error."""
-    plan = prebuilt_plan(tag, _fail = _fail)
+def _acquisition_error(engine, source, plan):
+    """The error of an engine that has no editor, or a lock file but no sources; None otherwise."""
+    if not source and not plan.editors:
+        return (
+            "Godot %s has no catalogue entry for the engine %r; declare its sources with " +
+            "godot_engines.source or its editors with godot_engines.binaries"
+        ) % (engine.version, engine.name)
+    if engine.lock_file and not source:
+        return "godot_engines.engine %r: lock_file pins source recipes, but the engine has no sources" % engine.name
+    return None
+
+def _engine_profiles(engine, default, profiles):
+    """The runtime profiles of an engine: those that name it, and, for the default engine, those that name none."""
+    named = profiles.get(engine.name, {})
+    unnamed = profiles.get("", {}) if default else {}
+    combined = named | unnamed
+    return {label: combined[label] for label in sorted(combined)}
+
+def _engine_declarations(selection, profiles, _fail):
+    """
+    Return one engine's repositories and what the toolchains repository registers of it.
+
+    Returns None after an error.
+    """
+    parts = selection.parts
+    engine = parts["engine"]
+    error = godot_version_error(engine.version)
+    if error:
+        return _fail(error)
+    release = RELEASES.get(engine.version)
+
+    # A build policy of the engine's own makes the catalogue's binaries another engine.
+    catalogued = None if "build" in parts else release
+    plan = binaries_plan(engine, parts.get("binaries"), catalogued, _fail = _fail)
     if plan == None:
         return None
-    shells, android_runtimes = _shell_declarations(tag, plan.android_shells)
-    slots = prebuilt_slots(tag, plan)
-    built = source_runtimes(tag, plan, slots, profiles.get(tag.engine, {}))
-    sources = []
-    if built:
-        sources = built.declarations
+    source = _source(engine, parts.get("source"), parts.get("binaries"), release)
+    error = _acquisition_error(engine, source, plan)
+    if error:
+        return _fail(error)
+    shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
+    slots = binary_slots(engine, plan)
+    declarations = _editor_declarations(engine, plan.editors) + _templates_declarations(engine, plan.templates) + shells
+    hub = dict(
+        name = engine.name,
+        display_name = engine.name,
+        engine = engine.name,
+        default_engine = selection.default,
+        toolchains_repository = TOOLCHAINS_REPOSITORY,
+    )
+    if source:
+        covered = {slot["name"]: True for slot in slots} | {"android_" + variant: True for variant in plan.android_shells}
+        built = source_recipes(parts, source, covered, _engine_profiles(engine, selection.default, profiles))
+        declarations += built.declarations
         slots = [
-            slot | {"without_build_profile": True} if slot["name"] in built.profiled else slot
+            slot | {"untuned_only": True} if slot["name"] in built.tuned else slot
             for slot in slots
         ] + built.slots
         android_runtimes = built.android | android_runtimes
-    hub = _declaration(
-        "engine_hub",
-        name = tag.name,
-        display_name = tag.name,
-        components = json.encode(slots),
-        android_runtimes = json.encode(android_runtimes),
-        engine = tag.engine,
+        hub.update(built.pinning)
+    hub.update(components = json.encode(slots), android_runtimes = json.encode(android_runtimes))
+    return struct(
+        declarations = declarations + [_declaration("engine_hub", **hub)],
+        toolchains = {"name": engine.name, "default_engine": selection.default, "slots": slots},
     )
-    return _editor_declarations(tag, plan.editors) + _templates_declarations(tag, plan.templates) + shells + sources + [hub]
 
-def _repository(label):
-    """The apparent name of the repository a label or label string names; the last part of a canonical one."""
-    if type(label) == "Label":
-        return label.repo_name.rpartition("+")[2]
-    return label.lstrip("@").partition("//")[0]
+def _profile_tag_error(tag, names, has_default):
+    """The error of one runtime profile that reaches no registered engine, or None."""
+    if tag.engine and tag.engine not in names:
+        return "godot_engines.runtime_profile(profile = %r) names the engine %r, which no module registers" % (str(tag.profile), tag.engine)
+    if not (tag.engine or has_default):
+        return "godot_engines.runtime_profile(profile = %r) names no engine, and no engine is the default" % str(tag.profile)
+    return None
 
-def _source_versions(selections):
-    """The version of each source tag, by its repository name."""
-    return {
-        selection.tag.name: selection.tag.version
-        for selection in selections
-        if selection.kind == "source"
-    }
+def _profile_error(modules, selections):
+    """The error of the first runtime profile that reaches no registered engine, or None."""
+    names = {selection.name: True for selection in selections}
+    has_default = any([selection.default for selection in selections])
+    errors = [
+        _profile_tag_error(tag, names, has_default)
+        for mod in modules
+        for tag in mod.tags.runtime_profile
+    ]
+    errors = [error for error in errors if error]
+    return errors[0] if errors else None
+
+def _collision_error(declarations):
+    """The error of two declarations of the same repository name, the first by name; None without."""
+    owners = {}
+    collisions = {}
+    engine = ""
+    for declaration in reversed(declarations):
+        # Each engine's declarations end with its hub, which names the engine.
+        if declaration.rule == "engine_hub":
+            engine = declaration.attrs["name"]
+        owner = "" if declaration.rule == "engine_toolchains" else engine
+        name = declaration.attrs["name"]
+        if name in owners:
+            collisions[name] = sorted([owner, owners[name]])
+        owners[name] = owner
+    if not collisions:
+        return None
+    name = sorted(collisions)[0]
+    first, second = collisions[name]
+    if not first:
+        return "The Godot engine %r and godot_engines both declare the repository %r; rename the engine" % (second, name)
+    return "The Godot engines %r and %r both declare the repository %r; rename one" % (first, second, name)
 
 def plan_engines(modules, *, tag_attributes, read = None, _fail = fail):
     """
@@ -627,25 +697,26 @@ def plan_engines(modules, *, tag_attributes, read = None, _fail = fail):
         A list of structs with `rule`, the name of a repository rule or macro, and `attrs`,
         its keyword arguments; None after an error.
     """
-    selections = selected_tags(modules, tag_attributes = tag_attributes, _fail = _fail)
+    selections = selected_engines(modules, tag_attributes = tag_attributes, _fail = _fail)
     if selections == None:
         return None
-    versions = _source_versions(selections)
+    error = _profile_error(modules, selections)
+    if error:
+        return _fail(error)
     profiles = runtime_profiles(modules, read)
     declarations = []
+    engines = []
     for selection in selections:
-        tag = selection.tag
-        if selection.kind in _SOURCE_RULES:
-            attrs = {attribute: getattr(tag, attribute) for attribute in tag_attributes[selection.kind]}
-            if selection.kind == "source_build":
-                # The hub needs the version; a source tag of this extension knows it, so
-                # registering the hub need not fetch the source archive to read it.
-                attrs["version"] = versions.get(_repository(tag.source), "")
-                attrs["runtime_profiles"] = profiles.get(tag.engine, {})
-            declarations.append(_declaration(_SOURCE_RULES[selection.kind], **attrs))
-            continue
-        prebuilt = _prebuilt_declarations(tag, profiles, _fail)
-        if prebuilt == None:
+        engine = _engine_declarations(selection, profiles, _fail)
+        if engine == None:
             return None
-        declarations.extend(prebuilt)
+        declarations.extend(engine.declarations)
+        engines.append(engine.toolchains)
+
+    # The toolchains of every engine, which rules_godot's module registers, so a module
+    # that registers an engine needs no registration of its own.
+    declarations.append(_declaration("engine_toolchains", name = TOOLCHAINS_REPOSITORY, engines = json.encode(engines)))
+    error = _collision_error(declarations)
+    if error:
+        return _fail(error)
     return declarations

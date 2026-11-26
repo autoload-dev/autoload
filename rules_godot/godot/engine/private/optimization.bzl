@@ -79,6 +79,12 @@ OPTIMIZE_VALUES = ["auto"] + _OPTIMIZE_OPTIONS.keys()
 LTO_VALUES = _LTO_OPTIONS.keys()
 VFE_VALUES = ["", "on", "off"]
 
+# The flags' defaults: a runtime compiled with them under -c opt needs no tuning, so a
+# prebuilt runtime serves it (//godot/private:untuned_defaults).
+OPTIMIZE_DEFAULT = "auto"
+LTO_DEFAULT = "none"
+VFE_DEFAULT = False
+
 # The engine's graph takes the settings' options and resets the settings, so engines that
 # compile alike share one configuration whatever values led there.
 _RESET = {_ENGINE_OPTIMIZE: "auto", _ENGINE_LTO: "none", _ENGINE_VFE: False}
@@ -245,6 +251,6 @@ def require_tunable_runtime(label, attr, provenance):
     if attr.build_profile and provenance.kind != "source":
         fail((
             "%s: build_profile needs a runtime built from source, but the selected runtime " +
-            "component %s is prebuilt. Register a source build for the slot, use a " +
-            "prebuilt engine whose source_runtimes builds it, or leave build_profile unset."
+            "component %s is prebuilt. Give its engine sources, a catalogued version or a " +
+            "godot_engines.source tag, or leave build_profile unset."
         ) % (label, provenance.component))
