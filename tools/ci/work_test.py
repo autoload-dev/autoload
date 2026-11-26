@@ -186,6 +186,16 @@ class CallersTest(unittest.TestCase):
         command = all_work(ROOT)["lint"].steps()[0].command
         self.assertIn("--target_pattern_file=root.targets", command)
 
+    def test_the_source_engine_workflow_runs_every_example_test_tagged_source_engine(
+        self,
+    ) -> None:
+        # Such as Lichtpost's slim_app_build_test, whose application lanes leave it out.
+        commands = [step.command for step in all_work(ROOT)["source-engine:full"].steps()]
+        self.assertIn(
+            "bazel test --build_tests_only --test_tag_filters=source_engine //examples/...",
+            commands,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
