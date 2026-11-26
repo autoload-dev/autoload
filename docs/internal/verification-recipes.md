@@ -370,9 +370,10 @@ permissions, symbols and Info.plist fragments. The prebuilt beta engine's tests 
 declared application, engine and tool inputs; `official_beta_ios_link_links_selected_engine_test`
 checks an unsigned device executable, which is not a signed device IPA.
 
-The scenarios' mobile smoke tests are `manual`, so `bazel test //e2e/rules_godot/...` stays the
-desktop set. Their applications carry their configuration (`godot_configured_app`), and the
-suites of `e2e/rules_godot/BUILD.bazel` list the tests per operating system:
+The scenarios' mobile smoke tests are tagged `android` or `ios`: the fast tier leaves them
+out, and each CI job runs its host's (`ci-linux`, `ci-macos` in shared.bazelrc). Their
+applications carry their configuration (`godot_configured_app`), and the suites of
+`e2e/rules_godot/BUILD.bazel` list the tests per operating system:
 
 ```sh
 aspect exec -- bazel test //e2e/rules_godot:android

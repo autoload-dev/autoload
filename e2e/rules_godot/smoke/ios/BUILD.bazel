@@ -12,8 +12,8 @@ load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_t
 
 # The iOS smoke path: an iOS application that embeds a godot-cpp extension as a dynamic
 # framework, and one that links it statically and exports its entry symbol, inspected with
-# the public artifact test. Every target is manual, and the Simulator applications carry
-# their iOS configuration: //e2e/rules_godot:ios runs the tests.
+# the public artifact test. The tests are tagged `ios`, which CI's macOS job runs, and the
+# other targets are manual; the Simulator applications carry their iOS configuration.
 
 godot_project(
     name = "ios",
@@ -129,7 +129,12 @@ ios_app_test(
         "Frameworks/counter.framework/Info.plist",
         "Frameworks/counter.framework/counter",
     ],
-    tags = ["manual"],
+    # The iOS lane: only CI's macOS job runs it (shared.bazelrc).
+    tags = [
+        "godot_process",
+        "ios",
+    ],
+    target_compatible_with = ["@platforms//os:macos"],
 )
 
 ios_app_test(
@@ -137,7 +142,12 @@ ios_app_test(
     size = "small",
     app = ":simulator_static_app",
     symbols = ["native_counter_init"],
-    tags = ["manual"],
+    # The iOS lane: only CI's macOS job runs it (shared.bazelrc).
+    tags = [
+        "godot_process",
+        "ios",
+    ],
+    target_compatible_with = ["@platforms//os:macos"],
 )
 
 filegroup(

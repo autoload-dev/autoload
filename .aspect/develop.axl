@@ -8,7 +8,7 @@ and `fast`, run in the two workspaces of development: the root module, which bui
 add-on modules and the consumers, and the ruleset with its own tests.
 """
 
-load("./work.axl", "run", "run_work", "run_work_tool", "spawn")
+load("./work.axl", "run", "run_work", "spawn")
 
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
@@ -46,7 +46,7 @@ def _patterns(ctx: TaskContext, workspace: str):
     modules = [name for name in names if ctx.std.fs.exists(addons + "/" + name + "/MODULE.bazel")]
     return ["//..."] + ["@autoload_{}//...".format(module) for module in sorted(modules)]
 
-def bazel(ctx: TaskContext, command: str, flags) -> int:
+def bazel(ctx: TaskContext, command: str, flags, env = {}) -> int:
     """Run a Bazel command with the flags over every workspace's patterns at once.
 
     The workspaces have servers of their own, so their commands run side by side.
@@ -55,12 +55,13 @@ def bazel(ctx: TaskContext, command: str, flags) -> int:
         ctx: the running task's context.
         command: the Bazel command, such as `build` or `test`.
         flags: the flags of the command.
+        env: variables of the command's environment.
 
     Returns:
         0, or the first workspace's failing exit code.
     """
     children = [
-        spawn(ctx, "bazel", [command] + list(flags) + ["--"] + _patterns(ctx, workspace), directory = workspace)
+        spawn(ctx, "bazel", [command] + list(flags) + ["--"] + _patterns(ctx, workspace), env = env, directory = workspace)
         for workspace in WORKSPACES
     ]
     codes = [child.wait().code for child in children]
@@ -131,11 +132,28 @@ check = task(
 # the checks that are no Bazel targets.
 CI_CHECKS = ["format"] + TOOL_CHECKS
 
+# The lint check's stamps of every target, without their outputs and other validations.
+_LINT = ["--config=check", "--output_groups=lint_checks", "--norun_validations"]
+
 def _ci_steps(ctx: TaskContext, host: str):
-    """A host's CI job: on Linux every check first, then the host's lanes (tools/ci/hosts.py)."""
-    checks = CI_CHECKS if host == "linux" else []
-    return steps(ctx, [(check, lambda check = check: run_work(ctx, check)) for check in checks] + [
-        ("bazel", lambda: run_work_tool(ctx, [host], module = "tools.ci.hosts")),
+    """A host's CI job: on Linux every check and the lint, then the host's tests and self-tests.
+
+    The tests are every test of both workspaces that the host's config `ci-<host>` selects
+    (shared.bazelrc); the add-on generator's self-tests run each lane of a fresh module.
+    """
+    linux = host == "linux"
+    checks = [(check, lambda check = check: run_work(ctx, check)) for check in CI_CHECKS] if linux else []
+    lint = [("lint", lambda: bazel(ctx, "build", _LINT))] if linux else []
+
+    # The ruleset's desktop set includes its Android packaging tests, so both hosts' tests
+    # need the pinned SDK, which the setup provisions; the Aspect CLI's environment keeps
+    # ANDROID_HOME empty until then (.aspect/config.axl).
+    android = {"ANDROID_HOME": ctx.std.env.var("ANDROID_SDK_ROOT") or ""}
+    selftests = [lane + ":addon-template" for lane in (["desktop", "android"] if linux else ["ios"])]
+    return steps(ctx, checks + lint + [
+        ("android-setup", lambda: run_work(ctx, "android:setup")),
+        ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android)),
+        ("selftests", lambda: run_work(ctx, *selftests)),
     ])
 
 def _ci_task(host: str, summary: str):
@@ -146,8 +164,8 @@ def _ci_task(host: str, summary: str):
         args = {"keep_going": KEEP_GOING},
     )
 
-linux = _ci_task("linux", "Run CI's Linux job: every check, then the quality, desktop and android lanes.")
-macos = _ci_task("macos", "Run CI's macOS job: the desktop and ios lanes.")
+linux = _ci_task("linux", "Run CI's Linux job: every check, then every test but the iOS lane's.")
+macos = _ci_task("macos", "Run CI's macOS job: every test but the Android lane's.")
 
 def _test_impl(ctx: TaskContext) -> int:
     return bazel_tests(ctx, ["--config=" + ctx.args.tier])

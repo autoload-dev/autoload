@@ -3,8 +3,9 @@ The release builds of the repository's applications, declared beside each one's 
 
 `android_release` and `ios_release` build an application and its debug symbols as
 `godot_configured_app` does, under the settings of the `.bazelrc` configurations
-`android-release`, `multi_abi` and `aab`, and of `ios-release`. The Android and iOS lanes
-build them in the same Bazel invocation and configuration as everything else.
+`android-release`, `multi_abi` and `aab`, and of `ios-release`. Each also declares
+`<name>.build_test`, which builds both, tagged with its lane: CI's host jobs run it in the
+same Bazel invocation and configuration as everything else (shared.bazelrc).
 """
 
 # The ruleset's configured applications, which it does not support as API.
@@ -15,13 +16,25 @@ load(
     "APPLE_RELEASE",
     "godot_configured_app",
 )
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+def _release_test(name, lane, target_compatible_with = []):
+    """Build a release and its debug symbols as a test of its lane, which starts Godot."""
+    build_test(
+        name = name + ".build_test",
+        size = "small",
+        tags = [lane, "godot_process"],
+        target_compatible_with = target_compatible_with,
+        targets = [name, name + ".debug_symbols"],
+    )
 
 def android_release(name, app = ":app", **kwargs):
     """
     The multi-ABI release App Bundle of an application, with its debug symbols.
 
     Args:
-        name: the name of the App Bundle; its debug symbols are `<name>.debug_symbols`.
+        name: the name of the App Bundle; its debug symbols are `<name>.debug_symbols`, the
+            test that builds both `<name>.build_test`.
         app: the `godot_app`.
         **kwargs: common attributes such as `visibility`; `tags` add to `manual`.
     """
@@ -33,13 +46,15 @@ def android_release(name, app = ":app", **kwargs):
         tags = ["manual"] + kwargs.pop("tags", []),
         **(ANDROID_RELEASE | kwargs)
     )
+    _release_test(name, "android")
 
 def ios_release(name, app = ":app", **kwargs):
     """
     The release iOS Simulator application of the official templates, with its dSYMs.
 
     Args:
-        name: the name of the application; its debug symbols are `<name>.debug_symbols`.
+        name: the name of the application; its debug symbols are `<name>.debug_symbols`,
+            the test that builds both `<name>.build_test`.
         app: the `godot_app`.
         **kwargs: common attributes such as `visibility`; `tags` add to `manual`.
     """
@@ -50,3 +65,4 @@ def ios_release(name, app = ":app", **kwargs):
         tags = ["manual"] + kwargs.pop("tags", []),
         **(APPLE_RELEASE | kwargs)
     )
+    _release_test(name, "ios", ["@platforms//os:macos"])

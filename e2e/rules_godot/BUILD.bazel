@@ -1,6 +1,6 @@
 # The mobile smoke tests, run as `bazel test //e2e/rules_godot:<suite>` from the repository
-# root. Their applications carry their Android or iOS configuration (godot_configured_app);
-# each suite is manual, so //e2e/rules_godot/... stays the desktop set.
+# root. Their applications carry their Android or iOS configuration (godot_configured_app),
+# and the tests their lane's tag, by which the fast tier and CI's other host leave them out.
 
 test_suite(
     name = "android",

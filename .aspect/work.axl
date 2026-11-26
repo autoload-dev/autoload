@@ -102,19 +102,18 @@ def python(ctx: TaskContext, arguments) -> int:
     """
     return run(ctx, _built(ctx, _PYTHON), arguments)
 
-def run_work_tool(ctx: TaskContext, arguments, module = "tools.ci.work") -> int:
-    """Run the lanes' work, with the Pkl CLI it reads the manifests with.
+def run_work_tool(ctx: TaskContext, arguments) -> int:
+    """Run the lanes' work (tools/ci/work.py), with the Pkl CLI it reads the manifests with.
 
     Args:
         ctx: the running task's context.
-        arguments: the module's arguments.
-        module: tools/ci/work.py, or tools/ci/hosts.py for CI's host jobs.
+        arguments: the arguments of tools/ci/work.py.
 
     Returns:
         Its exit code.
     """
     _built(ctx, _PKL)
-    return python(ctx, ["-m", module] + arguments)
+    return python(ctx, ["-m", "tools.ci.work"] + arguments)
 
 def run_work(ctx: TaskContext, *names) -> int:
     """Run pieces of the lanes' work by name.

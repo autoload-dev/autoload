@@ -33,7 +33,11 @@ godot_metadata_sync(
     size = "small",
     engine = "simulation",
     project = ":petri",
-    tags = ["godot_process"],
+    tags = [
+        "godot_process",
+        # Its editor and engine are built from source: the Source engine workflow runs it.
+        "source_engine",
+    ],
     deps = ["//examples/petri/main"],
 )
 
@@ -70,7 +74,11 @@ godot_metadata_sync(
     testonly = True,
     engine = "simulation",
     project = ":test_project",
-    tags = ["godot_process"],
+    tags = [
+        "godot_process",
+        # Its editor and engine are built from source: the Source engine workflow runs it.
+        "source_engine",
+    ],
     visibility = ["//visibility:private"],
     deps = ["//examples/petri/tests:suites"],
 )

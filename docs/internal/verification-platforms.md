@@ -61,13 +61,17 @@ all source suites in every release configuration.
 CI runs every lane on every run: pull requests, the merge queue and a manual dispatch.
 Bazel's caches keep unchanged work cheap. [CI](../../.github/workflows/ci.yml) has one job
 per host, each `aspect ci <host>`: `linux` runs the quality, desktop and android lanes,
-`macos` the desktop and ios lanes. [`tools/ci/hosts.py`](../../tools/ci/hosts.py) combines a
-host's lanes into a few Bazel commands: the ruleset's tests and lint on its own server, and
-in the root module, at the same time, the lint check, the tests of the tooling and the
-applications, then one `bazel test` of the scenarios, the add-on modules' desktop lanes and
-the host's mobile release builds and smoke tests, which Bazel schedules together. The
-add-on generator's self-tests follow, each lane's in a server of its own. On Linux the
-formatter and the checks that are no Bazel targets run first. `Finalize` fails when either
+`macos` the desktop and ios lanes. Bazel selects each host's tests by tag: the configs
+`ci-linux` and `ci-macos` of [shared.bazelrc](../../shared.bazelrc) run every test with
+`--build_tests_only` but those tagged `source_engine` and those of the other host's mobile
+lane. A test that needs the Android lane's machine is tagged `android`, one that needs the
+iOS lane's `ios`; a mobile release build is such a test through its `<name>.build_test`
+([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
+hosts, compatibility permitting. The root module and the ruleset each run one `bazel test`,
+both at once on their own servers, the root module's over its add-on modules too. On
+Linux the formatter, the checks that are no Bazel targets and the lint check of every
+target run first; the add-on generator's self-tests follow, each lane's in a server of its
+own. `Finalize` fails when either
 job failed or was cancelled. The matrix fails fast: the first job to fail cancels the
 other, so it frees its runner and `Finalize` fails at once, which in the merge queue
 removes the entry without waiting for the slower job; the work it finished stays in
@@ -81,10 +85,9 @@ command instead. The pre-push hook runs the checks that need no lane machine, as
 [verification policy](verification.md#when-to-verify) describes.
 
 A lane needs its prerequisites and must not silently succeed because it was invoked on an
-unsuitable host; Android work provisions the pinned SDK first. Each example's suite, such
-as `test:example:lichtpost`, uses `--build_tests_only` over its example subtree, so new test
-targets are discovered automatically without building unrelated app targets. Bazel still
-respects manual tags and platform compatibility.
+unsuitable host; Android work provisions the pinned SDK first. `--build_tests_only` finds new
+test targets without building unrelated app targets; Bazel still respects manual tags and
+platform compatibility.
 
 Each application of `examples/` runs in the lanes its `app.pkl` names, as
 [tools/apps/App.pkl](../../tools/apps/App.pkl) defines them.
