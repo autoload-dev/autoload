@@ -17,7 +17,7 @@ from tools.conventions.context import (
 )
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.layout import EXAMPLES_ROOT, is_end_to_end
-from tools.conventions.rules.rg007 import declared_operations
+from tools.conventions.operations import godot_test_operations
 
 
 def is_test(kind: str, operations: frozenset[str]) -> bool:
@@ -28,7 +28,7 @@ def is_test(kind: str, operations: frozenset[str]) -> bool:
 def root_tests(context: Context) -> Iterable[Finding]:
     """Report the tests an application project's root package declares."""
     workspace = context.workspace
-    kinds = declared_operations(workspace)
+    kinds = godot_test_operations(context)
     roots = {
         (project / build).as_posix(): project
         for project in workspace.projects

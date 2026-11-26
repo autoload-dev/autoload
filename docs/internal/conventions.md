@@ -173,11 +173,10 @@ that the documented workflow succeeds.
 
 ## RG007
 
-**Godot test operations and their helpers are test-only.** The targets created by
-`godot_test` and the test operations an add-on module declares in its `addon.pkl`
-(`testOperations`), such as autoload_gdunit's `gdunit_test`, must have effective
-`testonly = True`. This includes their generated case lists, resources and views of
-the project. They belong exclusively to the test operation and must not become production
+**Godot test operations and their helpers are test-only.** The targets that `godot_test`
+and every macro declaring a Godot test, such as autoload_gdunit's `gdunit_test`, create
+must have effective `testonly = True`. This includes their generated case lists, resources
+and views of the project. They belong exclusively to the test operation and must not become production
 dependencies, following
 [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
@@ -190,7 +189,11 @@ value, including package defaults, without requiring a literal attribute.
 then protects the marked targets from production consumers.
 
 Applicability comes from the evaluated `generator_function` metadata of these
-operations, including source aliases and comprehensions. Each attributed rule target is
+operations, including source aliases and comprehensions. A macro is a test operation when a
+call of it anywhere in the loaded modules declares a target of the rule class
+`_godot_test`, which `godot_test` creates, under the call's own name; no list names them. A
+suite macro whose Godot tests are fixtures with names of their own, as in the ruleset's
+analysis tests, is none. Each attributed rule target is
 checked. Each false flag is reported at the call with the affected target label. Missing
 scalar flags or missing generator evidence for a directly named operation are reported as
 not checked. Other targets at the same authored call with an unknown or different generator
@@ -389,28 +392,27 @@ root module's declaration lists it. Each module:
 
 - is named `autoload_<module>` and owns the files of the generator's module template, such
   as `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.bazelrc`, `.bazelignore`,
-  `addon.pkl` and its registry test module `bcr/smoke`;
+  and its registry test module `bcr/smoke`;
 - holds in its root only those files and its lock file, its add-ons, `third_party/` with
-  what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and the
-  packages its `addon.pkl` declares in `sharedPackages`, such as Firebase's `config`. An
-  add-on is a directory whose BUILD file declares a target named like it, as the generator
-  writes it;
+  what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and
+  packages that a Starlark file outside them names by label, as `//<package>` in the module
+  or `@autoload_<module>//<package>` anywhere, such as Firebase's `config`. An add-on is a
+  directory whose BUILD file declares a target named like it, as the generator writes it.
+  The check thus rejects directories nothing uses rather than keep a list of allowed
+  packages;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
   removed with it;
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
-- has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and that the pinned Pkl
-  CLI evaluates: Pkl rejects a property the schema does not declare and a value outside its
-  type. Its `apps` says whether the module's examples build applications, which gives each
-  example project an `app` and the Android and iOS releases of `examples/releases.bzl`;
-- lists in `addon.pkl`'s `testDependencies` exactly the regular dependencies that only its
-  `tests/` packages load from. CI builds the module from the root module, where its
-  development dependencies are not active, so a unit test's library is a regular
-  dependency; the list keeps that exception visible;
+- has no regular dependency that only its `tests/` packages load from: every consumer
+  inherits it. CI builds the module from the root module, where its development
+  dependencies are not active, so tests that need such a library live in
+  `e2e/addons/<module>/`;
 - has at least one example project in the root module's
   `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
-  defining the targets `edit` and `pack`, and `app` when the module builds applications;
+  defining the targets `edit` and `pack`. An example project that builds an application
+  defines `app` too, which its release builds of `examples/releases.bzl` require;
 - gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
   extension's framework, and an application's frameworks share one directory.
 
@@ -492,15 +494,14 @@ development dependencies are not active.
 
 The check reports, in each add-on module but its registry test modules, every
 `project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync`,
-`godot_runtime_profile` or a test operation its `addon.pkl` declares in `testOperations`.
+`godot_runtime_profile` or a macro that declares a Godot test ([RG007](#rg007)).
 
 ## RG022
 
 **The Python tooling names no add-on module or application.** The tools read what is
-specific to a component from its manifest: an add-on module's `addon.pkl`
-(`tools/addons/Addon.pkl`), which Pkl
-evaluates. A new component then needs no change of the tooling, and what is special about
-one stays visible beside it, as a standardized option.
+specific to a component from its own files, such as its `MODULE.bazel` and BUILD files, or
+from Bazel. A new component then needs no change of the tooling, and what is special about
+one stays visible beside it.
 
 The check reads the string literals of every Python file in `tools/`, docstrings included,
 apart from tests and their support, and reports each that names an add-on module or an
@@ -660,8 +661,8 @@ The [framework](../../tools/conventions/framework.py) validates unique IDs, invo
 against one context and attaches their metadata to findings. It sorts diagnostics for
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
 aborts the run rather than being merged. The rules that judge each file on its own are
-registered in [per_file.py](../../tools/conventions/per_file.py), whose library needs neither
-Bazel nor Pkl: the lint check runs them per package, and the CLI only when they are named.
+registered in [per_file.py](../../tools/conventions/per_file.py), whose library needs no
+Bazel: the lint check runs them per package, and the CLI only when they are named.
 `Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
 the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)

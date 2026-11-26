@@ -1,6 +1,0 @@
-// How this repository verifies the module and what its rules are (tools/addons/Addon.pkl).
-amends "../../tools/addons/Addon.pkl"
-
-// GdUnit runs on the host only: its add-on is test-only and no application ships it.
-apps = false
-testOperations = List("gdunit_test")

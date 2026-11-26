@@ -47,7 +47,7 @@ py_library(
     deps = [":context_lib"],
 )
 
-# The rules that judge each file on its own, which need neither Bazel nor Pkl, and their
+# The rules that judge each file on its own, which need no Bazel, and their
 # register (per_file.py).
 py_library(
     name = "per_file_rules_lib",
@@ -76,8 +76,8 @@ py_library(
 py_library(
     name = "rules_lib",
     srcs = [
-        "manifests.py",
         "naming.py",
+        "operations.py",
         "registry.py",
         "rules/rg001.py",
         "rules/rg002.py",
@@ -105,7 +105,6 @@ py_library(
         ":framework_lib",
         ":per_file_lib",
         "//tools/addons:new_lib",
-        "//tools/pkl:evaluate_lib",
     ],
 )
 
@@ -444,8 +443,8 @@ filegroup(
         "framework.py",
         "framework_test.py",
         "layout.py",
-        "manifests.py",
         "naming.py",
+        "operations.py",
         "per_file.py",
         "python_modules.py",
         "registry.py",

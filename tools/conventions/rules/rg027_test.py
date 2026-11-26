@@ -19,7 +19,6 @@ class LintedAddonPythonTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
         self.write("addons/widget/MODULE.bazel", "")
-        self.write("addons/widget/addon.pkl", 'amends "../../tools/addons/Addon.pkl"\n')
         self.write("addons/widget/config/BUILD.bazel", "")
         self.write("tools/BUILD.bazel", "")
         self.write("rules_godot/MODULE.bazel", "")

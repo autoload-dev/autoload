@@ -4,7 +4,16 @@ import unittest
 
 from tools.conventions.context import Call, Location
 from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
-from tools.conventions.test_support import RepositoryTest
+from tools.conventions.test_support import Record, RepositoryTest
+
+# A use of widget_test in the root module, whose Godot test makes it a test operation.
+E2E = "e2e/addons/widget/BUILD.bazel"
+WIDGET_TEST: Record = {
+    "name": "//e2e/addons/widget:t",
+    "path": E2E,
+    "strings": {"generator_function": "widget_test", "generator_name": "t"},
+    "kind": "_godot_test",
+}
 
 
 def call(path: str, kind: str) -> Call:
@@ -15,17 +24,12 @@ class NoGodotRunsInAddonModulesTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
         self.write("addons/widget/MODULE.bazel", "")
-        self.write(
-            "addons/widget/addon.pkl",
-            'amends "../../tools/addons/Addon.pkl"\n'
-            "apps = false\n"
-            'testOperations = List("widget_test")\n',
-        )
         self.write("addons/widget/widget/BUILD.bazel", "")
         self.write("addons/widget/tests/BUILD.bazel", "")
+        self.write(E2E, "")
 
     def findings(self, *calls: Call) -> list[str]:
-        context = self.context(calls=calls)
+        context = self.context(calls=calls, records=[WIDGET_TEST])
         return [
             item.location.path for item in NoGodotRunsInAddonModules().evaluate(context)
         ]
@@ -62,11 +66,10 @@ class NoGodotRunsInAddonModulesTest(RepositoryTest):
         self.write("addons/widget/bcr/smoke/project.godot", "")
         self.write("addons/widget/bcr/smoke/BUILD.bazel", "")
         self.write("e2e/addons/widget/project.godot", "")
-        self.write("e2e/addons/widget/BUILD.bazel", "")
         self.assertEqual(
             self.findings(
                 call("addons/widget/bcr/smoke/BUILD.bazel", "widget_test"),
-                call("e2e/addons/widget/BUILD.bazel", "godot_project"),
+                call(E2E, "godot_project"),
             ),
             [],
         )

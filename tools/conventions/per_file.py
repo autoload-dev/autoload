@@ -1,7 +1,7 @@
 """
 The convention rules that judge each file on its own. The lint check runs them per package on
 the filegroups that Gazelle declares (tools/conventions/files.py); the conventions tool runs
-them only when named. They read files alone, so their library needs neither Bazel nor Pkl.
+them only when named. They read files alone, so their library needs no Bazel.
 """
 
 from tools.conventions.framework import Rule

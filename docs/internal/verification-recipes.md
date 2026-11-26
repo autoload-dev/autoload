@@ -17,7 +17,7 @@ The [verification policy](verification.md) determines when evidence is needed, a
 
 A checkout needs only Bazelisk (`bazel`) and the Aspect CLI (`aspect`). Bazelisk runs the Bazel
 of [.bazelversion](../../.bazelversion), the launcher the Aspect CLI of
-[.aspect/version.axl](../../.aspect/version.axl). Prebuilt tools (jactionlint, rumdl, Pkl, the CodeScene
+[.aspect/version.axl](../../.aspect/version.axl). Prebuilt tools (jactionlint, rumdl, the CodeScene
 CLI, Node, Android's sdkmanager) are pinned in [multitool.lock.json](../../multitool.lock.json)
 and come through Bazel; Python tools run with Bazel's rules_python interpreter, the linters'
 packages from [tools/lint/requirements.txt](../../tools/lint/requirements.txt); Java for the

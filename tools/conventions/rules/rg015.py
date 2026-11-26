@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.addons import registry as templates
 from tools.addons.modules import (
-    addon_manifest,
     example_projects,
     examples_path,
     module_attributes,
@@ -16,20 +15,16 @@ from tools.addons.modules import (
 from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.manifests import module_manifest
 from tools.conventions.rules.rg023 import TESTS
-from tools.pkl.evaluate import PklError
-from tools.setup.modules import ADDONS as ADDON_DIRECTORY
 from tools.setup.modules import BCR, declarations, is_addon_module, literals
 
-ADDONS = Path(ADDON_DIRECTORY)
 # The files every module addons/<directory> owns: those of the generator's module template.
 REQUIRED = tuple(relative for _, relative in template_files("module"))
 # The registry templates each module owns in .bcr/addons/<directory>/, which the generator
 # writes once with the module; publish-to-bcr reads them there.
 REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
-# What a module's root holds besides its add-ons and the sharedPackages of its addon.pkl:
-# the template's files, its lock file and the directories every module may have.
+# What a module's root holds besides its add-ons and the packages that other packages load
+# by label: the template's files, its lock file and the directories every module may have.
 ROOT_FILES = frozenset(
     {*(relative for relative in REQUIRED if "/" not in relative), "MODULE.bazel.lock"}
 )
@@ -39,10 +34,8 @@ ROOT_ENTRIES = ", ".join(
 )
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
-# The targets each example project defines; a module whose examples build applications
-# (addon.pkl's `apps`) also defines :app, which its release builds package.
+# The targets each example project defines.
 PROJECT_TARGETS = ("edit", "pack")
-APP_TARGET = "app"
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
 
@@ -72,17 +65,59 @@ def declared_names(context: Context) -> dict[str, set[str | None]]:
     return names
 
 
+def is_starlark(name: str) -> bool:
+    """Whether a file is a BUILD file, a MODULE.bazel or a .bzl file."""
+    path = Path(name)
+    return (
+        path.name in BUILD_FILES or path.name == "MODULE.bazel" or path.suffix == ".bzl"
+    )
+
+
+def names_package(value: str, labels: tuple[str, ...]) -> bool:
+    """Whether a string is one of the labels or a label below them."""
+    return any(
+        value == label or value.startswith((f"{label}:", f"{label}/")) for label in labels
+    )
+
+
+def referenced_by_label(workspace: Workspace, module: Path, package: Path) -> bool:
+    """
+    Whether a Starlark file outside a package of the module's root names it by label: one of
+    the module's other packages as `//<package>`, any other module as `@<module>//<package>`.
+    """
+    local = f"//{package.name}"
+    remote = f"@{module_name(module.name)}{local}"
+    for name in workspace.files:
+        if not is_starlark(name) or Path(name).is_relative_to(package):
+            continue
+        labels = (local, remote) if workspace.owner(name) == module else (remote,)
+        if any(names_package(s.value, labels) for s in workspace.strings(name)):
+            return True
+    return False
+
+
 def allowed_entry(
-    path: Path, is_file: bool, allowed: frozenset[str], names: dict[str, set[str | None]]
+    workspace: Workspace,
+    module: Path,
+    entry: tuple[str, bool],
+    names: dict[str, set[str | None]],
 ) -> bool:
     """
-    Whether a root entry is a module file, an allowed directory or an add-on, whose BUILD
-    file declares a target named like its directory.
+    Whether a root entry, by name and whether it is a file, is a module file, a directory
+    every module may have, an add-on, whose BUILD file declares a target named like its
+    directory, or a package that other packages load by label.
     """
+    name, is_file = entry
     if is_file:
-        return path.name in ROOT_FILES
+        return name in ROOT_FILES
+    path = module / name
     builds = ((path / build).as_posix() for build in BUILD_FILES)
-    return path.name in allowed or any(path.name in names[build] for build in builds)
+    if name in ROOT_DIRECTORIES:
+        return True
+    package = [build for build in builds if build in workspace.file_set]
+    return any(name in names[build] for build in package) or (
+        bool(package) and referenced_by_label(workspace, module, path)
+    )
 
 
 def backends_directory(name: str) -> Path | None:
@@ -123,7 +158,7 @@ def starlark_files(workspace: Workspace, module: Path) -> list[str]:
         name
         for name in workspace.files
         if name.startswith(prefix)
-        and name.endswith(("BUILD", "BUILD.bazel", ".bzl", "MODULE.bazel"))
+        and is_starlark(name)
         and workspace.owner(name) == module
     ]
 
@@ -140,34 +175,20 @@ def regular_dependencies(manifest: str) -> set[str]:
 
 def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> bool:
     """Whether some of the files name a repository in a string, all of them in tests/."""
-    label = f"@{repository}"
+    labels = (f"@{repository}",)
     uses = [
         Path(name)
         for name in files
-        if any(
-            literal.value == label or literal.value.startswith(f"{label}//")
-            for literal in workspace.strings(name)
-        )
+        if any(names_package(s.value, labels) for s in workspace.strings(name))
     ]
     return bool(uses) and all(TESTS in use.parts for use in uses)
 
 
-def test_dependency_problems(
-    workspace: Workspace, module: Path, listed: tuple[str, ...]
-) -> Iterable[str]:
-    """
-    Regular dependencies that only the module's tests load from but that addon.pkl's
-    testDependencies leaves out, and those it lists that something else loads from.
-    """
+def tests_only_dependencies(workspace: Workspace, module: Path) -> list[str]:
+    """The regular dependencies of a module that only its tests load from."""
     regular = regular_dependencies(workspace.text((module / "MODULE.bazel").as_posix()))
     files = starlark_files(workspace, module)
-    tests_only = {name for name in regular if only_tests_load(workspace, files, name)}
-    for name in sorted(set(listed) - regular):
-        yield f"addon.pkl's testDependencies names {name}, no regular bazel_dep"
-    for name in sorted(tests_only - set(listed)):
-        yield f"only tests load {name}: list it in addon.pkl's testDependencies"
-    for name in sorted((set(listed) & regular) - tests_only):
-        yield f"addon.pkl's testDependencies names {name}, which tests alone do not load"
+    return sorted(name for name in regular if only_tests_load(workspace, files, name))
 
 
 class AddonModuleLayout:
@@ -189,39 +210,36 @@ class AddonModuleLayout:
     def module(
         self, workspace: Workspace, module: Path, names: dict[str, set[str | None]]
     ) -> Iterable[Finding]:
-        """The findings of one module, which its addon.pkl configures."""
+        """The findings of one module."""
         yield from self.files(workspace, module)
         yield from self.registry(workspace, module)
         yield from self.imports(workspace, module)
-        yield from self.addon_pkl(workspace, module / "addon.pkl")
-        # The rest needs the manifest; the checks above report one that is missing or wrong.
-        if (manifest := module_manifest(workspace, module)) is None:
-            return
-        yield from self.root_entries(workspace, module, names, manifest.shared_packages)
-        yield from self.projects(workspace, module, manifest.apps)
-        for message in test_dependency_problems(
-            workspace, module, manifest.test_dependencies
-        ):
-            yield Finding(at(module / "addon.pkl"), message)
+        yield from self.root_entries(workspace, module, names)
+        yield from self.projects(workspace, module)
+        for name in tests_only_dependencies(workspace, module):
+            yield Finding(
+                at(module / "MODULE.bazel"),
+                f"only tests load {name}, which every consumer inherits: "
+                f"test with it from e2e/addons/{module.name}/",
+            )
 
     @staticmethod
     def root_entries(
         workspace: Workspace,
         module: Path,
         names: dict[str, set[str | None]],
-        shared: tuple[str, ...],
     ) -> Iterable[Finding]:
         """
-        The entries of the module's root that are none of its files, add-ons, shared
-        packages or the directories every module may have.
+        The entries of the module's root that are none of its files, add-ons, packages
+        that other packages load by label or the directories every module may have.
         """
-        allowed = ROOT_DIRECTORIES | frozenset(shared)
-        for entry, is_file in sorted(module_root_entries(workspace, module).items()):
-            if not allowed_entry(module / entry, is_file, allowed, names):
+        for entry in sorted(module_root_entries(workspace, module).items()):
+            if not allowed_entry(workspace, module, entry, names):
+                path = module / entry[0]
                 yield Finding(
-                    at(module / entry),
-                    f"{module / entry}: the module's root holds only {ROOT_ENTRIES} and "
-                    "the sharedPackages of addon.pkl",
+                    at(path),
+                    f"{path}: the module's root holds only {ROOT_ENTRIES} and packages "
+                    "that other packages load by label",
                 )
 
     @staticmethod
@@ -279,19 +297,7 @@ class AddonModuleLayout:
             yield Finding(at(path), f"must import the shared settings: {IMPORT}")
 
     @staticmethod
-    def addon_pkl(workspace: Workspace, path: Path) -> Iterable[Finding]:
-        """addon.pkl amends the schema, and Pkl evaluates it: its values fit their types."""
-        if path.as_posix() not in workspace.file_set:
-            return
-        try:
-            addon_manifest(workspace.root / path)
-        except PklError as error:
-            yield Finding(at(path), f"addon.pkl does not evaluate: {error}")
-
-    @staticmethod
-    def projects(
-        workspace: Workspace, module: Path, builds_apps: bool
-    ) -> Iterable[Finding]:
+    def projects(workspace: Workspace, module: Path) -> Iterable[Finding]:
         """
         The module's example projects in the root module: examples/addons/<module>/ itself, or
         each of its subdirectories with a project.
@@ -308,10 +314,9 @@ class AddonModuleLayout:
             yield Finding(
                 at(module / "MODULE.bazel"), f"needs an example project in {root}"
             )
-        targets = set(PROJECT_TARGETS) | ({APP_TARGET} if builds_apps else set())
         for build in builds:
             text = workspace.text(build.as_posix())
-            for target in sorted(targets - set(NAME.findall(text))):
+            for target in sorted(set(PROJECT_TARGETS) - set(NAME.findall(text))):
                 yield Finding(at(build), f"example project must define :{target}")
 
     @staticmethod

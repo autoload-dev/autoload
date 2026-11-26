@@ -22,7 +22,7 @@ class NoComponentNamesTest(RepositoryTest):
             '"""Each module\'s lanes."""\n'
             "# widget once needed a workaround.\n"
             'SUFFIX = ".widget"\n'
-            'GLOB = "examples/*/app.pkl"\n',
+            'GLOB = "examples/*/BUILD.bazel"\n',
         )
         self.assertEqual([], self.findings())
 
