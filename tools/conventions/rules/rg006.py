@@ -55,9 +55,12 @@ class CommandLabels:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        for name in context.workspace.documents:
-            owner = context.workspace.owner(name)
-            for line, label in command_labels(context.workspace.text(name)):
+        workspace = context.workspace
+        # Registry test modules load no Bazel evidence; their documents are outside the rule.
+        loaded = {module.path for module in workspace.loaded_modules}
+        owners = ((name, workspace.owner(name)) for name in workspace.documents)
+        for name, owner in ((n, o) for n, o in owners if o in loaded):
+            for line, label in command_labels(workspace.text(name)):
                 problem = self._problem(context, owner, label)
                 if problem:
                     yield Finding(Location(name, line), f"{label}: {problem}")
@@ -71,7 +74,9 @@ class CommandLabels:
         package, _, target = local[2:].partition(":")
         # A command names its document's module first; nested modules are explicit.
         candidates = [
-            module for module in context.workspace.modules if package in module.packages
+            module
+            for module in context.workspace.loaded_modules
+            if package in module.packages
         ]
         if ruleset:
             candidates = [

@@ -5,10 +5,29 @@ import os
 import sys
 from pathlib import Path
 
-from tools.conventions.bazel import Bazel
+from tools.conventions.bazel import Bazel, Scope
 from tools.conventions.context import Buildozer, Context, Workspace, run_tool
 from tools.conventions.framework import run
 from tools.conventions.registry import select
+from tools.setup.modules import is_addon_module
+
+
+def development_bazel(workspace: Workspace, buildozer: Buildozer) -> Bazel:
+    """
+    Load the modules in two workspaces: the ruleset in its own, whose development dependencies
+    only it sees, and the add-on modules in the root module's, which depends on each of them
+    under its module name.
+    """
+    root = workspace.root
+    return Bazel(
+        root,
+        {
+            module: Scope(root, buildozer.module_name(module))
+            if is_addon_module(module.path)
+            else Scope(root / module.path)
+            for module in workspace.loaded_modules
+        },
+    )
 
 
 def main() -> int:
@@ -29,11 +48,9 @@ def main() -> int:
         files = run_tool(
             ["git", "ls-files", "--cached", "--others", "--exclude-standard"], root
         ).splitlines()
-        context = Context(
-            Workspace(root, tuple(files)),
-            Buildozer(root, args.buildozer.resolve()),
-            Bazel(root),
-        )
+        workspace = Workspace(root, tuple(files))
+        buildozer = Buildozer(root, args.buildozer.resolve())
+        context = Context(workspace, buildozer, development_bazel(workspace, buildozer))
         report = run(context, rules)
     # Evidence tools raise EvidenceError, a ValueError.
     except (ValueError, OSError) as error:

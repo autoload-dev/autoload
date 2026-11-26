@@ -13,7 +13,7 @@ class ExplicitNames:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        for module in context.workspace.modules:
+        for module in context.workspace.loaded_modules:
             for declaration in context.declarations(module):
                 call = declaration.call
                 if "name" not in call.attrs:

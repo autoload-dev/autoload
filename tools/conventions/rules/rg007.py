@@ -31,7 +31,7 @@ class TestOnlyOperations:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         known = declared_operations(context.workspace)
-        for module in context.workspace.modules:
+        for module in context.workspace.loaded_modules:
             for declaration in context.declarations(module):
                 call = declaration.call
                 operations = [

@@ -30,7 +30,7 @@ class ProductionIsolation:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        for module in context.workspace.modules:
+        for module in context.workspace.loaded_modules:
             checked: list[tuple[Location, frozenset[str]]] = []
             for declaration in context.declarations(module):
                 location = declaration.call.location
