@@ -11,8 +11,9 @@ permissions:
   contents: read
 
 # Every run runs every host's job; Bazel's caches keep unchanged work cheap. Each job runs
-# `aspect ci <host>` (.aspect/develop.axl): the lanes of one kind of machine in a few Bazel
-# commands (tools/ci/hosts.py). The source engines run on their own schedule
+# `aspect ci <host>` (.aspect/develop.axl): on Linux every check, then every test of the
+# root module and the ruleset that the host's config `ci-<host>` selects by tag
+# (shared.bazelrc), in one `bazel test` per module. The source engines run on their own schedule
 # (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
 # their repository cache and Bazel servers between jobs, share a Bazel cache server with
 # their host, and run no code of a fork's pull request.

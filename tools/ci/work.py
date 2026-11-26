@@ -3,9 +3,9 @@ The repository's verification work: what each lane runs, where and how.
 
 Each piece of work is a few shell commands, each run in a module directory.
 `aspect work <name>...` runs pieces with Bazel's Python (.aspect/work.axl). CI's host jobs
-combine the lanes of one kind of machine into a few Bazel commands (tools/ci/hosts.py) and
-run the add-on generator's self-tests and the checks that are no Bazel targets from here;
-the Source engine workflow runs `source-engine:full`.
+(`aspect ci <host>`) select their tests in Bazel and run from here the checks that are no
+Bazel targets, the Android SDK's setup and the add-on generator's self-tests; the Source
+engine workflow runs `source-engine:full`.
 
 The add-on modules' work comes from their addon.pkl: the same generic commands for each
 module (tools/addons/lanes.py), and the add-on generator's self-test in every lane.
@@ -30,7 +30,6 @@ from tools.addons.modules import (
     choices,
     host,
     module_name,
-    release_targets,
 )
 from tools.apps.apps import Application, applications
 from tools.ci.lanes import PROFILE, profile
@@ -92,9 +91,14 @@ class Work:
 APPLICATIONS = applications(ROOT)
 
 
+# The desktop set: neither the mobile lanes' tests, which need their toolchains, nor what
+# only they build.
+DESKTOP = "--build_tag_filters=-android,-ios --test_tag_filters=-android,-ios"
+
+
 def example_tests(application: Application) -> str:
-    """The command that runs one application's own tests, below its package."""
-    return f"bazel test --build_tests_only {application.package}/..."
+    """The command that runs one application's own desktop tests, below its package."""
+    return f"bazel test --build_tests_only {DESKTOP} {application.package}/..."
 
 
 def example_work() -> Iterator[Work]:
@@ -118,36 +122,31 @@ SOURCE_ENGINE_EXAMPLES = tuple(
 )
 
 
-def release_tests(lane: str, suite: str) -> str:
-    """
-    The release builds of the applications that name a mobile lane, with their debug
-    symbols, and a test suite, in one `bazel test`. Each package declares its releases as
-    `<lane>_release`, which carries its own configuration (examples/releases.bzl); the
-    add-on modules' lanes build their examples' (tools/addons/lanes.py).
-    """
-    targets = [
-        target
-        for app in APPLICATIONS
-        if lane in app.lanes
-        for target in release_targets(lane, app.package)
-    ]
-    return f"bazel test {' '.join(targets)} {suite}"
-
-
 # ==== Checks ==================================================================
 
 
-# The lint check (`--config=check`, shared.bazelrc) of a module's targets alone: its
-# stamps, without the targets' outputs and other validations, such as the source-built
-# engines that some tests' applications validate. Incompatible targets are skipped.
-LINT_CHECK = "bazel build --config=check --output_groups=lint_checks --norun_validations"
+# The lint check of a module's targets alone (`--config=lint`, shared.bazelrc).
+LINT_CHECK = "bazel build --config=lint"
+
+
+def root_patterns(root: Path = ROOT) -> str:
+    """The root module's target patterns, the add-on modules' included (RG027)."""
+    addons = addon_modules(root)
+    return " ".join(["//...", *(f"@{module_name(Path(a).name)}//..." for a in addons)])
 
 
 def lint(root: Path = ROOT) -> In:
     """The root module's lint check, which covers the add-on modules' Python (RG027)."""
-    addons = addon_modules(root)
-    patterns = " ".join(f"@{module_name(Path(addon).name)}//..." for addon in addons)
-    return In(".", f"{LINT_CHECK} //... {patterns}")
+    return In(".", f"{LINT_CHECK} {root_patterns(root)}")
+
+
+def mobile_tests(lane: str) -> str:
+    """
+    A mobile lane's tests in the root module and the add-on modules: the tests tagged with
+    the lane, such as the applications' release builds (examples/releases.bzl) and the
+    scenarios' smoke tests, which carry their own configuration.
+    """
+    return f"bazel test --build_tests_only --test_tag_filters={lane} -- {root_patterns()}"
 
 
 # ==== Ruleset tests ===========================================================
@@ -206,7 +205,9 @@ def template_work(lane: str) -> Work:
         ".",
         (f"python3 -m tools.addons.selftest {lane}",),
         android=lane == "android",
-        hosts=("linux",) if lane == "desktop" else (),
+        # CI's Linux job runs the desktop and Android self-tests, its macOS job the iOS one:
+        # the template's desktop build is the same on every host.
+        hosts=("macos",) if lane == "ios" else ("linux",),
         # The self-test declares a module in the root's module graph for its run, which
         # would discard the analysis of the server it runs in.
         profile=TEMPLATE_PROFILE,
@@ -285,7 +286,7 @@ WORK = (
         "test:regressions",
         "desktop",
         ".",
-        (f"bazel test {SCENARIOS}/...",),
+        (f"bazel test {DESKTOP} {SCENARIOS}/...",),
         env=(("ANDROID_HOME", ""), ("ANDROID_NDK_HOME", "")),
     ),
     # Each desktop smoke scenario is compatible with its own host only; the other is
@@ -303,14 +304,14 @@ WORK = (
         "android",
         "android",
         ".",
-        (release_tests("android", f"{SCENARIOS}:android"),),
+        (mobile_tests("android"),),
         android=True,
     ),
     Work(
         "ios",
         "ios",
         ".",
-        (release_tests("ios", f"{SCENARIOS}:ios"),),
+        (mobile_tests("ios"),),
     ),
     # Every source-engine case, the applications' it verifies included. CI runs it in the
     # Source engine workflow.

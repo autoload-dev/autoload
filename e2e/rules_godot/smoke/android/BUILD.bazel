@@ -11,9 +11,9 @@ load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configure
 load("@autoload_rules_godot//godot/private/testing:android_bundle_test.bzl", "android_bundle_test")
 
 # The Android smoke path: an App Bundle whose APK packages the engine, a godot-cpp
-# extension and the pack, inspected with the public artifact test. Every target is
-# manual, and the bundle carries its Android configuration: //e2e/rules_godot:android runs
-# the test.
+# extension and the pack, inspected with the public artifact test. The test is tagged
+# `android`, which CI's Linux job runs, and the other targets are manual; the bundle carries
+# its Android configuration.
 
 godot_cc_extension(
     name = "counter",
@@ -92,7 +92,11 @@ android_bundle_test(
         "main/native_counter/counter.gdextension",
         "main/main.gd",
     ],
-    tags = ["manual"],
+    # The Android lane: only CI's Linux job runs it (shared.bazelrc).
+    tags = [
+        "android",
+        "godot_process",
+    ],
 )
 
 filegroup(

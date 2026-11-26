@@ -22,26 +22,6 @@ py_library(
     ],
 )
 
-# CI's host jobs: the lanes of one kind of machine in a few Bazel commands.
-py_library(
-    name = "hosts_lib",
-    srcs = ["hosts.py"],
-    deps = [
-        ":work_lib",
-        "//tools/addons:lanes_lib",
-    ],
-)
-
-py_test(
-    name = "hosts_test",
-    size = "small",
-    srcs = ["hosts_test.py"],
-    deps = [
-        ":hosts_lib",
-        "//tools/addons:test_support",
-    ],
-)
-
 # A module's release test: its registry test module, run in its release archive.
 py_library(
     name = "release_archive_lib",
@@ -105,8 +85,6 @@ filegroup(
     name = "python_files",
     testonly = True,
     srcs = [
-        "hosts.py",
-        "hosts_test.py",
         "lanes.py",
         "release_archive.py",
         "release_archive_test.py",

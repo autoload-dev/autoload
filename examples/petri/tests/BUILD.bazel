@@ -29,7 +29,11 @@ gdunit_test(
     engine = "simulation",
     project = "//examples/petri",
     suites = [":suites"],
-    tags = ["godot_process"],
+    tags = [
+        "godot_process",
+        # Its editor and engine are built from source: the Source engine workflow runs it.
+        "source_engine",
+    ],
 )
 
 filegroup(

@@ -52,16 +52,32 @@ common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%python
 # The lint check of the filegroups that Gazelle declares per package (tools/gazelle/lint): gdlint
 # and rumdl, and the convention rules that judge each file on its own (tools/conventions/files.py).
-# Those filegroups are no tests, so it needs a build that names them, such as the lint work's
-# `--output_groups=lint_checks` over every target, or one with `--config=sources`, which
+# Those filegroups are no tests, so it needs a build that names them, such as
+# `bazel build --config=lint` over every target, or one with `--config=sources`, which
 # builds only them; tag filters keep the analysis.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%sources
 build:sources --build_tag_filters=cc,gdscript,markdown,python_files,starlark
+# The lint check's stamps of every target a build names, without the targets' outputs and
+# other validations, such as the source-built engines that some tests' applications
+# validate; incompatible targets are skipped.
+build:lint --config=check
+build:lint --output_groups=lint_checks
+build:lint --norun_validations
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
-# start a Godot process (RG026), the smoke tests included, which `aspect check` and the
-# pre-push hook run; the ruleset's source-engine tests stay out, as its .bazelrc's default
-# filter keeps them. all: every test this host can run.
+# start a Godot process (RG026) or need a mobile lane's toolchains, the desktop smoke tests
+# included, which `aspect check` and the pre-push hook run. all: every test this host can
+# run. Both leave out the tests that build an engine from source (source_engine).
 test:fast --build_tests_only
-test:fast --test_tag_filters=-godot_process,-source_engine
+test:fast --test_tag_filters=-godot_process,-source_engine,-android,-ios
 test:all --build_tests_only
+test:all --test_tag_filters=-source_engine
+
+# CI's host jobs (`aspect ci <host>`, .aspect/develop.axl): every test of a module but those
+# that build an engine from source, which the Source engine workflow runs, and those of the
+# other host's mobile lane. A test tagged `android` runs in the Linux job, one tagged `ios`
+# in the macOS job; tests without either run in both, on each host's desktop system.
+test:ci-linux --build_tests_only
+test:ci-linux --test_tag_filters=-source_engine,-ios
+test:ci-macos --build_tests_only
+test:ci-macos --test_tag_filters=-source_engine,-android

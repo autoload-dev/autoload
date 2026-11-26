@@ -65,15 +65,17 @@ class WorkTest(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
 
     def test_host_limited_work_runs_on_its_hosts(self) -> None:
-        template = next(
-            work
-            for work in addon_work(self.root)
-            if work.name == "desktop:addon-template"
-        )
-        self.assertTrue(runs_on(template, "linux"))
-        self.assertFalse(runs_on(template, "macos"))
+        work = all_work(self.root)
+        # CI's Linux job runs the desktop and Android self-tests, its macOS job the iOS one.
+        for name, host in (("desktop", "linux"), ("android", "linux"), ("ios", "macos")):
+            template = work[f"{name}:addon-template"]
+            self.assertEqual(
+                [runs_on(template, h) for h in ("linux", "macos")],
+                [host == "linux", host == "macos"],
+                name,
+            )
         # The modules' desktop lanes choose their desktop systems themselves.
-        self.assertEqual((), all_work(self.root)["desktop:addons"].hosts)
+        self.assertEqual((), work["desktop:addons"].hosts)
 
     def test_commands_run_with_their_own_variables(self) -> None:
         plain = Work("x", "desktop", ".", ("true",), env=(("ANDROID_HOME", ""),))

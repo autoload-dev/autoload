@@ -49,7 +49,7 @@ From the repository root:
 aspect doctor                             # check the setup and say what is missing
 aspect check                              # every check and the fast tests, as the pre-push hook runs them (--all as CI)
 aspect tests                              # the fast tests of the root module and the ruleset (--tier=all for every test)
-aspect fix                                # format the changed files and regenerate what the checks compare
+aspect fix                                # format the changed files, regenerate BUILD declarations and what the checks compare
 aspect ci linux                           # what CI's Linux job runs (macos for the macOS job's)
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
 aspect work lint lint:ruleset             # lint Python, Markdown and GDScript: the root module with the add-ons, the ruleset

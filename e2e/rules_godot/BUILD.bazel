@@ -1,22 +1,3 @@
-# The mobile smoke tests, run as `bazel test //e2e/rules_godot:<suite>` from the repository
-# root. Their applications carry their Android or iOS configuration (godot_configured_app);
-# each suite is manual, so //e2e/rules_godot/... stays the desktop set.
-
-test_suite(
-    name = "android",
-    tags = ["manual"],
-    tests = ["//e2e/rules_godot/smoke/android:bundle_packages_extension_and_pack_test"],
-)
-
-test_suite(
-    name = "ios",
-    tags = ["manual"],
-    tests = [
-        "//e2e/rules_godot/smoke/ios:app_embeds_extension_framework_test",
-        "//e2e/rules_godot/smoke/ios:static_app_links_extension_test",
-    ],
-)
-
 filegroup(
     name = "markdown_files",
     testonly = True,
