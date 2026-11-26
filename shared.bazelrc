@@ -52,9 +52,15 @@ common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%python
 # The lint check of the Markdown and GDScript that Gazelle declares per package
 # (tools/gazelle/lint). Those filegroups are no tests, so it needs a build that names them,
-# such as the lint work's `--output_groups=lint_checks` over every target, or
+# such as `bazel build --config=lint` over every target, or
 # `bazel build --config=check --build_tag_filters=gdscript,markdown //...`.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%sources
+# The lint check's stamps of every target a build names, without the targets' outputs and
+# other validations, such as the source-built engines that some tests' applications
+# validate; incompatible targets are skipped.
+build:lint --config=check
+build:lint --output_groups=lint_checks
+build:lint --norun_validations
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
 # start a Godot process (RG026) or need a mobile lane's toolchains, the desktop smoke tests

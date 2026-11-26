@@ -125,10 +125,8 @@ SOURCE_ENGINE_EXAMPLES = tuple(
 # ==== Checks ==================================================================
 
 
-# The lint check (`--config=check`, shared.bazelrc) of a module's targets alone: its
-# stamps, without the targets' outputs and other validations, such as the source-built
-# engines that some tests' applications validate. Incompatible targets are skipped.
-LINT_CHECK = "bazel build --config=check --output_groups=lint_checks --norun_validations"
+# The lint check of a module's targets alone (`--config=lint`, shared.bazelrc).
+LINT_CHECK = "bazel build --config=lint"
 
 
 def root_patterns(root: Path = ROOT) -> str:
@@ -207,7 +205,9 @@ def template_work(lane: str) -> Work:
         ".",
         (f"python3 -m tools.addons.selftest {lane}",),
         android=lane == "android",
-        hosts=("linux",) if lane == "desktop" else (),
+        # CI's Linux job runs the desktop and Android self-tests, its macOS job the iOS one:
+        # the template's desktop build is the same on every host.
+        hosts=("macos",) if lane == "ios" else ("linux",),
         # The self-test declares a module in the root's module graph for its run, which
         # would discard the analysis of the server it runs in.
         profile=TEMPLATE_PROFILE,

@@ -132,8 +132,8 @@ check = task(
 # the checks that are no Bazel targets.
 CI_CHECKS = ["format"] + TOOL_CHECKS
 
-# The lint check's stamps of every target, without their outputs and other validations.
-_LINT = ["--config=check", "--output_groups=lint_checks", "--norun_validations"]
+# The add-on generator's self-tests, a fresh module's lanes.
+SELFTESTS = ["desktop:addon-template", "android:addon-template", "ios:addon-template"]
 
 def _ci_steps(ctx: TaskContext, host: str):
     """A host's CI job: on Linux every check and the lint, then the host's tests and self-tests.
@@ -142,18 +142,20 @@ def _ci_steps(ctx: TaskContext, host: str):
     (shared.bazelrc); the add-on generator's self-tests run each lane of a fresh module.
     """
     linux = host == "linux"
-    checks = [(check, lambda check = check: run_work(ctx, check)) for check in CI_CHECKS] if linux else []
-    lint = [("lint", lambda: bazel(ctx, "build", _LINT))] if linux else []
 
-    # The ruleset's desktop set includes its Android packaging tests, so both hosts' tests
-    # need the pinned SDK, which the setup provisions; the Aspect CLI's environment keeps
-    # ANDROID_HOME empty until then (.aspect/config.axl).
+    # The ruleset's desktop set includes its Android packaging tests, and analysing its
+    # targets needs the NDK, so both hosts' Bazel commands need the pinned SDK, which the
+    # setup provisions; the Aspect CLI's environment keeps ANDROID_HOME empty until then
+    # (.aspect/config.axl).
     android = {"ANDROID_HOME": ctx.std.env.var("ANDROID_SDK_ROOT") or ""}
-    selftests = [lane + ":addon-template" for lane in (["desktop", "android"] if linux else ["ios"])]
-    return steps(ctx, checks + lint + [
-        ("android-setup", lambda: run_work(ctx, "android:setup")),
+    checks = [
+        ("checks", lambda: run_work(ctx, *CI_CHECKS)),
+        ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android)),
+    ]
+    return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android)),
-        ("selftests", lambda: run_work(ctx, *selftests)),
+        # Each runs where its work allows it (tools/ci/work.py).
+        ("selftests", lambda: run_work(ctx, *SELFTESTS)),
     ])
 
 def _ci_task(host: str, summary: str):

@@ -301,7 +301,7 @@ bazel test //e2e/addons/gdunit/...
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
 From `tests/`, run
-`aspect exec -- bazel test //e2e/rules_godot:android` or `bazel test //e2e/rules_godot:ios`.
+`aspect exec -- bazel test --test_tag_filters=android //e2e/rules_godot/...`, or `ios` for iOS.
 
 ### Source-built engine applications
 
@@ -372,15 +372,14 @@ checks an unsigned device executable, which is not a signed device IPA.
 
 The scenarios' mobile smoke tests are tagged `android` or `ios`: the fast tier leaves them
 out, and each CI job runs its host's (`ci-linux`, `ci-macos` in shared.bazelrc). Their
-applications carry their configuration (`godot_configured_app`), and the suites of
-`e2e/rules_godot/BUILD.bazel` list the tests per operating system:
+applications carry their configuration (`godot_configured_app`); the tag selects them:
 
 ```sh
-aspect exec -- bazel test //e2e/rules_godot:android
-bazel test //e2e/rules_godot:ios
+aspect exec -- bazel test --test_tag_filters=android //e2e/rules_godot/...
+bazel test --test_tag_filters=ios //e2e/rules_godot/...
 ```
 
-| Suite | Application | Checks |
+| Tag | Application | Checks |
 | --- | --- | --- |
 | `android` | an arm64 App Bundle | the Android smoke bundle: engine, extension library and pack |
 | `ios` | x86_64 Simulator applications of the official templates | the iOS smoke apps' embedded extension framework and statically linked extension entry |
