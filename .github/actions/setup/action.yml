@@ -16,8 +16,9 @@ runs:
     # the macos-ci runners, keeps its disk between jobs and runs jobs side by side; its
     # machine sets PERSISTENT_RUNNER and BAZEL_REPOSITORY_CACHE in the runner's
     # environment and configures Bazel in /etc/bazel.bazelrc, whose remote cache is the
-    # Bazel cache server on the VM's host (autoload-dev/macos-ci). Blacksmith's runners count as self-hosted to GitHub, so runner.environment
-    # cannot tell the two kinds apart.
+    # Bazel cache server on the VM's host (autoload-dev/macos-ci). Blacksmith's
+    # runners count as self-hosted to GitHub, so runner.environment cannot tell the
+    # two kinds apart.
     - name: Classify runner
       id: runner
       shell: bash
@@ -74,7 +75,6 @@ runs:
         cache=${BAZEL_REPOSITORY_CACHE:-$HOME/.cache/bazel-repository}
         echo "path=$cache" >> "$GITHUB_OUTPUT"
         echo "bazelrc=common --repository_cache=$cache --repo_contents_cache_gc_idle_delay=0" >> "$GITHUB_OUTPUT"
-    # A job commits its own clone of the disk.
     - name: Mount cache from sticky disk
       if: >-
         runner.os == 'Linux'

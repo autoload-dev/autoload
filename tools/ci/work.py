@@ -126,15 +126,14 @@ SOURCE_ENGINE_EXAMPLES = tuple(
 LINT_CHECK = "bazel build --config=lint"
 
 
-def root_patterns(root: Path = ROOT) -> str:
-    """The root module's target patterns, the add-on modules' included (RG027)."""
-    lines = (root / TARGETS).read_text().splitlines()
-    return " ".join(line for line in lines if line and not line.startswith("#"))
+# The root module's target patterns, the add-on modules' included (RG027), for commands run
+# in the root module.
+ROOT_TARGETS = f"--target_pattern_file={TARGETS}"
 
 
-def lint(root: Path = ROOT) -> In:
+def lint() -> In:
     """The root module's lint check, which covers the add-on modules' Python (RG027)."""
-    return In(".", f"{LINT_CHECK} {root_patterns(root)}")
+    return In(".", f"{LINT_CHECK} {ROOT_TARGETS}")
 
 
 def mobile_tests(lane: str) -> str:
@@ -143,7 +142,7 @@ def mobile_tests(lane: str) -> str:
     the lane, such as the applications' release builds (examples/releases.bzl) and the
     scenarios' smoke tests, which carry their own configuration.
     """
-    return f"bazel test --build_tests_only --test_tag_filters={lane} -- {root_patterns()}"
+    return f"bazel test --build_tests_only --test_tag_filters={lane} {ROOT_TARGETS}"
 
 
 # ==== Ruleset tests ===========================================================
