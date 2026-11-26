@@ -235,15 +235,11 @@ godot_engine_build = repository_rule(
             default = Label("@rules_swift//swift:swift_library.bzl"),
         ),
     },
+    # No `environ`: the variables a configuration reads are recorded with ctx.getenv
+    # (source_repositories.bzl), so only they invalidate it, and a pinned recipe reads none.
+    # Declared variables, such as a PATH that names each CI runner's own tool directory, would
+    # key every recipe and configure it again wherever they differ.
     configure = True,
-    environ = [
-        "DEVELOPER_DIR",
-        "SDKROOT",
-        "PATH",
-        "PKG_CONFIG_PATH",
-        "GODOT_VERSION_STATUS",
-        "SCRIPT_AES256_ENCRYPTION_KEY",
-    ],
 )
 
 godot_android_shell = repository_rule(
