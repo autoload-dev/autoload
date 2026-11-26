@@ -3,7 +3,7 @@
 The Bazel tool that runs the loading queries is tools/conventions/bazel.py; this module
 decodes their output.
 
-Sections: Workspace, Starlark syntax, Bazel evidence, Context.
+Sections: Workspace, Starlark syntax, Bazel evidence, Source labels, Context.
 """
 
 import io
@@ -56,21 +56,6 @@ class Module:
                 build.parent.relative_to(self.path).as_posix() for build in self.builds
             )
         )
-
-
-def location(root: Path, base: Path, value: str) -> Location:
-    """Resolve a ``path:line:column`` value; relative paths start at base."""
-    path, line, _column = value.rsplit(":", 2)
-    source = Path(path)
-    if not source.is_absolute():
-        source = base / source
-    source = source.resolve()
-    name = (
-        source.relative_to(root).as_posix()
-        if source.is_relative_to(root)
-        else str(source)
-    )
-    return Location(name, int(line))
 
 
 def run_tool(
@@ -374,6 +359,21 @@ class Buildozer:
 # ==== Bazel evidence ==========================================================
 
 
+def location(root: Path, base: Path, value: str) -> Location:
+    """Resolve a ``path:line:column`` value; relative paths start at base."""
+    path, line, _column = value.rsplit(":", 2)
+    source = Path(path)
+    if not source.is_absolute():
+        source = base / source
+    source = source.resolve()
+    name = (
+        source.relative_to(root).as_posix()
+        if source.is_relative_to(root)
+        else str(source)
+    )
+    return Location(name, int(line))
+
+
 def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
     """
     Return the root of the repository declaring a rule.
@@ -538,6 +538,58 @@ def query_files(root: Path, module: Module, query: ET.Element) -> dict[str, Fact
     return files
 
 
+# ==== Source labels ===========================================================
+
+
+def main_label(path: Path) -> str:
+    """The label of a file in the main repository, given relative to its root."""
+    directory = path.parent.as_posix()
+    return "//" + ("" if directory == "." else directory) + ":" + path.name
+
+
+def _file_label(repository: str, relative: str) -> str:
+    directory, _, basename = relative.rpartition("/")
+    return repository + "//" + directory + ":" + basename
+
+
+def _external_source_label(file: str) -> str:
+    """The label of a source below Bazel's external directory."""
+    external = (
+        file.split("/external/", 1)[1]
+        if "/external/" in file
+        else file.removeprefix("external/")
+    )
+    repository, separator, relative = external.partition("/")
+    if not separator:
+        raise EvidenceError("unresolved evaluated external source: " + file)
+    return _file_label("@@" + repository, relative)
+
+
+def _main_path(file: str, main: Path) -> Path:
+    """A source path relative to the main repository, absolute ones through links."""
+    path = Path(file)
+    if not path.is_absolute():
+        return path
+    resolved = path.resolve()
+    if not resolved.is_relative_to(main.resolve()):
+        raise EvidenceError("unresolved evaluated source repository: " + file)
+    return resolved.relative_to(main.resolve())
+
+
+def evaluated_source_label(root: Path, module: Module, file: str) -> str:
+    """Turn an evaluated source frame into its repository-qualified Starlark label."""
+    if file.startswith(("@", "//")) and "//" in file:
+        repository, _, relative = file.partition("//")
+        return file if ":" in relative else _file_label(repository, relative)
+    path = Path(file)
+    main = root / module.path
+    if path.is_absolute() and path.is_relative_to(main):
+        return main_label(path.relative_to(main))
+    if "/external/" in file or file.startswith("external/"):
+        return _external_source_label(file)
+    return main_label(_main_path(file, main))
+
+
 # ==== Context =================================================================
 
 
@@ -588,55 +640,6 @@ def join(calls: tuple[Call, ...], rules: tuple[Target, ...]) -> tuple[Declaratio
         Declaration(by_location[origin][0], tuple(items))
         for origin, items in targets.items()
     )
-
-
-def main_label(path: Path) -> str:
-    """The label of a file in the main repository, given relative to its root."""
-    directory = path.parent.as_posix()
-    return "//" + ("" if directory == "." else directory) + ":" + path.name
-
-
-def _file_label(repository: str, relative: str) -> str:
-    directory, _, basename = relative.rpartition("/")
-    return repository + "//" + directory + ":" + basename
-
-
-def _external_source_label(file: str) -> str:
-    """The label of a source below Bazel's external directory."""
-    external = (
-        file.split("/external/", 1)[1]
-        if "/external/" in file
-        else file.removeprefix("external/")
-    )
-    repository, separator, relative = external.partition("/")
-    if not separator:
-        raise EvidenceError("unresolved evaluated external source: " + file)
-    return _file_label("@@" + repository, relative)
-
-
-def _main_path(file: str, main: Path) -> Path:
-    """A source path relative to the main repository, absolute ones through links."""
-    path = Path(file)
-    if not path.is_absolute():
-        return path
-    resolved = path.resolve()
-    if not resolved.is_relative_to(main.resolve()):
-        raise EvidenceError("unresolved evaluated source repository: " + file)
-    return resolved.relative_to(main.resolve())
-
-
-def evaluated_source_label(root: Path, module: Module, file: str) -> str:
-    """Turn an evaluated source frame into its repository-qualified Starlark label."""
-    if file.startswith(("@", "//")) and "//" in file:
-        repository, _, relative = file.partition("//")
-        return file if ":" in relative else _file_label(repository, relative)
-    path = Path(file)
-    main = root / module.path
-    if path.is_absolute() and path.is_relative_to(main):
-        return main_label(path.relative_to(main))
-    if "/external/" in file or file.startswith("external/"):
-        return _external_source_label(file)
-    return main_label(_main_path(file, main))
 
 
 class Context:
