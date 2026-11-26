@@ -6,3 +6,11 @@ build_test(
     tags = ["godot_process"],
     targets = ["//e2e/rules_godot/smoke/linux:app.debug_symbols"],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

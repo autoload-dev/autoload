@@ -122,6 +122,7 @@ filegroup(
         "md_importer/plugin.gd",
     ],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
@@ -133,4 +134,13 @@ filegroup(
         "md_importer/own.md",
     ],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

@@ -219,4 +219,40 @@ filegroup(
     testonly = True,
     srcs = ["fixtures/README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["static_fixture.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["cc_extension_abi_test.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "cc_extension_tests.bzl",
+        "configured_library_tests.bzl",
+        "descriptor_tests.bzl",
+        "extension_contracts.bzl",
+        "extension_platform_libraries_tests.bzl",
+        "extension_tests.bzl",
+        "godot_cpp_bindings_tests.bzl",
+        "run_staging_tests.bzl",
+        "source_features_tests.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

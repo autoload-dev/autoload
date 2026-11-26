@@ -81,3 +81,14 @@ firebase_framework(
     sdk_frameworks = _SDK_FRAMEWORKS + ["Network"],
     version = _VERSION,
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "framework.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

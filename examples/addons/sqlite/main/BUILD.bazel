@@ -18,4 +18,13 @@ filegroup(
     testonly = True,
     srcs = ["database_demo.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

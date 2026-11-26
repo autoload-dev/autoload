@@ -25,3 +25,22 @@ py_test(
         "//tools/addons:test_support",
     ],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "apps.py",
+        "apps_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

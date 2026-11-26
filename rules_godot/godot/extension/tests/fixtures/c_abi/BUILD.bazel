@@ -13,3 +13,19 @@ godot_cc_extension(
     entry_symbol = "rules_godot_library_init",
     resource_path = "native/hello.gdextension",
 )
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["hello.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

@@ -54,4 +54,26 @@ filegroup(
     testonly = True,
     srcs = ["fixtures/README.md"],
     tags = ["markdown"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["godot_editor_test.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "editor_view_tests.bzl",
+        "metadata_sync_tests.bzl",
+        "runtime_profile_tests.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

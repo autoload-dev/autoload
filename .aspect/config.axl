@@ -66,6 +66,7 @@ def config(ctx: ConfigContext):
         "@autoload_dev//tools/lint:linters.bzl%ty",
         "@autoload_dev//tools/lint:linters.bzl%gdlint",
         "@autoload_dev//tools/lint:linters.bzl%rumdl",
+        "@autoload_dev//tools/lint:linters.bzl%conventions",
     ]
     ctx.tasks["lint"].args.strategy = "hard"
 

@@ -52,3 +52,11 @@ godot_resources(
         "//examples/lichtpost/main/shared/palette",
     ],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

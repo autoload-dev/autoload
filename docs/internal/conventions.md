@@ -606,11 +606,22 @@ From the repository root:
 bazel run //tools/conventions
 ```
 
-The command runs every registered convention rule across all owned modules. Violations
-include the stable rule ID, file, line and a link to this catalogue. The checker reports
-unreviewed computed macro names separately. Exit status `1` indicates convention findings;
-`2` indicates an incomplete audit. The work `conventions` of the `quality` lane runs this
-command, and the pre-push hook runs that work.
+The command runs every registered convention rule that judges more than one file at a time
+across all owned modules. Violations include the stable rule ID, file, line and a link to this
+catalogue. The checker reports unreviewed computed macro names separately. Exit status `1`
+indicates convention findings; `2` indicates an incomplete audit. The work `conventions` of
+the `quality` lane runs this command, and `aspect check`, the pre-push hook's, runs that work.
+
+The rules that judge each file on its own, [RG004](#rg004), [RG013](#rg013),
+[RG024](#rg024) and [RG025](#rg025), run in the lint check instead (`--config=check`,
+[check.bzl](../../tools/lint/check.bzl)), on the filegroups that Gazelle declares for each
+package's Markdown, Python, Starlark, GDScript and C++ ([lint.go](../../tools/gazelle/lint/lint.go)).
+Bazel caches their findings per package, so a change rechecks only its own packages.
+[files.py](../../tools/conventions/files.py) names each file by its path in the repository,
+from the module its main repository's `MODULE.bazel` names or the add-on module whose
+repository holds it. `bazel run //tools/conventions -- --rule RG024` still runs one of them
+over the whole checkout, as `/code-health` does. Files outside every package, such as those
+of the registry test modules, are outside the lint check.
 
 The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
 `XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
@@ -649,7 +660,10 @@ adapters.
 The [framework](../../tools/conventions/framework.py) validates unique IDs, invokes rules
 against one context and attaches their metadata to findings. It sorts diagnostics for
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
-aborts the run rather than being merged. `Finding.status` distinguishes `violation` from
+aborts the run rather than being merged. The rules that judge each file on its own are
+registered in [per_file.py](../../tools/conventions/per_file.py), whose library needs neither
+Bazel nor Pkl: the lint check runs them per package, and the CLI only when they are named.
+`Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
 the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)
 formats results and chooses the exit status.

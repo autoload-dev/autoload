@@ -13,3 +13,19 @@ py_library(
     srcs = ["bindings.py"],
     visibility = ["//tools:ruleset"],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = ["bindings.py"],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

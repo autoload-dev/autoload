@@ -72,3 +72,25 @@ godot_pack(
     project = ":empty_project",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["platform_library.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "application_options_tests.bzl",
+        "failures.bzl",
+        "owned_options_tests.bzl",
+        "pack_tests.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

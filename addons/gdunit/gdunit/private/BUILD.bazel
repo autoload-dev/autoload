@@ -11,4 +11,16 @@ filegroup(
     testonly = True,
     srcs = ["run.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "gdunit_test.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

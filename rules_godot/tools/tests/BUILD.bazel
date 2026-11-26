@@ -208,3 +208,45 @@ py_test(
     srcs = ["unit_interface_test.py"],
     deps = ["//tools:unit_interface_lib"],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "action_plugin_test.py",
+        "class_fragment_test.py",
+        "common_content_test.py",
+        "editor_view_test.py",
+        "empty_pck.py",
+        "execution_test.py",
+        "export_configuration_test.py",
+        "godot_actions_test.py",
+        "godot_build_files_test.py",
+        "godot_export_test.py",
+        "godot_files_test.py",
+        "godot_staging_test.py",
+        "godot_validation_test.py",
+        "mapped_paths_test.py",
+        "metadata_index_test.py",
+        "node_ids_test.py",
+        "pack_contents_test.py",
+        "pack_writer_test.py",
+        "pck_features_test.py",
+        "pck_test.py",
+        "resource_graph_test.py",
+        "resource_uids_test.py",
+        "runtime_profile_test.py",
+        "template_test.py",
+        "unit_interface_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

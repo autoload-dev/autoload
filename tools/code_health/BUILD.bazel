@@ -61,3 +61,33 @@ py_test(
     srcs = ["history_test.py"],
     deps = [":codescene_lib"],
 )
+
+filegroup(
+    name = "python_files",
+    testonly = True,
+    srcs = [
+        "batch.py",
+        "batch_test.py",
+        "change.py",
+        "change_test.py",
+        "codescene.py",
+        "documentation.py",
+        "history.py",
+        "history_test.py",
+        "macros.py",
+        "scan.py",
+        "survey.py",
+        "translation.py",
+        "translation_test.py",
+    ],
+    tags = ["python_files"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = ["BUILD.bazel"],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

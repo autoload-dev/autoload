@@ -270,4 +270,28 @@ filegroup(
     testonly = True,
     srcs = ["main/main.gd"],
     tags = ["gdscript"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "cc_files",
+    testonly = True,
+    srcs = ["native.cc"],
+    tags = ["cc"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "cases.bzl",
+        "contract_test.bzl",
+        "evidence.bzl",
+        "mismatch.bzl",
+        "visibility_fixture.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
 )

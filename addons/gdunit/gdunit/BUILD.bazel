@@ -13,3 +13,14 @@ godot_addon(
     strip_prefix = "addons/gdUnit4",
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "starlark_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "defs.bzl",
+    ],
+    tags = ["starlark"],
+    visibility = ["//visibility:private"],
+)

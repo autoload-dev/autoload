@@ -146,7 +146,8 @@ def main() -> None:
     for path in generate(args.module, args.addon or None):
         print(path.relative_to(ROOT))
     print(
-        "\nNext: describe the module in its README and verify it with "
+        "\nNext: declare the lint check's filegroups with `bazel run //tools/gazelle:update`, "
+        "describe the module in its README and verify it with "
         f"`aspect work desktop:addon:{args.module}`."
     )
 

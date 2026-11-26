@@ -1,16 +1,15 @@
 """Select enabled rules without adding rule-specific behavior to the checker."""
 
+from tools.conventions import per_file
 from tools.conventions.framework import Rule
 from tools.conventions.rules.rg001 import PackageNames
 from tools.conventions.rules.rg002 import TargetNames
 from tools.conventions.rules.rg003 import ExplicitNames
-from tools.conventions.rules.rg004 import FixtureReferences
 from tools.conventions.rules.rg006 import CommandLabels
 from tools.conventions.rules.rg007 import TestOnlyOperations
 from tools.conventions.rules.rg008 import ApplicationContent
 from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
-from tools.conventions.rules.rg013 import PublicDocumentationLinks
 from tools.conventions.rules.rg014 import EngineLayout
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.rules.rg016 import LocalLinks
@@ -21,22 +20,19 @@ from tools.conventions.rules.rg020 import RegistryTestModules
 from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
 from tools.conventions.rules.rg022 import NoComponentNames
 from tools.conventions.rules.rg023 import ReleasedWithoutTests
-from tools.conventions.rules.rg024 import RegionHeaders
-from tools.conventions.rules.rg025 import ReadingOrder
 from tools.conventions.rules.rg026 import GodotProcessTests
 from tools.conventions.rules.rg027 import LintedAddonPython
 
+# The rules that judge more than one file at a time, which the conventions tool runs.
 RULES: tuple[Rule, ...] = (
     PackageNames(),
     TargetNames(),
     ExplicitNames(),
-    FixtureReferences(),
     CommandLabels(),
     TestOnlyOperations(),
     ApplicationContent(),
     ProjectPlaces(),
     ProductionIsolation(),
-    PublicDocumentationLinks(),
     EngineLayout(),
     AddonModuleLayout(),
     LocalLinks(),
@@ -47,15 +43,20 @@ RULES: tuple[Rule, ...] = (
     NoGodotRunsInAddonModules(),
     NoComponentNames(),
     ReleasedWithoutTests(),
-    RegionHeaders(),
-    ReadingOrder(),
     GodotProcessTests(),
     LintedAddonPython(),
 )
 
 
+# Every registered rule, those of the lint check (per_file.py) included.
+ALL_RULES = RULES + per_file.RULES
+
+
 def select(ids: list[str] | None = None) -> tuple[Rule, ...]:
-    unknown = set(ids or []) - {rule.info.id for rule in RULES}
+    """The rules of the IDs, or else those the conventions tool runs."""
+    unknown = set(ids or []) - {rule.info.id for rule in ALL_RULES}
     if unknown:
         raise ValueError("Unknown convention rule IDs: " + ", ".join(sorted(unknown)))
-    return tuple(rule for rule in RULES if ids is None or rule.info.id in ids)
+    if ids is None:
+        return RULES
+    return tuple(rule for rule in ALL_RULES if rule.info.id in ids)
