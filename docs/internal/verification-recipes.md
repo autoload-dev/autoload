@@ -49,8 +49,8 @@ Bootstrap is safe to repeat but is not a required step before each check.
 For work that does not need Android, `aspect bootstrap --android=false` installs just the
 hooks. Android tasks prepare their own prerequisites through `android:setup`;
 `aspect work android:setup` prepares only the Android environment. Java, SDK manager, Node and
-workflow-lint tools are installed when their owning tasks require them. `test:setup` checks
-provisioning declarations without installing SDK components.
+workflow-lint tools are installed when their owning tasks require them. `//tools/android:requirements_test`
+checks provisioning declarations without installing SDK components.
 
 Before its checks, the pre-push hook verifies that the working tree matches the pushed
 commit. CI uses the same tasks through the shared
@@ -168,10 +168,16 @@ executors: their `android-toolchains` config registers the toolchains of
 [`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
 [android_toolchains.bzl](../../rules_godot/godot/platforms/private/android_toolchains.bzl) follow the
-Android versions of [sdk.json](../../tools/android/sdk.json), which `test:setup` checks.
+Android versions of [sdk.json](../../tools/android/sdk.json), which `//tools/android:requirements_test` checks.
 
 For settings on every invocation, such as `common --config=buildbuddy`, create
 `user.bazelrc` at the repository root. Every module imports it, and git ignores it.
+
+CI's lanes write `ci.bazelrc` at the repository root, which the root module and the ruleset
+import, to set `--config=ci` (shared.bazelrc) on every command: a stale `MODULE.bazel.lock`
+then fails the command instead of being rewritten. Locally, Bazel updates the file, and
+`aspect generate` regenerates it; `--config=ci` reproduces CI's check, at the price of a
+reload of every package when the mode changes.
 
 ## Platform Paths runtime acceptance
 

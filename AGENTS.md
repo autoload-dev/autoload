@@ -49,7 +49,7 @@ aspect doctor                             # check the setup and say what is miss
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
 aspect lint                               # lint the current module's Python with Ruff and ty
 aspect work lint:gdscript lint:markdown   # lint GDScript's declaration order and Markdown's headings
-aspect generate                           # regenerate lock files
+aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
 aspect work docs                          # after changing the ruleset's public API
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets

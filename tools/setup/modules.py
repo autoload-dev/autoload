@@ -121,11 +121,13 @@ class Declaration:
     One call of a MODULE.bazel, such as `bazel_dep` or an extension tag.
 
     `kind` is the called name; an extension tag is `<extension>.<tag>` and a repository
-    rule is its rule name, whatever the local variable is called.
+    rule is its rule name, whatever the local variable is called. `arguments` are its
+    positional arguments, such as the label of an `include`.
     """
 
     kind: str
     keywords: dict[str, ast.expr]
+    arguments: tuple[ast.expr, ...] = ()
 
 
 def _imported(call: ast.expr, function: str) -> str | None:
@@ -167,7 +169,7 @@ def declarations(source: str) -> list[Declaration]:
             for keyword in call.keywords
             if keyword.arg is not None
         }
-        found.append(Declaration(kind, keywords))
+        found.append(Declaration(kind, keywords, tuple(call.args)))
     return found
 
 

@@ -31,6 +31,12 @@ common --incompatible_default_to_explicit_init_py
 common --extra_execution_platforms=@bazel_tools//tools:host_platform
 common:host-execution --extra_execution_platforms=@bazel_tools//tools:host_platform
 
+# --config=ci fails a command when the module's MODULE.bazel.lock is stale, rather than rewrite
+# it. Only the root module and the ruleset check theirs in; CI's lanes set the config for
+# every command there through ci.bazelrc (.github/workflows/ci.yml), since a server whose
+# lockfile mode changes reloads every package. `aspect generate` regenerates the files.
+common:ci --lockfile_mode=error
+
 # Print the logs of failing tests, which CI does not keep.
 test --test_output=errors
 

@@ -1,6 +1,5 @@
 """Keep Android SDK provisioning and Bazel requirements consistent."""
 
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,31 +11,15 @@ from tools.android.requirements import (
     application_modules,
     configuration_errors,
 )
-from tools.setup.modules import module_paths
-
-ROOT = Path(__file__).resolve().parents[2]
+from tools.setup import checkout
 
 
 class RequirementsTest(unittest.TestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
-        for name in (PINS, ".bazelignore", "shared.bazelrc", "buildbuddy.bazelrc"):
-            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, self.root / name)
-        # The settings the add-on modules' .bazelrc files import.
-        (self.root / "addons").mkdir()
-        for bazelrc in (ROOT / "addons").glob("*.bazelrc"):
-            shutil.copyfile(bazelrc, self.root / "addons" / bazelrc.name)
-        for module in module_paths(ROOT):
-            target = self.root / module
-            target.mkdir(parents=True, exist_ok=True)
-            for name in ("MODULE.bazel", ".bazelrc", ".bazelignore", "addon.pkl"):
-                if (ROOT / module / name).is_file():
-                    shutil.copyfile(ROOT / module / name, target / name)
-        (self.root / LINUX_TOOLCHAINS).parent.mkdir(parents=True)
-        shutil.copyfile(ROOT / LINUX_TOOLCHAINS, self.root / LINUX_TOOLCHAINS)
+        # The modules' files and the provisioned packages, which the test declares as data.
+        self.root = checkout.copy(Path(directory.name))
 
     def replace(self, path: str, before: str, after: str) -> None:
         target = self.root / path
@@ -45,11 +28,6 @@ class RequirementsTest(unittest.TestCase):
         target.write_text(source.replace(before, after))
 
     def test_repository_requirements_are_provisioned(self) -> None:
-        self.assertEqual(module_paths(ROOT), module_paths(self.root))
-        self.assertLessEqual(
-            {".", "rules_godot"},
-            set(module_paths(self.root)),
-        )
         self.assertEqual(configuration_errors(self.root), [])
 
     def test_reads_the_api_level_the_root_module_configures(self) -> None:

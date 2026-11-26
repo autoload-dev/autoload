@@ -95,6 +95,10 @@ jobs:
         with:
           android-cache: ${{ matrix.lane.android-cache || 'false' }}
           cache-name: ${{ matrix.lane.job }}
+      # A stale MODULE.bazel.lock fails every Bazel command of the lane, in the root
+      # module and the ruleset, rather than be rewritten (--config=ci, shared.bazelrc).
+      - name: Check MODULE.bazel.lock
+        run: echo "common --config=ci" > ci.bazelrc
       - name: Run the lane's work
         run: aspect lane ${{ matrix.lane.work }}
       - name: Save Bazel downloads
