@@ -1,3 +1,10 @@
 # The engine simulation: Godot with the reaction_diffusion module, which Petri uses.
 # MODULE.bazel registers it with this module and this lock file.
 exports_files(["simulation.lock.json"])
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["README.md"],
+    tags = ["markdown"],
+)

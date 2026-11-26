@@ -49,3 +49,10 @@ fake_adapter_test(
     project = _FIXTURE,
     tags = ["godot_process"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

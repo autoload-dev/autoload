@@ -81,3 +81,10 @@ py_test(
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//tools/platforms:native_symbols_lib"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

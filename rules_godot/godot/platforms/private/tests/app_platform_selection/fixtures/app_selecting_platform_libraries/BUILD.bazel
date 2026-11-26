@@ -145,3 +145,13 @@ godot_app(
     pack = ":pack",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/libraries/android_addon.gd",
+        "main/libraries/ios_addon.gd",
+    ],
+    tags = ["gdscript"],
+)

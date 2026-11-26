@@ -51,11 +51,10 @@ aspect check                              # every check and the fast tests, as t
 aspect tests                              # the fast tests of the root module and the ruleset (--tier=all for every test)
 aspect fix                                # format the changed files and regenerate what the checks compare
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
-aspect work lint lint:ruleset             # lint Python with Ruff and ty: the root module with the add-ons, the ruleset
+aspect work lint lint:ruleset             # lint Python, Markdown and GDScript: the root module with the add-ons, the ruleset
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
-aspect work lint:gdscript lint:markdown   # lint GDScript's declaration order and Markdown's headings
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
-bazel run //tools/gazelle:rules_godot      # regenerate the ruleset's bzl_library targets
+bazel run //tools/gazelle:update          # regenerate the BUILD declarations Gazelle maintains
 (cd rules_godot && bazel test //godot/tests/api/... //godot/tests/api_contracts/...)  # after changing the ruleset's public API
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets

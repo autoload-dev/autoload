@@ -6,3 +6,10 @@ godot_resources(
     srcs = ["scoreboard.gd"],
     visibility = ["//examples/addons/gdunit:__subpackages__"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["scoreboard.gd"],
+    tags = ["gdscript"],
+)

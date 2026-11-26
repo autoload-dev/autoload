@@ -47,7 +47,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 
 | Kind | Evidence | Existing entry points |
 |---|---|---|
-| Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint lint:ruleset lint:gdscript lint:markdown`, `--config=check` on any build or test, `bazel run //tools/conventions` |
+| Source quality | Formatting, language/type diagnostics and repository conventions | `aspect work lint lint:ruleset`, `--config=check` on any build or test, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `bazel test //tools/android:requirements_test //tools/setup:pins_test //tools/ci:setup_action_test`, all in `aspect work test:tools` |
 | API/documentation contracts | Inventories, metadata, visibility and docstrings | `bazel test //godot/tests/api/... //godot/tests/api_contracts/...` in `rules_godot/` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `e2e/rules_godot/` (the regression module's desktop set); individual owning Bazel test targets |

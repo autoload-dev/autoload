@@ -17,3 +17,10 @@ godot_project(
     project_file = "//godot/private:default_project.godot",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["declared.gd"],
+    tags = ["gdscript"],
+)

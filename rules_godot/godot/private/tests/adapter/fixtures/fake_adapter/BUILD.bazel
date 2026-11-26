@@ -3,3 +3,10 @@ exports_files(
     ["run.gd"],
     visibility = ["//godot/private/tests:__subpackages__"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["run.gd"],
+    tags = ["gdscript"],
+)

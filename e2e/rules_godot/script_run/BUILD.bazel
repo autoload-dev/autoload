@@ -45,3 +45,10 @@ godot_run(
         ":icon",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/direct.gd"],
+    tags = ["gdscript"],
+)

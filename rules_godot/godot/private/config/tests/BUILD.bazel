@@ -344,3 +344,10 @@ genrule(
     tags = ["manual"],
     visibility = ["//visibility:private"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

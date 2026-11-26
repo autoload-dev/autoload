@@ -12,3 +12,10 @@ godot_resources(
     prefix = "main",
     deps = ["@autoload_sqlite//sqlite"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["database_demo.gd"],
+    tags = ["gdscript"],
+)

@@ -158,3 +158,10 @@ py_test(
         "opt",
     ]
 ]
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

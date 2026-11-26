@@ -143,3 +143,10 @@ profile_json(
     name = "engine_profile",
     visibility = ["//tools/platforms/tests:__pkg__"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

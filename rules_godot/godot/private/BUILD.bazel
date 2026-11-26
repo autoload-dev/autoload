@@ -490,6 +490,13 @@ bzl_library(
     ],
 )
 
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["test_cases.gd"],
+    tags = ["gdscript"],
+)
+
 bzl_library(
     name = "configuration",
     srcs = ["configuration.bzl"],

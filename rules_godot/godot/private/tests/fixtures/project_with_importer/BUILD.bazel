@@ -112,3 +112,25 @@ godot_project(
     tags = ["manual"],
     deps = [":self_importing"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/uses.gd",
+        "md_importer/importer.gd",
+        "md_importer/plugin.gd",
+    ],
+    tags = ["gdscript"],
+)
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = [
+        "main/input.md",
+        "main/notes.md",
+        "md_importer/own.md",
+    ],
+    tags = ["markdown"],
+)

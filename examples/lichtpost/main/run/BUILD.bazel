@@ -30,3 +30,14 @@ godot_resources(
         "//examples/lichtpost/main/run/view",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "level_definition.gd",
+        "run.gd",
+        "section_pattern.gd",
+    ],
+    tags = ["gdscript"],
+)

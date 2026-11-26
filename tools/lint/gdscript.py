@@ -1,54 +1,65 @@
 """
-The GDScript lint: gdlint on every tracked script, or on the given ones, with the rules that
-.gdlintrc keeps. `bazel run //tools/lint:gdscript [PATH...]`.
+The GDScript lint, which the aspect `gdlint` runs (linters.bzl): gdlint's checks with the rules
+that a .gdlintrc keeps, on the given scripts; it prints each problem and exits 1 on any.
+`gdscript.py <.gdlintrc> <script>...`
 """
 
-import contextlib
-import os
-import subprocess
 import sys
+import tempfile
 from pathlib import Path
+from types import MappingProxyType
 
-from gdtoolkit.linter.__main__ import main as gdlint
+import lark
+import yaml
+from gdtoolkit.linter import DEFAULT_CONFIG, lint_code
+from gdtoolkit.parser import parser
 
-# Scripts that are not checked, each with its reason.
+# gdtoolkit caches its compiled grammars below the user's home, which a Bazel action neither
+# declares nor may write: Linux's sandbox mounts it read-only. It always writes the cache, even
+# with disable_grammar_caching(), so the cache goes to the action's own temporary directory.
+parser._cache_dirpath = tempfile.mkdtemp(prefix="gdtoolkit")
+
+# Scripts that are not checked, by their path in the ruleset's module, each with its reason.
 EXCLUDED = (
     # The validation's fixtures exercise the forms GDScript allows, such as `extends` before
     # `class_name` and a property beside the variable that backs it.
-    "rules_godot/godot/private/tests/validation/fixtures/classes/noext.gd",
-    "rules_godot/godot/private/tests/validation/fixtures/interface/base/base.gd",
+    "godot/private/tests/validation/fixtures/classes/noext.gd",
+    "godot/private/tests/validation/fixtures/interface/base/base.gd",
     # A script the validation must reject because it does not parse.
-    "rules_godot/godot/private/tests/validation/fixtures/script_errors/parse_error.gd",
+    "godot/private/tests/validation/fixtures/script_errors/parse_error.gd",
 )
 
 
-def scripts(root: Path) -> list[str]:
-    """
-    The tracked scripts of a checkout but the excluded, relative to its root. Git also lists
-    tracked files that were deleted from the working tree, which are left out.
-    """
-    listed = subprocess.run(
-        ["git", "-C", root, "ls-files", "-z", "*.gd"],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    return sorted(
-        p for p in listed.split("\0") if p and p not in EXCLUDED and (root / p).is_file()
+def configuration(path: Path) -> MappingProxyType:
+    """A .gdlintrc's rules, with gdlint's defaults for those it leaves out."""
+    return MappingProxyType(
+        {**DEFAULT_CONFIG, **(yaml.safe_load(path.read_text()) or {})}
     )
 
 
-def main(root: Path, paths: list[str]) -> None:
-    """
-    Run gdlint in the root, where it reads .gdlintrc, on the given paths, relative to the
-    current directory, or on every script; it exits 1 on a problem.
-    """
-    given = [str(Path(path).resolve()) for path in paths]
-    with contextlib.chdir(root):
-        sys.argv = ["gdlint", *(given or scripts(root))]
-        gdlint()
+def problems(script: str, config: MappingProxyType) -> list[str]:
+    """gdlint's problems of a script, as gdlint prints them; one where it does not parse."""
+    try:
+        found = lint_code(Path(script).read_text(), config)
+    except lark.exceptions.LarkError as error:
+        return [f"{script}: Error: does not parse: {error}"]
+    return [
+        f"{script}:{problem.line}: Error: {problem.description} ({problem.name})"
+        for problem in found
+    ]
+
+
+def main(config: str, *scripts: str) -> int:
+    rules = configuration(Path(config))
+    found = [
+        line
+        for script in scripts
+        if not script.endswith(EXCLUDED)
+        for line in problems(script, rules)
+    ]
+    print("\n".join(found))
+    return 1 if found else 0
 
 
 if __name__ == "__main__":
-    os.chdir(os.environ.get("BUILD_WORKING_DIRECTORY", "."))
-    main(Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]), sys.argv[1:])
+    sys.exit(main(*sys.argv[1:]))

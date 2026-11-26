@@ -166,3 +166,18 @@ godot_pack(
         ":ui",
     ],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/addons/authored_hook/export_hook.gd",
+        "main/addons/authored_hook/plugin.gd",
+        "main/addons/export_marker/export_marker.gd",
+        "main/addons/export_marker/plugin.gd",
+        "main/addons/greeting_importer/importer.gd",
+        "main/addons/greeting_importer/plugin.gd",
+        "main/main.gd",
+    ],
+    tags = ["gdscript"],
+)

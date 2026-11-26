@@ -374,3 +374,20 @@ py_binary(
     srcs = ["common_content.py"],
     deps = ["//godot/private:project_config_lib"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "action/configuration.gd",
+        "action/export.gd",
+        "action/plugin.gd",
+        "action/record.gd",
+        "action/runtime.gd",
+        "action/shell.gd",
+        "profile/plugin.gd",
+        "run/errors.gd",
+        "validation/validate.gd",
+    ],
+    tags = ["gdscript"],
+)

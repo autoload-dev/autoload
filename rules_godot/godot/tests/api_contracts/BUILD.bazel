@@ -264,3 +264,10 @@ same_package_leak(
     name = "evaluated_same_package_leak",
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["main/main.gd"],
+    tags = ["gdscript"],
+)

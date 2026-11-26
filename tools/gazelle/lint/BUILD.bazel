@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+# The Gazelle language that declares the filegroups the lint check reads (lint.go).
+go_library(
+    name = "lint",
+    srcs = ["lint.go"],
+    importpath = "github.com/autoload-dev/autoload/tools/gazelle/lint",
+    visibility = ["//tools/gazelle:__pkg__"],
+    deps = [
+        "@gazelle//config",
+        "@gazelle//label",
+        "@gazelle//language",
+        "@gazelle//rule",
+    ],
+)

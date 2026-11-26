@@ -47,3 +47,13 @@ godot_macos_application(
     runtime = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:macos_runtime",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/base.gd",
+        "main/main.gd",
+    ],
+    tags = ["gdscript"],
+)

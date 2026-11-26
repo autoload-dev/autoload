@@ -52,3 +52,10 @@ alias(
     }),
     visibility = ["//godot:__subpackages__"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

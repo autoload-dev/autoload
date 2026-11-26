@@ -50,6 +50,11 @@ common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//
 # (tools/lint/check.bzl); builds without it ignore them. Only modules that depend on the root
 # module use it, not the registry test modules.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%python
+# The lint check of the Markdown and GDScript that Gazelle declares per package
+# (tools/gazelle/lint). Those filegroups are no tests, so it needs a build that names them,
+# such as the lint work's `--output_groups=lint_checks` over every target, or
+# `bazel build --config=check --build_tag_filters=gdscript,markdown //...`.
+common:check --aspects=@autoload_dev//tools/lint:check.bzl%sources
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
 # start a Godot process (RG026), the smoke tests included, which `aspect check` and the

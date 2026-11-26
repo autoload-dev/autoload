@@ -122,3 +122,15 @@ godot_test(
     tags = ["manual"],
     deps = [":home"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "export_marker/export_marker.gd",
+        "export_marker/plugin.gd",
+        "main/home.gd",
+        "main/state.gd",
+    ],
+    tags = ["gdscript"],
+)

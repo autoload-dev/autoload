@@ -18,3 +18,13 @@ godot_export_platform(
     operating_system = "android",
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = [
+        "AGENTS.md",
+        "README.md",
+    ],
+    tags = ["markdown"],
+)

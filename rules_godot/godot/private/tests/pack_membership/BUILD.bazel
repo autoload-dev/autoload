@@ -65,3 +65,17 @@ godot_test(
     tags = ["godot_process"],
     deps = [":shared_script_runs_in_composed_project_test_script"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["math_test.gd"],
+    tags = ["gdscript"],
+)
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)

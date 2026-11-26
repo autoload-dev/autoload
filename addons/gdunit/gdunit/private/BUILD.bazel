@@ -5,3 +5,10 @@ exports_files(
     ["run.gd"],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["run.gd"],
+    tags = ["gdscript"],
+)

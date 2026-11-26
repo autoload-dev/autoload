@@ -197,3 +197,14 @@ filegroup(
     output_group = "selection",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "main/dlc/level.gd",
+        "main/main.gd",
+        "main/shared/math.gd",
+    ],
+    tags = ["gdscript"],
+)

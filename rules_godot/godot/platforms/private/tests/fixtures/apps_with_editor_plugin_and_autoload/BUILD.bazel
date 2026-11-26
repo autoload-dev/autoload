@@ -56,3 +56,15 @@ godot_app(
     pack = ":pack",
     tags = ["manual"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = [
+        "addons/export_context/export_context.gd",
+        "addons/export_context/plugin.gd",
+        "main/configuration.gd",
+        "main/main.gd",
+    ],
+    tags = ["gdscript"],
+)

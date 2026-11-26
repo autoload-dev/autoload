@@ -24,6 +24,9 @@ bazel_dep(name = "rules_multitool", version = "1.0.0")
 bazel_dep(name = "gazelle", version = "0.51.3", dev_dependency = True)
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.9.2", dev_dependency = True)
 
+# Runs Gazelle's languages and modules one after another (tools/gazelle).
+bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
+
 # The plugin names the library of every external load after the loaded file, which few
 # modules declare; the patch lets a `# gazelle:resolve starlark <load> <library>` directive
 # name it, as for loads of this repository. Gazelle runs from this module for every module
@@ -57,8 +60,10 @@ python.toolchain(python_version = "3.14")
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
 
-# The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them.
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_dependency = True)
+# The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them. Not a
+# development dependency: the lint check (tools/lint/check.bzl) runs gdlint from them in
+# every module that uses it, such as the ruleset.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "lint_pypi",
     python_version = "3.14",

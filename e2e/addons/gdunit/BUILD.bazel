@@ -73,3 +73,10 @@ py_test(
     tags = ["godot_process"],
     deps = [":support"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["README.md"],
+    tags = ["markdown"],
+)

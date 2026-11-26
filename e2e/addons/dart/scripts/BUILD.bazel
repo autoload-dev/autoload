@@ -37,3 +37,10 @@ gdunit_test(
     suites = [":suites"],
     tags = ["godot_process"],
 )
+
+filegroup(
+    name = "gdscript_files",
+    testonly = True,
+    srcs = ["ScriptTest.gd"],
+    tags = ["gdscript"],
+)

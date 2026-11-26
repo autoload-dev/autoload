@@ -34,10 +34,13 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
-# gdlint's rules, which //tools/lint:gdscript_test checks.
+# The rules of gdlint and rumdl, which the lint check reads (tools/lint/check.bzl).
 exports_files(
-    [".gdlintrc"],
-    visibility = ["//tools/lint:__pkg__"],
+    [
+        ".gdlintrc",
+        ".rumdl.toml",
+    ],
+    visibility = ["//visibility:public"],
 )
 
 # The Bazel wrapper (tools/bazel), whose test runs it in a scratch workspace.
@@ -65,4 +68,29 @@ filegroup(
     name = "setup_action",
     srcs = glob([".github/actions/setup/stop-bazel/**"]),
     visibility = ["//tools/ci:__pkg__"],
+)
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = [
+        ".agents/skills/bazel-api-docs/SKILL.md",
+        ".agents/skills/bazel-api-docs/references/upstream.md",
+        ".agents/skills/code-health/SKILL.md",
+        "AGENTS.md",
+        "README.md",
+        "docs/AGENTS.md",
+        "docs/internal/AGENTS.md",
+        "docs/internal/README.md",
+        "docs/internal/agent-setup.md",
+        "docs/internal/code-health.md",
+        "docs/internal/conventions.md",
+        "docs/internal/glossary.md",
+        "docs/internal/releasing.md",
+        "docs/internal/verification.md",
+        "docs/internal/verification-architecture.md",
+        "docs/internal/verification-platforms.md",
+        "docs/internal/verification-recipes.md",
+    ],
+    tags = ["markdown"],
 )

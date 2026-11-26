@@ -256,3 +256,10 @@ py_test(
     target_compatible_with = _MACOS,
     deps = ["//tools/platforms:apple_bundle_lib"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["fixtures/README.md"],
+    tags = ["markdown"],
+)
