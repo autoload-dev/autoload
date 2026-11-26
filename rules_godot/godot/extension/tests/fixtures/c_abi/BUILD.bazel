@@ -1,7 +1,11 @@
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 
 # A minimal C ABI extension built for the host, outside the projects that use it.
-package(default_visibility = ["//godot/extension/tests:__subpackages__"])
+package(default_visibility = [
+    "//godot/extension/tests:__subpackages__",
+    # The API contract cases analyze it.
+    "//godot/tests/api_contracts:__pkg__",
+])
 
 godot_cc_extension(
     name = "hello",

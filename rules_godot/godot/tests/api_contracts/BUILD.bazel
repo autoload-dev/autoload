@@ -6,8 +6,11 @@ load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_compone
 load("//godot/engine/private:prebuilt.bzl", "prebuilt_runtime")
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
 load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/tests/api:modules.bzl", "PUBLIC_APIS", "PUBLIC_TARGETS")
+load("//godot/tests/api:rules.bzl", "DOCS")
 load(":cases.bzl", "API_CASES", "BEHAVIOR_TESTS", "PUBLIC_LIBRARIES")
-load(":mismatch.bzl", "alias_executable_companion", "alias_files_companion", "executable_claim", "good", "missing_group", "pretend_test_companion", "restricted_companion")
+load(":contract_test.bzl", "REQUIREMENTS", "api_contract_test", "extracted_inventories")
+load(":mismatch.bzl", "MISMATCH_CASES", "alias_executable_companion", "alias_files_companion", "executable_claim", "good", "missing_group", "pretend_test_companion", "restricted_companion")
 load(":visibility_fixture.bzl", "same_package_leak")
 
 package(
@@ -68,6 +71,8 @@ godot_runtime_profile(
     tags = ["manual"],
 )
 
+# Every case, behavior test and library, whose coverage of the public APIs the contract
+# test of the requirement-free cases checks.
 write_file(
     name = "case_manifest",
     out = "case_manifest.json",
@@ -75,7 +80,37 @@ write_file(
         "behavior": BEHAVIOR_TESTS,
         "cases": API_CASES,
         "libraries": PUBLIC_LIBRARIES,
+        "requirements": REQUIREMENTS.keys(),
     })],
+)
+
+# One contract test per host requirement of the cases (REQUIREMENTS in contract_test.bzl):
+# contracts_test checks every case any development host analyzes, together with the
+# coverage of the public APIs, their behavior tests and the public configuration targets.
+api_contract_test(
+    name = "contracts_test",
+    behavior = BEHAVIOR_TESTS,
+    cases = API_CASES,
+    # The coverage of the registry reads every public entrypoint.
+    extracted = extracted_inventories(PUBLIC_APIS),
+    libraries = PUBLIC_LIBRARIES,
+    manifest = ":case_manifest.json",
+    public_targets = [label for label in PUBLIC_TARGETS if label not in PUBLIC_LIBRARIES],
+    requires = "",
+)
+
+api_contract_test(
+    name = "contracts_android_sdk_test",
+    cases = API_CASES,
+    libraries = PUBLIC_LIBRARIES,
+    requires = "android_sdk",
+)
+
+api_contract_test(
+    name = "contracts_macos_test",
+    cases = API_CASES,
+    libraries = PUBLIC_LIBRARIES,
+    requires = "macos",
 )
 
 genrule(
@@ -184,12 +219,25 @@ missing_group(name = "evaluated_missing_group")
 
 executable_claim(name = "evaluated_not_a_test")
 
-# The evaluated documentation of the mismatch fixtures, which the root module's
-# evaluated_mismatch_test (tools/docs) compares with their configured targets.
+# The evaluated documentation of the mismatch fixtures, which evaluated_mismatch_test
+# compares with their configured targets.
 starlark_doc_extract(
     name = "evaluated_mismatch_inventory",
     src = "mismatch.bzl",
     deps = ["visibility_fixture.bzl"],
+)
+
+# The contract checks must reject real mismatches between these fixtures and their
+# documentation (tools/docs/evaluated_mismatch_test.py).
+api_contract_test(
+    name = "evaluated_mismatch_test",
+    cases = {
+        "//godot/tests/api_contracts:mismatch.bzl%" + symbol: case
+        for symbol, case in MISMATCH_CASES.items()
+    },
+    extracted = [":evaluated_mismatch_inventory.textproto"],
+    main = DOCS + "evaluated_mismatch_test.py",
+    requires = "",
 )
 
 restricted_companion(

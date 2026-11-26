@@ -1,80 +1,106 @@
-"""Decoding and batching of evaluated configured evidence."""
+"""Decoding of the declared loading and configured evidence."""
 
+import json
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-from tools.ci.lanes import PROFILE
-from tools.conventions.context import EvidenceError, Module
-from tools.docs.evidence import EvaluatedBazel, behavior_tests, decode_configured
+from tools.conventions.context import EvidenceError
+from tools.docs.evidence import (
+    Evidence,
+    Labels,
+    decode_configured,
+    decode_loading,
+    invocation,
+)
 
-APP = '{"label":"@@//:app","files":1,"runfiles":2,"executable":true,"providers":["DefaultInfo"],"groups":["bundle"]}'
-ACTUAL = '{"label":"@@//:app.macos","files":1,"runfiles":0,"executable":false,"providers":[],"groups":[]}'
+APP = {
+    "label": "//:app",
+    "files": 1,
+    "runfiles": 2,
+    "executable": True,
+    "providers": ["CcInfo"],
+    "groups": ["bundle"],
+}
+
+LABELS = Labels(
+    {"@godot//toolchains:editor": "@@+godot_engines+godot//toolchains:editor"}
+)
+
+LOADING = """<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<query version="2">
+    <rule class="app" location="pkg/BUILD.bazel:3:4" name="//pkg:app">
+        <string name="generator_location" value="pkg/BUILD.bazel:3:4"/>
+        <boolean name="testonly" value="true"/>
+        <list name="visibility"><label value="//visibility:public"/></list>
+    </rule>
+    <rule class="alias" location="pkg/BUILD.bazel:3:4" name="//pkg:app.debug_symbols">
+        <string name="generator_location" value="pkg/BUILD.bazel:3:4"/>
+    </rule>
+    <rule class="pack" location="pkg/BUILD.bazel:9:4" name="//pkg:pack"/>
+    <rule class="toolchain" location="/output/external/x/BUILD.bazel:1:1"
+        name="@@+godot_engines+godot//toolchains:editor.toolchain">
+        <label name="toolchain" value="@@+godot_engines+godot//toolchains:editor"/>
+        <list name="visibility">
+            <label value="@@+godot_engines+godot//toolchains:__pkg__"/>
+        </list>
+    </rule>
+    <source-file location="x" name="@@+godot_engines+godot//:LICENSE.md">
+        <visibility-label name="//visibility:public"/>
+    </source-file>
+    <source-file location="x" name="//pkg:BUILD.bazel">
+        <visibility-label name="//visibility:private"/>
+    </source-file>
+</query>
+"""
+
+
+def configuration(settings: dict[str, str], *facts: dict) -> str:
+    return json.dumps({"settings": settings, "facts": list(facts)})
 
 
 class EvidenceTest(unittest.TestCase):
-    def test_decodes_counts_and_names_by_unqualified_label(self) -> None:
-        target = decode_configured(APP)[":app"]
+    def test_decodes_counts_and_names_by_authored_label(self) -> None:
+        decoded = decode_configured(configuration({}, APP))
+        target = decoded.targets["//:app"]
         self.assertEqual((1, 2, True), (target.files, target.runfiles, target.executable))
         self.assertEqual(frozenset({"bundle"}), target.groups)
         with self.assertRaisesRegex(EvidenceError, "invalid evaluated configured"):
-            decode_configured('{"label":"//:app"}')
+            decode_configured(configuration({}, {"label": "//:app"}))
 
-    def test_a_label_with_other_facts_in_another_configuration_is_an_error(self) -> None:
-        other = APP.replace('"files":1', '"files":3')
-        with self.assertRaisesRegex(
-            EvidenceError, "other facts in another configuration"
-        ):
-            decode_configured(APP + "\n" + other)
-
-    def test_a_label_with_the_same_facts_in_two_configurations_is_one_target(
-        self,
-    ) -> None:
-        # Such as a config_setting that a select() reaches in each configuration.
-        self.assertEqual(decode_configured(APP), decode_configured(APP + "\n" + APP))
-
-    def test_aliases_are_configured_separately_under_their_own_label(self) -> None:
-        module = Module(Path("."), ())
-        bazel = EvaluatedBazel(Path("/workspace"))
-        with patch(
-            "tools.docs.evidence.run_tool", side_effect=[APP + "\n" + ACTUAL, ACTUAL]
-        ) as run:
-            observed = bazel.configured(module, ["//:app", "//:alias"])
-        self.assertEqual(2, run.call_count)
-        self.assertEqual("@@//:app", observed["//:app"].label)
-        self.assertEqual("@@//:app.macos", observed["//:alias"].label)
-
-    def test_behavior_tests_resolve_in_the_module_they_name(self) -> None:
-        editor_view = (
-            "//godot/private/tests/editor_view:editor_view_writes_edits_back_test"
+    def test_configured_facts_are_those_of_the_case_s_settings(self) -> None:
+        android = {"//command_line_option:platforms": "//godot/platforms:android_arm64"}
+        other = dict(APP, files=3)
+        evidence = Evidence(
+            decode_loading(LOADING, LABELS),
+            (
+                decode_configured(configuration({}, APP)),
+                decode_configured(configuration(android, other)),
+            ),
         )
-        engine = "//e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test"
-        behavior = {
-            "//godot:defs.bzl%godot_metadata_sync": [editor_view],
-            "//godot/engine:repositories.bzl%godot_engine_build": [
-                {"target": engine, "module": "."}
-            ],
-        }
+        self.assertEqual(1, evidence.configured({}, ["//:app"])["//:app"].files)
+        self.assertEqual(3, evidence.configured(android, ["//:app"])["//:app"].files)
+        with self.assertRaisesRegex(EvidenceError, "no configured evidence for //:x"):
+            evidence.configured({}, ["//:x"])
+        with self.assertRaisesRegex(EvidenceError, "no configured evidence for settings"):
+            evidence.configured({"//godot:variant": "editor"}, ["//:app"])
+
+    def test_loading_facts_name_repositories_as_the_cases_do(self) -> None:
+        loading = decode_loading(LOADING, LABELS)
+        toolchain = loading.rules["@godot//toolchains:editor.toolchain"]
+        self.assertEqual("@godot//toolchains:editor", toolchain.labels["toolchain"])
         self.assertEqual(
-            {"rules_godot": {editor_view}, ".": {engine}},
-            behavior_tests(behavior),
+            ("@godot//toolchains:__pkg__",), toolchain.label_lists["visibility"]
         )
-        bazel = EvaluatedBazel(Path("/workspace"))
-        with patch("tools.docs.evidence.run_tool", return_value=engine) as run:
-            found = bazel.tests([engine], Module(Path("tests"), ()))
-        self.assertEqual({engine}, found)
-        self.assertEqual(Path("/workspace/tests"), run.call_args.args[1])
+        self.assertEqual(frozenset({"@godot//:LICENSE.md"}), loading.sources)
+        self.assertTrue(loading.rules["//pkg:app"].booleans["testonly"])
 
-    def test_only_configured_queries_run_in_the_lane_s_profile(self) -> None:
-        bazel = EvaluatedBazel(Path("/workspace"), "android")
-        module = Module(Path("."), ())
-        with patch("tools.docs.evidence.run_tool", return_value=APP) as run:
-            bazel.configured(module, ["//:app"], ["--config=android"])
-            bazel.tests(["//:app"], module)
-        configured, tests = (call.args for call in run.call_args_list)
-        self.assertEqual({PROFILE: "android"}, configured[2])
-        self.assertEqual({}, tests[2])
-        self.assertEqual(Path("/workspace"), configured[1])
+    def test_an_invocation_is_the_rules_of_its_root_s_authored_call(self) -> None:
+        loading = decode_loading(LOADING, LABELS)
+        self.assertEqual(
+            ["//pkg:app", "//pkg:app.debug_symbols"],
+            [target.label for target in invocation("//pkg:app", loading.rules.values())],
+        )
+        with self.assertRaisesRegex(EvidenceError, "unresolved evaluated invocation"):
+            invocation("//pkg:missing", loading.rules.values())
 
 
 if __name__ == "__main__":

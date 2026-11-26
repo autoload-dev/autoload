@@ -2,17 +2,14 @@
 
 load("@rules_python//python:defs.bzl", "py_test")
 
-def ruleset_label(label):
-    """
-    Qualify a label of the ruleset, as modules.bzl writes them, with its repository.
-
-    Args:
-        label: Label relative to the ruleset's repository, such as `//godot:app.bzl`.
-
-    Returns:
-        The label in the ruleset's repository.
-    """
-    return "@autoload_rules_godot" + label
+# The checks of the documentation, which the repository's root module holds.
+DOCS = "@autoload_dev//tools/docs:"
+DOCS_DEPS = [
+    DOCS + "coverage_lib",
+    DOCS + "inventory_lib",
+    DOCS + "ruleset_lib",
+    DOCS + "surface_lib",
+]
 
 def reference_name(module):
     """
@@ -46,13 +43,15 @@ def api_reference(name, apis):
         # Complete extraction without a symbol selection; the coverage test checks it.
         native.starlark_doc_extract(
             name = page + "_inventory",
-            src = ruleset_label(module),
+            src = module,
             deps = [":sources"],
             render_main_repo_name = True,
+            # The API contract tests read the documented contracts from it.
+            visibility = ["//godot/tests/api_contracts:__pkg__"],
         )
         native.starlark_doc_extract(
             name = page + "_primary",
-            src = ruleset_label(module),
+            src = module,
             deps = [":sources"],
             symbol_names = symbols,
             render_main_repo_name = True,
@@ -60,24 +59,19 @@ def api_reference(name, apis):
 
     pages = [reference_name(module) for module in apis]
     inventories = [":" + page + "_inventory.textproto" for page in pages]
-    sources = [ruleset_label(module) for module in apis]
+    sources = list(apis)
     py_test(
         name = "coverage_test",
         size = "small",
-        srcs = ["//tools/docs:coverage_test.py"],
-        main = "//tools/docs:coverage_test.py",
+        srcs = [DOCS + "coverage_test.py"],
+        main = DOCS + "coverage_test.py",
         args = ["$(rootpath :modules.bzl)"] + [
             arg
             for inventory, source in zip(inventories, sources)
             for arg in ["$(rootpath " + inventory + ")", "$(rootpath " + source + ")"]
         ],
         data = [":modules.bzl"] + inventories + sources,
-        deps = [
-            "//tools/docs:coverage_lib",
-            "//tools/docs:inventory_lib",
-            "//tools/docs:ruleset_lib",
-            "//tools/docs:surface_lib",
-        ],
+        deps = DOCS_DEPS,
     )
 
     # Only canonical public metadata belongs in the registry's documentation archive.

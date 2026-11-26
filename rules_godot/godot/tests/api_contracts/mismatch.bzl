@@ -98,3 +98,19 @@ alias_executable_companion = macro(
 )
 
 same_package_leak = _same_package_leak
+
+def _case(target, companions = []):
+    return {"target": "//godot/tests/api_contracts:" + target, "companions": companions}
+
+# The fixture of each symbol, as API_CASES writes cases; evaluated_mismatch_test.py names
+# the diagnostics each must produce.
+MISMATCH_CASES = {
+    "good": _case("evaluated_good"),
+    "alias_files_companion": _case("evaluated_alias_files", ["{name}.boundary"]),
+    "missing_group": _case("evaluated_missing_group"),
+    "executable_claim": _case("evaluated_not_a_test"),
+    "pretend_test_companion": _case("evaluated_pretend_test_companion", ["{name}.boundary"]),
+    "alias_executable_companion": _case("evaluated_alias_executable", ["{name}.boundary"]),
+    "restricted_companion": _case("evaluated_restricted_leak"),
+    "same_package_leak": _case("evaluated_same_package_leak"),
+}

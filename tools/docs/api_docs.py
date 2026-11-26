@@ -1,26 +1,22 @@
 """
-Discover every source module, then check the API inventory and its documentation.
+Check the API inventory against the ruleset's source tree and its public rules.
 
-Sections: Labels, Inventory, Bazel.
+The ruleset's test (//godot/tests/api:inventory_test) runs this module with the inventory
+and two genqueries: its Starlark libraries, which Gazelle generates, and its public rules.
+
+Sections: Labels, Inventory, Test.
 """
 
-import argparse
 import ast
 import os
-import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from tools.conventions.environment import nested_tool_environment
-from tools.docs.ruleset import INVENTORY
-from tools.setup.modules import RULESET, label_path
+from tools.setup.modules import label_path
 
 # ==== Labels ==================================================================
-
-
-def module_label(path: Path) -> str:
-    return f"//{path.parent.as_posix()}:{path.name}"
 
 
 def package(label: str) -> str:
@@ -59,13 +55,9 @@ def read_inventory(manifest: Path) -> dict[str, Any]:
     }
 
 
-def actual_modules(root: Path) -> set[str]:
+def actual_modules(modules: list[str]) -> set[str]:
     """The ruleset's modules; white-box tests in tests/ subpackages load private files but are no API modules."""
-    return {
-        label
-        for path in (root / "godot").rglob("*.bzl")
-        if not is_white_box_test(label := module_label(path.relative_to(root)))
-    }
+    return {label for label in modules if not is_white_box_test(label)}
 
 
 def module_role_errors(
@@ -95,7 +87,7 @@ def role_errors(inventory: dict[str, Any], actual: set[str]) -> list[str]:
             errors.extend(module_role_errors(label, role, declared.get(label), actual))
             declared[label] = role
     errors.extend(
-        f"{label}: unclassified new module; declare its API role in tools/docs/api/modules.bzl"
+        f"{label}: unclassified new module; declare its API role in godot/tests/api/modules.bzl"
         for label in sorted(actual - set(declared))
     )
     return errors
@@ -200,74 +192,73 @@ def public_api_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
     return [error for label, node in functions for error in function_errors(label, node)]
 
 
-def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
+def inventory_errors(
+    root: Path, inventory: dict[str, Any], modules: list[str]
+) -> list[str]:
+    """
+    Check the module roles against the listed modules and the sources below root.
+
+    ``modules`` are the labels of every ``.bzl`` file below ``godot/``, white-box tests
+    included.
+    """
     return [
-        *role_errors(inventory, actual_modules(root)),
+        *role_errors(inventory, actual_modules(modules)),
         *entrypoint_errors(inventory),
         *visibility_errors(root, inventory),
         *public_api_errors(root, inventory),
     ]
 
 
-# ==== Bazel ===================================================================
+# ==== Test ====================================================================
 
 
-def run_bazel(bazel: str, root: Path, *args: str, capture: bool = False) -> str:
-    result = subprocess.run(
-        [bazel, *args],
-        cwd=root,
-        env=nested_tool_environment(os.environ),
-        check=True,
-        text=True,
-        stdout=subprocess.PIPE if capture else None,
-    )
-    return result.stdout.strip() if capture else ""
+def public_target_errors(labels: set[str], targets: dict[str, str]) -> list[str]:
+    """The public rules outside private and test packages are the documented PUBLIC_TARGETS."""
+    labels = {label for label in labels if documented_target(label)}
+    errors = []
+    if labels != set(targets):
+        errors.append(
+            f"Update PUBLIC_TARGETS; undocumented: {sorted(labels - set(targets))};"
+            f" stale: {sorted(set(targets) - labels)}"
+        )
+    if any(not description.strip() for description in targets.values()):
+        errors.append("PUBLIC_TARGETS descriptions must be nonempty.")
+    return errors
+
+
+def library_sources(query: str) -> list[str]:
+    """The modules of the ruleset's own Starlark libraries in a genquery's XML."""
+    return [
+        source.attrib["value"]
+        for rule in ET.fromstring(query).findall("rule")
+        if rule.attrib["name"].startswith("//")
+        for attribute in rule.findall("list")
+        if attribute.attrib["name"] == "srcs"
+        for source in attribute
+    ]
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bazel", default=os.environ.get("BAZEL", "bazel"))
-    args = parser.parse_args()
-    root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    ruleset = root / RULESET
-    inventory = read_inventory(root / INVENTORY)
-    errors = inventory_errors(ruleset, inventory)
+    manifest, libraries, public_rules = map(Path, sys.argv[1:4])
+    # The ruleset is this test's main repository, whose sources are runfiles.
+    root = Path(os.environ["TEST_SRCDIR"]) / "_main"
+    inventory = read_inventory(manifest)
+    modules = library_sources(libraries.read_text())
+    errors = inventory_errors(root, inventory, modules)
+    errors += public_target_errors(
+        set(public_rules.read_text().split()), inventory["PUBLIC_TARGETS"]
+    )
     if errors:
         sys.exit("\n".join(errors))
     print(
         f"API inventory: {len(inventory['PUBLIC_APIS'])} public entrypoints, "
-        f"{len(inventory['CROSS_REPOSITORY_MODULES'])} cross-repository modules excluded from the registry's documentation; all Godot modules classified.",
-        flush=True,
+        f"{len(inventory['CROSS_REPOSITORY_MODULES'])} cross-repository modules excluded"
+        " from the registry's documentation; all Godot modules classified."
     )
-    labels = {
-        label
-        for label in run_bazel(
-            args.bazel,
-            ruleset,
-            "query",
-            # The Starlark libraries of the modules document themselves (modules.bzl).
-            'attr(visibility, "//visibility:public", kind("rule", //godot/...))'
-            ' except kind("bzl_library", //godot/...)',
-            "--output=label",
-            capture=True,
-        ).splitlines()
-        if documented_target(label)
-    }
-    targets = inventory["PUBLIC_TARGETS"]
-    if labels != set(targets):
-        sys.exit(
-            f"Update PUBLIC_TARGETS; undocumented: {sorted(labels - set(targets))}; stale: {sorted(set(targets) - labels)}"
-        )
-    if any(not description.strip() for description in targets.values()):
-        sys.exit("PUBLIC_TARGETS descriptions must be nonempty.")
-    run_bazel(args.bazel, root, "test", "//tools/docs/...")
-    print("API entrypoints, ownership, internal separation and descriptions passed.")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except subprocess.CalledProcessError as error:
-        sys.exit(error.returncode)
     except ValueError as error:
         sys.exit(str(error))

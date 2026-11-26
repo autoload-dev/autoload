@@ -5,7 +5,20 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from tools.docs.api_docs import documented_target, inventory_errors
+from tools.docs.api_docs import (
+    documented_target,
+    inventory_errors,
+    public_target_errors,
+)
+
+
+def errors(root: Path, config: dict[str, Any]) -> list[str]:
+    """Check the inventory against every module below root, as the source listing names them."""
+    modules = [
+        f"//{path.parent.relative_to(root).as_posix()}:{path.name}"
+        for path in root.rglob("*.bzl")
+    ]
+    return inventory_errors(root, config, modules)
 
 
 def inventory() -> dict[str, Any]:
@@ -22,9 +35,7 @@ class InventoryTest(unittest.TestCase):
             root = Path(directory)
             (root / "godot").mkdir()
             (root / "godot/new.bzl").write_text('"""New module."""\n')
-            self.assertIn(
-                "unclassified new module", inventory_errors(root, inventory())[0]
-            )
+            self.assertIn("unclassified new module", errors(root, inventory())[0])
 
     def test_white_box_test_files_have_no_module_role(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -34,9 +45,9 @@ class InventoryTest(unittest.TestCase):
                 (root / name).write_text('"""White-box test."""\n')
             (root / "godot/testing").mkdir(parents=True)
             (root / "godot/testing/new.bzl").write_text('"""Test helper."""\n')
-            errors = inventory_errors(root, inventory())
-            self.assertEqual(1, len(errors), errors)
-            self.assertIn("//godot/testing:new.bzl: unclassified new module", errors[0])
+            found = errors(root, inventory())
+            self.assertEqual(1, len(found), found)
+            self.assertIn("//godot/testing:new.bzl: unclassified new module", found[0])
 
     def test_public_file_cannot_be_hidden_as_private_support(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -48,7 +59,7 @@ class InventoryTest(unittest.TestCase):
             self.assertTrue(
                 any(
                     "support modules must be private" in error
-                    for error in inventory_errors(root, config)
+                    for error in errors(root, config)
                 )
             )
 
@@ -61,10 +72,7 @@ class InventoryTest(unittest.TestCase):
             config["PUBLIC_APIS"]["//godot:helper.bzl"] = ["helper"]
             config["CROSS_REPOSITORY_MODULES"]["//godot:helper.bzl"] = "Internal helper."
             self.assertTrue(
-                any(
-                    "multiple module roles" in error
-                    for error in inventory_errors(root, config)
-                )
+                any("multiple module roles" in error for error in errors(root, config))
             )
 
     def test_support_modules_must_restrict_actual_load_visibility(self) -> None:
@@ -78,18 +86,18 @@ class InventoryTest(unittest.TestCase):
             self.assertTrue(
                 any(
                     "explicit restricted load visibility" in error
-                    for error in inventory_errors(root, config)
+                    for error in errors(root, config)
                 )
             )
             path.write_text('"""Helper."""\nvisibility("public")\n')
             self.assertTrue(
                 any(
                     "cannot have public load visibility" in error
-                    for error in inventory_errors(root, config)
+                    for error in errors(root, config)
                 )
             )
             path.write_text('"""Helper."""\nvisibility("//godot")\n')
-            self.assertEqual(inventory_errors(root, config), [])
+            self.assertEqual(errors(root, config), [])
 
     def test_public_target_comparison_skips_private_and_test_packages(self) -> None:
         self.assertTrue(documented_target("//godot:variant"))
@@ -99,6 +107,21 @@ class InventoryTest(unittest.TestCase):
         self.assertFalse(documented_target("//godot/tests/api_contracts:pack"))
         self.assertFalse(documented_target("//godot/extension/tests:fixture"))
 
+    def test_public_rules_are_the_documented_public_targets(self) -> None:
+        targets = {"//godot:variant": "Selected variant."}
+        rules = {"//godot:variant", "//godot/private:helper", "//godot:new"}
+        self.assertEqual(
+            [
+                "Update PUBLIC_TARGETS; undocumented: ['//godot:new']; stale: []",
+            ],
+            public_target_errors(rules, targets),
+        )
+        self.assertEqual([], public_target_errors({"//godot:variant"}, targets))
+        self.assertIn(
+            "descriptions must be nonempty",
+            public_target_errors({"//godot:variant"}, {"//godot:variant": " "})[0],
+        )
+
     def test_short_function_needs_documentation_and_return_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -106,9 +129,9 @@ class InventoryTest(unittest.TestCase):
             (root / "godot/defs.bzl").write_text("def small(value):\n    return value\n")
             config = inventory()
             config["PUBLIC_APIS"]["//godot:defs.bzl"] = ["small"]
-            errors = inventory_errors(root, config)
-            self.assertTrue(any("docstring" in error for error in errors))
-            self.assertTrue(any("Returns:" in error for error in errors))
+            found = errors(root, config)
+            self.assertTrue(any("docstring" in error for error in found))
+            self.assertTrue(any("Returns:" in error for error in found))
 
     def test_generated_repository_modules_keep_cross_repository_access(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -123,11 +146,11 @@ class InventoryTest(unittest.TestCase):
             self.assertTrue(
                 any(
                     "explicit public load visibility" in error
-                    for error in inventory_errors(root, config)
+                    for error in errors(root, config)
                 )
             )
             path.write_text('"""Implementation."""\nvisibility("public")\n')
-            self.assertEqual(inventory_errors(root, config), [])
+            self.assertEqual(errors(root, config), [])
 
 
 if __name__ == "__main__":
