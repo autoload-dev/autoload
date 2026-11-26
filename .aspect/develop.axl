@@ -1,0 +1,133 @@
+"""
+The repository's development verbs, which a developer, the Git hooks and CI share.
+
+`aspect check` runs every check and the fast tests, as the pre-push hook does; `aspect tests`
+runs one tier of tests; `aspect fix` formats the changed files and regenerates what the
+checks compare. Each is a thin layer over Bazel targets and the `.bazelrc` configs `check`
+and `fast`, run in the two workspaces of development: the root module, which builds the
+add-on modules and the consumers, and the ruleset with its own tests.
+"""
+
+load("./work.axl", "run", "run_work")
+
+# The workspaces of development, relative to the repository root.
+WORKSPACES = [".", "rules_godot"]
+
+# The checks that are no Bazel targets yet: the lanes' work runs them, where their inputs
+# changed unless every check runs (tools/ci/work.py).
+TOOL_CHECKS = [
+    "lint:gdscript",
+    "lint:markdown",
+    "generated",
+    "gazelle",
+    "conventions",
+    "docs",
+    "contracts:desktop",
+]
+
+# `bazel test` with no test among the targets, such as a tier a workspace has none of.
+_NO_TESTS = 4
+
+# The flags of each test tier: `fast` leaves out the tests that start a Godot process
+# (RG026), `all` runs every test this host can run.
+TIERS = {
+    "fast": ["--config=fast"],
+    "all": ["--build_tests_only"],
+}
+
+def bazel_tests(ctx: TaskContext, flags) -> int:
+    """Run `bazel test //...` with the flags in each workspace, one after the other.
+
+    Args:
+        ctx: the running task's context.
+        flags: the flags of the command.
+
+    Returns:
+        0, or the first workspace's failing exit code.
+    """
+    root = ctx.std.env.aspect_root_dir()
+    for workspace in WORKSPACES:
+        code = (
+            ctx.std.process.command("bazel")
+                .args(["test"] + list(flags) + ["//..."])
+                .current_dir(root + "/" + workspace)
+                .spawn()
+                .wait()
+                .code
+        )
+        if code not in (0, _NO_TESTS):
+            return code
+    return 0
+
+def _steps(ctx: TaskContext, steps):
+    """Run named steps in order; stop at the first failure unless asked to keep going."""
+    failed = []
+    for name, step in steps:
+        ctx.task.phase(name, description = name)
+        if step() != 0:
+            failed.append(name)
+            if not ctx.args.keep_going:
+                break
+    if failed:
+        return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
+    return 0
+
+def run_checks(ctx: TaskContext, every: bool):
+    """Run every check and the fast tests.
+
+    Args:
+        ctx: the running task's context, with the `keep_going` argument.
+        every: whether every check runs on the whole tree, as CI's do, or only the formatter
+            on the changed files and the tool checks whose inputs changed since the merge
+            base with origin/main, as the pre-push hook's do.
+
+    Returns:
+        The task's conclusion.
+    """
+    aspect = ctx.std.env.current_exe()
+    scope = ["--scope=all"] if every else []
+    since = None if every else "origin/main"
+    return _steps(ctx, [
+        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"] + scope)),
+        ("bazel", lambda: bazel_tests(ctx, ["--config=check"] + TIERS["fast"])),
+        ("tools", lambda: run_work(ctx, changed_since = since, *TOOL_CHECKS)),
+        ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
+    ])
+
+def _check_impl(ctx: TaskContext):
+    return run_checks(ctx, ctx.args.all)
+
+check = task(
+    implementation = _check_impl,
+    summary = "Run every check and the fast tests: formatting, lint, generated files, conventions, API documentation, Code Health.",
+    args = {
+        "all": args.boolean(default = False, description = "Check the whole tree and every tool check, as CI does, not only what changed since origin/main"),
+        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+    },
+)
+
+def _test_impl(ctx: TaskContext) -> int:
+    return bazel_tests(ctx, TIERS[ctx.args.tier])
+
+tests = task(
+    implementation = _test_impl,
+    summary = "Run a tier of tests in the root module and the ruleset: fast (default) or all this host can run.",
+    args = {
+        "tier": args.string(default = "fast", values = TIERS.keys(), description = "fast: every test that starts no Godot process; all: every test"),
+    },
+)
+
+def _fix_impl(ctx: TaskContext):
+    aspect = ctx.std.env.current_exe()
+    return _steps(ctx, [
+        ("format", lambda: run(ctx, aspect, ["format", "--severity=info"])),
+        ("generate", lambda: run(ctx, aspect, ["generate"])),
+    ])
+
+fix = task(
+    implementation = _fix_impl,
+    summary = "Format the changed files and regenerate the lock and generated files the checks compare.",
+    args = {
+        "keep_going": args.boolean(default = False, short = "k", description = "Run every step even after one fails"),
+    },
+)

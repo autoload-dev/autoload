@@ -256,10 +256,6 @@ def contracts(lane: str) -> Work:
 # The ruleset's consumer scenarios, by package.
 SCENARIOS = "//e2e/rules_godot"
 
-# The ruleset's fast tests, which `aspect pre-push` runs: every test but those that start a
-# Godot process, the smoke tests included (rules_godot/.bazelrc, RG026).
-FAST_TEST_COMMAND = "bazel test --config=fast //..."
-
 PATCHED_ENGINE = (
     f"bazel test {SCENARIOS}/patched_engine/tests:app_runs_patched_engine_test"
     f" {SCENARIOS}/patched_engine/tests:app_build_profile_test"
@@ -396,8 +392,6 @@ WORK = (
     # The repository tooling's tests but the API documentation's, which the docs work runs;
     # the examples' and scenarios' tests run in the desktop lane.
     Work("test:tools", "quality", ".", ("bazel test -- //tools/... -//tools/docs/...",)),
-    # The ruleset's fast tests.
-    Work("test:fast", None, RULESET_DIR, (FAST_TEST_COMMAND,)),
     # The API inventory and the documentation of its public entrypoints, and the contract
     # cases that need no SDK.
     Work(

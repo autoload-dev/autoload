@@ -61,6 +61,11 @@ build:buildbuddy --workspace_status_command="bash buildbuddy_status.sh"
 # Tell this module's invocations apart in BuildBuddy's history and trends.
 build:buildbuddy --build_metadata=TAGS=autoload_dev
 
+# The fast tests, which `aspect check` and the pre-push hook run: every test but those that
+# start a Godot process (RG026), the smoke tests included; the ruleset's .bazelrc has its own.
+test:fast --build_tests_only
+test:fast --test_tag_filters=-godot_process
+
 # CI's lanes write ci.bazelrc at the repository root to set --config=ci (shared.bazelrc);
 # git ignores it.
 try-import %workspace%/ci.bazelrc

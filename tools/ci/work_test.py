@@ -21,9 +21,7 @@ from tools.apps.apps import lanes as app_lanes
 from tools.ci.changes import Changes, changes_since
 from tools.ci.lanes import LANES
 from tools.ci.work import (
-    FAST_TEST_COMMAND,
     ROOT,
-    RULESET_DIR,
     WORK,
     In,
     Work,
@@ -89,12 +87,6 @@ class WorkTest(unittest.TestCase):
         for name in ("ios:addon:widget", "ios:addons", "desktop:addon:widget"):
             self.assertIsNone(work[name].bazel_profile, name)
         self.assertTrue(work["android:addon:gadget"].android)
-
-    def test_fast_tests_run_in_the_ruleset_only_when_named(self) -> None:
-        # The root module's tests are test:tools, the API documentation's are docs.
-        fast = all_work(self.root)["test:fast"]
-        self.assertIsNone(fast.lane)
-        self.assertEqual([In(RULESET_DIR, FAST_TEST_COMMAND)], fast.steps())
 
     def test_the_manifests_name_only_lanes_ci_runs(self) -> None:
         for named in (choices()["lanes"], app_lanes()):
@@ -214,11 +206,15 @@ class CallersTest(unittest.TestCase):
         """The Aspect tasks name work; a renamed piece fails here."""
         names = set()
         for task in (ROOT / ".aspect").glob("*.axl"):
-            for call in re.findall(r"run_work\(ctx, ([^)]*)\)", task.read_text()):
+            text = task.read_text()
+            for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
                 # Keyword arguments, such as changed_since, name no work.
                 call = re.sub(r'\w+ = "[^"]*"', "", call)
                 names.update(re.findall(r'"([^"]+)"', call))
-        self.assertLessEqual({"test:fast", "android:setup"}, names)
+            # The tool checks of `aspect check`, a list it passes on.
+            for listed in re.findall(r"TOOL_CHECKS = \[([^\]]*)\]", text):
+                names.update(re.findall(r'"([^"]+)"', listed))
+        self.assertLessEqual({"conventions", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
 
@@ -361,7 +357,7 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual([], self.run_steps("gazelle", "rules_godot/tools/pck.py"))
 
     def test_some_work_always_runs(self) -> None:
-        for name in ("conventions", "test:fast", "test:tools"):
+        for name in ("conventions", "test:tools"):
             self.assertEqual(all_work(ROOT)[name].steps(), self.run_steps(name), name)
 
     def test_without_changes_every_step_runs(self) -> None:

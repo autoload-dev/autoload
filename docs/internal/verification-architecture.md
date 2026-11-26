@@ -192,8 +192,9 @@ analysis test.
 
 Size says nothing about the cost of a test's build, so it does not select the fast tests.
 A test whose build or run starts a Godot process carries the `godot_process` tag
-([RG026](conventions.md#rg026)); the ruleset's fast tests, `bazel test --config=fast //...`,
-which the pre-push hook runs, are every other test. The `smoke` tag marks the few
+([RG026](conventions.md#rg026)); the fast tests, `bazel test --config=fast //...` in the
+root module and the ruleset, which `aspect check` and the pre-push hook run, are every other
+test. The `smoke` tag marks the few
 integration tests that run with them anyway, as Bazel's encyclopedia defines it: run before
 committing code changes. A smoke test carries no `godot_process` tag. Keep it to an
 end-to-end path whose failure the other fast tests would miss.
