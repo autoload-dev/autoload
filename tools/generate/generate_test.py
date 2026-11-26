@@ -83,18 +83,37 @@ class GenerateTest(unittest.TestCase):
             self.assertEqual(1, generate.pins())
         self.assertIn("does not use_repo", stderr.getvalue())
 
-    def test_the_pin_check_covers_only_the_pinned_recipes(self) -> None:
+    def test_the_pinned_engines_are_those_declared_with_a_lock_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            engine = root / "examples/engines/simulation"
-            engine.mkdir(parents=True)
-            lock = engine / "simulation.lock.json"
+            (root / "MODULE.bazel").write_text(
+                'engines = use_extension("@r//godot:extensions.bzl", "godot_engines")\n'
+                'engines.engine(name = "godot", version = "4.7.2")\n'
+                "engines.engine(\n"
+                '    name = "simulation",\n'
+                '    lock_file = "//examples/engines/sim:godot_simulation.lock.json",\n'
+                ")\n"
+                'engines.engine(name = "packed", lock_file = "//:packed.lock.json")\n'
+                'engines.engine(name = "bare", lock_file = "//bare")\n'
+            )
+            self.assertEqual(
+                (
+                    (
+                        "simulation",
+                        root / "examples/engines/sim/godot_simulation.lock.json",
+                    ),
+                    ("packed", root / "packed.lock.json"),
+                    ("bare", root / "bare/bare"),
+                ),
+                generate.pinned_engines(root),
+            )
+
+    def test_the_pin_check_covers_only_the_pinned_recipes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "simulation.lock.json"
             lock.write_text(
                 '{"recipes": {"macos_arm64_editor": {}, "linux_x86_64_editor": {}}}'
             )
-            (root / "examples/engines/other").mkdir()
-            (root / "examples/engines/other/README.md").write_text("")
-            self.assertEqual((("simulation", lock),), generate.pinned_engines(root))
             self.assertEqual(
                 [
                     "@@ext+simulation_linux_x86_64_editor//:engine_library",

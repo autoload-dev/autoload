@@ -178,6 +178,12 @@ def literals(keywords: dict[str, ast.expr]) -> dict[str, Any]:
     return values
 
 
+def label_path(root: Path, label: str) -> Path:
+    """The file a label of the module at root names, such as //pkg:file or //pkg for //pkg:pkg."""
+    package, _, name = label.removeprefix("//").partition(":")
+    return root / package / (name or Path(package).name)
+
+
 def bazelrc_options(root: Path, module: str) -> Iterator[tuple[str, str]]:
     """
     Each word of a module's `.bazelrc` and the files it imports, with its `file:line`.

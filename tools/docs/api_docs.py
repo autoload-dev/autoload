@@ -10,7 +10,7 @@ from typing import Any
 
 from tools.conventions.environment import nested_tool_environment
 from tools.docs.ruleset import INVENTORY
-from tools.setup.modules import RULESET
+from tools.setup.modules import RULESET, label_path
 
 ROLES = (
     "PUBLIC_APIS",
@@ -21,10 +21,6 @@ ROLES = (
 
 def module_label(path: Path) -> str:
     return f"//{path.parent.as_posix()}:{path.name}"
-
-
-def module_path(root: Path, label: str) -> Path:
-    return root / label.removeprefix("//").replace(":", "/")
 
 
 def package(label: str) -> str:
@@ -94,7 +90,7 @@ def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
     for label in list(inventory["SUPPORT_MODULES"]) + list(
         inventory["CROSS_REPOSITORY_MODULES"]
     ):
-        path = module_path(root, label)
+        path = label_path(root, label)
         if not path.is_file():
             continue
         calls = [
@@ -124,7 +120,7 @@ def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
     # This is a syntax check, not Starlark evaluation. Real exports and
     # attribute schemas are obtained independently from Bazel's evaluated extractor.
     for label in inventory["PUBLIC_APIS"]:
-        path = module_path(root, label)
+        path = label_path(root, label)
         if not path.is_file():
             continue
         for node in ast.parse(path.read_text()).body:
