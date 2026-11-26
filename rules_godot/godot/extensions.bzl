@@ -25,8 +25,9 @@ load(
 # ==== godot_engines ===========================================================
 
 _ENGINE_ATTR = attr.string(doc = """
-    Name of the engine the hub's components belong to, such as `petri`; builds select it
-    with `--@autoload_rules_godot//godot:engine=petri`, and only then do these components fill
+    Name of the engine the hub's components belong to, such as `simulation`; targets select
+    it with their `engine` attribute, such as `engine = "simulation"`, or a build with
+    `--@autoload_rules_godot//godot:engine=simulation`, and only then do these components fill
     slots. Empty, the default, joins the default engine.
     """)
 
@@ -128,10 +129,6 @@ _SOURCE_BUILD_ATTRS = {
     "patch_strip": attr.int(doc = "Leading path components removed from patch filenames.", default = 1),
     "renderers": attr.string_list(
         doc = "Godot's rendering methods every recipe's engine runs, as for godot_engine_build.",
-    ),
-    "build_profile": attr.label(
-        doc = "A Godot build profile (.gdbuild) every recipe applies, as for godot_engine_build.",
-        allow_single_file = [".gdbuild"],
     ),
     "build_options": attr.string_dict(doc = "Upstream configure options, as for godot_engine_build."),
     "build_name": attr.string(doc = "Build name the engines report in their version.", default = "custom"),

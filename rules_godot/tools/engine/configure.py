@@ -229,43 +229,6 @@ def profile_options_digest(profile: Path) -> str:
     return "sha256:" + digest_of({"disabled_build_options": options}) if options else ""
 
 
-def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
-    """
-    Fail for a build profile that is no JSON object or contradicts the recipe's options.
-
-    SCons applies a profile's disabled_build_options before the platform's configuration,
-    so a contradiction would silently override what the recipe asks for.
-    """
-    profiled = build_profile.build_options(build_profile.read_profile(profile))
-    requested = dict(option.partition("=")[::2] for option in options)
-    conflicts = sorted(
-        f"{key}={_option_value(value)} (build_options: {requested[key]})"
-        for key, value in profiled.items()
-        if key in requested and _option_value(value) != _option_value(requested[key])
-    )
-    if conflicts:
-        raise ValueError(
-            "The build profile contradicts the recipe's build_options: "
-            + ", ".join(conflicts)
-        )
-
-
-def require_known_options(profile: Path, known: Collection[str]) -> None:
-    """
-    Fail for a build profile that sets options this Godot version's SCons does not have.
-
-    SCons assigns each of a profile's disabled_build_options whatever its name, so a name
-    this version lacks, such as an option of a later version, would change nothing.
-    """
-    options = build_profile.build_options(build_profile.read_profile(profile))
-    unknown = sorted(set(options) - set(known))
-    if unknown:
-        raise ValueError(
-            "The build profile sets options this Godot version does not have: "
-            + ", ".join(unknown)
-        )
-
-
 PROTECTED_OPTIONS = {
     "platform",
     "arch",
@@ -280,8 +243,8 @@ PROTECTED_OPTIONS = {
     # The recipe's explicit iOS environment owns the SDK axis.
     "simulator",
     "ios_simulator",
-    # Raw file paths would be undeclared inputs; use patches, build_options or the
-    # recipe's build_profile attribute instead.
+    # Raw file paths would be undeclared inputs; use patches, build_options or an
+    # application's build profile instead.
     "profile",
     "build_profile",
 }
@@ -309,6 +272,50 @@ def check_options(options: Iterable[str]) -> None:
             )
         if _is_controlled_option(key, bool(separator)):
             raise ValueError(f"Option is controlled by rules_godot: {option}")
+
+
+def require_consistent_profile(profile: Path, options: Iterable[str]) -> None:
+    """
+    Fail for a build profile that is no JSON object, sets an option the ruleset owns or
+    contradicts the recipe's options.
+
+    SCons assigns each of a profile's disabled_build_options over the command line's, so
+    such an option would silently override what the recipe or Bazel's settings ask for. A
+    profile may switch modules, as the editor's profiles do.
+    """
+    profiled = build_profile.build_options(build_profile.read_profile(profile))
+    check_options(
+        f"{key}={value}"
+        for key, value in profiled.items()
+        if not (key.startswith("module_") and key.endswith("_enabled"))
+    )
+    requested = dict(option.partition("=")[::2] for option in options)
+    conflicts = sorted(
+        f"{key}={_option_value(value)} (build_options: {requested[key]})"
+        for key, value in profiled.items()
+        if key in requested and _option_value(value) != _option_value(requested[key])
+    )
+    if conflicts:
+        raise ValueError(
+            "The build profile contradicts the recipe's build_options: "
+            + ", ".join(conflicts)
+        )
+
+
+def require_known_options(profile: Path, known: Collection[str]) -> None:
+    """
+    Fail for a build profile that sets options this Godot version's SCons does not have.
+
+    SCons assigns each of a profile's disabled_build_options whatever its name, so a name
+    this version lacks, such as an option of a later version, would change nothing.
+    """
+    options = build_profile.build_options(build_profile.read_profile(profile))
+    unknown = sorted(set(options) - set(known))
+    if unknown:
+        raise ValueError(
+            "The build profile sets options this Godot version does not have: "
+            + ", ".join(unknown)
+        )
 
 
 # The modules a recipe names when it names none and does not start from Godot's defaults.
@@ -1813,8 +1820,6 @@ def _prepare(args: argparse.Namespace, root: Path) -> None:
         renderers=[method for method in args.renderers.split(",") if method],
         modules=list(args.modules),
     )
-    # The class generator falls back to the recipe's own profile in every variant.
-    args.recipe_profile = args.build_profile
     args.registered_profile = False
     args.runtime_profiles = [label for label, _ in args.runtime_profile]
 

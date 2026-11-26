@@ -137,31 +137,16 @@ def _profile(root: Path, name: str, content: dict) -> Path:
 class ClassProfileTest(unittest.TestCase):
     def test_an_application_profile_names_the_disabled_classes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
             app = _profile(
-                root, "app.gdbuild", {"disabled_classes": ["Tree", "GraphEdit"]}
+                Path(directory),
+                "app.gdbuild",
+                {"disabled_classes": ["Tree", "GraphEdit"]},
             )
-            recipe = _profile(root, "recipe.gdbuild", {"disabled_classes": ["Node3D"]})
-            spec = with_class_profile(_CLASS_SPEC, app, recipe)
+            spec = with_class_profile(_CLASS_SPEC, app)
             self.assertEqual(spec["sources"], [{"value": ["Tree", "GraphEdit"]}])
             self.assertEqual(spec["targets"], _CLASS_SPEC["targets"])
-
-    def test_without_an_application_profile_the_recipes_classes_apply(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            recipe = _profile(
-                root,
-                "recipe.gdbuild",
-                {
-                    "disabled_classes": ["Node3D"],
-                    "disabled_build_options": {"disable_3d": True},
-                },
-            )
-            self.assertEqual(
-                with_class_profile(_CLASS_SPEC, None, recipe)["sources"],
-                [{"value": ["Node3D"]}],
-            )
-            self.assertEqual(with_class_profile(_CLASS_SPEC, None, None), _CLASS_SPEC)
+            # Without an application's profile, the engine keeps every class.
+            self.assertEqual(with_class_profile(_CLASS_SPEC, None), _CLASS_SPEC)
 
     def test_an_unregistered_application_profile_with_build_options_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -177,9 +162,9 @@ class ClassProfileTest(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError, r"disable_3d.*MODULE\.bazel.*runtime_profile\(profile"
             ):
-                with_class_profile(_CLASS_SPEC, app, None, registration)
+                with_class_profile(_CLASS_SPEC, app, registration)
             # A registered runtime profile's variant compiles its options.
             self.assertEqual(
-                with_class_profile(_CLASS_SPEC, app, None)["sources"],
+                with_class_profile(_CLASS_SPEC, app)["sources"],
                 [{"value": ["Tree"]}],
             )

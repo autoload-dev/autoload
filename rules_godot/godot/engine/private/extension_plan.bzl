@@ -277,7 +277,6 @@ _SOURCE_RUNTIME_POLICY = {
     "patches": [],
     "patch_strip": 1,
     "renderers": [],
-    "build_profile": None,
     "build_options": {},
     "build_name": "custom",
     "python": None,

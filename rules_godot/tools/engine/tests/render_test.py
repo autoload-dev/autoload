@@ -220,11 +220,9 @@ class ClassProfileRenderTest(unittest.TestCase):
             "sources": [{"value": []}],
         }
 
-        attributes = generator_rule(spec, {}, "_build_profile.gdbuild").attrs
+        attributes = generator_rule(spec, {}).attrs
         self.assertIs(attributes["class_profile"], True)
-        self.assertEqual(attributes["recipe_profile"], "_build_profile.gdbuild")
-        self.assertNotIn("recipe_profile", generator_rule(spec, {}, "").attrs)
-        other = generator_rule(spec | {"function": "make_authors_header"}, {}, "x")
+        other = generator_rule(spec | {"function": "make_authors_header"}, {})
         self.assertNotIn("class_profile", other.attrs)
         # Its name follows its first output, the same in every runtime variant.
         self.assertEqual(other.name, "_generate__core__disabled_classes.gen.h")
@@ -297,7 +295,6 @@ def _variant_args(**changes: object) -> argparse.Namespace:
         "customizations": {},
         "renderers": [],
         "engine_renderers": [],
-        "recipe_profile": "",
         "registered_profile": False,
         "runtime_profiles": ["@@//app:small.gdbuild", "@@//app:new.gdbuild"],
         "build_profile_label": "@rules_godot//godot/private:build_profile_label",

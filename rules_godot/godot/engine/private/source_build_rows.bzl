@@ -175,7 +175,7 @@ def recipe_declarations(name, source, plan, common, lock_file = None, runtime_pr
         source: Label of the `:source.json` descriptor of a godot_engine_source repository.
         plan: A plan_rows result.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            custom_modules, patches, patch_strip, renderers, build_profile, build_options, build_name, python and
+            custom_modules, patches, patch_strip, renderers, build_options, build_name, python and
             configure_timeout.
         lock_file: Optional Label of the lock file that pins every recipe.
         runtime_profiles: The engine's registered runtime profiles: each label string's
@@ -245,7 +245,7 @@ def source_build_declarations(name, source, platforms, cpus, build_targets, ios_
         build_targets: As for select_rows.
         ios_environments: As for select_rows.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            custom_modules, patches, patch_strip, renderers, build_profile, build_options, build_name, python and
+            custom_modules, patches, patch_strip, renderers, build_options, build_name, python and
             configure_timeout.
         lock_file: Optional Label of the lock file that pins every recipe; the hub then
             declares `:pin`, which writes it.

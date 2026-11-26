@@ -131,29 +131,31 @@ Editor recipes reject options that apply to templates only, such as `disable_3d`
 
 ## 4. Use a build profile
 
-A build profile removes single classes. Godot's editor writes one: **Project → Tools →
-Engine Compilation Configuration Editor**, then **Detect from Project**, then save the
-`.gdbuild` file into your repository and pass its label:
+A build profile removes single classes from one application's runtime. Godot's editor writes
+one: **Project → Tools → Engine Compilation Configuration Editor**, then **Detect from
+Project**, then save the `.gdbuild` file into your repository and pass its label to the
+application:
 
 ```starlark
-    build_profile = "//engines:game.gdbuild",
+godot_app(
+    name = "app",
+    pack = ":pack",
+    build_profile = "release.gdbuild",
 )
 ```
 
 Detection reads the project's scenes, resources and scripts. It does not see classes that
 code creates by name or that only some paths of the game load. Review the list, and add
 back what the game needs: an application that loads a disabled class fails when it loads
-it, not at build time. A profile's `disabled_build_options` must agree with the recipe's
-`build_options` and `renderers`.
+it, not at build time. Tests, imports and the editor keep every class; see
+[an application's build profile](engine.md#an-applications-build-profile).
 
 A profile that only disables classes needs no pin: the class list reaches the engine's class
-generator when it runs, and only the sources that register classes recompile. It can also
-sit on the application instead of the source build: `godot_app`'s `build_profile` reduces
-that application's runtime only, while tests and the editor keep every class; see
-[an application's build profile](engine.md#an-applications-build-profile). A profile with
-build options does so too once `MODULE.bazel` registers it with
+generator when it runs, and only the sources that register classes recompile. A profile with
+build options, such as `disable_3d`, needs `MODULE.bazel` to register it with
 `godot_engines.runtime_profile`, which gives the engine's runtime recipes a variant with
-those options; see [build options in a build profile](engine.md#build-options-in-a-build-profile).
+those options; its options must agree with the recipe's `build_options` and `renderers`. See
+[build options in a build profile](engine.md#build-options-in-a-build-profile).
 
 ### Derive the profile from the project
 

@@ -93,6 +93,28 @@ class ConfigureRecipeTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not readable JSON"):
                 require_consistent_profile(profile, [])
 
+    def test_a_build_profile_may_not_set_options_the_ruleset_owns(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "size.gdbuild"
+            for option, message in (
+                ("platform", "controlled by rules_godot: platform"),
+                ("target", "controlled by rules_godot: target"),
+                ("build_profile", "controlled by rules_godot: build_profile"),
+                ("optimize", "optimize=web follows the build's settings"),
+                ("lto", "lto=web follows the build's settings"),
+            ):
+                with self.subTest(option=option):
+                    profile.write_text(
+                        json.dumps({"disabled_build_options": {option: "web"}})
+                    )
+                    with self.assertRaisesRegex(ValueError, message):
+                        require_consistent_profile(profile, [])
+            # A profile switches modules, which a recipe's build_options may not.
+            profile.write_text(
+                json.dumps({"disabled_build_options": {"module_gridmap_enabled": False}})
+            )
+            require_consistent_profile(profile, [])
+
     def test_a_build_profile_may_only_set_options_godot_has(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             profile = Path(directory) / "size.gdbuild"

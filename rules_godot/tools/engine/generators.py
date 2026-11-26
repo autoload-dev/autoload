@@ -43,15 +43,14 @@ _FIXED = frozenset({"outs", "class_profile"})
 def generator_rule(
     spec: Mapping[str, Any],
     inputs: Mapping[str, str],
-    recipe_profile: str,
     registered: bool = False,
 ) -> Rule:
     """
     Return one generator's rule.
 
-    The generator of core/disabled_classes.gen.h reads the class list of a build profile when
-    it runs: the application's, which godot_app's build_profile selects, or else the
-    recipe's own, so a profile's classes need no pin. In a runtime variant's graph the
+    The generator of core/disabled_classes.gen.h reads the class list of the application's
+    build profile, which godot_app's build_profile selects, when it runs, so a profile's
+    classes need no pin. In a runtime variant's graph the
     application's profile is a registered runtime profile, which may set build options.
     """
     attributes: dict[str, object] = {
@@ -61,8 +60,6 @@ def generator_rule(
     }
     if spec["function"] == "disabled_class_builder":
         attributes["class_profile"] = True
-        if recipe_profile:
-            attributes["recipe_profile"] = recipe_profile
         if registered:
             attributes["registered_profile"] = True
     return Rule("godot_source_generator", generator_name(spec), attributes, _FIXED)
@@ -71,7 +68,6 @@ def generator_rule(
 def generator_rules(
     generators: Sequence[tuple[dict[str, Any], set[str]]],
     python_files: Sequence[str],
-    recipe_profile: str,
     registered: bool = False,
 ) -> tuple[list[Rule], list[str]]:
     """
@@ -86,7 +82,7 @@ def generator_rules(
         # A script's SCsub is needed for inspection provenance, but its captured
         # function is executed alone by tools/engine/generator.py.
         inputs[spec["code_file"]] = spec["code_file"]
-        rules.append(generator_rule(spec, inputs, recipe_profile, registered))
+        rules.append(generator_rule(spec, inputs, registered))
         generated_headers.extend(
             name for name in spec["targets"] if Path(name).suffix not in SOURCE_SUFFIXES
         )

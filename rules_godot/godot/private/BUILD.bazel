@@ -133,7 +133,7 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
-# No build profile: the class generator keeps the recipe's own.
+# No build profile: the class generator keeps every class.
 filegroup(
     name = "no_build_profile",
     srcs = [],

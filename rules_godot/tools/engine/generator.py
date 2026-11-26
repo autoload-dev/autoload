@@ -95,28 +95,23 @@ def value_of(source: dict[str, Any]) -> object:
 
 def with_class_profile(
     spec: dict[str, Any],
-    application: Path | None,
-    recipe: Path | None,
+    profile: Path | None,
     registration: str = "",
 ) -> dict[str, Any]:
     """
     Return the class generator's specification with the disabled classes of a build profile.
 
-    An application's profile replaces the recipe's own. Build options shape the engine's
-    graph, so an application's profile may set them only as a registered runtime profile,
-    whose runtime variant has its own graph; registration, the MODULE.bazel line that
-    registers it, names one that is not.
+    The profile is the application's. Build options shape the engine's graph, so it may set
+    them only as a registered runtime profile, whose runtime variant has its own graph;
+    registration, the MODULE.bazel line that registers it, names one that is not.
     """
-    profile = application or recipe
     if profile is None:
         return spec
     data = read_profile(profile)
-    # The recipe's own profile and a registered runtime profile may set build options.
-    checked = application is not None and registration
-    options = sorted(build_options(data)) if checked else []
+    options = sorted(build_options(data)) if registration else []
     if options:
         raise ValueError(
-            f"The build profile {application} sets {', '.join(options)}, build "
+            f"The build profile {profile} sets {', '.join(options)}, build "
             "options that need a runtime variant of the engine. Register the profile in "
             f"MODULE.bazel: {registration}"
         )
@@ -186,9 +181,8 @@ def main() -> None:
     parser.add_argument("--spec", required=True)
     parser.add_argument("--input", action="append", default=[])
     parser.add_argument("--output", action="append", default=[])
-    # The build profiles of the class generator: the application's, then the recipe's.
+    # The application's build profile, whose classes the class generator leaves out.
     parser.add_argument("--class-profile", type=Path)
-    parser.add_argument("--recipe-profile", type=Path)
     # The MODULE.bazel line that registers the application's profile, which is no
     # registered runtime profile and so may only disable classes.
     parser.add_argument("--registration", default="")
@@ -197,7 +191,6 @@ def main() -> None:
         with_class_profile(
             json.loads(Path(args.spec).read_text()),
             args.class_profile,
-            args.recipe_profile,
             args.registration,
         ),
         dict(value.split("=", 1) for value in args.input),

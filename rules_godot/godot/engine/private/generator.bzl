@@ -86,11 +86,10 @@ def _generator_impl(ctx):
     _add_files(args, "--output", zip(ctx.attr.logical_outputs, outputs))
     _add_profile(args, "--class-profile", ctx.attr.class_profile)
     _add_registration(args, ctx)
-    _add_profile(args, "--recipe-profile", ctx.attr.recipe_profile)
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
-        inputs = depset([ctx.file.spec] + ctx.files.inputs + ctx.files.class_profile + ctx.files.recipe_profile),
+        inputs = depset([ctx.file.spec] + ctx.files.inputs + ctx.files.class_profile),
         outputs = outputs,
         mnemonic = "GodotGenerate",
         # One cache key in every configuration with --experimental_output_paths=strip.
@@ -123,10 +122,6 @@ _godot_source_generator = rule(
             doc = "The application's build profile, //godot/private:build_profile, for the class generator; no file without one.",
             allow_files = True,
         ),
-        "recipe_profile": attr.label(
-            doc = "The recipe's own build profile, whose classes apply without an application's.",
-            allow_single_file = [".gdbuild"],
-        ),
         "registered_profile": attr.bool(
             doc = "Whether the application's build profile is a registered runtime profile, which may set build options; its runtime variant selects true.",
         ),
@@ -139,7 +134,7 @@ _godot_source_generator = rule(
     },
 )
 
-def godot_source_generator(name, spec, inputs, outs, class_profile = False, recipe_profile = None, registered_profile = False, **kwargs):
+def godot_source_generator(name, spec, inputs, outs, class_profile = False, registered_profile = False, **kwargs):
     """
     Declare one upstream source generator as a hermetic Bazel action.
 
@@ -162,7 +157,6 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, reci
         outs: Declared output paths, also used as upstream logical output paths.
         class_profile: Whether the generator writes core/disabled_classes.gen.h, whose class
             list comes from the application's build profile when one is set.
-        recipe_profile: The recipe's own build profile, whose classes apply otherwise.
         registered_profile: Whether the application's build profile is a registered runtime
             profile, which may set build options: a select() on the runtime variants.
         **kwargs: Common attributes, such as tags.
@@ -174,7 +168,6 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, reci
         outs = outs,
         logical_outputs = outs,
         class_profile = BUILD_PROFILE if class_profile else None,
-        recipe_profile = recipe_profile,
         registered_profile = registered_profile,
         visibility = ["//visibility:private"],
         **kwargs

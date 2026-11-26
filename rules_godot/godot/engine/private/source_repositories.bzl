@@ -97,14 +97,9 @@ def _unpinned_message(ctx):
         "can execute actions for %s recipes, such as one with remote execution"
     ) % (ctx.attr.name, ctx.attr.lock_file, ctx.attr.lock_key, ctx.attr.repin, ctx.attr.platform)
 
-# Where a recipe's build profile lies in its repository, which is also Godot's source root.
-_BUILD_PROFILE = "_build_profile.gdbuild"
-
 def _pin_sources(ctx):
     """The globs of the recipe repository's files a pin action copies into its source tree."""
     sources = ["_custom_modules/**", "_scons/**"]
-    if ctx.attr.build_profile:
-        sources.append(_BUILD_PROFILE)
     if ctx.attr.runtime_profiles:
         sources.append("_variant_*.gdbuild")
     return sources
@@ -136,28 +131,21 @@ def _write_profile(ctx, path, profile, version):
     options = profile_options(profile.get("disabled_build_options", {}), version)
     ctx.file(path, json.encode_indent(profile | {"disabled_build_options": options}) + "\n")
 
-def _recipe_profile(ctx, version):
-    """Write the recipe's build profile to the source root, where SCons reads it, if any."""
-    if not ctx.attr.build_profile:
-        return {}
-    profile = json.decode(ctx.read(ctx.path(ctx.attr.build_profile)))
-    _write_profile(ctx, _BUILD_PROFILE, profile, version)
-    return profile
-
 # Where a recipe without a lock file configures its runtime variants, one pin each.
 _VARIANT_PINS = "_variant_pins"
 
-def _variant_profiles(ctx, recipe, version):
+def _variant_profiles(ctx, version):
     """
     Write each runtime variant's build profile and return its runtime profile and path.
 
-    A variant's profile has the recipe's own build options with its runtime profile's; its
-    classes stay with the application, whose profile the class generator reads.
+    A variant's profile has its runtime profile's build options, which configure beside the
+    recipe's build_options; its classes stay with the application, whose profile the class
+    generator reads.
     """
     variants = []
     for index, label in enumerate(sorted(ctx.attr.runtime_profiles)):
         path = "_variant_%d.gdbuild" % index
-        options = recipe.get("disabled_build_options", {}) | json.decode(ctx.attr.runtime_profiles[label])
+        options = json.decode(ctx.attr.runtime_profiles[label])
         _write_profile(ctx, path, {"type": "build_profile", "disabled_build_options": options}, version)
         variants.append((label, path))
     return variants
@@ -250,8 +238,7 @@ godot_recipe_pin(
 
 def _pin_targets(ctx, descriptor, arguments, variants):
     """The :pin target of the recipe and the :pin_variant_<n> target of each runtime variant."""
-    profile = _profile_arguments(_BUILD_PROFILE if ctx.attr.build_profile else "")
-    return _pin_target(ctx, descriptor, arguments + profile) + "".join([
+    return _pin_target(ctx, descriptor, arguments) + "".join([
         _pin_target(ctx, descriptor, arguments + _profile_arguments(path), name = "pin_variant_%d" % index)
         for index, (_, path) in enumerate(variants)
     ])
@@ -428,10 +415,8 @@ def engine_build_impl(ctx, *, _fail = fail):
         return None
     for patch in ctx.attr.patches:
         command.extend(["--patch", str(ctx.path(patch))])
-    recipe = _recipe_profile(ctx, descriptor["version"])
-    variants = _variant_profiles(ctx, recipe, descriptor["version"])
-    profile = _profile_arguments(_BUILD_PROFILE if recipe else "")
-    command = command + profile + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
+    variants = _variant_profiles(ctx, descriptor["version"])
+    command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
     result = ctx.execute(command, timeout = ctx.attr.configure_timeout, quiet = True)
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))

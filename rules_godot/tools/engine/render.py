@@ -606,7 +606,7 @@ def _sources(
         for generator in graph["generators"]
     ]
     rules, generated_headers = generator_rules(
-        generators, _python_files(tree), args.recipe_profile, args.registered_profile
+        generators, _python_files(tree), args.registered_profile
     )
     generated = generated_files(tree.root, (spec for spec, _ in generators))
     return rules, generated, object_groups(groups, generated_headers, generated)

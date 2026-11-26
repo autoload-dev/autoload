@@ -258,36 +258,17 @@ defaults, which include `text_server_adv`. Editor builds also include upstream's
 `freetype`, `regex` and `svg` modules. Misspelled modules, cycles, unreadable dynamic
 dependency declarations and modules rejected by Godot's configuration fail with an error.
 
-`build_profile` takes a Godot build profile, a `.gdbuild` file such as the editor's
-Engine Compilation Configuration writes. Its `disabled_classes` leave those classes out of
-the engine, so linking drops their code; an application whose scenes, resources or scripts
-need a disabled class fails when it loads them. Its `disabled_build_options` must agree with
-`build_options`: a profile that sets an option the recipe sets differently fails
-configuration. Its `disabled_build_options` are part of a lock file's pins; its
-`disabled_classes` are not: the generator of `core/disabled_classes.gen.h` reads them when
-it runs, so a profile that only disables classes needs no pin, and changing its class list
-needs no repin. A `godot_app` can disable classes of its own runtime the same way; see
-[an application's build profile](#an-applications-build-profile).
-Changing its `disabled_classes` recompiles only the sources that register classes: when the
-engine's `core/object/class_db.h` includes the profile as upstream does, rules_godot lets it
-include the profile only in the sources whose includes reach a `GDREGISTER_*` macro or
-`GD_IS_CLASS_ENABLED`, and any other source that evaluates a class's state fails to compile
-instead of ignoring the profile.
-
-```starlark
-godot_engines.source_build(
-    name = "my_engine",
-    source = "@godot_sources//:source.json",
-    platforms = ["ios"],
-    build_profile = "//engines:game.gdbuild",
-)
-```
+A source build takes no build profile. Options that the editor and every runtime of the
+engine share belong in `build_options`, `enabled_modules` and `renderers`; classes and
+options that cut one game's runtime belong in that application's
+[build profile](#an-applications-build-profile), so the editor, imports and tests keep
+them.
 
 Patches use the host `patch` executable with fuzz disabled and strip level 1
 (`patch_strip`); every hunk must apply. `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
-simulator switch, module selection, raw `profile` and `build_profile` paths (use the
-`build_profile` attribute),
+simulator switch, module selection, raw `profile` and `build_profile` paths (an
+application's [build profile](#an-applications-build-profile) takes their place),
 `optimize` and `lto`, which follow the [optimization](#optimization) settings, and
 `debug_symbols`, which follows Bazel's flags as in [debug symbols](#debug-symbols). Generator actions use hermetic Python 3.14.
 Builders must read literal keys from `env` or pass it directly to named Python
@@ -362,8 +343,8 @@ Without a Linux execution platform, such as a remote executor, a Mac cannot pin 
 recipes; a Linux CI job can run the same command.
 
 Each pin records the digest of what its graph depends on: the archive, the patches, the
-recipe's platform, CPU, target, modules and options, its build profile's build options
-(not its class list), its build name, the SCons release and
+recipe's platform, CPU, target, modules and options, for a runtime variant its runtime
+profile's build options (not its class list), its build name, the SCons release and
 rules_godot code that capture the graph, and of each custom module its `SCsub`,
 `config.py` and shader sources and the paths of its other files. A recipe whose digest no
 longer matches, after such a change or a rules_godot upgrade that changes that code,
@@ -538,11 +519,13 @@ godot_app(
 ```
 
 The class list reaches the generator of `core/disabled_classes.gen.h` as an input when it
-runs: no recipe is configured or repinned. The application's profile replaces the class list
-of the recipe's own `build_profile`. Only the sources that register classes read the profile;
-the engine's other objects reach the runtime through a rule that resets the application's
-profile, so applications with different profiles share them and compile only those sources
-and their link again.
+runs: no recipe is configured or repinned. Only the sources that register classes read the
+profile; the engine's other objects reach the runtime through a rule that resets the
+application's profile, so applications with different profiles share them and compile only
+those sources and their link again. When the engine's `core/object/class_db.h` includes the
+profile as upstream does, rules_godot lets it include the profile only in the sources whose
+includes reach a `GDREGISTER_*` macro or `GD_IS_CLASS_ENABLED`, and any other source that
+evaluates a class's state fails to compile instead of ignoring the profile.
 
 The runtime must be built from source, such as a [source build](#declare-a-source-build) or
 the runtimes a [prebuilt engine](#use-a-prebuilt-engine) builds from its release's
@@ -564,7 +547,7 @@ godot_engines.runtime_profile(profile = "//game:release.gdbuild")
 
 Every runtime recipe of that engine, of its source builds and of the runtimes its prebuilt
 engines build from source, then declares a runtime variant: the recipe configured with the
-recipe's own build options and the profile's. The variant lives in the recipe's repository
+recipe's own build options with the profile's beside them. The variant lives in the recipe's repository
 beside the recipe's own graph; the targets the two declare alike keep one label, and the
 attributes that differ select on the application's profile. An application whose
 `build_profile` names the registered file gets the variant; other applications keep the
@@ -589,11 +572,13 @@ With a [lock file](#pin-the-recipes), each variant has its own pin beside its re
 `bazel run @<hub>//:pin` writes both, and an application that selects a variant without a
 current pin fails with that command. Without one, the recipe's repository configures each
 variant before the recipe. A profile that names an option the recipe's Godot version does
-not have, whose options contradict the recipe's `build_options`, or that disables a module
-the recipe's `enabled_modules` names leaves that recipe without the variant: the
-applications that select it fail with the reason, and the recipe's other applications build
-as before; with a lock file, pinning that variant fails with the reason. `module_<name>_enabled` switches custom modules too, those a recipe enables
-through `default_modules`.
+not have, sets an option rules_godot controls, as `build_options` may not (`platform`,
+`target` or `optimize`, for example; module switches are the profile's to set), whose
+options contradict the recipe's `build_options`, or that disables a module the recipe's
+`enabled_modules` names leaves that recipe without the variant: the applications that
+select it fail with the reason, and the recipe's other applications build as before; with a
+lock file, pinning that variant fails with the reason. `module_<name>_enabled` switches
+custom modules too, those a recipe enables through `default_modules`.
 
 A recipe reads a profile's options as its Godot version does. The switches the editor writes
 that the version's build lacks, such as 4.7's `rendering_device`, are left out, and an
