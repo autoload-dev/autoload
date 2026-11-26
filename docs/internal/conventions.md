@@ -591,6 +591,15 @@ unreviewed computed macro names separately. Exit status `1` indicates convention
 `2` indicates an incomplete audit. The work `conventions` of the `quality` lane runs this
 command, and the pre-push hook runs that work.
 
+The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
+`XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
+listed files and the contents of each, but for code that builds compile and assets they
+package, such as Python, GDScript, C++ or images, which count by name only
+([cache.py](../../tools/conventions/cache.py)). While none of that changes, a run starts no
+Bazel server, and the rules evaluate the cached evidence as always. A failed query is never
+cached; an entry whose external repositories are gone from the output base misses, and only
+the entries of the most recent loading inputs are kept.
+
 Run one rule independently or list the registered rules:
 
 ```sh

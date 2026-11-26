@@ -6,6 +6,7 @@ decodes their output.
 Sections: Workspace, Starlark syntax, Bazel evidence, Source labels, Context.
 """
 
+import functools
 import io
 import json
 import os
@@ -368,19 +369,32 @@ class Buildozer:
 # ==== Bazel evidence ==========================================================
 
 
-def location(root: Path, base: Path, value: str) -> Location:
-    """Resolve a ``path:line:column`` value; relative paths start at base."""
-    path, line, _column = value.rsplit(":", 2)
+@functools.cache
+def _workspace_name(root: Path, base: Path, path: str) -> str:
+    """
+    A source path relative to root, through symbolic links; relative paths start at base.
+    Many rules share a BUILD file, so each path resolves once.
+    """
     source = Path(path)
     if not source.is_absolute():
         source = base / source
     source = source.resolve()
-    name = (
+    return (
         source.relative_to(root).as_posix()
         if source.is_relative_to(root)
         else str(source)
     )
-    return Location(name, int(line))
+
+
+@functools.cache
+def _is_file(path: Path) -> bool:
+    return path.is_file()
+
+
+def location(root: Path, base: Path, value: str) -> Location:
+    """Resolve a ``path:line:column`` value; relative paths start at base."""
+    path, line, _column = value.rsplit(":", 2)
+    return Location(_workspace_name(root, base, path), int(line))
 
 
 def repository_root(root: Path, module: Module, rule: ET.Element) -> Path:
@@ -406,7 +420,7 @@ def generator_location(
     if not origin:
         return None
     resolved = location(root, repository_root(root, module, rule), origin)
-    return resolved if (root / resolved.path).is_file() else None
+    return resolved if _is_file(root / resolved.path) else None
 
 
 @dataclass(frozen=True)

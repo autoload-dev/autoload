@@ -5,28 +5,32 @@ import os
 import sys
 from pathlib import Path
 
+from tools.addons.modules import module_name
 from tools.conventions.bazel import Bazel, Scope
+from tools.conventions.cache import QueryCache, cache_directory, loading_inputs
 from tools.conventions.context import Buildozer, Context, Workspace, run_tool
 from tools.conventions.framework import run
 from tools.conventions.registry import select
 from tools.setup.modules import is_addon_module
 
 
-def development_bazel(workspace: Workspace, buildozer: Buildozer) -> Bazel:
+def development_bazel(workspace: Workspace) -> Bazel:
     """
     Load the modules in two workspaces: the ruleset in its own, whose development dependencies
     only it sees, and the add-on modules in the root module's, which depends on each of them
-    under its module name.
+    under its module name (RG015). The queries' output is cached while nothing that loading
+    reads changes.
     """
     root = workspace.root
     return Bazel(
         root,
         {
-            module: Scope(root, buildozer.module_name(module))
+            module: Scope(root, module_name(module.path.name))
             if is_addon_module(module.path)
             else Scope(root / module.path)
             for module in workspace.loaded_modules
         },
+        QueryCache(cache_directory(), lambda: loading_inputs(workspace)),
     )
 
 
@@ -50,7 +54,7 @@ def main() -> int:
         ).splitlines()
         workspace = Workspace(root, tuple(files))
         buildozer = Buildozer(root, args.buildozer.resolve())
-        context = Context(workspace, buildozer, development_bazel(workspace, buildozer))
+        context = Context(workspace, buildozer, development_bazel(workspace))
         report = run(context, rules)
     # Evidence tools raise EvidenceError, a ValueError.
     except (ValueError, OSError) as error:

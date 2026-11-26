@@ -75,17 +75,9 @@ class Report:
         )
 
 
-def run(context: Context, rules: Iterable[Rule]) -> Report:
-    """Give each rule the same snapshot; never reinterpret its policy or applicability."""
-    rules = tuple(rules)
-    ids = [rule.info.id for rule in rules]
-    if len(ids) != len(set(ids)):
-        raise ValueError("Convention rule IDs must be unique")
-    diagnostics = [
-        Diagnostic(rule.info, finding)
-        for rule in rules
-        for finding in rule.evaluate(context)
-    ]
+def report(diagnostics: Iterable[Diagnostic]) -> Report:
+    """Sort diagnostics for stable output; a repeated one is a rule defect and aborts."""
+    diagnostics = list(diagnostics)
     # A repeated finding is a rule defect; hiding it would mask wrong applicability.
     duplicates = [str(item) for item, count in Counter(diagnostics).items() if count > 1]
     if duplicates:
@@ -105,4 +97,17 @@ def run(context: Context, rules: Iterable[Rule]) -> Report:
                 ),
             )
         )
+    )
+
+
+def run(context: Context, rules: Iterable[Rule]) -> Report:
+    """Give each rule the same snapshot; never reinterpret its policy or applicability."""
+    rules = tuple(rules)
+    ids = [rule.info.id for rule in rules]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Convention rule IDs must be unique")
+    return report(
+        Diagnostic(rule.info, finding)
+        for rule in rules
+        for finding in rule.evaluate(context)
     )
