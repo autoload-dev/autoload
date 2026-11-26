@@ -1,5 +1,0 @@
-// How this repository verifies the application (tools/apps/App.pkl).
-amends "../../tools/apps/App.pkl"
-
-// Its suites run in an editor built from the engine sources with its module.
-lanes = List("source-engine")

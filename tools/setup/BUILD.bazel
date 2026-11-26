@@ -8,7 +8,6 @@ py_library(
     visibility = [
         "//tools/addons:__pkg__",
         "//tools/android:__pkg__",
-        "//tools/apps:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
         "//tools/docs:__pkg__",

@@ -32,7 +32,7 @@ common --extra_execution_platforms=@bazel_tools//tools:host_platform
 common:host-execution --extra_execution_platforms=@bazel_tools//tools:host_platform
 
 # --config=ci fails a command when the module's MODULE.bazel.lock is stale, rather than rewrite
-# it. Only the root module and the ruleset check theirs in; CI's lanes set the config for
+# it. Only the root module and the ruleset check theirs in; CI's host jobs set the config for
 # every command there through ci.bazelrc (.github/workflows/ci.yml), since a server whose
 # lockfile mode changes reloads every package. `aspect generate` regenerates the files.
 common:ci --lockfile_mode=error
@@ -65,7 +65,7 @@ build:lint --output_groups=lint_checks
 build:lint --norun_validations
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
-# start a Godot process (RG026) or need a mobile lane's toolchains, the desktop smoke tests
+# start a Godot process (RG026) or need a mobile operating system's toolchains, the desktop smoke tests
 # included, which `aspect check` and the pre-push hook run. all: every test this host can
 # run. Both leave out the tests that build an engine from source (source_engine).
 test:fast --build_tests_only
@@ -75,7 +75,7 @@ test:all --test_tag_filters=-source_engine
 
 # CI's host jobs (`aspect ci <host>`, .aspect/develop.axl): every test of a module but those
 # that build an engine from source, which the Source engine workflow runs, and those of the
-# other host's mobile lane. A test tagged `android` runs in the Linux job, one tagged `ios`
+# other host's mobile operating system. A test tagged `android` runs in the Linux job, one tagged `ios`
 # in the macOS job; tests without either run in both, on each host's desktop system.
 test:ci-linux --build_tests_only
 test:ci-linux --test_tag_filters=-source_engine,-ios

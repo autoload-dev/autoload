@@ -17,7 +17,7 @@ permissions:
 # (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
 # their repository cache and Bazel servers between jobs and share a Bazel cache server with
 # their host.
-# Policy: docs/internal/verification-platforms.md#apple-lanes.
+# Policy: docs/internal/verification-platforms.md#apple-hosts.
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;

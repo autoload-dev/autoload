@@ -105,7 +105,6 @@ py_library(
         ":framework_lib",
         ":per_file_lib",
         "//tools/addons:new_lib",
-        "//tools/apps:apps_lib",
         "//tools/pkl:evaluate_lib",
     ],
 )

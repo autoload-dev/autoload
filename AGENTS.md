@@ -4,7 +4,7 @@ This repository is the Autoload monorepo: tooling and support for the Godot ecos
 component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module, which is never published, holds the
-repository's own tooling in `tools/`: the lanes' work, add-on scaffolding, setup checks,
+repository's own tooling in `tools/`: the named CI work, add-on scaffolding, setup checks,
 formatting, linting, the conventions check and the checks of the ruleset's API documentation,
 which the ruleset's tests run. It also holds
 the consumers of the components, which it reaches through `local_path_override`: the Godot
@@ -52,7 +52,7 @@ aspect tests                              # the fast tests of the root module an
 aspect fix                                # format the changed files, regenerate BUILD declarations and what the checks compare
 aspect ci linux                           # what CI's Linux job runs (macos for the macOS job's)
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
-aspect work lint lint:ruleset             # lint Python, Markdown and GDScript: the root module with the add-ons, the ruleset
+bazel build --config=lint -- //...        # lint Python, Markdown and GDScript, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
 bazel run //tools/gazelle:update          # regenerate the BUILD declarations Gazelle maintains
@@ -65,8 +65,8 @@ RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a larg
 `aspect help` lists the tasks. Use `aspect exec --` before direct commands that need the
 repository environment (the Android variables, Bazel's Python as `python3`). For the tools a
 checkout needs and for missing prerequisites, read [toolchain
-setup](docs/internal/verification-recipes.md#toolchains). For the lanes and review readiness,
-read [lanes](docs/internal/verification-platforms.md). BuildBuddy is a regular
+setup](docs/internal/verification-recipes.md#toolchains). For the host jobs and review readiness,
+read [verification hosts](docs/internal/verification-platforms.md). BuildBuddy is a regular
 option for builds and tests; choose between local and remote runs with [when remote
 execution pays off](docs/internal/verification-recipes.md#when-remote-execution-pays-off).
 For its configs, Bazel flags per task and a personal `user.bazelrc`, read [remote

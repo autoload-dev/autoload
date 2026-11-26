@@ -67,7 +67,7 @@ fi
 # A profile keeps the work of one Bazel configuration, such as android, in an output base and
 # server of its own, so desktop and mobile work keep their analysis instead of discarding each
 # other's (docs/internal/verification-recipes.md#profiles). AUTOLOAD_BAZEL_PROFILE names it,
-# as the lanes' work sets it; the default profile is the workspace's own output base. A
+# as the named work sets it; the default profile is the workspace's own output base. A
 # profile's base lies in the same output user root, named by the MD5 of the default base or
 # workspace and the profile, so `aspect output-bases` and `aspect gc` treat it like any other.
 # Its server exits after AUTOLOAD_BAZEL_PROFILE_IDLE_SECONDS without a command. Profiles

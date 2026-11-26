@@ -13,7 +13,7 @@ load("./work.axl", "run", "run_work", "spawn")
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
 
-# The checks that are no Bazel targets: the lanes' work runs them whole (tools/ci/work.py).
+# The checks that are no Bazel targets: the named work runs them whole (tools/ci/work.py).
 TOOL_CHECKS = [
     "generated",
     "gazelle",
@@ -139,18 +139,15 @@ check = task(
 # the checks that are no Bazel targets.
 CI_CHECKS = ["format"] + TOOL_CHECKS
 
-# The add-on generator's self-tests, a fresh module's lanes.
-SELFTESTS = ["desktop:addon-template", "android:addon-template", "ios:addon-template"]
-
 def _ci_steps(ctx: TaskContext, host: str):
-    """A host's CI job: on Linux every check and the lint, then the host's tests and self-tests.
+    """A host's CI job: on Linux every check and the lint, then the host's tests and self-test.
 
     The tests are every test of both workspaces that the host's config `ci-<host>` selects
-    (shared.bazelrc); the add-on generator's self-tests run each lane of a fresh module.
+    (shared.bazelrc); the add-on generator's self-test tests a fresh module the same way.
     """
     linux = host == "linux"
 
-    # The ruleset's desktop set includes its Android packaging tests, and analysing its
+    # The ruleset's tests include its Android packaging tests, and analysing its
     # targets needs the NDK, so both hosts' Bazel commands need the pinned SDK, which the
     # setup provisions; the Aspect CLI's environment keeps ANDROID_HOME empty until then
     # (.aspect/config.axl).
@@ -161,8 +158,7 @@ def _ci_steps(ctx: TaskContext, host: str):
     ]
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
-        # Each runs where its work allows it (tools/ci/work.py).
-        ("selftests", lambda: run_work(ctx, *SELFTESTS)),
+        ("selftest", lambda: run_work(ctx, "addon-template")),
     ])
 
 def _ci_task(host: str, summary: str):
@@ -173,8 +169,17 @@ def _ci_task(host: str, summary: str):
         args = {"keep_going": KEEP_GOING},
     )
 
-linux = _ci_task("linux", "Run CI's Linux job: every check, then every test but the iOS lane's.")
-macos = _ci_task("macos", "Run CI's macOS job: every test but the Android lane's.")
+linux = _ci_task("linux", "Run CI's Linux job: every check, then every test but those tagged ios or source_engine.")
+macos = _ci_task("macos", "Run CI's macOS job: every test but those tagged android or source_engine.")
+
+def _source_engine_impl(ctx: TaskContext) -> int:
+    return run_work(ctx, "source-engine:full")
+
+source_engine = task(
+    group = ["ci"],
+    implementation = _source_engine_impl,
+    summary = "Run the Source engine workflow's job: every test that builds an engine from source.",
+)
 
 def _test_impl(ctx: TaskContext) -> int:
     return bazel_tests(ctx, ["--config=" + ctx.args.tier])

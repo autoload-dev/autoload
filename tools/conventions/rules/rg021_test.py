@@ -18,7 +18,7 @@ class NoGodotRunsInAddonModulesTest(RepositoryTest):
         self.write(
             "addons/widget/addon.pkl",
             'amends "../../tools/addons/Addon.pkl"\n'
-            'lanes = List("desktop")\n'
+            "apps = false\n"
             'testOperations = List("widget_test")\n',
         )
         self.write("addons/widget/widget/BUILD.bazel", "")

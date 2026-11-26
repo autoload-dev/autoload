@@ -1,9 +1,9 @@
 name: Source engine
 
-# The only CI run of the source-engine lane: it builds and runs every source-engine case
+# The only CI run of the source-engine tests: it builds and runs every source-engine case
 # on main on the schedule below, on any branch on manual dispatch, and on a pull request
 # labelled `source-engine` when it is labelled and on each push while it has the label.
-# Merges leave the lane out. Policy:
+# Merges leave them out. Policy:
 # docs/internal/verification-platforms.md#source-engine-workflow.
 on:
   schedule:
@@ -45,8 +45,11 @@ jobs:
         with:
           # The ruleset's source_engine tests include Android source builds.
           android-cache: "true"
+      # A stale MODULE.bazel.lock fails the job's Bazel commands (--config=ci, shared.bazelrc).
+      - name: Check MODULE.bazel.lock
+        run: echo "common --config=ci" > ci.bazelrc
       - name: Run apps with source-built engines
-        run: aspect work source-engine:full
+        run: aspect ci source-engine
       - name: Save Bazel downloads
         if: ${{ !cancelled() }}
         uses: ./.github/actions/setup/save-downloads

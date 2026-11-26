@@ -87,17 +87,9 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.module("widget")
         amends = 'amends "../../tools/addons/Addon.pkl"\n'
         for text, message in (
-            (amends + 'lanes = List("host")\n', "does not evaluate"),
-            (
-                amends + 'lanes = List("desktop")\ndesktops = List()\n',
-                "does not evaluate",
-            ),
-            (amends + 'desktops = List("macos")\n', "does not evaluate"),
-            (
-                amends + 'lanes = List("desktop")\nplatforms = List()\n',
-                "does not evaluate",
-            ),
-            ('lanes = List("desktop")\n', "starts with amends"),
+            (amends + 'apps = "no"\n', "does not evaluate"),
+            (amends + "platforms = List()\n", "does not evaluate"),
+            ("apps = false\n", "starts with amends"),
         ):
             with self.subTest(text=text):
                 self.write("addons/widget/addon.pkl", text)
@@ -138,7 +130,7 @@ class AddonModuleLayoutTest(RepositoryTest):
             self.evaluate(),
         )
 
-    def test_example_projects_define_the_targets_the_lanes_build(self) -> None:
+    def test_example_projects_define_their_targets(self) -> None:
         self.module("widget")
         build = "examples/addons/widget/BUILD.bazel"
         self.write(
@@ -146,11 +138,11 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
 
-    def test_a_module_without_application_lanes_needs_no_app(self) -> None:
+    def test_a_module_without_applications_needs_no_app(self) -> None:
         self.module("widget")
         self.write(
             "addons/widget/addon.pkl",
-            'amends "../../tools/addons/Addon.pkl"\nlanes = List("desktop")\n',
+            'amends "../../tools/addons/Addon.pkl"\napps = false\n',
         )
         build = "examples/addons/widget/BUILD.bazel"
         self.write(

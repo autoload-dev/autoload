@@ -1,4 +1,4 @@
-# The Aspect CLI's tasks, which name pieces of the lanes' work.
+# The Aspect CLI's tasks, which name pieces of the named work.
 filegroup(
     name = "aspect_tasks",
     srcs = glob([".aspect/*.axl"]),

@@ -33,14 +33,10 @@ py_binary(
     deps = [":new_lib"],
 )
 
-# A module's lane work, which tools/ci/work.py runs for each add-on module, and the
-# generator's self-test, which runs a lane of a fresh module.
+# The generator's self-test, which tests a fresh module as CI's job of this host does.
 py_library(
-    name = "lanes_lib",
-    srcs = [
-        "lanes.py",
-        "selftest.py",
-    ],
+    name = "selftest_lib",
+    srcs = ["selftest.py"],
     deps = [":new_lib"],
 )
 
@@ -54,14 +50,10 @@ py_library(
         "//:bcr_metadata",
     ],
     visibility = [
-        "//tools/apps:__pkg__",
         "//tools/ci:__pkg__",
         "//tools/conventions:__pkg__",
     ],
-    deps = [
-        ":new_lib",
-        "//tools/apps:apps_lib",
-    ],
+    deps = [":new_lib"],
 )
 
 py_test(
@@ -85,18 +77,11 @@ py_test(
 )
 
 py_test(
-    name = "lanes_test",
-    size = "small",
-    srcs = ["lanes_test.py"],
-    deps = [":lanes_lib"],
-)
-
-py_test(
     name = "selftest_test",
     size = "small",
     srcs = ["selftest_test.py"],
     deps = [
-        ":lanes_lib",
+        ":selftest_lib",
         ":test_support",
     ],
 )
@@ -107,8 +92,6 @@ filegroup(
     srcs = [
         "declarations.py",
         "declarations_test.py",
-        "lanes.py",
-        "lanes_test.py",
         "modules.py",
         "new.py",
         "new_test.py",

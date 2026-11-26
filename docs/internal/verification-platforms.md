@@ -1,6 +1,6 @@
-# Verification lanes
+# Verification hosts
 
-Read this page when deciding which lanes a change needs locally, preparing a change for review, or changing
+Read this page when deciding which tests a change needs locally, preparing a change for review, or changing
 verification tooling. The [verification policy](verification.md) owns timing, TDD and reuse;
 [recipes](verification-recipes.md) describe setup and individual fixtures.
 
@@ -16,26 +16,27 @@ Godot features are covered from one passing cell.
 |---|---|---|---|
 | Linux desktop: ruleset behavior and desktop app | Linux CI; local Linux for focused feedback | CI runner CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
 | macOS desktop: ruleset behavior and desktop app | macOS CI; local macOS for focused feedback | Host CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
-| Source-built engines | Source-engine lane: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
-| Android packaging | The ruleset's tests in the Linux and macOS desktop sets, with SDK/NDK and Java 21; the Android lane on Linux CI for the consumer | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle; the Android API contract cases in the ruleset's tests |
-| Android release symbols | The desktop sets, with Android packaging | Optimized native compilation, debug information and stripping, selected by the test's transition | Match retained symbols/Build IDs/DWARF to delivered libraries |
-| iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS desktop set; the iOS lane for the consumer | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the source-engine lane | Build-output tests of configured products; the consumer's iOS smoke app; the iOS API contract cases in the ruleset's macOS tests; a device link is not a provisioned device IPA |
-| iOS release symbols | The macOS desktop set, with iOS packaging | Optimized build, stripping and dSYM, selected by the test's transition | Match executable/dSYM UUIDs and expected native libraries |
+| Source-built engines | Source engine workflow: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
+| Android packaging | The ruleset's tests in the Linux and macOS host jobs, with SDK/NDK and Java 21; the consumer's tests tagged `android` in the Linux job | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle; the Android API contract cases in the ruleset's tests |
+| Android release symbols | The host jobs, with Android packaging | Optimized native compilation, debug information and stripping, selected by the test's transition | Match retained symbols/Build IDs/DWARF to delivered libraries |
+| iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS job; the consumer's tests tagged `ios` in the macOS job | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the Source engine workflow | Build-output tests of configured products; the consumer's iOS smoke app; the iOS API contract cases in the ruleset's macOS tests; a device link is not a provisioned device IPA |
+| iOS release symbols | The macOS job, with iOS packaging | Optimized build, stripping and dSYM, selected by the test's transition | Match executable/dSYM UUIDs and expected native libraries |
 | Mobile operating-system behavior | Matching Android device/emulator or iOS device/simulator | One representative environment for the changed operating-system behavior | Focused runtime acceptance only if that behavior or explicit feature acceptance requires it |
 | Signing/distribution | Appropriate identity, provisioning and environment | Configuration explicitly selected for the task | Only the signing/distribution operation in scope; never infer Store acceptance |
 
-Each test runs in one lane. The ruleset's tests, its Android and iOS build-output tests
-included, run in the desktop sets (the work `test:bazel` provisions the Android SDK); the
-source-engine lane runs those tagged `source_engine`, which build an engine from source. The
-ruleset's `.bazelrc` leaves them out of every build and test unless `--config=source-engine`
-selects them, so the desktop sets do not analyze their source recipes; one named by its label
-runs only with that config too. CI runs the lane only
-in the [Source engine](#source-engine-workflow) workflow; locally, `aspect work source-engine`
+Each test runs in the host jobs that its tags select. The ruleset's tests, its Android and
+iOS build-output tests included, run in both host jobs, which provision the Android SDK; the
+Source engine workflow runs those tagged `source_engine`, which build an engine from source.
+The ruleset's `.bazelrc` leaves them out of every build and test unless `--config=source-engine`
+selects them, so the host jobs do not analyze their source recipes; one named by its label
+runs only with that config too. CI runs them only in the
+[Source engine](#source-engine-workflow) workflow; locally, `aspect work source-engine`
 runs `--config=source-engine-main`, which leaves out the tests also tagged
 `source_engine_extended`.
-The Android and iOS lanes run the scenarios' mobile smoke tests. The API contract cases
-are tests of the ruleset ([API documentation](verification-recipes.md#api-documentation)):
-the desktop sets run those that need the Android SDK or macOS.
+The tests tagged `android` and `ios` are the scenarios' mobile smoke tests and the mobile
+release builds. The API contract cases are tests of the ruleset
+([API documentation](verification-recipes.md#api-documentation)): the host jobs run those
+that need the Android SDK or macOS.
 
 The matrix separates **host**, **operating system of the application**, **CPU/ABI**,
 **engine origin and version**, **build mode/optimization/symbols**, **execution venue** and
@@ -56,81 +57,85 @@ archive, generator and build contracts; changing an extension API baseline requi
 compatibility checks. Package/symbol cases cover their specific contracts without replaying
 all source suites in every release configuration.
 
-## Lanes and execution
+## Host jobs and execution
 
-CI runs every lane on every run: pull requests, the merge queue and a manual dispatch.
+CI runs both host jobs on every run: pull requests, the merge queue and a manual dispatch.
 Bazel's caches keep unchanged work cheap. [CI](../../.github/workflows/ci.yml) has one job
-per host, each `aspect ci <host>`: `linux` runs the quality, desktop and android lanes,
-`macos` the desktop and ios lanes. Bazel selects each host's tests by tag: the configs
-`ci-linux` and `ci-macos` of [shared.bazelrc](../../shared.bazelrc) run every test with
-`--build_tests_only` but those tagged `source_engine` and those of the other host's mobile
-lane. A test that needs the Android lane's machine is tagged `android`, one that needs the
-iOS lane's `ios`; a mobile release build is such a test through its `<name>.build_test`
+per host, each `aspect ci <host>`: `linux` and `macos`. Each starts with the Android SDK's
+setup; `linux` then runs the formatter, the checks that are no Bazel targets (`generated`,
+`gazelle`, `conventions`) and `bazel build --config=lint` over every target. Bazel selects
+each host's tests by tag: the configs `ci-linux` and `ci-macos` of
+[shared.bazelrc](../../shared.bazelrc) run every test with `--build_tests_only` but those
+tagged `source_engine` and those of the other host's mobile operating system. A test that
+needs Linux's Android toolchains is tagged `android`, one that needs macOS's iOS toolchains
+`ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
 hosts, compatibility permitting. The root module and the ruleset each run one `bazel test`,
 one after the other, the root module's over its add-on modules too: two servers that fetch
-the same repository at once can fail to move it into the shared repository contents cache. On
-Linux the formatter, the checks that are no Bazel targets and the lint check of every
-target run first; the add-on generator's self-tests follow, each lane's in a server of its
-own. The merge queue requires both jobs, `Linux` and `macOS`, by name. The matrix fails
+the same repository at once can fail to move it into the shared repository contents cache. The
+add-on generator's self-test follows, in a server of its own: it tests a fresh module with
+`--config=ci-<host>` and, on Linux, its `bcr/smoke` module. The merge queue requires both
+jobs, `Linux` and `macOS`, by name. The matrix fails
 fast: the first job to fail cancels the other, so it frees its runner and the merge queue
 removes the entry without waiting for the slower job; the work it finished stays in
 Bazel's caches.
 
-The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
-each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
-self-test in each add-on lane. Locally, `aspect ci <host>` runs a host's job,
-`aspect work <name>...` single pieces, and `aspect work` lists them. Where a piece is one Bazel command, the documentation shows that
-command instead. The pre-push hook runs the checks that need no lane machine, as the
-[verification policy](verification.md#when-to-verify) describes.
+The named work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the pieces that are no
+single Bazel command, such as the checks that are no Bazel targets, the Android SDK's setup,
+the add-on generator's self-test and the source-engine cases. Locally, `aspect ci <host>`
+runs a host's job, `aspect work <name>...` single pieces, and `aspect work` lists them. Where
+a piece is one Bazel command, the documentation shows that command instead. The
+[tiers](../../shared.bazelrc) `fast` (no test tagged `godot_process`, `source_engine`,
+`android` or `ios`) and `all` (every test but those tagged `source_engine`) select the
+tests of `aspect tests --tier=<tier>`. The pre-push hook runs the checks and the `fast` tier,
+as the [verification policy](verification.md#when-to-verify) describes.
 
-A lane needs its prerequisites and must not silently succeed because it was invoked on an
-unsuitable host; Android work provisions the pinned SDK first. `--build_tests_only` finds new
-test targets without building unrelated app targets; Bazel still respects manual tags and
-platform compatibility.
+Work that needs the Android SDK provisions the pinned SDK first and must not silently succeed
+because it was invoked on an unsuitable host. `--build_tests_only` finds new test targets
+without building unrelated app targets; Bazel still respects manual tags and platform
+compatibility.
 
-Each application of `examples/` runs in the lanes its `app.pkl` names, as
-[tools/apps/App.pkl](../../tools/apps/App.pkl) defines them.
-
-Each add-on module runs the same generic work in the lanes its `addon.pkl` names. A lane
-runs all of them with one Bazel command as the work `<lane>:addons`, and the work
-`<lane>:addon:<module>` runs one module alone; [add-on guidance](../../addons/AGENTS.md#lanes)
-has the commands. Their iOS work follows the Apple-lane policy below.
+Each application of `examples/` and each add-on module's examples build and test in the same
+jobs. An add-on module declares in its `addon.pkl` whether its examples build applications
+(`apps`): then every example project has an `app`, and its Android and iOS releases are tests
+tagged `android` and `ios` ([add-on guidance](../../addons/AGENTS.md#tests-and-ci)).
+Their iOS tests follow the Apple host policy below.
 
 Python's lint is a Bazel check: `--config=check` adds the aspect `python` of
 [tools/lint/check.bzl](../../tools/lint/check.bzl) to a build or test, which runs Ruff and
 ty on each Python target the build reaches through `deps` and fails it with their reports.
-The work builds only the check's stamps: `lint` in the quality lane covers the root module and
-the add-on modules ([RG027](conventions.md#rg027)), and `lint:ruleset` in the desktop lane the
-ruleset, whose targets need the Android NDK to be analysed.
+`bazel build --config=lint` builds only the check's stamps, in the root module with its
+add-on modules ([RG027](conventions.md#rg027)) and in the ruleset, whose targets need the
+Android NDK to be analysed. `--config=check --config=sources` builds the lint of the
+Markdown, GDScript and per-file convention filegroups only.
 
 ### Source engine workflow
 
-The source-engine lane is the most expensive one and the least likely to change with a
-commit, so CI has no job for it. The
-[Source engine](../../.github/workflows/source-engine.yml) workflow runs the whole lane,
+The source-engine tests are the most expensive and the least likely to change with a
+commit, so CI has no host job for them. The
+[Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them,
 `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
 before it merges, or carries the label `source-engine`, which runs it on each push. Stale
-recipe pins need no dispatch to show: the quality lane's `generated` work, which the
+recipe pins need no dispatch to show: the Linux job's `generated` check, which the
 pre-push hook runs too, analyses each pinned engine's toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
 consumer's patched engine with its custom module, editor included; the tests tagged
-`source_engine_extended`, the stable and beta patched engines and the suites of the
-applications whose `app.pkl` names the lane join them in `source-engine:full`.
+`source_engine_extended`, the stable and beta patched engines and the tests of the
+root module tagged `source_engine` join them in `source-engine:full`.
 
-### Apple lanes
+### Apple hosts
 
-The lanes that need a macOS runner are the Apple lanes: the desktop tests on macOS, the apps
-with source-built engines and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
+The work that needs a macOS runner is the macOS job, with the apps with source-built engines
+and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
 their tools and repository cache on their own disk between jobs and share a Bazel cache
 server on the VM's host with the host's own builds. The VM, its runners and its
 BuildBuddy executor are set up in the private repository `autoload-dev/macos-ci`; a change
 there takes effect through a new image and a replaced VM, done only while no job runs on
-it. CI runs the Apple lanes like the other lanes, on pull requests and in the merge queue.
+it. CI runs the macOS job like the Linux job, on pull requests and in the merge queue.
 CI's `Linux` and `macOS` jobs are the merge queue's required checks: a pull request
 whose jobs fail there leaves the queue and does not reach main. The ruleset of main, which
 requires the merge queue and those checks, is managed in the repository settings. Main receives the merge group's commit unchanged, so its

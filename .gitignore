@@ -6,7 +6,7 @@
 /addons/*/bcr/*/bazel-*
 # Personal Bazel settings every module of this repository imports.
 /user.bazelrc
-# The settings of CI's lanes (shared.bazelrc, --config=ci).
+# The settings of CI's host jobs (shared.bazelrc, --config=ci).
 /ci.bazelrc
 # The Bazel slot a Codex worktree leased (tools/codex/worktree.sh).
 /.bazel-slot
@@ -48,6 +48,6 @@ bazel-remote-grpc.log
 # The add-on examples' local iOS provisioning profiles.
 /examples/addons/*/signing/
 
-# The add-on generator's self-test module (aspect work <lane>:addon-template).
+# The add-on generator's self-test module (aspect work addon-template).
 /addons/selftest/
 /examples/addons/selftest/

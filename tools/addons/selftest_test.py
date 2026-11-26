@@ -16,7 +16,7 @@ class SelfTestTest(RepositoryTestCase):
         self.lock.write_text("{}\n")
 
     def run_lane(self) -> str:
-        """Run the self-test with a lane that returns the segment it ran with."""
+        """Run the self-test with tests that return the segment they ran with."""
         seen = []
 
         def lock(root: object) -> None:
@@ -28,15 +28,16 @@ class SelfTestTest(RepositoryTestCase):
 
         with (
             mock.patch.object(selftest, "update_lock_file", side_effect=lock),
-            mock.patch.object(selftest.lanes, "run", side_effect=lane),
+            mock.patch.object(selftest, "test_module", side_effect=lane),
             mock.patch.object(selftest, "test_registry_module") as registry,
+            mock.patch.object(selftest, "host", return_value="linux"),
         ):
-            selftest.run("desktop", self.root)
+            selftest.run(self.root)
         registry.assert_called_once_with(self.root)
-        self.assertEqual("lock", seen[0], "MODULE.bazel.lock is updated before the lane")
+        self.assertEqual("lock", seen[0], "MODULE.bazel.lock is updated before the tests")
         return seen[1]
 
-    def test_the_lane_runs_with_the_module_declared(self) -> None:
+    def test_the_tests_run_with_the_module_declared(self) -> None:
         self.assertIn('module_name = "autoload_selftest"', self.run_lane())
 
     def test_the_checkout_is_as_before_also_after_an_interrupted_run(self) -> None:

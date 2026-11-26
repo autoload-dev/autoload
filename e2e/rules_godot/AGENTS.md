@@ -12,24 +12,21 @@ builds them as a consumer builds: through the root module's `MODULE.bazel`, with
 |---|---|
 | `smoke/<operating_system>/` | The smoke path of one platform: its own project, extensions and checks, through public labels only |
 | `script_run/`, `patched_engine/` | A focused consumer scenario named after what the user does, with its own project files and native fixtures |
-| `BUILD.bazel` | The mobile suites |
 
 ## Common workflows
 
-From the repository root, the desktop set runs every regression that needs no Android or
-Apple device toolchain:
+From the repository root, this runs every regression scenario that the host's toolchains
+allow:
 
 ```sh
 bazel test //e2e/rules_godot/...
 ```
 
-`aspect work test:regressions` runs the same without the Android SDK, as CI does. Android and
-iOS tests are `manual` and run in mobile suites: `test_suite` targets in `BUILD.bazel`, one
-per operating system. Their applications carry their configuration
-(`godot_configured_app`), so the suites run without `--config`. The `android` and `ios`
-work of their lanes runs them; the [fixture
-catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks) lists the
-suites.
+The Android and iOS tests are tagged `android` and `ios`, and CI's Linux and macOS jobs
+select them by tag (`--config=ci-linux`, `--config=ci-macos`); to run them alone, pass
+`--test_tag_filters=android` or `--test_tag_filters=ios`. Their applications carry their
+configuration (`godot_configured_app`), so they run without `--config`. The [fixture
+catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks) lists them.
 
 For a reproducer or existing fixture, use the relevant entry in the
 [fixture catalogue](../../docs/internal/verification-recipes.md#regression-fixtures) and run

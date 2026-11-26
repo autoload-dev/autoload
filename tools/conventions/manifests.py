@@ -2,14 +2,12 @@
 
 from pathlib import Path
 
-from tools.addons.modules import addon_manifest
+from tools.addons.modules import AddonManifest, addon_manifest
 from tools.conventions.context import Workspace
 from tools.pkl.evaluate import PklError
 
 
-def module_manifest(
-    workspace: Workspace, module: Path
-) -> dict[str, tuple[str, ...]] | None:
+def module_manifest(workspace: Workspace, module: Path) -> AddonManifest | None:
     """
     A module's addon.pkl, or None when it has none or it does not evaluate, which RG015
     reports.

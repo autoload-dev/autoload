@@ -129,7 +129,7 @@ ios_app_test(
         "Frameworks/counter.framework/Info.plist",
         "Frameworks/counter.framework/counter",
     ],
-    # The iOS lane: only CI's macOS job runs it (shared.bazelrc).
+    # Tagged ios: only CI's macOS job runs it (shared.bazelrc).
     tags = [
         "godot_process",
         "ios",
@@ -142,7 +142,7 @@ ios_app_test(
     size = "small",
     app = ":simulator_static_app",
     symbols = ["native_counter_init"],
-    # The iOS lane: only CI's macOS job runs it (shared.bazelrc).
+    # Tagged ios: only CI's macOS job runs it (shared.bazelrc).
     tags = [
         "godot_process",
         "ios",

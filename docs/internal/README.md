@@ -11,7 +11,7 @@ Use the [public guides](../../rules_godot/docs/public/README.md) for supported c
 | [Glossary](glossary.md) | The terms code, documentation and conversation use, and the terms to avoid | Naming a concept, field, attribute or target |
 | [Verification policy](verification.md) | TDD, execution timing, evidence reuse and completion | Making or reviewing a change |
 | [Verification architecture](verification-architecture.md) | Test kinds, placement, boundaries, coverage and altitude | Adding a test or reviewing a change's tests |
-| [Verification lanes](verification-platforms.md) | Representative matrix, the lanes CI runs and the Apple lanes | Operating-system, build or toolchain behavior changes or review readiness |
+| [Verification hosts](verification-platforms.md) | Representative matrix, the host jobs CI runs and the Apple hosts | Operating-system, build or toolchain behavior changes or review readiness |
 | [Verification recipes and fixtures](verification-recipes.md) | Environment setup, API regeneration, runtime acceptance and fixture commands | The specific operation or fixture is needed |
 | [Repository conventions](conventions.md) | The convention rules: their IDs, applicability, automated coverage and limits | Convention meanings or checker behavior changes |
 | [Releasing](releasing.md) | Tagging a release, the release archive and publishing to the Bazel Central Registry | Release or registry automation changes |

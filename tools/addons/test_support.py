@@ -6,28 +6,13 @@ import unittest
 from pathlib import Path
 
 from tools.addons.modules import ROOT, SCHEMA
-from tools.apps.apps import SCHEMA as APP_SCHEMA
 
 
 def copy_schemas(root: Path) -> None:
-    """Copy the schemas each addon.pkl and app.pkl amend to their paths below a root."""
-    for schema in (SCHEMA, APP_SCHEMA):
-        target = root / schema.relative_to(ROOT)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(schema, target)
-
-
-def checkout(root: Path, modules: dict[str, str]) -> None:
-    """A checkout with add-on modules naming their lanes, and the schema they amend."""
-    copy_schemas(root)
-    for module, listed in modules.items():
-        (root / "addons" / module).mkdir(parents=True)
-        (root / "addons" / module / "MODULE.bazel").write_text(
-            f'module(name = "autoload_{module}")\n'
-        )
-        (root / "addons" / module / "addon.pkl").write_text(
-            f'amends "../../tools/addons/Addon.pkl"\nlanes = List({listed})\n'
-        )
+    """Copy the schema each addon.pkl amends to its path below a root."""
+    target = root / SCHEMA.relative_to(ROOT)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(SCHEMA, target)
 
 
 class RepositoryTestCase(unittest.TestCase):
