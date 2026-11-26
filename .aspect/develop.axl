@@ -127,9 +127,13 @@ check = task(
     },
 )
 
+# The checks of CI's Linux job before its Bazel work: the formatter on the whole tree, then
+# the checks that are no Bazel targets.
+CI_CHECKS = ["format"] + TOOL_CHECKS
+
 def _ci_steps(ctx: TaskContext, host: str):
     """A host's CI job: on Linux every check first, then the host's lanes (tools/ci/hosts.py)."""
-    checks = ["format"] + TOOL_CHECKS if host == "linux" else []
+    checks = CI_CHECKS if host == "linux" else []
     return steps(ctx, [(check, lambda check = check: run_work(ctx, check)) for check in checks] + [
         ("bazel", lambda: run_work_tool(ctx, [host], module = "tools.ci.hosts")),
     ])

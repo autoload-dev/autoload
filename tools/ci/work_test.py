@@ -173,9 +173,9 @@ class CallersTest(unittest.TestCase):
             for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
                 names.update(re.findall(r'"([^"]+)"', call))
             # The tool checks of `aspect check`, a list it passes on.
-            for listed in re.findall(r"TOOL_CHECKS = \[([^\]]*)\]", text):
+            for listed in re.findall(r"_CHECKS = \[([^\]]*)\]", text):
                 names.update(re.findall(r'"([^"]+)"', listed))
-        self.assertLessEqual({"conventions", "android:setup"}, names)
+        self.assertLessEqual({"format", "conventions", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
     def test_the_root_lint_names_every_add_on_module(self) -> None:

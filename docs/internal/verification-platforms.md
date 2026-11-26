@@ -108,9 +108,9 @@ commit, so CI has no job for it. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs the whole lane,
 `source-engine:full`, on main on its schedule, and on manual dispatch for any
 branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges. Stale recipe pins need no dispatch to show: the quality lane's
-`generated` work, which the pre-push hook runs too when a change can shape a pin, analyses each pinned engine's
-toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
+before it merges, or carries the label `source-engine`, which runs it on each push. Stale
+recipe pins need no dispatch to show: the quality lane's `generated` work, which the
+pre-push hook runs too, analyses each pinned engine's toolchains, which fails on a pin whose inputs changed, such as rules_godot's graph capture.
 `aspect work source-engine` runs
 locally the cases users depend on most: the runtimes the official artifacts lack, built
 from the release's sources for the iOS arm64 Simulator and for Android, and the
