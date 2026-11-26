@@ -115,7 +115,7 @@ def module_paths(root: Path) -> tuple[str, ...]:
 
 def registry_test_modules(root: Path) -> tuple[str, ...]:
     """
-    The registry test modules of the released modules. No host job builds them in place, so
+    The registry test modules of the released modules. Each is a workspace of its own, so
     module_paths leaves them out; the release archive test runs them (RG020).
     """
     return tuple(

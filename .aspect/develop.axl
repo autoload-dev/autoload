@@ -8,7 +8,7 @@ and `fast`, run in the two workspaces of development: the root module, which bui
 add-on modules and the consumers, and the ruleset with its own tests.
 """
 
-load("./work.axl", "run", "run_work", "spawn")
+load("./work.axl", "python", "run", "run_work", "spawn")
 
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
@@ -136,6 +136,7 @@ CI_CHECKS = ["format"] + TOOL_CHECKS
 def _ci_steps(ctx: TaskContext, host: str):
     """A host's CI job: on Linux every check and the lint, then the host's tests and self-test.
 
+    On Linux every check and the lint run first, on macOS the registry test modules last.
     The tests are every test of both workspaces that the host's config `ci-<host>` selects
     (shared.bazelrc); the add-on generator's self-test tests a fresh module the same way.
     """
@@ -153,7 +154,12 @@ def _ci_steps(ctx: TaskContext, host: str):
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
         ("selftest", lambda: run_work(ctx, "addon-template")),
-    ])
+    ] + ([] if linux else [
+        # The registry test modules in place (tools/ci/release_archive.py), on macOS only:
+        # its persistent runners keep each module's Bazel server warm, where the Linux job
+        # would start a server per module in every run.
+        ("registry", lambda: python(ctx, ["-m", "tools.ci.release_archive", "--in-place"])),
+    ]))
 
 def _ci_task(host: str, summary: str):
     return task(

@@ -4,7 +4,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.ci.release_archive import archive, command, test_module, workspace
+from tools.ci.release_archive import (
+    archive,
+    command,
+    in_place,
+    test_module,
+    workspace,
+)
 
 
 class ReleaseArchiveTest(unittest.TestCase):
@@ -47,6 +53,19 @@ class ReleaseArchiveTest(unittest.TestCase):
             "addons/widget", Path("/tmp/base"), Path("/repo"), registry=True
         )
         self.assertFalse(any(a.startswith("--override_module") for a in released))
+
+    def test_in_place_runs_the_test_module_in_the_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            presubmit = root / ".bcr/addons/widget/presubmit.yml"
+            presubmit.parent.mkdir(parents=True)
+            presubmit.write_text('bcr_test_module:\n  module_path: "bcr/smoke"\n')
+            # The test module's own settings (addons/bcr.bazelrc) name the checkout's
+            # ruleset, and its server stays up for the next run.
+            self.assertEqual(
+                in_place("addons/widget", root),
+                (root / "addons/widget/bcr/smoke", ["bazel", "test", "//..."]),
+            )
 
     def test_each_checkout_extracts_to_a_directory_of_its_own(self) -> None:
         self.assertNotEqual(

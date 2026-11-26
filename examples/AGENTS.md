@@ -36,6 +36,10 @@ inside the display's safe area, clear of notches, the Dynamic Island and system 
 `DisplayServer.get_display_safe_area()` to viewport units and update it when the viewport size
 changes or the window moves.
 
+`godot_app` tags its targets `manual`, so only tests build applications: an application's
+`tests/` package has an `<app>_build_test` for each desktop `godot_app`, and its package
+the mobile releases of [releases.bzl](releases.bzl) for an application that ships to phones.
+
 When adding or moving test targets, read [test ownership](../rules_godot/docs/public/project-layout.md#test-ownership);
 for composition changes, read [target placement](../rules_godot/docs/public/project-layout.md#target-ownership-and-project-context).
 The public layout guide owns those rules; automated conventions cover mechanical structure.

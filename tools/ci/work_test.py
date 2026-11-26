@@ -96,6 +96,13 @@ class CallersTest(unittest.TestCase):
         )
         self.assertLessEqual(names, set(KNOWN))
 
+    def test_the_source_engine_workflow_runs_the_root_s_tests_tagged_source_engine(
+        self,
+    ) -> None:
+        # Such as Lichtpost's slim_app_build_test, whose runtime is built from source.
+        commands = [step.command for step in KNOWN["source-engine:full"].steps()]
+        self.assertIn("bazel test --config=source-engine -- //...", commands)
+
 
 if __name__ == "__main__":
     unittest.main()
