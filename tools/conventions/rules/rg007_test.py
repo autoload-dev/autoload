@@ -61,6 +61,24 @@ class TestOnlyOperationsTest(RepositoryTest):
         self.assertIn("//:tests.case_list", findings[0].message)
         self.assertIn("//:tests.view", findings[1].message)
 
+    def test_a_suite_of_godot_test_fixtures_is_no_test_operation(self) -> None:
+        call = Call(Location("BUILD.bazel", 1), "run_test_suite", frozenset({"name"}))
+        records: list[Record] = [
+            {
+                "name": "//:fixture_run",
+                "path": "BUILD.bazel",
+                "kind": "_godot_test",
+                "strings": {
+                    "generator_function": "run_test_suite",
+                    "generator_name": "suite",
+                },
+                "booleans": {"testonly": False},
+            }
+        ]
+        self.assertEqual(
+            [], list(TestOnlyOperations().evaluate(self.context((call,), records)))
+        )
+
     def test_explicit_false_test_target_is_a_violation(self) -> None:
         call = Call(
             Location("BUILD.bazel", 1), "godot_test", frozenset({"name", "testonly"})
@@ -107,24 +125,6 @@ class TestOnlyOperationsTest(RepositoryTest):
         ]
         self.assertEqual(
             [], list(TestOnlyOperations().evaluate(self.context(calls, records)))
-        )
-
-    def test_a_suite_of_godot_test_fixtures_is_no_test_operation(self) -> None:
-        call = Call(Location("BUILD.bazel", 1), "run_test_suite", frozenset({"name"}))
-        records: list[Record] = [
-            {
-                "name": "//:fixture_run",
-                "path": "BUILD.bazel",
-                "kind": "_godot_test",
-                "strings": {
-                    "generator_function": "run_test_suite",
-                    "generator_name": "suite",
-                },
-                "booleans": {"testonly": False},
-            }
-        ]
-        self.assertEqual(
-            [], list(TestOnlyOperations().evaluate(self.context((call,), records)))
         )
 
     def test_missing_flag_or_generator_evidence_remains_not_checked(self) -> None:

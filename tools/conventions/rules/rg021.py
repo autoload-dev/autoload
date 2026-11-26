@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 from tools.conventions.context import Context, Location, Module, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.rules.rg007 import test_operations
+from tools.conventions.operations import godot_test_operations
 from tools.setup.modules import is_addon_module
 
 # The calls that make a Godot project or run Godot, besides the macros that declare a
@@ -22,7 +22,7 @@ class NoGodotRunsInAddonModules:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         yield from self.projects(context.workspace)
-        kinds = GODOT_RUNS | test_operations(context)
+        kinds = GODOT_RUNS | godot_test_operations(context)
         for module in context.workspace.modules:
             if is_addon_module(module.path):
                 yield from self.runs(context, module, kinds)

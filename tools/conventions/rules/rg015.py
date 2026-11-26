@@ -16,10 +16,8 @@ from tools.addons.new import template_files
 from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.rules.rg023 import TESTS
-from tools.setup.modules import ADDONS as ADDON_DIRECTORY
 from tools.setup.modules import BCR, declarations, is_addon_module, literals
 
-ADDONS = Path(ADDON_DIRECTORY)
 # The files every module addons/<directory> owns: those of the generator's module template.
 REQUIRED = tuple(relative for _, relative in template_files("module"))
 # The registry templates each module owns in .bcr/addons/<directory>/, which the generator
