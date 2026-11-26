@@ -340,6 +340,8 @@ godot_engines.runtime_profile(
 godot_engines.runtime_profile(profile = "//examples/lichtpost:runtime.gdbuild")
 use_repo(
     godot_engines,
+    # The API contract cases of the godot_engines extension check this hub's entrypoints.
+    "godot",
     "patched_beta_macos_arm64_template_release",
     "patched_macos_arm64_editor",
     "patched_macos_arm64_template_release",
