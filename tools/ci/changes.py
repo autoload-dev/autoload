@@ -87,6 +87,14 @@ def either(*inputs: Inputs) -> Inputs:
     return lambda changes, directory: any(i(changes, directory) for i in inputs)
 
 
+def fallback(ref: str, reason: str) -> str:
+    """The reference itself, with the reason a push counts from its merge base printed."""
+    print(
+        f"[work] {reason}: counting changes since the merge base with {ref}", flush=True
+    )
+    return ref
+
+
 def pushed_base(ref: str, remote_tips: Iterable[str], root: Path) -> str:
     """
     The reference a push counts its changes from: the pushed branches' commit on the
@@ -103,14 +111,6 @@ def pushed_base(ref: str, remote_tips: Iterable[str], root: Path) -> str:
         return fallback(ref, f"the remote's {tip[:9]} is not in HEAD's history")
     print(f"[work] counting changes since the remote's {tip[:9]}", flush=True)
     return tip
-
-
-def fallback(ref: str, reason: str) -> str:
-    """The reference itself, with the reason a push counts from its merge base printed."""
-    print(
-        f"[work] {reason}: counting changes since the merge base with {ref}", flush=True
-    )
-    return ref
 
 
 def changes_since(ref: str, root: Path, modules: tuple[str, ...]) -> Changes | None:
