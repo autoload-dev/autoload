@@ -44,6 +44,12 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["addons/sqlite/MODULE.bazel"]),
         )
 
+    def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
+        self.assertEqual(
+            [(m, "mod", "deps", "--lockfile_mode=update") for m in (".", "rules_godot")],
+            self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
+        )
+
     def test_the_segment_is_written_and_checked(self) -> None:
         with (
             mock.patch.object(generate, "bazel", return_value=0),
@@ -56,54 +62,6 @@ class GenerateTest(unittest.TestCase):
                 ):
                     getattr(generate, call)(*args)
                     segment.assert_called_once()
-
-    def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
-        self.assertEqual(
-            [(m, "mod", "deps", "--lockfile_mode=update") for m in (".", "rules_godot")],
-            self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
-        )
-
-    def test_the_check_covers_lock_files_and_pins(self) -> None:
-        commands = self.runs("check")
-        self.assertIn(("rules_godot", "mod", "deps", "--lockfile_mode=update"), commands)
-        (pins,) = [
-            command for command in commands if command[1:3] == ("build", "--nobuild")
-        ]
-        self.assertIn(
-            "@@autoload_rules_godot++godot_engines+simulation_macos_arm64_editor//:engine_library",
-            pins,
-        )
-
-    def test_an_engine_the_root_does_not_use_fails_the_pin_check(self) -> None:
-        with (
-            mock.patch.object(generate, "repo_mapping", return_value={}),
-            mock.patch.object(generate, "bazel", return_value=0),
-            contextlib.redirect_stderr(io.StringIO()) as stderr,
-        ):
-            self.assertEqual(1, generate.pins())
-        self.assertIn("does not use_repo", stderr.getvalue())
-
-    def test_the_pin_check_covers_only_the_pinned_recipes(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            engine = root / "examples/engines/simulation"
-            engine.mkdir(parents=True)
-            lock = engine / "simulation.lock.json"
-            lock.write_text(
-                '{"recipes": {"macos_arm64_editor": {}, "linux_x86_64_editor": {}}}'
-            )
-            (root / "examples/engines/other").mkdir()
-            (root / "examples/engines/other/README.md").write_text("")
-            self.assertEqual((("simulation", lock),), generate.pinned_engines(root))
-            self.assertEqual(
-                [
-                    "@@ext+simulation_linux_x86_64_editor//:engine_library",
-                    "@@ext+simulation_macos_arm64_editor//:engine_library",
-                ],
-                generate.pinned_payloads(
-                    "simulation", lock, {"simulation": "ext+simulation"}
-                ),
-            )
 
     def check_lock_files(self, rewrite: str | None, *, missing: bool = False) -> int:
         """
@@ -138,6 +96,63 @@ class GenerateTest(unittest.TestCase):
 
     def test_a_lock_file_bazel_writes_first_fails_the_check(self) -> None:
         self.assertNotEqual(0, self.check_lock_files(rewrite="{}", missing=True))
+
+    def test_the_check_covers_lock_files_and_pins(self) -> None:
+        commands = self.runs("check")
+        self.assertIn(("rules_godot", "mod", "deps", "--lockfile_mode=update"), commands)
+        (pins,) = [
+            command for command in commands if command[1:3] == ("build", "--nobuild")
+        ]
+        self.assertIn(
+            "@@autoload_rules_godot++godot_engines+simulation_macos_arm64_editor//:engine_library",
+            pins,
+        )
+
+    def test_an_engine_the_root_does_not_use_fails_the_pin_check(self) -> None:
+        with (
+            mock.patch.object(generate, "repo_mapping", return_value={}),
+            mock.patch.object(generate, "bazel", return_value=0),
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+        ):
+            self.assertEqual(1, generate.pins())
+        self.assertIn("does not use_repo", stderr.getvalue())
+
+    def test_the_pinned_engines_are_those_declared_with_a_lock_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MODULE.bazel").write_text(
+                'engines = use_extension("@r//godot:extensions.bzl", "godot_engines")\n'
+                'engines.engine(name = "godot", version = "4.7.2")\n'
+                "engines.engine(\n"
+                '    name = "simulation",\n'
+                '    lock_file = "//examples/engines/sim:godot_simulation.lock.json",\n'
+                ")\n"
+            )
+            self.assertEqual(
+                (
+                    (
+                        "simulation",
+                        root / "examples/engines/sim/godot_simulation.lock.json",
+                    ),
+                ),
+                generate.pinned_engines(root),
+            )
+
+    def test_the_pin_check_covers_only_the_pinned_recipes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "simulation.lock.json"
+            lock.write_text(
+                '{"recipes": {"macos_arm64_editor": {}, "linux_x86_64_editor": {}}}'
+            )
+            self.assertEqual(
+                [
+                    "@@ext+simulation_linux_x86_64_editor//:engine_library",
+                    "@@ext+simulation_macos_arm64_editor//:engine_library",
+                ],
+                generate.pinned_payloads(
+                    "simulation", lock, {"simulation": "ext+simulation"}
+                ),
+            )
 
 
 if __name__ == "__main__":

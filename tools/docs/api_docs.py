@@ -1,4 +1,8 @@
-"""Discover every source module, then check the API inventory and its documentation."""
+"""
+Discover every source module, then check the API inventory and its documentation.
+
+Sections: Labels, Inventory, Bazel.
+"""
 
 import argparse
 import ast
@@ -10,21 +14,13 @@ from typing import Any
 
 from tools.conventions.environment import nested_tool_environment
 from tools.docs.ruleset import INVENTORY
-from tools.setup.modules import RULESET
+from tools.setup.modules import RULESET, label_path
 
-ROLES = (
-    "PUBLIC_APIS",
-    "CROSS_REPOSITORY_MODULES",
-    "SUPPORT_MODULES",
-)
+# ==== Labels ==================================================================
 
 
 def module_label(path: Path) -> str:
     return f"//{path.parent.as_posix()}:{path.name}"
-
-
-def module_path(root: Path, label: str) -> Path:
-    return root / label.removeprefix("//").replace(":", "/")
 
 
 def package(label: str) -> str:
@@ -44,6 +40,15 @@ def documented_target(label: str) -> bool:
     return not (is_private(label) or is_white_box_test(label))
 
 
+# ==== Inventory ===============================================================
+
+ROLES = (
+    "PUBLIC_APIS",
+    "CROSS_REPOSITORY_MODULES",
+    "SUPPORT_MODULES",
+)
+
+
 def read_inventory(manifest: Path) -> dict[str, Any]:
     tree = ast.parse(manifest.read_text())
     return {
@@ -54,96 +59,157 @@ def read_inventory(manifest: Path) -> dict[str, Any]:
     }
 
 
-def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
-    errors = []
-    # White-box tests in tests/ subpackages load private files but are no API modules.
-    actual = {
+def actual_modules(root: Path) -> set[str]:
+    """The ruleset's modules; white-box tests in tests/ subpackages load private files but are no API modules."""
+    return {
         label
         for path in (root / "godot").rglob("*.bzl")
         if not is_white_box_test(label := module_label(path.relative_to(root)))
     }
-    declared: dict[str, str] = {}
+
+
+def module_role_errors(
+    label: str, role: str, previous: str | None, actual: set[str]
+) -> list[str]:
+    errors = []
+    if previous:
+        errors.append(f"{label}: multiple module roles ({previous}, {role})")
+    if label not in actual:
+        errors.append(f"{role}: stale module {label}")
+    if role == "SUPPORT_MODULES" and not is_private(label):
+        errors.append(
+            f"{label}: support modules must be private implementation files; classify loadable contracts explicitly"
+        )
+    return errors
+
+
+def role_errors(inventory: dict[str, Any], actual: set[str]) -> list[str]:
+    """Each module has exactly one role, the inventory lists only modules that exist."""
+    errors = []
     # The other roles are dicts, so only this list can repeat a module.
     if len(inventory["SUPPORT_MODULES"]) != len(set(inventory["SUPPORT_MODULES"])):
         errors.append("SUPPORT_MODULES: duplicate modules")
+    declared: dict[str, str] = {}
     for role in ROLES:
         for label in inventory[role]:
-            if label in declared:
-                errors.append(
-                    f"{label}: multiple module roles ({declared[label]}, {role})"
-                )
+            errors.extend(module_role_errors(label, role, declared.get(label), actual))
             declared[label] = role
-            if label not in actual:
-                errors.append(f"{role}: stale module {label}")
-            if role == "SUPPORT_MODULES" and not is_private(label):
-                errors.append(
-                    f"{label}: support modules must be private implementation files; classify loadable contracts explicitly"
-                )
-    for label in sorted(actual - set(declared)):
-        errors.append(
-            f"{label}: unclassified new module; declare its API role in tools/docs/api/modules.bzl"
-        )
-    for label, symbols in inventory["PUBLIC_APIS"].items():
-        if not symbols:
-            errors.append(f"{label}: public entrypoints need primary symbols")
-    for label, purpose in inventory["CROSS_REPOSITORY_MODULES"].items():
-        if not purpose.strip():
-            errors.append(
-                f"{label}: cross-repository modules need a cross-repository load explanation"
-            )
-    for label in list(inventory["SUPPORT_MODULES"]) + list(
-        inventory["CROSS_REPOSITORY_MODULES"]
-    ):
-        path = module_path(root, label)
-        if not path.is_file():
-            continue
-        calls = [
-            node.value
-            for node in ast.parse(path.read_text()).body
-            if isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Name)
-            and node.value.func.id == "visibility"
-        ]
-        cross_repository = label in inventory["CROSS_REPOSITORY_MODULES"]
-        specs = [ast.literal_eval(call.args[0]) for call in calls]
-        public = any(
-            spec == "public" or isinstance(spec, list) and "public" in spec
-            for spec in specs
-        )
-        if not calls and not cross_repository:
-            errors.append(
-                f"{label}: support modules need explicit restricted load visibility"
-            )
-        if cross_repository and not public:
-            errors.append(
-                f"{label}: cross-repository modules need explicit public load visibility"
-            )
-        elif not cross_repository and public:
-            errors.append(f"{label}: support modules cannot have public load visibility")
-    # This is a syntax check, not Starlark evaluation. Real exports and
-    # attribute schemas are obtained independently from Bazel's evaluated extractor.
-    for label in inventory["PUBLIC_APIS"]:
-        path = module_path(root, label)
-        if not path.is_file():
-            continue
-        for node in ast.parse(path.read_text()).body:
-            if not isinstance(node, ast.FunctionDef) or not node.name[0].isalpha():
-                continue
-            doc = ast.get_docstring(node) or ""
-            if not doc.strip():
-                errors.append(
-                    f"{label}:{node.lineno}: {node.name} needs a docstring, including short functions"
-                )
-            returns_value = any(
-                isinstance(child, ast.Return) and child.value is not None
-                for child in ast.walk(node)
-            )
-            if returns_value and "\nReturns:\n" not in "\n" + doc + "\n":
-                errors.append(
-                    f"{label}:{node.lineno}: {node.name} needs a Returns: section"
-                )
+    errors.extend(
+        f"{label}: unclassified new module; declare its API role in tools/docs/api/modules.bzl"
+        for label in sorted(actual - set(declared))
+    )
     return errors
+
+
+def entrypoint_errors(inventory: dict[str, Any]) -> list[str]:
+    """Public entrypoints name their symbols, cross-repository modules their purpose."""
+    errors = [
+        f"{label}: public entrypoints need primary symbols"
+        for label, symbols in inventory["PUBLIC_APIS"].items()
+        if not symbols
+    ]
+    errors.extend(
+        f"{label}: cross-repository modules need a cross-repository load explanation"
+        for label, purpose in inventory["CROSS_REPOSITORY_MODULES"].items()
+        if not purpose.strip()
+    )
+    return errors
+
+
+def visibility_specs(path: Path) -> list[Any]:
+    """The arguments of a module's top-level visibility() calls."""
+    return [
+        ast.literal_eval(node.value.args[0])
+        for node in ast.parse(path.read_text()).body
+        if isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "visibility"
+    ]
+
+
+def is_public(spec: Any) -> bool:
+    return spec == "public" or isinstance(spec, list) and "public" in spec
+
+
+def module_visibility_errors(
+    label: str, specs: list[Any], cross_repository: bool
+) -> list[str]:
+    public = any(map(is_public, specs))
+    errors = []
+    if not specs and not cross_repository:
+        errors.append(
+            f"{label}: support modules need explicit restricted load visibility"
+        )
+    if cross_repository and not public:
+        errors.append(
+            f"{label}: cross-repository modules need explicit public load visibility"
+        )
+    elif not cross_repository and public:
+        errors.append(f"{label}: support modules cannot have public load visibility")
+    return errors
+
+
+def visibility_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
+    """Support modules restrict their load visibility, cross-repository modules make it public."""
+    cross_repository = inventory["CROSS_REPOSITORY_MODULES"]
+    errors = []
+    for label in [*inventory["SUPPORT_MODULES"], *cross_repository]:
+        path = label_path(root, label)
+        if path.is_file():
+            errors.extend(
+                module_visibility_errors(
+                    label, visibility_specs(path), label in cross_repository
+                )
+            )
+    return errors
+
+
+def returns_value(function: ast.FunctionDef) -> bool:
+    return any(
+        isinstance(child, ast.Return) and child.value is not None
+        for child in ast.walk(function)
+    )
+
+
+def function_errors(label: str, function: ast.FunctionDef) -> list[str]:
+    """A public function has a docstring, with a Returns: section when it returns a value."""
+    doc = ast.get_docstring(function) or ""
+    where = f"{label}:{function.lineno}: {function.name}"
+    errors = []
+    if not doc.strip():
+        errors.append(f"{where} needs a docstring, including short functions")
+    if returns_value(function) and "\nReturns:\n" not in "\n" + doc + "\n":
+        errors.append(f"{where} needs a Returns: section")
+    return errors
+
+
+def public_api_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
+    """
+    The public functions of each public entrypoint are documented. This is a syntax check,
+    not Starlark evaluation; real exports and attribute schemas are obtained independently
+    from Bazel's evaluated extractor.
+    """
+    functions = (
+        (label, node)
+        for label in inventory["PUBLIC_APIS"]
+        if (path := label_path(root, label)).is_file()
+        for node in ast.parse(path.read_text()).body
+        if isinstance(node, ast.FunctionDef) and node.name[0].isalpha()
+    )
+    return [error for label, node in functions for error in function_errors(label, node)]
+
+
+def inventory_errors(root: Path, inventory: dict[str, Any]) -> list[str]:
+    return [
+        *role_errors(inventory, actual_modules(root)),
+        *entrypoint_errors(inventory),
+        *visibility_errors(root, inventory),
+        *public_api_errors(root, inventory),
+    ]
+
+
+# ==== Bazel ===================================================================
 
 
 def run_bazel(bazel: str, root: Path, *args: str, capture: bool = False) -> str:

@@ -5,11 +5,14 @@ Regenerate the repository's generated files, or check that they are current.
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | the same, failing when it differs |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | the same, failing when it changes a lock file |
-| The lock files of source-built engines, those of examples/engines/ | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing each recipe the lock file pins, which fails on a stale pin |
+| The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | analysing each recipe the lock file pins, which fails on a stale pin |
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
 (`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
-every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each file's own module.
+every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each
+file's own module.
+
+Sections: Lock files, Pinned engines, Segment and entry points.
 """
 
 from __future__ import annotations
@@ -21,9 +24,18 @@ import sys
 from pathlib import Path
 
 from tools.addons import declarations
-from tools.setup.modules import ADDONS, EXAMPLES, LOCK_SUFFIX, RULESET, module_paths
+from tools.setup.modules import ADDONS, RULESET, label_path, literals, module_paths
+from tools.setup.modules import declarations as module_declarations
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def bazel(module: str, *args: str) -> int:
+    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
+
+
+# ==== Lock files ==============================================================
+
 RULESET_DIR = RULESET.as_posix()
 # The add-on modules' lock files are left out until all of them regenerate: rules_jvm_external's
 # maven extension fails to evaluate in autoload_gdunit and its examples, whose root modules
@@ -32,43 +44,6 @@ RULESET_DIR = RULESET.as_posix()
 LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
-
-
-def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
-    """The engines of examples/engines/ with a lock file, <name>/<name>.lock.json, by name."""
-    return tuple(
-        (path.name.removesuffix(LOCK_SUFFIX), path)
-        for path in sorted((root / EXAMPLES / "engines").glob(f"*/*{LOCK_SUFFIX}"))
-        if path.parent.name == path.name.removesuffix(LOCK_SUFFIX)
-    )
-
-
-def repo_mapping() -> dict[str, str]:
-    """The root module's repository mapping: each apparent name's canonical name."""
-    result = subprocess.run(
-        ["bazel", "mod", "dump_repo_mapping", ""],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return json.loads(result.stdout)
-
-
-def pinned_payloads(hub: str, lock: Path, mapping: dict[str, str]) -> list[str]:
-    """
-    The engine library of each recipe a lock file pins, by canonical label.
-
-    A recipe the lock file leaves unpinned, such as one of a platform no execution platform
-    configured, fails only when a build needs it, so the check leaves it out.
-    """
-    text = lock.read_text().strip()
-    recipes = json.loads(text).get("recipes", {}) if text else {}
-    return [f"@@{mapping[hub]}_{key}//:engine_library" for key in sorted(recipes)]
-
-
-def bazel(module: str, *args: str) -> int:
-    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
 
 
 def is_ruleset_code(path: str) -> bool:
@@ -132,6 +107,50 @@ def check_lock_files() -> int:
     return status
 
 
+# ==== Pinned engines ==========================================================
+
+
+def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
+    """
+    The engines the root module's MODULE.bazel declares with a lock file, by name. Its
+    segments declare no engines, so they are left out.
+    """
+    engines = []
+    for declaration in module_declarations((root / "MODULE.bazel").read_text()):
+        if (
+            declaration.kind == "godot_engines.engine"
+            and "lock_file" in declaration.keywords
+        ):
+            # A lock_file that is no literal fails here rather than leave its engine unchecked.
+            values = literals(declaration.keywords)
+            engines.append((values["name"], label_path(root, values["lock_file"])))
+    return tuple(engines)
+
+
+def repo_mapping() -> dict[str, str]:
+    """The root module's repository mapping: each apparent name's canonical name."""
+    result = subprocess.run(
+        ["bazel", "mod", "dump_repo_mapping", ""],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def pinned_payloads(hub: str, lock: Path, mapping: dict[str, str]) -> list[str]:
+    """
+    The engine library of each recipe a lock file pins, by canonical label.
+
+    A recipe the lock file leaves unpinned, such as one of a platform no execution platform
+    configured, fails only when a build needs it, so the check leaves it out.
+    """
+    text = lock.read_text().strip()
+    recipes = json.loads(text).get("recipes", {}) if text else {}
+    return [f"@@{mapping[hub]}_{key}//:engine_library" for key in sorted(recipes)]
+
+
 def pins() -> int:
     status = 0
     engines = pinned_engines()
@@ -166,6 +185,9 @@ def pins() -> int:
             )
         status |= failed
     return status
+
+
+# ==== Segment and entry points ================================================
 
 
 def segment(check: bool = False) -> int:
