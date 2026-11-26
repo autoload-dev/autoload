@@ -68,7 +68,8 @@ lane. A test that needs the Android lane's machine is tagged `android`, one that
 iOS lane's `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
 hosts, compatibility permitting. The root module and the ruleset each run one `bazel test`,
-both at once on their own servers, the root module's over its add-on modules too. On
+one after the other, the root module's over its add-on modules too: two servers that fetch
+the same repository at once can fail to move it into the shared repository contents cache. On
 Linux the formatter, the checks that are no Bazel targets and the lint check of every
 target run first; the add-on generator's self-tests follow, each lane's in a server of its
 own. `Finalize` fails when either

@@ -46,25 +46,32 @@ def _patterns(ctx: TaskContext, workspace: str):
     modules = [name for name in names if ctx.std.fs.exists(addons + "/" + name + "/MODULE.bazel")]
     return ["//..."] + ["@autoload_{}//...".format(module) for module in sorted(modules)]
 
-def bazel(ctx: TaskContext, command: str, flags, env = {}) -> int:
-    """Run a Bazel command with the flags over every workspace's patterns at once.
+def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> int:
+    """Run a Bazel command with the flags over every workspace's patterns.
 
-    The workspaces have servers of their own, so their commands run side by side.
+    The workspaces have servers of their own, so their commands may run side by side.
 
     Args:
         ctx: the running task's context.
         command: the Bazel command, such as `build` or `test`.
         flags: the flags of the command.
         env: variables of the command's environment.
+        parallel: whether the workspaces run at once, or one after the other, as CI's do:
+            two servers that fetch the same repository at once into a shared repository
+            contents cache can fail to move it there.
 
     Returns:
         0, or the first workspace's failing exit code.
     """
-    children = [
-        spawn(ctx, "bazel", [command] + list(flags) + ["--"] + _patterns(ctx, workspace), env = env, directory = workspace)
-        for workspace in WORKSPACES
-    ]
-    codes = [child.wait().code for child in children]
+    codes = []
+    children = []
+    for workspace in WORKSPACES:
+        child = spawn(ctx, "bazel", [command] + list(flags) + ["--"] + _patterns(ctx, workspace), env = env, directory = workspace)
+        if parallel:
+            children.append(child)
+        else:
+            codes.append(child.wait().code)
+    codes += [child.wait().code for child in children]
     failed = [code for code in codes if code not in (0, _NO_TESTS)]
     return failed[0] if failed else 0
 
@@ -150,10 +157,10 @@ def _ci_steps(ctx: TaskContext, host: str):
     android = {"ANDROID_HOME": ctx.std.env.var("ANDROID_SDK_ROOT") or ""}
     checks = [
         ("checks", lambda: run_work(ctx, *CI_CHECKS)),
-        ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android)),
+        ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android, parallel = False)),
     ]
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
-        ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android)),
+        ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
         # Each runs where its work allows it (tools/ci/work.py).
         ("selftests", lambda: run_work(ctx, *SELFTESTS)),
     ])
