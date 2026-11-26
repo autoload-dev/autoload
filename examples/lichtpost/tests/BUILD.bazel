@@ -114,7 +114,8 @@ build_test(
     targets = ["//examples/lichtpost:app"],
 )
 
-# The same for the application whose runtime is built from source with runtime.gdbuild.
+# The same for the application whose runtime is built from source with runtime.gdbuild:
+# the Source engine workflow runs it.
 build_test(
     name = "slim_app_build_test",
     size = "small",

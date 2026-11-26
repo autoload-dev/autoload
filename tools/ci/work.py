@@ -115,10 +115,11 @@ def example_work() -> Iterator[Work]:
             yield Work(name, None, ".", command, profile="source-engine")
 
 
-# The tests of the applications the source-engine lane verifies, such as those that run in
-# an editor built from the engine sources with their module.
-SOURCE_ENGINE_EXAMPLES = tuple(
-    example_tests(app) for app in APPLICATIONS if "source-engine" in app.lanes
+# The examples' tests that build an engine from source, such as those of the applications
+# the source-engine lane verifies, which run in an editor built from the engine sources with
+# their module, and Lichtpost's slim_app, whose runtime is built from source.
+SOURCE_ENGINE_EXAMPLES = (
+    "bazel test --build_tests_only --test_tag_filters=source_engine //examples/..."
 )
 
 
@@ -324,7 +325,7 @@ WORK = (
             PATCHED_ENGINE.format(engine="stable"),
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
-            *SOURCE_ENGINE_EXAMPLES,
+            SOURCE_ENGINE_EXAMPLES,
         ),
         android=True,
     ),
