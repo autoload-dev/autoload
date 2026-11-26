@@ -108,8 +108,10 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
         self.assertEqual(
             [
-                "only tests load rules_testing, which every consumer inherits: "
-                "test with it from e2e/addons/widget/"
+                (
+                    "only tests load rules_testing, which every consumer inherits: "
+                    "test with it from e2e/addons/widget/"
+                )
             ],
             self.evaluate(),
         )
