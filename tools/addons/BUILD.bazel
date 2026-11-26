@@ -33,14 +33,16 @@ py_binary(
     deps = [":new_lib"],
 )
 
-# A module's lane work, which tools/ci/work.py runs for each add-on module, and the
-# generator's self-test, which runs a lane of a fresh module.
+# A module's lane work, which tools/ci/work.py runs for each add-on module and CI's host
+# jobs combine (tools/ci/hosts.py), and the generator's self-test, which runs a lane of a
+# fresh module.
 py_library(
     name = "lanes_lib",
     srcs = [
         "lanes.py",
         "selftest.py",
     ],
+    visibility = ["//tools/ci:__pkg__"],
     deps = [":new_lib"],
 )
 

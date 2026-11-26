@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest import mock
 
 from tools.addons.modules import all_modules, choices
-from tools.addons.test_support import copy_schemas
+from tools.addons.test_support import checkout
 from tools.apps.apps import lanes as app_lanes
 from tools.ci.changes import Changes, changes_since, files
 from tools.ci.lanes import LANES
@@ -36,19 +36,6 @@ from tools.ci.work import (
 )
 
 # ==== Work and callers ========================================================
-
-
-def checkout(root: Path, modules: dict[str, str]) -> None:
-    """A checkout with add-on modules naming their lanes, and the schema they amend."""
-    copy_schemas(root)
-    for module, listed in modules.items():
-        (root / "addons" / module).mkdir(parents=True)
-        (root / "addons" / module / "MODULE.bazel").write_text(
-            f'module(name = "autoload_{module}")\n'
-        )
-        (root / "addons" / module / "addon.pkl").write_text(
-            f'amends "../../tools/addons/Addon.pkl"\nlanes = List({listed})\n'
-        )
 
 
 class WorkTest(unittest.TestCase):

@@ -30,8 +30,9 @@ changed, a read-only review does not require test execution.
 
 The fast tests are the tests of the root module and the ruleset that start no Godot process,
 their `smoke` tests included: `bazel test --config=fast //...` in each, or `aspect tests`
-([test size](verification-architecture.md#test-size)). CI runs every lane on every run; to
-verify a lane's work locally, run `aspect lane <lane>` or its `aspect work` pieces. Do not
+([test size](verification-architecture.md#test-size)). CI runs every host's job on every run; to
+verify one locally, run `aspect ci linux` or `aspect ci macos`, or a single lane with
+`aspect lane <lane>` or its `aspect work` pieces. Do not
 repeat a successful check merely because its changes were committed.
 
 A result remains usable when its relevant source, dependencies, configuration and execution

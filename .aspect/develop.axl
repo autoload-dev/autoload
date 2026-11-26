@@ -8,7 +8,7 @@ and `fast`, run in the two workspaces of development: the root module, which bui
 add-on modules and the consumers, and the ruleset with its own tests.
 """
 
-load("./work.axl", "run", "run_work", "spawn")
+load("./work.axl", "run", "run_work", "run_work_tool", "spawn")
 
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
@@ -128,6 +128,31 @@ check = task(
         "all": args.boolean(default = False, description = "Check the whole tree and every tool check, as CI does, not only what changed since origin/main"),
         "keep_going": KEEP_GOING,
     },
+)
+
+def _ci_steps(ctx: TaskContext, host: str):
+    """A host's CI job: on Linux every check first, then the host's lanes (tools/ci/hosts.py)."""
+    build = [("bazel", lambda: run_work_tool(ctx, [host], module = "tools.ci.hosts"))]
+    if host != "linux":
+        return steps(ctx, build)
+    aspect = ctx.std.env.current_exe()
+    return steps(ctx, [
+        ("format", lambda: run(ctx, aspect, ["format", "--severity=fail", "--scope=all"])),
+        ("tools", lambda: run_work(ctx, *TOOL_CHECKS)),
+    ] + build)
+
+linux = task(
+    group = ["ci"],
+    implementation = lambda ctx: _ci_steps(ctx, "linux"),
+    summary = "Run CI's Linux job: every check, then the quality, desktop and android lanes.",
+    args = {"keep_going": KEEP_GOING},
+)
+
+macos = task(
+    group = ["ci"],
+    implementation = lambda ctx: _ci_steps(ctx, "macos"),
+    summary = "Run CI's macOS job: the desktop and ios lanes.",
+    args = {"keep_going": KEEP_GOING},
 )
 
 def _test_impl(ctx: TaskContext) -> int:

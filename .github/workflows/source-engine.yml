@@ -1,14 +1,18 @@
 name: Source engine
 
 # The only CI run of the source-engine lane: it builds and runs every source-engine case
-# on main, on the schedule below, and on any branch on manual dispatch. Pull requests and
-# merges leave the lane out. Policy:
+# on main on the schedule below, on any branch on manual dispatch, and on a pull request
+# labelled `source-engine` when it is labelled and on each push while it has the label.
+# Merges leave the lane out. Policy:
 # docs/internal/verification-platforms.md#source-engine-workflow.
 on:
   schedule:
-    # 03:00 in Berlin, summer and winter time alike: the macos-ci runners are idle then.
-    - cron: "0 3 * * *"
-      timezone: Europe/Berlin
+    # GitHub starts scheduled runs late under load, worst at the top of the hour: runs meant
+    # for 03:00 in Berlin started between 10:23 and 12:04 UTC, while the daytime CI ran. An
+    # off-hour minute in the night of UTC and Berlin alike keeps the run ahead of the day.
+    - cron: "37 0 * * *"
+  pull_request:
+    types: [labeled, synchronize]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +28,11 @@ jobs:
     name: Source engine
     timeout-minutes: 60
     runs-on: macos-ci
+    # A pull request runs only with the label, and never a fork's on the self-hosted runners.
+    if: >-
+      github.event_name != 'pull_request'
+      || (contains(github.event.pull_request.labels.*.name, 'source-engine')
+      && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

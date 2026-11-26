@@ -17,6 +17,19 @@ def copy_schemas(root: Path) -> None:
         shutil.copyfile(schema, target)
 
 
+def checkout(root: Path, modules: dict[str, str]) -> None:
+    """A checkout with add-on modules naming their lanes, and the schema they amend."""
+    copy_schemas(root)
+    for module, listed in modules.items():
+        (root / "addons" / module).mkdir(parents=True)
+        (root / "addons" / module / "MODULE.bazel").write_text(
+            f'module(name = "autoload_{module}")\n'
+        )
+        (root / "addons" / module / "addon.pkl").write_text(
+            f'amends "../../tools/addons/Addon.pkl"\nlanes = List({listed})\n'
+        )
+
+
 class RepositoryTestCase(unittest.TestCase):
     """A temporary root with the files the generator and the generated file start from."""
 
