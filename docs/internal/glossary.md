@@ -173,6 +173,7 @@ paths are relative to `rules_godot/` unless they name repository tooling (`tools
 | platform resources | Files that a platform library or `godot_app.platform_resources` brings for Android resources or the iOS bundle. | Resources, which belong to the Godot project; a Bazel platform. | `godot_app.platform_resources` |
 | bundle files | Files the runtime executable needs beside it in a desktop bundle. | Companion targets; library dependencies. | `GodotRuntimeInfo.bundle_files` |
 | companion target | A public target a macro generates beside its main target as `<name>.<suffix>`, such as `<name>.debug_symbols`. API contract checks verify each one's name, visibility and providers against the macro that creates it. | Private helper targets. | `companions` in `tools/docs/output_contracts.py` |
+| configured application | A `godot_app` built under an export platform and build settings of its own, such as a multi-ABI release App Bundle, which `godot_configured_app` declares as `<name>` and `<name>.debug_symbols`. The repository builds it in the same invocation as the desktop targets instead of with a `--config`. | A `--config` of `.bazelrc`; the application backend, which `--platforms` selects. | `godot_configured_app` in `godot/private/configured_app.bzl` (not supported API); `configured_outputs` of the ruleset's tests |
 | debug symbols | The unstripped libraries and `.dSYM` directories from which an application's stripped copies were made. | The debug variant. | `debug_symbols` output groups and fields, `<name>.debug_symbols` |
 
 ## Ruleset internals

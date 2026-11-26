@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
+load("//godot/private:configured_app.bzl", "godot_configured_app")
 load(":library_composition_tests.bzl", "library_composition_test_suite")
 
 # How platform libraries reach Android and iOS applications through a project's add-on, an
@@ -74,9 +75,11 @@ py_test(
 )
 
 # The App Bundle and its debug symbols as --config=android-release --config=aab builds them.
-configured_outputs(
+# The release App Bundle with its debug symbols, as the repository's release builds build them.
+godot_configured_app(
     name = "android_release_bundle_symbols_match_stripped_extension_test_app",
     android_format = "aab",
+    app = _ANDROID_APPS + "app",
     compilation_mode = "opt",
     copts = [
         "-g",
@@ -85,21 +88,6 @@ configured_outputs(
     platform = "//godot/platforms:android_arm64",
     strip = "always",
     tags = ["manual"],
-    target = _ANDROID_APPS + "app",
-)
-
-configured_outputs(
-    name = "android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
-    android_format = "aab",
-    compilation_mode = "opt",
-    copts = [
-        "-g",
-        "-fdebug-compilation-dir=.",
-    ],
-    platform = "//godot/platforms:android_arm64",
-    strip = "always",
-    tags = ["manual"],
-    target = _ANDROID_APPS + "app.debug_symbols",
 )
 
 # Build-output test: the release bundle packages the extension stripped, and its debug
@@ -110,11 +98,11 @@ py_test(
     srcs = ["android_debug_symbols_test.py"],
     args = _BUNDLE_TOOL_ARGS + [
         "--app=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_app)",
-        "--debug-symbols=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_debug_symbols)",
+        "--debug-symbols=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_app.debug_symbols)",
     ],
     data = _BUNDLE_TOOLS + [
         ":android_release_bundle_symbols_match_stripped_extension_test_app",
-        ":android_release_bundle_symbols_match_stripped_extension_test_debug_symbols",
+        ":android_release_bundle_symbols_match_stripped_extension_test_app.debug_symbols",
     ],
     main = "android_debug_symbols_test.py",
     tags = ["godot_process"],
