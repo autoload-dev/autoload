@@ -103,12 +103,31 @@ def _pin_target(ctx, name, recipes, variants, partial):
         partial = repr(partial),
     )
 
+_PINNED = """
+# Fails with the pin command while a recipe or one of its runtime variants has no current pin
+# in the lock file. Every host builds it, whatever platform the recipes are for.
+filegroup(
+    name = "pinned",
+    srcs = {recipes},
+    visibility = ["//visibility:public"],
+)
+"""
+
 def _pin(ctx):
-    """The :pin and :pin_<platform> targets that write the lock file of the hub's recipes and runtime variants."""
+    """
+    The hub's pin targets.
+
+    :pin and :pin_<platform> write the lock file of the hub's recipes and runtime variants;
+    :pinned fails while one of them has no current pin.
+    """
     recipes = json.decode(ctx.attr.pin_recipes)
     variants = json.decode(ctx.attr.pin_variants or "{}")
     platforms = json.decode(ctx.attr.pin_platforms)
     targets = [_PIN.format(pin_bzl = repr(str(ctx.attr._pin_bzl))), _pin_target(ctx, "pin", recipes, variants, False)]
+    targets.append(_PINNED.format(recipes = repr(sorted([
+        label.rpartition(":")[0] + ":pinned"
+        for label in recipes
+    ]))))
     for platform in sorted({platform: True for platform in platforms.values()}):
         targets.append(_pin_target(
             ctx,

@@ -40,7 +40,6 @@ class WorkTest(unittest.TestCase):
             ("source-engine:full", "source-engine"),
             ("source-engine", "source-engine"),
             ("addon-template", "addon-template"),
-            ("generated", None),
         ):
             self.assertEqual(profile, KNOWN[name].profile, name)
 
@@ -88,12 +87,7 @@ class CallersTest(unittest.TestCase):
             text = task.read_text()
             for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
                 names.update(re.findall(r'"([^"]+)"', call))
-            # The lists of work the tasks pass on, such as the tool checks.
-            for listed in re.findall(r"_CHECKS = \[([^\]]*)\]", text):
-                names.update(re.findall(r'"([^"]+)"', listed))
-        self.assertLessEqual(
-            {"format", "conventions", "android:setup", "addon-template"}, names
-        )
+        self.assertLessEqual({"format", "android:setup", "addon-template"}, names)
         self.assertLessEqual(names, set(KNOWN))
 
     def test_the_source_engine_workflow_runs_the_root_s_tests_tagged_source_engine(

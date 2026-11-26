@@ -13,11 +13,14 @@ load("./work.axl", "python", "run", "run_work", "spawn")
 # The workspaces of development, relative to the repository root.
 WORKSPACES = [".", "rules_godot"]
 
-# The checks that are no Bazel targets: the named work runs them whole (tools/ci/work.py).
+# The checks that are no Bazel tests, since they read the whole checkout: tools that
+# `bazel run` starts in the root module, each over every module.
 TOOL_CHECKS = [
-    "generated",
-    "gazelle",
-    "conventions",
+    # The BUILD declarations that Gazelle generates (tools/gazelle).
+    "//tools/gazelle:check",
+    # The convention rules that need Bazel's evidence or cross module boundaries
+    # (tools/conventions), whose queries are cached while nothing loading reads changes.
+    "//tools/conventions",
 ]
 
 # `bazel test` with no test among the targets, such as a tier a workspace has none of.
@@ -39,6 +42,10 @@ def _targets(workspace: str):
     if workspace != ".":
         return ["--", "//..."]
     return ["--target_pattern_file=root.targets"]
+
+def _first_failure(codes, ignored = []) -> int:
+    """The first exit code that is neither 0 nor ignored, else 0."""
+    return ([code for code in codes if code != 0 and code not in ignored] + [0])[0]
 
 def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> int:
     """Run a Bazel command with the flags over every workspace's patterns.
@@ -66,12 +73,20 @@ def bazel(ctx: TaskContext, command: str, flags, env = {}, parallel = True) -> i
         else:
             codes.append(child.wait().code)
     codes += [child.wait().code for child in children]
-    failed = [code for code in codes if code not in (0, _NO_TESTS)]
-    return failed[0] if failed else 0
+    return _first_failure(codes, ignored = [_NO_TESTS])
 
 def bazel_tests(ctx: TaskContext, flags) -> int:
     """Run `bazel test` with the flags over every workspace's patterns at once."""
     return bazel(ctx, "test", flags)
+
+def tool_checks(ctx: TaskContext) -> int:
+    """Run the checks that are no Bazel tests at once, each to its end.
+
+    Returns:
+        0, or the first failing check's exit code.
+    """
+    children = [spawn(ctx, "bazel", ["run", target]) for target in TOOL_CHECKS]
+    return _first_failure([child.wait().code for child in children])
 
 def steps(ctx: TaskContext, steps):
     """Run named steps in order; stop at the first failure unless asked to keep going.
@@ -113,7 +128,7 @@ def run_checks(ctx: TaskContext, every: bool):
         # tests (tools/lint/check.bzl): Markdown, GDScript and the per-file convention rules.
         ("lint", lambda: bazel(ctx, "build", ["--config=check", "--config=sources"])),
         ("bazel", lambda: bazel_tests(ctx, ["--config=check", "--config=fast"])),
-        ("tools", lambda: run_work(ctx, *TOOL_CHECKS)),
+        ("tools", lambda: tool_checks(ctx)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ])
 
@@ -128,10 +143,6 @@ check = task(
         "keep_going": KEEP_GOING,
     },
 )
-
-# The checks of CI's Linux job before its Bazel work: the formatter on the whole tree, then
-# the checks that are no Bazel targets.
-CI_CHECKS = ["format"] + TOOL_CHECKS
 
 def _ci_steps(ctx: TaskContext, host: str):
     """A host's CI job: on Linux every check and the lint, then the host's tests and self-test.
@@ -148,7 +159,9 @@ def _ci_steps(ctx: TaskContext, host: str):
     # (.aspect/config.axl).
     android = {"ANDROID_HOME": ctx.std.env.var("ANDROID_SDK_ROOT") or ""}
     checks = [
-        ("checks", lambda: run_work(ctx, *CI_CHECKS)),
+        # The formatter on the whole tree, then the checks that are no Bazel tests.
+        ("format", lambda: run_work(ctx, "format")),
+        ("tools", lambda: tool_checks(ctx)),
         ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android, parallel = False)),
     ]
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [

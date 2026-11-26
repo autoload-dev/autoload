@@ -119,6 +119,20 @@ def engine_targets(platform: str) -> list[str]:
     )
 
 
+# The target every host can build while the recipe and each of its runtime variants has a
+# current pin; it fails with the pin command otherwise. The hub's :pinned collects it.
+PINNED = "pinned"
+
+
+def pinned_rule(errors: Mapping[str, str]) -> Rule:
+    """:pinned of a configured recipe, given the errors of its variants without a pin."""
+    if errors:
+        return Rule(
+            "godot_unpinned_recipe", PINNED, {"message": "\n".join(errors.values())}
+        )
+    return Rule("filegroup", PINNED, {})
+
+
 _UNPINNED_REASONS = {
     "missing": "has no pin for",
     "stale": "pins other sources, patches, modules, options or rules_godot code for",
@@ -133,7 +147,7 @@ def render_unpinned(args: argparse.Namespace, status: str, root: Path) -> None:
         'package(default_visibility = ["//visibility:public"])',
         *(
             f"godot_unpinned_recipe(name = {name!r}, message = {message!r})"
-            for name in engine_targets(args.platform)
+            for name in [*engine_targets(args.platform), PINNED]
         ),
     ]
     (root / "BUILD.bazel").write_text("\n".join(lines) + "\n")
@@ -735,7 +749,8 @@ def _package_rules(
     }
     for item in graphs.values():
         base.specs.update(item.specs)
-    return variants.unpinned_variants(rules, engine_targets(args.platform), errors)
+    rules = variants.unpinned_variants(rules, engine_targets(args.platform), errors)
+    return [*rules, pinned_rule(errors)]
 
 
 def render(

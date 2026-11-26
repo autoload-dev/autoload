@@ -26,6 +26,12 @@ class QueryCacheTest(RepositoryTest):
         self.write("lib/BUILD.bazel", "filegroup(name = 'all')")
         self.assertNotEqual(before, self.key())
 
+    def test_documentation_does_not_change_the_key(self) -> None:
+        self.write("README.md", "# One")
+        before = self.key()
+        self.write("README.md", "# Two")
+        self.assertEqual(before, self.key())
+
     def test_added_files_and_links_change_the_key(self) -> None:
         before = self.key()
         self.write("lib/tool.py", "")

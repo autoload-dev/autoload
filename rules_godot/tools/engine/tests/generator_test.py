@@ -116,10 +116,6 @@ class GeneratorTest(unittest.TestCase):
                 safe_relative(path)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 _CLASS_SPEC = {
     "code_file": "core/core_builders.py",
     "function": "disabled_class_builder",
@@ -168,3 +164,7 @@ class ClassProfileTest(unittest.TestCase):
                 with_class_profile(_CLASS_SPEC, app)["sources"],
                 [{"value": ["Tree"]}],
             )
+
+
+if __name__ == "__main__":
+    unittest.main()

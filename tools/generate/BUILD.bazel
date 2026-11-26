@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# Regenerates or checks the generated files; `python3 -m tools.generate.generate` runs it on
+# Regenerates the generated files; `python3 -m tools.generate.generate` runs it on
 # the checkout, since it runs Bazel in several modules.
 py_library(
     name = "generate_lib",

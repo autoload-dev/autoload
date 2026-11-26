@@ -7,9 +7,9 @@ An entry also records the external repositories its output names, in the output 
 one of them is gone, such as after `bazel clean --expunge`, the entry misses.
 
 The key covers the listed files and the contents of every one that loading can read; code that
-builds compile and assets they package count by name only, since globs list them. The ignored
-Bazel rc files that the workspace imports count as well; the environment does not. Entries are
-compressed, and only those of the most recent loading inputs are kept.
+builds compile, assets they package and documentation count by name only, since globs list
+them. The ignored Bazel rc files that the workspace imports count as well; the environment
+does not. Entries are compressed, and only those of the most recent loading inputs are kept.
 """
 
 import gzip
@@ -25,8 +25,8 @@ from pathlib import Path
 
 from tools.conventions.context import Workspace
 
-# Files whose contents Bazel's loading never reads: code that builds compile and assets they
-# package. An unknown suffix counts as read.
+# Files whose contents Bazel's loading never reads: code that builds compile, assets they
+# package and documentation. An unknown suffix counts as read.
 INERT_SUFFIXES = frozenset(
     {
         ".bin",
@@ -44,6 +44,7 @@ INERT_SUFFIXES = frozenset(
         ".js",
         ".kt",
         ".m",
+        ".md",
         ".mm",
         ".pck",
         ".png",

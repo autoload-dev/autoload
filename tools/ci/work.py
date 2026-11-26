@@ -97,9 +97,6 @@ WORK = (
     Work("format", ".", ("aspect format --scope=all --severity=fail",)),
     # The checks that are no Bazel targets: they read the whole source tree.
     Work("conventions", ".", ("bazel run //tools/conventions",)),
-    # The source-built engines' pins. Bazel checks the other generated files: MODULE.bazel.lock
-    # in every CI command (--config=ci), the add-on modules' declarations when it loads them.
-    Work("generated", ".", ("python3 -m tools.generate.generate --check",)),
     # The BUILD declarations that Gazelle generates (tools/gazelle) in every module: the
     # ruleset's bzl_library targets and the lint check's filegroups.
     Work("gazelle", ".", ("bazel run //tools/gazelle:check",)),
