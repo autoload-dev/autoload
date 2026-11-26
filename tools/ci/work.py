@@ -397,6 +397,16 @@ def with_setup(names: list[str], known: dict[str, Work]) -> list[str]:
     return names
 
 
+def here_only(names: list[str], known: dict[str, Work], here: str) -> list[str]:
+    """The work this host runs; unknown work fails, work limited to other hosts is skipped."""
+    with_setup(names, known)
+    for name in names:
+        if not runs_on(known[name], here):
+            hosts = ", ".join(known[name].hosts)
+            print(f"[{name}] skipped: runs on {hosts} only", flush=True)
+    return [name for name in names if runs_on(known[name], here)]
+
+
 def require_android_environment(work: list[Work], env: dict[str, str]) -> None:
     """Android work needs the SDK the Aspect CLI selects (.aspect/config.axl)."""
     if any(piece.android for piece in work) and not env.get("ANDROID_SDK_ROOT"):
@@ -443,13 +453,10 @@ def run(
     known = known or all_work(root)
     here = host()
     env = environment()
-    names = with_setup(list(names), known)
+    names = with_setup(here_only(list(names), known, here), known)
     require_android_environment([known[name] for name in names], env)
     for name in names:
         work = known[name]
-        if not runs_on(work, here):
-            print(f"[{name}] skipped: runs on {', '.join(work.hosts)} only", flush=True)
-            continue
         for step in work.steps():
             print(f"[{name}] {step.directory}$ {step.command}", flush=True)
             subprocess.run(
