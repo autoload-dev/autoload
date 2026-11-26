@@ -19,9 +19,6 @@ ADDONS = "addons"
 # (one project, or one per scenario), and its end-to-end tests, e2e/addons/<module>/.
 EXAMPLES = Path("examples")
 ADDON_EXAMPLES = EXAMPLES / "addons"
-# An engine's lock file, as its godot_engines.engine names it: <engine>.lock.json, which
-# RG014 keeps in engines/<engine>/.
-LOCK_SUFFIX = ".lock.json"
 ADDON_E2E = Path("e2e/addons")
 # The directory of a released module's registry test modules, bcr/<name>/ (RG020), which its
 # .bazelignore lists.

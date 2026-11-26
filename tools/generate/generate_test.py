@@ -93,8 +93,6 @@ class GenerateTest(unittest.TestCase):
                 '    name = "simulation",\n'
                 '    lock_file = "//examples/engines/sim:godot_simulation.lock.json",\n'
                 ")\n"
-                'engines.engine(name = "packed", lock_file = "//:packed.lock.json")\n'
-                'engines.engine(name = "bare", lock_file = "//bare")\n'
             )
             self.assertEqual(
                 (
@@ -102,8 +100,6 @@ class GenerateTest(unittest.TestCase):
                         "simulation",
                         root / "examples/engines/sim/godot_simulation.lock.json",
                     ),
-                    ("packed", root / "packed.lock.json"),
-                    ("bare", root / "bare/bare"),
                 ),
                 generate.pinned_engines(root),
             )

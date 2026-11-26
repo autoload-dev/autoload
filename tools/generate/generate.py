@@ -35,47 +35,6 @@ LOCKED_MODULES = tuple(
 )
 
 
-def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
-    """
-    The engines the root module's MODULE.bazel declares with a lock file, by name. Its
-    segments declare no engines, so they are left out.
-    """
-    engines = []
-    for declaration in module_declarations((root / "MODULE.bazel").read_text()):
-        if (
-            declaration.kind == "godot_engines.engine"
-            and "lock_file" in declaration.keywords
-        ):
-            # A lock_file that is no literal fails here rather than leave its engine unchecked.
-            values = literals(declaration.keywords)
-            engines.append((values["name"], label_path(root, values["lock_file"])))
-    return tuple(engines)
-
-
-def repo_mapping() -> dict[str, str]:
-    """The root module's repository mapping: each apparent name's canonical name."""
-    result = subprocess.run(
-        ["bazel", "mod", "dump_repo_mapping", ""],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return json.loads(result.stdout)
-
-
-def pinned_payloads(hub: str, lock: Path, mapping: dict[str, str]) -> list[str]:
-    """
-    The engine library of each recipe a lock file pins, by canonical label.
-
-    A recipe the lock file leaves unpinned, such as one of a platform no execution platform
-    configured, fails only when a build needs it, so the check leaves it out.
-    """
-    text = lock.read_text().strip()
-    recipes = json.loads(text).get("recipes", {}) if text else {}
-    return [f"@@{mapping[hub]}_{key}//:engine_library" for key in sorted(recipes)]
-
-
 def bazel(module: str, *args: str) -> int:
     return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
 
@@ -139,6 +98,47 @@ def check_lock_files() -> int:
         )
         return 1
     return status
+
+
+def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
+    """
+    The engines the root module's MODULE.bazel declares with a lock file, by name. Its
+    segments declare no engines, so they are left out.
+    """
+    engines = []
+    for declaration in module_declarations((root / "MODULE.bazel").read_text()):
+        if (
+            declaration.kind == "godot_engines.engine"
+            and "lock_file" in declaration.keywords
+        ):
+            # A lock_file that is no literal fails here rather than leave its engine unchecked.
+            values = literals(declaration.keywords)
+            engines.append((values["name"], label_path(root, values["lock_file"])))
+    return tuple(engines)
+
+
+def repo_mapping() -> dict[str, str]:
+    """The root module's repository mapping: each apparent name's canonical name."""
+    result = subprocess.run(
+        ["bazel", "mod", "dump_repo_mapping", ""],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def pinned_payloads(hub: str, lock: Path, mapping: dict[str, str]) -> list[str]:
+    """
+    The engine library of each recipe a lock file pins, by canonical label.
+
+    A recipe the lock file leaves unpinned, such as one of a platform no execution platform
+    configured, fails only when a build needs it, so the check leaves it out.
+    """
+    text = lock.read_text().strip()
+    recipes = json.loads(text).get("recipes", {}) if text else {}
+    return [f"@@{mapping[hub]}_{key}//:engine_library" for key in sorted(recipes)]
 
 
 def pins() -> int:

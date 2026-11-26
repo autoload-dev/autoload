@@ -9,6 +9,7 @@ from tools.setup.modules import (
     bazelrc_options,
     declarations,
     is_registry_test_module,
+    label_path,
     module_paths,
     registry_test_modules,
 )
@@ -91,6 +92,16 @@ class DeclarationsTest(unittest.TestCase):
                 if declaration.kind not in ("use_extension", "use_repo_rule")
             ],
         )
+
+    def test_a_label_names_a_file_of_the_module(self) -> None:
+        root = Path("/module")
+        for label, path in (
+            ("//pkg:dir/file.json", "pkg/dir/file.json"),
+            ("//:file.json", "file.json"),
+            ("//pkg/sub", "pkg/sub/sub"),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual(root / path, label_path(root, label))
 
 
 class BazelrcOptionsTest(unittest.TestCase):
