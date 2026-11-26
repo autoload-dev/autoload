@@ -5,7 +5,8 @@ component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module, which is never published, holds the
 repository's own tooling in `tools/`: the lanes' work, add-on scaffolding, setup checks,
-formatting, linting, the conventions check and the ruleset's API documentation. It also holds
+formatting, linting, the conventions check and the checks of the ruleset's API documentation,
+which the ruleset's tests run. It also holds
 the consumers of the components, which it reaches through `local_path_override`: the Godot
 applications of `examples/` and the ruleset's consumer scenarios in `e2e/rules_godot/`. A
 component's builds never load files from the root module; the components reach its linters
@@ -52,7 +53,7 @@ aspect lint --fix                         # apply Ruff's fixes in the current mo
 aspect work lint:gdscript lint:markdown   # lint GDScript's declaration order and Markdown's headings
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
 bazel run //tools/gazelle:rules_godot      # regenerate the ruleset's bzl_library targets
-aspect work docs                          # after changing the ruleset's public API
+(cd rules_godot && bazel test //godot/tests/api/... //godot/tests/api_contracts/...)  # after changing the ruleset's public API
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy

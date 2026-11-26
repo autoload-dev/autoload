@@ -6,7 +6,7 @@ load("//godot/private:resources.bzl", "godot_resources", "own_paths")
 load("//godot/private:run.bzl", "godot_test")
 
 # Test framework modules, such as autoload_gdunit, load adapter_test across repositories. It
-# is no supported API (tools/docs/api/modules.bzl at the repository root): each such module pins a matching
+# is no supported API (godot/tests/api/modules.bzl): each such module pins a matching
 # rules_godot.
 visibility("public")
 

@@ -1,7 +1,0 @@
---- a/BUILD
-+++ b/BUILD
-@@ -1 +1,4 @@
- # Do not remove, this empty BUILD file is necessary for _android_ndk_repository_impl in rules.bzl.
-+
-+# rules_godot: expose the repository rule source for API documentation extraction.
-+exports_files(["rules.bzl"])

@@ -7,7 +7,6 @@ from tools.docs.output_contracts import (
     Api,
     ConfiguredTarget,
     Contract,
-    behavior_lane,
     compare,
     coverage_errors,
     has_consumer_visibility,
@@ -79,16 +78,17 @@ class OutputContractsTest(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 parse(invalid)
 
-    def test_behavior_tests_resolve_in_a_lane_that_evaluates_their_module(self) -> None:
-        # The docs lane of the default hook evaluates the ruleset module only.
-        self.assertEqual("docs", behavior_lane("rules_godot"))
-        self.assertEqual("desktop", behavior_lane("."))
+    def test_a_case_needs_a_requirement_that_a_contract_test_runs(self) -> None:
+        api = Api("rule_info", parse(DOC), "//:defs.bzl")
+        cases = {"api": {"target": "//:a", "requires": "android"}}
+        self.assertIn(
+            "api: unknown host requirement, which no contract test runs",
+            coverage_errors({"api": api}, cases, {}, ("", "android_sdk")),
+        )
 
     def test_kind_semantics(self) -> None:
         test = replace(EXECUTABLE, label="//:test")
-        library = replace(
-            EXECUTABLE, providers=frozenset({"@@rules_cc+//cc:x.bzl%CcInfo"})
-        )
+        library = replace(EXECUTABLE, providers=frozenset({"CcInfo"}))
         toolchain = replace(FILES, files=0, providers=frozenset({"ToolchainInfo"}))
         cases = [
             ("files", FILES, {}, []),

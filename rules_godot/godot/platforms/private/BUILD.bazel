@@ -5,26 +5,10 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # who loads its modules.
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The repository's root module lists these files in the Starlark library it extracts the API
-# documentation with (tools/docs/api). Their load visibility still restricts who loads them.
+# The repository's Android requirements check reads the pins of the Linux toolchains
+# (tools/android at the repository's root).
 exports_files(
-    [
-        "android.bzl",
-        "android_bootstrap.bzl",
-        "android_jni_libraries.bzl",
-        "android_outputs.bzl",
-        "android_platform_libraries.bzl",
-        "android_runtime_bridge.bzl",
-        "android_toolchains.bzl",
-        "desktop.bzl",
-        "launch.bzl",
-        "shell.bzl",
-        "ios.bzl",
-        "ios_runtime_bridge.bzl",
-        "macos_signing.bzl",
-        "manifest_graph.bzl",
-        "maven.bzl",
-    ],
+    ["android_toolchains.bzl"],
     visibility = ["//visibility:public"],
 )
 

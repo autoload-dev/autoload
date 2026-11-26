@@ -195,61 +195,6 @@ GENERATED_INPUTS = files(
     "tools/generate/*",
 )
 
-# The API documentation's tests, all of them fast, with the API inventory's discovery
-# of new Starlark modules, which a test's sandbox cannot see.
-DOCS_CHECK = "bazel run //tools/docs:check"
-
-# The API documentation: the ruleset's API, the documentation's tools and the root module's
-# declarations and the Python those tools load.
-DOCS_INPUTS = files(
-    f"{RULESET_DIR}/godot/*",
-    f"{RULESET_DIR}/MODULE.bazel*",
-    f"{RULESET_DIR}/BUILD.bazel",
-    f"{RULESET_DIR}/tools/*",
-    "tools/docs/*",
-    "tools/ci/lanes.py",
-    "MODULE.bazel",
-    "MODULE.bazel.lock",
-    "tools/addons/*",
-    "tools/code_health/*",
-    "tools/conventions/*",
-    "tools/setup/*",
-)
-
-# The contract checker's test of its mismatch reports.
-MISMATCH_TEST_INPUTS = files(
-    "tools/docs/*",
-    f"{RULESET_DIR}/godot/tests/api_contracts/*",
-    "tools/conventions/*",
-)
-
-# The workspace's own output base, which work names where its lane has another profile.
-DEFAULT_PROFILE = "default"
-
-
-def contracts_command(lane: str) -> str:
-    """The command that checks the API output contract cases of a lane."""
-    return f"bazel run //tools/docs:contracts -- --lane {lane}"
-
-
-def contracts(lane: str) -> Work:
-    """
-    The API output contract cases of a lane. The checker builds itself and extracts the API
-    in the default profile, which the docs work shares; its configured queries of the
-    lane's cases run in the lane's profile (tools/docs/evidence.py). Its inputs are the docs
-    work's, since the cases evaluate the same API and generated repositories.
-    """
-    return Work(
-        f"contracts:{lane}",
-        lane,
-        ".",
-        (contracts_command(lane),),
-        android=lane == "android",
-        profile=DEFAULT_PROFILE,
-        inputs=DOCS_INPUTS,
-    )
-
-
 # ==== Ruleset tests ===========================================================
 
 
@@ -393,29 +338,11 @@ WORK = (
             "MODULE.bazel*",
         ),
     ),
-    # The repository tooling's tests but the API documentation's, which the docs work runs;
-    # the examples' and scenarios' tests run in the desktop lane.
-    Work("test:tools", "quality", ".", ("bazel test -- //tools/... -//tools/docs/...",)),
+    # The repository tooling's tests; the examples' and scenarios' tests run in the desktop
+    # lane.
+    Work("test:tools", "quality", ".", ("bazel test //tools/...",)),
     # The ruleset's fast tests.
     Work("test:fast", None, RULESET_DIR, (FAST_TEST_COMMAND,)),
-    # The API inventory and the documentation of its public entrypoints, and the contract
-    # cases that need no SDK.
-    Work(
-        "docs",
-        "docs",
-        ".",
-        (
-            DOCS_CHECK,
-            contracts_command("docs"),
-            In(
-                ".",
-                "bazel run //tools/docs:evaluated_mismatch_test",
-                MISMATCH_TEST_INPUTS,
-            ),
-        ),
-        inputs=DOCS_INPUTS,
-    ),
-    contracts("desktop"),
     # The ruleset's desktop set, including its Android packaging tests; tests that build an
     # engine from source run in the source-engine lane.
     Work(
@@ -452,7 +379,6 @@ WORK = (
         (f"bazel test {SCENARIOS}/smoke/linux/... {SCENARIOS}/smoke/macos/...",),
     ),
     *example_work(),
-    contracts("android"),
     # The mobile lanes' release builds and smoke tests carry their configuration
     # (godot_configured_app), so they keep the workspace's own server.
     Work(
@@ -462,14 +388,12 @@ WORK = (
         (release_tests("android", f"{SCENARIOS}:android"),),
         android=True,
     ),
-    contracts("ios"),
     Work(
         "ios",
         "ios",
         ".",
         (release_tests("ios", f"{SCENARIOS}:ios"),),
     ),
-    contracts("source-engine"),
     # Every source-engine case, the applications' it verifies included. CI runs it in the
     # Source engine workflow.
     Work(

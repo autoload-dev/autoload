@@ -1,13 +1,16 @@
 load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//tools/docs/api:__pkg__"])
+# The ruleset's tests of its API documentation (@autoload_rules_godot//godot/tests/...) run
+# these checks in the ruleset's module.
+package(default_visibility = ["//visibility:public"])
 
 exports_files([
+    "api_docs.py",
     "bcr_metadata_test.py",
+    "contracts.py",
     "coverage_test.py",
-    "rules_android_doc_visibility.patch",
-    "rules_android_ndk_doc_visibility.patch",
+    "evaluated_mismatch_test.py",
 ])
 
 py_library(
@@ -39,25 +42,7 @@ py_test(
 py_library(
     name = "inventory_lib",
     srcs = ["api_docs.py"],
-    deps = [
-        ":ruleset_lib",
-        "//tools/conventions:context_lib",
-        "//tools/setup:modules_lib",
-    ],
-)
-
-# `bazel run //tools/docs:check` checks the inventory and runs the docs tests.
-py_binary(
-    name = "check",
-    srcs = ["api_docs.py"],
-    main = "api_docs.py",
-    tags = ["manual"],
-    visibility = ["//visibility:private"],
-    deps = [
-        ":ruleset_lib",
-        "//tools/conventions:context_lib",
-        "//tools/setup:modules_lib",
-    ],
+    deps = ["//tools/setup:modules_lib"],
 )
 
 py_library(
@@ -109,11 +94,7 @@ py_test(
 py_library(
     name = "output_contracts_lib",
     srcs = ["output_contracts.py"],
-    deps = [
-        ":ruleset_lib",
-        "//tools/ci:lanes_lib",
-        "//tools/setup:modules_lib",
-    ],
+    deps = [":ruleset_lib"],
 )
 
 py_test(
@@ -127,11 +108,8 @@ py_library(
     name = "evidence_lib",
     srcs = ["evidence.py"],
     deps = [
-        ":coverage_lib",
         ":output_contracts_lib",
-        "//tools/ci:lanes_lib",
         "//tools/conventions:context_lib",
-        "//tools/setup:modules_lib",
     ],
 )
 
@@ -149,25 +127,14 @@ py_library(
     name = "contracts_lib",
     srcs = [
         "contracts.py",
+        "public_contracts.py",
         "repository_contracts.py",
     ],
     deps = [
         ":coverage_lib",
         ":evidence_lib",
-        ":inventory_lib",
         ":output_contracts_lib",
         ":ruleset_lib",
-        "//tools/ci:lanes_lib",
-        "//tools/conventions:context_lib",
-    ],
-)
-
-py_binary(
-    name = "contracts",
-    srcs = ["contracts.py"],
-    tags = ["manual"],
-    deps = [
-        ":contracts_lib",
         "//tools/conventions:context_lib",
     ],
 )
@@ -190,11 +157,12 @@ py_test(
     deps = [":contracts_lib"],
 )
 
-# Standalone, like the production contract check: nested Bazel invocations cannot
-# run as a sandboxed Bazel test against the same locked output base.
-py_binary(
-    name = "evaluated_mismatch_test",
-    srcs = ["evaluated_mismatch_test.py"],
-    tags = ["manual"],
+py_test(
+    name = "public_contracts_test",
+    size = "small",
+    srcs = [
+        "public_contracts_test.py",
+        "repository_contracts_test.py",
+    ],
     deps = [":contracts_lib"],
 )

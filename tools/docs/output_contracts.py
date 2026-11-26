@@ -11,9 +11,7 @@ import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
-from tools.ci.lanes import CONTRACT_LANES as MACHINE_LANES
 from tools.docs.ruleset import MODULE
-from tools.setup.modules import RULESET
 
 # ==== Contract grammar ========================================================
 
@@ -256,8 +254,8 @@ def provider_identity(key: str) -> str:
 
 
 def has_provider(target: ConfiguredTarget, name: str) -> bool:
-    """Whether a configured target returns a provider, by its name or its identity."""
-    return any(key == name or key.endswith("%" + name) for key in target.providers)
+    """Whether a configured target returns a provider, by the name its evidence reports."""
+    return name in target.providers
 
 
 def _test_errors(kind: str, test: bool) -> list[str]:
@@ -382,25 +380,7 @@ def is_shared_library(kind: str, booleans: Mapping[str, bool]) -> bool:
 # ==== Coverage ================================================================
 
 
-# The lanes with API contract cases: docs, whose cases are the default, and the
-# profile lanes.
-DEFAULT_CONTRACT_LANE = "docs"
-
-CONTRACT_LANES = (DEFAULT_CONTRACT_LANE, *MACHINE_LANES)
-
-# The lane whose cases evaluate the consumer modules.
-CONSUMER_MODULE_LANE = "desktop"
-
 REPOSITORY_KINDS = frozenset({"repository_rule_info", "module_extension_info"})
-
-
-def behavior_lane(module: str) -> str:
-    """
-    The lane that resolves a module's behavior tests: one that evaluates the module anyway.
-
-    The docs lane, part of the default hook, evaluates the ruleset module only.
-    """
-    return DEFAULT_CONTRACT_LANE if module == RULESET.as_posix() else CONSUMER_MODULE_LANE
 
 
 @dataclass(frozen=True)
@@ -450,14 +430,16 @@ def _api_errors(
     return errors
 
 
-def _case_errors(key: str, case: dict, apis: Mapping[str, Api]) -> list[str]:
-    """Check that a case names a known export, a lane and what it evaluates."""
+def _case_errors(
+    key: str, case: dict, apis: Mapping[str, Api], requirements: Iterable[str]
+) -> list[str]:
+    """Check that a case names a known export, a host requirement and what it evaluates."""
     api = apis.get(key.partition("#")[0])
     if api is None:
         return [f"{key}: case refers to unknown API"]
     errors = []
-    if case.get("lane", DEFAULT_CONTRACT_LANE) not in CONTRACT_LANES:
-        errors.append(f"{key}: unknown required lane")
+    if case.get("requires", "") not in requirements:
+        errors.append(f"{key}: unknown host requirement, which no contract test runs")
     if is_repository_api(api) != ("entrypoints" in case):
         errors.append(f"{key}: repository APIs, and only those, use entrypoint cases")
     elif "entrypoints" not in case and not case.get("target"):
@@ -469,14 +451,19 @@ def coverage_errors(
     apis: Mapping[str, Api],
     cases: Mapping[str, dict],
     behavior: Mapping[str, list[str]],
+    requirements: Iterable[str] = ("",),
 ) -> list[str]:
-    """Require every public export to own configured cases and companion tests."""
+    """
+    Require every public export to own configured cases and companion tests, and every
+    case a requirement that a contract test runs.
+    """
     errors = []
+    requirements = tuple(requirements)
     for identity, api in apis.items():
         if api.kind != "provider_info":
             errors.extend(_api_errors(identity, api, cases, behavior))
     for key, case in cases.items():
-        errors.extend(_case_errors(key, case, apis))
+        errors.extend(_case_errors(key, case, apis, requirements))
     errors.extend(
         f"{identity}: behavior test refers to unknown API"
         for identity in behavior

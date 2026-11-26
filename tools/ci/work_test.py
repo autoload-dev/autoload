@@ -18,7 +18,7 @@ from unittest import mock
 from tools.addons.modules import all_modules, choices
 from tools.addons.test_support import copy_schemas
 from tools.apps.apps import lanes as app_lanes
-from tools.ci.changes import Changes, changes_since
+from tools.ci.changes import Changes, changes_since, files
 from tools.ci.lanes import LANES
 from tools.ci.work import (
     FAST_TEST_COMMAND,
@@ -65,7 +65,6 @@ class WorkTest(unittest.TestCase):
 
     def test_every_lane_plans_its_work_and_the_add_on_modules_lanes(self) -> None:
         planned = lanes(all_work(self.root))
-        self.assertEqual(planned["docs"], ["docs"])
         self.assertIn("test:bazel", planned["desktop"])
         # One piece runs every module of a lane; the pieces per module run when named.
         self.assertEqual(
@@ -148,15 +147,11 @@ class WorkTest(unittest.TestCase):
         for name, profile in (
             # Mobile applications carry their configuration (godot_configured_app).
             ("android", None),
-            # The checker picks the lane's profile for its cases' configured queries.
-            ("contracts:android", "default"),
             ("ios", None),
-            ("contracts:ios", "default"),
             ("source-engine", "source-engine"),
             ("test:example:petri", "source-engine"),
             ("test:bazel", None),
-            ("contracts:desktop", "default"),
-            ("docs", None),
+            ("generated", None),
         ):
             self.assertEqual(profile, work[name].bazel_profile, name)
 
@@ -305,48 +300,6 @@ class SelectionTest(unittest.TestCase):
         ):
             self.assertEqual(1, len(self.run_steps("generated", path)), path)
 
-    def test_docs_check_their_inputs(self) -> None:
-        commands = [
-            step.command for step in self.run_steps("docs", "rules_godot/godot/defs.bzl")
-        ]
-        self.assertEqual(
-            [
-                "bazel run //tools/docs:check",
-                "bazel run //tools/docs:contracts -- --lane docs",
-            ],
-            commands,
-        )
-        for path in ("rules_godot/MODULE.bazel", "tools/setup/pins.py"):
-            self.assertEqual(2, len(self.run_steps("docs", path)), path)
-        self.assertEqual([], self.run_steps("docs", "addons/sentry/a.py"))
-
-    def test_desktop_contracts_check_the_docs_inputs(self) -> None:
-        # The pre-push hook runs them where a change can shape the desktop cases, such as a
-        # generated repository's public targets.
-        for path in (
-            "rules_godot/godot/engine/private/hub.bzl",
-            "tools/docs/contracts.py",
-        ):
-            self.assertEqual(
-                ["bazel run //tools/docs:contracts -- --lane desktop"],
-                [step.command for step in self.run_steps("contracts:desktop", path)],
-                path,
-            )
-        self.assertEqual([], self.run_steps("contracts:desktop", "addons/sentry/a.py"))
-
-    def test_the_contract_checker_runs_its_own_test(self) -> None:
-        for path in (
-            "tools/docs/contracts.py",
-            "rules_godot/godot/tests/api_contracts/cases.bzl",
-            "tools/conventions/check.py",
-        ):
-            steps = self.run_steps("docs", path)
-            self.assertEqual(
-                (".", "bazel run //tools/docs:evaluated_mismatch_test"),
-                steps[-1][:2],
-                path,
-            )
-
     def test_gazelle_checks_the_ruleset_s_starlark_and_build_files(self) -> None:
         for path in (
             "rules_godot/godot/private/pack.bzl",
@@ -371,9 +324,12 @@ class SelectionTest(unittest.TestCase):
     def test_a_skipped_step_is_reported(self) -> None:
         printed = io.StringIO()
         with contextlib.redirect_stdout(printed):
-            selected(all_work(ROOT)["docs"], changed("addons/sentry/a.py"))
+            selected(
+                Work("docs", None, ".", (In(".", "check", files("docs/*")), "run")),
+                changed("addons/sentry/a.py"),
+            )
         self.assertIn(
-            "[docs] .$ bazel run //tools/docs:check skipped: no change since abc1234",
+            "[docs] .$ check skipped: no change since abc1234",
             printed.getvalue(),
         )
         printed = io.StringIO()

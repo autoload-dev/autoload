@@ -1,65 +1,47 @@
-"""Require real configured contract mismatches to fail through the production checker."""
+"""
+Require real configured contract mismatches to fail through the production checker.
 
-import os
-from pathlib import Path
+The ruleset's evaluated_mismatch_test (godot/tests/api_contracts) runs it with the evidence
+of its mismatch fixtures, as a contract test runs contracts.py.
+"""
 
-from tools.docs.contracts import check_cases, extracted_apis, host_case
-from tools.docs.evidence import RULESET_MODULE, EvaluatedBazel
+import sys
 
-_FIXTURES = "//godot/tests/api_contracts:"
+from tools.docs.contracts import arguments, check_cases, read_test
 
-# API symbol -> (fixture target, expected diagnostics); none means it must pass.
+_MODULE = "//godot/tests/api_contracts:mismatch.bzl%"
+
+# API symbol -> expected diagnostics; none means it must pass.
 SCENARIOS = {
-    "good": ("evaluated_good", []),
-    "alias_files_companion": ("evaluated_alias_files", []),
-    "missing_group": (
-        "evaluated_missing_group",
-        ["missing documented group: missing", "undocumented group: report"],
-    ),
-    "executable_claim": (
-        "evaluated_not_a_test",
-        ["promised test is not an evaluated Bazel test"],
-    ),
-    "pretend_test_companion": (
-        "evaluated_pretend_test_companion",
-        ["companion", "promised test is not an evaluated Bazel test"],
-    ),
-    "alias_executable_companion": (
-        "evaluated_alias_executable",
-        ["undocumented executable behavior"],
-    ),
+    "good": [],
+    "alias_files_companion": [],
+    "missing_group": [
+        "missing documented group: missing",
+        "undocumented group: report",
+    ],
+    "executable_claim": ["promised test is not an evaluated Bazel test"],
+    "pretend_test_companion": [
+        "companion",
+        "promised test is not an evaluated Bazel test",
+    ],
+    "alias_executable_companion": ["undocumented executable behavior"],
     # A helper visible only to another package is still a consumer interface.
-    "restricted_companion": (
-        "evaluated_restricted_leak",
-        ["undocumented companion: {name}.unexpected"],
-    ),
+    "restricted_companion": ["undocumented companion: {name}.unexpected"],
     # A symbolic macro's same-package grant reaches its caller's package.
-    "same_package_leak": (
-        "evaluated_same_package_leak",
-        ["undocumented companion: {name}.unexpected"],
-    ),
+    "same_package_leak": ["undocumented companion: {name}.unexpected"],
 }
 
 
 def main() -> None:
-    bazel = EvaluatedBazel(Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]))
-    inventory = _FIXTURES + "evaluated_mismatch_inventory.textproto"
-    module = bazel.extracted([inventory], RULESET_MODULE)[inventory]
-    apis, errors = extracted_apis({_FIXTURES + "mismatch.bzl": module})
-    assert not errors, errors
-    identities = {symbol: _FIXTURES + "mismatch.bzl%" + symbol for symbol in SCENARIOS}
+    test = read_test(arguments(sys.argv[1:]))
+    assert not test.extraction_errors, test.extraction_errors
+    assert set(test.plan["cases"]) == {_MODULE + symbol for symbol in SCENARIOS}
     results = check_cases(
-        bazel,
-        {
-            identities[symbol]: (
-                host_case({"target": _FIXTURES + target}),
-                apis[identities[symbol]],
-            )
-            for symbol, (target, _) in SCENARIOS.items()
-        },
+        test.evidence,
+        {key: (case, test.apis[key]) for key, case in test.plan["cases"].items()},
     )
-    for symbol, (_, expected) in SCENARIOS.items():
-        errors = results[identities[symbol]]
+    for symbol, expected in SCENARIOS.items():
+        errors = results[_MODULE + symbol]
         if not expected:
             assert not errors, errors
         for diagnostic in expected:
