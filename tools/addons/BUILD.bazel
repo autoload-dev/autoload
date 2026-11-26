@@ -66,6 +66,22 @@ py_test(
     ],
 )
 
+# root.targets, which the development verbs pass to Bazel, names every module of addons.bzl.
+py_test(
+    name = "root_targets_test",
+    size = "small",
+    srcs = ["root_targets_test.py"],
+    args = [
+        "$(rootpath //:addons.bzl)",
+        "$(rootpath //:root.targets)",
+    ],
+    data = [
+        "//:addons.bzl",
+        "//:root.targets",
+    ],
+    deps = [":new_lib"],
+)
+
 py_test(
     name = "new_test",
     size = "small",
@@ -96,6 +112,7 @@ filegroup(
         "new.py",
         "new_test.py",
         "registry.py",
+        "root_targets_test.py",
         "selftest.py",
         "selftest_test.py",
         "test_support.py",

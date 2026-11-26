@@ -140,6 +140,6 @@ CI's `Linux` and `macOS` jobs are the merge queue's required checks: a pull requ
 whose jobs fail there leaves the queue and does not reach main. The ruleset of main, which
 requires the merge queue and those checks, is managed in the repository settings. Main receives the merge group's commit unchanged, so its
 checks show on the commit and a push to main runs no CI. The merge queue also saves the
-caches that later runs read, such as the Linux jobs' Bazel downloads: Blacksmith's branch
+caches that later runs read, such as the Linux job's repository cache: Blacksmith's branch
 protection for the Actions cache and sticky disks is off, so every branch reads a merge
 group's entries.

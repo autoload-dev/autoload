@@ -1,7 +1,8 @@
-# The Aspect CLI's tasks, which name pieces of the named work.
+# The Aspect CLI's tasks, which name pieces of the named work, and the root module's target
+# patterns they pass to Bazel.
 filegroup(
     name = "aspect_tasks",
-    srcs = glob([".aspect/*.axl"]),
+    srcs = glob([".aspect/*.axl"]) + ["root.targets"],
     visibility = ["//tools/ci:__pkg__"],
 )
 
@@ -43,6 +44,22 @@ exports_files(
         ".rumdl.toml",
     ],
     visibility = ["//visibility:public"],
+)
+
+# The Aspect CLI's configuration, whose lint task runs the linters of the lint check.
+exports_files(
+    [".aspect/config.axl"],
+    visibility = ["//tools/lint:__pkg__"],
+)
+
+# The add-on modules' generated repositories and the root's target patterns, which a test
+# compares (tools/addons:root_targets_test).
+exports_files(
+    [
+        "addons.bzl",
+        "root.targets",
+    ],
+    visibility = ["//tools/addons:__pkg__"],
 )
 
 # The Bazel wrapper (tools/bazel), whose test runs it in a scratch workspace.

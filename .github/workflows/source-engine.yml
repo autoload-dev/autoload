@@ -42,14 +42,8 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          # The ruleset's source_engine tests include Android source builds.
-          android-cache: "true"
       # A stale MODULE.bazel.lock fails the job's Bazel commands (--config=ci, shared.bazelrc).
       - name: Check MODULE.bazel.lock
         run: echo "common --config=ci" > ci.bazelrc
       - name: Run apps with source-built engines
         run: aspect ci source-engine
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
