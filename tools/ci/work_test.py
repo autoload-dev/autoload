@@ -18,7 +18,7 @@ from unittest import mock
 from tools.addons.modules import choices
 from tools.addons.test_support import copy_schemas
 from tools.apps.apps import lanes as app_lanes
-from tools.ci.changes import Changes, changes_since, pushed_base
+from tools.ci.changes import CHECKED, Changes, changes_since, pushed_base
 from tools.ci.lanes import LANES
 from tools.ci.work import (
     FAST_TEST_COMMAND,
@@ -459,6 +459,11 @@ class ChangesTest(unittest.TestCase):
         git(self.root, "commit", "--quiet", "-m", "topic")
         return git(self.root, "rev-parse", "HEAD")
 
+    def checked(self) -> str:
+        """Record HEAD as the hook does once it passes."""
+        git(self.root, "update-ref", CHECKED, "HEAD")
+        return git(self.root, "rev-parse", "HEAD")
+
     def pushed_base(self, *remote_tips: str) -> str:
         with contextlib.redirect_stdout(io.StringIO()) as printed:
             found = pushed_base("main", remote_tips, self.root)
@@ -466,7 +471,8 @@ class ChangesTest(unittest.TestCase):
         return found
 
     def test_a_later_push_counts_from_the_remote_s_commit(self) -> None:
-        pushed = self.commit("pushed.md")
+        self.commit("pushed.md")
+        pushed = self.checked()
         self.commit("follow_up.md")
         base = self.pushed_base(pushed)
         self.assertEqual(pushed, base)
@@ -480,8 +486,22 @@ class ChangesTest(unittest.TestCase):
         self.assertEqual("main", self.pushed_base("0" * 40))
         self.assertIn("the remote has no such branch", self.printed)
 
+    def test_a_remote_commit_the_hook_did_not_check_counts_from_the_merge_base(
+        self,
+    ) -> None:
+        self.commit("checked.md")
+        self.checked()
+        # Such as a suggestion committed on GitHub, or a push without the hook.
+        unchecked = self.commit("unchecked.md")
+        self.commit("follow_up.md")
+        self.assertEqual("main", self.pushed_base(unchecked))
+        self.assertIn(
+            f"the hook did not check the remote's {unchecked[:9]}", self.printed
+        )
+
     def test_rewritten_history_counts_from_the_merge_base(self) -> None:
-        pushed = self.commit("pushed.md")
+        self.commit("pushed.md")
+        pushed = self.checked()
         git(self.root, "reset", "--quiet", "--hard", "HEAD~1")
         self.commit("rewritten.md")
         self.assertEqual("main", self.pushed_base(pushed))
@@ -494,7 +514,8 @@ class ChangesTest(unittest.TestCase):
 
     def test_branches_on_different_commits_count_from_the_merge_base(self) -> None:
         first = self.commit("first.md")
-        second = self.commit("second.md")
+        self.commit("second.md")
+        second = self.checked()
         self.assertEqual("main", self.pushed_base(first, second))
         self.assertIn("several", self.printed)
         self.assertEqual(second, self.pushed_base(second, second))

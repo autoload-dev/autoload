@@ -73,6 +73,9 @@ pre_commit = task(
     },
 )
 
+# The commit the checks last passed on in this worktree (CHECKED in tools/ci/changes.py).
+_CHECKED = "refs/worktree/autoload/pre-push-checked"
+
 def _pre_push_impl(ctx: TaskContext):
     aspect = ctx.std.env.current_exe()
 
@@ -83,11 +86,17 @@ def _pre_push_impl(ctx: TaskContext):
     # commits change run (tools/ci/changes.py). The hook passes the pushed branches' commits on
     # the remote in a variable, which older checkouts ignore.
     remote_tips = (ctx.std.env.var("AUTOLOAD_REMOTE_TIPS") or "").split()
-    return _steps(ctx, [
+    conclusion = _steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"])),
         ("work", lambda: run_work(ctx, "lint", "lint:gdscript", "lint:markdown", "generated", "conventions", "test:setup", "test:fast", "docs", "contracts:desktop", "test:tools", changed_since = "origin/main", remote_tips = remote_tips)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
     ])
+
+    # A later push counts from the commit the checks passed on, once the remote has it
+    # (CHECKED in tools/ci/changes.py).
+    if conclusion == 0:
+        return run(ctx, "git", ["update-ref", _CHECKED, "HEAD"])
+    return conclusion
 
 pre_push = task(
     implementation = _pre_push_impl,

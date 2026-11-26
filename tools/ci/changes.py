@@ -1,8 +1,9 @@
 """
 The files changed since the merge base with a reference, which the pre-push hook's work
 selects its steps by (tools/ci/work.py). A push counts from the pushed branch's commit on the
-remote, which the hook checked when it was pushed, as long as HEAD descends from it; a
-branch's first push, and one that rewrites history the remote has not seen, count from the
+remote, as long as HEAD descends from it and this worktree's hook checked it last (CHECKED); a
+branch's first push, one that rewrites history the remote has not seen, and one over commits
+that reached the remote another way, such as a suggestion committed on GitHub, count from the
 merge base with origin/main (pushed_base).
 
 The changes are the working tree's against the merge base: committed, staged and unstaged
@@ -17,6 +18,9 @@ from pathlib import Path
 
 from tools.code_health.change import changed_paths
 from tools.code_health.scan import run_git
+
+# The commit the pre-push hook last passed on in a worktree, which it records (.aspect/hooks.axl).
+CHECKED = "refs/worktree/autoload/pre-push-checked"
 
 # The tooling that runs and selects the work; `*` matches across directories.
 SELECTS_EVERYTHING = (
@@ -98,8 +102,9 @@ def fallback(ref: str, reason: str) -> str:
 def pushed_base(ref: str, remote_tips: Iterable[str], root: Path) -> str:
     """
     The reference a push counts its changes from: the pushed branches' commit on the
-    remote, when they share one that HEAD descends from, else `ref`, with the reason
-    printed. A remote tip of zeros stands for a branch the remote does not have yet.
+    remote, when they share one that HEAD descends from and the hook checked last, else
+    `ref`, with the reason printed. A remote tip of zeros stands for a branch the remote
+    does not have yet.
     """
     tips = set(remote_tips)
     if any(set(tip) == {"0"} for tip in tips):
@@ -109,6 +114,8 @@ def pushed_base(ref: str, remote_tips: Iterable[str], root: Path) -> str:
     (tip,) = tips
     if run_git(root, "merge-base", "--is-ancestor", tip, "HEAD").returncode:
         return fallback(ref, f"the remote's {tip[:9]} is not in HEAD's history")
+    if run_git(root, "rev-parse", "--verify", "--quiet", CHECKED).stdout.strip() != tip:
+        return fallback(ref, f"the hook did not check the remote's {tip[:9]}")
     print(f"[work] counting changes since the remote's {tip[:9]}", flush=True)
     return tip
 
