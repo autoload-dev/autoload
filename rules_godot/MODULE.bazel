@@ -85,7 +85,7 @@ use_repo(godot_android_toolchains, "android_toolchains")
 # Registered here rather than per test with --extra_toolchains, which survives the exec
 # transition and would split the tests' tools into exec configurations of their own. The
 # root module's registrations precede rules_android's, and the hub's precede the host SDK's,
-# as the last entry of --config=android-toolchains in the consumer modules does.
+# as the repository's root module registers them too.
 register_toolchains(
     "@android_toolchains//:all",
     "@androidsdk//:all",

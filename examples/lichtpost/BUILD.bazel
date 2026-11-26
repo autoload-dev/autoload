@@ -8,6 +8,7 @@ load(
     "godot_run",
     "godot_runtime_profile",
 )
+load("//examples:releases.bzl", "android_release", "ios_release")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -95,3 +96,7 @@ godot_editor(
     visibility = ["//visibility:private"],
     deps = ["//examples/lichtpost/tests:suites"],
 )
+
+android_release(name = "android_release")
+
+ios_release(name = "ios_release")

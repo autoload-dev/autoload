@@ -252,7 +252,7 @@ stay out of them with a small scope.
 
 B1 and B2 need no convention rule. Bazel rejects a load or a dependency outside the declared
 visibility, as rules_cc, rules_apple and rules_java use it. Lanes select tests; packages own
-them. A configuration suite is a lane's entry point and lists consumer scenarios only. Where
+them. A mobile suite is a lane's entry point and lists consumer scenarios only. Where
 suites are declared is a lane decision.
 
 ## Artifact test rules

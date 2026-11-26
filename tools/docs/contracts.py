@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tools.ci.lanes import profile
+from tools.ci.lanes import contract_profile
 from tools.conventions.context import EvidenceError, Module, Target
 from tools.docs.api_docs import read_inventory
 from tools.docs.coverage import ModuleInfo, module_apis
@@ -335,7 +335,7 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
     inventory = read_inventory(root / INVENTORY)
-    bazel = EvaluatedBazel(root, profile(args.lane))
+    bazel = EvaluatedBazel(root, contract_profile(args.lane))
     targets = {inventory_target(label): label for label in inventory["PUBLIC_APIS"]}
     manifest = json.loads(bazel.outputs([MANIFEST])[MANIFEST].read_text())
     modules = bazel.extracted(targets)

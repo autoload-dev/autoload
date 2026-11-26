@@ -54,7 +54,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `aspect work test:bazel` (the ruleset's white-box tests), `bazel test //...` in `e2e/rules_godot/` (the regression module's desktop set); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | Selected `test:example:*` tasks; public test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | The `android` and `ios` work and desktop targets |
-| Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in the work `test:bazel`; the consumer module's configuration suites in the `android`/`ios` work |
+| Artifact inspection | Pack members, ABI/library delivery, metadata, symbols and identifier matching | The build-output tests in the work `test:bazel`; the consumer module's mobile suites in the `android`/`ios` work |
 | Exported application execution | The actual desktop application starts and produces meaningful assertions | The run tests in the work `test:bazel`; the desktop smoke scenarios in `test:gdextension`; `aspect work source-engine` |
 | Action inputs and determinism | Required invalidation, unaffected reuse, deterministic imports/PCKs | The action-input and reproducibility tests in the work `test:bazel`; execution-log comparison as per-change review evidence |
 | Mobile runtime acceptance | Target operating-system behavior on a matching device/emulator/simulator | Focused manual acceptance when changed behavior needs it |

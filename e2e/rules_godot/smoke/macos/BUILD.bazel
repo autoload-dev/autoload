@@ -1,6 +1,10 @@
 load("@autoload_rules_godot//godot:app.bzl", "godot_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+
+# The ruleset's configured applications, which it does not support as API.
+# buildifier: disable=bzl-visibility
+load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configured_app")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The macOS smoke path: build, inspect and boot a macOS application whose C ABI and
@@ -92,23 +96,28 @@ py_test(
     target_compatible_with = _MACOS,
 )
 
-# Signing is a build setting, so the signed application exists only in a build that sets
-# it: bazel test //e2e/rules_godot/smoke/macos/... --@autoload_rules_godot//godot:macos_signing=adhoc. Other builds
-# skip this test.
-config_setting(
-    name = "adhoc_signing",
-    flag_values = {"@autoload_rules_godot//godot:macos_signing": "adhoc"},
+# The application ad hoc signed, a build setting that the configured application sets.
+godot_configured_app(
+    name = "adhoc_app",
+    app = ":app",
+    macos_signing = "adhoc",
+    tags = ["manual"],
+    target_compatible_with = _MACOS,
+)
+
+filegroup(
+    name = "adhoc_app_archive",
+    srcs = [":adhoc_app"],
+    output_group = "archive",
+    target_compatible_with = _MACOS,
 )
 
 py_test(
     name = "app_is_adhoc_signed_test",
     size = "small",
     srcs = ["app_is_adhoc_signed_test.py"],
-    args = ["$(rlocationpath :app_archive)"],
-    data = [":app_archive"],
+    args = ["$(rlocationpath :adhoc_app_archive)"],
+    data = [":adhoc_app_archive"],
     tags = ["godot_process"],
-    target_compatible_with = _MACOS + select({
-        ":adhoc_signing": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
+    target_compatible_with = _MACOS,
 )

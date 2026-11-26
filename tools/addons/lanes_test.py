@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.addons.lanes import command, lane_tests_query, runnable
+from tools.addons.lanes import command, runnable
 from tools.addons.modules import AddonModule
 
 
@@ -55,28 +55,19 @@ class LanesTest(unittest.TestCase):
             ],
         )
 
-    def test_mobile_lanes_build_each_example_app(self) -> None:
+    def test_mobile_lanes_build_each_example_release_with_its_debug_symbols(self) -> None:
         self.assertEqual(
             command("ios", [module(".")]),
-            ["bazel", "build", "--config=official", "//examples/addons/widget:app"],
-        )
-        self.assertEqual(command("android", [module(".")])[2], "--config=android")
-
-    def test_mobile_lanes_run_the_tests_tagged_with_their_name(self) -> None:
-        self.assertEqual(
-            command("ios", [module(".")], ["//examples/addons/widget:app_test"]),
             [
                 "bazel",
-                "test",
-                "--config=official",
-                "--",
-                "//examples/addons/widget:app",
-                "//examples/addons/widget:app_test",
+                "build",
+                "//examples/addons/widget:ios_release",
+                "//examples/addons/widget:ios_release.debug_symbols",
             ],
         )
         self.assertEqual(
-            lane_tests_query("android", [module(".")])[-1],
-            'attr(tags, "[\\[ ]android[,\\]]", tests(//examples/addons/widget/...))',
+            command("android", [module("demo")])[2],
+            "//examples/addons/widget/demo:android_release",
         )
 
     def test_a_module_without_example_projects_is_refused(self) -> None:
@@ -90,19 +81,15 @@ class LanesTest(unittest.TestCase):
             [
                 "bazel",
                 "build",
-                "--config=official",
-                "//examples/addons/widget:app",
-                "//examples/addons/gadget:app",
+                "//examples/addons/widget:ios_release",
+                "//examples/addons/widget:ios_release.debug_symbols",
+                "//examples/addons/gadget:ios_release",
+                "//examples/addons/gadget:ios_release.debug_symbols",
             ],
         )
         desktop = command("desktop", [module("."), gadget])
         self.assertLess(
             desktop.index("@autoload_widget//..."), desktop.index("@autoload_gadget//...")
-        )
-        self.assertEqual(
-            lane_tests_query("ios", [module("."), gadget])[-1],
-            'attr(tags, "[\\[ ]ios[,\\]]", tests(//examples/addons/widget/...'
-            " + //examples/addons/gadget/...))",
         )
 
     def test_a_desktop_lane_runs_on_the_desktop_systems_its_module_names(self) -> None:

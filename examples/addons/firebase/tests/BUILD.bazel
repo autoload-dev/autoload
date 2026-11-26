@@ -15,12 +15,12 @@ godot_test(
     tags = ["godot_process"],
 )
 
-# The iOS lane tests it: the application embeds each extension's framework and the Firebase
-# frameworks they link, which their extensions do not list.
+# The iOS release build embeds each extension's framework and the Firebase frameworks they
+# link, which their extensions do not list. Building it needs Xcode, so the test runs on macOS.
 ios_app_test(
     name = "app_embeds_firebase_frameworks_test",
     size = "small",
-    app = "//examples/addons/firebase:app",
+    app = "//examples/addons/firebase:ios_release",
     files = [
         "Frameworks/%s.framework/%s" % (framework, framework)
         for framework in [
@@ -32,8 +32,6 @@ ios_app_test(
             "firebase_firestore",
         ]
     ],
-    tags = [
-        "ios",
-        "manual",
-    ],
+    tags = ["godot_process"],
+    target_compatible_with = ["@platforms//os:macos"],
 )
