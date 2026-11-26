@@ -35,8 +35,24 @@ TIERS = ["fast", "all"]
 # The argument that lets a task's steps go on after one fails.
 KEEP_GOING = args.boolean(default = False, short = "k", description = "Run every step even after one fails")
 
+def _patterns(ctx: TaskContext, workspace: str):
+    """A workspace's target patterns, with the add-on modules' in the root module.
+
+    The root module builds, tests and lints the add-on modules from there (RG027).
+    """
+    if workspace != ".":
+        return ["//..."]
+    addons = ctx.std.env.aspect_root_dir() + "/addons"
+    names = [
+        entry.path.rpartition("/")[2]
+        for entry in ctx.std.fs.read_dir(addons)
+        if not entry.is_file
+    ]
+    modules = [name for name in names if ctx.std.fs.exists(addons + "/" + name + "/MODULE.bazel")]
+    return ["//..."] + ["@autoload_{}//...".format(module) for module in sorted(modules)]
+
 def bazel_tests(ctx: TaskContext, flags) -> int:
-    """Run `bazel test //...` with the flags in every workspace at once.
+    """Run `bazel test` with the flags over every workspace's patterns at once.
 
     The workspaces have servers of their own, so their commands run side by side.
 
@@ -48,7 +64,7 @@ def bazel_tests(ctx: TaskContext, flags) -> int:
         0, or the first workspace's failing exit code.
     """
     children = [
-        spawn(ctx, "bazel", ["test"] + list(flags) + ["//..."], directory = workspace)
+        spawn(ctx, "bazel", ["test"] + list(flags) + ["--"] + _patterns(ctx, workspace), directory = workspace)
         for workspace in WORKSPACES
     ]
     codes = [child.wait().code for child in children]
