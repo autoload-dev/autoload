@@ -28,6 +28,7 @@ from tools.conventions.layout import (
     project_directory,
     root_consumer,
 )
+from tools.setup.modules import is_registry_test_module
 
 BUILD_FILES = frozenset({"BUILD", "BUILD.bazel"})
 
@@ -211,6 +212,14 @@ class Workspace:
     def repository_paths(self) -> tuple[Path, ...]:
         """Roots of repositories that are no module, such as local_repository fixtures."""
         return self._roots("REPO.bazel")
+
+    @cached_property
+    def loaded_modules(self) -> tuple[Module, ...]:
+        """
+        The modules whose Bazel evidence the check loads: every module but the registry test
+        modules, which build only from a release archive (RG020).
+        """
+        return tuple(m for m in self.modules if not is_registry_test_module(m.path))
 
     @cached_property
     def modules(self) -> tuple[Module, ...]:
@@ -730,9 +739,11 @@ class Context:
     def declarations(self, module: Module) -> tuple[Declaration, ...]:
         """Join parsed source calls and evaluated targets, retaining macro fan-out."""
         if module not in self._declarations:
-            # Modules are separate Bazel workspaces: load all of them concurrently,
-            # since a rule which needs one module's declarations visits every module.
-            modules = [m for m in self.workspace.modules if m not in self._declarations]
+            # Load every module at once: a rule which needs one module's declarations visits
+            # every module, and the Bazel tool loads each workspace's modules together.
+            modules = [
+                m for m in self.workspace.loaded_modules if m not in self._declarations
+            ]
             if module not in modules:
                 modules.append(module)
             with ThreadPoolExecutor() as pool:

@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tools.conventions.context import Context, Target
 from tools.conventions.framework import Finding, RuleInfo
-from tools.setup.modules import is_registry_test_module
 
 # The tag that keeps a test out of the fast tests, `--config=fast`.
 TAG = "godot_process"
@@ -29,12 +28,8 @@ class GodotProcessTests:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        modules = [
-            module
-            for module in context.workspace.modules
-            if not is_registry_test_module(module.path)
-        ]
-        # Each module is a Bazel workspace of its own: query them concurrently.
+        modules = context.workspace.loaded_modules
+        # The ruleset and the root module load in workspaces of their own: query concurrently.
         with ThreadPoolExecutor() as pool:
             godot = list(
                 pool.map(

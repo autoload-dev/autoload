@@ -122,6 +122,20 @@ bazel build //path/to:target //docs/... //:consumer_snippet
         self.assertEqual(1, len(findings))
         self.assertTrue(findings[0][2].endswith("found 2"))
 
+    def test_documents_of_registry_test_modules_are_not_checked(self) -> None:
+        # Registry test modules build only from a release archive; no Bazel evidence loads.
+        self.assertEqual(
+            [],
+            self.evaluate(
+                {"rules_godot/bcr/smoke/README.md": "`bazel run //:app`"},
+                RECORDS,
+                (
+                    "rules_godot/bcr/smoke/MODULE.bazel",
+                    "rules_godot/bcr/smoke/BUILD.bazel",
+                ),
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -108,7 +108,7 @@ class TargetNames:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         used = set()
-        for module in context.workspace.modules:
+        for module in context.workspace.loaded_modules:
             for declaration in context.declarations(module):
                 call = declaration.call
                 macro = self._from_macro(declaration)

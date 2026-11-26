@@ -58,7 +58,7 @@ class ApplicationContent:
         workspace = context.workspace
         configurations = {path.parent for path in workspace.godot_configurations}
         sources: dict[Path, bool] = {}
-        for module in workspace.modules:
+        for module in workspace.loaded_modules:
             resources = [
                 target
                 for target in context.bazel.rules(module)

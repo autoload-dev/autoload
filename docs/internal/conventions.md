@@ -6,7 +6,9 @@ convention rule has a stable ID, so diagnostics stay searchable when this page i
 reorganized. This page owns each rule's ID, applicability, automated coverage and limits;
 the [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the
 layout and naming conventions mean. External repositories and source files are separate
-identities, not authored target declarations.
+identities, not authored target declarations. Coverage that rests on Bazel's evaluation,
+such as RG002, RG003, RG006, RG007, RG008, RG012 and RG026, leaves out the registry test
+modules ([RG020](#rg020)), which the check does not load (see the [rule framework](#rule-framework)).
 
 | ID | Rule | Policy | Automated coverage | Enforcement |
 |---|---|---|---|---|
@@ -625,7 +627,7 @@ formats results and chooses the exit status.
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
 workspace files, documents, modules and projects, Starlark calls, Bazel rules and
 inspection, and the joins of them (`context.declarations`, `context.sources`). The Bazel tool,
-which runs each module's loading queries, is [bazel.py](../../tools/conventions/bazel.py);
+which runs the modules' loading queries, is [bazel.py](../../tools/conventions/bazel.py);
 the context decodes its output. The public
 members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal, which files
@@ -633,8 +635,14 @@ are agent instructions (every `AGENTS.md` and `SKILL.md`), and the local links a
 of a Markdown source.
 
 Tools load evidence lazily, cache it per tool/context instance and return immutable records
-and read-only attribute maps. The first `context.declarations` call loads the calls and
-rules of every module concurrently, since each module is a separate Bazel workspace. The
+and read-only attribute maps. Bazel evidence covers the loaded modules
+(`workspace.loaded_modules`): every module but the registry test modules, which build only
+from a release archive ([RG020](#rg020)). They load in two Bazel workspaces, each with one
+server: the ruleset in its own, since only it sees its development dependencies, and the
+root module with the add-on modules, which it names through their repositories,
+`@autoload_<module>//`; the tool names their labels as the module itself does. A workspace
+loads all of its modules in one query. The first `context.declarations` call loads the calls
+and rules of every loaded module, the two workspaces concurrently. The
 target-name and explicit-name rules share their declaration data, and the documentation-label
 rule resolves labels against the same per-module query, so no query runs twice. Missing or
 ambiguous source evidence and failed tools raise `EvidenceError` and abort the audit; they
