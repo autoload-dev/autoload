@@ -48,11 +48,6 @@ jobs:
             # Lint analyses every target of the root module and the add-on modules.
             runner: blacksmith-8vcpu-ubuntu-2404
             timeout: 10
-          - job: api-docs
-            name: API documentation
-            work: docs
-            runner: blacksmith-2vcpu-ubuntu-2404
-            timeout: 15
           - job: tests-linux
             name: Tests (Linux)
             work: desktop

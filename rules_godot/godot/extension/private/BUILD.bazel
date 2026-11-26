@@ -5,18 +5,6 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # who loads its modules.
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The repository's root module lists these files in the Starlark library it extracts the API
-# documentation with (tools/docs/api). Their load visibility still restricts who loads them.
-exports_files(
-    [
-        "bindings.bzl",
-        "cc_extension.bzl",
-        "godot_cpp.bzl",
-        "ios_framework.bzl",
-    ],
-    visibility = ["//visibility:public"],
-)
-
 bzl_library(
     name = "cc_extension",
     srcs = ["cc_extension.bzl"],

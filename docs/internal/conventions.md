@@ -377,7 +377,7 @@ that is not in an `engines/<name>/` directory. A nested project owns its own fil
 
 A stray directory is reported once, at its first file. An add-on's own `register_types.*`
 without `config.py` is an extension, not an engine module. Files outside every project,
-such as dependency patches in `third_party/` or `tools/docs/`, and lock files at the root
+such as dependency patches in `third_party/`, and lock files at the root
 of the repository, such as `multitool.lock.json`, are outside this rule. The check does not
 read module or patch contents and does not prove that a recipe consumes them.
 

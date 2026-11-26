@@ -125,20 +125,6 @@ SUPPORT_MODULES = [
     "//godot/platforms/private:ios.bzl",
 ]
 
-EXTERNAL_LOADS = [
-    "@bazel_skylib//lib:selects",
-    "@bazel_skylib//rules:common_settings",
-    "@bazel_skylib//rules:write_file",
-    "@rules_android//rules:bzl",
-    "@rules_android_ndk//:rules.bzl",
-    "@platforms//host:constraints_lib",
-    "@rules_apple//apple:apple",
-    "@rules_apple//apple:aspects",
-    "@rules_apple//apple:ios",
-    "@rules_cc//cc/common:common",
-    "@rules_cc//cc:core_rules",
-]
-
 PUBLIC_TARGETS = {
     "//godot/platforms:is_ios_simulator": "config_setting matching the effective iOS Simulator environment for engine, library and compatibility selection.",
     "//godot/platforms:is_ios_device": "config_setting matching the effective iOS device environment for engine, library and compatibility selection.",

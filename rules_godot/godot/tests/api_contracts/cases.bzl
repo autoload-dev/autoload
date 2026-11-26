@@ -2,28 +2,32 @@
 Representative configurations of each public API, keyed by API identity.
 
 A key may append `#variant` for further configurations of the same API. Fields:
-target, the fixture root; lane, the CI lane whose contract check runs the case
-(default `docs`); module, the Bazel module to run in, relative to the repository root (default rules_godot);
-options; conditions, the contract availabilities the configuration activates;
-forwarded_groups, when the root forwards an upstream target's output groups;
-host_replacements, string substitutions per host operating system. Repository APIs
+target, the fixture root; companions, the name patterns of its generated targets that
+the case analyzes, as its documentation names them; requires, what the host needs, which
+selects the contract test that runs the case (default none, see REQUIREMENTS in
+contract_test.bzl); settings, the build settings of its configuration, by the keys of
+SETTINGS in evidence.bzl; conditions, the contract availabilities the configuration
+activates; forwarded_groups, when the root forwards an upstream target's output groups.
+Repository APIs
 list documented entrypoints instead of a target, each with its fixture labels.
 
 PUBLIC_LIBRARIES configures the public libraries that build for one platform only, and
 BEHAVIOR_TESTS names the tests that show why an API's companions are separate targets.
 """
 
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
+
 _FIXTURES = "//godot/tests/api_contracts:"
-_EXPORT_PLATFORM = "--platforms=@autoload_rules_godot//godot/platforms:"
+_PLATFORMS = "//command_line_option:platforms"
+_PLATFORM = "//godot/platforms:"
+_VARIANT = "//godot:variant"
+_ANDROID_FORMAT = "//godot:android_format"
 
 # The application of the platform tests, one declaration for every operating system.
 _SELECTED_APP = "//godot/platforms/private/tests/app_platform_selection/fixtures/app_selecting_platform_libraries:app"
 
-# The root module registers the Android SDK and NDK toolchains only where a case asks.
-_ANDROID_SDK_TOOLCHAINS = [
-    "--extra_toolchains=@androidsdk//:all",
-    "--extra_toolchains=@android_toolchains//:all",
-]
+# The desktop platform of this host, whose applications its engines export.
+_HOST_DESKTOP = "linux_x86_64" if "@platforms//os:linux" in HOST_CONSTRAINTS else "macos_arm64"
 
 _VARIANTS = ["debug", "release"]
 _HUB_EDITORS = ["linux_arm64", "linux_x86_64", "macos_arm64", "macos_x86_64"]
@@ -64,65 +68,79 @@ _NDK_TARGET_SYSTEMS = [
 
 API_CASES = {
     "//godot:defs.bzl%godot_resources": {"target": _FIXTURES + "resources"},
-    "//godot:defs.bzl%godot_addon": {"target": _FIXTURES + "addon"},
-    "//godot:defs.bzl%godot_project": {"target": _FIXTURES + "api_contracts"},
+    "//godot:defs.bzl%godot_addon": {"target": _FIXTURES + "addon", "companions": ["{name}.editor"]},
+    "//godot:defs.bzl%godot_project": {
+        "target": _FIXTURES + "api_contracts",
+        "companions": ["{name}.named_addons"],
+    },
     "//godot:defs.bzl%godot_pack": {"target": _FIXTURES + "pack"},
     "//godot:defs.bzl%godot_pack#reachable": {"target": _FIXTURES + "reachable_pack", "conditions": ["filtered"]},
     "//godot:defs.bzl%godot_pack#required": {"target": _FIXTURES + "required_pack", "conditions": ["filtered"]},
     "//godot:defs.bzl%godot_run": {"target": _FIXTURES + "run"},
     "//godot:defs.bzl%godot_test": {"target": _FIXTURES + "game_test"},
     "//godot:defs.bzl%godot_editor": {"target": _FIXTURES + "editor"},
-    "//godot:defs.bzl%godot_metadata_sync": {"target": _FIXTURES + "metadata"},
-    "//godot:defs.bzl%godot_runtime_profile": {"target": _FIXTURES + "runtime_profile"},
+    "//godot:defs.bzl%godot_metadata_sync": {"target": _FIXTURES + "metadata", "companions": ["{name}.test"]},
+    "//godot:defs.bzl%godot_runtime_profile": {
+        "target": _FIXTURES + "runtime_profile",
+        "companions": ["{name}.test"],
+    },
     "//godot/extension:defs.bzl%godot_extension": {"target": _FIXTURES + "extension"},
     # Extensions forward CcInfo for the static libraries iOS links.
     "//godot/extension:defs.bzl%godot_extension#cc": {
-        "lane": "ios",
+        "requires": "macos",
         "target": _FIXTURES + "imported_cc",
         "conditions": ["when_cc"],
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
+        "settings": {_PLATFORMS: _PLATFORM + "ios_sim_x86_64"},
     },
     "//godot/extension:defs.bzl%godot_cc_extension": {"target": "//godot/extension/tests/fixtures/c_abi:hello"},
     "//godot/extension:defs.bzl%godot_cc_extension#cc": {
-        "lane": "ios",
+        "requires": "macos",
         "target": "//godot/extension/tests/fixtures/c_abi:hello",
         "conditions": ["when_cc"],
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
+        "settings": {_PLATFORMS: _PLATFORM + "ios_sim_x86_64"},
     },
-    "//godot/engine:defs.bzl%godot_editor_component": {"target": _FIXTURES + "editor_component"},
-    "//godot/engine:defs.bzl%godot_runtime_component": {"target": _FIXTURES + "runtime_component"},
+    "//godot/engine:defs.bzl%godot_editor_component": {
+        "target": _FIXTURES + "editor_component",
+        "companions": ["{name}.toolchain"],
+    },
+    "//godot/engine:defs.bzl%godot_runtime_component": {
+        "target": _FIXTURES + "runtime_component",
+        "companions": ["{name}.toolchain"],
+    },
     "//godot/platforms:defs.bzl%godot_export_platform": {"target": "//godot/platforms:linux_x86_64"},
     "//godot:app.bzl%godot_app": {
-        "lane": "desktop",
         "target": _SELECTED_APP,
+        "companions": ["{name}.debug_symbols"],
         "conditions": ["desktop"],
-        "options": [_EXPORT_PLATFORM + "macos_arm64"],
-        "host_replacements": {"linux": {"macos_arm64": "linux_x86_64"}},
+        "settings": {_PLATFORMS: _PLATFORM + _HOST_DESKTOP},
     },
     "//godot:app.bzl%godot_app#editor": {
-        "lane": "desktop",
         "target": _SELECTED_APP,
+        "companions": ["{name}.debug_symbols"],
         "conditions": ["editor"],
-        "options": ["--@autoload_rules_godot//godot:variant=editor"],
+        "settings": {_VARIANT: "editor"},
     },
     "//godot:app.bzl%godot_app#apk": {
-        "lane": "android",
+        "requires": "android_sdk",
         "target": _SELECTED_APP,
+        "companions": ["{name}.debug_symbols"],
         "conditions": ["apk"],
-        "options": [_EXPORT_PLATFORM + "android_arm64"] + _ANDROID_SDK_TOOLCHAINS,
+        "settings": {_PLATFORMS: _PLATFORM + "android_arm64"},
         "forwarded_groups": True,
     },
     "//godot:app.bzl%godot_app#aab": {
-        "lane": "android",
+        "requires": "android_sdk",
         "target": _SELECTED_APP,
+        "companions": ["{name}.debug_symbols"],
         "conditions": ["aab"],
-        "options": [_EXPORT_PLATFORM + "android_arm64", "--@autoload_rules_godot//godot:android_format=aab"] + _ANDROID_SDK_TOOLCHAINS,
+        "settings": {_PLATFORMS: _PLATFORM + "android_arm64", _ANDROID_FORMAT: "aab"},
     },
     "//godot:app.bzl%godot_app#ios": {
-        "lane": "ios",
+        "requires": "macos",
         "target": _SELECTED_APP,
+        "companions": ["{name}.debug_symbols"],
         "conditions": ["ios"],
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
+        "settings": {_PLATFORMS: _PLATFORM + "ios_sim_x86_64"},
         "forwarded_groups": True,
     },
     "//godot/extension:repositories.bzl%godot_cpp_bindings": {
@@ -133,7 +151,6 @@ API_CASES = {
         },
     },
     "//godot:extensions.bzl%godot_engines": {
-        "lane": "desktop",
         "conditions": ["desktop"],
         "entrypoints": _hub_entrypoints({
             "linux_{cpu}_{variant}": ["linux_" + cpu + "_" + v for cpu in _TEMPLATE_CPUS for v in _VARIANTS],
@@ -141,8 +158,7 @@ API_CASES = {
         }),
     },
     "//godot:extensions.bzl%godot_engines#android": {
-        "lane": "android",
-        "module": ".",
+        "requires": "android_sdk",
         "conditions": ["android_shell"],
         "entrypoints": _hub_entrypoints(
             # The hub builds the debug runtimes the official release lacks from its sources.
@@ -154,20 +170,10 @@ API_CASES = {
                 "@{repository}//android:{variant}": ["@godot//android:" + v for v in _VARIANTS],
             },
         ),
-        "options": ["--config=android", _EXPORT_PLATFORM + "android_arm64"],
-    },
-    # The source tag's archive is fetched only by the source-engine lane.
-    "//godot:extensions.bzl%godot_engines#source": {
-        "lane": "source-engine",
-        "conditions": ["source"],
-        "entrypoints": _hub_entrypoints({}, {
-            "@{repository}//:source.json": ["@godot_sources//:source.json"],
-            "@{repository}//:{archive}": ["@godot_sources//:source.tar.gz"],
-        }),
+        "settings": {_PLATFORMS: _PLATFORM + "android_arm64"},
     },
     "//godot:extensions.bzl%godot_engines#ios": {
-        "lane": "ios",
-        "module": ".",
+        "requires": "macos",
         "conditions": ["ios"],
         "entrypoints": _hub_entrypoints({
             "ios_{cpu}_{environment}_{variant}": [
@@ -177,11 +183,11 @@ API_CASES = {
                 for v in _VARIANTS
             ],
         }),
-        "options": [_EXPORT_PLATFORM + "ios_sim_x86_64"],
+        # The arm64 Simulator, whose source-built runtimes another CPU cannot analyze.
+        "settings": {_PLATFORMS: _PLATFORM + "ios_sim_arm64"},
     },
     "//godot:extensions.bzl%godot_android_toolchains": {
-        "lane": "android",
-        "module": ".",
+        "requires": "android_sdk",
         "conditions": [],
         "entrypoints": {
             _ANDROID_TOOLCHAINS + "ndk_{target_system}": [
@@ -205,23 +211,23 @@ API_CASES = {
                 _ANDROID_TOOLCHAINS + "aapt2",
             ],
         },
-        "options": ["--config=android"],
+        "settings": {_PLATFORMS: _PLATFORM + "android_arm64"},
     },
 }
 
-# Public library targets, which build only for one platform, by label: the lane whose
-# configuration analyzes them, its options and the provider their consumers depend on.
+# Public library targets, which build only for one platform, by label: what the host
+# needs, the settings of the configuration that analyzes them and the provider their
+# consumers depend on.
 PUBLIC_LIBRARIES = {
     "//godot/platforms:android_plugin_api": {
-        "lane": "android",
-        "options": [_EXPORT_PLATFORM + "android_arm64"] + _ANDROID_SDK_TOOLCHAINS,
+        "requires": "android_sdk",
+        "settings": {_PLATFORMS: _PLATFORM + "android_arm64"},
         "provider": "JavaInfo",
     },
 }
 
 # Behavior tests demonstrating why each API's public companions or repository
-# entrypoints are separate targets; the checker requires one per API with them. An entry
-# is a label of the ruleset module or a dict with target and module, as cases name their module.
+# entrypoints are separate targets; the checker requires one per API with them.
 BEHAVIOR_TESTS = {
     "//godot:app.bzl%godot_app": ["//godot/private/config/tests:test_debug_symbols_need_no_signing_identity"],
     "//godot:defs.bzl%godot_addon": ["//godot/private/tests:test_tests_reach_editor_parts_through_the_editor_target"],

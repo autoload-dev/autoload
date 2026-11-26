@@ -7,19 +7,20 @@ Platform setup, tutorials and architecture remain in the guides.
 
 ## Where the documentation is built
 
-The extraction, the registry's metadata and their checks live in the repository's
-[root module](../../../MODULE.bazel), which is never published. It depends on the ruleset
-through a `local_path_override`, extracts the ruleset's Starlark modules and holds every
-dependency and override that only the documentation needs as development dependencies:
-Stardoc's output schema, Protobuf and the
-[visibility patches](#third-party-documentation-dependencies). The ruleset's published
-`MODULE.bazel` thereby carries none of them. Its `//tools/docs/api` package holds the
-inventory and the extraction, `//tools/docs` the checks and the contract checker. Commands
-below run at the repository root unless they name another directory.
+The extraction, the registry's metadata and their checks are tests of the ruleset, which run
+in its own module beside its other tests: `//godot/tests/api` holds the inventory, the
+extraction and their tests, `//godot/tests/api_contracts` the contract cases, their fixtures
+and the contract tests. Every check reads only declared inputs, so Bazel caches it and runs
+it again only when one of them changes. The checks' Python lives in the repository's
+[root module](../../../MODULE.bazel) (`tools/docs`), which the ruleset reaches through its
+development dependency `autoload_dev`; that module also brings Stardoc's output schema and
+Protobuf. The [visibility patches](#third-party-documentation-dependencies) are overrides of
+the ruleset's `MODULE.bazel`, which apply only where it is the root module. Commands below
+run in `rules_godot/`.
 
 ## Public entrypoints and implementation modules
 
-[`modules.bzl`](../../../tools/docs/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
+[`modules.bzl`](../../godot/tests/api/modules.bzl) assigns every `godot/**/*.bzl` module a role:
 
 | Role | Purpose | Registry documentation |
 | --- | --- | --- |
@@ -130,26 +131,38 @@ The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-ev
 and configurations, not another copy of the public prose. Public configuration targets must
 be metadata-only in the host configuration. A public library that builds for one platform
 only, such as `//godot/platforms:android_plugin_api`, is listed in its `PUBLIC_LIBRARIES`
-instead, with the lane, the options and the provider its consumers use; that lane analyzes
-it and requires the provider. It also names the behavior tests
-that show why an API's public companion targets are separate; the checker requires them to
-resolve. A case or behavior test names its `module`, relative to `rules_godot/`, when its
-fixture lives outside the ruleset, such as `..` for the repository's root module with its
-consumer scenarios; the checker evaluates it there, and resolves such behavior tests in the
-desktop lane, whose cases evaluate that module anyway. The checker compares actual default files, executability, groups and public companion
+instead, with the host requirement, the settings and the provider its consumers use; its
+contract test analyzes it in that configuration and requires the provider. It also names the
+behavior tests that show why an API's public companion targets are separate; the checker
+requires them to resolve. A case gives its configuration as `settings`, the build settings a
+transition sets (`SETTINGS` in
+[evidence.bzl](../../godot/tests/api_contracts/evidence.bzl)), and lists the `companions` it
+analyzes; the checker rejects a documented companion that its case leaves out. The checker compares actual default files, executability, groups and public companion
 targets against the source in both directions. Bazel's loading facts
 establish target kinds, visibility, testonly and test behavior. Generated repositories have
 independent entrypoint checks instead of a fictitious repository-wide main target. Only
 interfaces the ruleset promises are compared: underscore-prefixed groups and, for roots that forward an upstream target, its groups are not. New public APIs or
 unsupported API kinds cannot silently escape required coverage.
 
-`aspect work docs` checks source schema, inventory, registry coverage, the
-ruleset module's behavior tests and the cases of the docs lane. `bazel run //tools/docs:contracts -- --lane <lane>`
-checks the cases of each profile lane, `desktop`, `source-engine`, `android` or `ios`, as the
-lane's work `contracts:<lane>`. It builds the extraction in the root module and
-evaluates the fixtures in the ruleset's module or in the consumer module a case names. Each
-lane's CI job runs its cases ([lanes](../../../docs/internal/verification-platforms.md#lanes-and-execution)),
-and a host documentation pass cannot replace them.
+A contract test reads three kinds of evidence, all of them declared inputs
+([contract_test.bzl](../../godot/tests/api_contracts/contract_test.bzl)): the extracted
+documentation of the public entrypoints; the fixtures' loading facts, a `genquery` of their
+packages with `siblings`; and their configured facts, which `contract_evidence` writes per
+configuration from analysis alone, without building the fixtures or running their
+validations. A case's `requires` names what its host needs, and each requirement has a
+test of its own: `contracts_test` for the cases any development host analyzes, together with
+the coverage of the public APIs, their behavior tests and the public configuration targets;
+`contracts_android_sdk_test` for those that need the Android SDK and `contracts_macos_test`
+for the Apple platforms. The latter two are skipped where the host lacks them; the desktop
+sets of CI run them ([lanes](../../../docs/internal/verification-platforms.md#lanes-and-execution)).
+`evaluated_mismatch_test` proves that real mismatches between fixtures and their
+documentation fail the same checks.
+
+Two limits follow from Bazel. A fixture that is incompatible with its case's configuration
+makes the evidence, and with it the whole contract test, incompatible, so Bazel skips the
+test instead of failing it; choose a configuration in which every fixture of a case is
+compatible. A genquery cannot enumerate a repository, so a repository case discovers the
+public rules of the packages its entrypoints lie in only.
 
 Update source docs, inventories and consumers together when a public interface changes. Review actual behavior and the necessity of each companion target
 separately: a resolvable test and a structurally valid justification do not establish that
@@ -188,15 +201,22 @@ also require documentation on short functions that Buildifier exempts.
 Semantic correctness, useful examples and accurate support claims need review;
 nonempty text alone cannot establish those qualities.
 
-The workspace-level discovery lives in the Python command
-because a Bazel sandbox only sees declared inputs and cannot discover an
-undeclared new source file. `bazel run //tools/docs:check` runs it; it runs Bazel again
-in the documentation and ruleset modules, so pass `-- --bazel /path/to/bazelisk` or set `BAZEL` when Bazel is
-not on PATH.
+A Bazel sandbox sees only declared inputs, so no action can discover an undeclared new
+source file. The ruleset's Starlark modules therefore become declared targets: Gazelle
+generates a `bzl_library` beside each one
+([generated BUILD declarations](../../../docs/internal/verification-recipes.md#generated-build-declarations)),
+and its check fails for a module without one. The extraction depends on the libraries of the
+classified modules, which carry the libraries of their loads. The inventory's test
+(`//godot/tests/api:inventory_test`) reads, with a genquery, the libraries beside the
+classified modules and those the classified modules load, and requires a role for each; it
+compares the public rules of the packages of the classified modules and of `PUBLIC_TARGETS`
+with `PUBLIC_TARGETS`. A genquery cannot list a repository's packages, so a module in a new
+package that no classified module loads, and a public rule in a new package, escape the test
+until one of its package's files is classified; review new packages.
 
 ## Metadata for the BCR documentation archive
 
-`bazel build //tools/docs/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
+`bazel build //godot/tests/api:bcr_docs` selects only the `starlark_doc_extract` `.binaryproto` files
 for the public primary symbols. CI checks that they contain every configured
 public symbol exactly once, with no implementation helpers or duplicate symbols.
 The release script packs exactly these files into the documentation archive that the registry
@@ -209,11 +229,12 @@ The curated BCR metadata contains public contracts only.
 ## Third-party documentation dependencies
 
 `rules_android` 0.8.0 exports its API `.bzl` files, but its transitive
-`//rules:bzl` documentation library has restricted visibility. The root module
-applies `tools/docs/rules_android_doc_visibility.patch` to expose that single
+`//rules:bzl` documentation library has restricted visibility. The ruleset's module
+applies `third_party/rules_android/doc_visibility.patch` to expose that single
 library for `starlark_doc_extract`. `rules_android_ndk` 0.1.5 exports no files; the
-root module applies `tools/docs/rules_android_ndk_doc_visibility.patch` to export
-`rules.bzl`, which `godot_android_toolchains` loads. Both change BUILD visibility only.
+module applies `third_party/rules_android_ndk/doc_visibility.patch` to export
+`rules.bzl`, which `godot_android_toolchains` loads. Both change BUILD visibility only and,
+as overrides, apply only where the ruleset is the root module, never to its consumers.
 Rulesets that build on rules_android publish no registry documentation or document no
 Android rules; `godot_app` loads rules_android, so its extraction needs the patches.
 Remove each patch once its upstream file is publicly accessible; do not disable

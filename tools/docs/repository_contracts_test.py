@@ -1,21 +1,13 @@
 """Repository interfaces must remain complete despite metadata-only API defaults."""
 
+import json
 import unittest
-from collections.abc import Iterable
 from dataclasses import replace
-from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 
-from tools.conventions.context import Module
-from tools.docs.evidence import EvaluatedBazel
+from tools.docs.evidence import Evidence, Labels, decode_configured, decode_loading
 from tools.docs.output_contracts import ConfiguredTarget, Contract
-from tools.docs.repository_contracts import (
-    check_public_libraries,
-    library_errors,
-    library_lane_errors,
-    repository_errors,
-    toolchain_bound,
-)
+from tools.docs.repository_contracts import check_repository, repository_errors
 
 LABEL = "@cpp//:godot_cpp"
 
@@ -156,98 +148,51 @@ class RepositoryContractsTest(unittest.TestCase):
         self.assertIn(f"missing configured repository entrypoint: {LABEL}", errors)
 
 
-class ToolchainBoundTest(unittest.TestCase):
-    def test_only_implementations_of_constrained_toolchains_are_bound(self) -> None:
-        def toolchain(implementation: str, *constraints: str) -> SimpleNamespace:
-            return SimpleNamespace(
-                kind="toolchain",
-                labels=MappingProxyType({"toolchain": implementation}),
-                label_lists=MappingProxyType({"exec_compatible_with": constraints}),
+def evidence(loading: str, *configurations: tuple[dict, list[str]]) -> Evidence:
+    """Evidence of a genquery's XML and configurations of Java libraries."""
+    return Evidence(
+        decode_loading(loading, Labels({})),
+        tuple(
+            decode_configured(
+                json.dumps(
+                    {
+                        "settings": settings,
+                        "facts": [
+                            {
+                                "label": label,
+                                "files": 1,
+                                "runfiles": 0,
+                                "executable": False,
+                                "providers": ["CcInfo", "JavaInfo"],
+                                "groups": [],
+                            }
+                            for label in labels
+                        ],
+                    }
+                )
             )
+            for settings, labels in configurations
+        ),
+    )
 
-        rules: dict = {
-            "@hub//toolchains:editor": rule(),
-            "@hub//toolchains:macos": toolchain(
-                "@@+ext+hub//toolchains:editor", "@platforms//os:macos"
-            ),
-            "@hub//toolchains:runtime": rule(),
-            "@hub//toolchains:any": toolchain("@@+ext+hub//toolchains:runtime"),
-            "@hub//toolchains:library": rule(),
-        }
+
+HUB = """<query version="2">
+    <rule class="cc_library" location="BUILD.bazel:1:1" name="@cpp//:godot_cpp">
+        <list name="visibility"><label value="//visibility:public"/></list>
+    </rule>
+    <rule class="cc_library" location="BUILD.bazel:2:1" name="@other//:godot_cpp">
+        <list name="visibility"><label value="//visibility:public"/></list>
+    </rule>
+</query>"""
+
+
+class CheckRepositoryTest(unittest.TestCase):
+    def test_only_the_case_s_repositories_and_configuration_count(self) -> None:
+        settings = {"//command_line_option:platforms": "//:android"}
+        case = CASE | {"settings": settings}
         self.assertEqual(
-            ["@hub//toolchains:editor"], toolchain_bound(sorted(rules), rules)
-        )
-
-
-class LibraryErrorsTest(unittest.TestCase):
-    PLUGIN_API = "//godot/platforms:android_plugin_api"
-
-    def errors(self, *providers: str) -> list[str]:
-        target = ConfiguredTarget(
-            self.PLUGIN_API, 1, 0, False, frozenset(providers), frozenset()
-        )
-        return library_errors(self.PLUGIN_API, target, "JavaInfo")
-
-    def test_library_with_its_provider(self) -> None:
-        self.assertEqual([], self.errors("@@rules_java+//java:java_info.bzl%JavaInfo"))
-
-    def test_library_without_its_provider(self) -> None:
-        self.assertEqual(
-            [self.PLUGIN_API + ": public library is missing JavaInfo"],
-            self.errors("CcInfo"),
-        )
-
-    def test_incompatible_library_is_no_evidence(self) -> None:
-        self.assertEqual(
-            [
-                self.PLUGIN_API
-                + ": public library is incompatible with its lane's configuration"
-            ],
-            self.errors("IncompatiblePlatformProvider", "JavaInfo"),
-        )
-
-
-JAVA_INFO = "@@rules_java+//java:java_info.bzl%JavaInfo"
-ANDROID_LIBRARY = MappingProxyType(
-    {"lane": "android", "options": ("--config=android",), "provider": "JavaInfo"}
-)
-
-
-class RecordingBazel(EvaluatedBazel):
-    """Answer every cquery with Java libraries and record its labels and options."""
-
-    def __init__(self) -> None:
-        super().__init__(Path())
-        self.calls: list[tuple[list[str], tuple[str, ...]]] = []
-
-    def configured(
-        self, module: Module, labels: Iterable[str], options: Iterable[str] = ()
-    ) -> dict[str, ConfiguredTarget]:
-        labels = list(labels)
-        self.calls.append((labels, tuple(options)))
-        return {
-            label: ConfiguredTarget(
-                label, 1, 0, False, frozenset({JAVA_INFO}), frozenset()
-            )
-            for label in labels
-        }
-
-
-class PublicLibrariesTest(unittest.TestCase):
-    def test_one_cquery_per_configuration_of_the_lane(self) -> None:
-        libraries = {
-            "//a:api": ANDROID_LIBRARY,
-            "//b:api": ANDROID_LIBRARY,
-            "//c:api": {**ANDROID_LIBRARY, "lane": "ios"},
-        }
-        bazel = RecordingBazel()
-        self.assertEqual([], check_public_libraries(bazel, libraries, "android"))
-        self.assertEqual([(["//a:api", "//b:api"], ("--config=android",))], bazel.calls)
-
-    def test_library_of_no_contract_lane_is_rejected(self) -> None:
-        self.assertEqual(
-            ["//a:api: public library names no contract lane: andriod"],
-            library_lane_errors({"//a:api": {**ANDROID_LIBRARY, "lane": "andriod"}}),
+            [],
+            check_repository(evidence(HUB, (settings, [LABEL])), case, contract()),
         )
 
 

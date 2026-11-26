@@ -21,7 +21,7 @@ for its checks.
   toolchain, repository and provider modules for those tasks. Keep platform
   dependency boundaries rather than forcing every API into one facade.
 - Assign every `rules_godot/godot/**/*.bzl` module a role in
-  `tools/docs/api/modules.bzl`: public entrypoint,
+  `rules_godot/godot/tests/api/modules.bzl`: public entrypoint,
   generated-repository implementation, or private implementation support. A
   public name does not become private merely because it is absent from the
   facade.
@@ -138,8 +138,9 @@ small tables/examples; use diagrams only for relationships that need them.
 ## Extract and enforce
 
 1. Update definitions and their documentation together. Classify new modules
-   in `tools/docs/api/modules.bzl`; workspace discovery must detect
-   unlisted files independently of Bazel's declared inputs. Choose the primary
+   in `rules_godot/godot/tests/api/modules.bzl`, and regenerate their
+   `bzl_library` targets with Gazelle (`bazel run //tools/gazelle:rules_godot`), through
+   which the inventory's test finds unlisted modules. Choose the primary
    owner of each new public symbol and update guides/examples to use that load
    path.
 2. Extract unfiltered export inventories with Bazel's built-in
@@ -160,8 +161,8 @@ small tables/examples; use diagrams only for relationships that need them.
    including second public exports, unrestricted private support modules and
    generated-repository modules losing external load access.
    Unsupported new API kinds must fail until extraction and checking are extended.
-6. For a BCR documentation archive, use only `//tools/docs/api:bcr_docs` of the
-   repository's root module, the curated
+6. For a BCR documentation archive, use only `//godot/tests/api:bcr_docs` of the
+   ruleset's module, the curated
    evaluated metadata for public primary contracts. Never archive all extractor
    outputs: those also contain unfiltered inventories and test fixtures. Archive
    publication is a separate release integration.

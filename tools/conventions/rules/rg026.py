@@ -16,9 +16,11 @@ TOOLCHAIN_TYPES = (
     "@autoload_rules_godot//godot/private/config:target_execution_toolchain_type",
 )
 
-# Analysis tests run no action; manual and source-engine tests run only when named or selected
-# (`--config=source-engine`), and loading the latter's graph would fetch engine sources.
-EXEMPT = frozenset({"manual", "source_engine", "starlark_analysis_test"})
+# Analysis tests, rules_testing's and those tagged analysis_only that read what analysis
+# reports of their dependencies, build none of them; manual and source-engine tests run only
+# when named or selected (`--config=source-engine`), and loading the latter's graph would
+# fetch engine sources.
+EXEMPT = frozenset({"analysis_only", "manual", "source_engine", "starlark_analysis_test"})
 
 
 class GodotProcessTests:

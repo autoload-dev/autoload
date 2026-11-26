@@ -6,31 +6,6 @@ load(":define_analysis.bzl", "per_file_copt_setting")
 # who loads its modules.
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The repository's root module lists these files in the Starlark library it extracts the API
-# documentation with (tools/docs/api). Their load visibility still restricts who loads them.
-exports_files(
-    [
-        "archives.bzl",
-        "catalogue.bzl",
-        "source_build_rows.bzl",
-        "components.bzl",
-        "define_analysis.bzl",
-        "engine_selection.bzl",
-        "extension_plan.bzl",
-        "generator.bzl",
-        "hub.bzl",
-        "optimization.bzl",
-        "pin.bzl",
-        "prebuilt.bzl",
-        "registration.bzl",
-        "repositories.bzl",
-        "resolution.bzl",
-        "selection.bzl",
-        "source_repositories.bzl",
-    ],
-    visibility = ["//visibility:public"],
-)
-
 exports_files(
     ["define_analysis.awk"],
     visibility = ["//visibility:public"],

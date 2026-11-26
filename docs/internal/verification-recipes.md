@@ -75,11 +75,11 @@ the critical path and action timings. Keep these files only for the investigatio
 
 ## API documentation
 
-For API source changes, run the `docs` work, `aspect work docs`: it checks the
-inventory, the docstrings and the contracts the registry's documentation relies on. Its
-contract cases are those that need no lane: the cases of generated repositories, such as an
-engine's hub, run in the lanes' `contracts:<lane>` work, `aspect work
-contracts:desktop` on a desktop host, which the pre-push hook runs too. See
+For API source changes, run the ruleset's documentation tests in `rules_godot/`:
+`bazel test //godot/tests/api/... //godot/tests/api_contracts/...` checks the inventory, the
+docstrings and the contracts the registry's documentation relies on. They belong to the fast
+tests, which the pre-push hook runs. A contract test whose cases need the Android SDK or
+macOS is skipped on a host without them, and runs in the desktop sets of CI. See
 [API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
 
 ## Generated BUILD declarations
@@ -104,9 +104,8 @@ options, such as `--config=android`, discards the analysis of the previous one. 
 desktop and mobile work keep theirs, [tools/bazel](../../tools/bazel) runs each profile in an
 output base and server of its own. `AUTOLOAD_BAZEL_PROFILE` names the profile; without it,
 Bazel uses the workspace's own output base, the `default` profile. The lanes' work sets the
-profile of the source-engine work, `source-engine`, and of the mobile lanes' contract cases,
-`android` or `ios` ([tools/ci/work.py](../../tools/ci/work.py)), so the pre-push hook and the
-desktop work stay warm in `default`. The mobile release builds and smoke tests need no
+profile of the source-engine work, `source-engine` ([tools/ci/work.py](../../tools/ci/work.py)),
+so the pre-push hook and the desktop work stay warm in `default`. The mobile release builds and smoke tests need no
 profile: their applications carry their configuration (`godot_configured_app`,
 [examples/releases.bzl](../../examples/releases.bzl)):
 

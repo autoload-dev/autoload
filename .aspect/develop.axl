@@ -21,8 +21,6 @@ TOOL_CHECKS = [
     "generated",
     "gazelle",
     "conventions",
-    "docs",
-    "contracts:desktop",
 ]
 
 # `bazel test` with no test among the targets, such as a tier a workspace has none of.

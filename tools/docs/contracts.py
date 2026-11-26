@@ -1,97 +1,44 @@
 """
 Compare evaluated public source contracts with configured, evaluated Bazel fixtures.
 
-Sections: Extraction, Case checks, Lane errors.
+The ruleset's contract tests (godot/tests/api_contracts/contract_test.bzl) run this module
+with their evidence as declared inputs: the extracted documentation, the fixtures' loading
+facts and their configured facts per configuration.
+
+Sections: Case checks, Test.
 """
 
 import argparse
 import json
-import os
 import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tools.ci.lanes import contract_profile
-from tools.conventions.context import EvidenceError, Module, Target
-from tools.docs.api_docs import read_inventory
-from tools.docs.coverage import ModuleInfo, module_apis
+from tools.conventions.context import EvidenceError, Target
+from tools.docs.coverage import ModuleInfo, module_apis, parse_module
 from tools.docs.evidence import (
-    RULESET_DIR,
-    EvaluatedBazel,
-    behavior_tests,
+    Evidence,
+    Labels,
+    decode_configured,
+    decode_loading,
+    invocation,
     unqualified,
 )
 from tools.docs.output_contracts import (
-    CONTRACT_LANES,
-    DEFAULT_CONTRACT_LANE,
     Api,
     ConfiguredTarget,
     active,
-    behavior_lane,
     compare,
     coverage_errors,
     has_consumer_visibility,
     is_shared_library,
     kind_errors,
 )
-from tools.docs.repository_contracts import (
-    check_public_libraries,
-    check_public_targets,
-    check_repository,
-    library_lane_errors,
-)
-from tools.docs.ruleset import INVENTORY
-
-MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
-
-
-# ==== Extraction ==============================================================
-
-
-def inventory_target(module: str) -> str:
-    """The unfiltered evaluated extraction of one public API module."""
-    page = module.removeprefix("//").replace("/", "_").replace(":", "_")
-    return "//tools/docs/api:" + page.removesuffix(".bzl") + "_inventory.textproto"
-
-
-def extracted_apis(
-    modules: Mapping[str, ModuleInfo],
-) -> tuple[dict[str, Api], list[str]]:
-    """Index each module's exports by ``module%name``."""
-    apis = {}
-    errors = []
-    for label, module in modules.items():
-        entries, problems = module_apis(module)
-        apis.update({label + "%" + name: api for name, api in entries.items()})
-        errors.extend(f"{label}%{problem}" for problem in problems)
-    return apis, errors
-
-
-def host_case(case: dict[str, Any]) -> dict[str, Any]:
-    """Apply the case's host substitutions and defaults."""
-    replacements = case.get("host_replacements", {}).get(sys.platform, {})
-
-    def replace(value: Any) -> Any:
-        if isinstance(value, str):
-            for old, new in replacements.items():
-                value = value.replace(old, new)
-            return value
-        if isinstance(value, list):
-            return [replace(item) for item in value]
-        if isinstance(value, dict):
-            return {replace(key): replace(item) for key, item in value.items()}
-        return value
-
-    defaults = {
-        "lane": DEFAULT_CONTRACT_LANE,
-        "module": RULESET_DIR,
-        "options": [],
-        "conditions": [],
-    }
-    return replace({**defaults, **case})
-
+from tools.docs.public_contracts import check_public_libraries, check_public_targets
+from tools.docs.repository_contracts import check_repository
+from tools.docs.ruleset import strip_repo
 
 # ==== Case checks =============================================================
 
@@ -149,6 +96,8 @@ def fixture(case: dict[str, Any], api: Api, expansion: Iterable[Target]) -> Fixt
             unresolved.append(f"unresolved generated companion pattern {pattern}")
         elif unqualified(companion) not in loaded:
             unresolved.append(f"missing evaluated loading facts for {companion}")
+        elif pattern not in case["companions"]:
+            unresolved.append(f"the case does not analyze its companion {pattern}")
         else:
             companions[companion] = row
     return Fixture(loaded, companions, tuple(unresolved))
@@ -199,169 +148,148 @@ def check_case(
     return errors
 
 
+def check_target(evidence: Evidence, case: dict[str, Any], api: Api) -> list[str]:
+    """Check a target case against its loading and configured facts."""
+    facts = fixture(
+        case, api, invocation(case["target"], evidence.loading.rules.values())
+    )
+    observed = evidence.configured(case["settings"], [case["target"], *facts.companions])
+    return check_case(case, api, facts, observed)
+
+
 # Contract cases with their extracted API, by case key.
 Cases = Mapping[str, tuple[dict[str, Any], Api]]
 
 
-def case_groups(cases: Cases) -> list[tuple[Module, tuple[str, ...], list[str]]]:
-    """
-    Case keys grouped by module and options, the host's default options last.
-
-    Options change Bazel's configuration, which discards the module's analysis
-    cache; ending on the default configuration leaves it for the next build.
-    """
-    groups: dict[tuple[str, tuple[str, ...]], list[str]] = {}
-    for key, (case, _) in sorted(cases.items()):
-        groups.setdefault((case["module"], tuple(case["options"])), []).append(key)
-    return [
-        (Module(Path(module), ()), options, groups[module, options])
-        for module, options in sorted(groups, key=lambda group: (not group[1], group))
-    ]
-
-
-def check_targets(
-    bazel: EvaluatedBazel, module: Module, options: tuple[str, ...], cases: Cases
-) -> dict[str, list[str]]:
-    """Check target cases of one module and options with one query and one cquery."""
-    expansions = bazel.expansions(module, (case["target"] for case, _ in cases.values()))
-    fixtures = {
-        key: fixture(case, api, expansions[case["target"]])
-        for key, (case, api) in cases.items()
-    }
-    labels = [
-        label
-        for key, (case, _) in cases.items()
-        for label in (case["target"], *fixtures[key].companions)
-    ]
-    try:
-        observed = bazel.configured(module, labels, options)
-    except EvidenceError as error:
-        raise EvidenceError(f"cases {', '.join(cases)}: {error}") from error
-    return {
-        key: check_case(case, api, fixtures[key], observed)
-        for key, (case, api) in cases.items()
-    }
-
-
-def check_cases(bazel: EvaluatedBazel, cases: Cases) -> dict[str, list[str]]:
-    """
-    Each case's diagnostics, with one query and one cquery per module and options.
-
-    A repository case fetches its own facts, partly with other options, so it runs
-    before its group's target cases, which then end the group on its own
-    configuration; a group of repository cases alone may end on host execution.
-    """
+def check_cases(evidence: Evidence, cases: Cases) -> dict[str, list[str]]:
+    """Each case's diagnostics, attributed to its key."""
     errors = {}
-    for module, options, keys in case_groups(cases):
-        targets = {}
-        for key in keys:
-            case, api = cases[key]
-            if "entrypoints" in case:
-                errors[key] = check_repository(bazel, case, api.contract)
-            else:
-                targets[key] = cases[key]
-        if targets:
-            errors |= check_targets(bazel, module, options, targets)
-    return {key: [f"{key}: {error}" for error in found] for key, found in errors.items()}
-
-
-# ==== Lane errors =============================================================
-
-
-def lane_independent_errors(
-    bazel: EvaluatedBazel,
-    apis: Mapping[str, Api],
-    manifest: dict[str, Any],
-    public_targets: list[str],
-) -> list[str]:
-    """
-    Lane-independent registry coverage and public targets.
-
-    A public library is analyzed only in its platform's configuration, so this host check
-    leaves it to its lane (check_public_libraries).
-    """
-    errors = coverage_errors(apis, manifest["cases"], manifest["behavior"])
-    libraries = manifest["libraries"]
-    targets = [label for label in public_targets if label not in libraries]
-    return errors + library_lane_errors(libraries) + check_public_targets(bazel, targets)
-
-
-def behavior_errors(
-    bazel: EvaluatedBazel, behavior: Mapping[str, list[Any]], lane: str
-) -> list[str]:
-    """Registered behavior tests that are no evaluated test, in the modules of a lane."""
-    errors = []
-    for module, labels in sorted(behavior_tests(behavior).items()):
-        if behavior_lane(module) != lane:
-            continue
-        found = bazel.tests(labels, Module(Path(module), ()))
-        for label in sorted(labels - found):
-            where = "" if module == RULESET_DIR else f" (module {module})"
-            errors.append(f"unresolved evaluated behavior test: {label}{where}")
+    for key, (case, api) in cases.items():
+        try:
+            found = (
+                check_repository(evidence, case, api.contract)
+                if "entrypoints" in case
+                else check_target(evidence, case, api)
+            )
+        except EvidenceError as error:
+            raise EvidenceError(f"case {key}: {error}") from error
+        errors[key] = [f"{key}: {error}" for error in found]
     return errors
 
 
-def lane_cases(
-    cases: Mapping[str, dict[str, Any]], lane: str
-) -> dict[str, dict[str, Any]]:
-    """The configured cases of one lane, by key."""
-    return {key: case for key, case in cases.items() if case["lane"] == lane}
+# ==== Test ====================================================================
 
 
-def lane_errors(
-    bazel: EvaluatedBazel,
-    apis: Mapping[str, Api],
-    cases: Mapping[str, dict[str, Any]],
-    lane: str,
-) -> list[str]:
-    """Diagnostics of one lane's configured cases, in module, options and key order."""
-    if not cases:
-        return [f"{lane}: required lane contains no configured cases"]
-    checked = {
-        key: (case, api)
-        for key, case in cases.items()
-        if (api := apis.get(key.partition("#")[0])) is not None
-    }
-    results = check_cases(bazel, checked)
-    order = sorted(
-        checked, key=lambda key: (cases[key]["module"], cases[key]["options"], key)
+def extracted_apis(
+    modules: Mapping[str, ModuleInfo],
+) -> tuple[dict[str, Api], list[str]]:
+    """Index each module's exports by ``module%name``."""
+    apis = {}
+    errors = []
+    for label, module in modules.items():
+        entries, problems = module_apis(module)
+        apis.update({label + "%" + name: api for name, api in entries.items()})
+        errors.extend(f"{label}%{problem}" for problem in problems)
+    return apis, errors
+
+
+@dataclass(frozen=True)
+class Test:
+    """One contract test's inputs: its plan, evidence and the extracted APIs."""
+
+    plan: dict[str, Any]
+    evidence: Evidence
+    apis: Mapping[str, Api]
+    extraction_errors: list[str]
+    manifest: dict[str, Any] | None
+
+
+def read_test(args: argparse.Namespace) -> Test:
+    plan = json.loads(args.plan.read_text())
+    labels = Labels(plan["canonical"])
+    tests = (
+        frozenset(map(labels.apparent, args.behavior.read_text().split()))
+        if args.behavior
+        else frozenset()
     )
-    return [error for key in order for error in results[key]]
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lane", choices=CONTRACT_LANES, required=True)
-    args = parser.parse_args()
-    root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-    inventory = read_inventory(root / INVENTORY)
-    bazel = EvaluatedBazel(root, contract_profile(args.lane))
-    targets = {inventory_target(label): label for label in inventory["PUBLIC_APIS"]}
-    manifest = json.loads(bazel.outputs([MANIFEST])[MANIFEST].read_text())
-    modules = bazel.extracted(targets)
-    apis, errors = extracted_apis(
-        {targets[target]: module for target, module in modules.items()}
+    evidence = Evidence(
+        decode_loading(args.loading.read_text(), labels),
+        tuple(decode_configured(path.read_text()) for path in args.evidence),
+        tests,
     )
-    if args.lane == DEFAULT_CONTRACT_LANE:
+    modules = {}
+    for path in args.extracted:
+        module = parse_module(path.read_text())
+        modules[strip_repo(module.file)] = module
+    apis, errors = extracted_apis(modules)
+    manifest = json.loads(args.manifest.read_text()) if args.manifest else None
+    return Test(plan, evidence, apis, errors, manifest)
+
+
+def behavior_errors(behavior: Mapping[str, list[str]], tests: Iterable[str]) -> list[str]:
+    """Registered behavior tests that are no evaluated test."""
+    registered = {test for labels in behavior.values() for test in labels}
+    return [
+        f"unresolved evaluated behavior test: {label}"
+        for label in sorted(registered - set(tests))
+    ]
+
+
+def test_errors(test: Test) -> list[str]:
+    """Every diagnostic of one contract test."""
+    plan = test.plan
+    errors = list(test.extraction_errors)
+    if test.manifest is not None:
         errors.extend(
-            lane_independent_errors(
-                bazel, apis, manifest, list(inventory["PUBLIC_TARGETS"])
+            coverage_errors(
+                test.apis,
+                test.manifest["cases"],
+                test.manifest["behavior"],
+                test.manifest["requirements"],
             )
         )
-    errors.extend(behavior_errors(bazel, manifest["behavior"], args.lane))
-    errors.extend(check_public_libraries(bazel, manifest["libraries"], args.lane))
-    cases = {key: host_case(case) for key, case in manifest["cases"].items()}
-    selected = lane_cases(cases, args.lane)
-    errors.extend(lane_errors(bazel, apis, selected, args.lane))
+    errors.extend(behavior_errors(plan["behavior"], test.evidence.tests))
+    errors.extend(check_public_targets(test.evidence, plan["public_targets"]))
+    errors.extend(check_public_libraries(test.evidence, plan["libraries"]))
+    cases = {
+        key: (case, api)
+        for key, case in plan["cases"].items()
+        if (api := test.apis.get(key.partition("#")[0])) is not None
+    }
+    # The coverage of the registry, where a test checks it, reports these already.
+    if test.manifest is None:
+        errors.extend(
+            f"{key}: case refers to unknown API"
+            for key in sorted(plan["cases"].keys() - cases)
+        )
+    results = check_cases(test.evidence, cases)
+    errors.extend(error for key in sorted(results) for error in results[key])
+    return errors
+
+
+def arguments(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", type=Path, required=True)
+    parser.add_argument("--loading", type=Path, required=True)
+    parser.add_argument("--behavior", type=Path)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--evidence", type=Path, action="append", default=[])
+    parser.add_argument("--extracted", type=Path, action="append", default=[])
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    test = read_test(arguments(argv))
+    errors = test_errors(test)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"Bazel-evaluated {args.lane} API contracts passed ({len(selected)} cases).")
+    print(f"Bazel-evaluated API contracts passed ({len(test.plan['cases'])} cases).")
     return 0
 
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        sys.exit(main(sys.argv[1:]))
     except (ValueError, OSError, EvidenceError) as error:
         sys.exit(str(error))
