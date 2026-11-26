@@ -44,6 +44,12 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["addons/sqlite/MODULE.bazel"]),
         )
 
+    def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
+        self.assertEqual(
+            [(m, "mod", "deps", "--lockfile_mode=update") for m in (".", "rules_godot")],
+            self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
+        )
+
     def test_the_segment_is_written_and_checked(self) -> None:
         with (
             mock.patch.object(generate, "bazel", return_value=0),
@@ -57,11 +63,39 @@ class GenerateTest(unittest.TestCase):
                     getattr(generate, call)(*args)
                     segment.assert_called_once()
 
-    def test_ruleset_code_regenerates_the_locks_of_its_consumers(self) -> None:
-        self.assertEqual(
-            [(m, "mod", "deps", "--lockfile_mode=update") for m in (".", "rules_godot")],
-            self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
-        )
+    def check_lock_files(self, rewrite: str | None, *, missing: bool = False) -> int:
+        """
+        Check the lock files in a scratch checkout whose Bazel rewrites the ruleset's
+        lock file, or none; with `missing`, the ruleset has none before.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for module in generate.LOCKED_MODULES:
+                (root / module).mkdir(parents=True, exist_ok=True)
+                if not (missing and module == "rules_godot"):
+                    (root / module / "MODULE.bazel.lock").write_text("{}")
+
+            def bazel(module: str, *args: str) -> int:
+                if rewrite is not None and module == "rules_godot":
+                    (root / module / "MODULE.bazel.lock").write_text(rewrite)
+                return 0
+
+            with (
+                mock.patch.object(generate, "ROOT", root),
+                mock.patch.object(generate, "bazel", side_effect=bazel),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
+                return generate.check_lock_files()
+
+    def test_current_lock_files_pass_the_check(self) -> None:
+        self.assertEqual(0, self.check_lock_files(rewrite=None))
+        self.assertEqual(0, self.check_lock_files(rewrite="{}"))
+
+    def test_a_lock_file_bazel_rewrites_fails_the_check(self) -> None:
+        self.assertNotEqual(0, self.check_lock_files(rewrite='{"stale": false}'))
+
+    def test_a_lock_file_bazel_writes_first_fails_the_check(self) -> None:
+        self.assertNotEqual(0, self.check_lock_files(rewrite="{}", missing=True))
 
     def test_the_check_covers_lock_files_and_pins(self) -> None:
         commands = self.runs("check")
@@ -119,40 +153,6 @@ class GenerateTest(unittest.TestCase):
                     "simulation", lock, {"simulation": "ext+simulation"}
                 ),
             )
-
-    def check_lock_files(self, rewrite: str | None, *, missing: bool = False) -> int:
-        """
-        Check the lock files in a scratch checkout whose Bazel rewrites the ruleset's
-        lock file, or none; with `missing`, the ruleset has none before.
-        """
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            for module in generate.LOCKED_MODULES:
-                (root / module).mkdir(parents=True, exist_ok=True)
-                if not (missing and module == "rules_godot"):
-                    (root / module / "MODULE.bazel.lock").write_text("{}")
-
-            def bazel(module: str, *args: str) -> int:
-                if rewrite is not None and module == "rules_godot":
-                    (root / module / "MODULE.bazel.lock").write_text(rewrite)
-                return 0
-
-            with (
-                mock.patch.object(generate, "ROOT", root),
-                mock.patch.object(generate, "bazel", side_effect=bazel),
-                contextlib.redirect_stderr(io.StringIO()),
-            ):
-                return generate.check_lock_files()
-
-    def test_current_lock_files_pass_the_check(self) -> None:
-        self.assertEqual(0, self.check_lock_files(rewrite=None))
-        self.assertEqual(0, self.check_lock_files(rewrite="{}"))
-
-    def test_a_lock_file_bazel_rewrites_fails_the_check(self) -> None:
-        self.assertNotEqual(0, self.check_lock_files(rewrite='{"stale": false}'))
-
-    def test_a_lock_file_bazel_writes_first_fails_the_check(self) -> None:
-        self.assertNotEqual(0, self.check_lock_files(rewrite="{}", missing=True))
 
 
 if __name__ == "__main__":

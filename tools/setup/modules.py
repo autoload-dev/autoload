@@ -2,7 +2,10 @@
 The checkout's Bazel modules and what their declaration files say, for the setup checks.
 
 The root module ignores each consumer module nested in the checkout, so `.bazelignore`
-names them; it ignores `addons/` as a whole, whose modules are found by their files. Declarations are read with Python's ast, without evaluating Starlark.
+names them; it ignores `addons/` as a whole, whose modules are found by their files.
+Declarations are read with Python's ast, without evaluating Starlark.
+
+Sections: Modules, Declarations, Bazelrc.
 """
 
 import ast
@@ -12,6 +15,8 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+# ==== Modules =================================================================
 
 # The add-on modules, each a directory below it; the root module holds their examples.
 ADDONS = "addons"
@@ -107,6 +112,9 @@ def registry_test_modules(root: Path) -> tuple[str, ...]:
     )
 
 
+# ==== Declarations ============================================================
+
+
 @dataclass(frozen=True)
 class Declaration:
     """
@@ -181,6 +189,16 @@ def label_path(root: Path, label: str) -> Path:
     return root / package / (name or Path(package).name)
 
 
+# ==== Bazelrc =================================================================
+
+
+def bazelrc_import(words: list[str], workspace: Path) -> Path | None:
+    """The file an `import` line of a `.bazelrc` names, with `%workspace%` as the module."""
+    if words[:1] == ["import"] and len(words) == 2:
+        return Path(words[1].replace("%workspace%", str(workspace)))
+    return None
+
+
 def bazelrc_options(root: Path, module: str) -> Iterator[tuple[str, str]]:
     """
     Each word of a module's `.bazelrc` and the files it imports, with its `file:line`.
@@ -194,10 +212,9 @@ def bazelrc_options(root: Path, module: str) -> Iterator[tuple[str, str]]:
         location = Path(os.path.normpath(path.relative_to(root))).as_posix()
         for number, line in enumerate(path.read_text().splitlines(), 1):
             words = shlex.split(line, comments=True)
-            if words[:1] == ["import"] and len(words) == 2:
-                yield from read(Path(words[1].replace("%workspace%", str(workspace))))
+            if (imported := bazelrc_import(words, workspace)) is not None:
+                yield from read(imported)
             elif words[:1] != ["try-import"]:
-                for word in words:
-                    yield f"{location}:{number}", word
+                yield from ((f"{location}:{number}", word) for word in words)
 
     yield from read(workspace / ".bazelrc")

@@ -9,7 +9,10 @@ Regenerate the repository's generated files, or check that they are current.
 
 `aspect generate [PATH...]` regenerates what depends on the paths, as the pre-commit hook
 (`aspect pre-commit`) passes the staged ones, or everything without paths. `--check` checks
-every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each file's own module.
+every generated file, as the pre-push hook and CI's quality lane do. Bazel runs in each
+file's own module.
+
+Sections: Lock files, Pinned engines, Entry points.
 """
 
 from __future__ import annotations
@@ -25,6 +28,14 @@ from tools.setup.modules import ADDONS, RULESET, label_path, literals, module_pa
 from tools.setup.modules import declarations as module_declarations
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def bazel(module: str, *args: str) -> int:
+    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
+
+
+# ==== Lock files ==============================================================
+
 RULESET_DIR = RULESET.as_posix()
 # The add-on modules' lock files are left out until all of them regenerate: rules_jvm_external's
 # maven extension fails to evaluate in autoload_gdunit and its examples, whose root modules
@@ -33,10 +44,6 @@ RULESET_DIR = RULESET.as_posix()
 LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )
-
-
-def bazel(module: str, *args: str) -> int:
-    return subprocess.run(["bazel", *args], cwd=ROOT / module, check=False).returncode
 
 
 def is_ruleset_code(path: str) -> bool:
@@ -98,6 +105,9 @@ def check_lock_files() -> int:
         )
         return 1
     return status
+
+
+# ==== Pinned engines ==========================================================
 
 
 def pinned_engines(root: Path = ROOT) -> tuple[tuple[str, Path], ...]:
@@ -175,6 +185,9 @@ def pins() -> int:
             )
         status |= failed
     return status
+
+
+# ==== Entry points ============================================================
 
 
 def segment(check: bool = False) -> int:
