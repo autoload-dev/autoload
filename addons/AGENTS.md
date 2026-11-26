@@ -11,7 +11,7 @@ bazel run //tools/addons:new -- <module>                   # a module with one a
 bazel run //tools/addons:new -- <module> --addon <addon>   # one more add-on in a module
 ```
 
-It writes [tools/addons/template](../tools/addons/template), which builds in every lane from
+It writes [tools/addons/template](../tools/addons/template), which builds and tests in both host jobs from
 the start, and a new module's registry templates in `.bcr/addons/<module>/`. From then on
 the module owns those files: nothing regenerates them. Improve the template, not one module,
 when a pattern should hold for all of them. A new add-on gets its own module, unless it must
@@ -25,10 +25,10 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
 - `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
-  documents what a module declares: the lanes that verify it, the desktop systems of its desktop lane
-  and its test operations, such as `lanes = List("desktop")` and `desktops = List("macos")`. A module
-  without the `android` and `ios` lanes builds no application: its examples have no `app`. The lanes' work, the lanes and the conventions read it;
-  nothing outside the module lists the module.
+  documents what a module declares: whether its examples build applications (`apps`, true by
+  default) and its test operations. A module with `apps = false`, such as gdunit, builds no
+  application: its examples have no `app` and no Android or iOS release. The add-on tools and
+  the conventions read it; nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
@@ -78,35 +78,31 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - Never commit or print secrets, signing material or real service configurations; local
   provisioning profiles stay in the gitignored `examples/addons/<module>/signing/`.
 
-# Lanes
+# Tests and CI
 
-The same commands verify every module, from the repository root over its
-`examples/addons/<module>/` (`tools/addons/lanes.py`), as the lanes' work
-(`tools/ci/work.py`), which provisions the Android SDK first. A lane runs every module that
-names it with one Bazel command, `<lane>:addons`; one module alone runs as
-`<lane>:addon:<module>`:
+The same tests verify every module, from the repository root: CI's host jobs
+(`aspect ci <host>`) run `bazel test --config=ci-<host>` over `//...` and every
+`@autoload_<module>//...`, which covers each module's own tests, its
+`examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. They
+provision the Android SDK first. To run one module alone:
 
 ```sh
-aspect work desktop:addon:<module>      # module tests and example targets but apps
-aspect work android:addon:<module>   # each example project's Android release build
-aspect work ios:addon:<module>       # each example project's iOS Simulator release build
-aspect work desktop:addons              # every module's desktop lane at once
+bazel test --config=all -- @autoload_<module>//... //examples/addons/<module>/... //e2e/addons/<module>/...  # leave out e2e/ if the module has none
+bazel test --test_tag_filters=android //examples/addons/<module>/...   # the Android release builds
+bazel test --test_tag_filters=ios //examples/addons/<module>/...       # the iOS Simulator release builds
 ```
 
-Each example project declares its release builds, `android_release` and `ios_release`
-([examples/releases.bzl](../examples/releases.bzl)), which carry their configuration. A test
-of a mobile application, such as an `ios_app_test` of `ios_release`
-(`e2e/rules_godot/AGENTS.md`, "Artifact test rules"), runs in `desktop` on the hosts it is
-compatible with: an iOS test on macOS.
-
-`desktop` runs `bazel test` over `@autoload_<module>//...`, all of
-`examples/addons/<module>/` and `e2e/addons/<module>/`, so no test needs registration. Where a
+Each example project of a module with `apps` declares its release builds, `android_release`
+and `ios_release` ([examples/releases.bzl](../examples/releases.bzl)), which carry their
+configuration; their `<name>.build_test` is tagged `android` or `ios`, so only the Linux or the
+macOS job runs it. A test of a mobile application, such as an `ios_app_test` of `ios_release`
+(`e2e/rules_godot/AGENTS.md`, "Artifact test rules"), carries its tag too. Where a
 test lives follows how it runs, by the
 [add-on module tests](../docs/internal/verification-architecture.md#add-on-module-tests).
 For a module, that means:
 
 - Unit tests sit beside their unit, such as `<addon>/native/backends/linux/tests/`, or in
-  `tests/<unit>/` for a module-wide unit such as a third-party build. The lanes build the
+  `tests/<unit>/` for a module-wide unit such as a third-party build. CI builds the
   module from the root module, where its development dependencies are not active, so they
   use only the module's regular dependencies.
 - End-to-end tests share one test project, `e2e/addons/<module>/` itself, with the add-ons
@@ -116,15 +112,15 @@ For a module, that means:
   as a host or a device are tags, not directories.
 - Demo tests live in `examples/addons/<module>/tests/`, never in the project's root package.
 
-The root module lints the modules' Python too, in the work `lint`, so every `py_binary`,
+The root module lints the modules' Python too, in `bazel build --config=lint`, so every `py_binary`,
 `py_library` and `py_test` of a module carries the tag `lint-genfiles` (RG027). Findings name
 the files as `external/autoload_<module>+/...`; Ruff's fixes apply only through
 `aspect lint --fix` in the module's own directory.
 
 Every project is named like its directory (RG019), so `//examples/addons/<module>` and
-`//e2e/addons/<module>` name the projects. CI runs every module's
-[lanes](../docs/internal/verification-platforms.md#lanes-and-execution);
-`aspect work <lane>:addon-template` checks the template the same way
+`//e2e/addons/<module>` name the projects. CI runs every module's tests in its
+[host jobs](../docs/internal/verification-platforms.md#host-jobs-and-execution);
+`aspect work addon-template` checks the template the same way
 (`tools/addons/selftest.py`).
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in

@@ -8,7 +8,6 @@ from pathlib import Path
 from tools.addons import registry as templates
 from tools.addons.modules import (
     addon_manifest,
-    builds_apps,
     example_projects,
     examples_path,
     module_attributes,
@@ -40,8 +39,8 @@ ROOT_ENTRIES = ", ".join(
 )
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
-# The targets the generic lanes build in each example project (tools/addons/lanes.py); the
-# application lanes build :app too.
+# The targets each example project defines; a module whose examples build applications
+# (addon.pkl's `apps`) also defines :app, which its release builds package.
 PROJECT_TARGETS = ("edit", "pack")
 APP_TARGET = "app"
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
@@ -198,10 +197,10 @@ class AddonModuleLayout:
         # The rest needs the manifest; the checks above report one that is missing or wrong.
         if (manifest := module_manifest(workspace, module)) is None:
             return
-        yield from self.root_entries(workspace, module, names, manifest["sharedPackages"])
-        yield from self.projects(workspace, module, builds_apps(manifest["lanes"]))
+        yield from self.root_entries(workspace, module, names, manifest.shared_packages)
+        yield from self.projects(workspace, module, manifest.apps)
         for message in test_dependency_problems(
-            workspace, module, manifest["testDependencies"]
+            workspace, module, manifest.test_dependencies
         ):
             yield Finding(at(module / "addon.pkl"), message)
 

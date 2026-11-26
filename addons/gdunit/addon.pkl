@@ -2,5 +2,5 @@
 amends "../../tools/addons/Addon.pkl"
 
 // GdUnit runs on the host only: its add-on is test-only and no application ships it.
-lanes = List("desktop")
+apps = false
 testOperations = List("gdunit_test")

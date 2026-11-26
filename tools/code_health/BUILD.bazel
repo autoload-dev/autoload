@@ -15,7 +15,7 @@ py_library(
         "survey.py",
         "translation.py",
     ],
-    # The setup check finds the CLI; the lanes' work reads the change since origin/main.
+    # The setup check finds the CLI; the named work reads the change since origin/main.
     visibility = [
         "//tools/ci:__pkg__",
         "//tools/setup:__pkg__",

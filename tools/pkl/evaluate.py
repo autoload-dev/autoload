@@ -4,7 +4,7 @@ what Pkl means rather than parse its syntax.
 
 The CLI is PKL_CLI, as the Aspect CLI's tasks name it (.aspect/work.axl), else the one in the
 runfiles of a Bazel target that depends on this library, else the one Bazel builds for a
-tool run directly, such as `python3 -m tools.addons.lanes`.
+tool run directly, such as `python3 -m tools.addons.selftest`.
 """
 
 import functools

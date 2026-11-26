@@ -19,7 +19,7 @@ def declared_operations(workspace: Workspace) -> frozenset[str]:
         if is_addon_module(module)
     )
     return OPERATIONS.union(
-        *(manifest["testOperations"] for manifest in manifests if manifest is not None)
+        *(manifest.test_operations for manifest in manifests if manifest is not None)
     )
 
 

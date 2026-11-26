@@ -10,12 +10,10 @@ build --tool_java_runtime_version=remotejdk_21
 build --java_language_version=21
 build --tool_java_language_version=21
 
-# The tests tagged source_engine build an engine from source: they run only with
-# --config=source-engine, which the source-engine lane passes.
+# The targets tagged source_engine build an engine from source: builds leave them out too,
+# as the tests do (shared.bazelrc), unless --config=source-engine selects them.
 build --build_tag_filters=-source_engine
-test --test_tag_filters=-source_engine
 build:source-engine --build_tag_filters=source_engine
-test:source-engine --test_tag_filters=source_engine
 # The main source-engine cases, for a quicker local run.
 test:source-engine-main --config=source-engine
 test:source-engine-main --test_tag_filters=source_engine,-source_engine_extended
@@ -35,7 +33,7 @@ build:buildbuddy --workspace_status_command=../buildbuddy_status.sh
 # Tell this module's invocations apart in BuildBuddy's history and trends.
 build:buildbuddy --build_metadata=TAGS=rules_godot
 
-# CI's lanes write ci.bazelrc at the repository root to set --config=ci (shared.bazelrc);
+# CI's host jobs write ci.bazelrc at the repository root to set --config=ci (shared.bazelrc);
 # git ignores it.
 try-import %workspace%/../ci.bazelrc
 

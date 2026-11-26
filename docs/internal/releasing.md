@@ -7,9 +7,9 @@ Each Bazel module of this repository is released on its own: the ruleset
 `MODULE.bazel`, `-v` and the version. The release workflow runs for every tag that matches
 `*-v*.*.*`.
 [release_module.py](../../tools/ci/release_module.py) derives the rest from the tag: the
-module's directory, from the module that declares the name; its release test, the registry
-test module for the ruleset and `python3 -m tools.addons.lanes desktop <module>` for an add-on;
-and whether the Bazel Central Registry gets it, which its templates in [.bcr](../../.bcr)
+module's directory, from the module that declares the name; its release test,
+`python3 -m tools.ci.release_archive --registry <module directory>`, which runs the module's
+registry test module in its release archive; and whether the Bazel Central Registry gets it, which its templates in [.bcr](../../.bcr)
 decide. No list names the modules. Pushing a tag runs
 [release.yaml](../../.github/workflows/release.yaml), which:
 

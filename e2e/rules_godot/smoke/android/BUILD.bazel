@@ -92,7 +92,7 @@ android_bundle_test(
         "main/native_counter/counter.gdextension",
         "main/main.gd",
     ],
-    # The Android lane: only CI's Linux job runs it (shared.bazelrc).
+    # Tagged android: only CI's Linux job runs it (shared.bazelrc).
     tags = [
         "android",
         "godot_process",

@@ -13,7 +13,7 @@ contents stands for a name derived from the two, and every file name ends in `.t
 written files belong to the module from then on: nothing regenerates them.
 
 `addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
-(`aspect work <lane>:addon-template`, tools/addons/selftest.py): it is regenerated from scratch
+(`aspect work addon-template`, tools/addons/selftest.py): it is regenerated from scratch
 each time and removed afterwards, with its declaration.
 """
 

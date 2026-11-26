@@ -132,7 +132,7 @@ for document in task.result:  # [{"id": ..., "path": ..., "data": {...}}, ...]
 
 `bazel test //...` in this directory runs the `firebase_config` tests. The example
 application in [`examples/addons/firebase/`](../../examples/addons/firebase) builds the add-ons for every platform; its headless
-test checks that they load and do nothing on desktop, and its iOS lane test
+test checks that they load and do nothing on desktop, and its iOS test
 (`app_embeds_firebase_frameworks_test`) that the iOS application embeds the extensions'
 frameworks and the Firebase frameworks they link. Its Firestore part talks to the
 Firebase project of the placeholder configuration unless the project setting
@@ -142,7 +142,7 @@ Firebase project of the placeholder configuration unless the project setting
 ## Limits
 
 - **Simulator runs.** The x86_64 Simulator build of the prebuilt 4.7 engine does not run on
-  the iOS 27 Simulator, so the iOS lane only builds the app and checks that it embeds each
+  the iOS 27 Simulator, so the iOS test only builds the app and checks that it embeds each
   Firebase framework. On a device, the example configures the default app once and starts
   Analytics; Firebase products register with FirebaseCore when their framework loads, which
   Godot does for all extensions before the `Firebase` autoload configures the app.

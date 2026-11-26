@@ -5,8 +5,8 @@ it may claim and how it is named. It also owns the boundary rules between the ru
 modules, the coverage and altitude expectations, and the decisions on verifications that the
 surveyed Bazel rulesets do not have. Read it when you add a test or review the tests of a
 change. The [verification policy](verification.md) owns when to verify, the test-driven
-cycle and evidence reuse. [Selection and lanes](verification-platforms.md) owns which lane
-runs what. Tests inside a user's own project follow
+cycle and evidence reuse. [Host jobs and execution](verification-platforms.md#host-jobs-and-execution) owns which
+host job runs what. Tests inside a user's own project follow
 [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
 ## Choosing a test kind
@@ -225,11 +225,11 @@ ruleset's, so they live in the repository's root module, which sees the ruleset 
 ### Add-on module tests
 
 The add-on modules follow the same split by how a test runs, with four kinds that
-[add-on guidance](../../addons/AGENTS.md#lanes) places:
+[add-on guidance](../../addons/AGENTS.md#tests-and-ci) places:
 
 | Kind | Location | Form |
 |---|---|---|
-| Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only: the lanes build the module from the root module, where its development dependencies are not active |
+| Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only: CI builds the module from the root module, where its development dependencies are not active |
 | Add-on end-to-end test | `e2e/addons/<module>/` in the root module | Godot runs or project builds through the module's public targets, such as GdUnit suites |
 | Demo test | `examples/addons/<module>/tests/` | Checks of the example application itself, such as its exported pack running headless |
 | Registry test module | `bcr/<name>/` of every released module ([RG020](conventions.md#rg020)) | A consumer module that the registry builds from the release archive |
@@ -249,12 +249,11 @@ stay out of them with a small scope.
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
 | B3 | Consumer scenarios load no private module but the artifact test rules, which are classified as cross-repository modules. | The API inventory check | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
-| L1 | Each test has exactly one owning lane, derived from its module, its kind and the Bazel configuration it needs. Ruleset tests belong to the lane that runs the ruleset's desktop set, and repository-tooling tests to the `quality` lane. A consumer scenario belongs to the lane of its platform configuration. A lane does not rerun another lane's tests. | Review. [Selection and lanes](verification-platforms.md) names the concrete task of each lane class. | None |
+| L1 | Each test has exactly one owning module and runs wherever its tags select it. Ruleset tests run in the ruleset's `bazel test`, repository-tooling tests in the root module's. A consumer scenario that needs a mobile operating system's toolchains carries the tag `android` or `ios`. A host job does not select another host's mobile tests. | Review, and the tag filters of the configs in `shared.bazelrc`. [Host jobs and execution](verification-platforms.md#host-jobs-and-execution) describes the selection. | None |
 
 B1 and B2 need no convention rule. Bazel rejects a load or a dependency outside the declared
-visibility, as rules_cc, rules_apple and rules_java use it. Lanes select tests; packages own
-them. A mobile suite is a lane's entry point and lists consumer scenarios only. Where
-suites are declared is a lane decision.
+visibility, as rules_cc, rules_apple and rules_java use it. Tags select tests; packages own
+them. A mobile test carries its tag where its package declares it, and no `test_suite` lists them.
 
 ## Artifact test rules
 
@@ -351,7 +350,7 @@ names the kind that carries its claim, or says that none does.
 |---|---|---|---|
 | Incrementality and bundle-reuse experiments | Removed | Analysis tests of action inputs, and build-output tests of determinism for actions whose outputs feed others | Bazel reruns an action only when its declared inputs or command change, and a downstream action stays cached when an upstream output is byte-identical. Inputs and determinism together prove both sides. Every surveyed ruleset asserts action inputs. The one execution-log test, rules_js `e2e/path_mapping/test.sh`, is a single script. |
 | Capability experiments | Removed | Analysis tests of membership and import action inputs | Same claim and replacement as incrementality |
-| Desktop-set guard against Android repository fetches | Removed | None. The scenarios' desktop set runs without an Android SDK, so a desktop scenario that needs Android fails there. | What remains is a cost claim about unneeded fetches. No surveyed ruleset guards fetches. |
+| Desktop-set guard against Android repository fetches | Removed | None. A desktop scenario runs with the provisioned SDK like every test of a host job, so one that needs Android is tagged `android`. | What remains is a cost claim about unneeded fetches. No surveyed ruleset guards fetches. |
 | Isolation test in a temporary consumer without mobile toolchains | Removed | Consumer scenarios for visibility. Analysis tests for toolchain resolution without mobile toolchains, using test toolchains in the ruleset's `tests` packages. | Its claims split into two existing kinds. A whole module that registers no mobile toolchain has a precedent only as a BCR smoke module; rules_godot's `bcr/smoke` is that module and registers only the prebuilt desktop engine. |
 | Reproducibility experiment | Rewritten | A build-output test that imports and exports a fixture twice in its sandbox and compares the digests | rules_go's reproducibility test and rules_rust's `determinism_tester` are relatives. If one test cannot run the import twice, a test-only rule runs the tool in two actions that differ only in an unused salt input. |
 | Fetch and re-evaluation checks of the engine module extension in a fresh consumer module | Removed | None. Its tag evaluation, conflicts and errors become Starlark unit tests with a mocked `module_ctx`. | What remains is that no recipe repository is fetched and that a second evaluation after `clean --expunge` gives the same toolchains. No surveyed ruleset guards fetches or re-evaluates an extension. |

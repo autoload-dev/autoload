@@ -120,5 +120,5 @@ The example application in `examples/addons/gdunit/` at the repository root cons
 module as applications do: the project tests its scripts with GdUnit. The module's
 end-to-end tests in `e2e/addons/gdunit/` check `gdunit_test` the same way: GdUnit runs that
 pass, fail, shard, filter and report the way Bazel's test encyclopedia requires, a pack with
-GdUnit, and a GdUnit run in a project with strict warnings. `aspect work desktop:addon:gdunit`
+GdUnit, and a GdUnit run in a project with strict warnings. `bazel test @autoload_gdunit//... //examples/addons/gdunit/... //e2e/addons/gdunit/...`
 runs both.

@@ -267,9 +267,8 @@ by path:
 | Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
 
 A project owns a BUILD file and at least one authored Godot configuration; an application,
-a project directly in `examples/`, also has an `app.pkl` that amends `tools/apps/App.pkl`
-and evaluates, which tells the lanes' work how to verify it
-([example guidance](../../examples/AGENTS.md#common-workflows)). Related
+a project directly in `examples/`, is described in the
+[example guidance](../../examples/AGENTS.md#common-workflows). Related
 operating-system contexts can share one project. No other module holds projects: an add-on
 module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
 are outside this check. There is no per-directory admission list.
@@ -403,10 +402,10 @@ root module's declaration lists it. Each module:
 - imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
 - has an `addon.pkl` that amends the schema `tools/addons/Addon.pkl` and that the pinned Pkl
   CLI evaluates: Pkl rejects a property the schema does not declare and a value outside its
-  type, such as a lane other than `desktop`, `android` and `ios`. A module builds
-  applications when its lanes include `android` or `ios`;
+  type. Its `apps` says whether the module's examples build applications, which gives each
+  example project an `app` and the Android and iOS releases of `examples/releases.bzl`;
 - lists in `addon.pkl`'s `testDependencies` exactly the regular dependencies that only its
-  `tests/` packages load from. The lanes build the module from the root module, where its
+  `tests/` packages load from. CI builds the module from the root module, where its
   development dependencies are not active, so a unit test's library is a regular
   dependency; the list keeps that exception visible;
 - has at least one example project in the root module's
@@ -488,7 +487,7 @@ module holds its add-ons and the unit tests of their code. A test that uses an a
 application does, by running Godot or building a project, is an end-to-end test and lives in
 `e2e/addons/<module>/`. There the root module declares what the test uses as development
 dependencies, which an add-on module could only declare as regular dependencies that every
-consumer inherits: the lanes build add-on modules from the root module, where their own
+consumer inherits: CI builds add-on modules from the root module, where their own
 development dependencies are not active.
 
 The check reports, in each add-on module but its registry test modules, every
@@ -499,7 +498,7 @@ The check reports, in each add-on module but its registry test modules, every
 
 **The Python tooling names no add-on module or application.** The tools read what is
 specific to a component from its manifest: an add-on module's `addon.pkl`
-(`tools/addons/Addon.pkl`) and an application's `app.pkl` (`tools/apps/App.pkl`), which Pkl
+(`tools/addons/Addon.pkl`), which Pkl
 evaluates. A new component then needs no change of the tooling, and what is special about
 one stays visible beside it, as a standardized option.
 
@@ -609,8 +608,8 @@ bazel run //tools/conventions
 The command runs every registered convention rule that judges more than one file at a time
 across all owned modules. Violations include the stable rule ID, file, line and a link to this
 catalogue. The checker reports unreviewed computed macro names separately. Exit status `1`
-indicates convention findings; `2` indicates an incomplete audit. The work `conventions` of
-the `quality` lane runs this command, and `aspect check`, the pre-push hook's, runs that work.
+indicates convention findings; `2` indicates an incomplete audit. The work `conventions`,
+which the Linux job runs, runs this command, and `aspect check`, the pre-push hook's, runs that work.
 
 The rules that judge each file on its own, [RG004](#rg004), [RG013](#rg013),
 [RG024](#rg024) and [RG025](#rg025), run in the lint check instead (`--config=check`,
