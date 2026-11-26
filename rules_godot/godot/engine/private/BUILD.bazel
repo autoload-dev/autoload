@@ -1,4 +1,10 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load(":define_analysis.bzl", "per_file_copt_setting")
+
+# The ruleset's packages may depend on this package's implementation libraries, such as
+# the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
+# who loads its modules.
+package(default_visibility = ["//godot:__subpackages__"])
 
 # The repository's root module lists these files in the Starlark library it extracts the API
 # documentation with (tools/docs/api). Their load visibility still restricts who loads them.
@@ -35,4 +41,161 @@ per_file_copt_setting(
     name = "per_file_copt_set",
     build_setting_default = False,
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "archives",
+    srcs = ["archives.bzl"],
+    deps = [
+        "//godot/private:repository_templates",
+        "//godot/private:versions",
+        "//godot/private/config:settings",
+    ],
+)
+
+bzl_library(
+    name = "components",
+    srcs = ["components.bzl"],
+    deps = [
+        ":generator",
+        ":optimization",
+        ":prebuilt",
+        ":registration",
+        ":resolution",
+        "//godot/platforms/private:android_runtime_bridge",
+        "//godot/platforms/private:ios_runtime_bridge",
+        "//godot/private:providers",
+        "//godot/private:versions",
+        "//godot/private/config:settings",
+        "@rules_cc//cc/common:cc_info",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "define_analysis",
+    srcs = ["define_analysis.bzl"],
+    deps = [
+        "//godot/private:actions",
+        "//godot/private:flags",
+        "@rules_cc//cc:action_names",
+        "@rules_cc//cc:find_cc_toolchain",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/common:cc_helper",
+        "@rules_cc//cc/common:cc_info",
+    ],
+)
+
+bzl_library(
+    name = "extension_plan",
+    srcs = ["extension_plan.bzl"],
+    deps = [
+        ":archives",
+        ":catalogue",
+        ":engine_selection",
+        ":hub",
+        ":source_build_rows",
+        "//godot/private:versions",
+    ],
+)
+
+bzl_library(
+    name = "generator",
+    srcs = ["generator.bzl"],
+    deps = [
+        ":define_analysis",
+        ":optimization",
+        "//godot/private:actions",
+        "//godot/private:flags",
+        "//godot/private:providers",
+        "//godot/private:symbols",
+        "//godot/private:versions",
+        "//godot/private/config:native",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/common:cc_info",
+    ],
+)
+
+bzl_library(
+    name = "hub",
+    srcs = ["hub.bzl"],
+    deps = ["//godot/private/config:settings"],
+)
+
+bzl_library(
+    name = "optimization",
+    srcs = ["optimization.bzl"],
+    deps = [
+        ":selection",
+        "//godot/private:flags",
+        "//godot/private/config:native",
+    ],
+)
+
+bzl_library(
+    name = "pin",
+    srcs = ["pin.bzl"],
+    deps = ["//godot/private:paths"],
+)
+
+bzl_library(
+    name = "prebuilt",
+    srcs = ["prebuilt.bzl"],
+    deps = [
+        "//godot/private:providers",
+        "//godot/private:versions",
+    ],
+)
+
+bzl_library(
+    name = "registration",
+    srcs = ["registration.bzl"],
+    deps = [
+        ":resolution",
+        "//godot/private/config:settings",
+        "@bazel_skylib//lib:selects",
+    ],
+)
+
+bzl_library(
+    name = "repositories",
+    srcs = ["repositories.bzl"],
+    deps = [":source_repositories"],
+)
+
+bzl_library(
+    name = "source_build_rows",
+    srcs = ["source_build_rows.bzl"],
+    deps = [":hub"],
+)
+
+bzl_library(
+    name = "source_repositories",
+    srcs = ["source_repositories.bzl"],
+    deps = [
+        "//godot/private:patches",
+        "//godot/private:versions",
+        "//godot/private/config:settings",
+        "//godot/private/engine:profiles",
+    ],
+)
+
+bzl_library(
+    name = "catalogue",
+    srcs = ["catalogue.bzl"],
+)
+
+bzl_library(
+    name = "engine_selection",
+    srcs = ["engine_selection.bzl"],
+)
+
+bzl_library(
+    name = "resolution",
+    srcs = ["resolution.bzl"],
+)
+
+bzl_library(
+    name = "selection",
+    srcs = ["selection.bzl"],
 )

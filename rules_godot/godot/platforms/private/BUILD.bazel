@@ -1,3 +1,10 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+# The ruleset's packages may depend on this package's implementation libraries, such as
+# the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
+# who loads its modules.
+package(default_visibility = ["//godot:__subpackages__"])
+
 # The repository's root module lists these files in the Starlark library it extracts the API
 # documentation with (tools/docs/api). Their load visibility still restricts who loads them.
 exports_files(
@@ -26,3 +33,203 @@ exports_files(glob(["*.tpl"]))
 
 # The plugin that passes the Godot arguments of bazel run to a debuggable application.
 exports_files(["android/LaunchArgumentsPlugin.java"])
+
+bzl_library(
+    name = "android",
+    srcs = ["android.bzl"],
+    deps = [
+        ":android_bootstrap",
+        ":android_jni_libraries",
+        ":android_outputs",
+        ":android_platform_libraries",
+        ":android_runtime_bridge",
+        "//godot/private:macros",
+        "//godot/private/engine:profiles",
+        "@rules_android//rules:bzl",
+    ],
+)
+
+bzl_library(
+    name = "android_bootstrap",
+    srcs = ["android_bootstrap.bzl"],
+    deps = [
+        ":maven",
+        ":shell",
+        "//godot:providers",
+        "//godot/private:release",
+        "//godot/private:versions",
+        "//godot/private/config:transitions",
+        "//godot/private/engine:profiles",
+        "@rules_android//rules:bzl",
+    ],
+)
+
+bzl_library(
+    name = "android_jni_libraries",
+    srcs = ["android_jni_libraries.bzl"],
+    deps = [
+        ":android_runtime_bridge",
+        ":shell",
+        "//godot:providers",
+        "//godot/engine/private:generator",
+        "//godot/private:symbols",
+        "//godot/private/config:settings",
+        "@rules_android//rules:bzl",
+        "@rules_cc//cc:find_cc_toolchain",
+        "@rules_cc//cc/common:cc_info",
+    ],
+)
+
+bzl_library(
+    name = "android_outputs",
+    srcs = ["android_outputs.bzl"],
+    deps = [
+        ":android_runtime_bridge",
+        ":launch",
+        "//godot/private:context",
+        "//godot/private:symbols",
+        "//godot/private/config:settings",
+        "@rules_android//rules:bzl",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "android_platform_libraries",
+    srcs = ["android_platform_libraries.bzl"],
+    deps = [
+        ":manifest_graph",
+        "//godot:providers",
+        "@rules_android//rules:bzl",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/common:cc_info",
+        "@rules_cc//cc/common:objc_info",
+        "@rules_java//java/common",
+        "@rules_java//java/common:proguard_spec_info_bzl",
+    ],
+)
+
+bzl_library(
+    name = "android_runtime_bridge",
+    srcs = ["android_runtime_bridge.bzl"],
+    deps = [
+        ":manifest_graph",
+        "//godot/engine/private:generator",
+        "//godot/engine/private:optimization",
+        "//godot/engine/private:resolution",
+        "@rules_android//rules:bzl",
+        "@rules_java//java/common",
+        "@rules_java//java/common:proguard_spec_info_bzl",
+    ],
+)
+
+bzl_library(
+    name = "android_toolchains",
+    srcs = ["android_toolchains.bzl"],
+    deps = [
+        "//godot/private:repository_templates",
+        "@rules_android_ndk//:rules.bzl",
+    ],
+)
+
+bzl_library(
+    name = "desktop",
+    srcs = ["desktop.bzl"],
+    deps = [
+        ":launch",
+        ":shell",
+        "//godot:providers",
+        "//godot/private:export_options",
+        "//godot/private:minimum_os",
+        "//godot/private:paths",
+        "//godot/private:providers",
+        "//godot/private:release",
+        "//godot/private:symbols",
+        "//godot/private:versions",
+        "//godot/private/config:native",
+        "//godot/private/engine:profiles",
+        "@apple_support//lib:apple_support",
+        "@rules_cc//cc:find_cc_toolchain",
+    ],
+)
+
+bzl_library(
+    name = "ios",
+    srcs = ["ios.bzl"],
+    deps = [
+        ":ios_runtime_bridge",
+        ":launch",
+        ":shell",
+        "//godot:providers",
+        "//godot/private:macros",
+        "//godot/private:minimum_os",
+        "//godot/private:providers",
+        "//godot/private:release",
+        "//godot/private:shell_assets",
+        "//godot/private:versions",
+        "//godot/private/config:native",
+        "//godot/private/config:settings",
+        "//godot/private/engine:profiles",
+        "@rules_apple//apple:ios",
+        "@rules_apple//apple:providers",
+        "@rules_cc//cc:objc_library",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/common:cc_info",
+    ],
+)
+
+bzl_library(
+    name = "ios_runtime_bridge",
+    srcs = ["ios_runtime_bridge.bzl"],
+    deps = [
+        "//godot/engine/private:optimization",
+        "//godot/engine/private:resolution",
+        "//godot/private:providers",
+        "@rules_apple//apple:aspects",
+        "@rules_apple//apple:providers",
+        "@rules_cc//cc/common:cc_info",
+        "@rules_swift//swift",
+    ],
+)
+
+bzl_library(
+    name = "launch",
+    srcs = ["launch.bzl"],
+    deps = ["//godot/private:paths"],
+)
+
+bzl_library(
+    name = "macos_signing",
+    srcs = ["macos_signing.bzl"],
+    deps = [
+        ":desktop",
+        ":launch",
+        "//godot:providers",
+        "//godot/private:flags",
+    ],
+)
+
+bzl_library(
+    name = "manifest_graph",
+    srcs = ["manifest_graph.bzl"],
+    deps = [
+        "@rules_android//rules:bzl",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "maven",
+    srcs = ["maven.bzl"],
+    deps = ["@rules_java//java/common"],
+)
+
+bzl_library(
+    name = "shell",
+    srcs = ["shell.bzl"],
+    deps = [
+        "//godot/engine/private:selection",
+        "//godot/private:providers",
+        "//godot/private:release",
+    ],
+)

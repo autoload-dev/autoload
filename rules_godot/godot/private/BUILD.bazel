@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
@@ -16,7 +17,7 @@ exports_files(glob(["*.tpl"]))
 # resources they reach; outside an operation it names no project and nothing imports.
 # godot_project, defined in this package, makes every project visible here.
 label_setting(
-    name = "project",
+    name = "project_setting",
     build_setting_default = ":no_project",
     visibility = ["//visibility:public"],
 )
@@ -187,4 +188,354 @@ bool_value(
         "//conditions:default": False,
     }),
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "actions",
+    srcs = ["actions.bzl"],
+    deps = [":execution"],
+)
+
+bzl_library(
+    name = "adapter",
+    srcs = ["adapter.bzl"],
+    deps = [
+        ":macros",
+        ":providers",
+        ":resources",
+        ":run",
+    ],
+)
+
+bzl_library(
+    name = "addon",
+    srcs = ["addon.bzl"],
+    deps = [
+        ":actions",
+        ":configuration",
+        ":context",
+        ":execution",
+        ":import_units",
+        ":paths",
+        ":providers",
+        ":resources",
+        "//godot/platforms/private:manifest_graph",
+        "@rules_cc//cc/common:cc_info",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "analysis",
+    srcs = ["analysis.bzl"],
+    deps = [
+        ":view",
+        "//godot/engine/private:selection",
+    ],
+)
+
+bzl_library(
+    name = "context",
+    srcs = ["context.bzl"],
+    deps = [
+        ":providers",
+        "//godot/engine/private:selection",
+        "//godot/private/config:native",
+        "//godot/private/config:settings",
+    ],
+)
+
+bzl_library(
+    name = "editor",
+    srcs = ["editor.bzl"],
+    deps = [
+        ":execution",
+        ":metadata",
+        ":paths",
+        ":run",
+        ":sync",
+        ":view",
+        "//godot/engine/private:selection",
+    ],
+)
+
+bzl_library(
+    name = "execution",
+    srcs = ["execution.bzl"],
+    deps = ["@platforms//host:constraints_lib"],
+)
+
+bzl_library(
+    name = "graph",
+    srcs = ["graph.bzl"],
+    deps = [":metadata"],
+)
+
+bzl_library(
+    name = "import_units",
+    srcs = ["import_units.bzl"],
+    deps = [
+        ":actions",
+        ":configuration",
+        ":execution",
+        ":flags",
+        ":metadata",
+        ":paths",
+    ],
+)
+
+bzl_library(
+    name = "metadata",
+    srcs = ["metadata.bzl"],
+    deps = [":flags"],
+)
+
+bzl_library(
+    name = "minimum_os",
+    srcs = ["minimum_os.bzl"],
+    deps = [":versions"],
+)
+
+bzl_library(
+    name = "operation_addons",
+    srcs = ["operation_addons.bzl"],
+    deps = [
+        ":graph",
+        ":import_units",
+        ":providers",
+        ":resources",
+    ],
+)
+
+bzl_library(
+    name = "pack",
+    srcs = ["pack.bzl"],
+    deps = [
+        ":actions",
+        ":configuration",
+        ":context",
+        ":execution",
+        ":export_options",
+        ":import_units",
+        ":metadata",
+        ":pack_conversion",
+        ":pack_project",
+        ":paths",
+        ":project",
+        ":providers",
+        ":release",
+        ":shell_assets",
+        ":variant",
+        ":view",
+        "//godot:providers",
+        "//godot/engine/private:selection",
+        "//godot/private/config:settings",
+        "//godot/private/config:transitions",
+        "//godot/private/engine:profiles",
+    ],
+)
+
+bzl_library(
+    name = "pack_conversion",
+    srcs = ["pack_conversion.bzl"],
+    deps = [":flags"],
+)
+
+bzl_library(
+    name = "pack_project",
+    srcs = ["pack_project.bzl"],
+    deps = [
+        ":actions",
+        ":context",
+        ":graph",
+        ":operation_addons",
+        ":project",
+        ":resources",
+        ":view",
+    ],
+)
+
+bzl_library(
+    name = "project",
+    srcs = ["project.bzl"],
+    deps = [
+        ":actions",
+        ":configuration",
+        ":context",
+        ":execution",
+        ":flags",
+        ":import_units",
+        ":paths",
+        ":providers",
+        ":resources",
+        "//godot/private/config:settings",
+        "//godot/private/engine:setting_kinds",
+        "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
+    name = "release",
+    srcs = ["release.bzl"],
+    deps = [":flags"],
+)
+
+bzl_library(
+    name = "resources",
+    srcs = ["resources.bzl"],
+    deps = [
+        ":actions",
+        ":context",
+        ":execution",
+        ":import_units",
+        ":paths",
+        ":providers",
+    ],
+)
+
+bzl_library(
+    name = "run",
+    srcs = ["run.bzl"],
+    deps = [
+        ":execution",
+        ":metadata",
+        ":paths",
+        ":view",
+        "//godot:providers",
+        "//godot/engine/private:selection",
+        "//godot/platforms/private:launch",
+        "//godot/private/config:transitions",
+        "@platforms//host:constraints_lib",
+    ],
+)
+
+bzl_library(
+    name = "runtime_profile",
+    srcs = ["runtime_profile.bzl"],
+    deps = [
+        ":actions",
+        ":execution",
+        ":macros",
+        ":paths",
+        ":sync",
+        ":view",
+        "//godot/engine/private:selection",
+        "//godot/private/engine:profiles",
+    ],
+)
+
+bzl_library(
+    name = "shell_assets",
+    srcs = ["shell_assets.bzl"],
+    deps = [":export_options"],
+)
+
+bzl_library(
+    name = "symbols",
+    srcs = ["symbols.bzl"],
+    deps = [
+        ":flags",
+        "//godot/private/config:native",
+        "@apple_support//lib:apple_support",
+        "@rules_cc//cc:find_cc_toolchain",
+        "@rules_cc//cc/common:cc_common",
+    ],
+)
+
+bzl_library(
+    name = "sync",
+    srcs = ["sync.bzl"],
+    deps = [
+        ":execution",
+        ":run",
+    ],
+)
+
+bzl_library(
+    name = "variant",
+    srcs = ["variant.bzl"],
+    deps = [":flags"],
+)
+
+bzl_library(
+    name = "view",
+    srcs = ["view.bzl"],
+    deps = [
+        ":actions",
+        ":configuration",
+        ":context",
+        ":execution",
+        ":graph",
+        ":import_units",
+        ":macros",
+        ":metadata",
+        ":operation_addons",
+        ":paths",
+        ":project",
+        ":providers",
+        ":resources",
+        ":setting_values",
+        "//godot/private/config:settings",
+    ],
+)
+
+bzl_library(
+    name = "configured_app",
+    srcs = ["configured_app.bzl"],
+    deps = [
+        "//godot/private/config:native",
+        "//godot/private/config:settings",
+        "@rules_android//rules:bzl",
+        "@rules_apple//apple:providers",
+    ],
+)
+
+bzl_library(
+    name = "configuration",
+    srcs = ["configuration.bzl"],
+)
+
+bzl_library(
+    name = "export_options",
+    srcs = ["export_options.bzl"],
+)
+
+bzl_library(
+    name = "flags",
+    srcs = ["flags.bzl"],
+)
+
+bzl_library(
+    name = "macros",
+    srcs = ["macros.bzl"],
+)
+
+bzl_library(
+    name = "patches",
+    srcs = ["patches.bzl"],
+)
+
+bzl_library(
+    name = "paths",
+    srcs = ["paths.bzl"],
+)
+
+bzl_library(
+    name = "providers",
+    srcs = ["providers.bzl"],
+)
+
+bzl_library(
+    name = "repository_templates",
+    srcs = ["repository_templates.bzl"],
+)
+
+bzl_library(
+    name = "setting_values",
+    srcs = ["setting_values.bzl"],
+)
+
+bzl_library(
+    name = "versions",
+    srcs = ["versions.bzl"],
 )

@@ -1,3 +1,5 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
@@ -7,3 +9,34 @@ exports_files([
 
 # Text templates the rules and repository rules of this package expand.
 exports_files(glob(["*.tpl"]))
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    deps = [
+        "//godot/extension/private:cc_extension",
+        "//godot/extension/private:ios_framework",
+        "//godot/platforms/private:manifest_graph",
+        "//godot/private:addon",
+        "//godot/private:context",
+        "//godot/private:execution",
+        "//godot/private:flags",
+        "//godot/private:paths",
+        "//godot/private:providers",
+        "//godot/private:symbols",
+        "//godot/private:variant",
+        "//godot/private:versions",
+        "//godot/private/config:settings",
+        "//godot/private/config:transitions",
+        "@rules_apple//apple:aspects",
+        "@rules_apple//apple:providers",
+        "@rules_cc//cc/common:cc_info",
+        "@rules_java//java/common",
+    ],
+)
+
+bzl_library(
+    name = "repositories",
+    srcs = ["repositories.bzl"],
+    deps = ["//godot/extension/private:godot_cpp"],
+)

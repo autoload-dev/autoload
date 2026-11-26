@@ -1,0 +1,15 @@
+--- a/bzl/gazelle.go	2026-11-26 14:55:40
++++ b/bzl/gazelle.go	2026-11-26 14:55:40
+@@ -167,6 +167,12 @@
+ 			// fairly simple workaround for this, which is that you can add those
+ 			// bzl files as `deps` entries.
+ 			deps = append(deps, imp)
++			continue
++		}
++
++		// A resolve directive names the library of a load, in this repository or another.
++		if override, ok := resolve.FindRuleWithOverride(c, resolve.ImportSpec{Lang: languageName, Imp: imp}, languageName); ok {
++			deps = append(deps, override.Rel(from.Repo, from.Pkg).String())
+ 			continue
+ 		}
+ 

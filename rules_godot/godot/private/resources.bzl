@@ -529,7 +529,7 @@ godot_resources = rule(
         # The context of the operation that reached these resources; they import
         # under its configuration, and outside every operation not at all.
         "_project": attr.label(
-            default = Label("//godot/private:project"),
+            default = Label("//godot/private:project_setting"),
             providers = [GodotProjectInfo],
         ),
         "_actions": attr.label(

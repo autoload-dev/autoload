@@ -20,7 +20,7 @@ load(":views.bzl", "run_view")
 
 _FIXTURE = "//godot/private/tests/fixtures/project_with_addons"
 _PROJECT = _FIXTURE
-_CONTEXT = str(Label("//godot/private:project"))
+_CONTEXT = str(Label("//godot/private:project_setting"))
 
 def _label(name):
     return str(Label(_FIXTURE + ":" + name))

@@ -520,7 +520,7 @@ _godot_project = rule(
     toolchains = [EDITOR_TOOLCHAIN],
 )
 
-# A symbolic macro, so that every project is visible to //godot/private:project, which
+# A symbolic macro, so that every project is visible to //godot/private:project_setting, which
 # names it as the context of the resources an operation reaches, and is never testonly,
 # since production resources import under it too.
 def _project_macro_impl(name, visibility, testonly, deps, **kwargs):

@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load(
     ":settings.bzl",
     "CPU_CONSTRAINTS",
@@ -127,3 +128,36 @@ toolchain_type(
     ]
     for cpu, constraint in CPU_CONSTRAINTS.items()
 ]
+
+bzl_library(
+    name = "application",
+    srcs = ["application.bzl"],
+    deps = [
+        ":settings",
+        ":transitions",
+        "//godot:providers",
+        "//godot/private:resources",
+        "//godot/private:versions",
+    ],
+)
+
+bzl_library(
+    name = "native",
+    srcs = ["native.bzl"],
+    deps = [":settings"],
+)
+
+bzl_library(
+    name = "settings",
+    srcs = ["settings.bzl"],
+    deps = ["//godot/private:flags"],
+)
+
+bzl_library(
+    name = "transitions",
+    srcs = ["transitions.bzl"],
+    deps = [
+        ":native",
+        ":settings",
+    ],
+)

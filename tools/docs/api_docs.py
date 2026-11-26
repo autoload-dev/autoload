@@ -245,7 +245,9 @@ def main() -> None:
             args.bazel,
             ruleset,
             "query",
-            'attr(visibility, "//visibility:public", kind("rule", //godot/...))',
+            # The Starlark libraries of the modules document themselves (modules.bzl).
+            'attr(visibility, "//visibility:public", kind("rule", //godot/...))'
+            ' except kind("bzl_library", //godot/...)',
             "--output=label",
             capture=True,
         ).splitlines()

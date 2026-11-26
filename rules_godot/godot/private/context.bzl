@@ -1,6 +1,6 @@
 """The project context an operation sets for the resources it reaches.
 
-`//godot/private:project` names the `godot_project` whose configuration the imports of the current
+`//godot/private:project_setting` names the `godot_project` whose configuration the imports of the current
 configuration use. Operations write it on the edge to their view; native code is reached
 with it reset, so it builds once whatever the number of contexts.
 
@@ -19,7 +19,7 @@ load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT")
 
 visibility(["//godot/..."])
 
-PROJECT_SETTING = str(Label("//godot/private:project"))
+PROJECT_SETTING = str(Label("//godot/private:project_setting"))
 NO_PROJECT = str(Label("//godot/private:no_project"))
 
 # The attribute every rule with a transition of its own declares.

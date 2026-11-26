@@ -379,6 +379,20 @@ WORK = (
         ("python3 -m tools.generate.generate --check",),
         inputs=GENERATED_INPUTS,
     ),
+    # The BUILD declarations that Gazelle generates (tools/gazelle): the ruleset's
+    # bzl_library targets.
+    Work(
+        "gazelle",
+        "quality",
+        ".",
+        ("bazel run //tools/gazelle:rules_godot_check",),
+        inputs=files(
+            f"{RULESET_DIR}/*.bzl",
+            f"{RULESET_DIR}/*BUILD*",
+            "tools/gazelle/*",
+            "MODULE.bazel*",
+        ),
+    ),
     # The repository tooling's tests but the API documentation's, which the docs work runs;
     # the examples' and scenarios' tests run in the desktop lane.
     Work("test:tools", "quality", ".", ("bazel test -- //tools/... -//tools/docs/...",)),

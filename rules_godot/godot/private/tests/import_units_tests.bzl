@@ -108,7 +108,7 @@ def _test_scripts_reach_imports_only_as_import_inputs(name):
         name = name,
         target = _FIXTURE + ":scripted_import",
         impl = _scripts_reach_imports_only_as_import_inputs,
-        config_settings = {str(Label("//godot/private:project")): str(native.package_relative_label(project))},
+        config_settings = {str(Label("//godot/private:project_setting")): str(native.package_relative_label(project))},
     )
 
 def _scripts_reach_imports_only_as_import_inputs(env, target):

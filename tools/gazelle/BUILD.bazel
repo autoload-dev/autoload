@@ -1,0 +1,32 @@
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+# Gazelle with only the languages this repository generates declarations for: Starlark's
+# bzl_library targets, from bazel_skylib's plugin, which this module patches (MODULE.bazel).
+gazelle_binary(
+    name = "gazelle_binary",
+    languages = ["@bazel_skylib_gazelle_plugin//bzl"],
+)
+
+# Gazelle runs from this module for each module it maintains, with the module's directory as
+# its repository root; the module's root BUILD file holds its directives. `bazel run
+# //tools/gazelle:<module>` updates the module's BUILD files, and
+# `bazel run //tools/gazelle:<module>_check` fails with the diff where one differs from what
+# Gazelle generates.
+gazelle(
+    name = "rules_godot",
+    args = [
+        "-repo_root=rules_godot",
+        "rules_godot",
+    ],
+    gazelle = ":gazelle_binary",
+)
+
+gazelle(
+    name = "rules_godot_check",
+    args = [
+        "-repo_root=rules_godot",
+        "rules_godot",
+    ],
+    gazelle = ":gazelle_binary",
+    mode = "diff",
+)
