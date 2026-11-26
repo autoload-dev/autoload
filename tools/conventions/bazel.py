@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
+from tools.conventions.cache import QueryCache
 from tools.conventions.context import (
     EvidenceError,
     Fact,
@@ -103,12 +104,19 @@ def _instantiation(line: str) -> tuple[str, list[str]]:
 
 
 class Bazel:
-    def __init__(self, root: Path, scopes: Mapping[Module, Scope] | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        scopes: Mapping[Module, Scope] | None = None,
+        cache: QueryCache | None = None,
+    ) -> None:
         """
         ``scopes`` says where each module loads, together with the others of its workspace;
-        a module without one loads alone in its own directory.
+        a module without one loads alone in its own directory. ``cache`` keeps the queries'
+        output while nothing that loading reads changes.
         """
         self.root = root
+        self._cache = cache
         self._groups: dict[Path, dict[Module, Scope]] = defaultdict(dict)
         for module, scope in (scopes or {}).items():
             self._groups[scope.workspace][module] = scope
@@ -170,11 +178,11 @@ class Bazel:
         ]
         return "kind(rule, set(" + " ".join(patterns) + "))"
 
-    @staticmethod
-    def _run(workspace: Path, expression: str, *options: str) -> str:
-        return run_tool(
-            ["bazel", "query", expression, *options, "--noshow_progress"], workspace
-        )
+    def _run(self, workspace: Path, expression: str, *options: str) -> str:
+        command = ["bazel", "query", expression, *options, "--noshow_progress"]
+        if self._cache is None:
+            return run_tool(command, workspace)
+        return self._cache.run(workspace, command, lambda: run_tool(command, workspace))
 
     def _xml(self, workspace: Path, expression: str) -> ET.Element:
         """Run a loading query for its XML with default attribute values."""

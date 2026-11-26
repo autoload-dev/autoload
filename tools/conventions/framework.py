@@ -15,9 +15,6 @@ CATALOGUE = "docs/internal/conventions.md"
 class RuleInfo:
     id: str
     title: str
-    # Whether the rule reads Bazel's loading evidence; the checker caches its diagnostics
-    # (tools/conventions/cache.py).
-    evaluated: bool = False
 
     @property
     def documentation(self) -> str:

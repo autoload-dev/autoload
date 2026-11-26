@@ -27,7 +27,6 @@ class ProductionIsolation:
     info = RuleInfo(
         "RG012",
         "Production targets are independent of test scopes",
-        evaluated=True,
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

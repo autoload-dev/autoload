@@ -1,27 +1,16 @@
-"""Regressions for what the result cache's key covers and how entries round-trip."""
+"""Regressions for what the query cache's key covers and when it runs Bazel."""
 
 import unittest
-from pathlib import Path
 
-from tools.conventions.cache import ReportCache, evidence_key
-from tools.conventions.context import Location
-from tools.conventions.framework import Diagnostic, Finding, RuleInfo
+from tools.conventions.cache import QueryCache, loading_inputs
 from tools.conventions.test_support import RepositoryTest
 
-
-class Evaluated:
-    info = RuleInfo("RG900", "An evaluated rule", evaluated=True)
-
-    def evaluate(self, context):  # noqa: ANN001, ANN201 - unused by the cache
-        return ()
+COMMAND = ("bazel", "query", "//...")
 
 
-RULES = (Evaluated(),)
-
-
-class CacheTest(RepositoryTest):
+class QueryCacheTest(RepositoryTest):
     def key(self) -> str:
-        return evidence_key(self.workspace(), RULES, ())
+        return loading_inputs(self.workspace())
 
     def test_loading_inputs_change_the_key_but_compiled_sources_do_not(self) -> None:
         self.write("lib/BUILD.bazel", "")
@@ -32,29 +21,41 @@ class CacheTest(RepositoryTest):
         self.write("lib/BUILD.bazel", "filegroup(name = 'all')")
         self.assertNotEqual(before, self.key())
 
-    def test_added_files_and_the_checker_change_the_key(self) -> None:
+    def test_added_files_and_links_change_the_key(self) -> None:
         before = self.key()
         self.write("lib/tool.py", "")
-        self.assertNotEqual(before, self.key())
-        checker = self.root / "rule.py"
-        checker.write_text("A = 1")
-        self.assertNotEqual(
-            evidence_key(self.workspace(), RULES, ()),
-            evidence_key(self.workspace(), RULES, (checker,)),
-        )
+        added = self.key()
+        self.assertNotEqual(before, added)
+        (self.root / "link").symlink_to("lib")
+        self.files.add("link")
+        self.assertNotEqual(added, self.key())
 
-    def test_entries_round_trip_and_unknown_keys_miss(self) -> None:
-        cache = ReportCache(self.root / "cache")
-        diagnostic = Diagnostic(
-            Evaluated.info,
-            Finding(Location("BUILD.bazel", 3), "bad", "not_checked", True),
-        )
-        self.assertIsNone(cache.load("ab12", RULES))
-        cache.store("ab12", (diagnostic,))
-        self.assertEqual((diagnostic,), cache.load("ab12", RULES))
-        self.assertTrue(
-            all(Path(p).suffix == ".json" for p in (self.root / "cache").rglob("*.*"))
-        )
+    def test_a_query_runs_once_per_command_and_inputs(self) -> None:
+        runs: list[str] = []
+
+        def query() -> str:
+            runs.append("run")
+            return "<query/>"
+
+        inputs = ["a"]
+        cache = QueryCache(self.root / "cache", lambda: inputs[0])
+        self.assertEqual("<query/>", cache.run(self.root, COMMAND, query))
+        self.assertEqual("<query/>", cache.run(self.root, COMMAND, query))
+        self.assertEqual(1, len(runs))
+        cache.run(self.root, (*COMMAND, "--output=xml"), query)
+        self.assertEqual(2, len(runs))
+        changed = QueryCache(self.root / "cache", lambda: "b")
+        changed.run(self.root, COMMAND, query)
+        self.assertEqual(3, len(runs))
+
+    def test_a_failed_query_is_not_stored(self) -> None:
+        def failing() -> str:
+            raise ValueError("bazel failed")
+
+        cache = QueryCache(self.root / "cache", lambda: "a")
+        with self.assertRaises(ValueError):
+            cache.run(self.root, COMMAND, failing)
+        self.assertEqual("ok", cache.run(self.root, COMMAND, lambda: "ok"))
 
 
 if __name__ == "__main__":

@@ -591,13 +591,13 @@ unreviewed computed macro names separately. Exit status `1` indicates convention
 `2` indicates an incomplete audit. The work `conventions` of the `quality` lane runs this
 command, and the pre-push hook runs that work.
 
-The rules that read Bazel's loading evidence (`RuleInfo.evaluated`) are cached: the checker
-stores their diagnostics in `~/.cache/autoload/conventions` (or below `XDG_CACHE_HOME`) under
-a key of the checker's own code, the selected rules, the listed files and the contents of every
-listed file that can change what Bazel loads or what the rules read, and reuses them when that
-key recurs, without starting a Bazel server. Code that builds compile and assets they package,
-such as Python, GDScript, C++ or images, count by name only
-([cache.py](../../tools/conventions/cache.py)). An incomplete audit is never cached.
+The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
+`XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
+listed files and the contents of each, but for code that builds compile and assets they
+package, such as Python, GDScript, C++ or images, which count by name only
+([cache.py](../../tools/conventions/cache.py)). While none of that changes, a run starts no
+Bazel server, and the rules evaluate the cached evidence as always. A failed query is never
+cached.
 
 Run one rule independently or list the registered rules:
 
@@ -627,8 +627,7 @@ adapters.
 The [framework](../../tools/conventions/framework.py) validates unique IDs, invokes rules
 against one context and attaches their metadata to findings. It sorts diagnostics for
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
-aborts the run rather than being merged. A rule that reads Bazel's loading evidence sets
-`RuleInfo.evaluated`, so that the CLI caches its diagnostics. `Finding.status` distinguishes `violation` from
+aborts the run rather than being merged. `Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
 the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)
 formats results and chooses the exit status.

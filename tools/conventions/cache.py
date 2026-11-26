@@ -1,24 +1,22 @@
 """
-The result cache of the rules that read Bazel's loading evidence: their diagnostics, stored
-under a key of everything that can change them, so that a run without such a change starts no
-Bazel server. The key covers the checker's own code, the selected rules, the listed files and
-the contents of every listed file that can change what Bazel loads or what the rules read;
-the sources and assets that only builds compile or package, such as Python or GDScript, are
-left out, as only their names matter to loading.
+The query cache: the output of each loading query the Bazel tool runs, stored under a key of
+the query and of everything Bazel's loading reads, so that a run in which nothing loading reads
+changed starts no Bazel server. The rules then evaluate the cached evidence as always.
+
+The key covers the listed files and the contents of every one that loading can read; code that
+builds compile and assets they package count by name only, since globs list them.
 """
 
 import hashlib
-import json
 import os
-import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Sequence
+from functools import cached_property
 from pathlib import Path
 
-from tools.conventions.context import Location, Workspace
-from tools.conventions.framework import Diagnostic, Finding, Rule
+from tools.conventions.context import Workspace
 
-# Files whose contents no loading query reads: code that builds compile and assets they
-# package. Their names still count, since globs list them.
+# Files whose contents Bazel's loading never reads: code that builds compile and assets they
+# package. An unknown suffix counts as read.
 INERT_SUFFIXES = frozenset(
     {
         ".bin",
@@ -57,96 +55,57 @@ def cache_directory() -> Path:
     return Path(base) / "autoload" / "conventions"
 
 
-def checker_sources() -> tuple[Path, ...]:
-    """The repository's Python modules that this process has loaded: the checker and its rules."""
-    tools = Path(__file__).resolve().parents[1]
-    files = (getattr(module, "__file__", None) for module in list(sys.modules.values()))
-    return tuple(
-        sorted(
-            {
-                path
-                for file in files
-                if file and (path := Path(file).resolve()).is_relative_to(tools)
-            }
-        )
-    )
-
-
-def evidence_key(
-    workspace: Workspace, rules: Iterable[Rule], checker: Iterable[Path]
-) -> str:
-    """The key of the rules' diagnostics in this workspace, run by this checker."""
+def _digest(parts: Sequence[str | bytes]) -> str:
+    """An unambiguous digest of the parts: each is prefixed with its length."""
     digest = hashlib.sha256()
-
-    def add(*parts: str | bytes) -> None:
-        for part in parts:
-            data = part.encode() if isinstance(part, str) else part
-            digest.update(len(data).to_bytes(8, "big") + data)
-
-    add(*(rule.info.id for rule in rules))
-    for path in checker:
-        add(path.name, path.read_bytes())
-    for name in workspace.entries:
-        path = workspace.root / name
-        if name not in workspace.file_set:
-            add("link", name, os.readlink(path))
-            continue
-        add("file", name)
-        if Path(name).suffix not in INERT_SUFFIXES:
-            add(path.read_bytes())
+    for part in parts:
+        data = part.encode() if isinstance(part, str) else part
+        digest.update(len(data).to_bytes(8, "big") + data)
     return digest.hexdigest()
 
 
-def encode(diagnostics: Iterable[Diagnostic]) -> str:
-    return json.dumps(
-        [
-            {
-                "rule": item.rule.id,
-                "path": item.finding.location.path,
-                "line": item.finding.location.line,
-                "message": item.finding.message,
-                "status": item.finding.status,
-                "required": item.finding.required,
-            }
-            for item in diagnostics
-        ]
-    )
+def loading_inputs(workspace: Workspace) -> str:
+    """The digest of what Bazel's loading can read in the workspace."""
+    parts: list[str | bytes] = []
+    for name in workspace.entries:
+        path = workspace.root / name
+        if name not in workspace.file_set:
+            parts += ["link", name, os.readlink(path)]
+        elif Path(name).suffix in INERT_SUFFIXES:
+            parts += ["file", name]
+        else:
+            parts += ["file", name, path.read_bytes()]
+    return _digest(parts)
 
 
-def decode(text: str, rules: Iterable[Rule]) -> tuple[Diagnostic, ...]:
-    infos = {rule.info.id: rule.info for rule in rules}
-    return tuple(
-        Diagnostic(
-            infos[item["rule"]],
-            Finding(
-                Location(item["path"], item["line"]),
-                item["message"],
-                item["status"],
-                item["required"],
-            ),
-        )
-        for item in json.loads(text)
-    )
+class QueryCache:
+    """Query output by query and loading inputs, one file each; an unreadable entry misses."""
 
-
-class ReportCache:
-    """Diagnostics by key, one file each; an unreadable entry counts as missing."""
-
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, inputs: Callable[[], str]) -> None:
+        """``inputs`` gives the digest of the loading inputs; it is computed once, when needed."""
         self.directory = directory
+        self._inputs = inputs
 
-    def _path(self, key: str) -> Path:
-        return self.directory / key[:2] / f"{key}.json"
+    @cached_property
+    def inputs(self) -> str:
+        return self._inputs()
 
-    def load(self, key: str, rules: Iterable[Rule]) -> tuple[Diagnostic, ...] | None:
+    def _path(self, workspace: Path, command: Sequence[str]) -> Path:
+        key = _digest([self.inputs, str(workspace), *command])
+        return self.directory / key[:2] / f"{key}.out"
+
+    def run(
+        self, workspace: Path, command: Sequence[str], query: Callable[[], str]
+    ) -> str:
+        """The command's cached output, or else ``query``'s, which is stored."""
+        path = self._path(workspace, command)
         try:
-            return decode(self._path(key).read_text(), rules)
-        except OSError, ValueError, KeyError:
-            return None
-
-    def store(self, key: str, diagnostics: Iterable[Diagnostic]) -> None:
-        path = self._path(key)
+            return path.read_text()
+        except OSError:
+            pass
+        output = query()
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(f".{os.getpid()}.tmp")
-        temporary.write_text(encode(diagnostics))
+        temporary.write_text(output)
         temporary.replace(path)
+        return output

@@ -10,7 +10,6 @@ class ExplicitNames:
     info = RuleInfo(
         "RG003",
         "Target declarations pass name explicitly",
-        evaluated=True,
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
