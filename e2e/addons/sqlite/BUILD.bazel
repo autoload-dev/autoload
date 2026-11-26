@@ -27,6 +27,7 @@ godot_metadata_sync(
     name = "update",
     size = "small",
     project = ":sqlite",
+    tags = ["godot_process"],
     deps = [
         "//e2e/addons/sqlite/database:suites",
     ],

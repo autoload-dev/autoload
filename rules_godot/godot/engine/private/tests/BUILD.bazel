@@ -197,7 +197,6 @@ repository_test(
     executable = True,
     runtime = True,
     tags = [
-        "manual",
         "source_engine",
         "source_engine_extended",
     ],

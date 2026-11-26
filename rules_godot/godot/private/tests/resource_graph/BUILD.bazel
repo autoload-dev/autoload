@@ -12,6 +12,7 @@ py_test(
     args = ["$(rootpath %sgraph)" % _FIXTURE],
     data = [_FIXTURE + "graph"],
     main = "resource_graph_test.py",
+    tags = ["godot_process"],
 )
 
 resource_graph_test_suite(name = "resource_graph_test_suite")

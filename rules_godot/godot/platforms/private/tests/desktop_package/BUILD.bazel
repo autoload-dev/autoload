@@ -27,6 +27,7 @@ py_test(
         _RUNTIMES + "linux_app",
     ],
     main = "desktop_bundles_test.py",
+    tags = ["godot_process"],
 )
 
 adhoc_signed(
@@ -44,6 +45,7 @@ py_test(
     args = ["$(rootpaths :adhoc_signed_bundle_verifies_test_app)"],
     data = [":adhoc_signed_bundle_verifies_test_app"],
     main = "adhoc_signing_test.py",
+    tags = ["godot_process"],
     target_compatible_with = ["@platforms//os:macos"],
 )
 
@@ -56,6 +58,7 @@ py_test(
     args = ["$(rootpaths %sapp)" % _ICON],
     data = [_ICON + "app"],
     main = "liquid_glass_icon_test.py",
+    tags = ["godot_process"],
     target_compatible_with = ["@platforms//os:macos"],
 )
 
@@ -74,6 +77,7 @@ py_test(
         _DSYMS + "prebuilt_runtime_app_debug_symbols",
     ],
     main = "dsym_test.py",
+    tags = ["godot_process"],
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//tools/platforms:native_symbols_lib"],
 )

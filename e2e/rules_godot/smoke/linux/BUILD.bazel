@@ -75,6 +75,7 @@ gdunit_test(
     size = "small",
     project = ":linux",
     suites = [":suites"],
+    tags = ["godot_process"],
     target_compatible_with = _LINUX,
 )
 
@@ -142,5 +143,6 @@ py_test(
         ":app_archive",
         ":app_bundle",
     ],
+    tags = ["godot_process"],
     target_compatible_with = _LINUX,
 )

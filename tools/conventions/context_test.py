@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Literal
 from unittest.mock import patch
 
+from tools.conventions.bazel import Bazel
 from tools.conventions.context import (
-    Bazel,
     Buildozer,
     Call,
     Context,
@@ -115,7 +115,7 @@ class ContextTest(RepositoryTest):
     ) -> None:
         module = self.context().workspace.modules[0]
         evaluated = '{"rule":{"name":"//:app","instantiationStack":["BUILD.bazel:1:1: <toplevel>","godot/app.bzl:2:1: godot_app","godot/private/backend.bzl:3:1: helper"]}}'
-        with patch("tools.conventions.context.run_tool", return_value=evaluated) as query:
+        with patch("tools.conventions.bazel.run_tool", return_value=evaluated) as query:
             frames = Bazel(self.root).invocations(module)
         self.assertEqual(
             (("godot/app.bzl", "godot_app"), ("godot/private/backend.bzl", "helper")),
@@ -208,7 +208,7 @@ class ContextTest(RepositoryTest):
         xml = '<query><source-file name="@local//:project.godot" location="linked_repository/project.godot:1:1"/><generated-file name="//:generated.gd"/></query>'
         tool = Bazel(self.root)
         module = self.workspace().modules[0]
-        with patch("tools.conventions.context.run_tool", return_value=xml) as query:
+        with patch("tools.conventions.bazel.run_tool", return_value=xml) as query:
             result = tool.inspect(module, ("@local//:project.godot", "//:generated.gd"))
             cached = tool.inspect(module, ("@local//:project.godot",))
         self.assertEqual(1, query.call_count)
@@ -221,7 +221,7 @@ class ContextTest(RepositoryTest):
 
     def test_incomplete_inspection_response_cannot_pass_as_no_sources(self) -> None:
         with (
-            patch("tools.conventions.context.run_tool", return_value="<query/>"),
+            patch("tools.conventions.bazel.run_tool", return_value="<query/>"),
             self.assertRaisesRegex(EvidenceError, "did not resolve"),
         ):
             Bazel(self.root).inspect(self.workspace().modules[0], ("//:missing",))

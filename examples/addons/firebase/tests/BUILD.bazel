@@ -12,6 +12,7 @@ godot_test(
     size = "small",
     headless = True,
     pack = "//examples/addons/firebase:pack",
+    tags = ["godot_process"],
 )
 
 # The iOS lane tests it: the application embeds each extension's framework and the Firebase

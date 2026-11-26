@@ -11,6 +11,7 @@ godot_test(
     size = "medium",
     main = "main/configured_test.gd",
     project = _FIXTURE,
+    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":configured_resources",
@@ -28,6 +29,7 @@ godot_test(
     ],
     main = "main/configured_test.gd",
     project = _FIXTURE + ":transitive_project",
+    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":transitive_consumer",
@@ -40,6 +42,7 @@ godot_test(
     size = "medium",
     main = "main/configured_test.gd",
     project = _FIXTURE + ":overriding_project",
+    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":overridden_consumer",

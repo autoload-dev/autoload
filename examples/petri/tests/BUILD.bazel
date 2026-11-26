@@ -29,4 +29,5 @@ gdunit_test(
     engine = "simulation",
     project = "//examples/petri",
     suites = [":suites"],
+    tags = ["godot_process"],
 )

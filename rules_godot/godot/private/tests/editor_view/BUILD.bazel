@@ -27,6 +27,7 @@ py_test(
         "METADATA_TEST": "$(rootpath %smetadata.test)" % _EDITED,
     },
     main = "godot_editor_test.py",
+    tags = ["godot_process"],
     # godot_editor and godot_metadata_sync are bazel run tools built for this host, so
     # the test runs only where they can.
     target_compatible_with = HOST_CONSTRAINTS,
@@ -38,6 +39,7 @@ godot_metadata_sync(
     name = "declared_sidecars_metadata",
     size = "medium",
     project = "//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:project",
+    tags = ["godot_process"],
     deps = ["//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:declared"],
 )
 

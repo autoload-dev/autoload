@@ -31,4 +31,5 @@ py_test(
     ],
     data = [":registered_prebuilt_runtime_boots_test_bundle"],
     main = "prebuilt_runtime_test.py",
+    tags = ["godot_process"],
 )

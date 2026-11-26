@@ -36,6 +36,9 @@ class StaticTools:
         self.call_requests = 0
         self.rule_requests = 0
         self.facts: dict[str, Fact] = {target.label: target for target in targets}
+        # The tests of every module, and those that depend on the labels a rule asks for.
+        self.test_labels: frozenset[str] = frozenset()
+        self.dependents: frozenset[str] = frozenset()
 
     def calls(self, module: Module) -> tuple[Call, ...]:
         self.call_requests += 1
@@ -53,6 +56,12 @@ class StaticTools:
         self.rule_requests += 1
         builds = {build.as_posix() for build in module.builds}
         return tuple(target for target in self._targets if target.location.path in builds)
+
+    def module_tests(self, module: Module) -> frozenset[str]:
+        return self.test_labels
+
+    def dependent_tests(self, module: Module, labels: tuple[str, ...]) -> frozenset[str]:
+        return self.dependents
 
     def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]:
         missing = set(labels) - self.facts.keys()
@@ -72,9 +81,18 @@ class Record(TypedDict):
     kind: NotRequired[str]
     labels: NotRequired[dict[str, str]]
     label_lists: NotRequired[dict[str, list[str]]]
+    string_lists: NotRequired[dict[str, list[str]]]
     label_keyed_strings: NotRequired[dict[str, dict[str, str]]]
     outputs: NotRequired[list[str]]
     owner: NotRequired[str]
+
+
+def lists(rule: ET.Element, element: str, values: dict[str, list[str]]) -> None:
+    """Write list attributes whose elements are all of one type, such as labels."""
+    for name, items in values.items():
+        group = ET.SubElement(rule, "list", {"name": name})
+        for value in items:
+            ET.SubElement(group, element, {"value": value})
 
 
 def query_xml(root: Path, records: list[Record]) -> ET.Element:
@@ -95,10 +113,8 @@ def query_xml(root: Path, records: list[Record]) -> ET.Element:
             ET.SubElement(rule, "boolean", {"name": name, "value": str(flag).lower()})
         for name, value in record.get("labels", {}).items():
             ET.SubElement(rule, "label", {"name": name, "value": value})
-        for name, values in record.get("label_lists", {}).items():
-            group = ET.SubElement(rule, "list", {"name": name})
-            for value in values:
-                ET.SubElement(group, "label", {"value": value})
+        lists(rule, "label", record.get("label_lists", {}))
+        lists(rule, "string", record.get("string_lists", {}))
         for name, values in record.get("label_keyed_strings", {}).items():
             group = ET.SubElement(rule, "dict", {"name": name})
             for label, value in values.items():

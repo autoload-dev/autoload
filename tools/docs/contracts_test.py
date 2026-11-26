@@ -59,7 +59,7 @@ class CheckCasesTest(unittest.TestCase):
         }
         with (
             patch("tools.docs.evidence.run_tool", side_effect=fake_bazel) as run,
-            patch("tools.conventions.context.run_tool", side_effect=fake_bazel) as query,
+            patch("tools.conventions.bazel.run_tool", side_effect=fake_bazel) as query,
         ):
             results = check_cases(EvaluatedBazel(Path("/workspace")), cases)
         # The empty contract's one diagnostic, attributed to each case's own key.

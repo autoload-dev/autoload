@@ -48,12 +48,14 @@ godot_test(
     name = "godot_pack_runtime_inputs_test",
     size = "medium",
     pack = ":godot_pack",
+    tags = ["godot_process"],
 )
 
 godot_test(
     name = "none_pack_runtime_inputs_test",
     size = "medium",
     pack = ":none_pack",
+    tags = ["godot_process"],
 )
 
 # Build-output test: what both forms pack for the runtime besides the files.
@@ -68,5 +70,6 @@ py_test(
         ":none_pack",
     ],
     main = "runtime_inputs_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )

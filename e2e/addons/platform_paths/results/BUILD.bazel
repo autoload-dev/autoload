@@ -22,4 +22,5 @@ gdunit_test(
     size = "small",
     project = "//e2e/addons/platform_paths",
     suites = [":suites"],
+    tags = ["godot_process"],
 )

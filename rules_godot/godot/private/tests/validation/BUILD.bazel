@@ -55,6 +55,7 @@ py_test(
     args = ["$(rootpaths :class_cache_inputs)"],
     data = [":class_cache_inputs"],
     main = "class_cache_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:class_fragment_lib"],
 )
 
@@ -206,6 +207,7 @@ godot_resources(
         args = ["$(rootpaths :%s_validations_reported)" % project],
         data = [":%s_validations_reported" % project],
         main = "project_code_validation_test.py",
+        tags = ["godot_process"],
     )
     for project in [
         "autoload_project",
@@ -289,6 +291,7 @@ godot_addon(
         ],
         data = [":%s_validations_reported" % project],
         main = "warning_validation_test.py",
+        tags = ["godot_process"],
     )
     for project in [
         "project",
@@ -350,6 +353,7 @@ py_test(
     args = ["$(rootpaths :broken_build)"],
     data = [":broken_build"],
     main = "parse_error_validation_test.py",
+    tags = ["godot_process"],
 )
 
 # Errors that fail a unit's validation with Godot's message: a type error; a base script
@@ -414,6 +418,7 @@ py_test(
     args = ["$(rootpaths :script_error_validations_reported)"],
     data = [":script_error_validations_reported"],
     main = "script_error_validation_test.py",
+    tags = ["godot_process"],
 )
 
 # ==== Interfaces ==============================================================
@@ -487,6 +492,7 @@ py_test(
     args = ["$(rootpaths :interface_validations_reported)"],
     data = [":interface_validations_reported"],
     main = "interface_validation_test.py",
+    tags = ["godot_process"],
 )
 
 # ==== Platform libraries ======================================================
@@ -584,4 +590,5 @@ py_test(
     args = ["$(rootpaths :platform_probe_validations_reported)"],
     data = [":platform_probe_validations_reported"],
     main = "absent_extension_validation_test.py",
+    tags = ["godot_process"],
 )

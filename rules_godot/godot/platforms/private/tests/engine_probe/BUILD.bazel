@@ -119,7 +119,7 @@ py_test(
     ],
     main = "android_source_bundle_test.py",
     tags = [
-        "manual",
+        "godot_process",
         "source_engine",
     ],
     target_compatible_with = _ANDROID_SDK,
@@ -149,6 +149,7 @@ beta_engine_test(
     kind = "official",
     official_aar = "@godot_beta_shell_aar//file",
     operating_system = "android",
+    tags = ["godot_process"],
     target_compatible_with = _ANDROID_SDK,
 )
 
@@ -174,7 +175,7 @@ beta_engine_test(
     kind = "source",
     operating_system = "android",
     tags = [
-        "manual",
+        "godot_process",
         "source_engine",
         "source_engine_extended",
     ],
@@ -202,6 +203,7 @@ beta_engine_test(
     inspector = ":validate_ios_beta",
     kind = "official",
     operating_system = "ios",
+    tags = ["godot_process"],
     target_compatible_with = _MACOS,
 )
 
@@ -223,7 +225,7 @@ beta_engine_test(
     kind = "source",
     operating_system = "ios",
     tags = [
-        "manual",
+        "godot_process",
         "source_engine",
         "source_engine_extended",
     ],
@@ -248,7 +250,7 @@ py_test(
     data = [":source_built_ios_app_defines_extension_entry_test_app"],
     main = "ios_source_app_test.py",
     tags = [
-        "manual",
+        "godot_process",
         "source_engine",
     ],
     target_compatible_with = _MACOS,

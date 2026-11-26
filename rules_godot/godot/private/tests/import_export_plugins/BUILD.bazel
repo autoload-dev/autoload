@@ -34,6 +34,7 @@ py_test(
     srcs = ["import_results_test.py"],
     data = [":run_imports"],
     main = "import_results_test.py",
+    tags = ["godot_process"],
 )
 
 # Build-output test: the pack holds no file of its add-ons' editor parts, and the export
@@ -44,6 +45,7 @@ py_test(
     srcs = ["pack_contents_test.py"],
     data = [_FIXTURE + ":pack"],
     main = "pack_contents_test.py",
+    tags = ["godot_process"],
     deps = ["//tools:pck_lib"],
 )
 
@@ -60,6 +62,7 @@ godot_test(
         "'/0 store'",
     ],
     pack = _FIXTURE + ":pack",
+    tags = ["godot_process"],
 )
 
 godot_test(
@@ -70,6 +73,7 @@ godot_test(
         "'2.3.4/57 integration'",
     ],
     pack = _FIXTURE + ":release_pack",
+    tags = ["godot_process"],
 )
 
 # A source run of the release project starts with its custom feature, so the authored
@@ -82,6 +86,7 @@ godot_test(
         "'/57 integration'",
     ],
     project = _FIXTURE + ":release_project",
+    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":authored_hook",
         _FIXTURE + ":export_marker",
@@ -144,4 +149,5 @@ py_test(
         ":macos_release_images",
     ],
     main = "shell_images_test.py",
+    tags = ["godot_process"],
 )

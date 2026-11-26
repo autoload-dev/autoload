@@ -38,4 +38,5 @@ py_test(
     args = ["$(rootpath :%s)" % name for name in _TESTS],
     data = [":" + name for name in _TESTS],
     main = "adapter_contract_test.py",
+    tags = ["godot_process"],
 )

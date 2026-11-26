@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from tools.ci.lanes import PROFILE
+from tools.conventions.bazel import Bazel
 from tools.conventions.context import (
-    Bazel,
     EvidenceError,
     Module,
     Target,

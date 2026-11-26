@@ -32,6 +32,7 @@ identities, not authored target declarations.
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
 | [RG024](#rg024) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [RG025](#rg025) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
+| [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
 [boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
@@ -561,6 +562,19 @@ The check parses every Python module of the repository; one that does not parse 
 audit, as for [RG023](#rg023). It reads names, so a definition that passes another on without calling it
 counts as a caller as well. Starlark files are outside it.
 
+## RG026
+
+**Tests that start a Godot process carry the `godot_process` tag.** A Godot process, in the
+test's build or in the test itself, is what makes a test expensive to rerun; the fast tests
+(`--config=fast` of the ruleset, which the pre-push hook runs) are every test without the tag.
+A smoke test starts one and still runs with the fast tests, so it carries no tag; analysis
+tests start none, and `manual` tests run only when named.
+
+The check queries each module's tests that depend on a Godot toolchain type (the editor, the
+runtime or the target execution toolchain type of `@autoload_rules_godot//godot`) and reports
+such a test without the tag, a test with the tag that depends on none, and a smoke test with
+the tag. Registry test modules are outside it.
+
 ## Run and maintain the checks
 
 From the repository root:
@@ -610,7 +624,9 @@ formats results and chooses the exit status.
 
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
 workspace files, documents, modules and projects, Starlark calls, Bazel rules and
-inspection, and the joins of them (`context.declarations`, `context.sources`). The public
+inspection, and the joins of them (`context.declarations`, `context.sources`). The Bazel tool,
+which runs each module's loading queries, is [bazel.py](../../tools/conventions/bazel.py);
+the context decodes its output. The public
 members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal, which files
 are agent instructions (every `AGENTS.md` and `SKILL.md`), and the local links and anchors

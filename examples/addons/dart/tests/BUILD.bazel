@@ -8,4 +8,5 @@ godot_test(
     size = "small",
     headless = True,
     pack = "//examples/addons/dart:pack",
+    tags = ["godot_process"],
 )

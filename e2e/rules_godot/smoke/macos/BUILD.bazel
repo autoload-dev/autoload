@@ -88,6 +88,7 @@ py_test(
         ":app_archive",
         ":app_bundle",
     ],
+    tags = ["godot_process"],
     target_compatible_with = _MACOS,
 )
 
@@ -105,6 +106,7 @@ py_test(
     srcs = ["app_is_adhoc_signed_test.py"],
     args = ["$(rlocationpath :app_archive)"],
     data = [":app_archive"],
+    tags = ["godot_process"],
     target_compatible_with = _MACOS + select({
         ":adhoc_signing": [],
         "//conditions:default": ["@platforms//:incompatible"],
