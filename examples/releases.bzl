@@ -23,14 +23,14 @@ def android_release(name, app = ":app", **kwargs):
     Args:
         name: the name of the App Bundle; its debug symbols are `<name>.debug_symbols`.
         app: the `godot_app`.
-        **kwargs: common attributes such as `visibility`.
+        **kwargs: common attributes such as `visibility`; `tags` add to `manual`.
     """
     godot_configured_app(
         name = name,
         app = app,
         android_format = "aab",
         platform = Label("//examples:android_distribution"),
-        tags = ["manual"],
+        tags = ["manual"] + kwargs.pop("tags", []),
         **(ANDROID_RELEASE | kwargs)
     )
 
@@ -41,12 +41,12 @@ def ios_release(name, app = ":app", **kwargs):
     Args:
         name: the name of the application; its debug symbols are `<name>.debug_symbols`.
         app: the `godot_app`.
-        **kwargs: common attributes such as `visibility`.
+        **kwargs: common attributes such as `visibility`; `tags` add to `manual`.
     """
     godot_configured_app(
         name = name,
         app = app,
         platform = Label("@autoload_rules_godot//godot/platforms:ios_sim_x86_64"),
-        tags = ["manual"],
+        tags = ["manual"] + kwargs.pop("tags", []),
         **(APPLE_RELEASE | kwargs)
     )
