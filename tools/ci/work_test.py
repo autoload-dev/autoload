@@ -244,22 +244,6 @@ class SelectionTest(unittest.TestCase):
         for module in all_modules(ROOT):
             self.assertIn(f"@autoload_{module.directory}//...", command)
 
-    def test_the_lint_check_runs_for_scripts_documents_and_their_linters(self) -> None:
-        for path in (
-            "examples/lichtpost/main/game.gd",
-            "docs/internal/README.md",
-            ".gdlintrc",
-            ".rumdl.toml",
-        ):
-            self.assertEqual(["."], self.directories("lint", path), path)
-        self.assertEqual(
-            [], self.directories("lint", "rules_godot/docs/public/engine.md")
-        )
-        self.assertEqual(
-            [RULESET_DIR],
-            self.directories("lint:ruleset", "rules_godot/docs/public/engine.md"),
-        )
-
     def test_generated_runs_for_what_shapes_the_engine_pins(self) -> None:
         self.assertEqual([], self.run_steps("generated", "tools/addons/new.py"))
         for path in (

@@ -5,10 +5,12 @@ test's argument is the .gdlintrc.
 
 import contextlib
 import io
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools.lint import gdscript
 
@@ -51,6 +53,16 @@ class GdscriptTest(unittest.TestCase):
         code, output = self.lint(self.write("a.gd", "extends Node\nfunc (\n"))
         self.assertEqual(1, code)
         self.assertIn("does not parse", output)
+
+    def test_writes_no_grammar_cache(self) -> None:
+        # Bazel's sandbox mounts the home directory read-only on Linux.
+        home = self.root / "home"
+        home.mkdir(mode=0o500)
+        with mock.patch.dict(
+            os.environ, {"HOME": str(home), "XDG_CACHE_HOME": str(home)}
+        ):
+            self.assertEqual(0, self.lint(self.write("a.gd", "extends Node\n"))[0])
+        self.assertEqual([], list(home.iterdir()))
 
     def test_leaves_out_the_excluded_scripts(self) -> None:
         self.assertEqual(0, self.lint(self.write(gdscript.EXCLUDED[0], OUT_OF_ORDER))[0])

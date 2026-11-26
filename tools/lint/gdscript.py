@@ -11,6 +11,11 @@ from types import MappingProxyType
 import lark
 import yaml
 from gdtoolkit.linter import DEFAULT_CONFIG, lint_code
+from gdtoolkit.parser import parser
+
+# gdtoolkit caches its compiled grammar in the user's cache directory, which a Bazel action
+# neither declares nor may write.
+parser.disable_grammar_caching()
 
 # Scripts that are not checked, by their path in the ruleset's module, each with its reason.
 EXCLUDED = (
