@@ -48,6 +48,21 @@ py_test(
     data = [":check.sh"],
 )
 
+# `aspect lint` runs the linters of the lint check (.aspect/config.axl, check.bzl).
+py_test(
+    name = "linters_test",
+    size = "small",
+    srcs = ["linters_test.py"],
+    args = [
+        "$(rootpath //:.aspect/config.axl)",
+        "$(rootpath :check.bzl)",
+    ],
+    data = [
+        ":check.bzl",
+        "//:.aspect/config.axl",
+    ],
+)
+
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
 # Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format.
 py_test(
@@ -68,6 +83,7 @@ filegroup(
         "check_test.py",
         "gdscript.py",
         "gdscript_test.py",
+        "linters_test.py",
         "workflows_test.py",
     ],
     tags = ["python_files"],

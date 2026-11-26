@@ -21,12 +21,26 @@ class DeclarationsTest(RepositoryTestCase):
         generate("widget", root=self.root, release=False)
         written = declarations.write(self.root)
         self.assertEqual(
-            [self.root / declarations.SEGMENT, self.root / declarations.REPOSITORIES],
+            [
+                self.root / declarations.SEGMENT,
+                self.root / declarations.REPOSITORIES,
+                self.root / declarations.TARGETS,
+            ],
             written,
         )
         self.assertIn(
             'ADDON_REPOSITORIES = [\n    "@autoload_widget",\n]\n',
             (self.root / declarations.REPOSITORIES).read_text(),
+        )
+
+    def test_the_root_targets_are_its_own_and_those_of_the_segment(self) -> None:
+        generate("widget", root=self.root, release=False)
+        generate("gadget", root=self.root, release=False)
+        declarations.write(self.root)
+        lines = (self.root / declarations.TARGETS).read_text().splitlines()
+        patterns = [line for line in lines if line and not line.startswith("#")]
+        self.assertEqual(
+            ["//...", "@autoload_gadget//...", "@autoload_widget//..."], patterns
         )
 
     def test_a_module_s_version_is_left_to_its_override(self) -> None:

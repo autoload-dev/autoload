@@ -21,8 +21,8 @@ permissions:
 
 # Blacksmith provisions its Bazel remote cache for build outputs before the job
 # starts. Do not layer a disk cache or a second remote cache on top of it;
-# .github/actions/setup keeps only Bazel's downloads between runs, on Linux
-# with the extracted repositories. The merge queue saves the caches that later
+# .github/actions/setup keeps only Bazel's repository cache between runs, on a
+# sticky disk, and the missing Android SDK components. The merge queue saves the caches that later
 # runs read: Blacksmith's branch protection for the Actions cache and sticky
 # disks is off, so every branch reads the entries of a merge group's branch.
 concurrency:
@@ -57,17 +57,10 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          # Both jobs test the ruleset's Android packaging.
-          android-cache: "true"
-          cache-name: ${{ matrix.host.id }}
       # A stale MODULE.bazel.lock fails every Bazel command of the job, in the root
       # module and the ruleset, rather than be rewritten (--config=ci, shared.bazelrc).
       - name: Check MODULE.bazel.lock
         run: echo "common --config=ci" > ci.bazelrc
       - name: Run the host's job
         run: aspect ci ${{ matrix.host.id }}
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
 

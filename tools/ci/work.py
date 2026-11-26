@@ -24,19 +24,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
+from tools.addons.declarations import TARGETS
 from tools.addons.modules import (
     ROOT,
     all_modules,
     choices,
     host,
-    module_name,
 )
 from tools.apps.apps import Application, applications
 from tools.ci.lanes import PROFILE, profile
-from tools.setup.modules import (
-    RULESET,
-    addon_modules,
-)
+from tools.setup.modules import RULESET
 
 RULESET_DIR = RULESET.as_posix()
 
@@ -131,8 +128,8 @@ LINT_CHECK = "bazel build --config=lint"
 
 def root_patterns(root: Path = ROOT) -> str:
     """The root module's target patterns, the add-on modules' included (RG027)."""
-    addons = addon_modules(root)
-    return " ".join(["//...", *(f"@{module_name(Path(a).name)}//..." for a in addons)])
+    lines = (root / TARGETS).read_text().splitlines()
+    return " ".join(line for line in lines if line and not line.startswith("#"))
 
 
 def lint(root: Path = ROOT) -> In:

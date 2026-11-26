@@ -42,11 +42,5 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-        with:
-          # The ruleset's source_engine tests include Android source builds.
-          android-cache: "true"
       - name: Run apps with source-built engines
         run: aspect work source-engine:full
-      - name: Save Bazel downloads
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/setup/save-downloads
