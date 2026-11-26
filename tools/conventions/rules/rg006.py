@@ -52,6 +52,7 @@ class CommandLabels:
     info = RuleInfo(
         "RG006",
         "Documented commands name existing targets",
+        evaluated=True,
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

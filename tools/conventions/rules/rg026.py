@@ -25,6 +25,7 @@ class GodotProcessTests:
     info = RuleInfo(
         "RG026",
         "Tests that start a Godot process carry the godot_process tag",
+        evaluated=True,
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

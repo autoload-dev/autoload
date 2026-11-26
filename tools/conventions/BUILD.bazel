@@ -20,6 +20,25 @@ py_library(
 )
 
 py_library(
+    name = "cache_lib",
+    srcs = ["cache.py"],
+    deps = [
+        ":context_lib",
+        ":framework_lib",
+    ],
+)
+
+py_test(
+    name = "cache_test",
+    size = "small",
+    srcs = ["cache_test.py"],
+    deps = [
+        ":cache_lib",
+        ":test_support",
+    ],
+)
+
+py_library(
     name = "framework_lib",
     srcs = ["framework.py"],
     deps = [":context_lib"],
@@ -73,6 +92,7 @@ py_binary(
     main = "check.py",
     tags = ["manual"],
     deps = [
+        ":cache_lib",
         ":context_lib",
         ":framework_lib",
         ":rules_lib",

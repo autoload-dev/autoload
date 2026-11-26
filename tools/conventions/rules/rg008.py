@@ -51,6 +51,7 @@ class ApplicationContent:
     info = RuleInfo(
         "RG008",
         "Application content lives under main, its tests under tests",
+        evaluated=True,
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:

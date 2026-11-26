@@ -99,6 +99,7 @@ class TargetNames:
     info = RuleInfo(
         "RG002",
         "Ordinary target names use lower snake case",
+        evaluated=True,
     )
 
     def __init__(

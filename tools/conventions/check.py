@@ -7,7 +7,13 @@ from pathlib import Path
 
 from tools.conventions.bazel import Bazel, Scope
 from tools.conventions.context import Buildozer, Context, Workspace, run_tool
-from tools.conventions.framework import run
+from tools.conventions.cache import (
+    ReportCache,
+    cache_directory,
+    checker_sources,
+    evidence_key,
+)
+from tools.conventions.framework import Diagnostic, Rule, report, run
 from tools.conventions.registry import select
 from tools.setup.modules import is_addon_module
 
@@ -28,6 +34,27 @@ def development_bazel(workspace: Workspace, buildozer: Buildozer) -> Bazel:
             for module in workspace.loaded_modules
         },
     )
+
+
+def evaluated_diagnostics(
+    context: Context, rules: tuple[Rule, ...]
+) -> tuple[Diagnostic, ...]:
+    """
+    The diagnostics of the rules that read Bazel's loading evidence, from the result cache
+    when nothing they depend on changed; only a miss loads Bazel.
+    """
+    evaluated = tuple(rule for rule in rules if rule.info.evaluated)
+    if not evaluated:
+        return ()
+    cache = ReportCache(cache_directory())
+    key = evidence_key(context.workspace, evaluated, checker_sources())
+    cached = cache.load(key, evaluated)
+    if cached is not None:
+        print("Reused the cached findings of the rules that read Bazel's evidence.")
+        return cached
+    diagnostics = run(context, evaluated).diagnostics
+    cache.store(key, diagnostics)
+    return diagnostics
 
 
 def main() -> int:
@@ -51,16 +78,21 @@ def main() -> int:
         workspace = Workspace(root, tuple(files))
         buildozer = Buildozer(root, args.buildozer.resolve())
         context = Context(workspace, buildozer, development_bazel(workspace, buildozer))
-        report = run(context, rules)
+        result = report(
+            (
+                *evaluated_diagnostics(context, rules),
+                *run(context, (r for r in rules if not r.info.evaluated)).diagnostics,
+            )
+        )
     # Evidence tools raise EvidenceError, a ValueError.
     except (ValueError, OSError) as error:
         print(f"Convention check could not complete: {error}", file=sys.stderr)
         return 2
-    for diagnostic in report.not_checked:
+    for diagnostic in result.not_checked:
         print(diagnostic)
-    for diagnostic in report.violations:
+    for diagnostic in result.violations:
         print(diagnostic, file=sys.stderr)
-    if report.failures:
+    if result.failures:
         return 1
     print("Automated convention checks passed in every owned Bazel module.")
     return 0
