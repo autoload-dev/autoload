@@ -23,9 +23,9 @@ and [RG025](../../../docs/internal/conventions.md#rg025).
    regions changed together.
 2. Run `aspect code-health` (`-- --only <path>...` for given files) for CodeScene's findings
    and declined files. If CodeScene is unavailable, say so and leave out its subagent.
-3. Run `bazel run //tools/conventions -- --rule RG024 --rule RG025` and `aspect work
-   lint:gdscript lint:markdown`. Their findings are fixed directly; the subagents do not
-   repeat them.
+3. Run `bazel run //tools/conventions -- --rule RG024 --rule RG025` and `aspect work lint
+   lint:ruleset`, which lint GDScript and Markdown too. Their findings are fixed directly; the
+   subagents do not repeat them.
 4. Choose each file's scope. A file in the busiest quarter of the history, or with five or
    more commits, is reviewed whole; other files only where the change touches them.
 

@@ -51,7 +51,8 @@ common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//
 # module use it, not the registry test modules.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%python
 # The lint check of the Markdown and GDScript that Gazelle declares per package
-# (tools/gazelle/lint). Those filegroups are no tests, so it needs a build that names them:
+# (tools/gazelle/lint). Those filegroups are no tests, so it needs a build that names them,
+# such as the lint work's `--output_groups=lint_checks` over every target, or
 # `bazel build --config=check --build_tag_filters=gdscript,markdown //...`.
 common:check --aspects=@autoload_dev//tools/lint:check.bzl%sources
 

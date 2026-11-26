@@ -13,3 +13,10 @@ filegroup(
     ],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "markdown_files",
+    testonly = True,
+    srcs = ["README.md"],
+    tags = ["markdown"],
+)

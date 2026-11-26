@@ -6,6 +6,7 @@ that a .gdlintrc keeps, on the given scripts; it prints each problem and exits 1
 
 import sys
 from pathlib import Path
+from types import MappingProxyType
 
 import lark
 import yaml
@@ -22,12 +23,14 @@ EXCLUDED = (
 )
 
 
-def configuration(path: Path) -> dict:
+def configuration(path: Path) -> MappingProxyType:
     """A .gdlintrc's rules, with gdlint's defaults for those it leaves out."""
-    return {**DEFAULT_CONFIG, **(yaml.safe_load(path.read_text()) or {})}
+    return MappingProxyType(
+        {**DEFAULT_CONFIG, **(yaml.safe_load(path.read_text()) or {})}
+    )
 
 
-def problems(script: str, config: dict) -> list[str]:
+def problems(script: str, config: MappingProxyType) -> list[str]:
     """gdlint's problems of a script, as gdlint prints them; one where it does not parse."""
     try:
         found = lint_code(Path(script).read_text(), config)
