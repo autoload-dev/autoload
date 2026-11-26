@@ -63,12 +63,19 @@ class Bazel:
         )
         return frozenset(output.split())
 
-    def dependent_tests(self, module: Module, labels: tuple[str, ...]) -> frozenset[str]:
-        """The module's tests that depend on one of the labels, in their loading graph."""
+    def dependent_tests(
+        self, module: Module, labels: tuple[str, ...], excluded_tags: tuple[str, ...]
+    ) -> frozenset[str]:
+        """
+        The module's tests that depend on one of the labels, in their loading graph. Tests with
+        an excluded tag stay out of the graph, so their dependencies are never loaded.
+        """
         targets = " + ".join(labels)
+        tags = "|".join(excluded_tags)
         return self.labels(
             module,
-            f"let tests = tests(//...) in $tests intersect rdeps($tests, {targets})",
+            f'let all = tests(//...) in let tests = $all except attr(tags, "\\b({tags})\\b", $all)'
+            f" in $tests intersect rdeps($tests, {targets})",
         )
 
     def invocations(self, module: Module) -> Mapping[str, tuple[tuple[str, str], ...]]:

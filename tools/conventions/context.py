@@ -615,7 +615,7 @@ class BazelTool(Protocol):
     ) -> Mapping[str, tuple[tuple[str, str], ...]]: ...
 
     def dependent_tests(
-        self, module: Module, labels: tuple[str, ...]
+        self, module: Module, labels: tuple[str, ...], excluded_tags: tuple[str, ...]
     ) -> frozenset[str]: ...
 
 

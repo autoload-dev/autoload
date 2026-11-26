@@ -17,8 +17,9 @@ TOOLCHAIN_TYPES = (
     "@autoload_rules_godot//godot/private/config:target_execution_toolchain_type",
 )
 
-# Analysis tests run no action; manual tests run only when named.
-EXEMPT = frozenset({"manual", "starlark_analysis_test"})
+# Analysis tests run no action; manual and source-engine tests run only when named or selected
+# (`--config=source-engine`), and loading the latter's graph would fetch engine sources.
+EXEMPT = frozenset({"manual", "source_engine", "starlark_analysis_test"})
 
 
 class GodotProcessTests:
@@ -37,7 +38,9 @@ class GodotProcessTests:
         with ThreadPoolExecutor() as pool:
             godot = list(
                 pool.map(
-                    lambda module: context.bazel.dependent_tests(module, TOOLCHAIN_TYPES),
+                    lambda module: context.bazel.dependent_tests(
+                        module, TOOLCHAIN_TYPES, tuple(sorted(EXEMPT))
+                    ),
                     modules,
                 )
             )

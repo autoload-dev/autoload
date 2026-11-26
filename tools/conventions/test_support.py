@@ -56,7 +56,9 @@ class StaticTools:
         builds = {build.as_posix() for build in module.builds}
         return tuple(target for target in self._targets if target.location.path in builds)
 
-    def dependent_tests(self, module: Module, labels: tuple[str, ...]) -> frozenset[str]:
+    def dependent_tests(
+        self, module: Module, labels: tuple[str, ...], excluded_tags: tuple[str, ...]
+    ) -> frozenset[str]:
         return self.dependents
 
     def inspect(self, module: Module, labels: tuple[str, ...]) -> Mapping[str, Fact]:

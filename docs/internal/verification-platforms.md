@@ -28,7 +28,8 @@ Each test runs in one lane. The ruleset's tests, its Android and iOS build-outpu
 included, run in the desktop sets (the work `test:bazel` provisions the Android SDK); the
 source-engine lane runs those tagged `source_engine`, which build an engine from source. The
 ruleset's `.bazelrc` leaves them out of every build and test unless `--config=source-engine`
-selects them, so the desktop sets do not analyze their source recipes. CI runs the lane only
+selects them, so the desktop sets do not analyze their source recipes; one named by its label
+runs only with that config too. CI runs the lane only
 in the [Source engine](#source-engine-workflow) workflow; locally, `aspect work source-engine`
 runs `--config=source-engine-main`, which leaves out the tests also tagged
 `source_engine_extended`.

@@ -85,7 +85,10 @@ class GodotProcessTestsTest(RepositoryTest):
             self.findings(
                 test("exports_test", "starlark_analysis_test"),
                 test("fixture_test", "manual", line=2),
-                godot=frozenset({GODOT, "//tests:fixture_test"}),
+                test("source_built_test", "source_engine", line=3),
+                godot=frozenset(
+                    {GODOT, "//tests:fixture_test", "//tests:source_built_test"}
+                ),
             ),
             [],
         )
