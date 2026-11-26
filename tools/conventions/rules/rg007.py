@@ -2,24 +2,31 @@
 
 from collections.abc import Iterable
 
-from tools.conventions.context import Context, Workspace
+from tools.conventions.context import Context, Target
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.manifests import module_manifest
-from tools.setup.modules import is_addon_module
 
-# rules_godot's test operation; add-on modules declare theirs in addon.pkl's testOperations.
+# rules_godot's test operation, which the rule knows even without a test among its targets.
 OPERATIONS = frozenset({"godot_test"})
+# The rule class of the test that godot_test declares (rules_godot/godot/private/run.bzl).
+TEST_RULE = "_godot_test"
 
 
-def declared_operations(workspace: Workspace) -> frozenset[str]:
-    """godot_test and the test operations the add-on modules of the workspace declare."""
-    manifests = (
-        module_manifest(workspace, module)
-        for module in workspace.module_paths
-        if is_addon_module(module)
-    )
+def is_operation_test(target: Target) -> bool:
+    """
+    Whether a target is the Godot test its outermost macro declares under the macro's own
+    name, as a test framework's test macro does, rather than a fixture of a test suite.
+    """
+    name = target.label.rpartition(":")[2]
+    return target.kind == TEST_RULE and name == target.strings.get("generator_name")
+
+
+def test_operations(context: Context) -> frozenset[str]:
+    """godot_test and every macro that declares a Godot test under its own name."""
     return OPERATIONS.union(
-        *(manifest.test_operations for manifest in manifests if manifest is not None)
+        target.strings["generator_function"]
+        for module in context.workspace.loaded_modules
+        for target in context.bazel.rules(module)
+        if is_operation_test(target) and target.strings.get("generator_function")
     )
 
 
@@ -30,7 +37,7 @@ class TestOnlyOperations:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        known = declared_operations(context.workspace)
+        known = test_operations(context)
         for module in context.workspace.loaded_modules:
             for declaration in context.declarations(module):
                 call = declaration.call

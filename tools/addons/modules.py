@@ -4,39 +4,11 @@ from __future__ import annotations
 
 import platform
 from collections.abc import Collection
-from dataclasses import dataclass
 from pathlib import Path
 
-from tools.pkl.evaluate import manifest
 from tools.setup.modules import ADDON_EXAMPLES, ADDONS, declarations, literals
 
 ROOT = Path(__file__).resolve().parents[2]
-# The schema every addons/<module>/addon.pkl amends. Pkl evaluates each addon.pkl against it,
-# with its defaults and types.
-SCHEMA = Path(__file__).resolve().parent / "Addon.pkl"
-# The line an addon.pkl starts with, after comments, relative to its module directory.
-AMENDS = 'amends "../../tools/addons/Addon.pkl"'
-
-
-@dataclass(frozen=True)
-class AddonManifest:
-    """What an addon.pkl declares, as Pkl evaluates it with the schema's defaults."""
-
-    apps: bool
-    test_operations: tuple[str, ...]
-    shared_packages: tuple[str, ...]
-    test_dependencies: tuple[str, ...]
-
-
-def addon_manifest(path: Path) -> AddonManifest:
-    """An addon.pkl's properties; one that does not amend the schema does not evaluate."""
-    value = manifest(path, AMENDS)
-    return AddonManifest(
-        apps=bool(value["apps"]),
-        test_operations=tuple(value["testOperations"]),
-        shared_packages=tuple(value["sharedPackages"]),
-        test_dependencies=tuple(value["testDependencies"]),
-    )
 
 
 def host() -> str:

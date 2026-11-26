@@ -11,7 +11,7 @@ py_library(
         "registry.py",
         "uids.py",
     ],
-    data = ["Addon.pkl"] + glob(["template/**"]),
+    data = glob(["template/**"]),
     visibility = [
         "//tools/android:__pkg__",
         "//tools/ci:__pkg__",
@@ -19,7 +19,6 @@ py_library(
         "//tools/generate:__pkg__",
     ],
     deps = [
-        "//tools/pkl:evaluate_lib",
         "//tools/setup:modules_lib",
     ],
 )

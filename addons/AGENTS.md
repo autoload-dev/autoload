@@ -24,11 +24,6 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
-- `addon.pkl` amends the schema [tools/addons/Addon.pkl](../tools/addons/Addon.pkl), which
-  documents what a module declares: whether its examples build applications (`apps`, true by
-  default) and its test operations. A module with `apps = false`, such as gdunit, builds no
-  application: its examples have no `app` and no Android or iOS release. The add-on tools and
-  the conventions read it; nothing outside the module lists the module.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. Edit them there like any other file of the module.
@@ -39,8 +34,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   the module's release archive, as the registry does.
 - [`examples/addons/<module>/`](../examples/AGENTS.md) in the repository's root module, outside
   the module: its example application, the directory itself or one per scenario in
-  subdirectories, each with the targets `edit`,
-  `pack` and, for a module that builds applications, `app`. The root module consumes the
+  subdirectories, each with the targets `edit`, `pack` and, when it builds an application
+  with Android and iOS releases, `app`. A module whose add-ons ship in no application, such
+  as gdunit, has examples without `app`. The root module consumes the
   module like an external application, through a `local_path_override` in
   `addons.MODULE.bazel`, and the rules of this repository the same way, so an add-on always
   builds against the rules it is changed with. `aspect generate` and the generator write the
@@ -53,8 +49,8 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
   root; the root holds only the module's files,
   [`third_party/`](../docs/internal/glossary.md#modules-and-tests), `tests/`, `bcr/` and
-  the packages several add-ons share, which `addon.pkl` names in `sharedPackages`, such as
-  Firebase's `config/`.
+  packages that other packages load by label, such as Firebase's `config/`, which its
+  examples load as `@autoload_firebase//config`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one
   backend per platform below `native/`, which holds the platform-independent API:
   `native/backends/android` (C++ over JNI to a Godot Android plugin in Java, carried in
@@ -91,7 +87,7 @@ bazel test --test_tag_filters=android //examples/addons/<module>/...   # the And
 bazel test --test_tag_filters=ios //examples/addons/<module>/...       # the iOS Simulator release builds
 ```
 
-Each example project of a module with `apps` declares its release builds, `android_release`
+Each example project with an `app` declares its release builds, `android_release`
 and `ios_release` ([examples/releases.bzl](../examples/releases.bzl)), which carry their
 configuration; their `<name>.build_test` is tagged `android` or `ios`, so only the Linux or the
 macOS job runs it. A test of a mobile application, such as an `ios_app_test` of `ios_release`

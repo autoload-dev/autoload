@@ -96,9 +96,8 @@ without building unrelated app targets; Bazel still respects manual tags and pla
 compatibility.
 
 Each application of `examples/` and each add-on module's examples build and test in the same
-jobs. An add-on module declares in its `addon.pkl` whether its examples build applications
-(`apps`): then every example project has an `app`, and its Android and iOS releases are tests
-tagged `android` and `ios` ([add-on guidance](../../addons/AGENTS.md#tests-and-ci)).
+jobs. An example project that builds an application has an `app`,
+and its Android and iOS releases are tests tagged `android` and `ios` ([add-on guidance](../../addons/AGENTS.md#tests-and-ci)).
 Their iOS tests follow the Apple host policy below.
 
 Python's lint is a Bazel check: `--config=check` adds the aspect `python` of

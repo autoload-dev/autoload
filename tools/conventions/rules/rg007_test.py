@@ -8,16 +8,6 @@ from tools.conventions.test_support import Record, RepositoryTest
 
 
 class TestOnlyOperationsTest(RepositoryTest):
-    def setUp(self) -> None:
-        super().setUp()
-        # An add-on module that declares gdunit_test a test operation.
-        self.write("addons/gdunit/MODULE.bazel", 'module(name = "autoload_gdunit")\n')
-        self.write(
-            "addons/gdunit/addon.pkl",
-            'amends "../../tools/addons/Addon.pkl"\n'
-            'apps = false\ntestOperations = List("gdunit_test")\n',
-        )
-
     def test_true_defaults_satisfy_the_rule_without_a_literal_attribute(self) -> None:
         for operation in ("godot_test", "gdunit_test"):
             call = Call(Location("BUILD.bazel", 1), operation, frozenset({"name"}))
@@ -25,8 +15,12 @@ class TestOnlyOperationsTest(RepositoryTest):
                 {
                     "name": "//:test",
                     "path": "BUILD.bazel",
-                    "strings": {"generator_function": operation},
+                    "strings": {
+                        "generator_function": operation,
+                        "generator_name": "test",
+                    },
                     "booleans": {"testonly": True},
+                    "kind": "_godot_test",
                 }
             ]
             self.assertEqual(
@@ -39,8 +33,14 @@ class TestOnlyOperationsTest(RepositoryTest):
             {
                 "name": "//:tests",
                 "path": "BUILD.bazel",
-                "strings": {"generator_function": "gdunit_test"},
+                "strings": {
+                    "generator_function": "gdunit_test",
+                    "generator_name": "tests",
+                },
                 "booleans": {"testonly": True},
+                # The test godot_test creates under the call's name, which makes gdunit_test
+                # a test operation.
+                "kind": "_godot_test",
             },
             {
                 "name": "//:tests.case_list",
@@ -107,6 +107,24 @@ class TestOnlyOperationsTest(RepositoryTest):
         ]
         self.assertEqual(
             [], list(TestOnlyOperations().evaluate(self.context(calls, records)))
+        )
+
+    def test_a_suite_of_godot_test_fixtures_is_no_test_operation(self) -> None:
+        call = Call(Location("BUILD.bazel", 1), "run_test_suite", frozenset({"name"}))
+        records: list[Record] = [
+            {
+                "name": "//:fixture_run",
+                "path": "BUILD.bazel",
+                "kind": "_godot_test",
+                "strings": {
+                    "generator_function": "run_test_suite",
+                    "generator_name": "suite",
+                },
+                "booleans": {"testonly": False},
+            }
+        ]
+        self.assertEqual(
+            [], list(TestOnlyOperations().evaluate(self.context((call,), records)))
         )
 
     def test_missing_flag_or_generator_evidence_remains_not_checked(self) -> None:

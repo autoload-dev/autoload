@@ -8,7 +8,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import NotRequired, TypedDict
 
-from tools.addons.test_support import copy_schemas
 from tools.conventions.context import (
     Call,
     Context,
@@ -134,7 +133,6 @@ class RepositoryTest(unittest.TestCase):
         # The root module, which includes the add-on generator's declarations.
         self.write("MODULE.bazel", 'include("//:addons.MODULE.bazel")\n')
         self.write("BUILD.bazel", "")
-        copy_schemas(self.root)
 
     def write_consumer_modules(self) -> None:
         """

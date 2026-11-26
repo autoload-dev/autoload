@@ -61,21 +61,33 @@ class AddonModuleLayoutTest(RepositoryTest):
             ],
         )
 
-    def test_the_module_root_holds_its_files_add_ons_and_declared_packages(self) -> None:
+    def test_the_module_root_holds_its_files_add_ons_and_referenced_packages(
+        self,
+    ) -> None:
         self.module("widget")
         self.write("addons/widget/third_party/BUILD.bazel", "")
         self.write("addons/widget/tests/x/BUILD.bazel", "")
-        self.write("addons/widget/shared/BUILD.bazel", "")
-        self.write("addons/widget/stray/BUILD.bazel", 'filegroup(name = "files")\n')
+        # Packages that another package of the module or another module loads by label.
+        self.write("addons/widget/shared/BUILD.bazel", 'filegroup(name = "files")\n')
+        self.write("addons/widget/widget/defs.bzl", 'SHARED = "//shared:files"\n')
+        self.write("addons/widget/rules/defs.bzl", "")
+        self.write("addons/widget/rules/BUILD.bazel", "")
+        self.write(
+            "examples/addons/widget/rules.bzl",
+            'load("@autoload_widget//rules:defs.bzl", "x")\n',
+        )
+        # A package that only names itself, and one that no label names.
+        self.write("addons/widget/stray/BUILD.bazel", 'alias(actual = "//stray:x")\n')
+        self.write("addons/widget/lonely/BUILD.bazel", "")
         self.write("addons/widget/notes.txt", "")
-        pkl = (self.root / "addons/widget/addon.pkl").read_text()
-        self.write("addons/widget/addon.pkl", pkl + 'sharedPackages = List("shared")\n')
         root = "the module's root holds only its files, its add-ons, bcr/, tests/, third_party/"
+        referenced = "and packages that other packages load by label"
         self.assertEqual(
             sorted(m for m in self.evaluate() if m.startswith("addons/widget/")),
             [
-                f"addons/widget/notes.txt: {root} and the sharedPackages of addon.pkl",
-                f"addons/widget/stray: {root} and the sharedPackages of addon.pkl",
+                f"addons/widget/lonely: {root} {referenced}",
+                f"addons/widget/notes.txt: {root} {referenced}",
+                f"addons/widget/stray: {root} {referenced}",
             ],
         )
 
@@ -83,21 +95,7 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.write(".bcr/addons/gone/source.template.json", "{}\n")
         self.assertEqual(["no add-on module owns .bcr/addons/gone"], self.evaluate())
 
-    def test_addon_pkl_amends_the_schema_with_known_values(self) -> None:
-        self.module("widget")
-        amends = 'amends "../../tools/addons/Addon.pkl"\n'
-        for text, message in (
-            (amends + 'apps = "no"\n', "does not evaluate"),
-            (amends + "platforms = List()\n", "does not evaluate"),
-            ("apps = false\n", "starts with amends"),
-        ):
-            with self.subTest(text=text):
-                self.write("addons/widget/addon.pkl", text)
-                findings = self.evaluate()
-                self.assertEqual(len(findings), 1)
-                self.assertIn(message, findings[0])
-
-    def test_a_dependency_only_tests_load_is_declared(self) -> None:
+    def test_a_regular_dependency_is_not_loaded_by_tests_alone(self) -> None:
         self.module("widget")
         manifest = (self.root / "addons/widget/MODULE.bazel").read_text()
         self.write(
@@ -109,26 +107,16 @@ class AddonModuleLayoutTest(RepositoryTest):
             'load("@rules_testing//lib:analysis_test.bzl", "analysis_test")\n',
         )
         self.assertEqual(
-            ["only tests load rules_testing: list it in addon.pkl's testDependencies"],
-            self.evaluate(),
-        )
-        pkl = (self.root / "addons/widget/addon.pkl").read_text()
-        self.write(
-            "addons/widget/addon.pkl", pkl + 'testDependencies = List("rules_testing")\n'
-        )
-        self.assertEqual([], self.evaluate())
-        self.write(
-            "addons/widget/widget/defs.bzl", 'load("@rules_testing//lib:util.bzl", "x")\n'
-        )
-        self.assertEqual(
             [
-                (
-                    "addon.pkl's testDependencies names rules_testing, which tests alone"
-                    " do not load"
-                )
+                "only tests load rules_testing, which every consumer inherits: "
+                "test with it from e2e/addons/widget/"
             ],
             self.evaluate(),
         )
+        self.write(
+            "addons/widget/widget/defs.bzl", 'load("@rules_testing//lib:util.bzl", "x")\n'
+        )
+        self.assertEqual([], self.evaluate())
 
     def test_example_projects_define_their_targets(self) -> None:
         self.module("widget")
@@ -138,12 +126,8 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
 
-    def test_a_module_without_applications_needs_no_app(self) -> None:
+    def test_example_projects_need_no_app(self) -> None:
         self.module("widget")
-        self.write(
-            "addons/widget/addon.pkl",
-            'amends "../../tools/addons/Addon.pkl"\napps = false\n',
-        )
         build = "examples/addons/widget/BUILD.bazel"
         self.write(
             build, (self.root / build).read_text().replace('name = "app"', 'name = "a"')

@@ -4,10 +4,11 @@ from collections.abc import Iterable
 
 from tools.conventions.context import Context, Location, Module, Workspace
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.rules.rg007 import declared_operations
+from tools.conventions.rules.rg007 import test_operations
 from tools.setup.modules import is_addon_module
 
-# The calls that make a Godot project or run Godot, besides the declared test operations.
+# The calls that make a Godot project or run Godot, besides the macros that declare a
+# Godot test (RG007).
 GODOT_RUNS = frozenset(
     {"godot_project", "godot_test", "godot_metadata_sync", "godot_runtime_profile"}
 )
@@ -21,7 +22,7 @@ class NoGodotRunsInAddonModules:
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         yield from self.projects(context.workspace)
-        kinds = GODOT_RUNS | declared_operations(context.workspace)
+        kinds = GODOT_RUNS | test_operations(context)
         for module in context.workspace.modules:
             if is_addon_module(module.path):
                 yield from self.runs(context, module, kinds)

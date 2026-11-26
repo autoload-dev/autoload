@@ -5,14 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.addons.modules import ROOT, SCHEMA
-
-
-def copy_schemas(root: Path) -> None:
-    """Copy the schema each addon.pkl amends to its path below a root."""
-    target = root / SCHEMA.relative_to(ROOT)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(SCHEMA, target)
+from tools.addons.modules import ROOT
 
 
 class RepositoryTestCase(unittest.TestCase):
@@ -22,7 +15,6 @@ class RepositoryTestCase(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        copy_schemas(self.root)
         for name in (".bazelversion", ".bcr/rules_godot/metadata.template.json"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
