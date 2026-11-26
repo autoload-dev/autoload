@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.addons.modules import all_modules, choices
+from tools.addons.modules import choices
 from tools.addons.test_support import checkout
 from tools.apps.apps import lanes as app_lanes
 from tools.ci.lanes import LANES
@@ -182,10 +182,9 @@ class CallersTest(unittest.TestCase):
         self.assertLessEqual({"format", "conventions", "android:setup"}, names)
         self.assertLessEqual(names, set(all_work(ROOT)))
 
-    def test_the_root_lint_names_every_add_on_module(self) -> None:
+    def test_the_root_lint_covers_the_generated_target_patterns(self) -> None:
         command = all_work(ROOT)["lint"].steps()[0].command
-        for module in all_modules(ROOT):
-            self.assertIn(f"@autoload_{module.directory}//...", command)
+        self.assertIn("--target_pattern_file=root.targets", command)
 
 
 if __name__ == "__main__":

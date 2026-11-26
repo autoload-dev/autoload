@@ -24,19 +24,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
+from tools.addons.declarations import TARGETS
 from tools.addons.modules import (
     ROOT,
     all_modules,
     choices,
     host,
-    module_name,
 )
 from tools.apps.apps import Application, applications
 from tools.ci.lanes import PROFILE, profile
-from tools.setup.modules import (
-    RULESET,
-    addon_modules,
-)
+from tools.setup.modules import RULESET
 
 RULESET_DIR = RULESET.as_posix()
 
@@ -129,15 +126,14 @@ SOURCE_ENGINE_EXAMPLES = tuple(
 LINT_CHECK = "bazel build --config=lint"
 
 
-def root_patterns(root: Path = ROOT) -> str:
-    """The root module's target patterns, the add-on modules' included (RG027)."""
-    addons = addon_modules(root)
-    return " ".join(["//...", *(f"@{module_name(Path(a).name)}//..." for a in addons)])
+# The root module's target patterns, the add-on modules' included (RG027), for commands run
+# in the root module.
+ROOT_TARGETS = f"--target_pattern_file={TARGETS}"
 
 
-def lint(root: Path = ROOT) -> In:
+def lint() -> In:
     """The root module's lint check, which covers the add-on modules' Python (RG027)."""
-    return In(".", f"{LINT_CHECK} {root_patterns(root)}")
+    return In(".", f"{LINT_CHECK} {ROOT_TARGETS}")
 
 
 def mobile_tests(lane: str) -> str:
@@ -146,7 +142,7 @@ def mobile_tests(lane: str) -> str:
     the lane, such as the applications' release builds (examples/releases.bzl) and the
     scenarios' smoke tests, which carry their own configuration.
     """
-    return f"bazel test --build_tests_only --test_tag_filters={lane} -- {root_patterns()}"
+    return f"bazel test --build_tests_only --test_tag_filters={lane} {ROOT_TARGETS}"
 
 
 # ==== Ruleset tests ===========================================================
