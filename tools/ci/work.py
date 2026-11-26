@@ -33,7 +33,6 @@ from tools.addons.modules import (
     choices,
     host,
     module_name,
-    module_path,
     release_targets,
 )
 from tools.apps.apps import Application, applications
@@ -46,7 +45,12 @@ from tools.ci.changes import (
     module_files,
 )
 from tools.ci.lanes import LANES, PROFILE, profile
-from tools.setup.modules import RULESET, module_paths, registry_test_modules
+from tools.setup.modules import (
+    RULESET,
+    addon_modules,
+    module_paths,
+    registry_test_modules,
+)
 
 RULESET_DIR = RULESET.as_posix()
 
@@ -175,14 +179,10 @@ LINTERS = files(
 
 
 def lint(root: Path = ROOT) -> In:
-    """
-    The root module's lint check, which covers the add-on modules: their Python targets
-    carry lint-genfiles (RG027), without which rules_lint skips an external repository's
-    sources. The add-on modules' fixes need `aspect lint --fix` in their own directory.
-    """
-    addons = tuple(module.directory for module in all_modules(root))
-    patterns = " ".join(f"@{module_name(addon)}//..." for addon in addons)
-    modules = (".", *(module_path(addon).as_posix() for addon in addons))
+    """The root module's lint check, which covers the add-on modules' Python (RG027)."""
+    addons = addon_modules(root)
+    patterns = " ".join(f"@{module_name(Path(addon).name)}//..." for addon in addons)
+    modules = (".", *addons)
 
     def linted(changes: Changes, _: str) -> bool:
         return any(changes.in_module(module, LINTED) for module in modules)
@@ -344,8 +344,8 @@ def addon_work(root: Path = ROOT) -> Iterator[Work]:
 WORK = (
     # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
     Work("format", "quality", ".", ("aspect format --scope=all --severity=fail",)),
-    # Python's lint check in the root module and the add-on modules; the ruleset's runs with
-    # its tests, and the workflows' lint is a test.
+    # Python's lint check in the root module and the add-on modules; the ruleset's runs in
+    # the desktop lane, and the workflows' lint is a test.
     Work("lint", "quality", ".", (lint(),)),
     # The files no lint aspect sees, across the tree: GDScript's declaration order through
     # gdlint (.gdlintrc), and the heading structure of Markdown through rumdl (.rumdl.toml).
@@ -412,14 +412,13 @@ WORK = (
         ("bazel test --build_tests_only //...",),
         android=True,
     ),
-    # The ruleset's Python lint check, which reuses the tests' analysis of its targets; the
-    # quality lane has no Android NDK, which analysing every target of the ruleset needs.
+    # The ruleset's Python lint check, after its tests, whose analysis it reuses; the quality
+    # lane has no Android NDK, which analysing every target of the ruleset needs.
     Work(
         "lint:ruleset",
         "desktop",
         RULESET_DIR,
         (f"{LINT_CHECK} //...",),
-        android=True,
         inputs=either(module_files(*LINTED), LINTERS),
     ),
     # The scenarios' desktop set needs no Android SDK or NDK; an accidental dependency fails

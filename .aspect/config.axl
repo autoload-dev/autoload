@@ -59,9 +59,8 @@ def config(ctx: ConfigContext):
 
     # The root module's linters, which the other modules reach as
     # @autoload_dev too. Every finding fails a lint, as the lint check of CI, not only those on
-    # changed lines. CI and the pre-push hook run that check, `--config=check`, in Bazel's
-    # builds (tools/lint/linters.bzl); `aspect lint --fix` applies the linters' fixes. The root
-    # module lints the add-on modules too, but their fixes apply only in their own directory.
+    # changed lines. CI runs that check as `--config=check` (tools/lint/linters.bzl); here
+    # `aspect lint --fix` applies the fixes, an add-on module's in its own directory.
     ctx.tasks["lint"].args.aspects = [
         "@autoload_dev//tools/lint:linters.bzl%ruff",
         "@autoload_dev//tools/lint:linters.bzl%ty",

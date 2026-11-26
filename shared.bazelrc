@@ -46,9 +46,7 @@ test --test_output=errors
 common:editor-debug --@autoload_rules_godot//godot:editor_debug
 common:editor-debug --experimental_propagate_custom_flag=@autoload_rules_godot//godot:editor_debug
 
-# The lint check, which `--config=check` adds to a build or test: Ruff and ty on each Python
-# target the build reaches, failing it with their reports (tools/lint/linters.bzl). An aspect
-# changes no option, so the config keeps Bazel's analysis cache; builds without it ignore
-# lint findings. Modules that do not depend on the root module, such as the registry test
-# modules, never use it.
+# The lint check of Python, which fails a build or test on Ruff's and ty's findings
+# (tools/lint/linters.bzl); builds without it ignore them. Only modules that depend on the root
+# module use it, not the registry test modules.
 common:check --aspects=@autoload_dev//tools/lint:linters.bzl%python

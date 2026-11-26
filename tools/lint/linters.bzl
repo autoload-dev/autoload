@@ -42,25 +42,26 @@ def _reports(target):
         if path.endswith(".out.exit_code")
     ]
 
+def _check(target, ctx, reports):
+    """The action that fails with the reports of the linters that found something."""
+    stamp = ctx.actions.declare_file(target.label.name + ".lint")
+    files = [file for pair in reports for file in pair]
+    ctx.actions.run(
+        executable = ctx.executable._check,
+        arguments = [ctx.actions.args().add(stamp).add_all(files)],
+        inputs = files,
+        outputs = [stamp],
+        mnemonic = "LintCheck",
+        progress_message = "Checking the lint of %{label}",
+    )
+    return stamp
+
 def _python_impl(target, ctx):
     stamps = [dep[_LintChecksInfo].stamps for dep in getattr(ctx.rule.attr, "deps", []) if _LintChecksInfo in dep]
     reports = _reports(target)
-    own = []
-    if reports:
-        stamp = ctx.actions.declare_file(target.label.name + ".lint")
-        arguments = ctx.actions.args().add(stamp)
-        for exit_code, report in reports:
-            arguments.add(exit_code).add(report)
-        ctx.actions.run(
-            executable = ctx.executable._check,
-            arguments = [arguments],
-            inputs = [file for pair in reports for file in pair],
-            outputs = [stamp],
-            mnemonic = "LintCheck",
-            progress_message = "Checking the lint of %{label}",
-        )
-        own = [stamp]
-    checks = depset(own, transitive = stamps)
+    if not reports and not stamps:
+        return []
+    checks = depset([_check(target, ctx, reports)] if reports else [], transitive = stamps)
     return [
         _LintChecksInfo(stamps = checks),
         # As a validation, the check runs in every build and test; `lint_checks` names it alone.

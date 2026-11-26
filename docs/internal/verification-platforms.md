@@ -90,11 +90,9 @@ has the commands. Their iOS work follows the Apple-lane policy below.
 Python's lint is a Bazel check: `--config=check` adds the aspect `python` of
 [tools/lint/linters.bzl](../../tools/lint/linters.bzl) to a build or test, which runs Ruff and
 ty on each Python target the build reaches through `deps` and fails it with their reports.
-The aspect changes no option, so the config keeps the analysis cache; builds without it ignore
-lint findings. The work builds only the check's stamps, without validations: `lint` in the
-quality lane covers the root module and, through `lint-genfiles` (RG027), the add-on modules,
-and `lint:ruleset` in the desktop lane covers the ruleset, whose targets need the Android NDK
-to be analysed and share the analysis of `test:bazel`.
+The work builds only the check's stamps: `lint` in the quality lane covers the root module and
+the add-on modules ([RG027](conventions.md#rg027)), and `lint:ruleset` in the desktop lane the
+ruleset, whose targets need the Android NDK to be analysed.
 
 ### Source engine workflow
 
