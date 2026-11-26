@@ -68,19 +68,18 @@ lane. A test that needs the Android lane's machine is tagged `android`, one that
 iOS lane's `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
 hosts, compatibility permitting, such as the `<app>_build_test` of each example's desktop
-`godot_app`, which no pattern builds otherwise, since `godot_app` tags its targets `manual`. The root module and the ruleset each run one `bazel test`,
-one after the other, the root module's over its add-on modules too: two servers that fetch
-the same repository at once can fail to move it into the shared repository contents cache. On
-Linux the formatter, the checks that are no Bazel targets and the lint check of every
-target run first; the add-on generator's self-tests follow, each lane's in a server of its
-own. Last, the macOS job runs every registry test module in place, `bazel test //...` in each
-`bcr/<name>/` with the rules of the checkout, so that a break shows before a release does:
-each is a workspace of its own, whose server a persistent runner keeps warm, where the Linux
-job would start one per module in every run. `Finalize` fails when either
-job failed or was cancelled. The matrix fails fast: the first job to fail cancels the
-other, so it frees its runner and `Finalize` fails at once, which in the merge queue
-removes the entry without waiting for the slower job; the work it finished stays in
-Bazel's caches.
+`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The root module and the
+ruleset each run one `bazel test`, one after the other, the root module's over its add-on
+modules too: two servers that fetch the same repository at once can fail to move it into the
+shared repository contents cache. On Linux the formatter, the checks that are no Bazel
+targets and the lint check of every target run first; the add-on generator's self-tests
+follow, each lane's in a server of its own. Last, the macOS job runs every registry test
+module in place with the rules of the checkout (`python3 -m tools.ci.release_archive
+--in-place`), so that a break shows before a release does;
+[develop.axl](../../.aspect/develop.axl) says why only there. `Finalize` fails when either
+job failed or was cancelled. The matrix fails fast: the first job to fail cancels the other,
+so it frees its runner and `Finalize` fails at once, which in the merge queue removes the
+entry without waiting for the slower job; the work it finished stays in Bazel's caches.
 
 The lanes' work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the repository's own,
 each add-on module's lanes as its `addon.pkl` names them and the add-on generator's
