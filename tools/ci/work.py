@@ -244,7 +244,8 @@ def contracts(lane: str) -> Work:
     """
     The API output contract cases of a lane. The checker builds itself and extracts the API
     in the default profile, which the docs work shares; its configured queries of the
-    lane's cases run in the lane's profile (tools/docs/evidence.py).
+    lane's cases run in the lane's profile (tools/docs/evidence.py). Its inputs are the docs
+    work's, since the cases evaluate the same API and generated repositories.
     """
     return Work(
         f"contracts:{lane}",
@@ -253,6 +254,7 @@ def contracts(lane: str) -> Work:
         (contracts_command(lane),),
         android=lane == "android",
         profile=DEFAULT_PROFILE,
+        inputs=DOCS_INPUTS,
     )
 
 
