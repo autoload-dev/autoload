@@ -12,7 +12,7 @@ builds them as a consumer builds: through the root module's `MODULE.bazel`, with
 |---|---|
 | `smoke/<operating_system>/` | The smoke path of one platform: its own project, extensions and checks, through public labels only |
 | `script_run/`, `patched_engine/` | A focused consumer scenario named after what the user does, with its own project files and native fixtures |
-| `BUILD.bazel` | The configuration suites |
+| `BUILD.bazel` | The mobile suites |
 
 ## Common workflows
 
@@ -24,9 +24,10 @@ bazel test //e2e/rules_godot/...
 ```
 
 `aspect work test:regressions` runs the same without the Android SDK, as CI does. Android and
-iOS tests are `manual` and run in configuration suites: `test_suite` targets in
-`BUILD.bazel`, one per configuration of the root's `.bazelrc`, run with that
-`--config`. The `android` and `ios` work of their lanes runs them; the [fixture
+iOS tests are `manual` and run in mobile suites: `test_suite` targets in `BUILD.bazel`, one
+per operating system. Their applications carry their configuration
+(`godot_configured_app`), so the suites run without `--config`. The `android` and `ios`
+work of their lanes runs them; the [fixture
 catalogue](../../docs/internal/verification-recipes.md#mobile-artifact-checks) lists the
 suites.
 

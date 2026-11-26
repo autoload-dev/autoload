@@ -29,6 +29,7 @@ from tools.addons.modules import (
     choices,
     host,
     module_path,
+    release_targets,
 )
 
 # `bazel test` with no test among the targets exits with 4 after a successful build.
@@ -57,9 +58,9 @@ def desktop_patterns(module: AddonModule) -> list[str]:
 def releases(lane: str, module: AddonModule) -> list[str]:
     """The release builds of a mobile lane of the module's example projects."""
     return [
-        f"{module.project_package(project)}:{lane}_release{suffix}"
+        target
         for project in projects(module)
-        for suffix in ("", ".debug_symbols")
+        for target in release_targets(lane, module.project_package(project))
     ]
 
 
@@ -97,7 +98,7 @@ def run(lane: str, modules: Sequence[AddonModule]) -> None:
     argv = command(lane, modules)
     print("+", " ".join(argv), flush=True)
     status = subprocess.run(argv, cwd=ROOT, check=False).returncode
-    if status not in ({0, NO_TESTS} if lane == "desktop" else {0}):
+    if status not in (0, NO_TESTS):
         sys.exit(status)
 
 

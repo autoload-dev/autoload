@@ -74,12 +74,12 @@ py_test(
     deps = [":android_apps"],
 )
 
-# The App Bundle and its debug symbols as --config=android-release --config=aab builds them.
 # The release App Bundle with its debug symbols, as the repository's release builds build them.
 godot_configured_app(
     name = "android_release_bundle_symbols_match_stripped_extension_test_app",
     android_format = "aab",
     app = _ANDROID_APPS + "app",
+    # ANDROID_RELEASE of //godot/private:configured_app.bzl, which a BUILD file cannot unpack.
     compilation_mode = "opt",
     copts = [
         "-g",

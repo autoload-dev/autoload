@@ -83,16 +83,43 @@ CONFIGURED_ATTRS = {
     "variant": attr.string(doc = "The `//godot:variant` setting: which of Godot's binaries the build is for.", values = ["", "debug", "editor", "release"]),
 }
 
+# The native settings of a release build whose debug symbols ship apart, as the root
+# module's .bazelrc configurations android-release and ios-release set them.
+ANDROID_RELEASE = {
+    "compilation_mode": "opt",
+    # Do not encode a changing sandbox directory in DWARF.
+    "copts": [
+        "-g",
+        "-fdebug-compilation-dir=.",
+    ],
+    "strip": "always",
+}
+
+APPLE_RELEASE = {
+    # Match the stripped application to its retained DWARF by executable/dSYM UUID.
+    "apple_generate_dsym": True,
+    "compilation_mode": "opt",
+    "objc_enable_binary_stripping": True,
+}
+
 # Providers of applications that inspection rules, such as android_bundle_test, read.
 _FORWARDED = [AndroidBundleInfo, ApkInfo, AppleBundleInfo, OutputGroupInfo]
 
+def forwarded_providers(target):
+    """
+    The application providers of a target, which inspection rules read.
+
+    Args:
+        target: the configured target.
+
+    Returns:
+        A list of providers.
+    """
+    return [target[provider] for provider in _FORWARDED if provider in target]
+
 def configured_providers(ctx):
     """
-    The providers of a rule whose `target` attribute carries the configuration.
-
-    They are the target's default outputs and the application providers, or the files of
-    one output group when the rule has a set `output_group` attribute; the runfiles too when
-    it has a set `runfiles` attribute.
+    The default outputs and application providers of the target a rule's `target` carries.
 
     Args:
         ctx: the context of the rule.
@@ -101,17 +128,9 @@ def configured_providers(ctx):
         A list of providers.
     """
     target = ctx.attr.target[0]
-    output_group = getattr(ctx.attr, "output_group", "")
     files = target[DefaultInfo].files
-    if output_group:
-        files = getattr(target[OutputGroupInfo], output_group)
-    runfiles = ctx.runfiles(transitive_files = files)
-    if getattr(ctx.attr, "runfiles", False):
-        runfiles = runfiles.merge(target[DefaultInfo].default_runfiles)
-    providers = [DefaultInfo(files = files, runfiles = runfiles)]
-    if not output_group:
-        providers.extend([target[provider] for provider in _FORWARDED if provider in target])
-    return providers
+    providers = [DefaultInfo(files = files, runfiles = ctx.runfiles(transitive_files = files))]
+    return providers + forwarded_providers(target)
 
 _configured = transition(
     implementation = configured_settings,

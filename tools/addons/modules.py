@@ -54,6 +54,14 @@ def builds_apps(lanes: tuple[str, ...] | list[str]) -> bool:
     return not set(lanes).isdisjoint(APP_LANES)
 
 
+def release_targets(lane: str, package: str) -> tuple[str, str]:
+    """
+    An application package's release build of a mobile lane and its debug symbols, which
+    the package declares with examples/releases.bzl.
+    """
+    return (f"{package}:{lane}_release", f"{package}:{lane}_release.debug_symbols")
+
+
 def module_attributes(manifest: str) -> dict[str, object]:
     """The literal attributes of a MODULE.bazel's module() declaration."""
     for declaration in declarations(manifest):

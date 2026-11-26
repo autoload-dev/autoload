@@ -83,12 +83,11 @@ class WorkTest(unittest.TestCase):
         for name in ("inspect:mobile", "desktop:addon:widget", "ios:addon:widget"):
             self.assertFalse(any(name in names for names in planned.values()), name)
 
-    def test_a_module_s_own_work_runs_in_the_default_profile(self) -> None:
+    def test_add_on_work_runs_in_the_default_profile(self) -> None:
         # Its release builds carry their configuration (examples/releases.bzl).
         work = all_work(self.root)
-        self.assertIsNone(work["ios:addon:widget"].bazel_profile)
-        self.assertEqual("default", work["ios:addons"].bazel_profile)
-        self.assertIsNone(work["desktop:addon:widget"].bazel_profile)
+        for name in ("ios:addon:widget", "ios:addons", "desktop:addon:widget"):
+            self.assertIsNone(work[name].bazel_profile, name)
         self.assertTrue(work["android:addon:gadget"].android)
 
     def test_fast_tests_run_in_the_ruleset_only_when_named(self) -> None:
@@ -132,8 +131,10 @@ class WorkTest(unittest.TestCase):
         android = Work("y", "android", ".", ("true",), android=True)
         process = argv(android, "bazel build //:app")
         self.assertIn('export ANDROID_HOME="$ANDROID_SDK_ROOT"', process[-1])
-        profiled = Work("z", "ios", ".", ("true",))
-        self.assertIn("export AUTOLOAD_BAZEL_PROFILE=ios;", argv(profiled, "true")[-1])
+        profiled = Work("z", "source-engine", ".", ("true",))
+        self.assertIn(
+            "export AUTOLOAD_BAZEL_PROFILE=source-engine;", argv(profiled, "true")[-1]
+        )
         # The ruleset's steps keep its default server.
         self.assertNotIn(
             "AUTOLOAD_BAZEL_PROFILE", argv(profiled, "true", "rules_godot")[-1]
@@ -146,10 +147,10 @@ class WorkTest(unittest.TestCase):
         work = all_work(ROOT)
         for name, profile in (
             # Mobile applications carry their configuration (godot_configured_app).
-            ("android", "default"),
+            ("android", None),
             # The checker picks the lane's profile for its cases' configured queries.
             ("contracts:android", "default"),
-            ("ios", "default"),
+            ("ios", None),
             ("contracts:ios", "default"),
             ("source-engine", "source-engine"),
             ("test:example:petri", "source-engine"),

@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.addons.modules import ROOT, all_modules, choices, host
+from tools.addons.modules import ROOT, all_modules, choices, host, release_targets
 from tools.apps.apps import Application, applications
 from tools.ci.changes import (
     Changes,
@@ -124,29 +124,20 @@ SOURCE_ENGINE_EXAMPLES = tuple(
 )
 
 
-def addon_app_packages(lane: str, root: Path = ROOT) -> tuple[str, ...]:
-    """The example projects of the add-on modules whose lanes include a mobile lane."""
-    return tuple(
-        module.project_package(project)
-        for module in all_modules(root)
-        if lane in module.lanes
-        for project in module.projects
-    )
-
-
-def release_builds(lane: str) -> str:
+def release_tests(lane: str, suite: str) -> str:
     """
-    The release builds of every application of a mobile lane with their debug symbols: the
-    applications that name the lane and the add-on modules' examples. Each package declares
-    them as `<lane>_release`, which carries its own configuration (examples/releases.bzl).
+    The release builds of the applications that name a mobile lane, with their debug
+    symbols, and a test suite, in one `bazel test`. Each package declares its releases as
+    `<lane>_release`, which carries its own configuration (examples/releases.bzl); the
+    add-on modules' lanes build their examples' (tools/addons/lanes.py).
     """
-    packages = (
-        *(app.package for app in APPLICATIONS if lane in app.lanes),
-        *addon_app_packages(lane),
-    )
-    suffixes = (f":{lane}_release", f":{lane}_release.debug_symbols")
-    targets = " ".join(package + suffix for package in packages for suffix in suffixes)
-    return f"bazel build {targets}"
+    targets = [
+        target
+        for app in APPLICATIONS
+        if lane in app.lanes
+        for target in release_targets(lane, app.package)
+    ]
+    return f"bazel test {' '.join(targets)} {suite}"
 
 
 # ==== Checks ==================================================================
@@ -286,7 +277,6 @@ def lane_addon_work(lane: str) -> Work:
         ".",
         (f"python3 -m tools.addons.lanes {lane}",),
         android=lane == "android",
-        profile=DEFAULT_PROFILE,
     )
 
 
@@ -429,23 +419,20 @@ WORK = (
     *example_work(),
     contracts("android"),
     # The mobile lanes' release builds and smoke tests carry their configuration
-    # (godot_configured_app), so they keep the workspace's own server; only their contract
-    # cases evaluate in the lane's profile.
+    # (godot_configured_app), so they keep the workspace's own server.
     Work(
         "android",
         "android",
         ".",
-        (release_builds("android"), f"bazel test {SCENARIOS}:android"),
+        (release_tests("android", f"{SCENARIOS}:android"),),
         android=True,
-        profile=DEFAULT_PROFILE,
     ),
     contracts("ios"),
     Work(
         "ios",
         "ios",
         ".",
-        (release_builds("ios"), f"bazel test {SCENARIOS}:ios"),
-        profile=DEFAULT_PROFILE,
+        (release_tests("ios", f"{SCENARIOS}:ios"),),
     ),
     contracts("source-engine"),
     # Every source-engine case, the applications' it verifies included. CI runs it in the
@@ -489,8 +476,8 @@ WORK = (
     # is a Bazel workspace of its own, so it runs only when named.
     Work("release:archives", None, ".", ("python3 -m tools.ci.release_archive",)),
     # The smoke applications' Android and iOS artifacts, inspected on macOS. They must be built
-    # in the default profile first, as the recipe builds them
-    # (docs/internal/verification-recipes.md); the lanes build theirs in their own profiles.
+    # with --config=android and --config=official first, as the recipe builds them
+    # (docs/internal/verification-recipes.md).
     Work(
         "inspect:mobile",
         None,

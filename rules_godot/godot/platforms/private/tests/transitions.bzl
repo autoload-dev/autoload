@@ -12,8 +12,8 @@ load(
     "//godot/private:configured_app.bzl",
     "CONFIGURED_ATTRS",
     "CONFIGURED_SETTINGS",
-    "configured_providers",
     "configured_settings",
+    "forwarded_providers",
 )
 load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
@@ -43,8 +43,21 @@ _configured = transition(
     outputs = _SETTINGS,
 )
 
+def _configured_outputs_impl(ctx):
+    target = ctx.attr.target[0]
+    files = target[DefaultInfo].files
+    if ctx.attr.output_group:
+        files = getattr(target[OutputGroupInfo], ctx.attr.output_group)
+    runfiles = ctx.runfiles(transitive_files = files)
+    if ctx.attr.runfiles:
+        runfiles = runfiles.merge(target[DefaultInfo].default_runfiles)
+    providers = [DefaultInfo(files = files, runfiles = runfiles)]
+    if not ctx.attr.output_group:
+        providers.extend(forwarded_providers(target))
+    return providers
+
 configured_outputs = rule(
-    implementation = configured_providers,
+    implementation = _configured_outputs_impl,
     doc = "The default outputs and application providers, or one output group, of a target built under an export platform.",
     attrs = CONFIGURED_ATTRS | {
         "target": attr.label(mandatory = True, cfg = _configured, doc = "The fixture to build."),

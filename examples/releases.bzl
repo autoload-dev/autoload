@@ -9,7 +9,12 @@ build them in the same Bazel invocation and configuration as everything else.
 
 # The ruleset's configured applications, which it does not support as API.
 # buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configured_app")
+load(
+    "@autoload_rules_godot//godot/private:configured_app.bzl",
+    "ANDROID_RELEASE",
+    "APPLE_RELEASE",
+    "godot_configured_app",
+)
 
 def android_release(name, app = ":app", **kwargs):
     """
@@ -24,16 +29,9 @@ def android_release(name, app = ":app", **kwargs):
         name = name,
         app = app,
         android_format = "aab",
-        compilation_mode = "opt",
-        # Do not encode a changing sandbox directory in DWARF.
-        copts = [
-            "-g",
-            "-fdebug-compilation-dir=.",
-        ],
         platform = Label("//examples:android_distribution"),
-        strip = "always",
         tags = ["manual"],
-        **kwargs
+        **(ANDROID_RELEASE | kwargs)
     )
 
 def ios_release(name, app = ":app", **kwargs):
@@ -48,11 +46,7 @@ def ios_release(name, app = ":app", **kwargs):
     godot_configured_app(
         name = name,
         app = app,
-        # Match the stripped application to its retained DWARF by executable/dSYM UUID.
-        apple_generate_dsym = True,
-        compilation_mode = "opt",
-        objc_enable_binary_stripping = True,
         platform = Label("@autoload_rules_godot//godot/platforms:ios_sim_x86_64"),
         tags = ["manual"],
-        **kwargs
+        **(APPLE_RELEASE | kwargs)
     )
