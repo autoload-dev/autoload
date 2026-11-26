@@ -63,10 +63,19 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     """
     aar = shell
     if engine_library:
+        # The shell's own classes, for plugins to compile against without the engine.
+        aar_import(
+            name = name + ".shell",
+            aar = shell,
+            deps = _SHELL_DEPS,
+            visibility = _PRIVATE,
+            **common_kwargs(kwargs)
+        )
         godot_android_engine_aar(
             name = name + ".engine_aar",
             aar = shell,
             engine_library = engine_library,
+            shell_classes = ":" + name + ".shell",
             visibility = _PRIVATE,
             **common_kwargs(kwargs)
         )

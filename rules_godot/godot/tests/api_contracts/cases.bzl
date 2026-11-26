@@ -8,6 +8,9 @@ options; conditions, the contract availabilities the configuration activates;
 forwarded_groups, when the root forwards an upstream target's output groups;
 host_replacements, string substitutions per host operating system. Repository APIs
 list documented entrypoints instead of a target, each with its fixture labels.
+
+PUBLIC_LIBRARIES configures the public libraries that build for one platform only, and
+BEHAVIOR_TESTS names the tests that show why an API's companions are separate targets.
 """
 
 _FIXTURES = "//godot/tests/api_contracts:"
@@ -149,7 +152,6 @@ API_CASES = {
             ] + ["android_%s_debug" % cpu for cpu in ["arm64", "x86_64"]]},
             {
                 "@{repository}//android:{variant}": ["@godot//android:" + v for v in _VARIANTS],
-                "@{repository}//android:plugin_api": ["@godot//android:plugin_api"],
             },
         ),
         "options": ["--config=android", _EXPORT_PLATFORM + "android_arm64"],
@@ -204,6 +206,16 @@ API_CASES = {
             ],
         },
         "options": ["--config=android"],
+    },
+}
+
+# Public library targets, which build only for one platform, by label: the lane whose
+# configuration analyzes them, its options and the provider their consumers depend on.
+PUBLIC_LIBRARIES = {
+    "//godot/platforms:android_plugin_api": {
+        "lane": "android",
+        "options": [_EXPORT_PLATFORM + "android_arm64"] + _ANDROID_SDK_TOOLCHAINS,
+        "provider": "JavaInfo",
     },
 }
 

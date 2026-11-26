@@ -23,6 +23,6 @@ android_library(
     tags = ["manual"],
     target_compatible_with = ["@platforms//os:android"],
     deps = [
-        "@godot//android:plugin_api",
+        "@autoload_rules_godot//godot/platforms:android_plugin_api",
     ],
 )

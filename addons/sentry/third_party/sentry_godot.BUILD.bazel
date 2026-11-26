@@ -41,7 +41,7 @@ _ANDROID_ABIS = {
         aar = "bin/android/sentry_android_godot_plugin.%s.aar" % variant,
         target_compatible_with = ["@platforms//os:android"],
         deps = [
-            "@godot//android:plugin_api",
+            "@autoload_rules_godot//godot/platforms:android_plugin_api",
             "@maven//:io_sentry_sentry_android",
             "@maven//:org_jetbrains_kotlin_kotlin_stdlib",
         ],

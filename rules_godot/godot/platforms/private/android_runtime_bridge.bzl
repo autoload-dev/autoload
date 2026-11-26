@@ -1,5 +1,6 @@
 """
-Android runtime toolchain payloads and the runtime bridge that exposes them in the Android split.
+Android runtime toolchain payloads, the runtime bridge that exposes them in the Android split,
+and the shell classes that Android plugins compile against.
 
 The pinned rules_android 0.8.0 aspects do not traverse toolchain edges. Android runtime
 components therefore replay the dex/desugar, neverlink and engine-symbol aspects on their
@@ -35,16 +36,27 @@ AndroidSymbolsInfo = provider(
     fields = {"files": "Dictionary of <abi>/<name> paths to unstripped .so Files."},
 )
 
+# The unmodified shell library behind an engine AAR, whose classes need no engine build.
+AndroidShellClassesInfo = provider(
+    doc = "The Android shell library whose AAR a godot_android_runtime repacked with an engine library.",
+    fields = {"target": "aar_import Target of the unmodified shell AAR, with the payload aspects applied."},
+)
+
 def _engine_symbols_impl(_target, ctx):
     # godot_android_runtime's aar_import imports the engine AAR that carries a
-    # source-built engine library; prebuilt engines bring no symbols or producer metadata.
+    # source-built engine library; prebuilt engines bring no symbols, producer metadata or
+    # separate shell classes.
     aar = getattr(ctx.rule.attr, "aar", None)
     if not aar:
         return []
-    return [aar[provider] for provider in [AndroidSymbolsInfo, GodotEngineVersionInfo] if provider in aar]
+    return [
+        aar[provider]
+        for provider in [AndroidSymbolsInfo, GodotEngineVersionInfo, AndroidShellClassesInfo]
+        if provider in aar
+    ]
 
 engine_symbols = aspect(
-    doc = "Read the unstripped engine libraries behind a godot_android_runtime.",
+    doc = "Read the unstripped engine libraries and the unmodified shell behind a godot_android_runtime.",
     implementation = _engine_symbols_impl,
 )
 
@@ -65,6 +77,7 @@ _FORWARDED = [
     AndroidCcLinkParamsInfo,
     AndroidLintRulesInfo,
     AndroidSymbolsInfo,
+    AndroidShellClassesInfo,
     ManifestGraphInfo,
 ]
 
@@ -102,4 +115,24 @@ runtime_bridge_android = rule(
     toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
     attrs = ENGINE_SETTINGS_ATTRS | {"incremental_dexing": attr.int(default = 0, values = [0])},
     cfg = engine_settings,
+)
+
+def _plugin_api_impl(ctx):
+    payload = engine_toolchain(ctx, "runtime", "this Android platform slice and variant").payload
+    if AndroidShellClassesInfo in payload:
+        payload = payload[AndroidShellClassesInfo].target
+    return android_runtime_providers(payload)
+
+# Named like runtime_bridge_android, for the same reasons. No transition: a plugin compiles
+# against the runtime of the configuration it is built in, its pack's.
+plugin_api_android = rule(
+    doc = """
+        Expose the Android shell library of the runtime component resolved in this
+        configuration, for Android plugins to compile against: the unmodified shell's when
+        the runtime's AAR carries a replaced engine library, so compiling needs no engine
+        build.
+        """,
+    implementation = _plugin_api_impl,
+    toolchains = [config_common.toolchain_type(RUNTIME_TOOLCHAIN_TYPE, mandatory = False)],
+    attrs = {"incremental_dexing": attr.int(default = 0, values = [0])},
 )

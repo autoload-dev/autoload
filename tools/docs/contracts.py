@@ -37,7 +37,12 @@ from tools.docs.output_contracts import (
     is_shared_library,
     kind_errors,
 )
-from tools.docs.repository_contracts import check_public_targets, check_repository
+from tools.docs.repository_contracts import (
+    check_public_libraries,
+    check_public_targets,
+    check_repository,
+    library_lane_errors,
+)
 from tools.docs.ruleset import INVENTORY
 
 MANIFEST = "//godot/tests/api_contracts:case_manifest.json"
@@ -270,9 +275,16 @@ def lane_independent_errors(
     manifest: dict[str, Any],
     public_targets: list[str],
 ) -> list[str]:
-    """Lane-independent registry coverage and public targets."""
+    """
+    Lane-independent registry coverage and public targets.
+
+    A public library is analyzed only in its platform's configuration, so this host check
+    leaves it to its lane (check_public_libraries).
+    """
     errors = coverage_errors(apis, manifest["cases"], manifest["behavior"])
-    return errors + check_public_targets(bazel, public_targets)
+    libraries = manifest["libraries"]
+    targets = [label for label in public_targets if label not in libraries]
+    return errors + library_lane_errors(libraries) + check_public_targets(bazel, targets)
 
 
 def behavior_errors(
@@ -338,6 +350,7 @@ def main() -> int:
             )
         )
     errors.extend(behavior_errors(bazel, manifest["behavior"], args.lane))
+    errors.extend(check_public_libraries(bazel, manifest["libraries"], args.lane))
     cases = {key: host_case(case) for key, case in manifest["cases"].items()}
     selected = lane_cases(cases, args.lane)
     errors.extend(lane_errors(bazel, apis, selected, args.lane))

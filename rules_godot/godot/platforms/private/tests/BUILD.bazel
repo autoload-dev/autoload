@@ -1,3 +1,4 @@
+load(":android_plugin_api_tests.bzl", "android_plugin_api_test_suite")
 load(":android_runtime_tests.bzl", "android_runtime_test_suite")
 load(":android_toolchains_tests.bzl", "android_toolchains_test_suite")
 load(":configuration_invariance_tests.bzl", "configuration_invariance_test_suite")
@@ -23,6 +24,8 @@ shell_overrides_test_suite(name = "shell_overrides_test_suite")
 signing_inputs_test_suite(name = "signing_inputs_test_suite")
 
 android_runtime_test_suite(name = "android_runtime_test_suite")
+
+android_plugin_api_test_suite(name = "android_plugin_api_test_suite")
 
 configuration_invariance_test_suite(name = "configuration_invariance_test_suite")
 

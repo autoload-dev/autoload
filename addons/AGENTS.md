@@ -56,6 +56,9 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   `platform_deps`), `native/backends/apple` (Objective-C++ against the Apple SDK) and
   `native/backends/unsupported` for the editor and desktop platforms. Editor builds never
   fetch an SDK.
+- A Java plugin compiles against Godot's classes through
+  `@autoload_rules_godot//godot/platforms:android_plugin_api`, the shell library of the engine
+  the application ships, so a module registers no engine of its own.
 - Header libraries set `include_prefix = "<module>"` and `strip_include_prefix = "/"`, so
   includes read `<module>/<addon>/native/...`.
 - Every extension target has a name unique across all add-ons and applications: on iOS the

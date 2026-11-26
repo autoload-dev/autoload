@@ -8,7 +8,12 @@ load("//godot/engine/private:generator.bzl", "GodotEngineVersionInfo")
 load("//godot/platforms/private:shell.bzl", "ENGINE_CHECK_ATTRS", "check_engine", "pack_facts")
 load("//godot/private:symbols.bzl", "STRIP_ATTRS", "keep_debug_info", "packaged")
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "PLATFORM_ATTRS", "target_platform")
-load(":android_runtime_bridge.bzl", _AndroidSymbolsInfo = "AndroidSymbolsInfo")
+load(
+    ":android_runtime_bridge.bzl",
+    "ANDROID_PAYLOAD_ASPECTS",
+    "AndroidShellClassesInfo",
+    _AndroidSymbolsInfo = "AndroidSymbolsInfo",
+)
 
 visibility("private")
 
@@ -130,6 +135,8 @@ def _engine_aar_impl(ctx):
     # for component provenance.
     if ctx.attr.engine_library and GodotEngineVersionInfo in ctx.attr.engine_library[0]:
         result.append(ctx.attr.engine_library[0][GodotEngineVersionInfo])
+    if ctx.attr.shell_classes:
+        result.append(AndroidShellClassesInfo(target = ctx.attr.shell_classes))
     return result
 
 godot_android_engine_aar = rule(
@@ -155,6 +162,13 @@ godot_android_engine_aar = rule(
             """,
             allow_files = [".so"],
             cfg = keep_debug_info,
+        ),
+        "shell_classes": attr.label(
+            doc = """
+            aar_import of the unmodified shell AAR, whose classes Android plugins compile
+            against without waiting for the engine library.
+            """,
+            aspects = ANDROID_PAYLOAD_ASPECTS,
         ),
     } | PLATFORM_ATTRS | {
         "_android_packager": attr.label(

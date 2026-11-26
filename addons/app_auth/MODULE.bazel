@@ -14,16 +14,6 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_android", version = "0.8.1")
 bazel_dep(name = "rules_cc", version = "0.2.28")
 
-# The engine whose Android plugin API the add-ons' Java plugins compile against. The root
-# module owns the name; identical requests from several modules coalesce.
-godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
-godot_engines.engine(
-    name = "godot",
-    default = True,
-    version = "4.7.2",
-)
-use_repo(godot_engines, "godot")
-
 # The add-ons' own godot-cpp, with the classes their native code uses.
 godot_cpp_bindings = use_repo_rule(
     "@autoload_rules_godot//godot/extension:repositories.bzl",
