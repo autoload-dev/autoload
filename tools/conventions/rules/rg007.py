@@ -17,7 +17,11 @@ def is_operation_test(target: Target) -> bool:
     name, as a test framework's test macro does, rather than a fixture of a test suite.
     """
     name = target.label.rpartition(":")[2]
-    return target.kind == TEST_RULE and name == target.strings.get("generator_name")
+    return (
+        target.kind == TEST_RULE
+        and name == target.strings.get("generator_name")
+        and "generator_function" in target.strings
+    )
 
 
 def test_operations(context: Context) -> frozenset[str]:
@@ -26,7 +30,7 @@ def test_operations(context: Context) -> frozenset[str]:
         target.strings["generator_function"]
         for module in context.workspace.loaded_modules
         for target in context.bazel.rules(module)
-        if is_operation_test(target) and target.strings.get("generator_function")
+        if is_operation_test(target)
     )
 
 

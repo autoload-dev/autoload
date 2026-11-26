@@ -37,8 +37,7 @@ ROOT_ENTRIES = ", ".join(
 STARLARK_FILES = ("BUILD", "BUILD.bazel", ".bzl", "MODULE.bazel")
 # The shared settings each module's .bazelrc imports.
 IMPORT = "import %workspace%/../module.bazelrc"
-# The targets each example project defines. Its :app is not required: the release builds
-# of examples/releases.bzl fail without it.
+# The targets each example project defines.
 PROJECT_TARGETS = ("edit", "pack")
 NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
 EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
@@ -69,19 +68,6 @@ def declared_names(context: Context) -> dict[str, set[str | None]]:
     return names
 
 
-def allowed_entry(path: Path, is_file: bool, names: dict[str, set[str | None]]) -> bool:
-    """
-    Whether a root entry is a module file, a directory every module may have or an add-on,
-    whose BUILD file declares a target named like its directory.
-    """
-    if is_file:
-        return path.name in ROOT_FILES
-    builds = ((path / build).as_posix() for build in BUILD_FILES)
-    return path.name in ROOT_DIRECTORIES or any(
-        path.name in names[build] for build in builds
-    )
-
-
 def names_package(value: str, labels: tuple[str, ...]) -> bool:
     """Whether a string is one of the labels or a label below them."""
     return any(
@@ -103,6 +89,29 @@ def referenced_by_label(workspace: Workspace, module: Path, package: Path) -> bo
         if any(names_package(s.value, labels) for s in workspace.strings(name)):
             return True
     return False
+
+
+def allowed_entry(
+    workspace: Workspace,
+    module: Path,
+    entry: tuple[str, bool],
+    names: dict[str, set[str | None]],
+) -> bool:
+    """
+    Whether a root entry, by name and whether it is a file, is a module file, a directory
+    every module may have, an add-on, whose BUILD file declares a target named like its
+    directory, or a package that other packages load by label.
+    """
+    name, is_file = entry
+    if is_file:
+        return name in ROOT_FILES
+    path = module / name
+    builds = ((path / build).as_posix() for build in BUILD_FILES)
+    return (
+        name in ROOT_DIRECTORIES
+        or any(name in names[build] for build in builds)
+        or referenced_by_label(workspace, module, path)
+    )
 
 
 def backends_directory(name: str) -> Path | None:
@@ -160,14 +169,11 @@ def regular_dependencies(manifest: str) -> set[str]:
 
 def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> bool:
     """Whether some of the files name a repository in a string, all of them in tests/."""
-    label = f"@{repository}"
+    labels = (f"@{repository}",)
     uses = [
         Path(name)
         for name in files
-        if any(
-            literal.value == label or literal.value.startswith(f"{label}//")
-            for literal in workspace.strings(name)
-        )
+        if any(names_package(s.value, labels) for s in workspace.strings(name))
     ]
     return bool(uses) and all(TESTS in use.parts for use in uses)
 
@@ -221,17 +227,14 @@ class AddonModuleLayout:
         The entries of the module's root that are none of its files, add-ons, packages
         that other packages load by label or the directories every module may have.
         """
-        for entry, is_file in sorted(module_root_entries(workspace, module).items()):
-            path = module / entry
-            if allowed_entry(path, is_file, names):
-                continue
-            if not is_file and referenced_by_label(workspace, module, path):
-                continue
-            yield Finding(
-                at(path),
-                f"{path}: the module's root holds only {ROOT_ENTRIES} and packages "
-                "that other packages load by label",
-            )
+        for entry in sorted(module_root_entries(workspace, module).items()):
+            if not allowed_entry(workspace, module, entry, names):
+                path = module / entry[0]
+                yield Finding(
+                    at(path),
+                    f"{path}: the module's root holds only {ROOT_ENTRIES} and packages "
+                    "that other packages load by label",
+                )
 
     @staticmethod
     def backends(workspace: Workspace) -> Iterable[Finding]:

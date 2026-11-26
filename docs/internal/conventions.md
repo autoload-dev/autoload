@@ -173,10 +173,10 @@ that the documented workflow succeeds.
 
 ## RG007
 
-**Godot test operations and their helpers are test-only.** The targets created by
-`godot_test` and by every macro that declares a Godot test, such as autoload_gdunit's
-`gdunit_test`, must have effective `testonly = True`. This includes their generated case lists, resources and views of
-the project. They belong exclusively to the test operation and must not become production
+**Godot test operations and their helpers are test-only.** The targets that `godot_test`
+and every macro declaring a Godot test, such as autoload_gdunit's `gdunit_test`, create
+must have effective `testonly = True`. This includes their generated case lists, resources
+and views of the project. They belong exclusively to the test operation and must not become production
 dependencies, following
 [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
 
@@ -395,7 +395,9 @@ root module's declaration lists it. Each module:
   what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and
   packages that a Starlark file outside them names by label, as `//<package>` in the module
   or `@autoload_<module>//<package>` anywhere, such as Firebase's `config`. An add-on is a
-  directory whose BUILD file declares a target named like it, as the generator writes it;
+  directory whose BUILD file declares a target named like it, as the generator writes it.
+  The check thus rejects directories nothing uses rather than keep a list of allowed
+  packages;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
   `presubmit.yml` and a `source.template.json` that releases the archive
   `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
