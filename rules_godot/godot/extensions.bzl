@@ -264,9 +264,6 @@ godot_engines = module_extension(
     - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
       - prerequisites: Android shell library pinned, or the engine's sources
       - availability: android_shell
-    - `@{repository}//android:plugin_api` (files): the shell library's classes for Android plugins to compile against, never packaged; applications package the runtime of their variant
-      - prerequisites: Android shell library pinned, or the engine's sources
-      - availability: android_shell
     - `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone, ahead of or instead of the whole set
       - purpose: analysis_boundary
     - `@{repository}//toolchains:runtime_linux_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set

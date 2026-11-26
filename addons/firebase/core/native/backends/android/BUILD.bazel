@@ -25,7 +25,7 @@ android_library(
     target_compatible_with = ["@platforms//os:android"],
     visibility = ["//visibility:public"],
     deps = [
-        "@godot//android:plugin_api",
+        "@autoload_rules_godot//godot/platforms:android_plugin_api",
         "@maven//:com_google_firebase_firebase_common",
     ],
 )

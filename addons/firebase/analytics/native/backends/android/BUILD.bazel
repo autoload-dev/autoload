@@ -22,7 +22,7 @@ android_library(
     proguard_specs = ["consumer-rules.pro"],
     target_compatible_with = ["@platforms//os:android"],
     deps = [
-        "@godot//android:plugin_api",
+        "@autoload_rules_godot//godot/platforms:android_plugin_api",
         "@maven//:com_google_android_gms_play_services_measurement_api",
         "@maven//:com_google_firebase_firebase_analytics",
     ],

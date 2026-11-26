@@ -55,8 +55,7 @@ The hub has a component for every valid slot: an editor per editor platform and 
 per platform, CPU, iOS environment and variant. You register no toolchains yourself: the
 extension also generates `@godot_engines_toolchains`, the toolchains of every registered
 engine's components, which rules_godot's own module registers. `use_repo` is needed only
-for the repositories you reference directly, such as `@godot//android:plugin_api`, a
-recipe or `@<name>//:pin`. Declaring the components costs nothing: an engine downloads,
+for the repositories you reference directly, such as a recipe or `@<name>//:pin`. Declaring the components costs nothing: an engine downloads,
 configures and compiles only the payloads a build requests, so slots of platforms a build
 never targets are never fetched.
 
@@ -399,10 +398,25 @@ artifact instead. Java and Kotlin target Godot's level per target, so no Kotlin 
 is registered.
 
 An Android plugin that compiles against Godot's classes, such as `GodotPlugin`, depends
-on the hub's `@godot//android:plugin_api`, with `use_repo(godot_engines, "godot")` in
-`MODULE.bazel`. It supplies the shell library's classes for
-compilation only; the application packages the runtime its variant selects, so the
-classes appear once in the app.
+on `@autoload_rules_godot//godot/platforms:android_plugin_api`. It supplies the shell
+library of the runtime component the plugin's configuration selects: that of the engine
+and variant of the application, or of the pack, that the plugin is built for. A plugin
+thus compiles against the engine its application ships, whatever that engine is named,
+and a module with plugins registers no engine of its own. Where the runtime carries a
+source-built engine library, the plugin compiles against the shell library without it, so
+compiling a plugin never waits for an engine build. The classes are for compilation only;
+the application packages its runtime itself, so they appear once in the app.
+
+```starlark
+android_library(
+    name = "plugin",
+    srcs = ["MyPlugin.java"],
+    exports_manifest = 1,
+    manifest = "AndroidManifest.xml",
+    target_compatible_with = ["@platforms//os:android"],
+    deps = ["@autoload_rules_godot//godot/platforms:android_plugin_api"],
+)
+```
 
 ## Choose between prepared recipes
 

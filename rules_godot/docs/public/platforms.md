@@ -784,7 +784,8 @@ libraries its native code needs the same way.
   manifest serves every ABI of an application: a library selected per CPU contributes
   the manifest entries of the first platform slice's selection only.
 - **Godot's classes:** an `android_library` that extends `GodotPlugin` compiles against
-  the engine hub's [plugin API target](engine.md#android-shell-libraries).
+  the [plugin API target](engine.md#android-shell-libraries), the shell library of the
+  application's engine.
 - **Android manifest placeholders:** a library manifest may leave a value to the
   application as `${key}`, as AppAuth's redirect activity does with
   `${appAuthRedirectScheme}`. The application sets it in

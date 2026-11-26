@@ -1,11 +1,21 @@
 """Repository interfaces must remain complete despite metadata-only API defaults."""
 
 import unittest
+from collections.abc import Iterable
 from dataclasses import replace
+from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 
+from tools.conventions.context import Module
+from tools.docs.evidence import EvaluatedBazel
 from tools.docs.output_contracts import ConfiguredTarget, Contract
-from tools.docs.repository_contracts import repository_errors, toolchain_bound
+from tools.docs.repository_contracts import (
+    check_public_libraries,
+    library_errors,
+    library_lane_errors,
+    repository_errors,
+    toolchain_bound,
+)
 
 LABEL = "@cpp//:godot_cpp"
 
@@ -165,6 +175,78 @@ class ToolchainBoundTest(unittest.TestCase):
         }
         self.assertEqual(
             ["@hub//toolchains:editor"], toolchain_bound(sorted(rules), rules)
+        )
+
+
+class LibraryErrorsTest(unittest.TestCase):
+    PLUGIN_API = "//godot/platforms:android_plugin_api"
+
+    def errors(self, *providers: str) -> list[str]:
+        target = ConfiguredTarget(
+            self.PLUGIN_API, 1, 0, False, frozenset(providers), frozenset()
+        )
+        return library_errors(self.PLUGIN_API, target, "JavaInfo")
+
+    def test_library_with_its_provider(self) -> None:
+        self.assertEqual([], self.errors("@@rules_java+//java:java_info.bzl%JavaInfo"))
+
+    def test_library_without_its_provider(self) -> None:
+        self.assertEqual(
+            [self.PLUGIN_API + ": public library is missing JavaInfo"],
+            self.errors("CcInfo"),
+        )
+
+    def test_incompatible_library_is_no_evidence(self) -> None:
+        self.assertEqual(
+            [
+                self.PLUGIN_API
+                + ": public library is incompatible with its lane's configuration"
+            ],
+            self.errors("IncompatiblePlatformProvider", "JavaInfo"),
+        )
+
+
+JAVA_INFO = "@@rules_java+//java:java_info.bzl%JavaInfo"
+ANDROID_LIBRARY = MappingProxyType(
+    {"lane": "android", "options": ("--config=android",), "provider": "JavaInfo"}
+)
+
+
+class RecordingBazel(EvaluatedBazel):
+    """Answer every cquery with Java libraries and record its labels and options."""
+
+    def __init__(self) -> None:
+        super().__init__(Path())
+        self.calls: list[tuple[list[str], tuple[str, ...]]] = []
+
+    def configured(
+        self, module: Module, labels: Iterable[str], options: Iterable[str] = ()
+    ) -> dict[str, ConfiguredTarget]:
+        labels = list(labels)
+        self.calls.append((labels, tuple(options)))
+        return {
+            label: ConfiguredTarget(
+                label, 1, 0, False, frozenset({JAVA_INFO}), frozenset()
+            )
+            for label in labels
+        }
+
+
+class PublicLibrariesTest(unittest.TestCase):
+    def test_one_cquery_per_configuration_of_the_lane(self) -> None:
+        libraries = {
+            "//a:api": ANDROID_LIBRARY,
+            "//b:api": ANDROID_LIBRARY,
+            "//c:api": {**ANDROID_LIBRARY, "lane": "ios"},
+        }
+        bazel = RecordingBazel()
+        self.assertEqual([], check_public_libraries(bazel, libraries, "android"))
+        self.assertEqual([(["//a:api", "//b:api"], ("--config=android",))], bazel.calls)
+
+    def test_library_of_no_contract_lane_is_rejected(self) -> None:
+        self.assertEqual(
+            ["//a:api: public library names no contract lane: andriod"],
+            library_lane_errors({"//a:api": {**ANDROID_LIBRARY, "lane": "andriod"}}),
         )
 
 

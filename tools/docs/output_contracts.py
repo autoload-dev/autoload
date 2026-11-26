@@ -255,7 +255,8 @@ def provider_identity(key: str) -> str:
     return key
 
 
-def _has_provider(target: ConfiguredTarget, name: str) -> bool:
+def has_provider(target: ConfiguredTarget, name: str) -> bool:
+    """Whether a configured target returns a provider, by its name or its identity."""
     return any(key == name or key.endswith("%" + name) for key in target.providers)
 
 
@@ -287,7 +288,7 @@ def _content_errors(kind: str, target: ConfiguredTarget) -> list[str]:
     if kind in {"metadata", "toolchain"} and target.files:
         errors.append(kind + " must not produce default files")
     provider = REQUIRED_PROVIDERS.get(kind)
-    if provider and not _has_provider(target, provider):
+    if provider and not has_provider(target, provider):
         errors.append(f"{kind} lacks {provider}")
     return errors
 

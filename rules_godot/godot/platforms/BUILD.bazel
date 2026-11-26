@@ -1,3 +1,5 @@
+load("@rules_android//rules:rules.bzl", "android_library")
+load("//godot/platforms/private:android_runtime_bridge.bzl", "plugin_api_android")
 load(":defs.bzl", "godot_export_platform")
 
 package(default_visibility = ["//visibility:public"])
@@ -120,4 +122,21 @@ config_setting(
         "@platforms//os:ios",
         "@apple_support//constraints:simulator",
     ],
+)
+
+# The Android shell library's classes for Android plugins to compile against: those of the
+# runtime component the configuration's engine and variant resolve, so a plugin compiles
+# against the engine its application ships. Never packaged; the application packages its
+# runtime itself.
+android_library(
+    name = "android_plugin_api",
+    neverlink = True,
+    target_compatible_with = ["@platforms//os:android"],
+    exports = [":android_shell"],
+)
+
+plugin_api_android(
+    name = "android_shell",
+    target_compatible_with = ["@platforms//os:android"],
+    visibility = ["//visibility:private"],
 )

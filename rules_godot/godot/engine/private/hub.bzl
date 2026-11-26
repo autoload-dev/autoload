@@ -136,14 +136,10 @@ def _hub_impl(ctx):
     if android:
         ctx.template("android/BUILD.bazel", ctx.attr._android_template, substitutions = {
             "{ANDROID_BZL}": repr(str(ctx.attr._android_bzl)),
-            "{RULES_ANDROID_BZL}": repr(str(ctx.attr._rules_android_bzl)),
             "{RUNTIMES}": "".join([
                 _android_runtime(variant, android[variant])
                 for variant in sorted(android)
             ]),
-            # Every variant's shell library has the same classes; plugins compile against
-            # the release one when it exists.
-            "{PLUGIN_API_RUNTIME}": "release" if "release" in android else sorted(android)[0],
         })
     ctx.template("toolchains/BUILD.bazel", ctx.attr._toolchains_template, substitutions = {
         "{DEFS_BZL}": repr(str(ctx.attr._defs_bzl)),
@@ -160,8 +156,7 @@ engine_hub = repository_rule(
         "toolchains_repository": attr.string(doc = "The extension's repository of every engine's toolchains, which registers the hub's components."),
         "android_runtimes": attr.string(doc = """
             JSON object of variant to {"shell": label, "engine_libraries": {CPU: label}};
-            each becomes //android:<variant>, and //android:plugin_api exports one of them
-            for compilation only.
+            each becomes //android:<variant>.
             """),
         "pin_recipes": attr.string(doc = "JSON object of each recipe's :pin label to its key in the lock file."),
         "pin_variants": attr.string(doc = "JSON object of each runtime variant's :pin label to its recipe's key and runtime profile."),
@@ -169,7 +164,6 @@ engine_hub = repository_rule(
         "lock": attr.string(doc = "Workspace-relative path of the lock file that //:pin writes."),
         "_pin_bzl": attr.label(default = Label("//godot/engine/private:pin.bzl")),
         "_android_template": attr.label(default = Label("//godot/engine/private:hub_android.BUILD.tpl")),
-        "_rules_android_bzl": attr.label(default = Label("@rules_android//rules:rules.bzl")),
         "_defs_bzl": attr.label(default = Label("//godot/engine:defs.bzl")),
         "_android_bzl": attr.label(default = Label("//godot/platforms/private:android.bzl")),
         "_build_template": attr.label(default = Label("//godot/engine/private:hub.BUILD.tpl")),

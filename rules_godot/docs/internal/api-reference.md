@@ -82,7 +82,7 @@ Use providers for semantic file access in custom rules instead of scraping paths
 arbitrary default files. Test execution reports follow Bazel's test-result interfaces.
 
 Review the complete inventory in `modules.bzl`: public symbols, configuration targets,
-generated-repository contracts and the private expansions reached by public macros. Classify
+libraries, generated-repository contracts and the private expansions reached by public macros. Classify
 independently named repository datasets and toolchains separately from companion targets of a
 main target. Neither an output group per provider field nor a synthetic main target for an entire
 repository is required. Check actual visibility as well as documented support.
@@ -127,7 +127,11 @@ configured evidence. Configuration-only targets have explicit metadata roles; th
 invent files.
 
 The [case registry](../../godot/tests/api_contracts/cases.bzl) supplies Bazel-evaluated fixture labels
-and configurations, not another copy of the public prose. It also names the behavior tests
+and configurations, not another copy of the public prose. Public configuration targets must
+be metadata-only in the host configuration. A public library that builds for one platform
+only, such as `//godot/platforms:android_plugin_api`, is listed in its `PUBLIC_LIBRARIES`
+instead, with the lane, the options and the provider its consumers use; that lane analyzes
+it and requires the provider. It also names the behavior tests
 that show why an API's public companion targets are separate; the checker requires them to
 resolve. A case or behavior test names its `module`, relative to `rules_godot/`, when its
 fixture lives outside the ruleset, such as `..` for the repository's root module with its
