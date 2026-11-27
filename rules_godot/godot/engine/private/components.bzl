@@ -301,7 +301,7 @@ def _editor_macro_impl(name, visibility, editor, platform, cpu, version, origin,
         tags = tags,
     )
     component_toolchains(
-        name = name,
+        name = name + ".toolchain",
         component = ":" + name,
         role = "editor",
         platform = platform,
@@ -350,7 +350,7 @@ def _runtime_macro_impl(name, visibility, runtime, platform, cpu, variant, versi
         tags = tags,
     )
     component_toolchains(
-        name = name,
+        name = name + ".toolchain",
         component = ":" + name,
         role = "runtime",
         platform = platform,

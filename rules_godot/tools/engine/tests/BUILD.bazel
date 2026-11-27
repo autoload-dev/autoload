@@ -20,6 +20,16 @@ py_test(
 )
 
 py_test(
+    name = "class_db_test",
+    size = "small",
+    srcs = ["class_db_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
     name = "compile_options_test",
     size = "small",
     srcs = ["compile_options_test.py"],
@@ -65,6 +75,16 @@ py_test(
 )
 
 py_test(
+    name = "patches_test",
+    size = "small",
+    srcs = ["patches_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
     name = "pin_test",
     size = "small",
     srcs = ["pin_test.py"],
@@ -75,7 +95,10 @@ py_test(
     name = "render_test",
     size = "small",
     srcs = ["render_test.py"],
-    deps = ["//tools/engine:support"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
 )
 
 py_test(
@@ -107,6 +130,16 @@ py_test(
 )
 
 py_test(
+    name = "custom_modules_test",
+    size = "small",
+    srcs = ["custom_modules_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
     name = "define_analysis_test",
     size = "small",
     srcs = ["define_analysis_test.py"],
@@ -117,6 +150,16 @@ py_test(
     name = "tree_test",
     size = "small",
     srcs = ["tree_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
+    name = "tree_link_test",
+    size = "small",
+    srcs = ["tree_link_test.py"],
     deps = [
         ":source_files",
         "//tools/engine:support",

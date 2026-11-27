@@ -124,11 +124,12 @@ def recipe_declarations(name, tree, plan, common, lock_file = None, runtime_prof
 
     Args:
         name: The name plan_rows took.
-        tree: Label of the `:tree.json` descriptor of the engine's godot_engine_tree
-            repository, which every recipe and the Android shell link.
+        tree: Label of the `:tree.json` descriptor of the godot_engine_tree repository of
+            the engine's source archive, which every recipe and the Android shell link.
         plan: A plan_rows result.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            default_modules, custom_modules, renderers, build_options and build_name.
+            default_modules, custom_modules, patches, patch_strip, renderers,
+            build_options and build_name; the Android shell takes the patches.
         lock_file: Optional Label of the lock file that pins every recipe.
         runtime_profiles: The engine's registered runtime profiles: each label string's
             build options as JSON; each runtime recipe declares a runtime variant of each.
@@ -158,6 +159,9 @@ def recipe_declarations(name, tree, plan, common, lock_file = None, runtime_prof
         declarations.append(struct(rule = "godot_android_shell", attrs = dict(
             name = name + "_source_android_shell",
             tree = tree,
+            # Its Java and Kotlin sources are patched too.
+            patches = common["patches"],
+            patch_strip = common["patch_strip"],
         )))
     return declarations
 

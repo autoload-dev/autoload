@@ -19,6 +19,23 @@ visibility(["//..."])
 
 # ==== Repository rules ========================================================
 
+# The patches of a recipe or Android shell, which it applies to copies of its own of the
+# files they touch; it links the engine tree's other files.
+_PATCH_ATTRS = {
+    "patches": attr.label_list(
+        doc = """
+        Patch files applied in order with strict matching, such as a fork's C++ or Java
+        changes; any rejected or ambiguous hunk fails the repository. The repository holds
+        copies of its own of the files they touch and links the tree's other files.
+        """,
+        allow_files = [".patch", ".diff"],
+    ),
+    "patch_strip": attr.int(
+        doc = "Number of leading path components removed from each patch filename.",
+        default = 1,
+    ),
+}
+
 # Defined apart, so that a change to the rules here keeps the extracted sources.
 godot_engine_tree = _godot_engine_tree
 
@@ -66,10 +83,11 @@ godot_engine_build = repository_rule(
     Configure one fixed Godot source recipe and emit granular rules_cc build targets.
 
     Call through use_repo_rule in MODULE.bazel, or from a module extension. The recipe
-    links the files of its engine's godot_engine_tree hard into its own repository, adds
-    the custom modules and captures the upstream build graph; SCons never compiles. Its
-    repository holds only the files it generates beside those links, a few megabytes, so
-    the recipes of an engine share one extracted, patched copy of its sources.
+    links the files of its source's godot_engine_tree hard into its own repository,
+    applies its patches to copies of its own of the files they touch, adds the custom
+    modules and captures the upstream build graph; SCons never compiles. Its repository
+    holds only the files it generates or patches beside those links, a few megabytes, so
+    the recipes of every engine of one source archive share one extracted copy of it.
     Compilation runs later as Bazel actions, only for the outputs a build requests. The
     recipe registers nothing: name its outputs as component payloads. Fetching runs
     rules_python's Python 3.14 and needs the target operating system's SDK. Bazel's repo
@@ -88,19 +106,21 @@ godot_engine_build = repository_rule(
         build_target = "template_release",
         platform = "macos",
         tree = "@godot_tree//:tree.json",
+        patches = ["//engines:engine-name.patch"],
     )
     ```
 
-    A source contradicting the descriptor's version, unknown or rules_godot-controlled
-    options and unresolvable modules fail the recipe. See
+    A rejected or ambiguous patch hunk, a source contradicting the descriptor's version,
+    unknown or rules_godot-controlled options and unresolvable modules fail the recipe. See
     [source-built engines](../../engine.md) for custom modules, options and patches.
     """,
     implementation = engine_build_impl,
-    attrs = {
+    attrs = _PATCH_ATTRS | {
         "tree": attr.label(
             doc = """
-            The `:tree.json` descriptor of the engine's godot_engine_tree repository: the
-            extracted, patched sources the recipe configures and compiles.
+            The `:tree.json` descriptor of the godot_engine_tree repository of the engine's
+            source archive: the extracted sources the recipe patches, configures and
+            compiles.
             """,
             mandatory = True,
             allow_single_file = [".json"],
@@ -139,10 +159,13 @@ godot_engine_build = repository_rule(
         ),
         "custom_modules": attr.label_keyed_string_dict(
             doc = """
-            Each custom module's config.py label mapped to its module name; the containing
-            source tree is watched.
+            Each custom module's files mapped to its module name: a target, such as a
+            filegroup of `glob(["**"])`, in the package that holds the module's config.py.
+            The recipe configures with the module's build scripts, shader sources and file
+            paths, which it watches; its code, such as C++ sources, comes from the target
+            when a build compiles it, so editing the code prepares no recipe again.
             """,
-            allow_files = [".py"],
+            allow_files = True,
         ),
         "renderers": attr.string_list(
             doc = """
@@ -198,8 +221,11 @@ godot_engine_build = repository_rule(
         "_variants": attr.label(default = Label("//tools/engine:variants.py")),
         "_generators": attr.label(default = Label("//tools/engine:generators.py")),
         "_build_file": attr.label(default = Label("//tools/engine:build_file.py")),
+        "_custom_modules": attr.label(default = Label("//tools/engine:custom_modules.py")),
         "_tree": attr.label(default = Label("//tools/engine:tree.py")),
         "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
+        "_class_db": attr.label(default = Label("//tools/engine:class_db.py")),
+        "_patches": attr.label(default = Label("//tools/engine:patches.py")),
         "_build_profile_label": attr.label(default = Label("//godot/private:build_profile_label")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
@@ -222,8 +248,8 @@ godot_android_shell = repository_rule(
     Build Godot's Java/Kotlin Android shell library from an engine tree.
 
     Call through use_repo_rule in MODULE.bazel, or from a module extension. The
-    repository links the shell library's files of a godot_engine_tree, whose patches
-    apply to them, and exposes `:debug` and
+    repository links the shell library's files of a godot_engine_tree, applies the
+    engine's patches to copies of its own of the files they touch, and exposes `:debug` and
     `:release`, the Android shell library of each template variant built with rules_android and
     rules_kotlin; their `.aar` outputs, such as `:release.aar`, are godot_android_runtime
     shells. Java and Kotlin target Godot's language level per target, so no Kotlin
@@ -235,15 +261,19 @@ godot_android_shell = repository_rule(
     godot_android_shell = use_repo_rule(
         "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_android_shell",
     )
-    godot_android_shell(name = "godot_shell", tree = "@godot_tree//:tree.json")
+    godot_android_shell(
+        name = "godot_shell",
+        patches = ["//engines:engine-name.patch"],
+        tree = "@godot_tree//:tree.json",
+    )
     ```
     """,
     implementation = android_shell_impl,
-    attrs = {
+    attrs = _PATCH_ATTRS | {
         "tree": attr.label(
             doc = """
-            The `:tree.json` descriptor of the engine's godot_engine_tree repository, whose
-            patches, such as a fork's Java changes, the shell library includes.
+            The `:tree.json` descriptor of the godot_engine_tree repository of the engine's
+            source archive.
             """,
             mandatory = True,
             allow_single_file = [".json"],
@@ -254,5 +284,7 @@ godot_android_shell = repository_rule(
         "_python": attr.label(default = Label("@python_3_14_host//:python")),
         "_tree": attr.label(default = Label("//tools/engine:tree.py")),
         "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
+        "_class_db": attr.label(default = Label("//tools/engine:class_db.py")),
+        "_patches": attr.label(default = Label("//tools/engine:patches.py")),
     },
 )

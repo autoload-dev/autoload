@@ -5,10 +5,10 @@ register classes.
 Godot's build profile disables classes through core/disabled_classes.gen.h, which
 core/object/class_db.h includes, so nearly every source would depend on it, and changing
 the profile would recompile them all. Only class registration evaluates it, through
-GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. An engine's tree therefore lets
-class_db.h include the profile only where GODOT_DECLARES_BUILD_PROFILE is defined
-(tree.py), and rendering defines it for the sources that can reach a registration. Elsewhere GD_IS_CLASS_ENABLED names an
-undeclared identifier, so a source the scan misses fails to compile instead of
+GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. A recipe's class_db.h therefore
+includes the profile only where GODOT_DECLARES_BUILD_PROFILE is defined (class_db.py),
+and rendering defines it for the sources that can reach a registration. Elsewhere
+GD_IS_CLASS_ENABLED names an undeclared identifier, so a source the scan misses fails to compile instead of
 registering a disabled class.
 
 Sections: Profile files, Scoping.
@@ -16,18 +16,22 @@ Sections: Profile files, Scoping.
 
 import json
 import re
-from collections.abc import Callable, Collection, Iterable, Mapping
-from pathlib import Path
+from collections.abc import Collection, Iterable, Mapping
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
-    from .include_graph import Generated, components
-    from .tree import CLASS_DB as _CLASS_DB
-    from .tree import HEADER
+    from .class_db import CLASS_DB as _CLASS_DB
+    from .class_db import HEADER
+    from .custom_modules import DIRECTORY
+    from .include_graph import ANY_HEADER, Generated, reaching
+    from .source_tree import SOURCE_SUFFIXES
 except ImportError:
-    from include_graph import Generated, components
-    from tree import CLASS_DB as _CLASS_DB
-    from tree import HEADER
+    from class_db import CLASS_DB as _CLASS_DB
+    from class_db import HEADER
+    from custom_modules import DIRECTORY
+    from include_graph import ANY_HEADER, Generated, reaching
+    from source_tree import SOURCE_SUFFIXES
 
 # ==== Profile files ===========================================================
 
@@ -88,19 +92,10 @@ def _registers(root: Path, name: str, generated: Mapping[str, Generated]) -> boo
     return path.is_file() and bool(_REGISTRATION.search(path.read_text(errors="replace")))
 
 
-def _reaching(
-    graph: Mapping[str, Collection[str]], matches: Callable[[str], bool]
-) -> set[str]:
-    """Return the files whose include closure, themselves included, has a matching file."""
-    found: set[str] = set()
-    for component in components(graph):
-        # What a component includes decides before its files are read.
-        reaches = any(
-            include in found for name in component for include in graph[name]
-        ) or any(matches(name) for name in component)
-        if reaches:
-            found.update(component)
-    return found
+def _is_code_source(name: str) -> bool:
+    """Whether a file is a custom module's source, whose text comes by label at build time."""
+    path = PurePosixPath(name)
+    return path.parts[0] == DIRECTORY and path.suffix in SOURCE_SUFFIXES
 
 
 def declare(
@@ -113,12 +108,20 @@ def declare(
     Return the include graph with the profile only for registering sources, and those sources.
 
     class_db.h no longer reaches the profile; a source that can reach a registration
-    includes it directly.
+    includes it directly. A custom module's code sources, whose text comes by label at
+    build time, count as registering. Its headers declare, as Godot's do, and ANY_HEADER,
+    which stands for every header a source reaching them may include, registers nothing:
+    those engine sources keep their configuration, and a header that registers anyway
+    fails their compilation instead of registering a disabled class.
     """
     graph = {name: frozenset(includes) for name, includes in graph.items()}
-    if _CLASS_DB in graph:
-        graph[_CLASS_DB] -= {HEADER}
-    registering = _reaching(graph, lambda name: _registers(root, name, generated))
+    for name in [_CLASS_DB, ANY_HEADER]:
+        if name in graph:
+            graph[name] -= {HEADER}
+    view = {name: includes - {ANY_HEADER} for name, includes in graph.items()}
+    registering = reaching(
+        view, lambda name: _is_code_source(name) or _registers(root, name, generated)
+    )
     users = registering.intersection(sources)
     for source in users:
         graph[source] = graph[source] | {HEADER}
