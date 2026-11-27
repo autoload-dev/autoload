@@ -12,6 +12,7 @@ load(":engine_extension_tests.bzl", "engine_extension_test_suite")
 load(":engine_name_tests.bzl", "engine_name_test_suite")
 load(":engine_selection_tests.bzl", "engine_selection_test_suite")
 load(":engine_source_tests.bzl", "engine_source_test_suite")
+load(":engine_tree_tests.bzl", "engine_tree_test_suite")
 load(":execution_tests.bzl", "execution_test_suite")
 load(":export_templates_archive_tests.bzl", "export_templates_archive_test_suite")
 load(":ios_tests.bzl", "ios_test_suite")
@@ -166,6 +167,8 @@ engine_name_test_suite(name = "engine_name_test_suite")
 engine_selection_test_suite(name = "engine_selection_test_suite")
 
 engine_source_test_suite(name = "engine_source_test_suite")
+
+engine_tree_test_suite(name = "engine_tree_test_suite")
 
 execution_test_suite(name = "execution_test_suite")
 
