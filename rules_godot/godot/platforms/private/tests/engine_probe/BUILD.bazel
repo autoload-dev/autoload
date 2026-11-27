@@ -125,7 +125,10 @@ py_test(
         "source_engine",
     ],
     target_compatible_with = _ANDROID_SDK,
-    deps = ["//tools/platforms:native_symbols_lib"],
+    deps = [
+        "//godot/platforms/private/tests:dex",
+        "//tools/platforms:native_symbols_lib",
+    ],
 )
 
 # Build-output tests: an APK with the prebuilt beta engine packages the shell AAR's engine,

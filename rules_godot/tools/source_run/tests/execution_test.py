@@ -102,6 +102,141 @@ def run_project(
     }
 
 
+# A fake editor that starts a child process, records both process IDs in a file and
+# waits to be cancelled.
+WAIT_FOR_CANCELLATION = """import json, os, pathlib, subprocess, sys, time
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(90)"])
+print("runtime started", flush=True)
+pidfile = pathlib.Path({pids!r})
+pidfile.with_suffix(".tmp").write_text(json.dumps([os.getpid(), child.pid]))
+pidfile.with_suffix(".tmp").replace(pidfile)
+time.sleep(90)
+"""
+
+
+def cancellation_manifest(base: Path, engine_pids: Path) -> Path:
+    """Write a run manifest whose editor waits to be cancelled, and return its path."""
+    project = base / "project.godot"
+    project.write_text("config_version=5\n")
+    script = base / "main.gd"
+    script.write_text("fixture")
+    editor = fake_editor(base, WAIT_FOR_CANCELLATION.format(pids=str(engine_pids)))
+    manifest = base / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            run_manifest(
+                editor=str(editor),
+                main="main.gd",
+                project=run_project(base, project, {"main.gd": str(script)}),
+            )
+        )
+    )
+    return manifest
+
+
+def start_runner(base: Path, manifest: Path, reports: Path) -> subprocess.Popen:
+    """Start the runner's command line in its own interpreter."""
+    # rules_python initializes sys.path in its launcher. A nested
+    # interpreter needs those same declared runfiles explicitly.
+    python_path = os.pathsep.join(str(Path(path).absolute()) for path in sys.path)
+    runner_file = sys.modules[run.__module__].__file__
+    if runner_file is None:
+        raise AssertionError("The runner module has no source file")
+    env = {
+        **os.environ,
+        "PYTHONPATH": python_path,
+        "RUNFILES_DIR": str(base),
+        "TEST_UNDECLARED_OUTPUTS_DIR": str(reports),
+    }
+    return subprocess.Popen(
+        [sys.executable, str(Path(runner_file).absolute()), "--manifest", str(manifest)],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+
+def stop_runner(process: subprocess.Popen) -> None:
+    """Stop the runner if it still runs, and collect its output."""
+    if process.poll() is not None:
+        process.communicate()
+        return
+    process.terminate()
+    try:
+        process.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.communicate()
+
+
+def kill_engine(pids: list[int], engine_pids: Path) -> None:
+    """Kill the engine's process group, which a failed cancellation may leave behind."""
+    if not pids and engine_pids.exists():
+        pids = json.loads(engine_pids.read_text())
+    if pids:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(pids[0], signal.SIGKILL)
+
+
+# A fake editor's checks of what a source run gives Godot: the cached import and
+# initialization, the original settings with the project's features and flags, and
+# Bazel's test environment.
+CHECK_SOURCE_RUN = """import os, pathlib, sys
+root = pathlib.Path(sys.argv[sys.argv.index("--path") + 1])
+assert (root / ".godot/imported/seed.bin").read_bytes() == b"cached"
+assert pathlib.Path(os.environ["HOME"]).is_dir()
+# The project's cached initialization replaces an editor pass at run time.
+assert "--import" not in sys.argv
+assert (root / ".godot/global_script_class_cache.cfg").read_text() == "initialized"
+settings = (root / "project.godot").read_text()
+assert "autoload" in settings and "run/main_scene" in settings
+# The project's custom features, which Godot reads from the root key.
+assert settings.startswith('_custom_features="production,debug_tools"\\n'), settings
+# The project's settings from flags, in the staged project.godot.
+assert 'config/build_number=57\\nconfig/commit="abc"\\n' in settings, settings
+assert "--headless" in sys.argv
+assert sys.argv[-4:] == ["--script", "res://runtime.gd", "--", "user argument"]
+# Bazel's test contract and declared env reach the engine; the rest does not.
+assert os.environ["TEST_SHARD_INDEX"] == "1"
+runfiles = pathlib.Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"]
+assert (runfiles / "data.txt").read_text() == "declared runfile"
+assert pathlib.Path(os.environ["RUNFILES_DIR"]) / "demo" == runfiles
+assert pathlib.Path(os.environ["RUNFILES_MANIFEST_FILE"]).read_text() == "demo/data.txt " + str(runfiles / "data.txt")
+assert os.environ["DECLARED"] == "value"
+assert "UNDECLARED" not in os.environ
+print("source run passed")
+"""
+
+
+def cached_import(base: Path) -> Path:
+    """Write an import result and the project's cached initialization; return the result."""
+    imported = base / "import-result"
+    (imported / ".godot/imported").mkdir(parents=True)
+    (imported / ".godot/imported/seed.bin").write_bytes(b"cached")
+    (base / "initialized/.godot").mkdir(parents=True)
+    (base / "initialized/.godot/global_script_class_cache.cfg").write_text("initialized")
+    return imported
+
+
+def bazel_test_environment(base: Path, reports: Path) -> dict[str, str]:
+    """Write a runfiles tree with one declared runfile; return Bazel's test environment."""
+    runfiles = base / "runfiles"
+    (runfiles / "demo").mkdir(parents=True)
+    (runfiles / "demo/data.txt").write_text("declared runfile")
+    runfiles_manifest = base / "MANIFEST"
+    runfiles_manifest.write_text("demo/data.txt " + str(runfiles / "demo/data.txt"))
+    return {
+        "TEST_UNDECLARED_OUTPUTS_DIR": str(reports),
+        "TEST_SHARD_INDEX": "1",
+        "TEST_SRCDIR": str(runfiles),
+        "TEST_WORKSPACE": "demo",
+        "RUNFILES_DIR": str(runfiles),
+        "RUNFILES_MANIFEST_FILE": str(runfiles_manifest),
+        "UNDECLARED": "value",
+    }
+
+
 class ExecutionTest(unittest.TestCase):
     def test_pack_run_stages_extension_library_runfiles(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -359,6 +494,32 @@ assert pathlib.Path("dlc/extra.pck").read_bytes() == b"additional pack"
                 self.assertEqual(message, runner["error"])
                 self.assertFalse(started.exists())
 
+    def wait_for_engine(self, process: subprocess.Popen, engine_pids: Path) -> list[int]:
+        """Return the engine's process IDs once it runs; fail if it does not start."""
+        deadline = time.monotonic() + 10
+        while (
+            not engine_pids.exists()
+            and process.poll() is None
+            and time.monotonic() < deadline
+        ):
+            time.sleep(0.02)
+        if not engine_pids.exists():
+            if process.poll() is None:
+                process.terminate()
+            output, _ = process.communicate(timeout=10)
+            self.fail(
+                f"Engine did not start (runner exit {process.returncode}):\n{output}"
+            )
+        return json.loads(engine_pids.read_text())
+
+    def assert_stops(self, pid: int) -> None:
+        deadline = time.monotonic() + 5
+        while alive(pid):
+            self.assertLess(
+                time.monotonic(), deadline, f"Engine process {pid} survived cancellation"
+            )
+            time.sleep(0.02)
+
     @unittest.skipIf(os.name == "nt", "POSIX process-group cancellation contract")
     def test_cancellation_stops_engine_and_children_and_publishes_failure(self) -> None:
         for signum in (signal.SIGINT, signal.SIGTERM):
@@ -367,72 +528,13 @@ assert pathlib.Path("dlc/extra.pck").read_bytes() == b"additional pack"
                 tempfile.TemporaryDirectory() as temporary,
             ):
                 base = Path(temporary)
-                project = base / "project.godot"
-                project.write_text("config_version=5\n")
-                script = base / "main.gd"
-                script.write_text("fixture")
                 engine_pids = base / "engine-pids.json"
-                editor = fake_editor(
-                    base,
-                    f"""import json, os, pathlib, subprocess, sys, time
-child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(90)"])
-print("runtime started", flush=True)
-pidfile = pathlib.Path({str(engine_pids)!r})
-pidfile.with_suffix(".tmp").write_text(json.dumps([os.getpid(), child.pid]))
-pidfile.with_suffix(".tmp").replace(pidfile)
-time.sleep(90)
-""",
-                )
                 reports = base / "outputs"
-                manifest = base / "manifest.json"
-                manifest.write_text(
-                    json.dumps(
-                        run_manifest(
-                            editor=str(editor),
-                            main="main.gd",
-                            project=run_project(base, project, {"main.gd": str(script)}),
-                        )
-                    )
-                )
-                # rules_python initializes sys.path in its launcher. A nested
-                # interpreter needs those same declared runfiles explicitly.
-                python_path = os.pathsep.join(
-                    str(Path(path).absolute()) for path in sys.path
-                )
-                runner_file = sys.modules[run.__module__].__file__
-                if runner_file is None:
-                    self.fail("The runner module has no source file")
-                runner_module = Path(runner_file).absolute()
-                env = {
-                    **os.environ,
-                    "PYTHONPATH": python_path,
-                    "RUNFILES_DIR": str(base),
-                    "TEST_UNDECLARED_OUTPUTS_DIR": str(reports),
-                }
-                process = subprocess.Popen(
-                    [sys.executable, str(runner_module), "--manifest", str(manifest)],
-                    env=env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
+                manifest = cancellation_manifest(base, engine_pids)
+                process = start_runner(base, manifest, reports)
                 pids = []
                 try:
-                    deadline = time.monotonic() + 10
-                    while (
-                        not engine_pids.exists()
-                        and process.poll() is None
-                        and time.monotonic() < deadline
-                    ):
-                        time.sleep(0.02)
-                    if not engine_pids.exists():
-                        if process.poll() is None:
-                            process.terminate()
-                        output, _ = process.communicate(timeout=10)
-                        self.fail(
-                            f"Engine did not start (runner exit {process.returncode}):\n{output}"
-                        )
-                    pids = json.loads(engine_pids.read_text())
+                    pids = self.wait_for_engine(process, engine_pids)
                     process.send_signal(signum)
                     output, _ = process.communicate(timeout=10)
                     self.assertNotEqual(process.returncode, 0, output)
@@ -446,31 +548,10 @@ time.sleep(90)
                         "runtime started", (reports / "godot/runtime.log").read_text()
                     )
                     for pid in pids:
-                        deadline = time.monotonic() + 5
-                        while alive(pid):
-                            self.assertLess(
-                                time.monotonic(),
-                                deadline,
-                                f"Engine process {pid} survived cancellation",
-                            )
-                            time.sleep(0.02)
+                        self.assert_stops(pid)
                 finally:
-                    if process.poll() is None:
-                        process.terminate()
-                        try:
-                            process.communicate(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.communicate()
-                    else:
-                        process.communicate()
-                    if not pids and engine_pids.exists():
-                        pids = json.loads(engine_pids.read_text())
-                    if pids:
-                        try:
-                            os.killpg(pids[0], signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
+                    stop_runner(process)
+                    kill_engine(pids, engine_pids)
 
     def test_source_run_starts_from_cached_initialization_with_original_settings(
         self,
@@ -482,9 +563,6 @@ time.sleep(90)
             project.write_text(original)
             script = base / "runtime.gd"
             script.write_text("fixture")
-            imported = base / "import-result"
-            (imported / ".godot/imported").mkdir(parents=True)
-            (imported / ".godot/imported/seed.bin").write_bytes(b"cached")
             # An import unit without importable files has an empty import result, which
             # Bazel leaves out of runfiles.
             manifest = run_manifest(
@@ -492,51 +570,14 @@ time.sleep(90)
                     base,
                     project,
                     {"runtime.gd": str(script)},
-                    [str(imported), str(base / "empty-unit")],
+                    [str(cached_import(base)), str(base / "empty-unit")],
                 )
             )
-            (base / "initialized/.godot").mkdir(parents=True)
-            (base / "initialized/.godot/global_script_class_cache.cfg").write_text(
-                "initialized"
-            )
-            editor = fake_editor(
-                base,
-                """import os, pathlib, sys
-root = pathlib.Path(sys.argv[sys.argv.index("--path") + 1])
-assert (root / ".godot/imported/seed.bin").read_bytes() == b"cached"
-assert pathlib.Path(os.environ["HOME"]).is_dir()
-# The project's cached initialization replaces an editor pass at run time.
-assert "--import" not in sys.argv
-assert (root / ".godot/global_script_class_cache.cfg").read_text() == "initialized"
-settings = (root / "project.godot").read_text()
-assert "autoload" in settings and "run/main_scene" in settings
-# The project's custom features, which Godot reads from the root key.
-assert settings.startswith('_custom_features="production,debug_tools"\\n'), settings
-# The project's settings from flags, in the staged project.godot.
-assert 'config/build_number=57\\nconfig/commit="abc"\\n' in settings, settings
-assert "--headless" in sys.argv
-assert sys.argv[-4:] == ["--script", "res://runtime.gd", "--", "user argument"]
-# Bazel's test contract and declared env reach the engine; the rest does not.
-assert os.environ["TEST_SHARD_INDEX"] == "1"
-runfiles = pathlib.Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"]
-assert (runfiles / "data.txt").read_text() == "declared runfile"
-assert pathlib.Path(os.environ["RUNFILES_DIR"]) / "demo" == runfiles
-assert pathlib.Path(os.environ["RUNFILES_MANIFEST_FILE"]).read_text() == "demo/data.txt " + str(runfiles / "data.txt")
-assert os.environ["DECLARED"] == "value"
-assert "UNDECLARED" not in os.environ
-print("source run passed")
-""",
-            )
             reports = base / "outputs"
-            runfiles = base / "runfiles"
-            (runfiles / "demo").mkdir(parents=True)
-            (runfiles / "demo/data.txt").write_text("declared runfile")
-            runfiles_manifest = base / "MANIFEST"
-            runfiles_manifest.write_text(
-                "demo/data.txt " + str(runfiles / "demo/data.txt")
-            )
             manifest.update(
-                editor=str(editor), main="runtime.gd", env={"DECLARED": "value"}
+                editor=str(fake_editor(base, CHECK_SOURCE_RUN)),
+                main="runtime.gd",
+                env={"DECLARED": "value"},
             )
             manifest["project"]["custom_features"] = ["production", "debug_tools"]
             manifest["project"]["flag_settings"] = {
@@ -545,18 +586,7 @@ print("source run passed")
             }
             with (
                 mock.patch("tools.inputs.runfiles.locate", side_effect=existing_runfile),
-                mock.patch.dict(
-                    os.environ,
-                    {
-                        "TEST_UNDECLARED_OUTPUTS_DIR": str(reports),
-                        "TEST_SHARD_INDEX": "1",
-                        "TEST_SRCDIR": str(runfiles),
-                        "TEST_WORKSPACE": "demo",
-                        "RUNFILES_DIR": str(runfiles),
-                        "RUNFILES_MANIFEST_FILE": str(runfiles_manifest),
-                        "UNDECLARED": "value",
-                    },
-                ),
+                mock.patch.dict(os.environ, bazel_test_environment(base, reports)),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 self.assertEqual(run(manifest, ["--", "user argument"]), 0)

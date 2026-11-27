@@ -175,6 +175,7 @@ _DESKTOP_APPS = [
         tags = ["godot_process"],
         target_compatible_with = compatible,
         deps = [
+            "//godot/platforms/private/tests:dex",
             "//tools/pack:pck_lib",
             "//tools/platforms:apple_bundle_lib",
             "//tools/platforms:native_symbols_lib",
@@ -228,6 +229,7 @@ _DESKTOP_APPS = [
         tags = ["godot_process"],
         target_compatible_with = _ANDROID_SDK,
         deps = [
+            "//godot/platforms/private/tests:dex",
             "//tools/pack:pck_lib",
             "//tools/platforms:apple_bundle_lib",
             "//tools/platforms:native_symbols_lib",
@@ -290,6 +292,7 @@ configured_outputs(
         tags = tags + ["godot_process"],
         target_compatible_with = _MACOS,
         deps = [
+            "//godot/platforms/private/tests:dex",
             "//tools/pack:pck_lib",
             "//tools/platforms:apple_bundle_lib",
             "//tools/platforms:native_symbols_lib",

@@ -116,35 +116,38 @@ def _resources_name_import_input_owners(env, target):
         "main/importer_data.txt": str(Label(_FIXTURE + ":import_data")),
     })
 
-def _test_resource_path_collision_fails(name):
+def _collision_test(name, resource_paths, message, deps = []):
+    """Assert that resources which give the fixture's files these resource paths fail with the message."""
     godot_resources(
         name = name + "_resources",
-        resource_paths = {_FIXTURE + ":main/other.gd": "main/main.gd"},
+        resource_paths = {_FIXTURE + ":" + file: path for file, path in resource_paths.items()},
         tags = ["manual"],
+        deps = deps,
+    )
+    failure_test(name, name + "_resources", message)
+
+def _test_resource_path_collision_fails(name):
+    _collision_test(
+        name,
+        {"main/other.gd": "main/main.gd"},
+        "Conflicting Godot resource paths res://main/main.gd",
         deps = [_FIXTURE + ":content"],
     )
-    failure_test(name, name + "_resources", "Conflicting Godot resource paths res://main/main.gd")
 
 def _test_file_directory_collision_fails(name):
-    godot_resources(
-        name = name + "_resources",
-        resource_paths = {_FIXTURE + ":main/other.gd": "generated"},
-        tags = ["manual"],
+    _collision_test(
+        name,
+        {"main/other.gd": "generated"},
+        "Conflicting Godot file/directory paths res://generated",
         deps = [_FIXTURE + ":content"],
     )
-    failure_test(name, name + "_resources", "Conflicting Godot file/directory paths res://generated")
 
 def _test_nonadjacent_file_directory_collision_fails(name):
-    godot_resources(
-        name = name + "_resources",
-        resource_paths = {
-            _FIXTURE + ":main/main.gd": "a",
-            _FIXTURE + ":main/other.gd": "a-b",
-            _FIXTURE + ":main/importer_data.txt": "a/b",
-        },
-        tags = ["manual"],
+    _collision_test(
+        name,
+        {"main/main.gd": "a", "main/other.gd": "a-b", "main/importer_data.txt": "a/b"},
+        "Conflicting Godot file/directory paths res://a",
     )
-    failure_test(name, name + "_resources", "Conflicting Godot file/directory paths res://a")
 
 # Two dependencies set one setting to different values, and the project overrides neither.
 def _test_conflicting_settings_fail(name):
@@ -156,37 +159,25 @@ def _test_conflicting_settings_fail(name):
     failure_test(name, run_view(name + "_run", name + "_project", [_FIXTURE + ":combined"]), "Conflicting Godot configuration")
 
 def _test_case_collision_fails(name):
-    godot_resources(
-        name = name + "_resources",
-        resource_paths = {
-            _FIXTURE + ":main/main.gd": "A.gd",
-            _FIXTURE + ":main/other.gd": "a.gd",
-        },
-        tags = ["manual"],
+    _collision_test(
+        name,
+        {"main/main.gd": "A.gd", "main/other.gd": "a.gd"},
+        "Portable Godot resource path collision",
     )
-    failure_test(name, name + "_resources", "Portable Godot resource path collision")
 
 def _test_case_file_directory_collision_fails(name):
-    godot_resources(
-        name = name + "_resources",
-        resource_paths = {
-            _FIXTURE + ":main/main.gd": "Assets",
-            _FIXTURE + ":main/other.gd": "assets/file.gd",
-        },
-        tags = ["manual"],
+    _collision_test(
+        name,
+        {"main/main.gd": "Assets", "main/other.gd": "assets/file.gd"},
+        "Portable Godot file/directory path collision",
     )
-    failure_test(name, name + "_resources", "Portable Godot file/directory path collision")
 
 def _test_directory_case_collision_fails(name):
-    godot_resources(
-        name = name + "_resources",
-        resource_paths = {
-            _FIXTURE + ":main/main.gd": "Assets/main.gd",
-            _FIXTURE + ":main/other.gd": "assets/other.gd",
-        },
-        tags = ["manual"],
+    _collision_test(
+        name,
+        {"main/main.gd": "Assets/main.gd", "main/other.gd": "assets/other.gd"},
+        "Portable Godot directory path collision",
     )
-    failure_test(name, name + "_resources", "Portable Godot directory path collision")
 
 def _test_undeclared_autoload_fails(name):
     godot_project(

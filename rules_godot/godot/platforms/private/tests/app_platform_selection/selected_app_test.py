@@ -9,7 +9,6 @@ feature tags of its environment.
 import argparse
 import plistlib
 import re
-import struct
 import subprocess
 import sys
 import tarfile
@@ -18,6 +17,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from godot.platforms.private.tests.dex import defined_classes
 from tools.pack.pck import pck_member, project_features, project_setting_keys
 from tools.platforms.apple_bundle import bundle_files
 from tools.platforms.native_symbols import require_slices
@@ -37,57 +37,6 @@ ADDON_RESOURCES = {
     "android": "main/libraries/android_addon.gd",
     "ios": "main/libraries/ios_addon.gd",
 }
-
-
-# A copy of the DEX reader of @autoload_dev//tools/artifact_tests:inspect_android_bundle.py, whose
-# library serves the public inspection helper only.
-def defined_classes(dex: bytes) -> set[str]:
-    """Read defined class names from standard little-endian DEX class_defs tables."""
-    # https://source.android.com/docs/core/runtime/dex-format#header-item
-    if len(dex) < 112 or dex[:4] != b"dex\n" or dex[7] != 0:
-        raise ValueError("Invalid DEX header")
-    version = dex[4:7]
-    if not version.isdigit() or not 35 <= int(version) <= 40:
-        raise ValueError("Unsupported DEX version")
-    size, header_size, endian = struct.unpack_from("<III", dex, 32)
-    if size != len(dex) or header_size != 112 or endian != 0x12345678:
-        raise ValueError("Invalid DEX size, header or byte order")
-
-    def table(field: int, width: int) -> tuple[int, int]:
-        count, offset = struct.unpack_from("<II", dex, field)
-        if count and (offset < header_size or offset + count * width > size):
-            raise ValueError("DEX table outside file")
-        return count, offset
-
-    string_count, strings = table(56, 4)
-    type_count, types = table(64, 4)
-    class_count, classes = table(96, 32)
-    result = set()
-    for index in range(class_count):
-        type_index = struct.unpack_from("<I", dex, classes + index * 32)[0]
-        if type_index >= type_count:
-            raise ValueError("DEX class type outside type table")
-        string_index = struct.unpack_from("<I", dex, types + type_index * 4)[0]
-        if string_index >= string_count:
-            raise ValueError("DEX descriptor outside string table")
-        offset = struct.unpack_from("<I", dex, strings + string_index * 4)[0]
-        for _ in range(5):
-            if offset >= size:
-                raise ValueError("DEX string outside file")
-            byte = dex[offset]
-            offset += 1
-            if not byte & 0x80:
-                break
-        else:
-            raise ValueError("Invalid DEX string length")
-        end = dex.find(b"\0", offset)
-        if end < 0:
-            raise ValueError("Unterminated DEX descriptor")
-        descriptor = dex[offset:end].decode("utf-8")
-        if not descriptor.startswith("L") or not descriptor.endswith(";"):
-            raise ValueError("Invalid DEX class descriptor")
-        result.add(descriptor[1:-1].replace("/", "."))
-    return result
 
 
 def packs(packed: bytes, path: str) -> bool:
@@ -130,6 +79,121 @@ def require_symbols(image: Path, cpus: set[str], flags: str, wanted: list[str]) 
         assert not missing, (cpu, image.name, missing)
 
 
+def inspect_pack(packed: bytes, operating_system: str, environment: str) -> None:
+    settings = pck_member(packed, "project.binary")
+    runtime_custom = project_features(settings)
+    # Godot applies the .simulator override at runtime when the feature is present.
+    assert "application/config/description.simulator" in project_setting_keys(settings)
+    assert ("simulator" in runtime_custom) == (environment == "simulator"), runtime_custom
+    assert not runtime_custom & {"arm64", "x86_64"}, runtime_custom
+    for owner, resource in ADDON_RESOURCES.items():
+        assert packs(packed, resource) == (owner == operating_system), (owner, resource)
+
+
+def inspect_sdk_versions(aapt: str, path: Path) -> None:
+    manifest = subprocess.check_output([aapt, "dump", "badging", str(path)], text=True)
+    minimum = re.search(r"^sdkVersion:'(\d+)'", manifest, re.MULTILINE)
+    target = re.search(r"^targetSdkVersion:'(\d+)'", manifest, re.MULTILINE)
+    assert minimum and target, manifest
+    assert (minimum[1], target[1]) == ("24", "36"), manifest
+
+
+def abi_directories(names: list[str], library: str) -> set[str]:
+    """Return the ABI directories that package a library."""
+    return {name.split("/")[-2] for name in names if name.endswith("/" + library)}
+
+
+def inspect_android(
+    files: dict[str, bytes], path: Path, cpus: set[str], aapt: str
+) -> None:
+    # sdk_bundle_test checks the AAB manifest with bundletool.
+    if path.suffix == ".apk":
+        inspect_sdk_versions(aapt, path)
+    classes = set().union(
+        *(defined_classes(data) for name, data in files.items() if name.endswith(".dex"))
+    )
+    assert "org.example.addon.Addon" in classes, (
+        "Selected project Java dependency missing"
+    )
+    assert "org.example.plugin.Plugin" in classes, "Selected project AAR missing"
+    assert "androidx.core.splashscreen.SplashScreen" in classes, (
+        "The internally provisioned splash screen is missing"
+    )
+    names = list(files)
+    abis = {"arm64-v8a" if cpu == "arm64" else "x86_64" for cpu in cpus}
+    extension = [name for name in names if name.endswith("/libhello_native.so")]
+    assert abi_directories(names, "libhello_native.so") == abis, extension
+    engine_libraries = [name for name in names if name.endswith("/libgodot_android.so")]
+    assert abi_directories(names, "libgodot_android.so") == abis, engine_libraries
+    for name in engine_libraries:
+        require_slices(
+            files[name],
+            {"arm64" if name.split("/")[-2] == "arm64-v8a" else "x86_64"},
+            "elf",
+            name,
+        )
+
+
+def inspect_ios_info(info: dict, environment: str) -> None:
+    assert info.get("GCSupportsControllerUserInteraction") is True, info
+    assert info["CFBundleIdentifier"] == "org.example.contract", info
+    assert info["CFBundleExecutable"] == "app", info
+    assert info["MinimumOSVersion"] == "15.0" and info["UIDeviceFamily"] == [
+        1,
+        2,
+    ], info
+    assert info["CFBundleSupportedPlatforms"] == [
+        "iPhoneOS" if environment == "device" else "iPhoneSimulator"
+    ], info
+
+
+def inspect_ios(files: dict[str, bytes], cpus: set[str], environment: str) -> None:
+    names = list(files)
+    plist_name = next(name for name in names if name.endswith(".app/Info.plist"))
+    info = plistlib.loads(files[plist_name])
+    assert any(name.endswith("/addon_notice.txt") for name in names), names
+    assert not any(name.endswith((".dex", ".aar")) for name in names), names
+    inspect_ios_info(info, environment)
+    bundle = plist_name.removesuffix("Info.plist")
+    binary = bundle + info["CFBundleExecutable"]
+    # The add-on's libraries link into the executable; the extension's library is
+    # its own framework, which exports the entry symbol.
+    framework = bundle + "Frameworks/hello.framework/hello"
+    # Symbols each image defines, and the external ones only for the framework:
+    # Godot looks up the exported entry.
+    expected = {
+        binary: (
+            "-U",
+            ["rules_godot_example_controllers", "rules_godot_example_swift"],
+        ),
+        framework: ("-gU", ["rules_godot_library_init"]),
+    }
+    with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
+        for name, (flags, wanted) in expected.items():
+            data = files[name]
+            require_slices(data, cpus, "ios_" + environment, name)
+            image = Path(directory) / Path(name).name
+            image.write_bytes(data)
+            require_symbols(image, cpus, flags, wanted)
+
+
+def inspect_desktop(
+    files: dict[str, bytes], packed: bytes, cpus: set[str], operating_system: str
+) -> None:
+    names = list(files)
+    binary = next(name for name in names if name.endswith("/app"))
+    require_slices(
+        files[binary],
+        cpus,
+        "macos" if operating_system == "macos" else "elf",
+        binary,
+    )
+    descriptor = pck_member(packed, "native/hello.gdextension").decode()
+    assert operating_system + "." in descriptor, descriptor
+    assert any(name.endswith("/libhello_native.so") for name in names), names
+    assert not any(name.endswith((".dex", ".aar")) for name in names), names
+
+
 def inspect(args: argparse.Namespace) -> None:
     operating_system = args.operating_system
     cpus = set(args.cpus.split(","))
@@ -141,104 +205,17 @@ def inspect(args: argparse.Namespace) -> None:
     ]
     files = read_files(path, operating_system)
     assert files, "Application archive is empty"
-    read_file = files.__getitem__
     names = list(files)
-    pack_name = next(name for name in names if name.endswith(".pck"))
-    packed = read_file(pack_name)
-    settings = pck_member(packed, "project.binary")
-    runtime_custom = project_features(settings)
-    # Godot applies the .simulator override at runtime when the feature is present.
-    assert "application/config/description.simulator" in project_setting_keys(settings)
-    assert ("simulator" in runtime_custom) == (environment == "simulator"), runtime_custom
-    assert not runtime_custom & {"arm64", "x86_64"}, runtime_custom
-    for owner, resource in ADDON_RESOURCES.items():
-        assert packs(packed, resource) == (owner == operating_system), (owner, resource)
+    packed = files[next(name for name in names if name.endswith(".pck"))]
+    inspect_pack(packed, operating_system, environment)
     if operating_system != "ios":
         assert not any(name.endswith("/addon_notice.txt") for name in names), names
     if operating_system == "android":
-        # sdk_bundle_test checks the AAB manifest with bundletool.
-        if path.suffix == ".apk":
-            manifest = subprocess.check_output(
-                [args.aapt, "dump", "badging", str(path)], text=True
-            )
-            minimum = re.search(r"^sdkVersion:'(\d+)'", manifest, re.MULTILINE)
-            target = re.search(r"^targetSdkVersion:'(\d+)'", manifest, re.MULTILINE)
-            assert minimum and target, manifest
-            assert (minimum[1], target[1]) == ("24", "36"), manifest
-        classes = set().union(
-            *(defined_classes(read_file(name)) for name in names if name.endswith(".dex"))
-        )
-        assert "org.example.addon.Addon" in classes, (
-            "Selected project Java dependency missing"
-        )
-        assert "org.example.plugin.Plugin" in classes, "Selected project AAR missing"
-        assert "androidx.core.splashscreen.SplashScreen" in classes, (
-            "The internally provisioned splash screen is missing"
-        )
-        abis = {"arm64-v8a" if cpu == "arm64" else "x86_64" for cpu in cpus}
-        extension = [name for name in names if name.endswith("/libhello_native.so")]
-        assert {name.split("/")[-2] for name in extension} == abis, extension
-        engine_libraries = [
-            name for name in names if name.endswith("/libgodot_android.so")
-        ]
-        assert {name.split("/")[-2] for name in engine_libraries} == abis, (
-            engine_libraries
-        )
-        for name in engine_libraries:
-            require_slices(
-                read_file(name),
-                {"arm64" if name.split("/")[-2] == "arm64-v8a" else "x86_64"},
-                "elf",
-                name,
-            )
+        inspect_android(files, path, cpus, args.aapt)
     elif operating_system == "ios":
-        plist_name = next(name for name in names if name.endswith(".app/Info.plist"))
-        info = plistlib.loads(read_file(plist_name))
-        assert info.get("GCSupportsControllerUserInteraction") is True, info
-        assert any(name.endswith("/addon_notice.txt") for name in names), names
-        assert not any(name.endswith((".dex", ".aar")) for name in names), names
-        assert info["CFBundleIdentifier"] == "org.example.contract", info
-        assert info["CFBundleExecutable"] == "app", info
-        assert info["MinimumOSVersion"] == "15.0" and info["UIDeviceFamily"] == [
-            1,
-            2,
-        ], info
-        assert info["CFBundleSupportedPlatforms"] == [
-            "iPhoneOS" if environment == "device" else "iPhoneSimulator"
-        ], info
-        bundle = plist_name.removesuffix("Info.plist")
-        binary = bundle + info["CFBundleExecutable"]
-        # The add-on's libraries link into the executable; the extension's library is
-        # its own framework, which exports the entry symbol.
-        framework = bundle + "Frameworks/hello.framework/hello"
-        # Symbols each image defines, and the external ones only for the framework:
-        # Godot looks up the exported entry.
-        expected = {
-            binary: (
-                "-U",
-                ["rules_godot_example_controllers", "rules_godot_example_swift"],
-            ),
-            framework: ("-gU", ["rules_godot_library_init"]),
-        }
-        with tempfile.TemporaryDirectory(prefix="godot-app-contents-") as directory:
-            for name, (flags, wanted) in expected.items():
-                data = read_file(name)
-                require_slices(data, cpus, "ios_" + environment, name)
-                image = Path(directory) / Path(name).name
-                image.write_bytes(data)
-                require_symbols(image, cpus, flags, wanted)
+        inspect_ios(files, cpus, environment)
     else:
-        binary = next(name for name in names if name.endswith("/app"))
-        require_slices(
-            read_file(binary),
-            cpus,
-            "macos" if operating_system == "macos" else "elf",
-            binary,
-        )
-        descriptor = pck_member(packed, "native/hello.gdextension").decode()
-        assert operating_system + "." in descriptor, descriptor
-        assert any(name.endswith("/libhello_native.so") for name in names), names
-        assert not any(name.endswith((".dex", ".aar")) for name in names), names
+        inspect_desktop(files, packed, cpus, operating_system)
 
 
 class SelectedAppTest(unittest.TestCase):

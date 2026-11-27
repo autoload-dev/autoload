@@ -143,6 +143,71 @@ _GENERATED = ["FileWrite", "TemplateExpand"]
 def _matches(file, path):
     return file.short_path == path or file.short_path.endswith("/" + path)
 
+def _import_inputs_by_project(every):
+    """Return the outputs of the _IMPORT_INPUT_MNEMONICS actions by owner and output directory."""
+    import_inputs = {}
+    for entry in every:
+        if entry.action.mnemonic not in _IMPORT_INPUT_MNEMONICS:
+            continue
+        outputs = entry.action.outputs.to_list()
+        for output in outputs:
+            import_inputs.setdefault((entry.owner, output.dirname), []).extend(outputs)
+    return import_inputs
+
+def _index_outputs(target):
+    """Index the outputs of the actions the target reaches, so that a build can follow them to their producers."""
+    every = target[GodotActionsInfo].every.to_list()
+    producers = {}
+    by_path = {}
+    for entry in every:
+        for output in entry.action.outputs.to_list():
+            producers[output] = entry
+
+            # Manifests name outputs by their mapped paths.
+            by_path[mapped_path(output)] = output
+    return struct(producers = producers, by_path = by_path, import_inputs = _import_inputs_by_project(every))
+
+def _requested(target):
+    """Return the files a build of the target requests: its default outputs, runfiles and validation outputs."""
+    info = target[DefaultInfo]
+    files = info.files.to_list()
+    if info.files_to_run and info.files_to_run.executable:
+        files += info.default_runfiles.files.to_list()
+    if OutputGroupInfo in target:
+        groups = target[OutputGroupInfo]
+        for group in ["_validation", "_hidden_top_level_INTERNAL_"]:
+            if group in dir(groups):
+                files += getattr(groups, group).to_list()
+    return files
+
+def _import_inputs(index, directory):
+    """Return what a build of an import directory needs: the unit's import manifest and the outputs of its project's import configuration."""
+    manifest = index.by_path.get(mapped_path(directory) + ".json")
+    if not manifest:
+        return []
+    configuration = index.by_path.get(json.decode(index.producers[manifest].action.content)["project_file"])
+    if not configuration:
+        return [manifest]
+    return [manifest] + index.import_inputs.get((index.producers[configuration].owner, configuration.dirname), [])
+
+def _build(index, built, file):
+    """Record the action that produces the file as built and return the files it needs in turn."""
+    entry = index.producers.get(file)
+    if not entry:
+        if file.is_directory and file.basename.endswith(".import"):
+            return _import_inputs(index, file)
+        return []
+    if entry.action in built:
+        return []
+    inputs = entry.action.inputs.to_list()
+    built[entry.action] = struct(
+        owner = entry.owner,
+        action = entry.action,
+        mnemonic = entry.action.mnemonic,
+        inputs = inputs,
+    )
+    return inputs
+
 def build_graph(target):
     """
     Return the actions a build of the target runs, with the producers of their inputs.
@@ -162,59 +227,25 @@ def build_graph(target):
         stable order, and `producers`, a dict from every produced file to its
         struct(owner, action).
     """
-    producers = {}
-    by_path = {}
-    import_inputs = {}
-    for entry in target[GodotActionsInfo].every.to_list():
-        for output in entry.action.outputs.to_list():
-            producers[output] = entry
-
-            # Manifests name outputs by their mapped paths.
-            by_path[mapped_path(output)] = output
-        if entry.action.mnemonic in _IMPORT_INPUT_MNEMONICS:
-            for output in entry.action.outputs.to_list():
-                import_inputs.setdefault((entry.owner, output.dirname), []).extend(entry.action.outputs.to_list())
-    info = target[DefaultInfo]
-    pending = info.files.to_list()
-    if info.files_to_run and info.files_to_run.executable:
-        pending += info.default_runfiles.files.to_list()
-    if OutputGroupInfo in target:
-        for group in ["_validation", "_hidden_top_level_INTERNAL_"]:
-            if group in dir(target[OutputGroupInfo]):
-                pending += getattr(target[OutputGroupInfo], group).to_list()
+    index = _index_outputs(target)
+    pending = _requested(target)
     seen = {}
     built = {}
 
     # Each round follows one more level of producers; the graph has fewer levels than
     # actions.
-    for _ in range(len(producers) + 1):
+    for _ in range(len(index.producers) + 1):
         following = []
         for file in pending:
             if file in seen:
                 continue
             seen[file] = True
-            entry = producers.get(file)
-            if entry and entry.action not in built:
-                inputs = entry.action.inputs.to_list()
-                built[entry.action] = struct(
-                    owner = entry.owner,
-                    action = entry.action,
-                    mnemonic = entry.action.mnemonic,
-                    inputs = inputs,
-                )
-                following += inputs
-            elif not entry and file.is_directory and file.basename.endswith(".import"):
-                manifest = by_path.get(mapped_path(file) + ".json")
-                if manifest:
-                    configuration = by_path.get(json.decode(producers[manifest].action.content)["project_file"])
-                    following.append(manifest)
-                    if configuration:
-                        following += import_inputs.get((producers[configuration].owner, configuration.dirname), [])
+            following += _build(index, built, file)
         if not following:
             break
         pending = following
     ordered = sorted(built.values(), key = lambda entry: (entry.mnemonic, entry.owner, [output.short_path for output in entry.action.outputs.to_list()]))
-    return struct(built = ordered, producers = producers)
+    return struct(built = ordered, producers = index.producers)
 
 def _selected(graph, mnemonic, owner, producing):
     return [
@@ -225,24 +256,30 @@ def _selected(graph, mnemonic, owner, producing):
            (not producing or [output for output in entry.action.outputs.to_list() if _matches(output, producing)])
     ]
 
-def _godot(graph, mnemonics):
+def _godot(graph, mnemonics, readers):
+    """Return the built Godot actions that a check covers: those with one of the mnemonics, or all for none, except the readers'."""
     return [
         entry
         for entry in graph.built
-        if entry.mnemonic.startswith("Godot") and (not mnemonics or entry.mnemonic in mnemonics)
+        if entry.mnemonic.startswith("Godot") and
+           (not mnemonics or entry.mnemonic in mnemonics) and
+           entry.mnemonic not in readers
     ]
 
 def _describe(entry):
     return "%s of %s producing %s" % (entry.mnemonic, entry.owner, ", ".join([output.short_path for output in entry.action.outputs.to_list()]))
 
+def _written_inputs(graph, entry):
+    """Return the contents of the inputs that analysis writes for a built action."""
+    producers = [graph.producers.get(file) for file in entry.inputs]
+    return [
+        producer.action.content or ""
+        for producer in producers
+        if producer and producer.action.mnemonic in _GENERATED
+    ]
+
 def _command_mentions(graph, entry, text):
-    if [argument for argument in entry.action.argv or [] if text in argument]:
-        return True
-    for file in entry.inputs:
-        producer = graph.producers.get(file)
-        if producer and producer.action.mnemonic in _GENERATED and text in (producer.action.content or ""):
-            return True
-    return False
+    return any([text in part for part in (entry.action.argv or []) + _written_inputs(graph, entry)])
 
 def _expect_some(env, entries, mnemonic, owner, producing):
     env.expect.where(mnemonic = mnemonic, owner = owner, producing = producing).that_int(len(entries)).is_greater_than(0)
@@ -305,12 +342,33 @@ def expect_built_not_read(env, graph, path, *, readers = [], mnemonics = []):
         mnemonics: The actions that a change of the file must leave cached; an empty
             list means every built Godot action.
     """
-    for entry in _godot(graph, mnemonics):
-        if entry.mnemonic in readers:
-            continue
+    for entry in _godot(graph, mnemonics, readers):
         env.expect.where(action = _describe(entry), path = path).that_bool(
             bool([file for file in entry.inputs if _matches(file, path)]),
         ).equals(False)
+
+def _reads_changed(entry, changed, path):
+    return bool([file for file in entry.inputs if file in changed or _matches(file, path)])
+
+def _downstream(graph, path):
+    """Return the built actions that read the file, directly or through outputs downstream of it."""
+    changed = {}
+    reached = {}
+
+    # Each round marks the actions one more level downstream of the file.
+    for _ in range(len(graph.built) + 1):
+        newly = [
+            entry
+            for entry in graph.built
+            if entry.action not in reached and _reads_changed(entry, changed, path)
+        ]
+        if not newly:
+            break
+        for entry in newly:
+            reached[entry.action] = True
+            for output in entry.action.outputs.to_list():
+                changed[output] = True
+    return reached
 
 def expect_unreached(env, graph, path, *, readers = [], mnemonics = []):
     """
@@ -324,25 +382,8 @@ def expect_unreached(env, graph, path, *, readers = [], mnemonics = []):
         mnemonics: The actions that a change of the file must leave cached; an empty
             list means every built Godot action.
     """
-    changed = {}
-    reached = {}
-
-    # Each round marks the actions one more level downstream of the file.
-    for _ in range(len(graph.built) + 1):
-        progress = False
-        for entry in graph.built:
-            if entry.action in reached:
-                continue
-            if [file for file in entry.inputs if file in changed or _matches(file, path)]:
-                reached[entry.action] = True
-                progress = True
-                for output in entry.action.outputs.to_list():
-                    changed[output] = True
-        if not progress:
-            break
-    for entry in _godot(graph, mnemonics):
-        if entry.mnemonic in readers:
-            continue
+    reached = _downstream(graph, path)
+    for entry in _godot(graph, mnemonics, readers):
         env.expect.where(action = _describe(entry), path = path).that_bool(entry.action in reached).equals(False)
 
 def expect_built_mentions(env, graph, mnemonic, text, *, mentioned = True, owner = None):
@@ -375,9 +416,7 @@ def expect_mentioned_only_by(env, graph, text, mnemonics):
         text: A substring of an argument or of a written input, such as a setting.
         mnemonics: The actions a change of the text reruns.
     """
-    for entry in _godot(graph, []):
-        if entry.mnemonic in mnemonics:
-            continue
+    for entry in _godot(graph, [], mnemonics):
         env.expect.where(action = _describe(entry), text = text).that_bool(_command_mentions(graph, entry, text)).equals(False)
 
 def expect_not_built(env, graph, mnemonic, *, owner = None):
@@ -401,6 +440,18 @@ def _mapped(text):
     parts = text.split("bazel-out/")
     return parts[0] + "".join(["bazel-out/cfg/" + part.partition("/")[2] for part in parts[1:]])
 
+def _output_paths(action):
+    return tuple(sorted([file.short_path for file in action.outputs.to_list()]))
+
+def _cache_key(action, written):
+    """Return what decides an action's cache key as JSON; written holds the content of each file that analysis writes, by path."""
+    inputs = action.inputs.to_list()
+    return json.encode({
+        "argv": [_mapped(argument) for argument in action.argv or []],
+        "inputs": sorted([mapped_path(file) for file in inputs]),
+        "written": sorted([written[file.path] for file in inputs if file.path in written]),
+    })
+
 def mapped_cache_keys(target, mnemonics):
     """
     Return what decides the cache key of each reached action under path mapping.
@@ -422,19 +473,11 @@ def mapped_cache_keys(target, mnemonics):
         for entry in every
         if entry.action.mnemonic == "FileWrite"
     }
-    keys = {}
-    for entry in every:
-        action = entry.action
-        if action.mnemonic not in mnemonics:
-            continue
-        outputs = tuple(sorted([file.short_path for file in action.outputs.to_list()]))
-        inputs = action.inputs.to_list()
-        keys[(entry.owner, action.mnemonic, outputs)] = json.encode({
-            "argv": [_mapped(argument) for argument in action.argv or []],
-            "inputs": sorted([mapped_path(file) for file in inputs]),
-            "written": sorted([written[file.path] for file in inputs if file.path in written]),
-        })
-    return keys
+    return {
+        (entry.owner, entry.action.mnemonic, _output_paths(entry.action)): _cache_key(entry.action, written)
+        for entry in every
+        if entry.action.mnemonic in mnemonics
+    }
 
 def written_manifests(target, suffix):
     """

@@ -1327,49 +1327,54 @@ class PackSelectionTest(GraphFixture):
             self.errors(reachable=True, entry_points=["res://unused.gd"]),
         )
 
-    def test_select_command_writes_content_and_rejects_conflicting_providers(
-        self,
-    ) -> None:
-        def run() -> tuple[int, str]:
-            (self.root / "manifest.json").write_text(
-                json.dumps(manifest), encoding="utf-8"
-            )
-            with contextlib.redirect_stderr(io.StringIO()) as stderr:
-                result = pack_selection.main(
-                    [
-                        "--manifest",
-                        str(self.root / "manifest.json"),
-                        "--graph",
-                        str(graph),
-                        "--project-manifest",
-                        str(project),
-                        "--output",
-                        str(self.root / "selection.json"),
-                        "--content",
-                        str(self.root / "content.json"),
-                        "--execroot",
-                        str(self.root),
-                    ]
-                )
-            return result, stderr.getvalue()
-
+    def select_command(self, manifest: dict, **graph: Any) -> tuple[int, str]:
+        """Run the selection's command line on the project; return its exit code and stderr."""
         project = self.scan_manifest()
-        graph = self.root / "graph.json"
-        graph.write_text(json.dumps(self.graph()), encoding="utf-8")
-        (self.root / "base.json").write_text(
-            json.dumps({"pack": "//:base", "resources": {"util.gd": "util.gd"}}),
+        (self.root / "graph.json").write_text(
+            json.dumps(self.graph(**graph)), encoding="utf-8"
+        )
+        (self.root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            result = pack_selection.main(
+                [
+                    "--manifest",
+                    str(self.root / "manifest.json"),
+                    "--graph",
+                    str(self.root / "graph.json"),
+                    "--project-manifest",
+                    str(project),
+                    "--output",
+                    str(self.root / "selection.json"),
+                    "--content",
+                    str(self.root / "content.json"),
+                    "--execroot",
+                    str(self.root),
+                ]
+            )
+        return result, stderr.getvalue()
+
+    def required_pack(self, name: str, pack: str, util: str) -> str:
+        """Write the content of a required pack that provides util.gd; return its file."""
+        (self.root / name).write_text(
+            json.dumps({"pack": pack, "resources": {"util.gd": util}}),
             encoding="utf-8",
         )
-        manifest = {
+        return name
+
+    def selection_manifest(self, required: list[str]) -> dict:
+        return {
             "pack": "//:dlc",
             "selection": "reachable",
             "entry_points": [],
             "extensions": [],
             "excluded": [],
             "extension_library_paths": [],
-            "required": ["base.json"],
+            "required": required,
         }
-        self.assertEqual((0, ""), run())
+
+    def test_select_command_writes_content_without_files_of_required_packs(self) -> None:
+        base = self.required_pack("base.json", "//:base", "util.gd")
+        self.assertEqual((0, ""), self.select_command(self.selection_manifest([base])))
         content = json.loads((self.root / "content.json").read_text(encoding="utf-8"))
         self.assertEqual(
             {
@@ -1388,28 +1393,26 @@ class PackSelectionTest(GraphFixture):
                 "required"
             ],
         )
-        (self.root / "other.json").write_text(
-            json.dumps({"pack": "//:other", "resources": {"util.gd": "other/util.gd"}}),
-            encoding="utf-8",
-        )
-        manifest["required"].append("other.json")
-        result, stderr = run()
+
+    def test_select_command_rejects_conflicting_providers(self) -> None:
+        required = [
+            self.required_pack("base.json", "//:base", "util.gd"),
+            self.required_pack("other.json", "//:other", "other/util.gd"),
+        ]
+        result, stderr = self.select_command(self.selection_manifest(required))
         self.assertEqual(2, result)
         self.assertIn("identity_conflict", stderr)
-        # A pack that builds prints its warnings.
+
+    def test_select_command_prints_the_warnings_of_a_pack_that_builds(self) -> None:
         self.source(".data/.keep")
         self.source(
             "main.gd",
             'var data = FileAccess.get_file_as_string("res://.data/data.json")\n',
         )
         self.source(".data/data.json", "{}")
-        graph.write_text(
-            json.dumps(self.graph(ignored=[".data/.keep", ".data/data.json"])),
-            encoding="utf-8",
+        result, stderr = self.select_command(
+            self.selection_manifest([]), ignored=[".data/.keep", ".data/data.json"]
         )
-        manifest["required"] = []
-        self.scan_manifest()
-        result, stderr = run()
         self.assertEqual(0, result)
         self.assertIn("res://main.gd:1: warning: ignored_reference: file_access", stderr)
 
