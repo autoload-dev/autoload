@@ -651,12 +651,12 @@ _godot_view = rule(
             """,
         ),
         "_project_config": attr.label(
-            default = Label("//tools/project:config"),
+            default = Label("//tools/project:project_config"),
             executable = True,
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools/editor_action:project"),
+            default = Label("//tools/editor_action:project_actions"),
             executable = True,
             cfg = "exec",
         ),
@@ -666,7 +666,7 @@ _godot_view = rule(
             cfg = "exec",
         ),
         "_metadata_index": attr.label(
-            default = Label("//tools/resources:index"),
+            default = Label("//tools/resources:metadata_index"),
             executable = True,
             cfg = "exec",
         ),

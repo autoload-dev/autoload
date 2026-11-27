@@ -371,7 +371,7 @@ A name states what its test proves or what its fixture reproduces, in the
 | Test target | The claim it proves: the subject, then the expected behavior, ending in `_test`. A variant of the same claim adds its configuration as a qualifier. The tests of a rules_testing suite take their function's name instead, `test_<claim>`. | `release_pack_excludes_gdunit_test`, `ios_app_links_extension_test` |
 | rules_testing test | A private function `_test_<claim>`. The targets it arranges take the test's name as a prefix and the tag `manual`. | `_test_pack_reads_declared_imports` |
 | Starlark test file and suite | `<subject>_tests.bzl`, which exports `<subject>_test_suite`. The package's BUILD file instantiates the suite under that name. | `pack_tests.bzl`, `pack_test_suite` |
-| Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `staging_test.py`, `test_rejects_missing_preset` |
+| Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `uids_test.py`, `test_ids_and_their_uid_texts_round_trip` |
 | `tests` subpackage | `<impl>/tests/`. The tests of one rule may get their own subpackage, named after the rule's glossary term. | `godot/private/tests/pack/` |
 | Fixture | What it reproduces, not the test that uses it | `project_with_disabled_extension` |
 | Consumer scenario | The package names what the user does. The smoke paths are `e2e/rules_godot/smoke/<operating_system>`. | `e2e/rules_godot/smoke/android`, `e2e/rules_godot/script_run` |

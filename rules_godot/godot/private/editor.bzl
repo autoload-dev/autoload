@@ -107,7 +107,7 @@ _godot_editor = rule(
             default = True,
         ),
         "_runner": attr.label(
-            default = Label("//tools/checkout:editor"),
+            default = Label("//tools/checkout:editor_view"),
             executable = True,
             cfg = config.exec("run"),
         ),

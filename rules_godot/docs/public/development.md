@@ -108,7 +108,7 @@ script error fails that build:
 
 ```console
 $ bazel build //path/to:pack
-ERROR: /work/path/to/BUILD.bazel:7:16: Validating //path/to:player failed: (Exit 1): validate failed: ...
+ERROR: /work/path/to/BUILD.bazel:7:16: Validating //path/to:player failed: (Exit 1): content_validation failed: ...
 //path/to:player: Godot reports errors in its scripts or scenes:
   res://player/player.gd:12: Parse Error: Identifier "speeed" not declared in the current scope.
   res://player/player.gd: Failed to load script "res://player/player.gd" with error "Parse error". (modules/gdscript/gdscript_resource_format.cpp:46)

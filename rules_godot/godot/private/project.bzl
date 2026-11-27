@@ -506,12 +506,12 @@ _godot_project = rule(
             cfg = reset_transition,
         ),
         "_project_config": attr.label(
-            default = Label("//tools/project:config"),
+            default = Label("//tools/project:project_config"),
             executable = True,
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools/editor_action:project"),
+            default = Label("//tools/editor_action:project_actions"),
             executable = True,
             cfg = "exec",
         ),

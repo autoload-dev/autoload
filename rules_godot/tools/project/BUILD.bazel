@@ -38,7 +38,7 @@ py_library(
 
 # The rules of godot/private run it through their private _project_config attributes.
 py_binary(
-    name = "config",
+    name = "project_config",
     srcs = ["config_command.py"],
     main = "config_command.py",
     visibility = ["//godot/private:__pkg__"],

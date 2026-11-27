@@ -1,7 +1,7 @@
 """
 Compose explicit Godot settings without evaluating arbitrary expressions.
 
-The command line of //tools/project:config is config_command.py.
+The command line of //tools/project:project_config is config_command.py.
 
 The statements it reads are statements.py's.
 

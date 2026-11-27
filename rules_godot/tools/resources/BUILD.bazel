@@ -71,8 +71,9 @@ py_library(
 )
 
 py_binary(
-    name = "index",
+    name = "metadata_index",
     srcs = ["index.py"],
+    main = "index.py",
     visibility = ["//godot/private:__pkg__"],
     deps = [":index_lib"],
 )

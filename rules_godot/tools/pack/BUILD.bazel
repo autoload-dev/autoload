@@ -40,8 +40,9 @@ py_library(
 )
 
 py_binary(
-    name = "writer",
+    name = "pack_writer",
     srcs = ["writer.py"],
+    main = "writer.py",
     visibility = ["//godot/private:__pkg__"],
     deps = [":writer_lib"],
 )

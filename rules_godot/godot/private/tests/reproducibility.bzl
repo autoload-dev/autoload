@@ -159,8 +159,16 @@ import_and_pack_reproducibility_test = rule(
             mandatory = True,
             doc = "The names of the godot_resources targets whose units have files with an importer.",
         ),
-        "_export_tool": attr.label(default = "//tools/editor_action:export", executable = True, cfg = "exec"),
-        "_import_tool": attr.label(default = "//tools/editor_action:project", executable = True, cfg = "exec"),
+        "_export_tool": attr.label(
+            default = "//tools/editor_action:godot_export",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_import_tool": attr.label(
+            default = "//tools/editor_action:project_actions",
+            executable = True,
+            cfg = "exec",
+        ),
     },
     toolchains = [_TOOLCHAIN],
 )

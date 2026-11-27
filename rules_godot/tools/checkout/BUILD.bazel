@@ -46,8 +46,9 @@ py_library(
 )
 
 py_binary(
-    name = "editor",
+    name = "editor_view",
     srcs = ["editor.py"],
+    main = "editor.py",
     visibility = ["//godot/private:__pkg__"],
     deps = [":editor_lib"],
 )

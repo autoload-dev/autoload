@@ -63,8 +63,9 @@ py_library(
 )
 
 py_binary(
-    name = "selection",
+    name = "pack_selection",
     srcs = ["selection.py"],
+    main = "selection.py",
     visibility = ["//godot/private:__pkg__"],
     deps = [":selection_lib"],
 )

@@ -44,8 +44,9 @@ py_library(
 )
 
 py_binary(
-    name = "validate",
+    name = "content_validation",
     srcs = ["validate.py"],
+    main = "validate.py",
     visibility = ["//godot/private:__pkg__"],
     deps = [":validate_lib"],
 )

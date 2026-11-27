@@ -3,9 +3,9 @@ load("@rules_python//python:defs.bzl", "py_test")
 package(default_testonly = True)
 
 py_test(
-    name = "staging_test",
+    name = "project_test",
     size = "small",
-    srcs = ["staging_test.py"],
+    srcs = ["project_test.py"],
     deps = [
         "//tools/inputs:manifest_lib",
         "//tools/inputs:mapped_paths_lib",

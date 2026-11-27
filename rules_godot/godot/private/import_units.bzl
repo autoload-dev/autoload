@@ -469,7 +469,7 @@ VALIDATION_ATTRS = {
         cfg = "exec",
     ),
     "_validation": attr.label(
-        default = Label("//tools/validation:validate"),
+        default = Label("//tools/validation:content_validation"),
         executable = True,
         cfg = "exec",
     ),

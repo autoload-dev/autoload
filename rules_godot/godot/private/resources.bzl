@@ -534,7 +534,7 @@ godot_resources = rule(
             providers = [GodotProjectInfo],
         ),
         "_actions": attr.label(
-            default = Label("//tools/editor_action:project"),
+            default = Label("//tools/editor_action:project_actions"),
             executable = True,
             cfg = "exec",
         ),

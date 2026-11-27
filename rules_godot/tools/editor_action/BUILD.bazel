@@ -39,8 +39,9 @@ py_library(
 # The rules of godot/private run the project actions; the ruleset's reproducibility tests
 # run them again.
 py_binary(
-    name = "project",
+    name = "project_actions",
     srcs = ["project.py"],
+    main = "project.py",
     visibility = [
         "//godot/private:__pkg__",
         "//godot/private/tests:__pkg__",
@@ -71,8 +72,9 @@ py_library(
 )
 
 py_binary(
-    name = "export",
+    name = "godot_export",
     srcs = ["export.py"],
+    main = "export.py",
     visibility = [
         "//godot/private:__pkg__",
         "//godot/private/tests:__pkg__",
