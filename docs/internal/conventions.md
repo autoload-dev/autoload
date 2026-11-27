@@ -20,7 +20,7 @@ the check does not load (see the [rule framework](#rule-framework)).
 |---|---|---|---|---|
 | [snake-case-package-paths](#snake-case-package-paths) | Package segments use lower snake case | Required | Every BUILD file, relative to the nearest module | Error |
 | [snake-case-target-names](#snake-case-target-names) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
-| [no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
+| [no-end-to-end-tests-in-public-documentation](#no-end-to-end-tests-in-public-documentation) | Public documentation does not reference end-to-end tests | Required | Concrete paths into `e2e/` in public guides and READMEs | Error |
 | [documented-targets-exist](#documented-targets-exist) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [application-content-under-main](#application-content-under-main) | Application content lives under its project's `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
 | [application-tests-under-tests](#application-tests-under-tests) | An application's tests live in its `tests/` package | Required | The test calls of every application project's root package | Error |
@@ -155,15 +155,18 @@ reviews fail. Missing required ownership or review evidence fails the check. Inc
 evidence is reported as `snake-case-target-names not checked`. This strictness does not change
 other conventions' coverage policy.
 
-## no-fixtures-in-public-documentation
+## no-end-to-end-tests-in-public-documentation
 
-**Public documentation does not reference test fixtures.** Public guides and READMEs show
-runnable examples, which users can copy, instead of named consumer scenarios.
-The check reports each line with a concrete path such as `e2e/rules_godot/smoke/linux` in Markdown under
-`docs/` and in every README, except internal documentation (the `docs/internal/` directories
-of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
-`tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
-belong in internal documentation.
+**Public documentation does not reference end-to-end tests.** Public guides and READMEs,
+add-on modules' READMEs included, show runnable examples from `examples/`, which users can
+copy, instead of the consumer scenarios and add-on end-to-end tests in `e2e/`.
+The check reports each line with a concrete project path into `e2e/`, such as
+`e2e/rules_godot/smoke` or `//e2e/addons/sqlite/database`, in Markdown under `docs/` and in
+every README, except internal documentation (the `docs/internal/` directories of the
+repository and the ruleset) and `AGENTS.md` files. Layout placeholders such as
+`e2e/addons/<module>/` are not references, nor is a directory tree that spells a path over
+several lines. Maintainer commands for end-to-end tests belong in internal documentation or
+`AGENTS.md` files, such as [addons/AGENTS.md](../../addons/AGENTS.md).
 
 ## documented-targets-exist
 
@@ -634,7 +637,7 @@ pre-push hook's, and the Linux job run this command.
 
 The rules that judge each file on its own,
 [snake-case-package-paths](#snake-case-package-paths), [no-claude-md](#no-claude-md),
-[no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation),
+[no-end-to-end-tests-in-public-documentation](#no-end-to-end-tests-in-public-documentation),
 [no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation),
 [region-headers-named-in-head](#region-headers-named-in-head),
 [definitions-before-callers](#definitions-before-callers) and

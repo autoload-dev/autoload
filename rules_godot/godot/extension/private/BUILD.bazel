@@ -22,6 +22,7 @@ bzl_library(
     deps = [
         "//godot/private:patches",
         "//godot/private:repository_templates",
+        "//godot/private:supply_chain",
     ],
 )
 

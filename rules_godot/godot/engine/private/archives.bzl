@@ -5,6 +5,7 @@ Sections: Editor archive, Template extraction, Templates archive, Repository rul
 """
 
 load("//godot/private:repository_templates.bzl", "fill_template", "starlark_list")
+load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata")
 load("//godot/private:versions.bzl", "require_supported_godot_version")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
@@ -63,6 +64,10 @@ def editor_archive_impl(ctx, *, _fail = fail):
         "{BINARY}": repr(ctx.attr.binary),
         "{DIGEST}": repr(ctx.attr.integrity),
     })
+    write_package_metadata(
+        ctx,
+        source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
+    )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
     # cache, local or remote, may reuse them.
@@ -321,6 +326,10 @@ def templates_archive_impl(ctx, *, _fail = fail):
         # Each declaration is set off by blank lines.
         "{TARGETS}": "".join(["\n" + target + "\n" for target in targets]),
     })
+    write_package_metadata(
+        ctx,
+        source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
+    )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
     # cache, local or remote, may reuse them.

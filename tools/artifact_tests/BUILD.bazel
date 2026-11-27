@@ -6,6 +6,12 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 # repository tooling, no API of the ruleset, and bring their own inspectors.
 package(default_visibility = ["//visibility:private"])
 
+# The SPDX inspector that spdx_packages_test runs in the consumer packages' tests.
+exports_files(
+    ["inspect_spdx.py"],
+    visibility = ["//e2e:__subpackages__"],
+)
+
 # The launch templates the rules of this package expand.
 exports_files(
     glob(["*.tpl"]),
@@ -52,4 +58,10 @@ py_binary(
     ],
     main = "inspect_ios_app.py",
     deps = [":native_symbols"],
+)
+
+py_library(
+    name = "inspect_spdx_lib",
+    srcs = ["inspect_spdx.py"],
+    visibility = ["//tools/artifact_tests/tests:__pkg__"],
 )

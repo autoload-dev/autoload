@@ -1,4 +1,23 @@
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+
 package(default_visibility = ["//visibility:public"])
+
+# The module's identity and license, which REPO.bazel gives every target.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = purl.bazel(
+        module_name(),
+        module_version(),
+    ),
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:MPL-2.0",
+)
 
 # Gazelle (`bazel run //tools/gazelle:update` at the repository's root) generates a
 # bzl_library per Starlark module of the ruleset's packages, named after its file; the
@@ -7,6 +26,8 @@ package(default_visibility = ["//visibility:public"])
 # library that the module behind them declares instead.
 # gazelle:resolve starlark @autoload_rules_godot//godot:defs.bzl //godot:defs
 # gazelle:resolve starlark @autoload_rules_godot//godot:providers.bzl //godot:providers
+# package_metadata has no bzl_library; its filegroup of the module's Starlark files serves.
+# gazelle:resolve starlark @package_metadata//purl:purl.bzl @package_metadata//purl:srcs
 # gazelle:resolve starlark @platforms//host:constraints.bzl @platforms//host:constraints_lib
 # gazelle:resolve starlark @rules_android//providers:providers.bzl @rules_android//rules:bzl
 # gazelle:resolve starlark @rules_android//rules:android_neverlink_aspect.bzl @rules_android//rules:bzl

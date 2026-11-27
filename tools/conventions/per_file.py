@@ -7,7 +7,9 @@ read files alone, so their library needs no Bazel.
 from tools.conventions.framework import Rule
 from tools.conventions.rules.definitions_before_callers import ReadingOrder
 from tools.conventions.rules.no_claude_md import AgentInstructions
-from tools.conventions.rules.no_fixtures_in_public_documentation import FixtureReferences
+from tools.conventions.rules.no_end_to_end_tests_in_public_documentation import (
+    EndToEndTestReferences,
+)
 from tools.conventions.rules.no_internal_links_in_public_documentation import (
     PublicDocumentationLinks,
 )
@@ -18,7 +20,7 @@ from tools.conventions.rules.snake_case_package_paths import PackageNames
 RULES: tuple[Rule, ...] = (
     PackageNames(),
     AgentInstructions(),
-    FixtureReferences(),
+    EndToEndTestReferences(),
     PublicDocumentationLinks(),
     RegionHeaders(),
     ReadingOrder(),

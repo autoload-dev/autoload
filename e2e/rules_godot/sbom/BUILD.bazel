@@ -1,0 +1,67 @@
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@supply_chain_tools//sbom:sbom.bzl", "sbom")
+load("@supply_chain_tools//sbom:spdx.bzl", "spdx")
+load("//tools/artifact_tests:spdx_packages_test.bzl", "spdx_packages_test")
+
+# A consumer writes the SBOM of its application: the packages the application is built from
+# and with, from the package metadata of its build graph.
+package(default_package_metadata = [":package_metadata"])
+
+# The application's own identity, which the SBOM describes.
+package_metadata(
+    name = "package_metadata",
+    purl = "pkg:generic/sbom_e2e",
+    # The targets that rules_godot's symbolic macros declare reach it too.
+    visibility = ["//visibility:public"],
+)
+
+godot_cc_extension(
+    name = "node",
+    srcs = ["native/node.cc"],
+    entry_symbol = "sbom_library_init",
+    resource_path = "native/node.gdextension",
+    deps = ["@godot_cpp"],
+)
+
+godot_project(
+    name = "sbom",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":sbom",
+    deps = [":node"],
+)
+
+godot_app(
+    name = "app",
+    application_id = "org.example.sbom",
+    pack = ":pack",
+)
+
+sbom(
+    name = "app_sbom",
+    target = ":app",
+)
+
+spdx(
+    name = "app_spdx",
+    sbom = ":app_sbom",
+)
+
+# Build-output test: the SBOM of a desktop application names the rules, the engine whose
+# runtime it ships and the godot-cpp its extension links, each with its license.
+spdx_packages_test(
+    name = "app_sbom_names_engine_and_godot_cpp_test",
+    size = "small",
+    packages = {
+        "pkg:bazel/autoload_rules_godot": "MPL-2.0",
+        "pkg:generic/godot": "MIT",
+        "pkg:generic/godot-cpp": "MIT",
+    },
+    spdx = ":app_spdx",
+)

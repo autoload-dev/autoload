@@ -56,7 +56,7 @@ py_library(
         "naming.py",
         "rules/definitions_before_callers.py",
         "rules/no_claude_md.py",
-        "rules/no_fixtures_in_public_documentation.py",
+        "rules/no_end_to_end_tests_in_public_documentation.py",
         "rules/no_internal_links_in_public_documentation.py",
         "rules/region_headers_named_in_head.py",
         "rules/shared_module_files_as_generated.py",
@@ -211,9 +211,9 @@ py_test(
 )
 
 py_test(
-    name = "no_fixtures_in_public_documentation_test",
+    name = "no_end_to_end_tests_in_public_documentation_test",
     size = "small",
-    srcs = ["rules/no_fixtures_in_public_documentation_test.py"],
+    srcs = ["rules/no_end_to_end_tests_in_public_documentation_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
