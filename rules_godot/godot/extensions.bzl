@@ -14,6 +14,7 @@ load(
     "godot_android_shell",
     "godot_engine_build",
     "godot_engine_source",
+    "godot_engine_tree",
 )
 load(
     "//godot/platforms/private:android_toolchains.bzl",
@@ -125,7 +126,10 @@ _BUILD_ATTRS = {
         allow_files = [".py"],
     ),
     "patches": attr.label_list(
-        doc = "Patch files applied in order to every recipe and the Android shell library.",
+        doc = """
+        Patch files applied in order, once, to the engine tree whose sources every recipe and
+        the Android shell library share.
+        """,
         allow_files = [".patch", ".diff"],
     ),
     "patch_strip": attr.int(doc = "Leading path components removed from patch filenames.", default = 1),
@@ -183,6 +187,7 @@ _ENGINE_RULES = {
     "godot_editor_archive": godot_editor_archive,
     "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,
+    "godot_engine_tree": godot_engine_tree,
     "godot_export_templates_archive": godot_export_templates_archive,
     "http_file": http_file,
 }

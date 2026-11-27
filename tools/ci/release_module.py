@@ -4,7 +4,7 @@ Print the module that a release tag `<module>-v<version>` releases, one `key=val
 - name and version: from the tag;
 - root: the module's directory, `rules_godot` for autoload_rules_godot and
   `addons/<directory>` for
-  the add-on module `autoload_<directory>` (addon-module-layout);
+  the add-on module `autoload_<directory>` (addon-module-named-after-directory);
 - bcr: whether the Bazel Central Registry gets the release, which its templates in
   .bcr/<root>/ decide;
 - test: the command that tests the release in a checkout of the tag: the registry test

@@ -2,8 +2,9 @@
 
 import unittest
 
-from tools.conventions.context import Call, Location
-from tools.conventions.rules.application_content import ApplicationContent
+from tools.conventions.rules.application_content_under_main import (
+    ApplicationContentUnderMain,
+)
 from tools.conventions.test_support import Record, RepositoryTest
 
 APP = "e2e/rules_godot/game"
@@ -20,7 +21,7 @@ def resources(srcs: list[str], resource_paths: dict[str, str] | None = None) -> 
     }
 
 
-class ApplicationContentTest(RepositoryTest):
+class ApplicationContentUnderMainTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
         self.write_consumer_modules()
@@ -29,26 +30,9 @@ class ApplicationContentTest(RepositoryTest):
         for name in sources.values():
             self.write(name, "")
         context = self.context(records=records, sources=sources)
-        return [item.location.path for item in ApplicationContent().evaluate(context)]
-
-    def test_an_application_keeps_its_tests_in_tests(self) -> None:
-        self.write("MODULE.bazel", "")
-        self.write("examples/game/project.godot", "")
-        self.write("examples/game/BUILD.bazel", "")
-        self.write("examples/game/tests/BUILD.bazel", "")
-        calls = tuple(
-            Call(Location(path, 1), kind, frozenset({"name"}), name)
-            for path, kind, name in (
-                ("examples/game/BUILD.bazel", "godot_test", "starts"),
-                ("examples/game/BUILD.bazel", "godot_metadata_sync", "update"),
-                ("examples/game/tests/BUILD.bazel", "gdunit_test", "suites"),
-            )
-        )
-        context = self.context(calls=calls)
-        self.assertEqual(
-            ["an application's tests live in examples/game/tests/: :starts"],
-            [item.message for item in ApplicationContent().evaluate(context)],
-        )
+        return [
+            item.location.path for item in ApplicationContentUnderMain().evaluate(context)
+        ]
 
     def test_physical_paths_are_checked_independently_of_resource_paths(self) -> None:
         self.assertEqual(
@@ -169,7 +153,10 @@ class ApplicationContentTest(RepositoryTest):
         )
         self.assertEqual(
             [APP + "/content/game.gd"],
-            [item.location.path for item in ApplicationContent().evaluate(context)],
+            [
+                item.location.path
+                for item in ApplicationContentUnderMain().evaluate(context)
+            ],
         )
 
     def test_shared_application_inputs_need_main_without_a_configuration_whitelist(
@@ -190,7 +177,7 @@ class ApplicationContentTest(RepositoryTest):
         context = self.context(records=[unit])
         self.assertEqual(
             ["not_checked"],
-            [item.status for item in ApplicationContent().evaluate(context)],
+            [item.status for item in ApplicationContentUnderMain().evaluate(context)],
         )
         group: Record = {
             "name": "//:configuration",
@@ -200,7 +187,7 @@ class ApplicationContentTest(RepositoryTest):
         context = self.context(records=[resources(["//:configuration"]), group])
         self.assertEqual(
             ["not_checked"],
-            [item.status for item in ApplicationContent().evaluate(context)],
+            [item.status for item in ApplicationContentUnderMain().evaluate(context)],
         )
 
 

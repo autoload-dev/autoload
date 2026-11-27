@@ -23,7 +23,7 @@ that share one SDK.
 
 # Module layout
 
-The conventions check enforces it (addon-module-layout,
+The conventions check enforces it (the add-on module rules of
 [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`,
