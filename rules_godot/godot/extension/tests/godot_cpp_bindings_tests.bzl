@@ -57,6 +57,7 @@ def _bindings(*, api = None, api_path = _API_PATH, execute = {}, **overrides):
             "_build_template": "godot_cpp.BUILD.tpl",
         } | overrides,
         files = {api_path: api or _api(), "LICENSE.md": "Copyright (c) godot-cpp contributors."},
+        path = lambda value: mocks.path(value) if str(value) == "LICENSE.md" else str(value),
         which = {"patch": _PATCH},
         execute = execute,
     )

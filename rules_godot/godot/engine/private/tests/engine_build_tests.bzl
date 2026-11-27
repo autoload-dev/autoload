@@ -83,7 +83,7 @@ _LICENSE = mocks.path(_TREE).dirname + "/LICENSE.txt"
 def _paths(path):
     """Bazel's paths: a struct for the tree descriptor, whose directory the recipe links."""
     mapping = path or str
-    return lambda value: mocks.path(value) if str(value) == str(_TREE) else mapping(value)
+    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE) else mapping(value)
 
 def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(

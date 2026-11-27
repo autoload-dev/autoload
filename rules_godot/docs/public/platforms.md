@@ -1134,5 +1134,5 @@ The SBOM reads the graph from analysis and builds none of the application's outp
 `package_metadata` must be visible to rules_godot, since the targets its macros declare in
 your package carry it too. The SBOM names `pkg:bazel/autoload_rules_godot` (MPL-2.0), and
 `pkg:generic/godot@<version>` and `pkg:generic/godot-cpp` (MIT), whose `checksum` names the
-archive they come from. Godot is one package: the licenses of the libraries it bundles are
+archive they come from where rules_godot knows its digest. Godot is one package: the licenses of the libraries it bundles are
 not listed apart.

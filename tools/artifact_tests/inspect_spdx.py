@@ -16,14 +16,22 @@ from pathlib import Path
 def licenses(document: dict) -> dict[str, set[str]]:
     """
     The declared licenses of the document's packages, by the name part of their package URL:
-    without the version and qualifiers, which tell one build of a package from another.
+    without the version and qualifiers, which tell one build of a package from another. The
+    same package URL twice is an error.
     """
+    purls = [
+        (reference["referenceLocator"], package.get("licenseDeclared", ""))
+        for package in document["packages"]
+        for reference in package.get("externalRefs", [])
+        if reference["referenceType"] == "purl"
+    ]
+    if len({purl for purl, _ in purls}) != len(purls):
+        raise ValueError(
+            f"the document names a package twice: {sorted(p for p, _ in purls)}"
+        )
     found: dict[str, set[str]] = {}
-    for package in document["packages"]:
-        for reference in package.get("externalRefs", []):
-            if reference["referenceType"] == "purl":
-                name = reference["referenceLocator"].partition("@")[0].partition("?")[0]
-                found.setdefault(name, set()).add(package.get("licenseDeclared", ""))
+    for purl, license in purls:
+        found.setdefault(purl.partition("@")[0].partition("?")[0], set()).add(license)
     return found
 
 

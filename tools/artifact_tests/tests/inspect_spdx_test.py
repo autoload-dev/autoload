@@ -27,6 +27,11 @@ class InspectSpdxTest(unittest.TestCase):
             licenses(document),
         )
 
+    def test_the_same_package_url_twice_is_rejected(self) -> None:
+        package = _package("pkg:bazel/sqlite3@3.54.1", "blessing")
+        with self.assertRaisesRegex(ValueError, "twice"):
+            licenses({"packages": [package, package]})
+
     def test_missing_packages_and_other_licenses_are_problems(self) -> None:
         found = {
             "pkg:bazel/sqlite3": {"blessing"},
