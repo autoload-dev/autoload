@@ -163,13 +163,18 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 		return
 	}
 	rv := resolver{c: c, ix: ix, project: getConfig(c).project, from: from}
-	deps := rv.all(ui.refs, nil)
-	runtime := make([]reference, 0, len(ui.literals))
-	for _, literal := range ui.literals {
-		runtime = append(runtime, reference{Kind: kindRes, Value: literal})
+	deps := map[string]bool{}
+	if !ui.kept["deps"] {
+		deps = rv.all(ui.refs, nil)
+		setLabels(r, "deps", deps)
 	}
-	setLabels(r, "deps", deps)
-	setLabels(r, "runtime_deps", rv.all(runtime, deps))
+	if !ui.kept["runtime_deps"] {
+		runtime := make([]reference, 0, len(ui.literals))
+		for _, literal := range ui.literals {
+			runtime = append(runtime, reference{Kind: kindRes, Value: literal})
+		}
+		setLabels(r, "runtime_deps", rv.all(runtime, deps))
+	}
 }
 
 // all returns the labels, relative to the target, of the targets that provide the

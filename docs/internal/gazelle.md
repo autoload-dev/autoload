@@ -93,7 +93,8 @@ a resolve directive.
   lists, such as a `godot_addon`, belongs to no unit. Labels and generated files in `srcs` stay.
 - **`# keep`.** On a target, Gazelle leaves the whole target alone; on an attribute, that
   attribute; on one entry of `deps`, that entry, such as an umbrella dependency the files do not
-  reference.
+  reference. The language resolves nothing for a kept `deps` or `runtime_deps`, so a
+  reference that several targets provide reports nothing there.
 - **Renamed projects and tests.** A `godot_project` matches by `project_file`, a `gdunit_test`
   by `suites`, so either may carry another name.
 - **Opaque `srcs`.** A package with a `godot_resources` target whose `srcs` is no list of

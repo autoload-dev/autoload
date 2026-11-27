@@ -1,0 +1,20 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+
+godot_cc_extension(
+    name = "twin",
+    srcs = ["twin.cc"],
+)
+
+godot_cc_extension(
+    name = "static_twin",
+    srcs = ["twin.cc"],
+)
+
+godot_resources(
+    name = "twins",
+    srcs = ["twins.gd"],
+    prefix = "twins",
+    # Both extensions register Twin; this scene uses the first.
+    deps = [":twin"],  # keep
+)
