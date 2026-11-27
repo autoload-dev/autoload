@@ -23,10 +23,10 @@ try:
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import configure  # type: ignore[no-redef]
-    import custom_modules  # type: ignore[no-redef]
-    from lock import merge, update  # type: ignore[no-redef]
-    from patches import apply_patches  # type: ignore[no-redef]
+    import configure
+    import custom_modules
+    from lock import merge, update
+    from patches import apply_patches
 
 
 def copy_tree(root: Path, files: list[str], destination: Path) -> None:

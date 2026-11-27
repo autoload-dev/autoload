@@ -5,6 +5,9 @@ extends SceneTree
 ## listed file named *_case.txt, which holds "pass", "fail" or "error"; an error case reports
 ## an engine error and passes, because the exit code alone decides the test.
 
+# Inferred, the constant keeps the preloaded script's own type and its static members;
+# typed as GDScript, each call of them is an unsafe method access, and a class_name would
+# add a global name to every project the script is staged into.
 @warning_ignore("inferred_declaration")
 const Cases := preload("res://addons/rules_godot_test/cases.gd")
 

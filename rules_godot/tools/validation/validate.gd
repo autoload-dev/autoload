@@ -16,6 +16,9 @@ extends SceneTree
 # filesystem scan; what the editor reports or writes from then until it quits is not
 # recorded.
 
+# Inferred, the constant keeps the preloaded script's own type and its static members;
+# typed as GDScript, each call of them is an unsafe method access, and a class_name would
+# add a global name to every project the script is staged into.
 @warning_ignore("inferred_declaration")
 const Record = preload("record.gd")
 

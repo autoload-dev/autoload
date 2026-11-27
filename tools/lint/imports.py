@@ -121,7 +121,7 @@ def main(argv: list[str]) -> int:
         contracts = {found for path in argv if (found := contracts_of(Path(path)))}
         found = [line for path in sorted(contracts) for line in findings(path)]
     # Any failure, such as a module grimp cannot parse, means the contracts went unchecked.
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         print(f"{type(error).__name__}: {error}", file=sys.stderr)
         return 2
     for line in found:

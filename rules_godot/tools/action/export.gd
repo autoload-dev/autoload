@@ -6,6 +6,9 @@ extends EditorExportPlugin
 # this plugin: its files are in a .gdignore directory, and the project
 # settings and project.godot it packs are those from before the plugin joined.
 
+# Inferred, the constant keeps the preloaded script's own type and its static members;
+# typed as GDScript, each call of them is an unsafe method access, and a class_name would
+# add a global name to every project the script is staged into.
 @warning_ignore("inferred_declaration")
 const Record = preload("record.gd")
 const PLUGIN: String = Record.DIRECTORY + "plugin.cfg"

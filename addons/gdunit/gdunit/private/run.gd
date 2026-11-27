@@ -14,6 +14,9 @@ extends SceneTree
 ## nodes fail no run, as GdUnit's command line judges them; the log names the tests that
 ## left them.
 
+# Inferred, the constant keeps the preloaded script's own type and its static members;
+# typed as GDScript, each call of them is an unsafe method access, and a class_name would
+# add a global name to every project the script is staged into.
 @warning_ignore("inferred_declaration")
 const Cases := preload("res://addons/rules_godot_test/cases.gd")
 

@@ -10,6 +10,9 @@ extends EditorPlugin
 # the editor and no node name takes part. The enum order of the manager's actions is the one
 # of editor/settings/editor_build_profile.h; a change shows as a failed lookup.
 
+# Inferred, the constant keeps the preloaded script's own type and its static members;
+# typed as GDScript, each call of them is an unsafe method access, and a class_name would
+# add a global name to every project the script is staged into.
 @warning_ignore("inferred_declaration")
 const Record = preload("res://addons/rules_godot_action/record.gd")
 

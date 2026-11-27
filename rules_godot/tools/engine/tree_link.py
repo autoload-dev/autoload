@@ -28,9 +28,9 @@ try:
     from .patches import Patches, apply_patches, touched
     from .tree import entries
 except ImportError:
-    import class_db  # type: ignore[no-redef]
-    from patches import Patches, apply_patches, touched  # type: ignore[no-redef]
-    from tree import entries  # type: ignore[no-redef]
+    import class_db
+    from patches import Patches, apply_patches, touched
+    from tree import entries
 
 # ==== Links ===================================================================
 

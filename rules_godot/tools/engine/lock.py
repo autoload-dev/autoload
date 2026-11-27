@@ -17,7 +17,7 @@ try:
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import configure  # type: ignore[no-redef]
+    import configure
 
 
 def _write(
