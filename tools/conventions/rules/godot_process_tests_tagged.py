@@ -1,5 +1,6 @@
 """
-RG026: a test that starts a Godot process carries the godot_process tag.
+godot-process-tests-tagged: a test that starts a Godot process carries the godot_process
+tag.
 
 godot_test, and every test operation built on it, adds the tag itself unless the test is a
 smoke test, so the rule judges the other tests: those that build or run Godot's outputs.
@@ -31,7 +32,7 @@ EXEMPT = frozenset({"analysis_only", "manual", "source_engine", "starlark_analys
 
 class GodotProcessTests:
     info = RuleInfo(
-        "RG026",
+        "godot-process-tests-tagged",
         "Tests that start a Godot process carry the godot_process tag",
     )
 

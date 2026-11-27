@@ -20,6 +20,7 @@ from tools.conventions.rules.application_tests_under_tests import (
 from tools.conventions.rules.backends_under_native import BackendsUnderNative
 from tools.conventions.rules.documented_targets_exist import CommandLabels
 from tools.conventions.rules.engine_files_under_engines import EngineLayout
+from tools.conventions.rules.godot_process_tests_tagged import GodotProcessTests
 from tools.conventions.rules.linked_skills import SharedSkills
 from tools.conventions.rules.no_component_names_in_tooling import NoComponentNames
 from tools.conventions.rules.no_godot_in_addon_modules import NoGodotRunsInAddonModules
@@ -29,6 +30,7 @@ from tools.conventions.rules.no_stray_entries_in_addon_module_roots import (
 from tools.conventions.rules.no_test_only_dependencies_in_addon_modules import (
     NoTestOnlyDependenciesInAddonModules,
 )
+from tools.conventions.rules.production_independent_of_tests import ProductionIsolation
 from tools.conventions.rules.project_named_after_directory import ProjectTargetNames
 from tools.conventions.rules.projects_at_fixed_places import ProjectPlaces
 from tools.conventions.rules.registry_templates_have_their_module import (
@@ -36,9 +38,7 @@ from tools.conventions.rules.registry_templates_have_their_module import (
 )
 from tools.conventions.rules.registry_test_module_in_bcr import RegistryTestModules
 from tools.conventions.rules.release_archives_without_tests import ReleasedWithoutTests
-from tools.conventions.rules.rg002 import TargetNames
-from tools.conventions.rules.rg012 import ProductionIsolation
-from tools.conventions.rules.rg026 import GodotProcessTests
+from tools.conventions.rules.snake_case_target_names import TargetNames
 from tools.conventions.rules.unique_extension_names import UniqueExtensionNames
 
 # The rules of the add-on modules' layout, which every module the generator writes satisfies.

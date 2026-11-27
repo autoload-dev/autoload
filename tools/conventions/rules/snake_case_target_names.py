@@ -1,4 +1,7 @@
-"""RG002: authored targets use lower snake case; ruleset-owned roles use dots."""
+"""
+snake-case-target-names: authored targets use lower snake case; ruleset-owned roles use
+dots.
+"""
 
 from collections.abc import Iterable, Mapping
 from dataclasses import replace
@@ -97,7 +100,7 @@ def _shared_library(kind: str, targets: Iterable[Target], name: str) -> bool:
 
 class TargetNames:
     info = RuleInfo(
-        "RG002",
+        "snake-case-target-names",
         "Ordinary target names use lower snake case",
     )
 
@@ -122,7 +125,8 @@ class TargetNames:
                     if roots not in self.reviewed.get(call.location.path, ()):
                         yield Finding(
                             call.location,
-                            f"computed macro roots {', '.join(roots) or '(none)'} need a review in RG002",
+                            f"computed macro roots {', '.join(roots) or '(none)'} need "
+                            "a review in REVIEWED of snake_case_target_names.py",
                             "not_checked",
                             required=self._owns_namespace(owner),
                         )
@@ -157,7 +161,8 @@ class TargetNames:
         ):
             yield Finding(
                 Location(path, 1),
-                f"reviewed roots {', '.join(roots)} match no computed macro call; remove them from RG002",
+                f"reviewed roots {', '.join(roots)} match no computed macro call; "
+                "remove them from REVIEWED of snake_case_target_names.py",
             )
 
     @staticmethod

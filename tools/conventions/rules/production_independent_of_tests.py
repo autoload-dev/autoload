@@ -1,5 +1,6 @@
 """
-RG012: production targets do not consume test-owned inputs that Bazel lets through.
+production-independent-of-tests: production targets do not consume test-owned inputs that
+Bazel lets through.
 
 A test scope is a tests/ directory below the root of a project or add-on, or elsewhere
 below the root of its module. Paths are measured from the owning module, so a consumer
@@ -37,7 +38,7 @@ def _test_only(context: Context, module: Module, labels: Iterable[str]) -> froze
 
 class ProductionIsolation:
     info = RuleInfo(
-        "RG012",
+        "production-independent-of-tests",
         "Production targets are independent of test scopes",
     )
 

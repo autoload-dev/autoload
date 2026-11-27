@@ -93,19 +93,19 @@ py_library(
         "rules/backends_under_native.py",
         "rules/documented_targets_exist.py",
         "rules/engine_files_under_engines.py",
+        "rules/godot_process_tests_tagged.py",
         "rules/linked_skills.py",
         "rules/no_component_names_in_tooling.py",
         "rules/no_godot_in_addon_modules.py",
         "rules/no_stray_entries_in_addon_module_roots.py",
         "rules/no_test_only_dependencies_in_addon_modules.py",
+        "rules/production_independent_of_tests.py",
         "rules/project_named_after_directory.py",
         "rules/projects_at_fixed_places.py",
         "rules/registry_templates_have_their_module.py",
         "rules/registry_test_module_in_bcr.py",
         "rules/release_archives_without_tests.py",
-        "rules/rg002.py",
-        "rules/rg012.py",
-        "rules/rg026.py",
+        "rules/snake_case_target_names.py",
         "rules/unique_extension_names.py",
     ],
     deps = [
@@ -199,9 +199,9 @@ py_test(
 )
 
 py_test(
-    name = "rg002_test",
+    name = "snake_case_target_names_test",
     size = "small",
-    srcs = ["rules/rg002_test.py"],
+    srcs = ["rules/snake_case_target_names_test.py"],
     deps = [
         ":context_lib",
         ":rules_lib",
@@ -240,9 +240,9 @@ py_test(
 )
 
 py_test(
-    name = "rg012_test",
+    name = "production_independent_of_tests_test",
     size = "small",
-    srcs = ["rules/rg012_test.py"],
+    srcs = ["rules/production_independent_of_tests_test.py"],
     deps = [
         ":context_lib",
         ":rules_lib",
@@ -372,9 +372,9 @@ py_test(
 )
 
 py_test(
-    name = "rg026_test",
+    name = "godot_process_tests_tagged_test",
     size = "small",
-    srcs = ["rules/rg026_test.py"],
+    srcs = ["rules/godot_process_tests_tagged_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

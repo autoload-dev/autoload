@@ -5,7 +5,10 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from tools.conventions.context import Call, Context, Location
-from tools.conventions.rules.rg012 import ProductionIsolation, test_scope
+from tools.conventions.rules.production_independent_of_tests import (
+    ProductionIsolation,
+    test_scope,
+)
 from tools.conventions.test_support import Record, RepositoryTest
 
 # A regression project of the consumer module at tests/: its labels are module-relative.

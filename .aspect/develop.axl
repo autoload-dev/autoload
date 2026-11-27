@@ -27,7 +27,7 @@ TOOL_CHECKS = [
 _NO_TESTS = 4
 
 # The test tiers, each a config of shared.bazelrc: `fast` leaves out the tests that start a
-# Godot process (RG026), `all` runs every test this host can run.
+# Godot process (godot-process-tests-tagged), `all` runs every test this host can run.
 TIERS = ["fast", "all"]
 
 # The argument that lets a task's steps go on after one fails.
