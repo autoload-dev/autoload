@@ -1,7 +1,7 @@
 # Maintainer tools
 
-This guide covers the resource-graph query; Godot BUILD declarations come from Gazelle. Run its commands from
-`rules_godot/`. For repository checks and timing, read the
+This guide covers the resource-graph query; Godot BUILD declarations come from Gazelle.
+Run its commands from `rules_godot/`. For repository checks and timing, read the
 [verification policy](../../../docs/internal/verification.md); for a fixture or environment
 setup, use the relevant [verification recipe](../../../docs/internal/verification-recipes.md).
 For application execution, content validation, GdUnit, editor views and sidecars, see

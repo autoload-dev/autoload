@@ -77,8 +77,8 @@ execution](docs/internal/verification-recipes.md#remote-execution-with-buildbudd
 # Worktrees
 
 Take worktrees from the Aspect CLI's pool, which keeps a warm Bazel server and output base
-per worktree slot: `aspect worktree add <branch> --create=origin/main`, and `aspect worktree release
-<branch>` when done. Claude Code's and Codex's worktrees do so through hooks; how is in
+per worktree slot: `aspect worktree add <branch> --create=origin/main`, and `aspect worktree
+release <branch>` when done. Claude Code's and Codex's worktrees do so through hooks; how is in
 [agent setup](docs/internal/agent-setup.md#worktrees).
 
 <a id="bazel-package-boundaries"></a>

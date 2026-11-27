@@ -27,7 +27,7 @@ and
    and declined files. If CodeScene is unavailable, say so and leave out its subagent.
 3. Run
    `bazel run //tools/conventions -- --rule region-headers-named-in-head --rule definitions-before-callers`
-   the lint check of Python:
+   and the lint check of Python:
    `aspect exec -- bazel build --config=lint --target_pattern_file=root.targets` in the root
    and `aspect exec -- bazel build --config=lint //...` in `rules_godot/`, and the file lint
    of GDScript, Markdown and the other files without targets: `bazel run //tools/lint:files`
