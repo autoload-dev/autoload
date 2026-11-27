@@ -16,7 +16,7 @@ Godot features are covered from one passing cell.
 |---|---|---|---|
 | Linux desktop: ruleset behavior and desktop app | Linux CI; local Linux for focused feedback | CI runner CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
 | macOS desktop: ruleset behavior and desktop app | macOS CI; local macOS for focused feedback | Host CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
-| Source-built engines | Source engine workflow: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
+| Source-built engines | Source engine workflow: macOS ARM64 CI with Xcode and the Android SDK/NDK, and Linux CI for the cases Linux can build; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
 | Android packaging | The ruleset's tests in the Linux and macOS host jobs, with SDK/NDK and Java 21; the consumer's tests tagged `android` in the Linux job | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle |
 | Android release symbols | The host jobs, with Android packaging | Optimized native compilation, debug information and stripping, selected by the test's transition | Match retained symbols/Build IDs/DWARF to delivered libraries |
 | iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS job; the consumer's tests tagged `ios` in the macOS job | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the Source engine workflow | Build-output tests of configured products; the consumer's iOS smoke app; a device link is not a provisioned device IPA |
@@ -118,16 +118,19 @@ and shell scripts, are linted by the [file lint](verification-recipes.md#the-fil
 
 The source-engine tests are the most expensive and the least likely to change with a
 commit, so CI has no host job for them. The
-[Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them,
-`source-engine:full`, on each push of a pull request whose changes reach them or that
-carries the label `source-engine`, and on manual dispatch for any branch. A change reaches them when it touches the engine recipes, repositories or
-their tools, the engines of the examples or of the patched-engine scenario, or a package
+[Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them on
+macOS, `source-engine:full`, and on Linux those Linux can build, `source-engine:linux`: the
+Android engines and the applications' Linux engines, without the iOS cases and the
+macOS-only patched-engine scenario (`aspect ci source-engine --host=<host>`, macOS by
+default). It runs them on each push of a pull request whose
+changes reach them or that carries the label `source-engine`, and on manual dispatch for any
+branch. A change reaches them when it touches the engine recipes, repositories or their tools, the engines of the examples or of the patched-engine scenario, or a package
 with a test tagged `source_engine`
 ([source_engine_changes.py](../../tools/ci/source_engine_changes.py) holds the list and reads
 the tagged packages from their BUILD files). Its job is skipped, not failed, on other pull
 requests; it is no required check. Code that every build shares, such as the ruleset's rules
 or `shared.bazelrc`, does not reach them, nor does a change of how the workflow runs them,
-such as the work `source-engine:full`: a pull request that may break source-built engines
+such as the work `source-engine:full` or `source-engine:linux`: a pull request that may break source-built engines
 that way carries the label. Stale
 recipe pins need no dispatch to show: `//examples/engines/simulation:pinned_test`, a fast
 test that the pre-push hook runs too, fails on a pin whose inputs changed, such as
@@ -141,8 +144,8 @@ root module tagged `source_engine` join them in `source-engine:full`.
 
 ### Apple hosts
 
-The work that needs a macOS runner is the macOS job, with the apps with source-built engines
-and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
+The work that needs a macOS runner is the macOS job, with the iOS apps, and the Source engine
+workflow's macOS job, with the source-built iOS engines and the patched-engine scenario. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
 their tools and repository cache on their own disk between jobs and share a Bazel cache
 server on the VM's host with the host's own builds. The VM, its runners and its

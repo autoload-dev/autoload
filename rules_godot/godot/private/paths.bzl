@@ -5,7 +5,7 @@ Sections: Resource paths, Sidecars and ignores, Namespace validation, Path resol
 Execution paths, Extension loaders.
 """
 
-visibility(["//godot/engine/private", "//godot/extension", "//godot/platforms/private", "//godot/private/tests"])
+visibility(["//godot/engine/private", "//godot/extension/private", "//godot/platforms/private", "//godot/private/tests"])
 
 # ==== Resource paths ==========================================================
 

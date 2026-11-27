@@ -75,7 +75,7 @@ def _in_namespace(root: str, name: str) -> bool:
 
 def _in_dotted_namespace(root: str, name: str) -> bool:
     # rules_android and rules_apple derive delivered basenames from a slash suffix, so each
-    # segment after a slash restarts at the root (see godot/app.bzl).
+    # segment after a slash restarts at the root (see godot/private/app.bzl).
     for index, segment in enumerate(name.split("/")):
         if index and segment == root:
             continue

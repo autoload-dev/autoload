@@ -197,12 +197,17 @@ linux = _ci_task("linux", "Run CI's Linux job: every check, then every test but 
 macos = _ci_task("macos", "Run CI's macOS job: every test but those tagged android or source_engine.")
 
 def _source_engine_impl(ctx: TaskContext) -> int:
+    if ctx.args.host == "linux":
+        return run_work(ctx, "source-engine:linux")
     return run_work(ctx, "source-engine:full")
 
 source_engine = task(
     group = ["ci"],
     implementation = _source_engine_impl,
-    summary = "Run the Source engine workflow's job: every test that builds an engine from source.",
+    summary = "Run a host's job of the Source engine workflow: the tests that build an engine from source.",
+    args = {
+        "host": args.string(default = "macos", values = ["macos", "linux"], description = "macos: every case; linux: those Linux can build"),
+    },
 )
 
 def _test_impl(ctx: TaskContext) -> int:

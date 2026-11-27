@@ -17,7 +17,7 @@ load("@rules_apple//apple:apple.bzl", "apple_dynamic_framework_import")
 load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS", "target_platform")
 load("//godot/private/config:transitions.bzl", "platform_slice_transition", "shared_slices_transition")
 
-visibility(["//godot/extension/..."])
+visibility("private")
 
 def _sanitize(text, allowed, replacement):
     """Text with every character but letters, digits and those in allowed replaced."""

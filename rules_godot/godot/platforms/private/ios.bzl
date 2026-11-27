@@ -37,7 +37,7 @@ load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":ios_runtime_bridge.bzl", "runtime_bridge_ios")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 
-visibility(["//godot", "//godot/platforms", "//godot/platforms/private/tests"])
+visibility(["//godot/platforms/private/tests", "//godot/private"])
 
 # The Info.plist keys rules_godot or rules_apple own, with their owners; an application's
 # own Info.plist fragments must not set them.

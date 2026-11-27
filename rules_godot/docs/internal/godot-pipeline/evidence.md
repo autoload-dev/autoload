@@ -166,7 +166,8 @@ delivery, explicit env plus test variables, report publishing.
 
 ### R05
 
-[Extension construction](../../../godot/extension/defs.bzl),
+[Extension construction](../../../godot/extension/private/extension.bzl),
+[extension library classification and placement](../../../godot/extension/private/library.bzl),
 [desktop backend](../../../godot/platforms/private/desktop.bzl),
 [Android](../../../godot/platforms/private/android.bzl),
 [iOS](../../../godot/platforms/private/ios.bzl),

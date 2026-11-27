@@ -38,6 +38,7 @@ class WorkTest(unittest.TestCase):
     ) -> None:
         for name, profile in (
             ("source-engine:full", "source-engine"),
+            ("source-engine:linux", "source-engine"),
             ("source-engine", "source-engine"),
             ("addon-template", "addon-template"),
         ):
@@ -96,6 +97,19 @@ class CallersTest(unittest.TestCase):
         # Such as Lichtpost's slim_app_build_test, whose runtime is built from source.
         commands = [step.command for step in KNOWN["source-engine:full"].steps()]
         self.assertIn("bazel test --config=source-engine -- //...", commands)
+
+    def test_linux_runs_the_source_engine_tests_it_can_build(self) -> None:
+        # Those of both modules, whose iOS cases Bazel skips; the patched-engine scenario is
+        # macOS's.
+        commands = [step.command for step in KNOWN["source-engine:linux"].steps()]
+        self.assertEqual(
+            [
+                "bazel test --config=source-engine //...",
+                "bazel test --config=source-engine -- //...",
+            ],
+            commands,
+        )
+        self.assertTrue(KNOWN["source-engine:linux"].android)
 
 
 if __name__ == "__main__":

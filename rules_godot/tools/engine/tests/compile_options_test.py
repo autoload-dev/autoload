@@ -77,14 +77,18 @@ class CompileOptionsTest(unittest.TestCase):
             platform_compile_options("ios", [])[:-1],
             platform_compile_options("macos", []),
         )
-        self.assertEqual(platform_compile_options("linuxbsd", upstream), upstream)
+        self.assertEqual(
+            platform_compile_options("linuxbsd", upstream),
+            [*upstream, "-ffunction-sections", "-fdata-sections"],
+        )
 
     def test_bazel_flags_decide_optimization_debug_information_and_stripping(
         self,
     ) -> None:
         upstream = ["-O3", "-Os", "-Og", "-g2", "-gdwarf-4", "-ffast-math", "-DNDEBUG"]
         self.assertEqual(
-            platform_compile_options("linuxbsd", upstream), ["-ffast-math", "-DNDEBUG"]
+            platform_compile_options("linuxbsd", upstream),
+            ["-ffast-math", "-DNDEBUG", "-ffunction-sections", "-fdata-sections"],
         )
         apple = ["-Wl,-S", "-Wl,-x", "-Wl,-dead_strip", "-ObjC", "-framework", "Metal"]
         self.assertEqual(
@@ -94,6 +98,12 @@ class CompileOptionsTest(unittest.TestCase):
         self.assertEqual(engine_link_options("android", ["-s", "-llog"]), ["-llog"])
         # The iOS application still drops the engine objects it never reaches.
         self.assertEqual(engine_link_options("ios", ["-O2"]), ["-Wl,-dead_strip"])
+        # So does a Linux application, from sections of their own per function and datum,
+        # as the Android one does through upstream's flags.
+        self.assertEqual(
+            engine_link_options("linuxbsd", ["-s", "-lpthread"]),
+            ["-lpthread", "-Wl,--gc-sections"],
+        )
 
     def test_debug_symbol_flags_keep_their_relative_paths(self) -> None:
         flags, _includes = normalize_command(

@@ -478,6 +478,23 @@ bzl_library(
 )
 
 bzl_library(
+    name = "app",
+    srcs = ["app.bzl"],
+    deps = [
+        ":run",
+        ":versions",
+        "//godot/engine/private:components",
+        "//godot/engine/private:optimization",
+        "//godot/platforms/private:android",
+        "//godot/platforms/private:desktop",
+        "//godot/platforms/private:ios",
+        "//godot/platforms/private:macos_signing",
+        "//godot/private/config:application",
+        "//godot/private/config:settings",
+    ],
+)
+
+bzl_library(
     name = "configuration",
     srcs = ["configuration.bzl"],
 )

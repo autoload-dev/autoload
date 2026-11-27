@@ -118,6 +118,17 @@ WORK = (
         android=True,
         profile=SOURCE_ENGINE,
     ),
+    # The source-engine cases a Linux host can build, which the Source engine workflow's
+    # Linux job runs with `aspect ci source-engine --host=linux`: the Android engines and
+    # the applications' Linux engines. Bazel skips the iOS cases, which are incompatible
+    # with Linux; the patched-engine scenario, which no Linux engine registers, is left out.
+    Work(
+        "source-engine:linux",
+        ".",
+        (In(RULESET_DIR, "bazel test --config=source-engine //..."), SOURCE_ENGINE_TESTS),
+        android=True,
+        profile=SOURCE_ENGINE,
+    ),
     # The main source-engine cases, for a quicker local run: those not tagged
     # source_engine_extended, and the patched engine with its editor.
     Work(
