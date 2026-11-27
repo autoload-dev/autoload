@@ -144,7 +144,7 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
 
 ## Tests
 
-The ruleset's `//tools/tests:resource_graph_test` tests `file_references`,
+The ruleset's `//tools/tests:file_references_test` tests `file_references`,
 [scanner_test.py](../../tools/gazelle/godot/scanner_test.py) the scanner program, and
 `//tools/gazelle/godot:generation_test` runs Gazelle over each tree in
 [testdata](../../tools/gazelle/godot/testdata) and compares the BUILD files it writes with
