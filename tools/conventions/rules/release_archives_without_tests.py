@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 
 from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.layout import TESTS
 from tools.setup.modules import released_modules
 
 # The lines of a released module's .gitattributes that leave every tests/ directory, at any
@@ -22,7 +23,6 @@ EXCLUSIONS = (
         "the release archive must keep the tests of the registry test modules",
     ),
 )
-TESTS = "tests"
 STARLARK = ("BUILD", "BUILD.bazel", "MODULE.bazel")
 # Arguments whose labels name packages without loading them.
 VISIBILITY = frozenset({"visibility", "default_visibility", "packages"})

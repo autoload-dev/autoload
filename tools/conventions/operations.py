@@ -1,7 +1,7 @@
 """
 The Godot test operations: godot_test and the macros that declare a Godot test under their own
-name, which RG007, application-content and no-godot-in-addon-modules recognize by Bazel's
-evidence rather than by a list.
+name, which RG007, application-tests-under-tests and no-godot-in-addon-modules recognize
+by Bazel's evidence rather than by a list.
 """
 
 from tools.conventions.context import Context, Target

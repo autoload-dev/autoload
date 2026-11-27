@@ -18,8 +18,8 @@ def development_bazel(workspace: Workspace) -> Bazel:
     """
     Load the modules in two workspaces: the ruleset in its own, whose development dependencies
     only it sees, and the add-on modules in the root module's, which depends on each of them
-    under its module name (addon-module-layout). The queries' output is cached while nothing
-    that loading reads changes.
+    under its module name (addon-module-named-after-directory). The queries' output is
+    cached while nothing that loading reads changes.
     """
     root = workspace.root
     return Bazel(

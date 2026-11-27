@@ -82,23 +82,32 @@ py_library(
 py_library(
     name = "rules_lib",
     srcs = [
+        "addon_modules.py",
         "operations.py",
         "registry.py",
-        "rules/addon_module_layout.py",
-        "rules/application_content.py",
+        "rules/addon_module_examples_define_edit_and_pack.py",
+        "rules/addon_module_named_after_directory.py",
+        "rules/addon_modules_own_template_files.py",
+        "rules/application_content_under_main.py",
+        "rules/application_tests_under_tests.py",
+        "rules/backends_under_native.py",
         "rules/documented_targets_exist.py",
         "rules/engine_files_under_engines.py",
         "rules/linked_skills.py",
         "rules/no_component_names_in_tooling.py",
         "rules/no_godot_in_addon_modules.py",
+        "rules/no_stray_entries_in_addon_module_roots.py",
+        "rules/no_test_only_dependencies_in_addon_modules.py",
         "rules/project_named_after_directory.py",
         "rules/projects_at_fixed_places.py",
+        "rules/registry_templates_have_their_module.py",
         "rules/registry_test_module_in_bcr.py",
         "rules/release_archives_without_tests.py",
         "rules/rg002.py",
         "rules/rg007.py",
         "rules/rg012.py",
         "rules/rg026.py",
+        "rules/unique_extension_names.py",
     ],
     deps = [
         ":context_lib",
@@ -129,6 +138,7 @@ py_library(
     srcs = ["test_support.py"],
     deps = [
         ":context_lib",
+        ":framework_lib",
         "//tools/addons:new_lib",
         "//tools/addons:test_support",
     ],
@@ -232,17 +242,6 @@ py_test(
 )
 
 py_test(
-    name = "application_content_test",
-    size = "small",
-    srcs = ["rules/application_content_test.py"],
-    deps = [
-        ":context_lib",
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
     name = "projects_at_fixed_places_test",
     size = "small",
     srcs = ["rules/projects_at_fixed_places_test.py"],
@@ -280,19 +279,6 @@ py_test(
     deps = [
         ":rules_lib",
         ":test_support",
-    ],
-)
-
-py_test(
-    name = "addon_module_layout_test",
-    size = "small",
-    srcs = ["rules/addon_module_layout_test.py"],
-    args = ["$(rootpath @buildifier_prebuilt//:buildozer)"],
-    data = ["@buildifier_prebuilt//:buildozer"],
-    deps = [
-        ":rules_lib",
-        ":test_support",
-        "//tools/addons:new_lib",
     ],
 )
 
@@ -401,6 +387,125 @@ py_test(
     name = "rg026_test",
     size = "small",
     srcs = ["rules/rg026_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "application_content_under_main_test",
+    size = "small",
+    srcs = ["rules/application_content_under_main_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "application_tests_under_tests_test",
+    size = "small",
+    srcs = ["rules/application_tests_under_tests_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "addon_module_examples_define_edit_and_pack_test",
+    size = "small",
+    srcs = ["rules/addon_module_examples_define_edit_and_pack_test.py"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    env = {"BUILDOZER": "$(rootpath @buildifier_prebuilt//:buildozer)"},
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "addon_module_named_after_directory_test",
+    size = "small",
+    srcs = ["rules/addon_module_named_after_directory_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "addon_modules_own_template_files_test",
+    size = "small",
+    srcs = ["rules/addon_modules_own_template_files_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "backends_under_native_test",
+    size = "small",
+    srcs = ["rules/backends_under_native_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "no_stray_entries_in_addon_module_roots_test",
+    size = "small",
+    srcs = ["rules/no_stray_entries_in_addon_module_roots_test.py"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    env = {"BUILDOZER": "$(rootpath @buildifier_prebuilt//:buildozer)"},
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "no_test_only_dependencies_in_addon_modules_test",
+    size = "small",
+    srcs = ["rules/no_test_only_dependencies_in_addon_modules_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "registry_templates_have_their_module_test",
+    size = "small",
+    srcs = ["rules/registry_templates_have_their_module_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "unique_extension_names_test",
+    size = "small",
+    srcs = ["rules/unique_extension_names_test.py"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    env = {"BUILDOZER": "$(rootpath @buildifier_prebuilt//:buildozer)"},
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+# What the add-on generator writes satisfies every add-on module rule.
+py_test(
+    name = "addon_modules_test",
+    size = "small",
+    srcs = ["addon_modules_test.py"],
+    data = ["@buildifier_prebuilt//:buildozer"],
+    env = {"BUILDOZER": "$(rootpath @buildifier_prebuilt//:buildozer)"},
     deps = [
         ":rules_lib",
         ":test_support",
