@@ -2,7 +2,7 @@
 
 Each directory here is a Bazel module of its own, `addons/<module>` named
 `autoload_<module>`, which applications consume like any other module. A module has its own
-`MODULE.bazel`, README, version and release tags `<module>-v<version>`.
+`MODULE.bazel`, README, version and release tags `autoload_<module>-v<version>`.
 
 Create modules and add-ons with the generator, never by copying another module:
 

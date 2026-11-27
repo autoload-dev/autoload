@@ -1,5 +1,6 @@
 package(default_testonly = True)
 
+# templates_fixture.py reproduces split_templates.zip.
 exports_files([
     "fixtures.bzl",
     "split_templates.zip",
