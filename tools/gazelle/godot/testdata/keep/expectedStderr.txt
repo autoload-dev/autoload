@@ -1,0 +1,2 @@
+gazelle: @fixture//game/twins:both: class Twin is provided by several targets that its deps name, @fixture//game/twins:twin and @fixture//game/twins:static_twin; keep the one it uses
+gazelle: @fixture//game/twins:static: class Twin is provided by several targets, @fixture//game/twins:twin and @fixture//game/twins:static_twin; add the one it uses to its deps or runtime_deps

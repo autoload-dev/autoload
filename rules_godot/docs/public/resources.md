@@ -648,7 +648,10 @@ inspection does not load the complete asset contents into memory.
 Reachable packs follow the references a bounded scan finds in their files, without running
 Godot. The scanners cover text scenes/resources, literal GDScript loads/preloads,
 `FileAccess` reads of `res://` paths, known global script class uses, shader includes,
-local glTF inputs and resource paths in project settings other than editor plugins.
+local glTF inputs and resource paths in project settings other than editor plugins. A
+script's constant whose whole value is a string literal, such as `const LEVEL :=
+"res://levels/one.tscn"`, counts as that literal where the script passes it to `load()` or
+`FileAccess`.
 Each resolved reference names its kind of target: a `file`, a `uid` or a `directory`. A
 project setting or a declared runtime reference may name a directory, such as
 `modules="res://modules"`, and resolves when the scanned files include files below it; any

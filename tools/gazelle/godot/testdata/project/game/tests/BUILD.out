@@ -1,0 +1,49 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+# The tests' Dart scripts run with another build of the language.
+# gazelle:godot_format_dep .dart //addons/test_dart
+
+# The Dart scripts the language extension compiles.
+filegroup(
+    name = "dart_fixtures",
+    srcs = ["data/probe.dart"],
+)
+
+godot_resources(
+    name = "data",
+    srcs = ["data/route.json"],
+    prefix = "tests",
+)
+
+godot_resources(
+    name = "fixtures",
+    srcs = [
+        "GameFixture.gd",
+        "GameFixture.gd.uid",
+    ],
+    prefix = "tests",
+    deps = ["//game/main:components_courier"],
+)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "RouteTest.gd",
+        "RouteTest.gd.uid",
+    ],
+    prefix = "tests",
+    runtime_deps = [":data"],
+    deps = [
+        ":fixtures",
+        "//addons/test_dart",
+        "//game/main/shared",
+        "@gdunit//gdunit",
+    ],
+)
+
+gdunit_test(
+    name = "tests",
+    project = "//game",
+    suites = [":suites"],
+)

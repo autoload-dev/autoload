@@ -47,6 +47,19 @@ class ProjectPlacesTest(RepositoryTest):
             all("project at a fixed place of their consumer" in item for item in findings)
         )
 
+    def test_test_inputs_of_a_gazelle_language_are_no_projects(self) -> None:
+        self.assertEqual(
+            [],
+            self.evaluate(
+                "tools/gazelle/godot/testdata/tree/game/project.godot",
+                "tools/gazelle/godot/testdata/tree/game/BUILD.out",
+            ),
+        )
+
+    def test_a_consumer_holds_no_test_inputs_of_its_own(self) -> None:
+        findings = self.evaluate("examples/petri/testdata/project.godot")
+        self.assertEqual(len(findings), 1)
+
     def test_an_add_on_module_holds_no_project(self) -> None:
         findings = self.evaluate(
             "addons/runner/MODULE.bazel",

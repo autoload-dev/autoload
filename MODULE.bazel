@@ -17,8 +17,9 @@ bazel_dep(name = "aspect_rules_lint", version = "2.9.1")
 bazel_dep(name = "rules_multitool", version = "1.0.0")
 
 # Gazelle generates BUILD declarations (tools/gazelle): the bzl_library targets of
-# bazel_skylib's plugin. It runs from this module for every module, so the others' graphs
-# keep their own Gazelle; this one is the version this module's graph already holds.
+# bazel_skylib's plugin and the Godot declarations of the repository's own language. It runs
+# from this module for every module, so the others' graphs keep their own Gazelle; this one
+# is the version this module's graph already holds.
 bazel_dep(name = "gazelle", version = "0.51.3", dev_dependency = True)
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.9.2", dev_dependency = True)
 

@@ -1,17 +1,20 @@
-load("//godot:defs.bzl", "godot_project")
+load("//godot:defs.bzl", "godot_project", "godot_resources")
 load("//godot/private:analysis.bzl", "godot_resource_graph")
-load(":godot_files.bzl", "godot_package_resources")
 
-# A project whose sources come from the macro that godot_build_files generates, with the
-# runtime references declared beside it, and its resource graph that requires declared
-# edges.
+# A project whose scene, script and resource are declared with the runtime references of the
+# script and the scene, and its resource graph that requires declared edges.
 package(
     default_testonly = True,
     default_visibility = ["//godot/private/tests/resource_graph:__pkg__"],
 )
 
-godot_package_resources(
+godot_resources(
     name = "sources",
+    srcs = [
+        "main/content.tres",
+        "main/main.gd",
+        "main/main.tscn",
+    ],
     runtime_references = {
         "main/main.gd": ["main/content.tres"],
         "main/main.tscn": ["main/main.gd"],
@@ -20,14 +23,14 @@ godot_package_resources(
 )
 
 godot_project(
-    name = "project_with_generated_declarations",
+    name = "declared_project",
     project_file = "project.godot",
     tags = ["manual"],
 )
 
 godot_resource_graph(
     name = "graph",
-    project = ":project_with_generated_declarations",
+    project = ":declared_project",
     require_declared = True,
     tags = ["manual"],
     deps = [":sources"],

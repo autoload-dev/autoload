@@ -1,0 +1,13 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
+
+godot_cc_extension(
+    name = "inventory",
+    srcs = ["inventory.cc"],
+)
+
+godot_addon(
+    name = "tools",
+    srcs = ["plugin.gd"],
+    directory = "addons/inventory_tools",
+)

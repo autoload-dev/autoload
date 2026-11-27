@@ -1,3 +1,27 @@
+# The Godot language of Gazelle (tools/gazelle/godot, docs/internal/gazelle.md) declares the
+# Godot projects, resources and GdUnit tests of examples/ and e2e/. The classes that the
+# add-on modules' extensions register resolve to their targets here: Gazelle runs in this
+# module alone and cannot index the add-on modules.
+#
+# Temporary exception: the language stays disabled until the hand-written BUILD files of
+# examples/ and e2e/ are regenerated, which waits for the changes other branches make to
+# them; remove this directive then.
+# gazelle:godot_extension disabled
+#
+# gazelle:resolve godot class AppAuth @autoload_app_auth//app_auth
+# gazelle:resolve godot class AppAuthLogin @autoload_app_auth//app_auth
+# gazelle:resolve godot class AppAuthResult @autoload_app_auth//app_auth
+# gazelle:resolve godot class FirebaseAnalytics @autoload_firebase//analytics
+# gazelle:resolve godot class FirebaseCore @autoload_firebase//core
+# gazelle:resolve godot class FirebaseFirestore @autoload_firebase//firestore
+# gazelle:resolve godot class FirestoreTask @autoload_firebase//firestore
+# gazelle:resolve godot class GdUnitTestSuite @autoload_gdunit//gdunit
+# gazelle:resolve godot class PlatformPathResult @autoload_platform_paths//platform_paths
+# gazelle:resolve godot class PlatformPaths @autoload_platform_paths//platform_paths
+# gazelle:resolve godot class SQLiteDatabase @autoload_sqlite//sqlite
+# gazelle:resolve godot class SentryBreadcrumb @autoload_sentry//sentry
+# gazelle:resolve godot class SentrySDK @autoload_sentry//sentry
+
 # The Aspect CLI's tasks, which name pieces of the named work, and the root module's target
 # patterns they pass to Bazel.
 filegroup(

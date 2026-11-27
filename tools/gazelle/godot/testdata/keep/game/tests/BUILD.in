@@ -1,0 +1,21 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "LevelTest.gd",
+        "LevelTest.gd.uid",
+    ],
+    prefix = "tests",
+)
+
+gdunit_test(
+    name = "unit_tests",
+    size = "small",
+    project = "//game:app",
+    suites = ["//game/tests:suites"],
+    tags = ["godot_process"],
+)

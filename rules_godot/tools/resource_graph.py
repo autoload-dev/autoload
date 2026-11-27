@@ -11,12 +11,12 @@ pack_selection.py selects a pack's resources from the graph.
 The command line (resource_graph_command.py) scans and checks graphs and queries them
 (resource_graph_query.py).
 
-Sections: Diagnostics, Script tokens, Scan, Reference scanning, Graph.
+Sections: Diagnostics, Script tokens, Scan, Reference scanning, Graph, Single files.
 """
 
 import json
-from collections import defaultdict
-from collections.abc import Container, Iterable, Iterator
+from collections import Counter, defaultdict
+from collections.abc import Container, Iterable, Iterator, Mapping
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
@@ -94,13 +94,57 @@ def _at(script: list, i: int) -> tuple[str, str, int]:
 
 
 def _literal_argument(
-    script: list, paren: int, closers: Container[str] = (")", ",")
+    script: list,
+    paren: int,
+    closers: Container[str] = (")", ","),
+    constants: Mapping[str, str] | None = None,
 ) -> str | None:
-    """The first argument of the call opened at script[paren], if it is a lone string literal."""
+    """
+    The first argument of the call opened at script[paren], if it is a lone string literal or
+    a constant of the script whose value is one.
+    """
     if _at(script, paren)[1] != "(":
         return None
-    literal, closer = _at(script, paren + 1), _at(script, paren + 2)
-    return literal[1] if literal[0] == "string" and closer[1] in closers else None
+    argument, closer = _at(script, paren + 1), _at(script, paren + 2)
+    if closer[1] not in closers:
+        return None
+    if argument[0] == "identifier":
+        return (constants or {}).get(argument[1])
+    return argument[1] if argument[0] == "string" else None
+
+
+def _literal_value(script: list, assign: int) -> str | None:
+    """The value assigned at script[assign] if it is a lone string literal, which ends its line."""
+    value, after = _at(script, assign + 1), _at(script, assign + 2)
+    if value[0] != "string":
+        return None
+    # The statement ends after the literal: at the end of its line or at a semicolon.
+    ends = after[2] != value[2] or after[1] in ("", ";")
+    return value[1] if ends else None
+
+
+def _literal_constant(script: list, i: int) -> tuple[str, str] | None:
+    """The name and value of a constant declared at script[i] whose value is a literal."""
+    name = _at(script, i + 1)
+    if script[i][1] != "const" or name[0] != "identifier":
+        return None
+    assign = next((j for j in range(i + 2, i + 5) if _at(script, j)[1] == "="), None)
+    value = None if assign is None else _literal_value(script, assign)
+    return None if value is None else (name[1], value)
+
+
+def _literal_constants(script: list) -> dict[str, str]:
+    """
+    The script's constants whose whole value is a string literal, by name. A name the script
+    declares more than once, such as in an inner class, names nothing certain and is left out.
+    """
+    declared = Counter(
+        name[1]
+        for keyword, name in pairwise(script)
+        if keyword[1] in ("const", "var") and name[0] == "identifier"
+    )
+    found = (_literal_constant(script, i) for i in range(len(script)))
+    return {name: value for name, value in filter(None, found) if declared[name] == 1}
 
 
 # ==== Scan ====================================================================
@@ -155,6 +199,7 @@ class _Scan(Findings):
         self.nodes: dict[str, dict] = {}
         self.texts: dict[str, str] = {}
         self.scripts: dict[str, list[tuple[str, str, int]]] = {}
+        self.constants: dict[str, dict[str, str]] = {}
         self.uids: defaultdict[str, set[str]] = defaultdict(set)
         self.classes: defaultdict[str, set[str]] = defaultdict(set)
         self.edges: list[dict] = []
@@ -345,6 +390,7 @@ def _link_import_settings(scan: _Scan, path: str) -> None:
 def _index_script(scan: _Scan, path: str, text: str) -> None:
     """Tokenize a script and index its global class name."""
     script = scan.scripts[path] = _code_tokens(text)
+    scan.constants[path] = _literal_constants(script)
     for token, name in pairwise(script):
         if token[:2] == ("identifier", "class_name") and name[0] == "identifier":
             scan.classes[name[1]].add(path)
@@ -495,7 +541,7 @@ def _load_call(scan: _Scan, path: str, script: list, i: int) -> bool:
         return False
     if _is_other_load(script, i):
         return True
-    literal = _literal_argument(script, i + 1)
+    literal = _literal_argument(script, i + 1, constants=scan.constants.get(path))
     if literal is None:
         scan.reference(path, None, "dynamic_load", line)
     else:
@@ -513,10 +559,15 @@ def _extends_clause(scan: _Scan, path: str, script: list, i: int) -> bool:
     return True
 
 
+def _may_name_class(script: list, i: int) -> bool:
+    """Whether the identifier at script[i] stands where it may name a global class."""
+    return _at(script, i - 1)[1] not in {"class_name", "."}
+
+
 def _class_use(scan: _Scan, path: str, script: list, i: int) -> bool:
     """Whether script[i] names a global class; if so, record a reference to its scripts."""
     _, name, line = script[i]
-    if name not in scan.classes or _at(script, i - 1)[1] in {"class_name", "."}:
+    if name not in scan.classes or not _may_name_class(script, i):
         return False
     # Conservative symbol index: shadowed identifiers can add edges. Full
     # GDScript name/type resolution belongs to Godot.
@@ -531,7 +582,9 @@ def _icon_annotation(scan: _Scan, path: str, script: list, i: int) -> bool:
     _, name, line = script[i]
     if name != "icon" or _at(script, i - 1)[1] != "@":
         return False
-    icon = _literal_argument(script, i + 1, closers=(")",))
+    icon = _literal_argument(
+        script, i + 1, closers=(")",), constants=scan.constants.get(path)
+    )
     if icon is None:
         return False
     scan.reference(path, icon, "script_icon", line)
@@ -548,7 +601,7 @@ def _file_read_call(scan: _Scan, path: str, script: list, i: int) -> bool:
     _, api, line = script[i]
     if api != "FileAccess" or not _is_member_call(script, i):
         return False
-    literal = _literal_argument(script, i + 3)
+    literal = _literal_argument(script, i + 3, constants=scan.constants.get(path))
     if _names_resource(literal) and script[i + 2][1] in _FILE_READS:
         kind = "file_access" if literal else "dynamic_file_access"
         scan.reference(path, literal, kind, line)
@@ -560,7 +613,7 @@ def _directory_listing_call(scan: _Scan, path: str, script: list, i: int) -> boo
     _, api, line = script[i]
     if api != "DirAccess" or not _is_member_call(script, i):
         return False
-    literal = _literal_argument(script, i + 3)
+    literal = _literal_argument(script, i + 3, constants=scan.constants.get(path))
     if _names_resource(literal) and script[i + 2][1] in _DIRECTORY_LISTINGS:
         scan.reference(path, None, "directory_access", line)
     return True
@@ -953,7 +1006,7 @@ def _graph_document(manifest: dict, scan: _Scan, edges: list[dict]) -> dict:
         and not any(edge["status"] != "resolved" for edge in edges)
         and not any(item["severity"] == "error" for item in diagnostics),
         "limits": [
-            "static literals only; no program evaluation",
+            "static literals and literal constants only; no program evaluation",
             "global class symbols are conservative",
             "unrecognized formats and custom loaders are not analyzed",
             "file-level reachability cannot prove non-use",
@@ -1074,3 +1127,66 @@ def build_graph(manifest: dict, execroot: Path | None = None) -> dict:
     _diagnose_undeclared_addon_uses(manifest, scan, edges)
     graph = _graph_document(manifest, scan, edges)
     return require_declared(graph) if manifest.get("require_declared") else graph
+
+
+# ==== Single files ============================================================
+
+
+class _AnySource:
+    """Every path, as the source a sidecar may author an identity for."""
+
+    def __contains__(self, item: object) -> bool:
+        return True
+
+
+def _extended_class(script: list) -> str | None:
+    """The global class the script itself extends by name, not one of its inner classes."""
+    for i, (_, value, _) in enumerate(script):
+        if value == "extends" and _at(script, i - 2)[1] != "class":
+            base = _at(script, i + 1)
+            return base[1] if base[0] == "identifier" else None
+    return None
+
+
+def _file_reference(edge: dict) -> dict | None:
+    """An edge with its path normalized as the graph resolves it; None for an unknown one."""
+    if edge["reference"] is None:
+        return None
+    try:
+        path = _candidate_path(edge)
+    except ValueError:
+        path = None
+    return {"kind": edge["kind"], "path": path, "uid": _uid_of(edge)}
+
+
+def file_references(path: str, text: str) -> dict:
+    """
+    What one file at a res:// path declares and references on its own, without its project.
+
+    The result holds the UIDs the file authors, a sidecar's for its file; the global classes
+    a script declares, the one it extends by name and every name it may use as a global
+    class; and the references the graph records, each with its kind, its normalized path and
+    its UID. Gazelle's Godot language derives dependencies from it.
+    """
+    scan = _Scan(Path.cwd())
+    scan.nodes[path] = {"path": path}
+    scan.texts[path] = text
+    _scan_declarations(scan)
+    _scan_references(scan)
+    script = scan.scripts.get(path, [])
+    names = {
+        name
+        for i, (category, name, _) in enumerate(script)
+        if category == "identifier" and _may_name_class(script, i)
+    }
+    references = (_file_reference(edge) for edge in scan.edges)
+    return {
+        "uids": [uid for _, uid, _ in file_identities(path, text, _AnySource())],
+        "classes": sorted(scan.classes),
+        "extends": _extended_class(script),
+        "names": sorted(names - set(scan.classes)),
+        "references": sorted(
+            (item for item in references if item),
+            key=lambda item: (item["kind"], item["path"] or "", item["uid"] or ""),
+        ),
+    }

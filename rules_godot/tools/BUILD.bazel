@@ -113,24 +113,6 @@ py_binary(
 )
 
 py_library(
-    name = "godot_build_files_lib",
-    srcs = ["godot_build_files.py"],
-    deps = [
-        ":godot_files_lib",
-        ":resource_text_lib",
-    ],
-)
-
-py_binary(
-    name = "godot_build_files",
-    srcs = ["godot_build_files.py"],
-    deps = [
-        ":godot_files_lib",
-        ":resource_text_lib",
-    ],
-)
-
-py_library(
     name = "godot_files_lib",
     srcs = ["godot_files.py"],
 )

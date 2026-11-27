@@ -1,0 +1,37 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon", "godot_editor", "godot_pack", "godot_project", "godot_resources")
+
+package(default_visibility = ["//visibility:public"])
+
+godot_project(
+    name = "app",
+    main_scene = "levels/level_01.tres",
+    project_file = "project.godot",
+)
+
+godot_pack(
+    name = "pack",
+    project = ":app",
+    deps = ["//game/levels:level"],
+)
+
+godot_editor(
+    name = "edit",
+    project = ":app",
+    deps = ["//game/levels:level"],
+)
+
+godot_addon(
+    name = "tools",
+    srcs = ["addons/tools/plugin.gd"],
+    directory = "addons/tools",
+    editor_srcs = ["addons/tools/editor.gd"],
+    strip_prefix = "addons/tools",
+)
+
+godot_resources(
+    name = "app_png",
+    srcs = [
+        "app.png",
+        "app.png.import",
+    ],
+)

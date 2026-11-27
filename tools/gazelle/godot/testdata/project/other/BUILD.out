@@ -1,0 +1,39 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
+
+godot_project(
+    name = "other",
+    project_file = "project.godot",
+    visibility = ["//other:__subpackages__"],
+)
+
+godot_resources(
+    name = "fixtures",
+    srcs = [
+        "main.gd",
+        "main.gd.uid",
+    ],
+)
+
+godot_resources(
+    name = "suites",
+    srcs = [
+        "OtherTest.gd",
+        "OtherTest.gd.uid",
+    ],
+    deps = [
+        ":fixtures",
+        "@gdunit//gdunit",
+    ],
+)
+
+godot_resources(
+    name = "tests_resources",
+    srcs = ["tests/notes.tres"],
+)
+
+gdunit_test(
+    name = "tests",
+    project = ":other",
+    suites = [":suites"],
+)

@@ -1,0 +1,10 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+# The suites run only under another project's test (gazelle:godot_gdunit_test).
+# gazelle:godot_gdunit_test disabled
+
+godot_resources(
+    name = "suites",
+    srcs = ["StrictTest.gd"],
+    prefix = "strict",
+)

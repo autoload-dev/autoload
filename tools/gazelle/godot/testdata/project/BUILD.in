@@ -1,0 +1,2 @@
+# gazelle:resolve godot class GdUnitTestSuite @gdunit//gdunit
+# gazelle:godot_format_dep .dart //addons/dart_lang

@@ -1,0 +1,23 @@
+load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+package(default_testonly = True)
+
+godot_resources(
+    name = "passing",
+    srcs = ["PassingTest.gd"],
+    prefix = "by_hand",
+)
+
+godot_resources(
+    name = "failing",
+    srcs = ["FailingTest.gd"],
+    prefix = "by_hand",
+)
+
+# A test of the passing suites alone: the failing ones run nowhere by design.
+gdunit_test(
+    name = "passing_test",
+    project = "//game:app",
+    suites = [":passing"],
+)

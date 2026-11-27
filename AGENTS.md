@@ -55,7 +55,7 @@ bazel build --config=lint -- //...        # lint Python, in the root module (wit
 bazel run //tools/lint:files              # lint the changed files without targets: GDScript, Markdown, shell, per-file conventions (-- --scope=all for every file)
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
 aspect generate                           # regenerate MODULE.bazel.lock, the add-on declarations and shared module files
-bazel run //tools/gazelle:update          # regenerate the ruleset's bzl_library targets
+bazel run //tools/gazelle:update          # regenerate the ruleset's bzl_library targets and the Godot declarations
 (cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets
