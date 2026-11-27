@@ -8,6 +8,44 @@ load(":transitions.bzl", "project_transition")
 
 visibility(["//godot/..."])
 
+def _android_values(attr):
+    if attr.android_min_sdk_version < 0 or attr.android_target_sdk_version < 0:
+        fail("Android SDK values must be zero or positive")
+    return {
+        "android_min_sdk_version": attr.android_min_sdk_version,
+        "android_target_sdk_version": attr.android_target_sdk_version,
+    }
+
+def _macos_values(attr):
+    version = attr.macos_minimum_os_version
+    if not dotted_version(version):
+        fail("macos_minimum_os_version must be a dotted numeric version")
+    return {"macos_minimum_os_version": version}
+
+def _unique_subset(values, allowed):
+    if not values or len({value: True for value in values}) != len(values):
+        return False
+    return all([value in allowed for value in values])
+
+def _ios_values(attr):
+    version = attr.ios_minimum_os_version
+    if not dotted_version(version):
+        fail("ios_minimum_os_version must be a dotted numeric version")
+    families = attr.ios_families
+    if not _unique_subset(families, ["iphone", "ipad"]):
+        fail("ios_families must be a nonempty unique subset of iphone, ipad")
+    return {"ios_minimum_os_version": version, "ios_families": sorted(families)}
+
+# The values the export for each operating system uses. A host build without --platforms
+# carries no operating system here and gets the macOS values; a Linux pack ignores them,
+# as it ignores application_id.
+_EXPORT_VALUES = {
+    "android": _android_values,
+    "macos": _macos_values,
+    "": _macos_values,
+    "ios": _ios_values,
+}
+
 def application_context(settings, attr):
     """
     Validate the application's values and derive the application context of its pack.
@@ -29,27 +67,9 @@ def application_context(settings, attr):
         fail("application_id is required for %s" % operating_system)
     if attr.application_id and operating_system != "linux":
         values["application_id"] = attr.application_id
-    if operating_system == "android":
-        if attr.android_min_sdk_version < 0 or attr.android_target_sdk_version < 0:
-            fail("Android SDK values must be zero or positive")
-        values["android_min_sdk_version"] = attr.android_min_sdk_version
-        values["android_target_sdk_version"] = attr.android_target_sdk_version
-    elif operating_system in ["macos", ""]:
-        # A host build without --platforms carries no operating system here; a Linux
-        # pack ignores the value, as it ignores application_id.
-        version = attr.macos_minimum_os_version
-        if not dotted_version(version):
-            fail("macos_minimum_os_version must be a dotted numeric version")
-        values["macos_minimum_os_version"] = version
-    if operating_system == "ios":
-        version = attr.ios_minimum_os_version
-        if not dotted_version(version):
-            fail("ios_minimum_os_version must be a dotted numeric version")
-        families = attr.ios_families
-        if not families or len({f: True for f in families}) != len(families) or any([f not in ["iphone", "ipad"] for f in families]):
-            fail("ios_families must be a nonempty unique subset of iphone, ipad")
-        values["ios_minimum_os_version"] = version
-        values["ios_families"] = sorted(families)
+    export_values = _EXPORT_VALUES.get(operating_system)
+    if export_values:
+        values.update(export_values(attr))
     return {
         APPLICATION_CONTEXT: json.encode({k: values[k] for k in sorted(values)}),
         MERGE_ANDROID_MANIFEST_PERMISSIONS: False,
