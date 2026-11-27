@@ -1,5 +1,5 @@
 """
-The command line of //tools:project_config: compose a purpose's project.godot, list the
+The command line of //tools/project:config: compose a purpose's project.godot, list the
 settings a view's members leave out, check that no override hides a flag's setting, and list
 a project's autoloads, each as the rules' actions run it.
 """
@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-from tools.project_config import (
+from tools.project.config import (
     authored_autoloads,
     compose_project,
     left_out,

@@ -28,7 +28,7 @@ from tools.godot_staging import (
     staged_project,
     write_archive,
 )
-from tools.project_config import override_tags
+from tools.project.config import override_tags
 
 # ==== Import ==================================================================
 

@@ -14,35 +14,6 @@ package_group(
     ],
 )
 
-# The statements of Godot's configuration files, which the graph and several tools read
-# without the composition of settings on top of them.
-py_library(
-    name = "project_statements_lib",
-    srcs = ["project_statements.py"],
-)
-
-# Godot settings composed per purpose without evaluating expressions, which most tools read.
-py_library(
-    name = "project_config_lib",
-    srcs = ["project_config.py"],
-    deps = [":project_statements_lib"],
-)
-
-# Composes a purpose's project.godot and checks a project's settings: the command line over
-# the library, so a change to it reruns only its own actions.
-py_library(
-    name = "project_config_command_lib",
-    srcs = ["project_config_command.py"],
-    deps = [":project_config_lib"],
-)
-
-py_binary(
-    name = "project_config",
-    srcs = ["project_config_command.py"],
-    main = "project_config_command.py",
-    deps = [":project_config_command_lib"],
-)
-
 # What the build tools read from Godot's text resources. The graph builds on it in a module
 # of its own, so a change to the graph reruns none of the actions of the tools that stage,
 # validate, index or pack files.
@@ -60,8 +31,8 @@ py_library(
     srcs = ["resource_graph.py"],
     visibility = NOT_ACTUALLY_PUBLIC,
     deps = [
-        ":project_statements_lib",
         ":resource_text_lib",
+        "//tools/project:statements_lib",
     ],
 )
 
@@ -148,9 +119,9 @@ py_library(
         ":mapped_paths_lib",
         ":node_ids_lib",
         ":pck_lib",
-        ":project_config_lib",
         ":resource_text_lib",
         ":resource_uids_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -163,7 +134,7 @@ py_library(
     deps = [
         ":godot_files_lib",
         ":godot_staging_lib",
-        ":project_config_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -242,9 +213,9 @@ py_library(
     deps = [
         ":class_fragment_lib",
         ":godot_staging_lib",
-        ":project_config_lib",
         ":resource_text_lib",
         ":resource_uids_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -274,8 +245,8 @@ py_library(
         ":godot_staging_lib",
         ":pack_contents_lib",
         ":pck_lib",
-        ":project_config_lib",
         ":template_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -313,8 +284,8 @@ py_library(
     deps = [
         ":godot_staging_lib",
         ":pck_lib",
-        ":project_config_lib",
-        ":project_statements_lib",
+        "//tools/project:config_lib",
+        "//tools/project:statements_lib",
         "@rules_python//python/runfiles",
     ],
 )
@@ -342,7 +313,7 @@ py_library(
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
-        ":project_config_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -355,7 +326,7 @@ py_binary(
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
-        ":project_config_lib",
+        "//tools/project:config_lib",
     ],
 )
 
@@ -428,11 +399,11 @@ py_binary(
 py_library(
     name = "common_content_lib",
     srcs = ["common_content.py"],
-    deps = [":project_statements_lib"],
+    deps = ["//tools/project:statements_lib"],
 )
 
 py_binary(
     name = "common_content",
     srcs = ["common_content.py"],
-    deps = [":project_statements_lib"],
+    deps = ["//tools/project:statements_lib"],
 )

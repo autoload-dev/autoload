@@ -651,7 +651,7 @@ _godot_view = rule(
             """,
         ),
         "_project_config": attr.label(
-            default = Label("//tools:project_config"),
+            default = Label("//tools/project:config"),
             executable = True,
             cfg = "exec",
         ),

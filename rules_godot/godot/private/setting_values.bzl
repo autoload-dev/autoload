@@ -1,15 +1,15 @@
-"""Setting values as project_config.py reads them: their kinds, feature overrides and the files they name."""
+"""Setting values as tools/project/config.py reads them: their kinds, feature overrides and the files they name."""
 
 visibility("//godot/private/...")
 
 # A key outside Godot's sections, such as an add-on's own key: content-bound, with the
-# shape of what its declaration names. setting_values.bzl and project_config.py decide the
+# shape of what its declaration names. setting_values.bzl and tools/project/config.py decide the
 # kinds and named paths alike; tests/setting_values.bzl holds the cases both meet.
 _UNKNOWN_KIND = {"binding": "content", "shape": None}
 
 def names_directories(kind):
     """
-    Whether a setting of kind may name a directory, as project_config.py decides (FR-032).
+    Whether a setting of kind may name a directory, as tools/project/config.py decides (FR-032).
 
     A setting Godot hints as a file names files, and so does an autoload; any other, an
     add-on's own key included, may name a directory, which a file below it provides.
@@ -18,7 +18,7 @@ def names_directories(kind):
 
 def setting_kind(kinds, key):
     """
-    Return the kind of a setting or of a feature override's base setting, as project_config.py does.
+    Return the kind of a setting or of a feature override's base setting, as tools/project/config.py does.
 
     Args:
         kinds: The setting kinds and sections of the engine version, from configuration_kinds.
@@ -39,7 +39,7 @@ def setting_kind(kinds, key):
 
 def override_applies(key, features):
     """
-    Whether a setting key applies under features, as project_config.py decides.
+    Whether a setting key applies under features, as tools/project/config.py decides.
 
     Godot applies a feature override such as gui/theme/custom.mobile when one of its tags
     is a feature the game has; a key without a tag always applies.
@@ -115,7 +115,7 @@ def _path_map_paths(value):
 
 def named_paths(shape, literal):
     """
-    Return the strings a file-referencing setting's Godot literal names, as project_config.py does.
+    Return the strings a file-referencing setting's Godot literal names, as tools/project/config.py does.
 
     Args:
         shape: The setting's shape in the setting-kind table, or None for a declared key

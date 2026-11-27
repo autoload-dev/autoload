@@ -1,9 +1,9 @@
 """
 Compose explicit Godot settings without evaluating arbitrary expressions.
 
-The command line of //tools:project_config is project_config_command.py.
+The command line of //tools/project:config is config_command.py.
 
-The statements it reads are project_statements.py's.
+The statements it reads are statements.py's.
 
 Sections: Literals, Named files, Overrides, Plugins and autoloads,
 Composition, Write back.
@@ -14,7 +14,7 @@ import json
 import re
 from collections.abc import Callable, Collection, Iterable
 
-from tools.project_statements import (
+from tools.project.statements import (
     CLOSING,
     SECTION,
     TextScan,

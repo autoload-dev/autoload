@@ -2,7 +2,7 @@
 The statements of Godot's configuration files, such as project.godot: each assignment or
 section header with the text it spans, its section and its key, and the keys of settings.
 
-Several build tools read only this; project_config.py composes settings on top of it, so a
+Several build tools read only this; config.py composes settings on top of it, so a
 change to the composition reruns none of their actions.
 """
 

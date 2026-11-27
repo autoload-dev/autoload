@@ -45,7 +45,7 @@ from tools.pck import (
     pck_files,
     write_pck,
 )
-from tools.project_config import validate_literal
+from tools.project.config import validate_literal
 
 _ADAPTIVE_ICON = Path(__file__).parent / "adaptive_icon.xml.tpl"
 

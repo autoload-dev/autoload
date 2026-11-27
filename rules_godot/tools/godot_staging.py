@@ -28,7 +28,7 @@ from tools.godot_files import is_uid_sidecar
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.node_ids import with_node_ids
 from tools.pck import EXTENSION_LIST
-from tools.project_config import (
+from tools.project.config import (
     compose_project,
     enable_plugins,
     enabled_plugins,

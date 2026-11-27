@@ -1,0 +1,46 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# Godot's configuration files, such as project.godot: their statements, the composition of
+# settings per purpose and its command line. The build tools read the libraries; the
+# ruleset's rules run the command line.
+package(default_visibility = ["//tools:__subpackages__"])
+
+# The statements of Godot's configuration files, which the graph and several tools read
+# without the composition of settings on top of them.
+py_library(
+    name = "statements_lib",
+    srcs = ["statements.py"],
+    visibility = [
+        "//godot/private/tests:__pkg__",
+        "//tools:__subpackages__",
+    ],
+)
+
+# Godot settings composed per purpose without evaluating expressions, which most tools read.
+py_library(
+    name = "config_lib",
+    srcs = ["config.py"],
+    visibility = [
+        "//godot/private/tests:__pkg__",
+        "//tools:__subpackages__",
+    ],
+    deps = [":statements_lib"],
+)
+
+# Composes a purpose's project.godot and checks a project's settings: the command line over
+# the library, so a change to it reruns only its own actions.
+py_library(
+    name = "config_command_lib",
+    srcs = ["config_command.py"],
+    visibility = ["//godot/private/tests:__pkg__"],
+    deps = [":config_lib"],
+)
+
+# The rules of godot/private run it through their private _project_config attributes.
+py_binary(
+    name = "config",
+    srcs = ["config_command.py"],
+    main = "config_command.py",
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":config_command_lib"],
+)

@@ -1,6 +1,6 @@
 """
 What a setting's key and Godot literal name, and whether a feature override applies: the
-cases setting_values.bzl, during analysis, and project_config.py, in actions, must decide alike.
+cases setting_values.bzl, during analysis, and tools/project/config.py, in actions, must decide alike.
 project_config_test.py checks both.
 """
 

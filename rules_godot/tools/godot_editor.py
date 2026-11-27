@@ -34,7 +34,7 @@ from tools.godot_staging import (
     same_content,
     validate_staged_paths,
 )
-from tools.project_config import write_back
+from tools.project.config import write_back
 
 # The runner's own state inside a view, beside Godot's.
 STATE = ".godot/rules_godot"

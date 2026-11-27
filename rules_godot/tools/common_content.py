@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from tools.project_statements import statement_groups
+from tools.project.statements import statement_groups
 
 
 def merge_descriptors(descriptors: list[tuple[str, str]]) -> str:

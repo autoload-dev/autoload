@@ -37,8 +37,8 @@ from tools.godot_staging import (
     tree_files,
 )
 from tools.pck import add_pck_files, pck_file_contents
-from tools.project_config import compose_project
-from tools.project_statements import statement_groups
+from tools.project.config import compose_project
+from tools.project.statements import statement_groups
 
 
 class ExecutionError(RuntimeError):

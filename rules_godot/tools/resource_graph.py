@@ -21,7 +21,7 @@ from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
-from tools.project_statements import statement_groups
+from tools.project.statements import statement_groups
 from tools.resource_text import (
     ANALYZED_FORMATS,
     LEAF_FORMATS,

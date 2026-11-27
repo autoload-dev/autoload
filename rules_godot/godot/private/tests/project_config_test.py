@@ -13,8 +13,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools import project_config, project_config_command
-from tools.project_config import (
+from tools.project import config, config_command
+from tools.project.config import (
     authored_autoloads,
     enable_plugins,
     left_out,
@@ -26,7 +26,7 @@ from tools.project_config import (
     validate_literal,
     write_back,
 )
-from tools.project_statements import statement_groups
+from tools.project.statements import statement_groups
 
 # ==== Compose project =========================================================
 
@@ -49,7 +49,7 @@ SECTIONS = _TABLE["sections"]
 
 # Construct with Godot 4.7's setting kinds, as the rules do.
 compose_project = functools.partial(
-    project_config.compose_project, kinds=KINDS, sections=SECTIONS
+    config.compose_project, kinds=KINDS, sections=SECTIONS
 )
 
 
@@ -62,7 +62,7 @@ def _run(
     return subprocess.run(
         [
             sys.executable,
-            project_config_command.__file__,
+            config_command.__file__,
             command,
             "--manifest",
             str(manifest),
