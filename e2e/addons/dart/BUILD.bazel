@@ -1,6 +1,9 @@
 load("@autoload_dart//dart:defs.bzl", "godot_dart_extension")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sync", "godot_project")
 
+# Godot runs the Dart scripts with the Dart language extension, which also compiles them.
+# gazelle:godot_format_dep .dart //e2e/addons/dart:dart_extension
+
 package(default_testonly = True)
 
 # The Dart language with the suites' fixture scripts.

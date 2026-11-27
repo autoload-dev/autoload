@@ -8,6 +8,9 @@ load(
     "godot_run",
 )
 
+# Godot runs the Dart scripts with the Dart language extension, which also compiles them.
+# gazelle:godot_format_dep .dart //examples/addons/dart:dart_extension
+
 package(default_visibility = ["//visibility:public"])
 
 # The Dart language, with the demo's scripts compiled in.

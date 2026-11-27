@@ -25,8 +25,7 @@ godot_resources(
     prefix = "scripts",
     visibility = ["//e2e/addons/dart:__pkg__"],
     deps = [
-        # The suites load the fixture scripts through constants, which no scan sees.
-        "//e2e/addons/dart:dart_extension",  # keep
+        "//e2e/addons/dart:dart_extension",
         "@autoload_gdunit//gdunit",
     ],
 )

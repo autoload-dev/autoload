@@ -27,6 +27,5 @@ godot_resources(
         "spinner.dart.uid",
     ],
     prefix = "main",
-    # Godot runs the Dart scripts with the extension; no reference names it.
-    deps = ["//examples/addons/dart:dart_extension"],  # keep
+    deps = ["//examples/addons/dart:dart_extension"],
 )
