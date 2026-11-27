@@ -1,3 +1,23 @@
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+
+# The module's identity and license, which REPO.bazel gives every target.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = purl.bazel(
+        module_name(),
+        module_version(),
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:MPL-2.0",
+)
+
 # The module's declarations and Bazel settings with those of its registry test module, which
 # the root module's setup checks read (tools/setup/checkout.py). bcr/ is ignored, so its files
 # belong to this package.
