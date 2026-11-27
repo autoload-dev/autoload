@@ -30,7 +30,7 @@ def _addon_repositories():
     """
     if Label("//:BUILD.bazel").workspace_name:
         return []
-    return [Label(repository + "//:BUILD.bazel").repo_name for repository in ADDON_REPOSITORIES]
+    return [Label(name + "//:BUILD.bazel").repo_name for name in ADDON_REPOSITORIES]
 
 def _unseen(target, ctx):
     """Whether the target is an add-on module's Python, which rules_lint would skip unseen.

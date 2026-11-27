@@ -7,18 +7,18 @@ from typing import Literal, Protocol
 
 from tools.conventions.context import Context, Location
 
-# The catalogue that documents every rule, by its ID as anchor.
+# The catalogue that documents every rule, by its name as anchor.
 CATALOGUE = "docs/internal/conventions.md"
 
 
 @dataclass(frozen=True)
 class RuleInfo:
-    id: str
+    name: str
     title: str
 
     @property
     def documentation(self) -> str:
-        return f"{CATALOGUE}#{self.id.lower()}"
+        return f"{CATALOGUE}#{self.name.lower()}"
 
 
 @dataclass(frozen=True)
@@ -44,7 +44,7 @@ class Diagnostic:
         location = self.finding.location
         status = " not checked" if self.finding.status == "not_checked" else ""
         return (
-            f"{location.path}:{location.line}: {self.rule.id}{status}: "
+            f"{location.path}:{location.line}: {self.rule.name}{status}: "
             f"{self.finding.message} ({self.rule.documentation})"
         )
 
@@ -91,7 +91,7 @@ def report(diagnostics: Iterable[Diagnostic]) -> Report:
                 key=lambda item: (
                     item.finding.location.path,
                     item.finding.location.line,
-                    item.rule.id,
+                    item.rule.name,
                     item.finding.status,
                     item.finding.message,
                 ),
@@ -103,9 +103,9 @@ def report(diagnostics: Iterable[Diagnostic]) -> Report:
 def run(context: Context, rules: Iterable[Rule]) -> Report:
     """Give each rule the same snapshot; never reinterpret its policy or applicability."""
     rules = tuple(rules)
-    ids = [rule.info.id for rule in rules]
-    if len(ids) != len(set(ids)):
-        raise ValueError("Convention rule IDs must be unique")
+    names = [rule.info.name for rule in rules]
+    if len(names) != len(set(names)):
+        raise ValueError("Convention rule names must be unique")
     return report(
         Diagnostic(rule.info, finding)
         for rule in rules

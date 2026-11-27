@@ -18,8 +18,8 @@ def development_bazel(workspace: Workspace) -> Bazel:
     """
     Load the modules in two workspaces: the ruleset in its own, whose development dependencies
     only it sees, and the add-on modules in the root module's, which depends on each of them
-    under its module name (RG015). The queries' output is cached while nothing that loading
-    reads changes.
+    under its module name (addon-module-layout). The queries' output is cached while nothing
+    that loading reads changes.
     """
     root = workspace.root
     return Bazel(
@@ -38,7 +38,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("buildozer", type=Path)
     parser.add_argument(
-        "--rule", action="append", help="Run only this rule ID; repeatable"
+        "--rule", action="append", help="Run only this rule, by name; repeatable"
     )
     parser.add_argument("--list-rules", action="store_true")
     args = parser.parse_args()
@@ -46,7 +46,7 @@ def main() -> int:
         rules = select(args.rule)
         if args.list_rules:
             for rule in rules if args.rule else ALL_RULES:
-                print(f"{rule.info.id}: {rule.info.title} ({rule.info.documentation})")
+                print(f"{rule.info.name}: {rule.info.title} ({rule.info.documentation})")
             return 0
         root = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
         files = run_tool(

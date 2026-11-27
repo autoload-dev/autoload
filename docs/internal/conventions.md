@@ -2,46 +2,54 @@
 
 The conventions check (`bazel run //tools/conventions`) audits the Bazel packages, targets,
 Godot projects, add-on modules, documentation and agent files of this repository. Each
-convention rule has a stable ID, so diagnostics stay searchable when this page is
-reorganized. This page owns each rule's ID, applicability, automated coverage and limits;
-the [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the
-layout and naming conventions mean. External repositories and source files are separate
-identities, not authored target declarations. Coverage that rests on Bazel's evaluation,
-such as RG002, RG006, RG007, RG008, RG012 and RG026, leaves out the registry test
-modules ([RG020](#rg020)), which the check does not load (see the [rule framework](#rule-framework)).
+convention rule has a stable name, which says what it requires in the [glossary's](glossary.md)
+terms and keeps diagnostics searchable when this page is reorganized. This page owns each
+rule's name, applicability, automated coverage and limits; the
+[project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the layout
+and naming conventions mean. External repositories and source files are separate identities,
+not authored target declarations. Coverage that rests on Bazel's evaluation, such as that of
+RG002, [documented-targets-exist](#documented-targets-exist), RG007,
+[application-content](#application-content), RG012 and RG026, leaves out the registry test
+modules ([registry-test-module-in-bcr](#registry-test-module-in-bcr)), which the check does not
+load (see the [rule framework](#rule-framework)).
 
-| ID | Rule | Policy | Automated coverage | Enforcement |
+RG002, RG007, RG012 and RG026 keep the numbered IDs they had before rules had names, as a
+temporary exception: the move to Bazel-native boundaries and symbolic macros removes or
+reduces them, and they get names once that change has merged.
+
+| Name | Rule | Policy | Automated coverage | Enforcement |
 |---|---|---|---|---|
-| [RG001](#rg001) | Package segments use lower snake case | Required | Every BUILD file, relative to the nearest module | Error |
+| [snake-case-package-paths](#snake-case-package-paths) | Package segments use lower snake case | Required | Every BUILD file, relative to the nearest module | Error |
 | [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
-| [fixture-references](#fixture-references) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
-| [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
+| [no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
+| [documented-targets-exist](#documented-targets-exist) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
-| [RG008](#rg008) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
-| [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
+| [application-content](#application-content) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
+| [projects-at-fixed-places](#projects-at-fixed-places) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
-| [public-documentation-links](#public-documentation-links) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
-| [RG014](#rg014) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
-| [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
-| [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
-| [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
-| [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
-| [RG020](#rg020) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
-| [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
-| [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
-| [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
-| [shared-module-files](#shared-module-files) | Add-on modules keep the shared files as the add-on generator writes them | Required | The shared files of every add-on module and its registry templates | Error |
-| [region-headers](#region-headers) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
-| [reading-order](#reading-order) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
+| [no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
+| [engine-files-under-engines](#engine-files-under-engines) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
+| [addon-module-layout](#addon-module-layout) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
+| [no-claude-md](#no-claude-md) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
+| [linked-skills](#linked-skills) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
+| [project-named-after-directory](#project-named-after-directory) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
+| [registry-test-module-in-bcr](#registry-test-module-in-bcr) | Released modules have a registry test module in `bcr/` | Required | The ruleset and every add-on module, their presubmits and `.bazelignore` | Error |
+| [no-godot-in-addon-modules](#no-godot-in-addon-modules) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
+| [no-component-names-in-tooling](#no-component-names-in-tooling) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
+| [release-archives-without-tests](#release-archives-without-tests) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
+| [shared-module-files-as-generated](#shared-module-files-as-generated) | Add-on modules keep the shared files as the add-on generator writes them | Required | The shared files of every add-on module and its registry templates | Error |
+| [region-headers-named-in-head](#region-headers-named-in-head) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
+| [definitions-before-callers](#definitions-before-callers) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
 
-RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
-[boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
+The rule of the public API's boundary is retired: Bazel's load and target visibility enforce it
+(see the [boundary rules](verification-architecture.md#boundary-rules)). The rules that
 required add-ons to keep a demo and a test project inside their own directory and their
-implementation independent of that demo, are retired with that layout: add-ons live in
-add-on modules, which hold no project ([RG021](#rg021)), and their demos and end-to-end tests
-are projects of the root module ([RG009](#rg009)). Choosing the main entry point
-and useful package boundaries still requires judgment; the checks do not elect a primary target.
+implementation independent of that demo are retired with that layout: add-ons live in add-on
+modules, which hold no project ([no-godot-in-addon-modules](#no-godot-in-addon-modules)), and
+their demos and end-to-end tests are projects of the root module
+([projects-at-fixed-places](#projects-at-fixed-places)). Choosing the main entry point and
+useful package boundaries still requires judgment; the checks do not elect a primary target.
 
 Other tools enforce what three retired rules checked: explicit target names, resolving local
 links and the add-on modules' Python lint. Buildifier's default warnings
@@ -56,7 +64,7 @@ Markdown links and their fragments, in exact case, over every Markdown file in t
 module's Python target without the tag `lint-genfiles`, which the root module's lint would
 skip ([tools/lint/check.bzl](../../tools/lint/check.bzl)).
 
-## RG001
+## snake-case-package-paths
 
 **Package segments use lower snake case.** Each segment of an owned Bazel package path
 must match `[a-z][a-z0-9]*(?:_[a-z0-9]+)*`: an ASCII lowercase letter first, then lowercase
@@ -77,9 +85,9 @@ they were maintained packages.
 
 ## RG002
 
-**Ordinary target names use lower snake case.** Authored logical target names follow the
-same spelling as RG001. Consistent names make labels easy to type and distinguish logical
-targets from output filenames and generated artifacts.
+**Ordinary target names use lower snake case.** Authored logical target names follow the same
+spelling as snake-case-package-paths. Consistent names make labels easy to type and distinguish
+logical targets from output filenames and generated artifacts.
 
 ```starlark
 # Conforming declarations; helper names describe separate responsibilities.
@@ -130,7 +138,7 @@ reviews fail. Missing required ownership or review evidence fails the check.
 Incomplete review evidence is reported as `RG002 not checked`. This strictness does not
 change other conventions' coverage policy.
 
-## fixture-references
+## no-fixtures-in-public-documentation
 
 **Public documentation does not reference test fixtures.** Public guides and READMEs show
 runnable examples, which users can copy, instead of named consumer scenarios.
@@ -140,7 +148,7 @@ of the repository and the ruleset) and `AGENTS.md` files. Layout placeholders su
 `tests/smoke/<operating_system>/` are not fixture references. Maintainer fixture commands
 belong in internal documentation.
 
-## RG006
+## documented-targets-exist
 
 **Documented commands name existing targets.** Copying a command from the documentation
 works only if its labels exist.
@@ -196,13 +204,13 @@ their production eligibility. This rule does not traverse a test's dependency cl
 classify separately declared suites and test data; those still follow the broader ownership
 policy. Loading-time flags do not establish configured resource membership or runtime behavior.
 
-## RG008
+## application-content
 
 **Application content lives under `main/` of its physical project.** The place of a project
-establishes ownership in every consumer, following [RG009](#rg009). Application cases own
-their scenes, scripts and exclusively used assets below `main/`; an add-on a project keeps
-for itself lives there too, such as `main/addons/<name>/`. Keep authored UID/import sidecars
-beside sources.
+establishes ownership in every consumer, following
+[projects-at-fixed-places](#projects-at-fixed-places). Application cases own their scenes,
+scripts and exclusively used assets below `main/`; an add-on a project keeps for itself lives
+there too, such as `main/addons/<name>/`. Keep authored UID/import sidecars beside sources.
 
 For example:
 
@@ -246,7 +254,7 @@ reported as not checked. The check does not classify undeclared files or require
 `main/` where no application-owned resources exist. No manually listed application roots or
 reusable-resource exemptions select applicability.
 
-## RG009
+## projects-at-fixed-places
 
 **Projects lie at the fixed places of their consumers.** Every consumer places its projects
 by path:
@@ -257,14 +265,14 @@ by path:
 | Add-on examples, `examples/addons/<module>/` for each module `addons/<module>/` | the directory itself, and one directory of it per scenario |
 | Consumer scenarios, `e2e/rules_godot/` | `e2e/rules_godot/smoke/<operating_system>/`, and `e2e/rules_godot/<scenario>/` for every other scenario |
 | Add-on end-to-end tests, `e2e/addons/<module>/` | the directory itself, and one directory of it per scenario or configuration variant that needs other settings |
-| Registry test modules, `<module>/bcr/<name>/` ([RG020](#rg020)) | the module itself, and one directory of it per project |
+| Registry test modules, `<module>/bcr/<name>/` ([registry-test-module-in-bcr](#registry-test-module-in-bcr)) | the module itself, and one directory of it per project |
 
-A project owns a BUILD file and at least one authored Godot configuration; an application,
-a project directly in `examples/`, is described in the
-[example guidance](../../examples/AGENTS.md#common-workflows). Related
-operating-system contexts can share one project. No other module holds projects: an add-on
-module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
-are outside this check. There is no per-directory admission list.
+A project owns a BUILD file and at least one authored Godot configuration; an application, a
+project directly in `examples/`, is described in the
+[example guidance](../../examples/AGENTS.md#common-workflows). Related operating-system
+contexts can share one project. No other module holds projects: an add-on module holds none
+([no-godot-in-addon-modules](#no-godot-in-addon-modules)), and the white-box fixture projects
+of the ruleset module are outside this check. There is no per-directory admission list.
 
 The check inventories the projects and the authored `project.godot` files of every consumer.
 Configurations must belong to a project at a fixed place. Temporary projects constructed
@@ -305,7 +313,7 @@ own test-only dependency check covers edges to marked targets; this rule also co
 unmarked targets and source files by their location. Indirect paths and configured closures
 remain outside this automated subset.
 
-## public-documentation-links
+## no-internal-links-in-public-documentation
 
 **Public documentation does not link to internal documentation.** Consumer guides and
 READMEs must stand on their own. Link to public setup and usage guides instead of requiring
@@ -324,7 +332,7 @@ review; the checker does not fetch remote documents.
 This source check does not implement a full Markdown renderer: nested list/blockquote blocks
 and destinations containing whitespace or nested parentheses need review.
 
-## RG014
+## engine-files-under-engines
 
 **Engine modules, patches and lock files live under `engines/<name>/`.** A custom
 engine is a shared resource of the repository, not a part of one application: its directory
@@ -373,7 +381,7 @@ such as dependency patches in `third_party/`, and lock files at the root
 of the repository, such as `multitool.lock.json`, are outside this rule. The check does not
 read module or patch contents and does not prove that a recipe consumes them.
 
-## RG015
+## addon-module-layout
 
 **Add-on modules share one layout, and backends live in `native/backends/`.** This
 repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
@@ -390,10 +398,11 @@ root module's declaration lists it. Each module:
   directory whose BUILD file declares a target named like it, as the generator writes it.
   The check thus rejects directories nothing uses rather than keep a list of allowed
   packages;
-- owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
-  `presubmit.yml` and `source.template.json`. Templates in `.bcr/addons/` without their
-  module are removed with it. Their contents, like those of the module's other shared files,
-  such as its `.bazelrc`, are what the generator writes ([shared-module-files](#shared-module-files));
+- owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`, `presubmit.yml`
+  and `source.template.json`. Templates in `.bcr/addons/` without their module are removed with
+  it. Their contents, like those of the module's other shared files, such as its `.bazelrc`,
+  are what the generator writes
+  ([shared-module-files-as-generated](#shared-module-files-as-generated));
 - has no regular dependency that only its `tests/` packages load from: every consumer
   inherits it. CI builds the module from the root module, where its development
   dependencies are not active, so tests that need such a library live in
@@ -411,13 +420,13 @@ and the parsed calls of the BUILD files without loading Bazel; it reports a stra
 directory once. A target name that is no string literal, such as one an example project
 computes, is reported as not checked.
 
-## RG017
+## no-claude-md
 
 **Agent instructions live in `AGENTS.md`.** Claude Code and Codex both read `AGENTS.md`, but
 Claude Code ignores it while a `CLAUDE.md` exists in its working directory or above it. The
 check reports every `CLAUDE.md`; rules for one agent alone go into `AGENTS.md`, marked as such.
 
-## RG018
+## linked-skills
 
 **Skills live in `.agents/skills` and are linked for Claude Code.** A skill is written once,
 as a directory `.agents/skills/<name>/` with a `SKILL.md`, where Codex finds it. Claude Code
@@ -425,7 +434,7 @@ finds project skills only in `.claude/skills/`, so `.claude/skills/<name>` is a 
 to `../../.agents/skills/<name>`. `.claude/skills/` holds nothing else: no copies and no
 skills without a counterpart.
 
-## RG019
+## project-named-after-directory
 
 **A package's Godot project is named like its directory.** A package that holds a
 `project.godot` and declares projects names one of them like its directory, so the package's
@@ -440,7 +449,7 @@ The check reads the `godot_project` calls of every module and reports each packa
 `project.godot` whose projects include none named like its directory. A package without a
 `project.godot`, whose project reads its configuration from elsewhere, is outside the check.
 
-## RG020
+## registry-test-module-in-bcr
 
 **Released modules have a registry test module in `bcr/`.** The Bazel Central Registry
 tests a release by building a test module from the release archive. Each released module,
@@ -453,14 +462,14 @@ recognizable by its place:
   own;
 - the test module is a consumer with a flat project: the test module itself is the project,
   or each project lies directly in one of its directories, which
-  [RG009](#rg009) checks.
+  [projects-at-fixed-places](#projects-at-fixed-places) checks.
 
 A test module registers the official engine itself, as an application does; the add-on
 modules register none for consumers. The add-on generator writes `bcr/smoke` with every new
 module. `python3 -m tools.ci.release_archive` runs each test module from its module's release
 archive, as the release workflow and the registry do.
 
-## RG021
+## no-godot-in-addon-modules
 
 **Add-on modules run no Godot; their end-to-end tests live in the root module.** An add-on
 module holds its add-ons and the unit tests of their code. A test that uses an add-on as an
@@ -474,7 +483,7 @@ The check reports, in each add-on module but its registry test modules, every
 `project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync`,
 `godot_runtime_profile` or a macro that declares a Godot test ([RG007](#rg007)).
 
-## RG022
+## no-component-names-in-tooling
 
 **The Python tooling names no add-on module or application.** The tools read what is
 specific to a component from its own files, such as its `MODULE.bazel` and BUILD files, or
@@ -487,16 +496,16 @@ application of `examples/` as a word, also inside a flag or label, such as `--co
 or `@autoload_<module>//`; a file extension such as `.dart` names none. Comments may name
 components, such as to explain an exception.
 
-## RG023
+## release-archives-without-tests
 
-**Release archives leave out tests, and nothing else needs them.** The ruleset and every
-add-on module are released as a `git archive` of their directory
-(`.github/workflows/release_prep.sh`). Consumers cannot run a module's tests, whose
-development dependencies are not theirs, so each released module's `.gitattributes` leaves
-every `tests/` directory, at any depth, out of the archive: `tests export-ignore`. The
-registry test modules in `bcr/` keep theirs, since the registry runs them from the archive
-([RG020](#rg020)): `bcr/**/tests -export-ignore`. A package
-that would then name a missing file or package fails to load for every consumer, so no
+**Release archives leave out tests, and nothing else needs them.** The ruleset and every add-on
+module are released as a `git archive` of their directory
+(`.github/workflows/release_prep.sh`). Consumers cannot run a module's tests, whose development
+dependencies are not theirs, so each released module's `.gitattributes` leaves every `tests/`
+directory, at any depth, out of the archive: `tests export-ignore`. The registry test modules
+in `bcr/` keep theirs, since the registry runs them from the archive
+([registry-test-module-in-bcr](#registry-test-module-in-bcr)): `bcr/**/tests -export-ignore`. A
+package that would then name a missing file or package fails to load for every consumer, so no
 Starlark file outside a `tests/` directory may use a path or label inside one. Test code and
 fixtures that a package outside `tests/` needs belong to a `tests/` package of their own.
 
@@ -506,7 +515,7 @@ visibility, and the arguments of dev dependencies in `MODULE.bazel`, which only 
 own builds evaluate. Modules that are never released, such as the root module, are outside
 it.
 
-## shared-module-files
+## shared-module-files-as-generated
 
 **Add-on modules keep the shared files as the add-on generator writes them.** Some files of
 the generator's module template are settings every module shares: `.bazelignore`, `.bazelrc`,
@@ -519,7 +528,7 @@ them, so a change of the template or of the ruleset's metadata reaches every mod
 what the generator writes. A module's own files, such as its `MODULE.bazel` and `README.md`,
 are outside it.
 
-## region-headers
+## region-headers-named-in-head
 
 **Regions start with a region header the file's head names.** A file with several topics is
 divided into regions, so that a reader who scans it finds a topic and skips the rest. A region
@@ -544,7 +553,7 @@ A Python region declares at least two names. Whether a file
 needs regions at all is a matter of review: a file with one topic has none. The repository's
 `.vscode/settings.json` shows region headers in VS Code's minimap.
 
-## reading-order
+## definitions-before-callers
 
 **Python definitions stand before their first caller.** A module reads from its helpers up to
 what uses them, in the order Starlark requires on its top level; the head and the region
@@ -553,8 +562,9 @@ first top-level function or class that names it. Definitions that name each othe
 or through others, are exempt, since one of them has to come second.
 
 The check parses every Python module of the repository; one that does not parse fails the
-audit, as for [RG023](#rg023). It reads names, so a definition that passes another on without calling it
-counts as a caller as well. Starlark files are outside it.
+audit, as for [release-archives-without-tests](#release-archives-without-tests). It reads
+names, so a definition that passes another on without calling it counts as a caller as well.
+Starlark files are outside it.
 
 ## RG026
 
@@ -579,21 +589,24 @@ bazel run //tools/conventions
 ```
 
 The command runs every registered convention rule that judges more than one file at a time
-across all owned modules. Violations include the stable rule ID, file, line and a link to this
+across all owned modules. Violations include the rule's name, file, line and a link to this
 catalogue. The checker reports unreviewed computed macro names separately. Exit status `1`
 indicates convention findings; `2` indicates an incomplete audit. `aspect check`, the
 pre-push hook's, and the Linux job run this command.
 
-The rules that judge each file on its own, [RG001](#rg001), [RG017](#rg017),
-[fixture-references](#fixture-references),
-[public-documentation-links](#public-documentation-links), [region-headers](#region-headers),
-[reading-order](#reading-order) and [shared-module-files](#shared-module-files), run in the
+The rules that judge each file on its own,
+[snake-case-package-paths](#snake-case-package-paths), [no-claude-md](#no-claude-md),
+[no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation),
+[no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation),
+[region-headers-named-in-head](#region-headers-named-in-head),
+[definitions-before-callers](#definitions-before-callers) and
+[shared-module-files-as-generated](#shared-module-files-as-generated), run in the
 [file lint](verification-recipes.md#the-file-lint) instead, on the files it selects: the
-changed files in `aspect check` and the pre-commit hook, every file Git lists in the Linux
-job.
-[files.py](../../tools/conventions/files.py) takes the files by their paths in the
-repository; each rule picks its own among them. `bazel run //tools/conventions -- --rule
-region-headers` still runs one of them over the whole checkout, as `/code-health` does.
+changed files in `aspect check` and the pre-commit hook, every file Git lists in the Linux job.
+[files.py](../../tools/conventions/files.py) takes the files by their paths in the repository;
+each rule picks its own among them.
+`bazel run //tools/conventions -- --rule region-headers-named-in-head` still runs one of them
+over the whole checkout, as `/code-health` does.
 
 The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
 `XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
@@ -608,7 +621,7 @@ the entries of the most recent loading inputs are kept.
 Run one rule independently or list the registered rules:
 
 ```sh
-bazel run //tools/conventions -- --rule RG019
+bazel run //tools/conventions -- --rule project-named-after-directory
 bazel run //tools/conventions -- --list-rules
 ```
 
@@ -625,12 +638,12 @@ blanket exemption for fixtures or the test tree.
 ## Rule framework
 
 Each registered rule is an independent object with `info: RuleInfo` and
-`evaluate(context) -> Iterable[Finding]`. Its own module owns its ID, title, applicability,
+`evaluate(context) -> Iterable[Finding]`. Its own module owns its name, title, applicability,
 predicates, artifact qualifications, incomplete-coverage findings and records of reviewed
 sites. Tests live beside the rule. No rule's implementation is placed in the CLI or tool
 adapters.
 
-The [framework](../../tools/conventions/framework.py) validates unique IDs, invokes rules
+The [framework](../../tools/conventions/framework.py) validates unique names, invokes rules
 against one context and attaches their metadata to findings. It sorts diagnostics for
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
 aborts the run rather than being merged. The rules that judge each file on its own are
@@ -638,7 +651,7 @@ registered in [per_file.py](../../tools/conventions/per_file.py), whose library 
 Bazel: the file lint runs them, and the CLI only when they are named.
 `Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
-the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)
+the rules explicitly and selects them by name, and the [CLI](../../tools/conventions/check.py)
 formats results and chooses the exit status.
 
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
@@ -650,19 +663,19 @@ members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal and the local
 link destinations of a Markdown source.
 
-Tools load evidence lazily, cache it per tool/context instance and return immutable records
-and read-only attribute maps. Bazel evidence covers the loaded modules
-(`workspace.loaded_modules`): every module but the registry test modules, which build only
-from a release archive ([RG020](#rg020)). They load in two Bazel workspaces, each with one
-server: the ruleset in its own, since only it sees its development dependencies, and the
-root module with the add-on modules, which it names through their repositories,
-`@autoload_<module>//`; the tool names their labels as the module itself does. A workspace
-loads all of its modules in one query. The first `context.declarations` call loads the calls
-and rules of every loaded module, the two workspaces concurrently. The
-rules that read declarations share their data, and the documentation-label
-rule resolves labels against the same per-module query, so no query runs twice. Missing or
-ambiguous source evidence and failed tools raise `EvidenceError` and abort the audit; they
-are not converted into an empty successful result.
+Tools load evidence lazily, cache it per tool/context instance and return immutable records and
+read-only attribute maps. Bazel evidence covers the loaded modules
+(`workspace.loaded_modules`): every module but the registry test modules, which build only from
+a release archive ([registry-test-module-in-bcr](#registry-test-module-in-bcr)). They load in
+two Bazel workspaces, each with one server: the ruleset in its own, since only it sees its
+development dependencies, and the root module with the add-on modules, which it names through
+their repositories, `@autoload_<module>//`; the tool names their labels as the module itself
+does. A workspace loads all of its modules in one query. The first `context.declarations` call
+loads the calls and rules of every loaded module, the two workspaces concurrently. The rules
+that read declarations share their data, and the documentation-label rule resolves labels
+against the same per-module query, so no query runs twice. Missing or ambiguous source evidence
+and failed tools raise `EvidenceError` and abort the audit; they are not converted into an
+empty successful result.
 
 To add a rule, create its module and adjacent regression tests, register its object, and
 declare those sources in the existing Bazel package. A rule consumes available tools and
@@ -691,16 +704,18 @@ without launching subprocesses; context tests exercise real parsing and evidence
   tools enforce are retired instead, as the beginning of this page lists.
 - alint 0.23 (November 2026), whose built-in rules check a repository's shape, was tried for
   the rules about files and directories and rejected. It expressed the `CLAUDE.md` rule
-  ([RG017](#rg017)) fully, the package segments ([RG001](#rg001)) only with a message that
-  names the BUILD file but not the segment, and the engine layout ([RG014](#rg014)) with nine
-  rules that report two of its cases twice; a `**` inside a brace pattern matched nothing
-  without an error. It has no rule for the target of a symbolic link ([RG018](#rg018)) or for
-  a call's name ([RG019](#rg019)). Its whole-tree run took 0.3 s. One rule it expresses fully
-  does not outweigh a pre-1.0 binary with one maintainer, a release every few days and a
-  second rule language beside the checker's.
+  ([no-claude-md](#no-claude-md)) fully, the package segments
+  ([snake-case-package-paths](#snake-case-package-paths)) only with a message that names the
+  BUILD file but not the segment, and the engine layout
+  ([engine-files-under-engines](#engine-files-under-engines)) with nine rules that report two
+  of its cases twice; a `**` inside a brace pattern matched nothing without an error. It has no
+  rule for the target of a symbolic link ([linked-skills](#linked-skills)) or for a call's name
+  ([project-named-after-directory](#project-named-after-directory)). Its whole-tree run took
+  0.3 s. One rule it expresses fully does not outweigh a pre-1.0 binary with one maintainer, a
+  release every few days and a second rule language beside the checker's.
 - The contents of files that the add-on generator writes are checked by comparing them with
-  what it writes ([shared-module-files](#shared-module-files)), not by a second description
-  of the same content.
+  what it writes ([shared-module-files-as-generated](#shared-module-files-as-generated)), not
+  by a second description of the same content.
 - [Pluggy](https://pluggy.readthedocs.io/en/stable/) would provide hook registration and
   result collection, but the domain context and evidence adapters would still be ours, so
   rules are registered explicitly and not discovered.

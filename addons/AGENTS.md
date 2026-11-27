@@ -11,28 +11,31 @@ bazel run //tools/addons:new -- <module>                   # a module with one a
 bazel run //tools/addons:new -- <module> --addon <addon>   # one more add-on in a module
 ```
 
-It writes [tools/addons/template](../tools/addons/template), which builds and tests in both host jobs from
-the start, and a new module's registry templates in `.bcr/addons/<module>/`. From then on
-the module owns those files, but for its shared files, the settings every module keeps as the
-generator writes them, such as `.bazelrc`, `.gitattributes` and the registry templates
-(shared-module-files, [conventions.md](../docs/internal/conventions.md)): `aspect generate`
-writes them again for every module. Improve the template, not one module, when a pattern
-should hold for all of them. A new add-on gets its own module, unless it must
-be versioned with others, such as products that share one SDK.
+It writes [tools/addons/template](../tools/addons/template), which builds and tests in both
+host jobs from the start, and a new module's registry templates in `.bcr/addons/<module>/`.
+From then on the module owns those files, but for its shared files, the settings every module
+keeps as the generator writes them, such as `.bazelrc`, `.gitattributes` and the registry
+templates (shared-module-files-as-generated,
+[conventions.md](../docs/internal/conventions.md)): `aspect generate` writes them again for
+every module. Improve the template, not one module, when a pattern should hold for all of them.
+A new add-on gets its own module, unless it must be versioned with others, such as products
+that share one SDK.
 
 # Module layout
 
-The conventions check enforces it (RG015, [conventions.md](../docs/internal/conventions.md)):
+The conventions check enforces it (addon-module-layout,
+[conventions.md](../docs/internal/conventions.md)):
 
-- `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`, `.bazelversion`.
+- `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`,
+  `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. They are shared files: change them in the template.
-- `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's
-  add-ons that registers the official engine, as applications do (RG020). Keep it using the
-  module's public targets. In this repository it uses the rules beside it through
+- `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's add-ons
+  that registers the official engine, as applications do (registry-test-module-in-bcr). Keep it using
+  the module's public targets. In this repository it uses the rules beside it through
   `addons/bcr.bazelrc`, as CI's macOS job runs it on every run;
   `python3 -m tools.ci.release_archive addons/<module>` runs it from the module's release
   archive, as the registry does.
@@ -119,11 +122,11 @@ scripts need no targets for their lint: the
 [file lint](../docs/internal/verification-recipes.md#the-file-lint) at the repository root
 covers them.
 
-Every project is named like its directory (RG019), so `//examples/addons/<module>` and
-`//e2e/addons/<module>` name the projects. CI runs every module's tests in its
+Every project is named like its directory (project-named-after-directory), so
+`//examples/addons/<module>` and `//e2e/addons/<module>` name the projects. CI runs every
+module's tests in its
 [host jobs](../docs/internal/verification-platforms.md#host-jobs-and-execution);
-`aspect work addon-template` checks the template the same way
-(`tools/addons/selftest.py`).
+`aspect work addon-template` checks the template the same way (`tools/addons/selftest.py`).
 
 For iOS device runs, add `--define=ios_signing=local` with a profile in
 `examples/addons/<module>/signing/`, install with `xcrun devicectl` and check the log for crashes.
