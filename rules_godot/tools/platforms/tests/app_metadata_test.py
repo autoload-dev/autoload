@@ -89,6 +89,29 @@ class AdditionalMetadataTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "[Dd]uplicate"):
             shell_apple._checked(text, "Info.plist")
 
+    def test_malformed_structure_is_rejected(self) -> None:
+        for text, message in [
+            ("<dict/>", "Expected a plist root"),
+            ("<plist><dict/><dict/></plist>", "Expected one top-level plist dictionary"),
+            ("<plist><array/></plist>", "Expected one top-level plist dictionary"),
+            ("<plist><dict><key>x</key></dict></plist>", "key/value sequence"),
+            ("<plist><dict><string/><key>x</key></dict></plist>", "key/value sequence"),
+            (
+                "<plist><dict><key>x</key><key>y</key></dict></plist>",
+                "key/value sequence",
+            ),
+            (
+                "<plist><dict><key>x</key><array><key>y</key></array></dict></plist>",
+                "Malformed plist array",
+            ),
+            (
+                "<plist><dict><key>x</key><string><true/></string></dict></plist>",
+                "Unexpected child in plist scalar string",
+            ),
+        ]:
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, message):
+                shell_apple._checked(text, "Info.plist")
+
     def test_unknown_xml_element_is_rejected(self) -> None:
         text = (
             '<plist version="1.0"><dict><unrecognized/><key>x</key><true/></dict></plist>'
