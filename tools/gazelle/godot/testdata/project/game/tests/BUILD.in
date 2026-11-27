@@ -1,3 +1,6 @@
+# The tests' Dart scripts run with another build of the language.
+# gazelle:godot_format_dep .dart //addons/test_dart
+
 # The Dart scripts the language extension compiles.
 filegroup(
     name = "dart_fixtures",

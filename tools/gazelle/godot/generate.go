@@ -7,7 +7,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -15,15 +14,13 @@ import (
 // ==== Generation ==============================================================
 
 // What Resolve receives for a godot_resources target: the references of its files, the
-// res:// paths their other literals name, and which of its attributes that Resolve sets the
-// existing target keeps. Gazelle resolves the generated target before it merges it into the
-// existing one, so only generation sees a `# keep`.
+// res:// paths their other literals name, and the unit, with the attributes that Resolve sets
+// which the existing target keeps. Gazelle resolves the generated target before it merges it
+// into the existing one, so only generation sees a `# keep`.
 type unitImports struct {
+	*unit
 	refs     []reference
 	literals []string
-	kept     map[string]bool
-	// The targets the formats of its files need, and the deps of the existing target.
-	formatDeps, chosen []label.Label
 }
 
 // generates reports whether the language declares anything in the directory.
@@ -103,17 +100,14 @@ func (p *packageFiles) projectRule() *rule.Rule {
 // resourcesRule declares a unit and gathers the references of its files.
 func (p *packageFiles) resourcesRule(name string, u *unit) (*rule.Rule, unitImports) {
 	srcs := slices.Clone(u.other)
-	var imports unitImports
+	imports := unitImports{unit: u}
 	for _, file := range u.files {
 		srcs = append(srcs, file)
 		srcs = append(srcs, p.sidecars(file)...)
 		imports.refs = append(imports.refs, p.scans[file].Refs...)
 		imports.literals = append(imports.literals, p.scans[file].Runtime...)
-		imports.formatDeps = append(imports.formatDeps, getConfig(p.args.Config).formatDeps[format(file)]...)
 	}
-	imports.chosen = p.absolute(u.deps)
 	slices.Sort(srcs)
-	imports.kept = u.kept
 	imports.refs = sortedReferences(imports.refs)
 	imports.literals = sortedUnique(imports.literals)
 	r := rule.NewRule(resourcesKind, name)

@@ -63,13 +63,24 @@ func (p *packageFiles) labels(values []string) []string {
 	return sortedUnique(spelled)
 }
 
-// absolute returns the labels among values, absolute in the package's repository.
+// absolute returns the labels among values, absolute and with the repository spelled as the
+// index spells it, so that `:ext`, `//pkg:ext` and `@repo//pkg:ext` of the main repository
+// compare equal.
 func (p *packageFiles) absolute(values []string) []label.Label {
 	var labels []label.Label
 	for _, value := range values {
 		if l, err := label.Parse(value); err == nil {
-			labels = append(labels, l.Abs(p.args.Config.RepoName, p.args.Rel))
+			labels = append(labels, inRepository(l, p.args.Config.RepoName, p.args.Rel))
 		}
 	}
 	return labels
+}
+
+// inRepository returns a label absolute in the repository named repo, with that name spelled.
+func inRepository(l label.Label, repo, rel string) label.Label {
+	l = l.Abs(repo, rel)
+	if l.Repo == "" {
+		l.Repo = repo
+	}
+	return l
 }

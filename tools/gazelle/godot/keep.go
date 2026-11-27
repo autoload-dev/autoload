@@ -25,5 +25,5 @@ func keptResolveAttrs(r *rule.Rule) map[string]bool {
 	return kept
 }
 
-// Gazelle's `# keep`, with or without a reason after a colon.
-var keepComment = regexp.MustCompile(`^#\s*keep\s*(:|$)`)
+// Gazelle's `# keep`, alone or with a reason after `keep: `, as rule.ShouldKeep reads it.
+var keepComment = regexp.MustCompile(`^#\s*keep(: .*)?\s*$`)
