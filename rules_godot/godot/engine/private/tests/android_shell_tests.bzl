@@ -28,6 +28,7 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
             "_kotlin_core": "@@rules_kotlin+//kotlin:core.bzl",
             "_python": _PYTHON,
             "_tree": "tools/engine/tree.py",
+            "_tree_link": "tools/engine/tree_link.py",
         } | overrides,
         files = {
             str(_TREE): json.encode({
@@ -58,8 +59,7 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
         _PYTHON,
-        "tools/engine/tree.py",
-        "link",
+        "tools/engine/tree_link.py",
         "--tree",
         str(_TREE).rpartition("/")[0],
         "--recipe",
@@ -68,11 +68,9 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
         "platform/android/java/lib",
     ]).in_order()
 
-    # The tree's patches change the shell's sources, so the shell is prepared again with them.
-    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
-        "tools/engine/tree.py",
-        "@@//engines:java.patch",
-    ])
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(
+        "tools/engine/tree_link.py",
+    )
 
 def _test_a_failed_link_stops_the_shell(env):
     ctx, errors = _shell(execute = {_PYTHON: {"return_code": 1, "stderr": "denied"}})

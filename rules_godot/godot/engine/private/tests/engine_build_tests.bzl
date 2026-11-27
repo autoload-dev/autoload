@@ -51,6 +51,7 @@ _ATTRS = {
     "_generators": "tools/engine/generators.py",
     "_build_file": "tools/engine/build_file.py",
     "_tree": "tools/engine/tree.py",
+    "_tree_link": "tools/engine/tree_link.py",
     "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
@@ -72,7 +73,7 @@ def _tree_json(patches = [], patch_strip = 1):
         "version": "4.7.2",
         "patches": patches,
         "patch_strip": patch_strip,
-        "scons": "0" * 64,
+        "digest": "0" * 64,
     })
 
 def _paths(path):
@@ -151,8 +152,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 11 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
-            "watch",
+        ["watch"] * 12 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "execute",
             "execute",
             "delete",
@@ -162,7 +162,6 @@ def _test_configure_command_carries_the_recipe(env):
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
 
     # The patches are the tree's; the recipe's pin digest covers them.
-    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(_PATCH_LABEL)
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "download_and_extract")).contains_exactly([])
     env.expect.that_collection(_configure(ctx).args).contains_exactly(_CONFIGURE_COMMAND).in_order()
@@ -176,14 +175,15 @@ def _test_a_recipe_links_its_engine_tree(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree.py", "link", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", ""],
+        [_PYTHON, "tools/engine/tree_link.py", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", ""],
     ).in_order()
-    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
         "tools/engine/tree.py",
-    )
+        "tools/engine/tree_link.py",
+    ])
 
 def _test_a_failed_link_fails(env):
-    ctx, errors = _build(execute = {_PYTHON + " tools/engine/tree.py": {"return_code": 1, "stderr": "denied"}})
+    ctx, errors = _build(execute = {_PYTHON + " tools/engine/tree_link.py": {"return_code": 1, "stderr": "denied"}})
     env.expect.that_collection(errors).contains_exactly([
         "godot_linux_x86_64_template_release: linking the engine tree failed:\n\ndenied",
     ])
@@ -264,7 +264,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 11,
+        ["watch"] * 12,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -273,7 +273,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 11,
+        ["watch"] * 12,
     )
 
 # Configuration runs rules_python's interpreter, whatever Python the host's PATH has.

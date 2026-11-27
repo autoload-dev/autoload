@@ -43,17 +43,18 @@ def engine_tree_impl(ctx, *, _fail = fail):
         stripPrefix = "scons-4.10.1",
         output = "_scons",
     )
-    result = ctx.execute([str(ctx.path(ctx.attr._python)), str(tool), "prepare", "--root", "."])
+    result = ctx.execute([str(ctx.path(ctx.attr._python)), str(tool), "--root", "."])
     if result.return_code:
         _fail("%s: preparing the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr))
         return None
 
-    # Recipes read this file, so whatever changes the tree configures them again.
+    # Recipes read this file; the digest of the tree's paths and contents prepares them
+    # again whatever changes the tree.
     ctx.file("tree.json", json.encode_indent(descriptor | {
         "archive": str(archive),
         "patches": [str(patch) for patch in ctx.attr.patches],
         "patch_strip": ctx.attr.patch_strip,
-        "scons": _SCONS_SHA256,
+        "digest": result.stdout.strip(),
     }) + "\n")
     ctx.file("BUILD.bazel", 'exports_files(["tree.json"])\n')
     return ctx.repo_metadata(reproducible = True)

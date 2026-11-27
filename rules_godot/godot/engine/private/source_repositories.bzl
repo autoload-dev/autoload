@@ -66,23 +66,14 @@ def engine_source_impl(ctx, *, _fail = fail):
 # ==== Tree links ==============================================================
 
 def _read_tree(ctx):
-    """
-    Read the `tree.json` descriptor of the repository's engine tree and watch its patches.
-
-    The descriptor names the patches; their contents change the tree's files, so the
-    repository is prepared again when they change.
-    """
-    tree = json.decode(ctx.read(ctx.path(ctx.attr.tree)))
-    for patch in tree["patches"]:
-        ctx.watch(ctx.path(Label(patch)))
-    return tree
+    """Read the `tree.json` descriptor of the repository's engine tree, whose digest keys it."""
+    return json.decode(ctx.read(ctx.path(ctx.attr.tree)))
 
 def _link_tree(ctx, path = ""):
     """Link the engine tree's files below path, or all of them, into this repository; an error or None."""
     result = ctx.execute([
         str(ctx.path(ctx.attr._python)),
-        str(ctx.path(ctx.attr._tree)),
-        "link",
+        str(ctx.path(ctx.attr._tree_link)),
         "--tree",
         str(ctx.path(ctx.attr.tree).dirname),
         "--recipe",
@@ -290,6 +281,7 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._generators))
     ctx.watch(ctx.path(ctx.attr._build_file))
     ctx.watch(ctx.path(ctx.attr._tree))
+    ctx.watch(ctx.path(ctx.attr._tree_link))
 
 def _recipe_error(ctx):
     """Why a recipe's attributes cannot configure it, or None."""
@@ -483,6 +475,7 @@ def android_shell_impl(ctx, *, _fail = fail):
     """
     tree = _read_tree(ctx)
     ctx.watch(ctx.path(ctx.attr._tree))
+    ctx.watch(ctx.path(ctx.attr._tree_link))
     shell = engine_profile(tree["version"].partition("-")[0])["android_shell"]
     library = shell["library"]
     error = _link_tree(ctx, library)

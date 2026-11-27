@@ -57,6 +57,7 @@ py_library(
         "revision.py",
         "source_tree.py",
         "tree.py",
+        "tree_link.py",
         "variants.py",
     ],
 )
@@ -72,5 +73,6 @@ exports_files([
     "render.py",
     "source_tree.py",
     "tree.py",
+    "tree_link.py",
     "variants.py",
 ])

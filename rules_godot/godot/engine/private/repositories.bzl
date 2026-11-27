@@ -199,6 +199,7 @@ godot_engine_build = repository_rule(
         "_generators": attr.label(default = Label("//tools/engine:generators.py")),
         "_build_file": attr.label(default = Label("//tools/engine:build_file.py")),
         "_tree": attr.label(default = Label("//tools/engine:tree.py")),
+        "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
         "_build_profile_label": attr.label(default = Label("//godot/private:build_profile_label")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
@@ -252,5 +253,6 @@ godot_android_shell = repository_rule(
         "_kotlin_core": attr.label(default = Label("@rules_kotlin//kotlin:core.bzl")),
         "_python": attr.label(default = Label("@python_3_14_host//:python")),
         "_tree": attr.label(default = Label("//tools/engine:tree.py")),
+        "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
     },
 )

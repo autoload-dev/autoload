@@ -13,7 +13,10 @@ _SHA256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a"
 _PYTHON = "/usr/bin/python3"
 _PATCH = "/usr/bin/patch"
 
-def _tree(*, execute = {}, **overrides):
+# What `tree.py` prints: the digest of the prepared tree.
+_DIGEST = "1" * 64
+
+def _tree(*, execute = {_PYTHON: {"stdout": _DIGEST + "\n"}}, **overrides):
     ctx = mocks.repository_ctx(
         attr = {
             "name": "godot_tree",
@@ -63,7 +66,7 @@ def _test_the_tree_is_extracted_patched_and_prepared_once(env):
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "download_and_extract")[0].output).equals("_scons")
     env.expect.that_collection(executions[1].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree.py", "prepare", "--root", "."],
+        [_PYTHON, "tools/engine/tree.py", "--root", "."],
     ).in_order()
     env.expect.that_str(_files(ctx)["BUILD.bazel"]).equals('exports_files(["tree.json"])\n')
 
@@ -82,8 +85,8 @@ def _test_tree_json_names_what_the_recipes_repeat(env):
         "origin": "sha256:%s 4.7.2" % _SHA256,
         "patches": ["fork.patch"],
         "patch_strip": 2,
-        # A recipe's configuration runs this SCons; a new release configures it again.
-        "scons": "99c0e94a42a2c1182fa6859b0be697953db07ba936ecc9817ae0d218ced20b15",
+        # Whatever changes the tree's files changes the descriptor, which keys its recipes.
+        "digest": _DIGEST,
     })
 
 def _test_rejected_patch_stops_the_tree(env):

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.engine import tree
+from tools.engine import tree, tree_link
 from tools.engine.tests.source_files import write_tree
 
 UPSTREAM_CLASS_DB = (
@@ -60,6 +60,20 @@ class PrepareTest(unittest.TestCase):
             self.assertTrue((root / "core").stat().st_mode & stat.S_IWUSR)
 
 
+class DigestTest(unittest.TestCase):
+    def test_the_digest_follows_every_path_and_content(self) -> None:
+        # Recipes read the digest, so whatever changes the tree prepares them again.
+        def digest(files: dict[str, str]) -> str:
+            with tempfile.TemporaryDirectory() as directory:
+                write_tree(Path(directory), files)
+                return tree.prepare(Path(directory))
+
+        base = {"SConstruct": "a", "core/object/class_db.h": UPSTREAM_CLASS_DB}
+        self.assertEqual(digest(base), digest(dict(base)))
+        self.assertNotEqual(digest(base), digest(base | {"SConstruct": "b"}))
+        self.assertNotEqual(digest(base), digest(base | {"methods.py": "a"}))
+
+
 class LinkTest(unittest.TestCase):
     def _tree(self, directory: str) -> Path:
         shared = Path(directory) / "tree"
@@ -87,7 +101,7 @@ class LinkTest(unittest.TestCase):
             shared = self._tree(directory)
             recipe = Path(directory) / "recipe"
             recipe.mkdir()
-            tree.link(shared, recipe)
+            tree_link.link(shared, recipe)
             for name in [
                 "SConstruct",
                 "core/object/class_db.h",
@@ -110,7 +124,7 @@ class LinkTest(unittest.TestCase):
             shared = self._tree(directory)
             recipe = Path(directory) / "shell"
             recipe.mkdir()
-            tree.link(shared, recipe, "platform/android/java/lib")
+            tree_link.link(shared, recipe, "platform/android/java/lib")
             self.assertTrue(
                 os.path.samefile(
                     recipe / "platform/android/java/lib/AndroidManifest.xml",
@@ -125,7 +139,7 @@ class LinkTest(unittest.TestCase):
             recipe = Path(directory) / "recipe"
             recipe.mkdir()
             with mock.patch("os.link", side_effect=OSError(errno.EXDEV, "cross-device")):
-                tree.link(shared, recipe)
+                tree_link.link(shared, recipe)
             self.assertFalse(
                 os.path.samefile(recipe / "SConstruct", shared / "SConstruct")
             )

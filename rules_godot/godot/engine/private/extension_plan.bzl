@@ -455,7 +455,12 @@ def source_recipes(parts, source, covered, profiles = {}):
     return struct(
         declarations = [
             _declaration("godot_engine_source", name = archive, **source),
-            _declaration("godot_engine_tree", name = tree, source = "@%s//:source.json" % archive, **patches),
+            _declaration(
+                "godot_engine_tree",
+                name = tree,
+                source = "@%s//:source.json" % archive,
+                **patches
+            ),
         ] + declarations,
         slots = source_slots,
         android = android,
