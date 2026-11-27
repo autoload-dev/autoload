@@ -83,6 +83,10 @@ PATCHED_EDITOR = (
 # run in an editor built with their module (`--config=source-engine`, .bazelrc).
 SOURCE_ENGINE_TESTS = "bazel test --config=source-engine -- //..."
 
+# The source-engine tests of both modules that Linux can build: all but the iOS ones
+# (`--config=source-engine-linux`, shared.bazelrc).
+SOURCE_ENGINE_LINUX = "bazel test --config=source-engine-linux"
+
 # The Bazel profile of the source-engine work.
 SOURCE_ENGINE = "source-engine"
 
@@ -114,6 +118,19 @@ WORK = (
             PATCHED_ENGINE.format(engine="beta"),
             PATCHED_EDITOR,
             SOURCE_ENGINE_TESTS,
+        ),
+        android=True,
+        profile=SOURCE_ENGINE,
+    ),
+    # The source-engine cases a Linux host can build, which the Source engine workflow's
+    # Linux job runs with `aspect ci source-engine --host=linux`: the Android engines and
+    # the applications' Linux engines. The patched-engine scenario runs on macOS only.
+    Work(
+        "source-engine:linux",
+        ".",
+        (
+            In(RULESET_DIR, f"{SOURCE_ENGINE_LINUX} //..."),
+            f"{SOURCE_ENGINE_LINUX} -- //...",
         ),
         android=True,
         profile=SOURCE_ENGINE,

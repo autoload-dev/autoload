@@ -85,6 +85,9 @@ build:lint --norun_validations
 test --test_tag_filters=-source_engine
 test:source-engine --build_tests_only
 test:source-engine --test_tag_filters=source_engine
+# The source-engine tests a Linux host can build: all but those of iOS.
+test:source-engine-linux --config=source-engine
+test:source-engine-linux --test_tag_filters=source_engine,-ios
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
 # start a Godot process (godot-process-tests-tagged) or need a mobile operating system's
