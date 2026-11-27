@@ -293,7 +293,7 @@ The ruleset declares its boundaries in Bazel, so that a mistake fails the build:
   rules_python, and a comment names who needs it. A visibility cannot name the root module
   instead: it is only a development dependency of the ruleset, so the label would not resolve
   for consumers. The root module's tooling may depend on such targets, such as the Gazelle
-  extension on `//tools:resource_graph_lib`; it loads no `private` module (B3).
+  extension on `//tools/resource_graph:graph_lib`; it loads no `private` module (B3).
 
 <a id="test-only-packages"></a>
 

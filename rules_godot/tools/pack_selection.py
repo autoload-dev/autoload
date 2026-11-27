@@ -2,7 +2,7 @@
 Select a pack's resources from its project's resource graph and check that what they
 reference is available.
 
-A tool of its own beside resource_graph.py, whose graph it reads, so a change to selection
+A tool of its own beside resource_graph/graph.py, whose graph it reads, so a change to selection
 reruns only selections.
 
 Sections: Selection, Command line.
@@ -15,7 +15,7 @@ from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
-from tools.resource_graph import (
+from tools.resource_graph.graph import (
     Findings,
     edge_targets,
     format_diagnostic,
@@ -24,7 +24,7 @@ from tools.resource_graph import (
     read_manifest,
     sorted_diagnostics,
 )
-from tools.resource_graph_query import chain, file_pairs
+from tools.resource_graph.query import chain, file_pairs
 from tools.resources.files import DIRECTORY_MARKERS, hidden_by
 from tools.resources.text import PROJECT_FILE, res_path
 

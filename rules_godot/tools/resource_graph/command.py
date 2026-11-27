@@ -1,5 +1,5 @@
 """
-The command line of //tools:resource_graph: scan a project's declared files into its resource
+The command line of //tools/resource_graph: scan a project's declared files into its resource
 graph, check a graph, and query one (maintainer-tools.md).
 """
 
@@ -10,14 +10,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from tools.resource_graph import (
+from tools.resource_graph.graph import (
     build_graph,
     format_diagnostic,
     read_json,
     read_manifest,
     require_declared,
 )
-from tools.resource_graph_query import query_graph
+from tools.resource_graph.query import query_graph
 
 
 def _json(value: object) -> str:

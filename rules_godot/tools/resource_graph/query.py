@@ -1,13 +1,13 @@
 """
 File-level reachability over a resource graph: which files a file reaches, or which files a
 change affects, each with its shortest explanation chain. Maintainers query a graph with
-`bazel run //tools:resource_graph -- query`; no build action reads it.
+`bazel run //tools/resource_graph -- query`; no build action reads it.
 """
 
 from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator
 
-from tools.resource_graph import edge_targets
+from tools.resource_graph.graph import edge_targets
 from tools.resources.text import PROJECT_FILE, res_path
 
 

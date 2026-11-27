@@ -47,7 +47,7 @@ _resource_graph = rule(
             """,
         ),
         "_scanner": attr.label(
-            default = Label("//tools:resource_graph"),
+            default = Label("//tools/resource_graph"),
             executable = True,
             cfg = "exec",
         ),

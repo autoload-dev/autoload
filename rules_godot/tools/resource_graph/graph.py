@@ -8,8 +8,8 @@ remain diagnostics and must be covered by explicit declarations.
 The lexer, section headings and identities it builds on are in resources/text.py, and
 pack_selection.py selects a pack's resources from the graph.
 
-The command line (resource_graph_command.py) scans and checks graphs and queries them
-(resource_graph_query.py).
+The command line (command.py) scans and checks graphs and queries them
+(query.py).
 
 Sections: Diagnostics, Script tokens, Scan, Reference scanning, Graph, Single files.
 """

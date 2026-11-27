@@ -38,7 +38,7 @@ py_library(
     name = "scanner_lib",
     srcs = ["scanner.py"],
     deps = [
-        "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools/resource_graph:graph_lib",
         "@autoload_rules_godot//tools/resources:text_lib",
     ],
 )
@@ -50,7 +50,7 @@ py_binary(
     srcs = ["scanner.py"],
     deps = [
         ":scanner_lib",
-        "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools/resource_graph:graph_lib",
         "@autoload_rules_godot//tools/resources:text_lib",
     ],
 )
@@ -61,7 +61,7 @@ py_test(
     srcs = ["scanner_test.py"],
     deps = [
         ":scanner_lib",
-        "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools/resource_graph:graph_lib",
         "@autoload_rules_godot//tools/resources:text_lib",
     ],
 )

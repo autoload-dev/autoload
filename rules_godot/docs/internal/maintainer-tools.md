@@ -16,7 +16,7 @@ Maintainers can query a test fixture's graph with the repository tool:
 
 ```sh
 bazel build //godot/private/tests/resource_graph/fixtures/declared_project:graph
-bazel run //tools:resource_graph -- query \
+bazel run //tools/resource_graph -- query \
   --graph "$PWD/bazel-bin/godot/private/tests/resource_graph/fixtures/declared_project/graph.graph.json" \
   --direction affected res://main/content.tres
 ```

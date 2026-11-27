@@ -671,7 +671,7 @@ _godot_view = rule(
             cfg = "exec",
         ),
         "_resource_graph": attr.label(
-            default = Label("//tools:resource_graph"),
+            default = Label("//tools/resource_graph"),
             executable = True,
             cfg = "exec",
         ),

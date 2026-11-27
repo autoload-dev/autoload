@@ -1,5 +1,4 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 # The build tools serve the ruleset's own rules only. A rule's private attribute is checked
 # against the package that defines the rule, so no consumer needs to see a tool.
@@ -14,54 +13,14 @@ package_group(
     ],
 )
 
-# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports the
-# resource scanner.
-py_library(
-    name = "resource_graph_lib",
-    srcs = ["resource_graph.py"],
-    visibility = NOT_ACTUALLY_PUBLIC,
-    deps = [
-        "//tools/project:statements_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-# Queries over a graph, for maintainers (resource_graph_query.py); no build action reads them.
-py_library(
-    name = "resource_graph_query_lib",
-    srcs = ["resource_graph_query.py"],
-    deps = [
-        ":resource_graph_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-# Scans, checks and queries graphs: the command line over the graph's libraries, so the
-# scanner and reference detection stay a library that other tools import without it.
-py_library(
-    name = "resource_graph_command_lib",
-    srcs = ["resource_graph_command.py"],
-    deps = [
-        ":resource_graph_lib",
-        ":resource_graph_query_lib",
-    ],
-)
-
-py_binary(
-    name = "resource_graph",
-    srcs = ["resource_graph_command.py"],
-    main = "resource_graph_command.py",
-    deps = [":resource_graph_command_lib"],
-)
-
 # Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
 # only selections, and a change to it alone no graph scans.
 py_library(
     name = "pack_selection_lib",
     srcs = ["pack_selection.py"],
     deps = [
-        ":resource_graph_lib",
-        ":resource_graph_query_lib",
+        "//tools/resource_graph:graph_lib",
+        "//tools/resource_graph:query_lib",
         "//tools/resources:files_lib",
         "//tools/resources:text_lib",
     ],

@@ -71,18 +71,11 @@ py_test(
     srcs = ["resource_graph_test.py"],
     deps = [
         "//tools:pack_selection_lib",
-        "//tools:resource_graph_command_lib",
-        "//tools:resource_graph_lib",
-        "//tools:resource_graph_query_lib",
+        "//tools/resource_graph:command_lib",
+        "//tools/resource_graph:graph_lib",
+        "//tools/resource_graph:query_lib",
         "//tools/resources:text_lib",
     ],
-)
-
-py_test(
-    name = "file_references_test",
-    size = "small",
-    srcs = ["file_references_test.py"],
-    deps = ["//tools:resource_graph_lib"],
 )
 
 py_test(
