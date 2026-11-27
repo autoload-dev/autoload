@@ -126,8 +126,9 @@ with a test tagged `source_engine`
 ([source_engine_changes.py](../../tools/ci/source_engine_changes.py) holds the list and reads
 the tagged packages from their BUILD files). Its job is skipped, not failed, on other pull
 requests; it is no required check. Code that every build shares, such as the ruleset's rules
-or `shared.bazelrc`, does not reach them: a pull request that changes it in a way that may
-break a source-built engine carries the label. Stale
+or `shared.bazelrc`, does not reach them, nor does a change of how the workflow runs them,
+such as the work `source-engine:full`: a pull request that may break source-built engines
+that way carries the label. Stale
 recipe pins need no dispatch to show: `//examples/engines/simulation:pinned_test`, a fast
 test that the pre-push hook runs too, fails on a pin whose inputs changed, such as
 rules_godot's graph capture.

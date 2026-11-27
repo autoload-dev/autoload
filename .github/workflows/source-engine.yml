@@ -23,6 +23,10 @@ jobs:
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # A newer push cancels the run of an older one, even when its own job is skipped.
+    concurrency:
+      group: source-engine-${{ github.ref }}
+      cancel-in-progress: true
     outputs:
       reaches: ${{ steps.changes.outputs.reaches }}
     steps:
@@ -64,8 +68,8 @@ jobs:
           )
         )
       )
-    # A newer run on the same branch replaces one still building engines. A run whose job is
-    # skipped, such as for another label, leaves it alone.
+    # A newer run on the same branch replaces one still building engines. A run for another
+    # label, which skips both jobs, leaves it alone.
     concurrency:
       group: source-engine-${{ github.ref }}
       cancel-in-progress: true

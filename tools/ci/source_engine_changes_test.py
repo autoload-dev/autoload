@@ -54,19 +54,25 @@ class SourceEngineChangesTest(unittest.TestCase):
             ),
         )
 
-    def test_a_package_with_a_source_engine_test_reaches_them_with_its_subpackages(
+    def test_a_package_with_a_source_engine_test_reaches_them_with_its_example(
         self,
     ) -> None:
         self.write("examples/petri/BUILD.bazel", 'tags = ["source_engine"]\n')
         self.write("examples/plain/BUILD.bazel", 'tags = ["android"]\n')
+        self.write("examples/slim/tests/BUILD.bazel", 'tags = ["source_engine"]\n')
         self.assertEqual(
-            ["examples/petri/main.gd", "examples/petri/tests/a.gd"],
+            [
+                "examples/petri/main.gd",
+                "examples/petri/tests/a.gd",
+                "examples/slim/runtime.gdbuild",
+            ],
             reaching(
                 [
                     "examples/petri/main.gd",
                     "examples/petri/tests/a.gd",
                     "examples/petri_dish/main.gd",
                     "examples/plain/main.gd",
+                    "examples/slim/runtime.gdbuild",
                 ],
                 watched(self.root),
             ),
@@ -113,6 +119,28 @@ class SourceEngineChangesTest(unittest.TestCase):
                     "+godot_engine_build(",
                     '+    name = "probe",',
                     "+)",
+                )
+            )
+        )
+
+    def test_a_comment_of_a_module_file_reaches_nothing(self) -> None:
+        def diff(*lines: str) -> str:
+            return "\n".join(("--- a/MODULE.bazel", "+++ b/MODULE.bazel", *lines))
+
+        self.assertFalse(
+            changes_registrations(
+                diff(
+                    "@@ -228 +228 @@ godot_engines.engine(",
+                    "-# The engine simulation, with a typo.",
+                    "+# The engine simulation.",
+                )
+            )
+        )
+        self.assertFalse(
+            changes_registrations(
+                diff(
+                    "@@ -99 +99 @@ godot_engines = use_extension(",
+                    '+bazel_dep(name = "a")',
                 )
             )
         )
