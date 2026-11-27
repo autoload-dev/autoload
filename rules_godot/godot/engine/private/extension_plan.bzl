@@ -156,7 +156,7 @@ def _android_shells(pins):
             shells[variant] = struct(pin = pin, **release[pin])
     return shells
 
-def binaries_plan(engine, binaries, release, *, _fail = fail):
+def _binaries_plan(engine, binaries, release, *, _fail = fail):
     """
     Return the prebuilt editors, export templates and Android shells of an engine.
 
@@ -274,13 +274,13 @@ def _android_runtime_slots(engine, plan):
         for cpu in plan.android_cpus
     ]
 
-def binary_slots(engine, plan):
+def _binary_slots(engine, plan):
     """
     Return the hub slots of an engine's binaries.
 
     Args:
         engine: The godot_engines.engine tag.
-        plan: The result of binaries_plan.
+        plan: The result of _binaries_plan.
 
     Returns:
         A list of hub component descriptions.
@@ -409,7 +409,7 @@ def _recipe_policies(declarations, build, editor_policy):
         if not build and attrs["platform"] in _OFFICIAL_RENDERERS:
             attrs["renderers"] = _OFFICIAL_RENDERERS[attrs["platform"]]
 
-def source_recipes(parts, source, covered, profiles = {}):
+def _source_recipes(parts, source, covered, profiles = {}):
     """
     Return the source declarations, slots and Android runtimes of an engine's source recipes.
 
@@ -625,7 +625,7 @@ def _engine_declarations(selection, profiles, _fail):
 
     # A build policy of the engine's own makes the catalogue's binaries another engine.
     catalogued = None if "build" in parts else release
-    plan = binaries_plan(engine, parts.get("binaries"), catalogued, _fail = _fail)
+    plan = _binaries_plan(engine, parts.get("binaries"), catalogued, _fail = _fail)
     if plan == None:
         return None
     source = _source(engine, parts.get("source"), parts.get("binaries"), release)
@@ -633,7 +633,7 @@ def _engine_declarations(selection, profiles, _fail):
     if error:
         return _fail(error)
     shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
-    slots = binary_slots(engine, plan)
+    slots = _binary_slots(engine, plan)
     declarations = _editor_declarations(engine, plan.editors) + _templates_declarations(engine, plan.templates) + shells
     hub = dict(
         name = engine.name,
@@ -644,7 +644,7 @@ def _engine_declarations(selection, profiles, _fail):
     )
     if source:
         covered = {slot["name"]: True for slot in slots} | {"android_" + variant: True for variant in plan.android_shells}
-        built = source_recipes(parts, source, covered, _engine_profiles(engine, selection.default, profiles))
+        built = _source_recipes(parts, source, covered, _engine_profiles(engine, selection.default, profiles))
         declarations += built.declarations
         slots = [
             slot | {"untuned_only": True} if slot["name"] in built.tuned else slot
