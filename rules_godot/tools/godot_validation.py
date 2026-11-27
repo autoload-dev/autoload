@@ -46,8 +46,8 @@ from tools.godot_staging import (
     staged_project,
 )
 from tools.project.config import compose_project
-from tools.resource_text import Heading, Token, headings, lex, res_path
-from tools.resource_uids import known_uids, uid_sources
+from tools.resources.text import Heading, Token, headings, lex, res_path
+from tools.resources.uids import known_uids, uid_sources
 
 
 def _section_end(text: str, sections: list[Heading], index: int) -> int:
@@ -253,7 +253,7 @@ def _tool_spans(source: str) -> Iterator[tuple[int, int]]:
     included.
 
     Only annotation tokens count, so the words in strings and comments stay; the lexer of
-    tools/resource_text.py is no GDScript parser, so a source it misreads, such as one
+    tools/resources/text.py is no GDScript parser, so a source it misreads, such as one
     with an unterminated string, may keep an annotation or lose an unrelated `@tool`.
     """
     script = [token for token in lex(source) if token.category != "newline"]

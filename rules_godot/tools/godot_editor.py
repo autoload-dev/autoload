@@ -17,12 +17,6 @@ import sys
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
-from tools.godot_files import (
-    DIRECTORY_MARKERS,
-    is_hidden,
-    is_sidecar_named,
-    sidecar_source,
-)
 from tools.godot_metadata_sync import place_metadata
 from tools.godot_run import generated_files, report, runfile_locator
 from tools.godot_staging import (
@@ -35,6 +29,12 @@ from tools.godot_staging import (
     validate_staged_paths,
 )
 from tools.project.config import write_back
+from tools.resources.files import (
+    DIRECTORY_MARKERS,
+    is_hidden,
+    is_sidecar_named,
+    sidecar_source,
+)
 
 # The runner's own state inside a view, beside Godot's.
 STATE = ".godot/rules_godot"
@@ -436,7 +436,7 @@ def changed_sidecars(
 
 
 def _is_ignored(relative: PurePosixPath, names: list[str]) -> bool:
-    """Godot's ignore rule (tools/godot_files.py): the project's root is never skipped."""
+    """Godot's ignore rule (tools/resources/files.py): the project's root is never skipped."""
     return str(relative) != "." and any(name in names for name in DIRECTORY_MARKERS)
 
 

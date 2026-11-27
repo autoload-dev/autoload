@@ -16,10 +16,10 @@ import json
 import sys
 from pathlib import Path
 
-from tools.godot_files import is_sidecar_named
 from tools.godot_staging import open_original, tree_entries
-from tools.node_ids import missing_node_ids
-from tools.resource_uids import (
+from tools.resources.files import is_sidecar_named
+from tools.resources.node_ids import missing_node_ids
+from tools.resources.uids import (
     TEXT_RESOURCES,
     known_uids,
     reference_updates,

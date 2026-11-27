@@ -181,7 +181,7 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 
 [Graph declaration](../../../godot/private/graph.bzl),
 [graph inspection rule](../../../godot/private/analysis.bzl),
-[format classes](../../../tools/resource_text.py) (analyzed, opaque and leaf),
+[format classes](../../../tools/resources/text.py) (analyzed, opaque and leaf),
 [scanner](../../../tools/resource_graph.py): runtime/import input validation and unknown
 dynamic refs, [selector](../../../tools/pack_selection.py). Static scanning does not
 dynamically declare new Bazel inputs.

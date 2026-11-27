@@ -8,7 +8,7 @@ from unittest import mock
 
 from tools import godot_export
 from tools.godot_export import exclusive_export, export_lock, export_presets, validate_pck
-from tools.node_ids import with_node_ids
+from tools.resources.node_ids import with_node_ids
 from tools.tests.empty_pck import pck_bytes, write_pck
 
 

@@ -23,7 +23,7 @@ py_test(
     deps = [
         "//tools:godot_editor_lib",
         "//tools:godot_metadata_sync_lib",
-        "//tools:node_ids_lib",
+        "//tools/resources:node_ids_lib",
     ],
 )
 
@@ -57,10 +57,10 @@ py_test(
     size = "small",
     srcs = ["pack_writer_test.py"],
     deps = [
-        "//tools:godot_files_lib",
         "//tools:pack_writer_lib",
         "//tools:pck_lib",
-        "//tools:resource_uids_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 
@@ -74,15 +74,8 @@ py_test(
         "//tools:resource_graph_command_lib",
         "//tools:resource_graph_lib",
         "//tools:resource_graph_query_lib",
-        "//tools:resource_text_lib",
+        "//tools/resources:text_lib",
     ],
-)
-
-py_test(
-    name = "resource_text_test",
-    size = "small",
-    srcs = ["resource_text_test.py"],
-    deps = ["//tools:resource_text_lib"],
 )
 
 py_test(
@@ -90,13 +83,6 @@ py_test(
     size = "small",
     srcs = ["file_references_test.py"],
     deps = ["//tools:resource_graph_lib"],
-)
-
-py_test(
-    name = "godot_files_test",
-    size = "small",
-    srcs = ["godot_files_test.py"],
-    deps = ["//tools:godot_files_lib"],
 )
 
 py_test(
@@ -127,7 +113,7 @@ py_test(
     deps = [
         ":empty_pck",
         "//tools:godot_export_lib",
-        "//tools:node_ids_lib",
+        "//tools/resources:node_ids_lib",
     ],
 )
 
@@ -173,20 +159,6 @@ py_test(
     size = "small",
     srcs = ["metadata_index_test.py"],
     deps = ["//tools:metadata_index_lib"],
-)
-
-py_test(
-    name = "node_ids_test",
-    size = "small",
-    srcs = ["node_ids_test.py"],
-    deps = ["//tools:node_ids_lib"],
-)
-
-py_test(
-    name = "resource_uids_test",
-    size = "small",
-    srcs = ["resource_uids_test.py"],
-    deps = ["//tools:resource_uids_lib"],
 )
 
 py_test(

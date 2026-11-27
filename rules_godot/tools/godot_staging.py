@@ -24,17 +24,17 @@ from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, S
 from pathlib import Path, PurePosixPath
 from typing import IO
 
-from tools.godot_files import is_uid_sidecar
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.node_ids import with_node_ids
 from tools.pck import EXTENSION_LIST
 from tools.project.config import (
     compose_project,
     enable_plugins,
     enabled_plugins,
 )
-from tools.resource_text import portable_identity, validate_identities
-from tools.resource_uids import with_resource_uids
+from tools.resources.files import is_uid_sidecar
+from tools.resources.node_ids import with_node_ids
+from tools.resources.text import portable_identity, validate_identities
+from tools.resources.uids import with_resource_uids
 
 # Where a staged file's bytes came from: a file, an archive member or content.
 Original = Path | tuple[Path, tarfile.TarInfo] | bytes

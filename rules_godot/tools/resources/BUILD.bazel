@@ -1,0 +1,36 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+# The text of Godot resources and Godot's rules for the files it writes beside them, which
+# the build tools read, and the rewrites of single text scenes and resources.
+package(default_visibility = ["//tools:__subpackages__"])
+
+# What the build tools read from Godot's text resources. The graph builds on it in a package
+# of its own, so a change to the graph reruns none of the actions of the tools that stage,
+# validate, index or pack files.
+# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports it.
+py_library(
+    name = "text_lib",
+    srcs = ["text.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+py_library(
+    name = "files_lib",
+    srcs = ["files.py"],
+)
+
+py_library(
+    name = "node_ids_lib",
+    srcs = ["node_ids.py"],
+    deps = [":text_lib"],
+)
+
+py_library(
+    name = "uids_lib",
+    srcs = ["uids.py"],
+    deps = [
+        ":files_lib",
+        ":text_lib",
+    ],
+)

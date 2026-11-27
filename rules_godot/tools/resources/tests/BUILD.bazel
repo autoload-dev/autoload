@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "text_test",
+    size = "small",
+    srcs = ["text_test.py"],
+    deps = ["//tools/resources:text_lib"],
+)
+
+py_test(
+    name = "files_test",
+    size = "small",
+    srcs = ["files_test.py"],
+    deps = ["//tools/resources:files_lib"],
+)
+
+py_test(
+    name = "node_ids_test",
+    size = "small",
+    srcs = ["node_ids_test.py"],
+    deps = ["//tools/resources:node_ids_lib"],
+)
+
+py_test(
+    name = "uids_test",
+    size = "small",
+    srcs = ["uids_test.py"],
+    deps = ["//tools/resources:uids_lib"],
+)

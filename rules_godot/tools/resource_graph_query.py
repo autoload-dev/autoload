@@ -8,7 +8,7 @@ from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator
 
 from tools.resource_graph import edge_targets
-from tools.resource_text import PROJECT_FILE, res_path
+from tools.resources.text import PROJECT_FILE, res_path
 
 
 def _snapshot_uids(snapshot: dict | None) -> defaultdict[str, set[str]]:

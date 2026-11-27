@@ -10,7 +10,7 @@ from collections.abc import Collection
 from pathlib import Path
 
 from tools.digest import digest
-from tools.godot_files import IMPORT, REMAP, UID, is_sidecar_named
+from tools.resources.files import IMPORT, REMAP, UID, is_sidecar_named
 
 
 def excluded_with_sidecars(excluded: Collection[str]) -> set[str]:

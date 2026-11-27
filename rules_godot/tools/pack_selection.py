@@ -15,7 +15,6 @@ from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
-from tools.godot_files import DIRECTORY_MARKERS, hidden_by
 from tools.resource_graph import (
     Findings,
     edge_targets,
@@ -26,7 +25,8 @@ from tools.resource_graph import (
     sorted_diagnostics,
 )
 from tools.resource_graph_query import chain, file_pairs
-from tools.resource_text import PROJECT_FILE, res_path
+from tools.resources.files import DIRECTORY_MARKERS, hidden_by
+from tools.resources.text import PROJECT_FILE, res_path
 
 # ==== Selection ===============================================================
 

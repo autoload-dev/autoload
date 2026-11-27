@@ -2,7 +2,7 @@
 
 # ResourceUID's digits: 'a' to 'z', then '0' to '9' from 'z' on, as Godot's char_count is
 # 'z' - 'a' = 25 (core/io/resource_uid.cpp:44-45, 92-111 in Godot 4.7.2). The ruleset's
-# tools/resource_uids.py reads and writes them for builds; this copy keeps the repository's
+# tools/resources/uids.py reads and writes them for builds; this copy keeps the repository's
 # tooling independent of the ruleset.
 _UID_BASE = 34
 # The digits ResourceUID::id_to_text writes, by value.

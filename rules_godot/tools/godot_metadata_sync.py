@@ -12,11 +12,11 @@ import sys
 from collections.abc import Collection
 from pathlib import Path
 
-from tools.godot_files import sidecar_source
 from tools.godot_run import report, tree_files_by_path
 from tools.godot_staging import COMPLETIONS, open_original
 from tools.godot_sync import Runfile, sync_main
 from tools.metadata_index import lacking
+from tools.resources.files import sidecar_source
 
 
 def list_sidecars(

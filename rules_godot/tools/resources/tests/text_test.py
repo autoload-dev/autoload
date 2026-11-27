@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.resource_text import lex
+from tools.resources.text import lex
 
 
 class LexerTest(unittest.TestCase):

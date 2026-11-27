@@ -4,10 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_files import hidden_by
 from tools.pack_writer import exported_import, raw_path, write
 from tools.pck import pck_file_contents, pck_files, write_pck
-from tools.resource_uids import uid_cache, uid_to_id
+from tools.resources.files import hidden_by
+from tools.resources.uids import uid_cache, uid_to_id
 
 _TEXTURE_IMPORT = """[remap]
 

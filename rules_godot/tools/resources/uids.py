@@ -11,8 +11,8 @@ import struct
 from collections.abc import Container, Iterator, Mapping
 from pathlib import Path
 
-from tools.godot_files import is_sidecar_named
-from tools.resource_text import file_identities, headings, res_path
+from tools.resources.files import is_sidecar_named
+from tools.resources.text import file_identities, headings, res_path
 
 TEXT_RESOURCES = (".tscn", ".tres")
 

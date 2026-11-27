@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_files import import_base
 from tools.godot_staging import read_original
+from tools.resources.files import import_base
 from tools.unit_interface import (
     AssetInterface,
     asset_interface,

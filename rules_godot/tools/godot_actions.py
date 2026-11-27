@@ -14,7 +14,6 @@ import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.godot_files import import_base, sidecars_of
 from tools.godot_staging import (
     ACTION_DIRECTORY,
     Original,
@@ -29,6 +28,7 @@ from tools.godot_staging import (
     write_archive,
 )
 from tools.project.config import override_tags
+from tools.resources.files import import_base, sidecars_of
 
 # ==== Import ==================================================================
 

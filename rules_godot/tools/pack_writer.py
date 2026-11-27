@@ -17,7 +17,6 @@ from pathlib import Path
 
 from tools.class_fragment import CACHE as CLASS_CACHE
 from tools.class_fragment import class_cache, fragment
-from tools.godot_files import IMPORT, UID, hidden_by, is_sidecar_named
 from tools.godot_staging import (
     add_manifest_arguments,
     extension_list,
@@ -28,8 +27,9 @@ from tools.godot_staging import (
 )
 from tools.pack_contents import content_selection, write_report
 from tools.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
-from tools.resource_text import IMPORTER, REMAP_PATH, remap_section
-from tools.resource_uids import declares_uids, known_uids, uid_cache
+from tools.resources.files import IMPORT, UID, hidden_by, is_sidecar_named
+from tools.resources.text import IMPORTER, REMAP_PATH, remap_section
+from tools.resources.uids import declares_uids, known_uids, uid_cache
 
 UID_CACHE = ".godot/uid_cache.bin"
 

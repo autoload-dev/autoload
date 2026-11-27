@@ -192,7 +192,7 @@ def placed_resource_paths(ctx, srcs, resource_paths, prefix):
 # ==== Sidecars and ignores ====================================================
 
 # The files Godot writes beside a file, its import settings and its UID, which it never
-# treats as resources of their own, in any case; tools/godot_files.py holds the same rule.
+# treats as resources of their own, in any case; tools/resources/files.py holds the same rule.
 _SIDECAR_SUFFIXES = (".import", ".uid")
 
 def sidecar_source(path):
@@ -228,7 +228,7 @@ def godot_ignore_markers(paths):
 
 def godot_ignored(paths):
     """
-    The paths Godot ignores among paths, as tools/godot_files.py documents Godot's rule.
+    The paths Godot ignores among paths, as tools/resources/files.py documents Godot's rule.
 
     A path is Godot-ignored when it or one of its directories is hidden, its name
     beginning with a dot, or when it lies below a directory whose `.gdignore` or

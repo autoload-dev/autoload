@@ -16,7 +16,7 @@ import (
 // ==== Formats =================================================================
 
 // The sidecars Godot writes beside a file: its import settings and its UID, as the ruleset's
-// build tools know them (rules_godot/tools/godot_files.py).
+// build tools know them (rules_godot/tools/resources/files.py).
 var sidecarSuffixes = []string{".import", ".uid"}
 
 // Formats whose files are resources by their suffix; a file of any other format is one when

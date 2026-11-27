@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.resource_uids import (
+from tools.resources.uids import (
     id_to_uid,
     known_uids,
     reference_updates,

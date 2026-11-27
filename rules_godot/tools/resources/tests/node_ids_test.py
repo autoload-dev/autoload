@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.node_ids import missing_node_ids, node_id, with_node_ids
+from tools.resources.node_ids import missing_node_ids, node_id, with_node_ids
 
 # Headers as Godot 4.7 writes them, with its own IDs removed.
 _SCENE = """[gd_scene format=3]

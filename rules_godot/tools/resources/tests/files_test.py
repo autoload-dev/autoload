@@ -1,6 +1,6 @@
 import unittest
 
-from tools.godot_files import (
+from tools.resources.files import (
     is_hidden,
     is_sidecar_named,
     is_uid_sidecar,

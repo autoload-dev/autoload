@@ -14,16 +14,6 @@ package_group(
     ],
 )
 
-# What the build tools read from Godot's text resources. The graph builds on it in a module
-# of its own, so a change to the graph reruns none of the actions of the tools that stage,
-# validate, index or pack files.
-# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports it.
-py_library(
-    name = "resource_text_lib",
-    srcs = ["resource_text.py"],
-    visibility = NOT_ACTUALLY_PUBLIC,
-)
-
 # The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports the
 # resource scanner.
 py_library(
@@ -31,8 +21,8 @@ py_library(
     srcs = ["resource_graph.py"],
     visibility = NOT_ACTUALLY_PUBLIC,
     deps = [
-        ":resource_text_lib",
         "//tools/project:statements_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -42,7 +32,7 @@ py_library(
     srcs = ["resource_graph_query.py"],
     deps = [
         ":resource_graph_lib",
-        ":resource_text_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -70,10 +60,10 @@ py_library(
     name = "pack_selection_lib",
     srcs = ["pack_selection.py"],
     deps = [
-        ":godot_files_lib",
         ":resource_graph_lib",
         ":resource_graph_query_lib",
-        ":resource_text_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -81,11 +71,6 @@ py_binary(
     name = "pack_selection",
     srcs = ["pack_selection.py"],
     deps = [":pack_selection_lib"],
-)
-
-py_library(
-    name = "godot_files_lib",
-    srcs = ["godot_files.py"],
 )
 
 py_library(
@@ -115,13 +100,13 @@ py_library(
     name = "godot_staging_lib",
     srcs = ["godot_staging.py"],
     deps = [
-        ":godot_files_lib",
         ":mapped_paths_lib",
-        ":node_ids_lib",
         ":pck_lib",
-        ":resource_text_lib",
-        ":resource_uids_lib",
         "//tools/project:config_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:node_ids_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 
@@ -132,9 +117,9 @@ py_library(
     # two tools that run editor actions only, so editing it reruns only those.
     data = glob(["action/*"]),
     deps = [
-        ":godot_files_lib",
         ":godot_staging_lib",
         "//tools/project:config_lib",
+        "//tools/resources:files_lib",
     ],
 )
 
@@ -171,7 +156,7 @@ py_library(
     srcs = ["class_fragment.py"],
     deps = [
         ":mapped_paths_lib",
-        ":resource_text_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -180,7 +165,7 @@ py_binary(
     srcs = ["class_fragment.py"],
     deps = [
         ":mapped_paths_lib",
-        ":resource_text_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -191,10 +176,10 @@ py_library(
     srcs = ["unit_interface.py"],
     deps = [
         ":class_fragment_lib",
-        ":godot_files_lib",
         ":godot_staging_lib",
         ":mapped_paths_lib",
-        ":resource_text_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
     ],
 )
 
@@ -213,9 +198,9 @@ py_library(
     deps = [
         ":class_fragment_lib",
         ":godot_staging_lib",
-        ":resource_text_lib",
-        ":resource_uids_lib",
         "//tools/project:config_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 
@@ -230,7 +215,7 @@ py_library(
     srcs = ["pack_contents.py"],
     deps = [
         ":digest_lib",
-        ":godot_files_lib",
+        "//tools/resources:files_lib",
     ],
 )
 
@@ -263,12 +248,12 @@ py_library(
     srcs = ["pack_writer.py"],
     deps = [
         ":class_fragment_lib",
-        ":godot_files_lib",
         ":godot_staging_lib",
         ":pack_contents_lib",
         ":pck_lib",
-        ":resource_text_lib",
-        ":resource_uids_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 
@@ -309,11 +294,11 @@ py_library(
     srcs = ["godot_editor.py"],
     data = ["editor_view.gitignore.tpl"],
     deps = [
-        ":godot_files_lib",
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
         "//tools/project:config_lib",
+        "//tools/resources:files_lib",
     ],
 )
 
@@ -322,11 +307,11 @@ py_binary(
     srcs = ["godot_editor.py"],
     data = ["editor_view.gitignore.tpl"],
     deps = [
-        ":godot_files_lib",
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
         "//tools/project:config_lib",
+        "//tools/resources:files_lib",
     ],
 )
 
@@ -340,30 +325,24 @@ py_library(
     name = "godot_metadata_sync_lib",
     srcs = ["godot_metadata_sync.py"],
     deps = [
-        ":godot_files_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
         ":godot_sync_lib",
         ":metadata_index_lib",
-        ":node_ids_lib",
-        ":resource_uids_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:node_ids_lib",
+        "//tools/resources:uids_lib",
     ],
-)
-
-py_library(
-    name = "node_ids_lib",
-    srcs = ["node_ids.py"],
-    deps = [":resource_text_lib"],
 )
 
 py_library(
     name = "metadata_index_lib",
     srcs = ["metadata_index.py"],
     deps = [
-        ":godot_files_lib",
         ":godot_staging_lib",
-        ":node_ids_lib",
-        ":resource_uids_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:node_ids_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 
@@ -373,26 +352,17 @@ py_binary(
     deps = [":metadata_index_lib"],
 )
 
-py_library(
-    name = "resource_uids_lib",
-    srcs = ["resource_uids.py"],
-    deps = [
-        ":godot_files_lib",
-        ":resource_text_lib",
-    ],
-)
-
 py_binary(
     name = "godot_metadata_sync",
     srcs = ["godot_metadata_sync.py"],
     deps = [
-        ":godot_files_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
         ":godot_sync_lib",
         ":metadata_index_lib",
-        ":node_ids_lib",
-        ":resource_uids_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:node_ids_lib",
+        "//tools/resources:uids_lib",
     ],
 )
 

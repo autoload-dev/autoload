@@ -5,7 +5,7 @@ Graph paths are res:// identities, not execroot paths. The scanner deliberately
 does not execute Godot, scripts, importers, or addon code. Unknown dynamic loads
 remain diagnostics and must be covered by explicit declarations.
 
-The lexer, section headings and identities it builds on are in resource_text.py, and
+The lexer, section headings and identities it builds on are in resources/text.py, and
 pack_selection.py selects a pack's resources from the graph.
 
 The command line (resource_graph_command.py) scans and checks graphs and queries them
@@ -22,7 +22,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from tools.project.statements import statement_groups
-from tools.resource_text import (
+from tools.resources.text import (
     ANALYZED_FORMATS,
     LEAF_FORMATS,
     PROJECT_FILE,
