@@ -21,7 +21,7 @@ from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
-from godot.private.project_config import statement_groups
+from tools.project_statements import statement_groups
 from tools.resource_text import (
     ANALYZED_FORMATS,
     LEAF_FORMATS,
@@ -35,16 +35,7 @@ from tools.resource_text import (
     tokens,
 )
 
-# Built-in loaders of these unanalyzed formats resolve further resources; the
-# graph records that as a reference it cannot determine.
-UNANALYZED_CONTAINERS = frozenset({".res", ".scn"})
-
-
 # ==== Diagnostics =============================================================
-
-
-def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def diagnostic(code: str, path: str, message: str, line: int = 0) -> dict:
@@ -232,6 +223,11 @@ def _analysis(path: str, suffix: str, ignored: bool) -> str:
     return "leaf" if suffix in LEAF_FORMATS else "unsupported"
 
 
+# Built-in loaders of these unanalyzed formats resolve further resources; the
+# graph records that as a reference it cannot determine.
+UNANALYZED_CONTAINERS = frozenset({".res", ".scn"})
+
+
 def _flag_format(scan: _Scan, path: str, suffix: str, analysis: str) -> None:
     """Record what the scanner cannot see of a file because of its format."""
     if analysis == "unsupported":
@@ -377,6 +373,10 @@ def _add_generated_uids(scan: _Scan, uids: dict[str, str]) -> None:
         node = "res://" + owner
         if node in scan.nodes and node not in identified:
             scan.uids[uid].add(node)
+
+
+def read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _read_metadata_index(scan: _Scan, manifest: dict) -> dict[str, set[str]]:

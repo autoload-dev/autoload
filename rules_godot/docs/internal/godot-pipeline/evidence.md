@@ -133,7 +133,7 @@ Whole-project memberships here are implementation facts, not desired minimum dep
 
 ### R02
 
-[Per-purpose configuration](../../../godot/private/project_config.py#L179), especially 227–250:
+[Per-purpose configuration](../../../tools/project_config.py) (`compose_project`):
 drops import autoload/editor-plugin section, main scene, resource-reference-valued settings
 and inactive feature overrides, then reconstructs per-purpose plugin lists.
 [Godot staging](../../../tools/godot_staging.py): staging/extensions 194–258; child environment

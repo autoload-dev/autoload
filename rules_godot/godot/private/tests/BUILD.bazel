@@ -65,14 +65,21 @@ py_test(
         ":setting_kinds",
         ":setting_value_cases",
     ],
-    deps = ["//godot/private:project_config_lib"],
+    deps = [
+        "//tools:project_config_command_lib",
+        "//tools:project_config_lib",
+        "//tools:project_statements_lib",
+    ],
 )
 
 py_test(
     name = "pinned_settings_test",
     size = "small",
     srcs = ["pinned_settings_test.py"],
-    deps = ["//godot/private:project_config_lib"],
+    deps = [
+        "//tools:project_config_lib",
+        "//tools:project_statements_lib",
+    ],
 )
 
 mocks_test_suite(name = "mocks_test_suite")

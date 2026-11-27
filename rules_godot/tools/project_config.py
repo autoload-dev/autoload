@@ -1,119 +1,28 @@
 """
 Compose explicit Godot settings without evaluating arbitrary expressions.
 
-Sections: Statements, Literals, Named files, Overrides, Plugins and autoloads,
-Composition, Write back, Command line.
+The command line of //tools:project_config is project_config_command.py.
+
+The statements it reads are project_statements.py's.
+
+Sections: Literals, Named files, Overrides, Plugins and autoloads,
+Composition, Write back.
 """
 
-import argparse
 import dataclasses
 import json
 import re
-import sys
 from collections.abc import Callable, Collection, Iterable
-from pathlib import Path
 
-_SECTION = re.compile(r"^\s*\[([^]\r\n]+)\]\s*(?:;.*)?$")
-
-# A comment line, such as Godot's "; param=value" header, assigns nothing.
-_ASSIGNMENT = re.compile(r'^\s*(?!;)("(?:[^"\\\r\n]|\\.)*"|[^=\r\n]+?)\s*=')
-
-
-# ==== Statements ==============================================================
-
-
-_CLOSING = {"(": ")", "[": "]", "{": "}"}
-
-_BRACKET_DEPTH = dict.fromkeys(_CLOSING, 1) | dict.fromkeys(_CLOSING.values(), -1)
-
-
-class _Scan:
-    """Track the string literals and bracket depth of Godot text across lines."""
-
-    def __init__(self) -> None:
-        self.quote = False
-        self.escape = False
-        self.balance = 0
-
-    def in_string(self, char: str) -> bool:
-        """Advance past char; whether it belongs to a string literal, quotes included."""
-        if not self.quote:
-            self.quote = char == '"'
-            return self.quote
-        self.quote = self.escape or char != '"'
-        self.escape = not self.escape and char == "\\"
-        return True
-
-    def continues(self, line: str) -> bool:
-        """Scan a line up to its comment; whether its statement continues past it."""
-        for char in line:
-            if self.in_string(char):
-                continue
-            if char == ";":
-                break
-            self.balance += _BRACKET_DEPTH.get(char, 0)
-        return self.balance != 0 or self.quote
-
-
-def _decoded_key(key: str) -> str:
-    """
-    Decode a quoted setting key to the setting key of its unquoted spelling.
-
-    Godot accepts quoted setting keys. Decode the ordinary JSON string form so a quoted
-    key has the same setting key as its unquoted spelling. Unrecognized escapes remain
-    authored text and are never evaluated here.
-    """
-    if not key.startswith('"'):
-        return key
-    try:
-        return json.loads(key)
-    except ValueError:
-        return key
-
-
-def _statement_start(line: str, section: str | None) -> tuple[str | None, str | None]:
-    """The section after a statement's first line, and the key that line assigns."""
-    match = _SECTION.match(line.strip())
-    if match:
-        return match.group(1), None
-    assignment = _ASSIGNMENT.match(line)
-    return section, _decoded_key(assignment.group(1).strip()) if assignment else None
-
-
-def statement_groups(text: str) -> list[tuple[str, str | None, str | None]]:
-    """Preserve authored text while keeping multiline Variant values together."""
-    groups = []
-    section = None
-    pending = []
-    pending_key = None
-    scan = _Scan()
-    for line in text.splitlines(keepends=True):
-        if not pending:
-            section, pending_key = _statement_start(line, section)
-        pending.append(line)
-        if not scan.continues(line):
-            groups.append(("".join(pending), section, pending_key))
-            pending, pending_key = [], None
-    if pending:
-        raise ValueError("Unterminated statement in base project.godot")
-    return groups
-
-
-def _value(text: str) -> str:
-    match = _ASSIGNMENT.match(text)
-    return text[match.end() :] if match else ""
-
-
-def setting_key(section: str | None, key: str) -> str:
-    """The section/property identity of a statement; root keys have no section."""
-    return f"{section}/{key}" if section else key
-
-
-def setting_section(setting: str) -> str | None:
-    """The section of a setting_key identity, or None for a root key."""
-    section, separator, _ = setting.partition("/")
-    return section if separator else None
-
+from tools.project_statements import (
+    CLOSING,
+    SECTION,
+    TextScan,
+    setting_key,
+    setting_section,
+    statement_groups,
+    statement_value,
+)
 
 # ==== Literals ================================================================
 
@@ -256,7 +165,7 @@ _PACKED_STRING_ARRAY = "PackedStringArray("
 def _matched_bracket(char: str, closing: list[str]) -> str:
     """Track an opening bracket, or close the innermost one with its own kind."""
     if char in "([{":
-        closing.append(_CLOSING[char])
+        closing.append(CLOSING[char])
     elif char in ")]}" and closing:
         return closing.pop()
     return char
@@ -266,7 +175,7 @@ def _godot_value(literal: str) -> object:
     """Decode a Godot literal that JSON can read once packed string arrays are lists."""
     text = []
     closing = []
-    scan = _Scan()
+    scan = TextScan()
     index = 0
     while index < len(literal):
         char = literal[index]
@@ -451,7 +360,7 @@ def left_out(
         directory = names_directories(kind)
         missing = [
             path
-            for path in named_paths(kind["shape"], _value(text).strip())
+            for path in named_paths(kind["shape"], statement_value(text).strip())
             if path.startswith("res://")
             and not _declared(path.removeprefix("res://"), present, directory)
         ]
@@ -544,7 +453,7 @@ def authored_autoloads(base: str) -> dict[str, str]:
     for text, section, key in statement_groups(base):
         if section != "autoload" or key is None:
             continue
-        value = _godot_value(_value(text).strip())
+        value = _godot_value(statement_value(text).strip())
         if isinstance(value, str) and not feature_tags(key):
             autoloads[key] = value
     return autoloads
@@ -555,7 +464,7 @@ def enabled_plugins(text: str) -> list[str]:
     enabled: list[str] = []
     for group, section, key in statement_groups(text):
         if section == "editor_plugins" and key == "enabled":
-            value = _value(group).strip()
+            value = statement_value(group).strip()
             paths = (
                 _godot_value(value) if value.startswith(_PACKED_STRING_ARRAY) else None
             )
@@ -633,7 +542,7 @@ def _replacements(
 
 def _empty_header(group: str, section: str | None, filled: set[str | None]) -> bool:
     """Whether group is the header of a section none of whose settings stay."""
-    return section not in filled and _SECTION.match(group.strip()) is not None
+    return section not in filled and SECTION.match(group.strip()) is not None
 
 
 def _authored_settings(base: str, purpose: _Purpose, dropped: set[str]) -> str:
@@ -645,7 +554,7 @@ def _authored_settings(base: str, purpose: _Purpose, dropped: set[str]) -> str:
         if key is not None:
             setting = setting_key(section, key)
             if setting in dropped or not purpose.carries(
-                section, key, _value(text).strip()
+                section, key, statement_value(text).strip()
             ):
                 continue
             filled.add(section)
@@ -753,7 +662,7 @@ def _statements(text: str) -> dict[str, str]:
 
 def _setting_value(statements: dict[str, str], setting: str) -> str | None:
     statement = statements.get(setting)
-    return None if statement is None else _value(statement).strip()
+    return None if statement is None else statement_value(statement).strip()
 
 
 def _insert(
@@ -767,7 +676,7 @@ def _insert(
     ends = [
         index + 1
         for index, (group, group_section, key) in enumerate(groups)
-        if group_section == section and (key is not None or _SECTION.match(group))
+        if group_section == section and (key is not None or SECTION.match(group))
     ]
     if ends:
         result.insert(ends[-1], statement)
@@ -844,113 +753,3 @@ def write_back(
         authored = _replace(authored, setting, after.get(setting))
         written.append(setting)
     return WriteBack(authored, written, reported)
-
-
-# ==== Command line ============================================================
-
-
-def _compose(arguments: list[str]) -> None:
-    parser = argparse.ArgumentParser(description="Construct a purpose's project.godot.")
-    parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args(arguments)
-    data = json.loads(args.manifest.read_text(encoding="utf-8"))
-    features = data.get("features")
-    active_features = (
-        {tag for tag, active in json.loads(Path(features).read_text()).items() if active}
-        if features
-        else None
-    )
-    base = Path(data["project_file"]).read_text(encoding="utf-8")
-    excluded = (
-        [setting for setting, _ in json.loads(Path(data["left_out"]).read_text())]
-        if "left_out" in data
-        else []
-    )
-    result = compose_project(
-        base,
-        data.get("settings", {}),
-        data.get("autoloads", {}),
-        data.get("main_scene", ""),
-        purpose=data.get("purpose", "runtime"),
-        editor_plugins=data.get("editor_plugins", []),
-        active_features=active_features,
-        kinds=data.get("kinds"),
-        sections=data.get("sections"),
-        excluded=excluded,
-        context_only=data.get("context_only", False),
-        pinned=data.get("pinned_settings"),
-    )
-    args.output.write_text(result, encoding="utf-8")
-
-
-def _left_out(arguments: list[str]) -> None:
-    parser = argparse.ArgumentParser(
-        description="List the authored content-bound settings a view's members leave out."
-    )
-    parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args(arguments)
-    data = json.loads(args.manifest.read_text(encoding="utf-8"))
-    base = Path(data["project_file"]).read_text(encoding="utf-8")
-    entries = left_out(base, data["kinds"], data["members"])
-    # A program entry starts the game itself, so it needs every file its configuration
-    # names, except those of overrides whose tags it never has.
-    program_entry = data.get("program_entry")
-    features = data.get("features")
-    needed = [entry for entry in entries if override_applies(entry[0], features)]
-    if program_entry and needed:
-        sys.exit(
-            "".join(
-                f"{program_entry}: Setting {setting} of the authored project.godot names "
-                f"{path}, which is no declared member of its deps\n"
-                for setting, path in needed
-            ).rstrip()
-        )
-    args.output.write_text(json.dumps(entries), encoding="utf-8")
-
-
-def _shadowed(arguments: list[str]) -> None:
-    parser = argparse.ArgumentParser(
-        description="Check that no authored feature override hides a setting from a flag."
-    )
-    parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args(arguments)
-    data = json.loads(args.manifest.read_text(encoding="utf-8"))
-    base = Path(data["project_file"]).read_text(encoding="utf-8")
-    conflicts = shadowed(base, data["flag_keys"])
-    if conflicts:
-        sys.exit("\n".join(conflicts))
-    args.output.write_text("", encoding="utf-8")
-
-
-def _autoloads(arguments: list[str]) -> None:
-    parser = argparse.ArgumentParser(
-        description="List the autoloads of an authored project.godot as JSON."
-    )
-    parser.add_argument("--project-file", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args(arguments)
-    autoloads = authored_autoloads(args.project_file.read_text(encoding="utf-8"))
-    args.output.write_text(json.dumps(autoloads, indent=1) + "\n", encoding="utf-8")
-
-
-def main() -> None:
-    commands = {
-        "compose": _compose,
-        "left-out": _left_out,
-        "shadowed": _shadowed,
-        "autoloads": _autoloads,
-    }
-    if sys.argv[1:2] and sys.argv[1] in commands:
-        commands[sys.argv[1]](sys.argv[2:])
-        return
-    sys.exit(
-        "usage: project_config compose|left-out|shadowed --manifest FILE --output FILE\n"
-        "       project_config autoloads --project-file FILE --output FILE"
-    )
-
-
-if __name__ == "__main__":
-    main()

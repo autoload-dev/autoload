@@ -35,7 +35,6 @@ import sys
 from collections.abc import Container, Iterable, Iterator, Sequence
 from pathlib import Path
 
-from godot.private.project_config import compose_project
 from tools.class_fragment import CACHE, class_cache
 from tools.godot_staging import (
     ACTION_DIRECTORY,
@@ -46,6 +45,7 @@ from tools.godot_staging import (
     run_action,
     staged_project,
 )
+from tools.project_config import compose_project
 from tools.resource_text import Heading, Token, headings, lex, res_path
 from tools.resource_uids import known_uids, uid_sources
 
