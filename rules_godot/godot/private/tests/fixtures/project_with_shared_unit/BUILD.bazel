@@ -7,10 +7,13 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 package(default_visibility = ["//godot/private/tests:__subpackages__"])
 
 # Files the analysis tests place in the projects they arrange.
-exports_files([
-    "main/icon.svg",
-    "project.godot",
-])
+exports_files(
+    [
+        "main/icon.svg",
+        "project.godot",
+    ],
+    visibility = ["//godot/private/tests:__subpackages__"],
+)
 
 godot_resources(
     name = "base",

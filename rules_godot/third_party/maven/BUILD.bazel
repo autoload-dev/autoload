@@ -1,10 +1,12 @@
 # The pinned Maven installations of the ruleset's own builds (MODULE.bazel), which
 # `REPIN=1 bazel run @<name>//:pin` rewrites.
-package(default_visibility = ["//visibility:public"])
-
-exports_files([
-    "android_ide_common_30_1_3_install.json",
-    "bazel_worker_maven_install.json",
-    "maven_install.json",
-    "rules_android_maven_install.json",
-])
+# The setup checks read three of them through //:module_files; the maven extension reads
+# them by label, without a target.
+exports_files(
+    [
+        "android_ide_common_30_1_3_install.json",
+        "bazel_worker_maven_install.json",
+        "rules_android_maven_install.json",
+    ],
+    visibility = ["//:__pkg__"],
+)

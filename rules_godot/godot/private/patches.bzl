@@ -1,6 +1,6 @@
 """Apply source patches strictly, without the lossy fuzz matching of Bazel's built-in patching."""
 
-visibility(["//godot/engine/private", "//godot/extension/private", "//godot/private/tests"])
+visibility(["//godot/extension/private", "//godot/private/tests"])
 
 def apply_repository_patches(ctx, *, _fail = fail):
     """

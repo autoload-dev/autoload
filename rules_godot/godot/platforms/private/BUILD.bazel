@@ -14,11 +14,19 @@ exports_files(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
-# Text templates the rules of this package expand.
-exports_files(glob(["*.tpl"]))
+# Text templates that private attributes of the ruleset's rules and repository rules name;
+# the rules of godot/private take the launcher's from launch.bzl.
+exports_files(
+    glob(["*.tpl"]),
+    visibility = ["//godot:__subpackages__"],
+)
 
-# The plugin that passes the Godot arguments of bazel run to a debuggable application.
-exports_files(["android/LaunchArgumentsPlugin.java"])
+# The plugin that passes the Godot arguments of bazel run to a debuggable application, a
+# private attribute of the Android bootstrap rule (android_bootstrap.bzl).
+exports_files(
+    ["android/LaunchArgumentsPlugin.java"],
+    visibility = ["//visibility:private"],
+)
 
 bzl_library(
     name = "android",

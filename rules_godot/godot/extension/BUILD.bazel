@@ -2,13 +2,20 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files([
-    "defs.bzl",
-    "repositories.bzl",
-])
+# The public modules as files, for the registry's documentation and consumers' own.
+exports_files(
+    [
+        "defs.bzl",
+        "repositories.bzl",
+    ],
+    visibility = ["//visibility:public"],
+)
 
-# Text templates the rules and repository rules of this package expand.
-exports_files(glob(["*.tpl"]))
+# Text templates that private attributes of this package's rules and repository rules name.
+exports_files(
+    glob(["*.tpl"]),
+    visibility = ["//visibility:private"],
+)
 
 bzl_library(
     name = "defs",

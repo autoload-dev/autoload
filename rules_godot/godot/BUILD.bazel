@@ -134,7 +134,11 @@ config_setting(
     },
 )
 
-exports_files(glob(["*.bzl"]))
+# The public modules as files, for the registry's documentation and consumers' own.
+exports_files(
+    glob(["*.bzl"]),
+    visibility = ["//visibility:public"],
+)
 
 # How a pack's PCK is made: godot exports it with Godot's conversions (binary
 # scenes and resources, tokenized scripts); none writes the files as they are,
