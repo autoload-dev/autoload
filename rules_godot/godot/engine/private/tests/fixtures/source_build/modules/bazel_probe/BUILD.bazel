@@ -6,6 +6,9 @@ package(default_testonly = True)
 filegroup(
     name = "bazel_probe",
     srcs = glob(["**"]),
+    # The beta recipes' godot_custom_module, a repository's target that is no test, takes
+    # the module's code from here.
+    testonly = False,
     visibility = ["//visibility:public"],
 )
 
