@@ -239,18 +239,21 @@ def _expect_reads_the_selected_editor(env, engine, entry):
             _reads_editor(entry.action, editor),
         ).equals(editor == engine)
 
+def _expect_reads_derived(env, engine, target, derived):
+    """Assert that each action that reads the editor's results reads a file that changes with the engine."""
+    for mnemonic in _READS_EDITOR_RESULTS:
+        for entry in _expect_entries(env, engine, target, mnemonic):
+            env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner).that_bool(
+                _reads_any(entry.action, derived),
+            ).equals(True)
+
 def _engine_upgrade_reruns_editor_actions(env, targets):
     for engine in DEVELOPMENT_ENGINES:
         target = getattr(targets, engine)
         for mnemonic in _RUNS_EDITOR:
             for entry in _expect_entries(env, engine, target, mnemonic):
                 _expect_reads_the_selected_editor(env, engine, entry)
-        derived = _engine_derived(target)
-        for mnemonic in _READS_EDITOR_RESULTS:
-            for entry in _expect_entries(env, engine, target, mnemonic):
-                env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner).that_bool(
-                    _reads_any(entry.action, derived),
-                ).equals(True)
+        _expect_reads_derived(env, engine, target, _engine_derived(target))
 
 def _test_engine_upgrade_reruns_the_import_project_file(name):
     analysis_test(

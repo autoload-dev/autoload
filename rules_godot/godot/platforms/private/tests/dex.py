@@ -14,21 +14,39 @@ ENDIAN_CONSTANT = 0x12345678
 VERSIONS = range(35, 41)
 
 
-def check_header(dex: bytes) -> None:
-    if len(dex) < HEADER_SIZE or dex[:4] != b"dex\n" or dex[7] != 0:
+def _has_magic(dex: bytes) -> bool:
+    """Whether the file starts with the DEX magic: "dex\\n", the version and a zero byte."""
+    return dex[:4] == b"dex\n" and dex[7] == 0
+
+
+def _check_magic_and_version(dex: bytes) -> None:
+    if len(dex) < HEADER_SIZE or not _has_magic(dex):
         raise ValueError("Invalid DEX header")
     version = dex[4:7]
     if not version.isdigit() or int(version) not in VERSIONS:
         raise ValueError("Unsupported DEX version")
+
+
+def _check_size_and_byte_order(dex: bytes) -> None:
     size, header_size, endian = struct.unpack_from("<III", dex, 32)
     if (size, header_size, endian) != (len(dex), HEADER_SIZE, ENDIAN_CONSTANT):
         raise ValueError("Invalid DEX size, header or byte order")
 
 
+def check_header(dex: bytes) -> None:
+    _check_magic_and_version(dex)
+    _check_size_and_byte_order(dex)
+
+
+def _outside_file(dex: bytes, offset: int, length: int) -> bool:
+    """Whether the bytes from the offset on lie in the header or past the file's end."""
+    return offset < HEADER_SIZE or offset + length > len(dex)
+
+
 def table(dex: bytes, field: int, width: int) -> tuple[int, int]:
     """Return the item count and offset of the table that the header field describes."""
     count, offset = struct.unpack_from("<II", dex, field)
-    if count and (offset < HEADER_SIZE or offset + count * width > len(dex)):
+    if count and _outside_file(dex, offset, count * width):
         raise ValueError("DEX table outside file")
     return count, offset
 
