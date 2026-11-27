@@ -73,5 +73,4 @@ source-built and prerelease engines and release-symbol commands.
 The extension's C++ code is in [`database.cc`](sqlite/database.cc). The
 [module](MODULE.bazel) takes the official [SQLite amalgamation](https://www.sqlite.org/amalgamation.html)
 from the Bazel Central Registry's `sqlite3` module, which compiles the C library
-independently from the C++ binding and declares its license. GdUnit and its suites belong to
-the Godot test project's `database/` package and are absent from production packs.
+independently from the C++ binding. GdUnit and its suites belong to the Godot test project's `database/` package and are absent from production packs.
