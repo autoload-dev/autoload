@@ -80,8 +80,8 @@ iOS builds of Petri need no host configuration either. The
 - `main/petri.tscn` composes the dish, the scrims that keep the HUD legible over a
   full dish, and the HUD; `main/petri.gd` wires the HUD's requests to the dish.
 - Change the module's code under `examples/engines/simulation/modules/reaction_diffusion/`; the next
-  Petri build recompiles the module and relinks both engines. A changed
-  `SCsub` or `config.py`, or an added or removed file, needs a repin with
+  Petri build recompiles the module and relinks both engines. Any other change to the
+  module, such as to `SCsub` or `config.py`, or an added or removed file, needs a repin with
   `bazel run @simulation//:pin --config=buildbuddy` on a Mac; until then the engine's
   recipes fail with that command.
 - Add a preset in `main/dish/dish.gd`; the HUD builds its chips from that list.

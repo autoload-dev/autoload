@@ -159,10 +159,13 @@ godot_engine_build = repository_rule(
         ),
         "custom_modules": attr.label_keyed_string_dict(
             doc = """
-            Each custom module's config.py label mapped to its module name; the containing
-            source tree is watched.
+            Each custom module's files mapped to its module name: a target, such as a
+            filegroup of `glob(["**"])`, in the package that holds the module's config.py.
+            The recipe configures with the module's build scripts, shader sources and file
+            paths, which it watches; its code, such as C++ sources, comes from the target
+            when a build compiles it, so editing the code prepares no recipe again.
             """,
-            allow_files = [".py"],
+            allow_files = True,
         ),
         "renderers": attr.string_list(
             doc = """
@@ -218,6 +221,7 @@ godot_engine_build = repository_rule(
         "_variants": attr.label(default = Label("//tools/engine:variants.py")),
         "_generators": attr.label(default = Label("//tools/engine:generators.py")),
         "_build_file": attr.label(default = Label("//tools/engine:build_file.py")),
+        "_custom_modules": attr.label(default = Label("//tools/engine:custom_modules.py")),
         "_tree": attr.label(default = Label("//tools/engine:tree.py")),
         "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
         "_class_db": attr.label(default = Label("//tools/engine:class_db.py")),

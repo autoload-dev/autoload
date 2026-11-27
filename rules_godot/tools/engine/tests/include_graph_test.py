@@ -2,7 +2,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.engine.include_graph import CompileGroup, Generated, components, include_graph
+from tools.engine.include_graph import (
+    ANY_HEADER,
+    CompileGroup,
+    Generated,
+    TreeCache,
+    components,
+    include_graph,
+)
 from tools.engine.tests.source_files import write_tree
 
 
@@ -12,11 +19,69 @@ class IncludeGraphTest(unittest.TestCase):
         files: dict[str, str],
         groups: list[CompileGroup],
         generated: dict[str, Generated] | None = None,
+        code: frozenset[str] = frozenset(),
     ) -> dict[str, frozenset[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             write_tree(root, files)
-            return include_graph(root, groups, generated or {})
+            return include_graph(TreeCache(root, code), groups, generated or {})
+
+    def test_sources_that_reach_a_custom_modules_code_include_every_header(self) -> None:
+        # The code's contents come by label at build time, so the scan cannot read them:
+        # a source that reaches it includes every header of the tree and its generators.
+        # Headers include only what they name, so no header joins a cycle through it.
+        code = frozenset(
+            {"_custom_modules/probe/probe.cpp", "_custom_modules/probe/probe.h"}
+        )
+        graph = self.graph(
+            {
+                "_custom_modules/probe/probe.cpp": "",
+                "_custom_modules/probe/probe.h": "",
+                "modules/register.cpp": '#include "modules/register.h"\n',
+                "modules/register.h": '#include "_custom_modules/probe/probe.h"\n',
+                "core/object.h": '#include "core/typedefs.h"\n',
+                "core/typedefs.h": "",
+                "core/object.cpp": '#include "core/object.h"\n',
+                "thirdparty/zlib/zlib.h": "",
+                "doc/classes/Node.xml": "",
+                # A module's other files, such as a table its code includes beside it.
+                "_custom_modules/probe/opcodes.def": "",
+            },
+            [
+                CompileGroup(
+                    [
+                        "_custom_modules/probe/probe.cpp",
+                        "modules/register.cpp",
+                        "core/object.cpp",
+                    ],
+                    ["."],
+                    [],
+                )
+            ],
+            {"core/version.gen.h": Generated("", (), ("core/version.gen.h",))},
+            code,
+        )
+        self.assertEqual(graph["_custom_modules/probe/probe.cpp"], {ANY_HEADER})
+        self.assertEqual(graph["_custom_modules/probe/probe.h"], set())
+        self.assertEqual(
+            graph["modules/register.cpp"], {"modules/register.h", ANY_HEADER}
+        )
+        self.assertEqual(graph["core/object.cpp"], {"core/object.h"})
+        self.assertEqual(
+            graph[ANY_HEADER],
+            {
+                "_custom_modules/probe/opcodes.def",
+                "_custom_modules/probe/probe.h",
+                "core/object.h",
+                "core/typedefs.h",
+                "core/version.gen.h",
+                "modules/register.h",
+                "thirdparty/zlib/zlib.h",
+            },
+        )
+        self.assertEqual(
+            [component for component in components(graph) if len(component) > 1], []
+        )
 
     def test_quoted_includes_prefer_the_including_files_directory(self) -> None:
         graph = self.graph(

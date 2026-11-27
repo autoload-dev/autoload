@@ -3,9 +3,9 @@ Pin source engine recipes: configure one recipe into its pin, or merge pins into
 
 `recipe` runs in a build action on an execution platform whose host Godot accepts for the
 recipe, such as a remote Linux executor for a Linux recipe. It extracts the source archive
-and applies the recipe's patches as the recipe repository does, adds the repository's custom modules, and
-configures the result. `merge` and `update` write the lock file an engine's `lock_file`
-names, as lock.py does.
+and applies the recipe's patches as the recipe repository does, adds the structure of the
+repository's custom modules with placeholders of their code, and configures the result.
+`merge` and `update` write the lock file an engine's `lock_file` names, as lock.py does.
 """
 
 import argparse
@@ -17,13 +17,14 @@ import zipfile
 from pathlib import Path
 
 try:
-    from . import configure
+    from . import configure, custom_modules
     from .lock import merge, update
     from .patches import apply_patches
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import configure  # type: ignore[no-redef]
+    import custom_modules  # type: ignore[no-redef]
     from lock import merge, update  # type: ignore[no-redef]
     from patches import apply_patches  # type: ignore[no-redef]
 
@@ -71,6 +72,8 @@ def recipe(arguments: argparse.Namespace, configure_arguments: list[str]) -> Non
         apply_patches(source, arguments.patch, arguments.patch_strip)
         scons = [name for name in files if name.startswith(f"{root}/_scons/")]
         copy_tree(root, [name for name in files if name not in scons], source)
+        # The custom modules' code comes by label; their structure is what configures.
+        custom_modules.write_placeholders(source)
         copy_tree(root / "_scons", scons, work / "scons")
         configure.main(
             [

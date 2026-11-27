@@ -1,3 +1,8 @@
-# The reaction_diffusion engine module; MODULE.bazel adds it to Petri's source build through
-# this config.py, and the recipe copies the whole directory.
-exports_files(["config.py"])
+# The reaction_diffusion engine module, which MODULE.bazel adds to Petri's source build by
+# this target. The recipe configures with its config.py and SCsub, and its C++ code
+# compiles from these files.
+filegroup(
+    name = "reaction_diffusion",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)

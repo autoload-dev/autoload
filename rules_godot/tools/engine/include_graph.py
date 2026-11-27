@@ -7,21 +7,24 @@ compilation: it finds a superset, since an undeclared include fails the action i
 sandbox or on a remote executor.
 
 Generated files do not exist when the graph is rendered. Their includes are the include
-directives that the code of their generator writes, as literal paths or as templates.
+directives that the code of their generator writes, as literal paths or as templates. A
+custom module's code comes by label at build time (custom_modules.py), so the scan
+cannot read it either: a source that reaches it may include every header, through
+ANY_HEADER.
 
-Sections: Inputs, Include resolution, Components.
+Sections: Inputs, Components, Include resolution.
 """
 
 import os
 import re
-from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
 try:
-    from .source_tree import SOURCE_SUFFIXES
+    from .source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 except ImportError:
-    from source_tree import SOURCE_SUFFIXES
+    from source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 
 
 # ==== Inputs ==================================================================
@@ -34,6 +37,12 @@ _OPTION_HEADER = re.compile(r'^-D\w+=\\?[<"](.+?)\\?[>"]$')
 _INCLUDE_OPTIONS = ("-isystem", "-iquote", "-I")
 
 _IGNORED_DIRECTORIES = ("_scons", "_bazel_generators")
+
+# What a source that reaches a custom module's code includes beside it: a file of no tree
+# that includes every header of the tree and its generators. A module's code changes
+# without the recipe, so those compile actions declare every header rather than what its
+# current text includes. Only sources include it, so it closes no cycle of headers.
+ANY_HEADER = "_custom_modules/_any_header"
 
 
 class Generated(NamedTuple):
@@ -86,6 +95,116 @@ def option_includes(copts: Iterable[str]) -> tuple[list[str], list[str]]:
     ]
     directories = [name for option in copts if (name := _include_directory(option))]
     return directories, headers
+
+
+# ==== Components ==============================================================
+
+
+class _Components:
+    """Tarjan's algorithm, iterative, since include chains outgrow Python's recursion."""
+
+    def __init__(self, graph: Mapping[str, Collection[str]]) -> None:
+        self.graph = graph
+        self.index: dict[str, int] = {}
+        self.low: dict[str, int] = {}
+        self.stack: list[str] = []
+        self.on_stack: set[str] = set()
+        self.result: list[list[str]] = []
+
+    def search(self) -> list[list[str]]:
+        for start in sorted(self.graph):
+            if start not in self.index:
+                self._search_from(start)
+        return self.result
+
+    def _search_from(self, start: str) -> None:
+        work = [self._enter(start)]
+        while work:
+            node, edges = work[-1]
+            successor = next((name for name in edges if name not in self.index), None)
+            if successor is not None:
+                work.append(self._enter(successor))
+                continue
+            work.pop()
+            self._leave(node, work[-1][0] if work else None)
+
+    def _enter(self, node: str) -> tuple[str, Iterator[str]]:
+        self.index[node] = self.low[node] = len(self.index)
+        self.stack.append(node)
+        self.on_stack.add(node)
+        return node, iter(sorted(self.graph[node]))
+
+    def _leave(self, node: str, parent: str | None) -> None:
+        on_stack = [
+            self.index[name] for name in self.graph[node] if name in self.on_stack
+        ]
+        self.low[node] = min([self.low[node], *on_stack])
+        if parent is not None:
+            self.low[parent] = min(self.low[parent], self.low[node])
+        if self.low[node] == self.index[node]:
+            self.result.append(self._pop(node))
+
+    def _pop(self, node: str) -> list[str]:
+        component: list[str] = []
+        while not component or component[-1] != node:
+            component.append(self.stack.pop())
+            self.on_stack.discard(component[-1])
+        return sorted(component)
+
+
+def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
+    """
+    Return the strongly connected components of an include graph, dependencies first.
+
+    Header guards let headers include each other; Bazel dependencies cannot form cycles,
+    and the files of a cycle are included together anyway.
+    """
+    return _Components(graph).search()
+
+
+def reaching(
+    graph: Mapping[str, Collection[str]], matches: Callable[[str], bool]
+) -> set[str]:
+    """Return the files whose include closure, themselves included, has a matching file."""
+    found: set[str] = set()
+    for component in components(graph):
+        # What a component includes decides before its files are read.
+        reaches = any(
+            include in found for name in component for include in graph[name]
+        ) or any(matches(name) for name in component)
+        if reaches:
+            found.update(component)
+    return found
+
+
+def reached_directories(
+    graph: Mapping[str, Collection[str]], directories: Iterable[str]
+) -> dict[str, frozenset[str]]:
+    """
+    Return each file of an include graph mapped to the directories, as spelled, that hold
+    it or a file it includes, transitively, at any depth.
+
+    The scan resolves an include to every directory that has the file, so an include
+    directory that holds no file a source reaches resolves none of its includes. The
+    source root, ".", holds every file.
+    """
+    spellings: dict[str, set[str]] = {}
+    for directory in directories:
+        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
+    reached: dict[str, frozenset[str]] = {}
+    # Dependencies come first, and the files of a cycle reach the same directories.
+    for component in components(graph):
+        found = {
+            spelling
+            for name in component
+            for parent in PurePosixPath(name).parents
+            for spelling in spellings.get(str(parent), ())
+        }
+        for name in component:
+            for include in graph[name]:
+                found |= reached.get(include, frozenset())
+        reached.update(dict.fromkeys(component, frozenset(found)))
+    return reached
 
 
 # ==== Include resolution ======================================================
@@ -177,10 +296,13 @@ class TreeCache:
     The files of a source tree and their include directives, read once.
 
     The runtime variants of a recipe render their graphs from one tree, so they share it.
+    code names the custom modules' code files, whose contents come by label at build time:
+    the scan reads none of them.
     """
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, code: Collection[str] = frozenset()) -> None:
         self.root = root
+        self.code = code
         self._files: set[str] | None = None
         self._directives: dict[str, list[tuple[str, bool]]] = {}
 
@@ -255,6 +377,51 @@ def _includes(
     return frozenset(_file_includes(tree, path, resolver))
 
 
+def _any_include(name: str) -> bool:
+    """Whether a module's code may include a file: any header, and any file of a module."""
+    return name != ANY_HEADER and (
+        name.endswith(HEADER_SUFFIXES)
+        or name.startswith(ANY_HEADER.partition("/")[0] + "/")
+    )
+
+
+class _Scan(NamedTuple):
+    """
+    What the scan of one graph reads: the tree and its generated files.
+
+    roots are the graph's sources, which ANY_HEADER leaves out, so it closes no cycle.
+    """
+
+    tree: TreeCache
+    generated: Mapping[str, Generated]
+    resolver: _Resolver
+    roots: frozenset[str]
+
+    def includes(self, path: str) -> frozenset[str]:
+        if path == ANY_HEADER:
+            return frozenset(
+                name
+                for name in self.resolver.known
+                if _any_include(name) and name not in self.roots
+            )
+        if path in self.tree.code:
+            return frozenset()
+        return _includes(self.tree, path, self.generated, self.resolver)
+
+    def follow(
+        self,
+        graph: dict[str, frozenset[str]],
+        pending: list[str],
+        forced: Mapping[str, Collection[str]],
+    ) -> None:
+        """Add the files pending reach to the graph, with what each includes."""
+        while pending:
+            path = pending.pop()
+            if path not in graph:
+                graph[path] = self.includes(path) | forced.get(path, set())
+                pending.extend(graph[path])
+
+
 def include_graph(
     source: Path | TreeCache,
     groups: Iterable[CompileGroup],
@@ -266,7 +433,9 @@ def include_graph(
 
     A source also includes the headers its options name. Extra roots, such as Swift's
     bridging header, are followed like sources. source is the tree's root, or a TreeCache
-    that shares the files the scan reads between graphs of one tree.
+    that shares the files the scan reads between graphs of one tree. The includes of the
+    tree's custom module code are unknown: a source or root that reaches it includes
+    ANY_HEADER.
     """
     tree = source if isinstance(source, TreeCache) else TreeCache(source)
     groups = list(groups)
@@ -277,108 +446,13 @@ def include_graph(
     ]
     resolver = _Resolver(tree.files() | set(generated), directories)
     forced = _option_headers(groups, resolver)
+    roots = [*forced, *extra_roots]
+    scan = _Scan(tree, generated, resolver, frozenset(roots))
     graph: dict[str, frozenset[str]] = {}
-    pending = [*forced, *extra_roots]
-    while pending:
-        path = pending.pop()
-        if path not in graph:
-            graph[path] = _includes(tree, path, generated, resolver) | forced.get(
-                path, set()
-            )
-            pending.extend(graph[path])
+    scan.follow(graph, list(roots), forced)
+    if tree.code:
+        found = reaching(graph, lambda name: name in tree.code)
+        for root in found.intersection(roots):
+            graph[root] |= {ANY_HEADER}
+        scan.follow(graph, [ANY_HEADER] if found else [], forced)
     return graph
-
-
-# ==== Components ==============================================================
-
-
-class _Components:
-    """Tarjan's algorithm, iterative, since include chains outgrow Python's recursion."""
-
-    def __init__(self, graph: Mapping[str, Collection[str]]) -> None:
-        self.graph = graph
-        self.index: dict[str, int] = {}
-        self.low: dict[str, int] = {}
-        self.stack: list[str] = []
-        self.on_stack: set[str] = set()
-        self.result: list[list[str]] = []
-
-    def search(self) -> list[list[str]]:
-        for start in sorted(self.graph):
-            if start not in self.index:
-                self._search_from(start)
-        return self.result
-
-    def _search_from(self, start: str) -> None:
-        work = [self._enter(start)]
-        while work:
-            node, edges = work[-1]
-            successor = next((name for name in edges if name not in self.index), None)
-            if successor is not None:
-                work.append(self._enter(successor))
-                continue
-            work.pop()
-            self._leave(node, work[-1][0] if work else None)
-
-    def _enter(self, node: str) -> tuple[str, Iterator[str]]:
-        self.index[node] = self.low[node] = len(self.index)
-        self.stack.append(node)
-        self.on_stack.add(node)
-        return node, iter(sorted(self.graph[node]))
-
-    def _leave(self, node: str, parent: str | None) -> None:
-        on_stack = [
-            self.index[name] for name in self.graph[node] if name in self.on_stack
-        ]
-        self.low[node] = min([self.low[node], *on_stack])
-        if parent is not None:
-            self.low[parent] = min(self.low[parent], self.low[node])
-        if self.low[node] == self.index[node]:
-            self.result.append(self._pop(node))
-
-    def _pop(self, node: str) -> list[str]:
-        component: list[str] = []
-        while not component or component[-1] != node:
-            component.append(self.stack.pop())
-            self.on_stack.discard(component[-1])
-        return sorted(component)
-
-
-def components(graph: Mapping[str, Collection[str]]) -> list[list[str]]:
-    """
-    Return the strongly connected components of an include graph, dependencies first.
-
-    Header guards let headers include each other; Bazel dependencies cannot form cycles,
-    and the files of a cycle are included together anyway.
-    """
-    return _Components(graph).search()
-
-
-def reached_directories(
-    graph: Mapping[str, Collection[str]], directories: Iterable[str]
-) -> dict[str, frozenset[str]]:
-    """
-    Return each file of an include graph mapped to the directories, as spelled, that hold
-    it or a file it includes, transitively, at any depth.
-
-    The scan resolves an include to every directory that has the file, so an include
-    directory that holds no file a source reaches resolves none of its includes. The
-    source root, ".", holds every file.
-    """
-    spellings: dict[str, set[str]] = {}
-    for directory in directories:
-        spellings.setdefault(str(PurePosixPath(directory)), set()).add(directory)
-    reached: dict[str, frozenset[str]] = {}
-    # Dependencies come first, and the files of a cycle reach the same directories.
-    for component in components(graph):
-        found = {
-            spelling
-            for name in component
-            for parent in PurePosixPath(name).parents
-            for spelling in spellings.get(str(parent), ())
-        }
-        for name in component:
-            for include in graph[name]:
-                found |= reached.get(include, frozenset())
-        reached.update(dict.fromkeys(component, frozenset(found)))
-    return reached

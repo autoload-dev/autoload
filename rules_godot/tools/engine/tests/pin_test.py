@@ -13,7 +13,6 @@ from unittest import mock
 from tools.engine.configure import (
     pin_digest,
     pinned_graph,
-    prepare_custom_modules,
     read_lock,
     stand_in_host,
 )
@@ -177,6 +176,9 @@ class PinTest(unittest.TestCase):
                 "source_tree.py",
                 # The build profile's helpers leave a pinned graph's class list out.
                 "build_profile.py",
+                # Which custom module files configure with their contents, and the
+                # placeholders of the others.
+                "custom_modules.py",
                 "__init__.py",
             },
         )
@@ -216,26 +218,6 @@ class PinTest(unittest.TestCase):
                 pinned_graph(read_lock(lock), "macos_arm64_editor", "sha256:a"),
                 ("missing", None),
             )
-
-    def test_custom_modules_are_copied_without_package_files(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            module = root / "workspace/modules/probe"
-            (module / "__pycache__").mkdir(parents=True)
-            for name in ["config.py", "SCsub", "BUILD.bazel", "__pycache__/config.pyc"]:
-                (module / name).write_text(name)
-            self.assertEqual(
-                prepare_custom_modules(root / "source", [f"probe={module}"]), ["probe"]
-            )
-            self.assertEqual(
-                sorted(
-                    path.name
-                    for path in (root / "source/_custom_modules/probe").iterdir()
-                ),
-                ["SCsub", "config.py"],
-            )
-            with self.assertRaisesRegex(ValueError, "Invalid custom module declaration"):
-                prepare_custom_modules(root / "source", [f"1probe={module}"])
 
     def test_pin_actions_copy_their_declared_tree_and_merge_sorted_recipes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -14,11 +14,12 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 try:
-    from . import build_profile, define_analysis, variants
+    from . import build_profile, custom_modules, define_analysis, variants
     from .build_file import Constants, Plus, Rule, write
     from .class_db import DEFINE, is_scoped
     from .generators import generated_files, generator_rules, spec_path
     from .include_graph import (
+        ANY_HEADER,
         CompileGroup,
         Generated,
         TreeCache,
@@ -29,12 +30,14 @@ try:
     from .source_tree import write_json
 except ImportError:
     import build_profile
+    import custom_modules
     import define_analysis
     import variants
     from build_file import Constants, Plus, Rule, write
     from class_db import DEFINE, is_scoped
     from generators import generated_files, generator_rules, spec_path
     from include_graph import (
+        ANY_HEADER,
         CompileGroup,
         Generated,
         TreeCache,
@@ -171,7 +174,7 @@ def header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
             f'load("{args.swift_repository}//swift:swift_library.bzl", "swift_library")'
         )
     lines += [
-        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision", "godot_define_analysis", "godot_source_defines", "godot_profile_independent")',
+        f'load("{args.generator_bzl}", "godot_source_generator", "godot_source_headers", "godot_source_library", "godot_source_binary", "godot_source_revision", "godot_define_analysis", "godot_source_defines", "godot_profile_independent", "godot_custom_module")',
         # Without module maps, whose contents name the configuration's output directory, the
         # engine's compile actions keep one cache key in every configuration under path
         # mapping. The engine's sources, Swift's included, need none.
@@ -184,8 +187,44 @@ def header_rules(args: argparse.Namespace, uses_swift: bool) -> list[str]:
 _PRIVATE = ["//visibility:private"]
 
 
-def common_rules(args: argparse.Namespace) -> list[Rule]:
-    """The revision target and the source root's include directory."""
+def _custom_module_name(module: str) -> str:
+    return f"{custom_modules.DIRECTORY}/{module}"
+
+
+def custom_module_rules(modules: Mapping[str, Any]) -> list[Rule]:
+    """
+    A godot_custom_module target per custom module: its code from its target, by label.
+
+    The recipe holds only what shapes its graph; the code takes the paths of the
+    repository's placeholders, which it deletes, below _custom_modules.
+    """
+    return [
+        Rule(
+            "godot_custom_module",
+            _custom_module_name(name),
+            {
+                "visibility": _PRIVATE,
+                "module": module["label"],
+                "paths": module["files"],
+                "outs": [
+                    f"{_custom_module_name(name)}/{path}" for path in module["files"]
+                ],
+            },
+            fixed=frozenset({"paths", "outs"}),
+        )
+        for name, module in sorted(modules.items())
+    ]
+
+
+def common_rules(
+    args: argparse.Namespace, modules: Mapping[str, Any] | None = None
+) -> list[Rule]:
+    """The revision target, the source root's include directory and the custom modules' code."""
+    revision_inputs = (
+        {"inputs": [":" + _custom_module_name(name) for name in sorted(modules)]}
+        if modules
+        else {}
+    )
     return [
         Rule(
             "godot_source_revision",
@@ -197,12 +236,19 @@ def common_rules(args: argparse.Namespace) -> list[Rule]:
                 "build": "_revision/build.txt",
                 "hash": "_revision/hash.txt",
                 "timestamp": "_revision/timestamp.txt",
+                **revision_inputs,
             },
             fixed=frozenset({"build", "hash", "timestamp"}),
         ),
         # The source root's include directory, which every compile action searches.
         Rule("cc_library", "_root", {"visibility": _PRIVATE, "includes": ["."]}),
+        *custom_module_rules(modules or {}),
     ]
+
+
+def _files(component: Iterable[str]) -> list[str]:
+    """The files of an include component: ANY_HEADER stands for every header, not a file."""
+    return [name for name in component if name != ANY_HEADER]
 
 
 def include_rules(
@@ -226,7 +272,11 @@ def include_rules(
             {targets[include] for file in component for include in graph[file]} - {label}
         )
         rules.append(
-            Rule("godot_source_headers", label[1:], {"hdrs": component, "deps": deps})
+            Rule(
+                "godot_source_headers",
+                label[1:],
+                {"hdrs": _files(component), "deps": deps},
+            )
         )
     return rules, targets
 
@@ -593,6 +643,8 @@ class Tree(NamedTuple):
     scoped: bool
     cache: TreeCache
     constants: Constants
+    # Each custom module's label and code files, whose contents come by label.
+    modules: Mapping[str, Any]
 
 
 class Rendered(NamedTuple):
@@ -654,7 +706,7 @@ def render_graph(
 ) -> Rendered:
     """Return the rules, generator specifications and manifest of a graph."""
     rules, generated, compiled = _sources(args, graph, tree)
-    rules = common_rules(args) + rules
+    rules = common_rules(args, tree.modules) + rules
     swift_options = graph["swift_options"] or _DEFAULT_SWIFT_OPTIONS
     swift_roots = [swift_options["bridging_header"]] if graph["swift_sources"] else []
     includes = _includes(tree, compiled, generated, swift_roots)
@@ -767,7 +819,9 @@ def render(
     With runtime variants, the package declares each variant's graph too, selected by the
     build profile.
     """
-    tree = Tree(root, is_scoped(root), TreeCache(root), Constants())
+    cache = TreeCache(root, frozenset(custom_modules.code_files(root)))
+    modules = custom_modules.read_manifest(root)
+    tree = Tree(root, is_scoped(root), cache, Constants(), modules)
     base = render_graph(args, graph, tree)
     rules = _package_rules(args, base, runtime_variants, tree)
     header = header_rules(args, bool(graph["swift_sources"]))

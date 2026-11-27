@@ -237,7 +237,7 @@ godot_engines.build(
         "vulkan": "no",
         "opengl3": "yes",
     },
-    custom_modules = {"//examples/engines/simulation/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+    custom_modules = {"//examples/engines/simulation/modules/reaction_diffusion": "reaction_diffusion"},
     # GdUnit's runner reads archives, so the editor that runs the suites needs zip.
     enabled_modules = [
         "gdscript",
@@ -254,7 +254,7 @@ godot_engines.build(
 # components. The snapshot of the 4.7 maintenance branch, a fork's stand-in: an immutable
 # commit archive whose version.py names 4.7.3-rc, with a reduced runtime and a fuller
 # editor; both have the bazel_probe module and the engine-name patch.
-_BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engines/patched/modules/bazel_probe:config.py": "bazel_probe"}
+_BAZEL_PROBE = {"//e2e/rules_godot/patched_engine/engines/patched/modules/bazel_probe": "bazel_probe"}
 
 _ENGINE_NAME_PATCH = ["//e2e/rules_godot/patched_engine/engines/patched/patches:engine-name.patch"]
 
