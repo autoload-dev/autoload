@@ -34,12 +34,10 @@ final script = Script(Spinner.new);
 3. Run the add-on's own tests without a graphical display:
 
    ```sh
-   bazel test @autoload_dart//... //examples/addons/dart/... //e2e/addons/dart/...
+   bazel test @autoload_dart//... //examples/addons/dart/...
    ```
 
-   They run the exported demo, GdUnit suites that check callbacks, values in both
-   directions, calls into Godot and Dart functions as signal targets, and a native test of
-   the embedded VM.
+   They run the exported demo and a native test of the embedded VM.
 
 ## Write scripts
 
@@ -140,7 +138,6 @@ Run from the repository root:
 ```sh
 bazel run //examples/addons/dart:edit
 bazel run //examples/addons/dart:update
-bazel run //e2e/addons/dart:update
 bazel build //examples/addons/dart:pack
 ```
 

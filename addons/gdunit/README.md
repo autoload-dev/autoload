@@ -117,8 +117,9 @@ rules_godot's test adapter: the adapter lists the suites, and `gdunit/private/ru
 GdUnit and reports to Bazel.
 
 The example application in `examples/addons/gdunit/` at the repository root consumes the
-module as applications do: the project tests its scripts with GdUnit. The module's
-end-to-end tests in `e2e/addons/gdunit/` check `gdunit_test` the same way: GdUnit runs that
-pass, fail, shard, filter and report the way Bazel's test encyclopedia requires, a pack with
-GdUnit, and a GdUnit run in a project with strict warnings. `bazel test @autoload_gdunit//... //examples/addons/gdunit/... //e2e/addons/gdunit/...`
-runs both.
+module as applications do: the project tests its scripts with GdUnit, such as
+[ScoreboardTest.gd](../../examples/addons/gdunit/tests/ScoreboardTest.gd), and
+`bazel test //examples/addons/gdunit/...` runs them. The module's end-to-end tests check
+`gdunit_test` the same way: GdUnit runs that pass, fail, shard, filter and report the way
+Bazel's test encyclopedia requires, a pack with GdUnit, and a GdUnit run in a project with
+strict warnings.

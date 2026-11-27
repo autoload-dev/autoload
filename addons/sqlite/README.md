@@ -28,11 +28,11 @@ database.close()
 3. Run the add-on's own tests without a graphical display:
 
    ```sh
-   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
+   bazel test //examples/addons/sqlite/tests:exported
    ```
 
-   Building them validates the GDScript; the tests check parameterized round trips,
-   values and errors, and load the extension from an exported production pack.
+   Building it validates the GDScript; the test loads the extension from an exported
+   production pack and runs the demo's query.
 
 ## Reuse the add-on
 
@@ -60,7 +60,6 @@ Run from the repository root:
 ```sh
 bazel run //examples/addons/sqlite:edit
 bazel run //examples/addons/sqlite:update
-bazel run //e2e/addons/sqlite:update
 bazel build //examples/addons/sqlite:pack
 ```
 
@@ -74,5 +73,5 @@ The extension's C++ code is in [`database.cc`](sqlite/database.cc). The
 [module](MODULE.bazel) depends on the Bazel Central Registry's `sqlite3` module, whose
 `cc_library` compiles the official [SQLite amalgamation](https://www.sqlite.org/amalgamation.html)
 apart from the C++ binding. SQLite's extension loader stays compiled in but disabled, since
-the add-on never enables it. GdUnit and its suites belong to the Godot test project's
-`database/` package and are absent from production packs.
+the add-on never enables it. GdUnit and the add-on's end-to-end suites are absent from
+production packs.
