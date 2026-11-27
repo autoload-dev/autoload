@@ -13,8 +13,8 @@ for Claude Code alone stay in `AGENTS.md`, marked as such.
 
 Skills live once, in `.agents/skills/`, where Codex finds them. Claude Code finds project
 skills only in `.claude/skills/`, which holds a link to each skill directory. The conventions
-check enforces both, along with the links in these files
-([RG016 to RG018](conventions.md#rg016)).
+check enforces both ([RG017](conventions.md#rg017) and [RG018](conventions.md#rg018)); the
+[file lint](verification-recipes.md#the-file-lint) checks the links in these files.
 
 | File | Owner | Purpose |
 |---|---|---|

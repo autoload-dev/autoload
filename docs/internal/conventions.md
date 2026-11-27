@@ -7,14 +7,13 @@ reorganized. This page owns each rule's ID, applicability, automated coverage an
 the [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the
 layout and naming conventions mean. External repositories and source files are separate
 identities, not authored target declarations. Coverage that rests on Bazel's evaluation,
-such as RG002, RG003, RG006, RG007, RG008, RG012 and RG026, leaves out the registry test
+such as RG002, RG006, RG007, RG008, RG012 and RG026, leaves out the registry test
 modules ([RG020](#rg020)), which the check does not load (see the [rule framework](#rule-framework)).
 
 | ID | Rule | Policy | Automated coverage | Enforcement |
 |---|---|---|---|---|
 | [RG001](#rg001) | Package segments use lower snake case | Required | All inventoried owned BUILD paths, relative to the nearest module | Error |
 | [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
-| [RG003](#rg003) | Target declarations pass `name` explicitly | Required | BUILD calls associated with at least one evaluated rule | Error |
 | [fixture-references](#fixture-references) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
@@ -24,7 +23,6 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [public-documentation-links](#public-documentation-links) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
-| [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
 | [RG017](#rg017) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [RG018](#rg018) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
 | [RG019](#rg019) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
@@ -35,7 +33,6 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [region-headers](#region-headers) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [reading-order](#reading-order) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
-| [RG027](#rg027) | The add-on modules' Python targets carry `lint-genfiles` | Required | Every `py_binary`, `py_library` and `py_test` of every add-on module | Error |
 
 RG005 is retired: Bazel's load and target visibility enforce the boundary it checked (see the
 [boundary rules](verification-architecture.md#boundary-rules)). RG010 and RG011, which
@@ -44,6 +41,19 @@ implementation independent of that demo, are retired with that layout: add-ons l
 add-on modules, which hold no project ([RG021](#rg021)), and their demos and end-to-end tests
 are projects of the root module ([RG009](#rg009)). Choosing the main entry point
 and useful package boundaries still requires judgment; the checks do not elect a primary target.
+
+Other tools enforce what three retired rules checked: explicit target names, resolving local
+links and the add-on modules' Python lint. Buildifier's default warnings
+`build-args-kwargs`, `positional-args` and `unnamed-macro`, which `.buildifier.json` keeps,
+require target declarations to pass `name` as a keyword. Outside them are a legacy macro
+whose `name` has a default and positional arguments to a legacy macro of another repository,
+which buildifier cannot read; the repository has neither, and rules and symbolic macros take
+no positional arguments and require `name`. rumdl's MD057 and MD051 resolve
+Markdown links and their fragments, in exact case, over every Markdown file in the
+[file lint](verification-recipes.md#the-file-lint); destinations of HTML `href` and
+`src` attributes are outside them, so link with Markdown. The lint check fails on an add-on
+module's Python target without the tag `lint-genfiles`, which the root module's lint would
+skip ([tools/lint/check.bzl](../../tools/lint/check.bzl)).
 
 ## RG001
 
@@ -116,29 +126,6 @@ checked against exactly one of them. A changed root set requires renewed review;
 reviews fail. Missing required ownership or review evidence fails the check.
 Incomplete review evidence is reported as `RG002 not checked`. This strictness does not
 change other conventions' coverage policy.
-
-## RG003
-
-**Target declarations pass `name` explicitly.** Show the target's identity at its declaration
-so readers can locate it without following an inferred default or a dictionary expansion.
-A computed expression still counts as explicit:
-
-```starlark
-godot_resources(name = "main", srcs = ["game.gd"])
-godot_resources(name = variant + "_resources", srcs = sources)
-```
-
-A target-producing call such as `target_macro(**options)` does not express `name` explicitly.
-Use `target_macro(name = target_name, **other_options)` instead. Calls such as `load`,
-`package`, `exports_files`, `glob` and arbitrary helpers are not target declarations merely
-because they appear in a BUILD file.
-
-The checker joins parsed BUILD calls with evaluated rules by their source location. This
-classifies actual target-producing calls without a guessed list of function names and
-handles macros, aliases and comprehensions. Macro implementation calls inside `.bzl` files
-and generated targets are outside this authored-BUILD check. Calls producing no evaluated
-rules are outside its coverage. Ambiguous or missing source evidence and failed parsing or
-loading stop the audit with an error rather than silently passing.
 
 ## fixture-references
 
@@ -420,19 +407,6 @@ In every add-on, including those of `examples/`, a `backends/` directory sits in
 the backends implement the platform-independent API beside them. The check reads the files
 and their text without loading Bazel; it reports a stray `backends/` directory once.
 
-## RG016
-
-**Local links resolve.** A link in documentation, a README, an `AGENTS.md` or a skill's
-`SKILL.md` names a file or directory of the repository, in its exact case, and a fragment
-names a heading or an HTML `id` or `name` of the Markdown page it points to. Headings become
-fragments as on GitHub: the rendered text in lower case, without punctuation, spaces as
-hyphens and a number appended to repeats. Ignored local files, such as `user.bazelrc`, are
-no link targets.
-
-The check reads link destinations as [public-documentation-links](#public-documentation-links) does, and ignores links in code and
-comments the same way. External URLs, fragments into files other than Markdown and fragments
-after a query, such as `?plain=1#L5`, are outside automated coverage.
-
 ## RG017
 
 **Agent instructions live in `AGENTS.md`.** Claude Code and Codex both read `AGENTS.md`, but
@@ -579,25 +553,6 @@ runtime or the target execution toolchain type of `@autoload_rules_godot//godot`
 such a test without the tag, a test with the tag that depends on none, and a smoke test with
 the tag. Registry test modules are outside it.
 
-## RG027
-
-**The add-on modules' Python targets carry `lint-genfiles`.** The root module lints the add-on
-modules' Python with its own, in `bazel build --config=lint` over their repositories
-(`tools/lint/check.bzl`), so the add-on modules need no Bazel server of their own for it.
-rules_lint lints only the main repository's sources, unless a target carries the tag
-`lint-genfiles`; without it, an add-on module's Python would pass the lint unseen.
-
-```starlark
-py_library(
-    name = "google_services_lib",
-    srcs = ["google_services.py"],
-    tags = ["lint-genfiles"],
-)
-```
-
-The check reports every `py_binary`, `py_library` and `py_test` of an add-on module without
-the tag, as Bazel evaluates them, macros' targets included.
-
 ## Run and maintain the checks
 
 From the repository root:
@@ -674,9 +629,8 @@ inspection, and the joins of them (`context.declarations`, `context.sources`). T
 which runs the modules' loading queries, is [bazel.py](../../tools/conventions/bazel.py);
 the context decodes its output. The public
 members of `context.py` carry their documentation. The documentation rules share
-[documents](../../tools/conventions/documents.py): which pages are internal, which files
-are agent instructions (every `AGENTS.md` and `SKILL.md`), and the local links and anchors
-of a Markdown source.
+[documents](../../tools/conventions/documents.py): which pages are internal and the local
+link destinations of a Markdown source.
 
 Tools load evidence lazily, cache it per tool/context instance and return immutable records
 and read-only attribute maps. Bazel evidence covers the loaded modules
@@ -687,7 +641,7 @@ root module with the add-on modules, which it names through their repositories,
 `@autoload_<module>//`; the tool names their labels as the module itself does. A workspace
 loads all of its modules in one query. The first `context.declarations` call loads the calls
 and rules of every loaded module, the two workspaces concurrently. The
-target-name and explicit-name rules share their declaration data, and the documentation-label
+rules that read declarations share their data, and the documentation-label
 rule resolves labels against the same per-module query, so no query runs twice. Missing or
 ambiguous source evidence and failed tools raise `EvidenceError` and abort the audit; they
 are not converted into an empty successful result.

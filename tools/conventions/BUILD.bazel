@@ -81,7 +81,6 @@ py_library(
         "registry.py",
         "rules/rg001.py",
         "rules/rg002.py",
-        "rules/rg003.py",
         "rules/rg006.py",
         "rules/rg007.py",
         "rules/rg008.py",
@@ -89,7 +88,6 @@ py_library(
         "rules/rg012.py",
         "rules/rg014.py",
         "rules/rg015.py",
-        "rules/rg016.py",
         "rules/rg017.py",
         "rules/rg018.py",
         "rules/rg019.py",
@@ -98,7 +96,6 @@ py_library(
         "rules/rg022.py",
         "rules/rg023.py",
         "rules/rg026.py",
-        "rules/rg027.py",
     ],
     deps = [
         ":context_lib",
@@ -201,17 +198,6 @@ py_test(
 )
 
 py_test(
-    name = "rg003_test",
-    size = "small",
-    srcs = ["rules/rg003_test.py"],
-    deps = [
-        ":context_lib",
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
     name = "fixture_references_test",
     size = "small",
     srcs = ["rules/fixture_references_test.py"],
@@ -302,16 +288,6 @@ py_test(
         ":rules_lib",
         ":test_support",
         "//tools/addons:new_lib",
-    ],
-)
-
-py_test(
-    name = "rg016_test",
-    size = "small",
-    srcs = ["rules/rg016_test.py"],
-    deps = [
-        ":rules_lib",
-        ":test_support",
     ],
 )
 
@@ -409,16 +385,6 @@ py_test(
     name = "rg026_test",
     size = "small",
     srcs = ["rules/rg026_test.py"],
-    deps = [
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "rg027_test",
-    size = "small",
-    srcs = ["rules/rg027_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

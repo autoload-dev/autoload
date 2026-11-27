@@ -4,6 +4,7 @@ module and the ruleset: the aspect `python`, which runs Ruff and ty (linters.bzl
 build with their reports through check.sh.
 """
 
+load("//:addons.bzl", "ADDON_REPOSITORIES")
 load(":linters.bzl", "ruff", "ty")
 
 _LintChecksInfo = provider(
@@ -11,9 +12,37 @@ _LintChecksInfo = provider(
     fields = {"stamps": "depset of File: a stamp per linted target"},
 )
 
+# The tag that has rules_lint lint the sources of a target outside the main repository.
+_OPT_IN = "lint-genfiles"
+
+# The kinds rules_lint's Ruff and ty aspects visit: their default `rule_kinds`, which
+# linters.bzl keeps.
+_PYTHON = ["py_binary", "py_library", "py_test"]
+
 def _skips(target, ctx):
     """Whether rules_lint skips the target: one outside the main repository, not opted in."""
-    return target.label.workspace_name and "lint-genfiles" not in ctx.rule.attr.tags
+    return target.label.workspace_name and _OPT_IN not in ctx.rule.attr.tags
+
+def _addon_repositories():
+    """The canonical names of the add-on modules' repositories, which the root module lints.
+
+    Empty in another module's workspace, such as the ruleset's, which declares no add-on module.
+    """
+    if Label("//:BUILD.bazel").workspace_name:
+        return []
+    return [Label(repository + "//:BUILD.bazel").repo_name for repository in ADDON_REPOSITORIES]
+
+def _unseen(target, ctx):
+    """Whether the target is an add-on module's Python, which rules_lint would skip unseen.
+
+    The root module lints the add-on modules' Python with its own; rules_lint sees an add-on
+    module's sources only when the target opts in with the tag.
+    """
+    return (
+        ctx.rule.kind in _PYTHON and
+        _skips(target, ctx) and
+        target.label.repo_name in _addon_repositories()
+    )
 
 def _reports(target, ctx):
     """Pairs of exit code file and report of the linters that ran on the target.
@@ -48,6 +77,12 @@ def _check(target, ctx, reports):
     return stamp
 
 def _python_impl(target, ctx):
+    if _unseen(target, ctx):
+        fail(
+            "%s: an add-on module's %s needs tags = [\"%s\"]: without it, the root module's" %
+            (target.label, ctx.rule.kind, _OPT_IN),
+            "lint check skips its sources",
+        )
     deps = getattr(ctx.rule.attr, "deps", [])
     stamps = [dep[_LintChecksInfo].stamps for dep in deps if _LintChecksInfo in dep]
     reports = _reports(target, ctx)

@@ -7,7 +7,6 @@ from tools.conventions.context import Call, Context, Location
 from tools.conventions.framework import Finding, RuleInfo, run
 from tools.conventions.registry import select
 from tools.conventions.rules.rg002 import TargetNames
-from tools.conventions.rules.rg003 import ExplicitNames
 from tools.conventions.test_support import RepositoryTest
 
 
@@ -17,6 +16,15 @@ class AdditionalRule:
     def evaluate(self, context: Context) -> Iterable[Finding]:
         yield Finding(Location("BUILD.bazel", 3), "requires review", "not_checked")
         yield Finding(Location("BUILD.bazel", 2), "a violation")
+
+
+class DeclarationsRule(AdditionalRule):
+    """A second rule that reads the declarations, as the target-name rule does."""
+
+    def evaluate(self, context: Context) -> Iterable[Finding]:
+        for module in context.workspace.loaded_modules:
+            context.declarations(module)
+        return ()
 
 
 class RepeatingRule(AdditionalRule):
@@ -65,7 +73,7 @@ class FrameworkTest(RepositoryTest):
             Location("BUILD.bazel", 1), "filegroup", frozenset({"name"}), "bad-name"
         )
         context = self.context((call,), [{"name": "//:bad-name", "path": "BUILD.bazel"}])
-        report = run(context, (TargetNames({}), ExplicitNames()))
+        report = run(context, (TargetNames({}), DeclarationsRule()))
         self.assertEqual(["RG002"], [item.rule.id for item in report.violations])
         self.assertEqual((1, 1), (self.tools.call_requests, self.tools.rule_requests))
 
