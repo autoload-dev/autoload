@@ -29,3 +29,18 @@ py_test(
     srcs = ["uids_test.py"],
     deps = ["//tools/resources:uids_lib"],
 )
+
+py_test(
+    name = "class_fragment_test",
+    size = "small",
+    srcs = ["class_fragment_test.py"],
+    data = ["//godot/private/tests/validation:class_headers"],
+    deps = ["//tools/resources:class_fragment_lib"],
+)
+
+py_test(
+    name = "index_test",
+    size = "small",
+    srcs = ["index_test.py"],
+    deps = ["//tools/resources:index_lib"],
+)

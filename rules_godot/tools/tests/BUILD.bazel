@@ -81,13 +81,6 @@ py_test(
 )
 
 py_test(
-    name = "metadata_index_test",
-    size = "small",
-    srcs = ["metadata_index_test.py"],
-    deps = ["//tools:metadata_index_lib"],
-)
-
-py_test(
     name = "template_test",
     size = "small",
     srcs = ["template_test.py"],

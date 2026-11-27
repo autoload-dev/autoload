@@ -43,9 +43,9 @@ from tools.godot_staging import (
     write_originals,
 )
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
+from tools.resources.class_fragment import skip_arguments
 from tools.resources.files import IMPORT, import_base
 from tools.resources.text import IMPORTER, REMAP_PATH, Token, lex, remap_section
-from tools.validation.class_fragment import skip_arguments
 
 # The class of the resource each of Godot's own importers produces, which a stand-in has: a
 # preloaded resource types its constant by its class. Other importers, such as an add-on's,

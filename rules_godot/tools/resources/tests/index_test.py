@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools import metadata_index
+from tools.resources.index import main
 
 _SCENE = """[gd_scene format=3]
 
@@ -48,7 +48,7 @@ class MetadataIndexTest(unittest.TestCase):
             str(tree),
         ]
         with mock.patch("sys.argv", argv):
-            metadata_index.main()
+            main()
         return json.loads(output.read_text())
 
     def test_index_covers_members_and_generated_sidecars(self) -> None:
@@ -102,10 +102,10 @@ class MetadataIndexTest(unittest.TestCase):
                     mock.patch("sys.argv", argv),
                 ):
                     if named is None:
-                        metadata_index.main()
+                        main()
                         continue
                     with self.assertRaises(SystemExit) as failure:
-                        metadata_index.main()
+                        main()
                     self.assertIn(named, str(failure.exception))
                     self.assertIn(
                         "//godot/metadata:" + kind + "=assign", str(failure.exception)

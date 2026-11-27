@@ -37,20 +37,6 @@ py_test(
     ],
 )
 
-# Pack selection over graphs that the scanner builds from small files.
-py_test(
-    name = "selection_test",
-    size = "small",
-    srcs = ["selection_test.py"],
-    deps = [
-        "//tools/pack:selection_lib",
-        "//tools/resource_graph:command_lib",
-        "//tools/resource_graph:graph_lib",
-        "//tools/resource_graph:query_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
 py_test(
     name = "writer_test",
     size = "small",

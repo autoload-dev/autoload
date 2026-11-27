@@ -45,9 +45,9 @@ from tools.godot_staging import (
     staged_project,
 )
 from tools.project.config import compose_project
+from tools.resources.class_fragment import CACHE, class_cache
 from tools.resources.text import Heading, Token, headings, lex, res_path
 from tools.resources.uids import known_uids, uid_sources
-from tools.validation.class_fragment import CACHE, class_cache
 
 
 def _section_end(text: str, sections: list[Heading], index: int) -> int:

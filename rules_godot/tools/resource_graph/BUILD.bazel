@@ -47,3 +47,24 @@ py_binary(
     visibility = ["//godot/private:__pkg__"],
     deps = [":command_lib"],
 )
+
+# Selects a pack's resources from the graph and checks that what they reference is
+# available: a tool of its own, so a change to it reruns only selections, and a change to it
+# alone no graph scans.
+py_library(
+    name = "selection_lib",
+    srcs = ["selection.py"],
+    deps = [
+        ":graph_lib",
+        ":query_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_binary(
+    name = "selection",
+    srcs = ["selection.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":selection_lib"],
+)

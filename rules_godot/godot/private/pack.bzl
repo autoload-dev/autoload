@@ -652,7 +652,7 @@ _pack_export = rule(
             cfg = "exec",
         ),
         "_metadata_index": attr.label(
-            default = Label("//tools:metadata_index"),
+            default = Label("//tools/resources:index"),
             executable = True,
             cfg = "exec",
         ),
@@ -684,7 +684,7 @@ _pack_export = rule(
             providers = [GodotPackInfo],
         ),
         "_pack_selection": attr.label(
-            default = Label("//tools/pack:selection"),
+            default = Label("//tools/resource_graph:selection"),
             executable = True,
             cfg = "exec",
         ),

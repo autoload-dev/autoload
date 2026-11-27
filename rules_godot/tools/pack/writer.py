@@ -25,11 +25,11 @@ from tools.godot_staging import (
 )
 from tools.pack.contents import content_selection, write_report
 from tools.pack.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
+from tools.resources.class_fragment import CACHE as CLASS_CACHE
+from tools.resources.class_fragment import class_cache, fragment
 from tools.resources.files import IMPORT, UID, hidden_by, is_sidecar_named
 from tools.resources.text import IMPORTER, REMAP_PATH, remap_section
 from tools.resources.uids import declares_uids, known_uids, uid_cache
-from tools.validation.class_fragment import CACHE as CLASS_CACHE
-from tools.validation.class_fragment import class_cache, fragment
 
 UID_CACHE = ".godot/uid_cache.bin"
 

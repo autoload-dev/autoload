@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 # The text of Godot resources and Godot's rules for the files it writes beside them, which
@@ -33,4 +33,46 @@ py_library(
         ":files_lib",
         ":text_lib",
     ],
+)
+
+# The global script classes of a unit's scripts and the class cache Godot derives from them,
+# which validations and the pack writer read.
+py_library(
+    name = "class_fragment_lib",
+    srcs = ["class_fragment.py"],
+    visibility = [
+        "//godot/private/tests/validation:__pkg__",
+        "//tools:__subpackages__",
+    ],
+    deps = [
+        ":text_lib",
+        "//tools:mapped_paths_lib",
+    ],
+)
+
+py_binary(
+    name = "class_fragment",
+    srcs = ["class_fragment.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":class_fragment_lib"],
+)
+
+# The metadata a project's text files lack, which packs complete their staged copies from and
+# the metadata sync writes into the checkout.
+py_library(
+    name = "index_lib",
+    srcs = ["index.py"],
+    deps = [
+        ":files_lib",
+        ":node_ids_lib",
+        ":uids_lib",
+        "//tools:godot_staging_lib",
+    ],
+)
+
+py_binary(
+    name = "index",
+    srcs = ["index.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":index_lib"],
 )

@@ -8,3 +8,18 @@ py_test(
     srcs = ["file_references_test.py"],
     deps = ["//tools/resource_graph:graph_lib"],
 )
+
+# Pack selection over graphs that the scanner builds from small files, with the scans,
+# checks and queries of the command line.
+py_test(
+    name = "selection_test",
+    size = "small",
+    srcs = ["selection_test.py"],
+    deps = [
+        "//tools/resource_graph:command_lib",
+        "//tools/resource_graph:graph_lib",
+        "//tools/resource_graph:query_lib",
+        "//tools/resource_graph:selection_lib",
+        "//tools/resources:text_lib",
+    ],
+)

@@ -107,7 +107,7 @@ def _metadata_index(ctx, files):
         files: The view's files, as _collect_files collects them.
 
     Returns:
-        The JSON File tools/metadata_index.py writes, or None.
+        The JSON File tools/resources/index.py writes, or None.
     """
     if not metadata_kinds(ctx, ["assign", "sync", "require"]):
         return None
@@ -666,7 +666,7 @@ _godot_view = rule(
             cfg = "exec",
         ),
         "_metadata_index": attr.label(
-            default = Label("//tools:metadata_index"),
+            default = Label("//tools/resources:index"),
             executable = True,
             cfg = "exec",
         ),

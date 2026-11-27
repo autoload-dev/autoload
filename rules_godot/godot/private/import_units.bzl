@@ -464,7 +464,7 @@ VALIDATION_ATTRS = {
         cfg = "exec",
     ),
     "_class_fragment": attr.label(
-        default = Label("//tools/validation:class_fragment"),
+        default = Label("//tools/resources:class_fragment"),
         executable = True,
         cfg = "exec",
     ),

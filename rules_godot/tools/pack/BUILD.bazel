@@ -20,26 +20,6 @@ py_library(
     ],
 )
 
-# Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
-# only selections, and a change to it alone no graph scans.
-py_library(
-    name = "selection_lib",
-    srcs = ["selection.py"],
-    deps = [
-        "//tools/resource_graph:graph_lib",
-        "//tools/resource_graph:query_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-py_binary(
-    name = "selection",
-    srcs = ["selection.py"],
-    visibility = ["//godot/private:__pkg__"],
-    deps = [":selection_lib"],
-)
-
 # Writes a pack's PCK without Godot; a tool of its own, without the editor's action
 # plugin, so a change to either tool reruns only its own actions.
 py_library(
@@ -49,10 +29,10 @@ py_library(
         ":contents_lib",
         ":pck_lib",
         "//tools:godot_staging_lib",
+        "//tools/resources:class_fragment_lib",
         "//tools/resources:files_lib",
         "//tools/resources:text_lib",
         "//tools/resources:uids_lib",
-        "//tools/validation:class_fragment_lib",
     ],
 )
 

@@ -181,28 +181,11 @@ py_library(
         ":godot_run_lib",
         ":godot_staging_lib",
         ":godot_sync_lib",
-        ":metadata_index_lib",
         "//tools/resources:files_lib",
+        "//tools/resources:index_lib",
         "//tools/resources:node_ids_lib",
         "//tools/resources:uids_lib",
     ],
-)
-
-py_library(
-    name = "metadata_index_lib",
-    srcs = ["metadata_index.py"],
-    deps = [
-        ":godot_staging_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:node_ids_lib",
-        "//tools/resources:uids_lib",
-    ],
-)
-
-py_binary(
-    name = "metadata_index",
-    srcs = ["metadata_index.py"],
-    deps = [":metadata_index_lib"],
 )
 
 py_binary(
@@ -212,8 +195,8 @@ py_binary(
         ":godot_run_lib",
         ":godot_staging_lib",
         ":godot_sync_lib",
-        ":metadata_index_lib",
         "//tools/resources:files_lib",
+        "//tools/resources:index_lib",
         "//tools/resources:node_ids_lib",
         "//tools/resources:uids_lib",
     ],
