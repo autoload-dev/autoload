@@ -229,6 +229,24 @@ def _test_desktop_app_rejects_platform_deps_and_resources(name):
 def _desktop_app_rejects_platform_deps_and_resources(env, target):
     _expect_failure(env, target, "does not support nonempty platform_deps or platform_resources")
 
+def _test_desktop_app_name_with_separator_fails(name):
+    """The application's filename comes from the godot_app's name, which may hold a slash."""
+    godot_app(
+        name = name + "_dir/app",
+        pack = ":app_pack",
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_dir/app",
+        impl = _desktop_app_name_with_separator_fails,
+        expect_failure = True,
+        attr_values = _SMALL,
+    )
+
+def _desktop_app_name_with_separator_fails(env, target):
+    _expect_failure(env, target, "app_name must be a filename without separators")
+
 def _fails_with_message(env, target):
     _expect_failure(env, target, env.ctx.attr.message)
 
@@ -285,6 +303,7 @@ def app_test_suite(name):
             _test_macos_minimum_meeting_extension_requirement_analyzes,
             _test_extension_rejects_unknown_minimum_os_key,
             _test_desktop_app_rejects_platform_deps_and_resources,
+            _test_desktop_app_name_with_separator_fails,
             _test_mobile_platform_without_export_platform_fails,
             _test_desktop_platform_with_unsupported_cpu_fails,
         ],
