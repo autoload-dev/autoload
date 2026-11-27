@@ -77,6 +77,21 @@ def _format(value: Any) -> str:
     return ", ".join(value) if isinstance(value, list) else str(value)
 
 
+def _shared_lock_files(
+    root: Path, module: str, source: str
+) -> Iterator[tuple[str, str, str]]:
+    """The digests of the shared tool lock files a module's MODULE.bazel names, with their file."""
+    for declaration in declarations(source):
+        values = literals(declaration.keywords)
+        name = values.get("name")
+        if declaration.kind != MAVEN or name not in SHARED_LOCK_FILES:
+            continue
+        lock_file = label_path(root / module, values["lock_file"])
+        digest = hashlib.sha256(lock_file.read_bytes()).hexdigest()[:12]
+        location = lock_file.relative_to(root).as_posix()
+        yield f"{MAVEN}:{name}.lock_file", location, f"sha256 {digest}"
+
+
 def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
     """The pins of one module that other modules must agree on, with their file."""
     path = root / module
@@ -91,21 +106,6 @@ def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
             if key not in UNPINNED:
                 yield key, location, value
     yield from _shared_lock_files(root, module, source)
-
-
-def _shared_lock_files(
-    root: Path, module: str, source: str
-) -> Iterator[tuple[str, str, str]]:
-    """The digests of the shared tool lock files a module's MODULE.bazel names, with their file."""
-    for declaration in declarations(source):
-        values = literals(declaration.keywords)
-        name = values.get("name")
-        if declaration.kind != MAVEN or name not in SHARED_LOCK_FILES:
-            continue
-        lock_file = label_path(root / module, values["lock_file"])
-        digest = hashlib.sha256(lock_file.read_bytes()).hexdigest()[:12]
-        location = lock_file.relative_to(root).as_posix()
-        yield f"{MAVEN}:{name}.lock_file", location, f"sha256 {digest}"
 
 
 def drifts(root: Path) -> list[str]:
