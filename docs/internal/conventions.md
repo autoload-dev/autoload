@@ -610,7 +610,10 @@ lock file, is public, because a visibility cannot name another repository. A fil
 repository rule or module extension reads, such as an archive's `build_file`, a patch of
 `http_archive` or a Maven lock file, needs no export: they read a file by its label without a
 target. `--incompatible_no_implicit_file_export` (`shared.bazelrc`) keeps every file that no
-`exports_files` names private to its package, as in rules_python.
+`exports_files` names private to its package, as in rules_python. That flag holds only in this
+repository's builds: a consumer without it sees a file that a target of its package uses as
+public, so a released module exports such a file with an explicit private visibility rather
+than leaving it out.
 
 The check reads the calls of every module's BUILD files through Buildozer and reports each
 `exports_files` call without a `visibility` argument. Buildifier has no such warning.

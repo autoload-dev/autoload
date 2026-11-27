@@ -1,8 +1,10 @@
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
 package(default_testonly = True)
 
 # The engine patch of the ruleset's own source-built engines; the recipes apply it. The pin
 # targets of the generated recipe repositories name it, and a visibility cannot name them.
 exports_files(
     ["engine-name.patch"],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
