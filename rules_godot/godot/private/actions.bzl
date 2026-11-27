@@ -38,7 +38,7 @@ def write_manifest(ctx, suffix, data):
 
 def editor_manifest(ctx, name, data):
     """
-    The manifest of every tools/editor_action/project.py and tools/editor_action/export.py mode.
+    The manifest of every tools/editor_action/project.py and tools/editor_action/export_command.py mode.
 
     The editor itself is an argument, --editor, which path mapping rewrites.
     """
@@ -59,7 +59,7 @@ def run_editor_action(
         outputs = [],
         path_mapping = False):
     """
-    Run the editor through tools/editor_action/project.py or tools/editor_action/export.py.
+    Run the editor through tools/editor_action/project.py or tools/editor_action/export_command.py.
 
     Args:
         ctx: Analysis context of a rule with an _actions tool and the editor toolchain.
