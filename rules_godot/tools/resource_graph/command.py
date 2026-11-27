@@ -10,9 +10,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from tools.resource_graph.diagnostics import format_diagnostic
 from tools.resource_graph.graph import (
     build_graph,
-    format_diagnostic,
     read_json,
     read_manifest,
     require_declared,

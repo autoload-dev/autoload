@@ -6,7 +6,7 @@ py_test(
     name = "file_references_test",
     size = "small",
     srcs = ["file_references_test.py"],
-    deps = ["//tools/resource_graph:graph_lib"],
+    deps = ["//tools/resource_graph:scan_lib"],
 )
 
 # Pack selection over graphs that the scanner builds from small files, with the scans,
