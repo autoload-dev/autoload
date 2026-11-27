@@ -138,6 +138,10 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, regi
     """
     Declare one upstream source generator as a hermetic Bazel action.
 
+    A legacy macro: its outputs keep the upstream paths sources include them by, such as
+    core/version_generated.gen.h, and Bazel builds no output of a symbolic macro that does
+    not start with the macro's name ("violates macro naming rules and cannot be built").
+
     This low-level macro is used by generated engine repositories. It creates
     the named target with DefaultInfo containing exactly outs; it does not run
     SCons. See [source-built engines](../../engine.md) for the repository-level API.

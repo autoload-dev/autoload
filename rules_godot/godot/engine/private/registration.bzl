@@ -54,41 +54,19 @@ def _engine_setting(name, engine, default_engine, tags):
     )
     return ":%s.default_engine" % name
 
-def component_toolchains(
+def _component_toolchains_impl(
         name,
+        visibility,
         component,
         role,
         platform,
         cpu,
-        environment = "",
-        variant = "",
-        engine = "",
-        default_engine = False,
-        untuned_only = False,
-        visibility = None,
-        tags = []):
-    """
-    Register the toolchains of one engine component.
-
-    Declares `<name>.toolchain`, constrained to the slot's platform and to the settings it
-    serves: its engine and, with untuned_only, the builds whose runtime needs no tuning.
-
-    Args:
-        name: Prefix of the declared targets, such as the component's name.
-        component: Label of the godot_editor_component or godot_runtime_component.
-        role: editor or runtime.
-        platform: The slot's operating system.
-        cpu: The slot's CPU.
-        environment: device or simulator for iOS runtimes.
-        variant: debug or release for runtimes.
-        engine: Name of the engine the component belongs to; empty for the default engine.
-        default_engine: Whether the named engine is also the default engine.
-        untuned_only: For a prebuilt runtime, whether it serves only builds whose runtime
-            needs no tuning: no build profile, and outside -c opt or the default engine
-            optimization.
-        visibility: Visibility of `<name>.toolchain`.
-        tags: Tags of every declared target.
-    """
+        environment,
+        variant,
+        engine,
+        default_engine,
+        untuned_only,
+        tags):
     constraints = [OPERATING_SYSTEM_CONSTRAINTS[platform], CPU_CONSTRAINTS[cpu]]
     if environment:
         constraints.append(ENVIRONMENT_CONSTRAINTS[environment])
@@ -99,7 +77,7 @@ def component_toolchains(
         common = [_VARIANT_SETTINGS[variant]]
     settings = common + [_engine_setting(name, engine, default_engine, tags)]
     native.toolchain(
-        name = name + ".toolchain",
+        name = name,
         toolchain = component,
         toolchain_type = EDITOR_TOOLCHAIN_TYPE if role == "editor" else RUNTIME_TOOLCHAIN_TYPE,
         target_settings = settings + ([_UNTUNED] if untuned_only else []),
@@ -107,3 +85,56 @@ def component_toolchains(
         tags = tags,
         **placement
     )
+
+component_toolchains = macro(
+    doc = """
+    Register the toolchain of one engine component.
+
+    Declares the `toolchain()` `<name>`, constrained to the slot's platform and to the
+    settings it serves: its engine, through `<name>.engine`, and, with untuned_only, the
+    builds whose runtime needs no tuning. A component's macro names it
+    `<component>.toolchain`.
+    """,
+    implementation = _component_toolchains_impl,
+    attrs = {
+        "component": attr.label(
+            doc = "Label of the godot_editor_component or godot_runtime_component.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "role": attr.string(
+            doc = "editor or runtime.",
+            mandatory = True,
+            configurable = False,
+            values = ["editor", "runtime"],
+        ),
+        "platform": attr.string(
+            doc = "The slot's operating system.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "cpu": attr.string(
+            doc = "The slot's CPU.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "environment": attr.string(doc = "device or simulator for iOS runtimes.", configurable = False),
+        "variant": attr.string(doc = "debug or release for runtimes.", configurable = False),
+        "engine": attr.string(
+            doc = "Name of the engine the component belongs to; empty for the default engine.",
+            configurable = False,
+        ),
+        "default_engine": attr.bool(
+            doc = "Whether the named engine is also the default engine.",
+            configurable = False,
+        ),
+        "untuned_only": attr.bool(
+            doc = """
+            For a prebuilt runtime, whether it serves only builds whose runtime needs no
+            tuning: no build profile, and outside -c opt or the default engine optimization.
+            """,
+            configurable = False,
+        ),
+        "tags": attr.string_list(doc = "Tags of every declared target.", configurable = False),
+    },
+)
