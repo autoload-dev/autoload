@@ -13,6 +13,15 @@ on:
 permissions:
   contents: read
 
+# A newer run on the same branch replaces one still building engines, even when its own job
+# is skipped. A run for another label, which skips both jobs, has a group of its own and
+# leaves it alone.
+concurrency:
+  group: >-
+    source-engine-${{ github.ref }}${{ github.event.action == 'labeled'
+    && github.event.label.name != 'source-engine' && format('-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
+
 jobs:
   # Whether a push of a pull request reaches the source-engine tests; a label decides by
   # itself. Never for a fork's pull request, which does not run on the self-hosted runners.
@@ -23,10 +32,6 @@ jobs:
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # A newer push cancels the run of an older one, even when its own job is skipped.
-    concurrency:
-      group: source-engine-${{ github.ref }}
-      cancel-in-progress: true
     outputs:
       reaches: ${{ steps.changes.outputs.reaches }}
     steps:
@@ -45,12 +50,24 @@ jobs:
         run: python3 -m tools.ci.source_engine_changes "$BASE" "$HEAD"
 
   # Skipped, not failed, on a pull request that neither reaches the tests nor has the label,
-  # and when another label is added.
+  # and when another label is added. macOS runs every case; Linux those it can build, its
+  # Android engines and the applications' Linux engines (`aspect ci source-engine`).
   source-engine:
-    name: Source engine
+    name: Source engine (${{ matrix.host.name }})
     needs: changes
     timeout-minutes: 60
-    runs-on: macos-ci
+    runs-on: ${{ matrix.host.runner }}
+    strategy:
+      # Each host shows what fails on it alone.
+      fail-fast: false
+      matrix:
+        host:
+          - id: macos
+            name: macOS
+            runner: macos-ci
+          - id: linux
+            name: Linux
+            runner: blacksmith-16vcpu-ubuntu-2404
     if: >-
       !cancelled() && (
         github.event_name != 'pull_request'
@@ -68,11 +85,6 @@ jobs:
           )
         )
       )
-    # A newer run on the same branch replaces one still building engines. A run for another
-    # label, which skips both jobs, leaves it alone.
-    concurrency:
-      group: source-engine-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,4 +96,4 @@ jobs:
       - name: Check MODULE.bazel.lock
         run: echo "common --config=ci" > ci.bazelrc
       - name: Run apps with source-built engines
-        run: aspect ci source-engine
+        run: aspect ci source-engine --host=${{ matrix.host.id }}
