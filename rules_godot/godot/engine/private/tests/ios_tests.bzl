@@ -2,6 +2,8 @@
 
 load("@rules_apple//apple:providers.bzl", "AppleResourceInfo")
 
+# The bridge forwards SwiftUsageInfo, which rules_apple (5.4.0) exports only from its
+# internal aspect (godot/platforms/private/ios_runtime_bridge.bzl).
 # buildifier: disable=bzl-visibility
 load("@rules_apple//apple/internal/aspects:swift_usage_aspect.bzl", "SwiftUsageInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")

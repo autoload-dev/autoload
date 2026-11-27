@@ -16,6 +16,8 @@ extends SceneTree
 # filesystem scan; what the editor reports or writes from then until it quits is not
 # recorded.
 
+# Inferred: typed as GDScript, the constant loses the script's static members, whose calls
+# then fail strict projects; a class_name would add a global name to every project.
 @warning_ignore("inferred_declaration")
 const Record = preload("record.gd")
 
