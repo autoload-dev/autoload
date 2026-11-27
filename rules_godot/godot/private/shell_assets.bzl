@@ -92,57 +92,85 @@ def _android(ctx, profile):
     }
     return struct(spec = spec, outputs = [res, splash], icons = [res], splash = [splash])
 
-def _ios(ctx, profile, options, assets):
-    ios = profile["ios"]
-    prefix = ctx.label.name + ".ios/"
+def _ios_icon_slot(ios, appearance, icon):
+    option, name, size, scale, points = icon
+    suffix = "_" + appearance if appearance else ""
+    icon_options = [option + suffix, ios["base_icon"] + suffix]
+    return struct(
+        appearance = appearance,
+        options = icon_options,
+        sources = [_option(icon_option) for icon_option in icon_options],
+        file_name = name + suffix + ".png",
+        size = size,
+        scale = scale,
+        points = points,
+        opaque = option == ios["opaque_icon"],
+    )
+
+def _ios_icon_slots(ios, options):
+    """The icons of the app icon set, each with its appearance and the options it renders from."""
+    slots = [
+        _ios_icon_slot(ios, appearance, icon)
+        for appearance in ["", "dark", "tinted"]
+        for icon in ios["icons"]
+    ]
+
+    # Dark and tinted icons exist only where the pack sets them.
+    return [
+        slot
+        for slot in slots
+        if not slot.appearance or any([string_option(options, option) for option in slot.options])
+    ]
+
+def _ios_icon_entry(slot, filename):
+    """The icon's entry in the Contents.json of the app icon set."""
+    entry = {"idiom": "universal", "platform": "ios", "size": slot.points}
+    if slot.appearance:
+        entry["appearances"] = [{"appearance": "luminosity", "value": slot.appearance}]
+    if slot.scale != "1x":
+        entry["scale"] = slot.scale
+    entry["filename"] = filename
+    return entry
+
+def _ios_icons(ctx, prefix, slots, assets):
     icon_set = prefix + "Assets.xcassets/AppIcon.appiconset/"
     images = []
     outputs = []
-    entries = []
-    for appearance in ["", "dark", "tinted"]:
-        suffix = "_" + appearance if appearance else ""
-        for option, name, size, scale, points in ios["icons"]:
-            sources = [_option(option + suffix), _option(ios["base_icon"] + suffix)]
-            if appearance and not (
-                string_option(options, option + suffix) or
-                string_option(options, ios["base_icon"] + suffix)
-            ):
-                # Dark and tinted icons exist only where the pack sets them.
-                continue
-            output = ctx.actions.declare_file(icon_set + name + suffix + ".png")
-            outputs.append(output)
-            images.append({
-                "name": output.basename,
-                "output": output.path,
-                # Without an icon, Godot's default application icon.
-                "sources": sources + ([] if appearance else [
-                    _PROJECT_ICON,
-                    _file(assets.icon),
-                ]),
-                "size": size,
-                "interpolation": _option("application/icon_interpolation"),
-                "opaque": option == ios["opaque_icon"],
-                "required": True,
-            })
-            entry = {"idiom": "universal", "platform": "ios", "size": points}
-            if appearance:
-                entry["appearances"] = [{"appearance": "luminosity", "value": appearance}]
-            if scale != "1x":
-                entry["scale"] = scale
-            entry["filename"] = output.basename
-            entries.append(entry)
-    icons = [
+    for slot in slots:
+        output = ctx.actions.declare_file(icon_set + slot.file_name)
+        outputs.append(output)
+        images.append({
+            "name": output.basename,
+            "output": output.path,
+            # Without an icon, Godot's default application icon.
+            "sources": slot.sources + ([] if slot.appearance else [
+                _PROJECT_ICON,
+                _file(assets.icon),
+            ]),
+            "size": slot.size,
+            "interpolation": _option("application/icon_interpolation"),
+            "opaque": slot.opaque,
+            "required": True,
+        })
+    entries = [_ios_icon_entry(slot, output.basename) for slot, output in zip(slots, outputs)]
+    files = [
         asset_catalog(ctx, prefix + "Assets.xcassets"),
         asset_catalog(ctx, icon_set.removesuffix("/"), {"images": entries}),
     ] + outputs
+    return struct(images = images, outputs = outputs, files = files)
 
-    # The launch screen's image, Godot's boot splash unless the project or the
-    # storyboard options set one.
+def _ios_splash(ctx, prefix, assets):
+    """
+    The launch screen's image.
+
+    It is Godot's boot splash unless the project or the storyboard options set one.
+    """
     image_set = prefix + "Launch.xcassets/SplashImage.imageset"
-    splash_images = []
+    images = []
+    outputs = []
     for scale, other in [("2x", "3x"), ("3x", "2x")]:
         output = ctx.actions.declare_file("%s/splash@%s.png" % (image_set, scale))
-        splash_images.append(output)
+        outputs.append(output)
         images.append({
             "name": output.basename,
             "output": output.path,
@@ -156,18 +184,24 @@ def _ios(ctx, profile, options, assets):
             ],
             "required": True,
         })
-    splash = [
+    files = [
         asset_catalog(ctx, prefix + "Launch.xcassets"),
         asset_catalog(ctx, image_set, {"images": [
             {"filename": image.basename, "idiom": "universal", "scale": scale}
-            for image, scale in zip(splash_images, ["2x", "3x"])
+            for image, scale in zip(outputs, ["2x", "3x"])
         ]}),
-    ] + splash_images
+    ] + outputs
+    return struct(images = images, outputs = outputs, files = files)
+
+def _ios(ctx, profile, options, assets):
+    prefix = ctx.label.name + ".ios/"
+    icons = _ios_icons(ctx, prefix, _ios_icon_slots(profile["ios"], options), assets)
+    splash = _ios_splash(ctx, prefix, assets)
     return struct(
-        spec = {"images": images},
-        outputs = outputs + splash_images,
-        icons = icons,
-        splash = splash,
+        spec = {"images": icons.images + splash.images},
+        outputs = icons.outputs + splash.outputs,
+        icons = icons.files,
+        splash = splash.files,
     )
 
 def _macos(ctx, profile, assets):

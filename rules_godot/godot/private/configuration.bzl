@@ -138,6 +138,11 @@ def validate_custom_feature(setting, tag, engine_tags):
     if tag in engine_tags:
         fail("%s: custom feature %s is a feature tag Godot or the configuration sets" % (setting, tag))
 
+def _is_identifier(name):
+    if not name or name[0] not in _IDENTIFIER_START:
+        return False
+    return all([c in _IDENTIFIER_START + _DIGITS for c in name.elems()])
+
 def validate_autoloads(autoloads):
     """
     Validate autoload names and resource path syntax.
@@ -146,11 +151,7 @@ def validate_autoloads(autoloads):
         autoloads: Dictionary of names to res:// paths, optionally prefixed '*'.
     """
     for name, path in autoloads.items():
-        if (
-            not name or
-            name[0] not in _IDENTIFIER_START or
-            any([c not in _IDENTIFIER_START + _DIGITS for c in name.elems()])
-        ):
+        if not _is_identifier(name):
             fail("Invalid Godot autoload name: %r" % name)
         value = path[1:] if path.startswith("*") else path
         if not value.startswith("res://") or not value[len("res://"):]:

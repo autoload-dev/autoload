@@ -86,7 +86,31 @@ def _producer(target):
     """Source-recipe metadata of a payload, or None for prebuilt and opaque payloads."""
     return target[GodotEngineVersionInfo] if GodotEngineVersionInfo in target else None
 
-def _provenance(ctx, role, version, kind, origin, producer = None, artifact_digest = ""):
+def _payload_facts(ctx, target, runtime = None):
+    """
+    The version, kind and origin of a payload that is no component.
+
+    The version comes from the payload's GodotRuntimeInfo, else from its source recipe,
+    else from the component. An unsupported version fails.
+    """
+    producer = _producer(target)
+    source_runtime = runtime and runtime.facts_source == "source"
+    kind = "source" if producer or source_runtime else "prebuilt"
+    if runtime:
+        version = runtime.version
+    else:
+        version = producer.canonical_version if producer else ctx.attr.version
+    _require_version(version, kind)
+    return struct(
+        version = version,
+        kind = kind,
+        origin = runtime.origin if runtime else str(target.label),
+        producer = producer,
+        artifact_digest = _artifact(target),
+    )
+
+def _provenance(ctx, role, payload):
+    producer = payload.producer
     return GodotComponentInfo(
         component = str(ctx.label),
         engine = ctx.attr.engine,
@@ -95,18 +119,32 @@ def _provenance(ctx, role, version, kind, origin, producer = None, artifact_dige
         cpu = ctx.attr.cpu,
         environment = getattr(ctx.attr, "environment", ""),
         variant = getattr(ctx.attr, "variant", ""),
-        version = version,
-        kind = kind,
+        version = payload.version,
+        kind = payload.kind,
         # The declared origin describes the component; the payload's is the fallback.
-        origin = ctx.attr.origin or origin,
+        origin = ctx.attr.origin or payload.origin,
         # A producer or prebuilt payload names its own digest; an opaque payload, such as
         # an XCFramework or AAR import, takes the declared one.
-        digest = producer.digest if producer else (artifact_digest or getattr(ctx.attr, "digest", "")),
+        digest = producer.digest if producer else (payload.artifact_digest or getattr(ctx.attr, "digest", "")),
         customizations = producer.customizations if producer else {},
         renderers = producer.renderers if producer else None,
     )
 
 # ==== Editor component ========================================================
+
+def _editor_payload(ctx, target):
+    """The toolchain value of an editor payload that is no component."""
+    info = target[DefaultInfo]
+    if not info.files_to_run or not info.files_to_run.executable:
+        fail("%s editor %s must be an executable target" % (ctx.label, target.label))
+    payload = _payload_facts(ctx, target)
+    return struct(
+        role = "editor",
+        editor = info.files_to_run,
+        files = depset(transitive = [info.files, info.default_runfiles.files]),
+        version = payload.version,
+        provenance = _provenance(ctx, "editor", payload),
+    )
 
 def _editor_component_impl(ctx):
     target = ctx.attr.editor
@@ -114,20 +152,7 @@ def _editor_component_impl(ctx):
     if godot:
         _require_forwarded_slot(ctx, target, godot)
     else:
-        info = target[DefaultInfo]
-        if not info.files_to_run or not info.files_to_run.executable:
-            fail("%s editor %s must be an executable target" % (ctx.label, target.label))
-        producer = _producer(target)
-        kind = "source" if producer else "prebuilt"
-        version = producer.canonical_version if producer else ctx.attr.version
-        _require_version(version, kind)
-        godot = struct(
-            role = "editor",
-            editor = info.files_to_run,
-            files = depset(transitive = [info.files, info.default_runfiles.files]),
-            version = version,
-            provenance = _provenance(ctx, "editor", version, kind, str(target.label), producer, _artifact(target)),
-        )
+        godot = _editor_payload(ctx, target)
     return [
         platform_common.ToolchainInfo(godot = godot),
         godot.provenance,
@@ -176,11 +201,9 @@ _MOBILE_PAYLOAD_PROVIDERS = {
     "ios": (CcInfo, "CcInfo", "an XCFramework import or a source recipe's :engine_library"),
 }
 
-def _runtime_component_impl(ctx):
-    target = ctx.attr.runtime
-    godot = _forwarded(target, "runtime", ctx.label, ctx.attr.engine)
+def _require_mobile_payload(ctx, target):
     contract = _MOBILE_PAYLOAD_PROVIDERS.get(ctx.attr.platform)
-    if not godot and contract and contract[0] not in target:
+    if contract and contract[0] not in target:
         fail("%s: the %s runtime payload %s has no %s; use %s" % (
             ctx.label,
             ctx.attr.platform,
@@ -188,42 +211,48 @@ def _runtime_component_impl(ctx):
             contract[1],
             contract[2],
         ))
+
+def _payload_runtime(ctx, target):
+    """
+    The GodotRuntimeInfo of a runtime payload, or None for a mobile payload without one.
+
+    A payload's own GodotRuntimeInfo must fill the declared slot. A plain desktop template
+    file gets one from the declared slot.
+    """
+    if GodotRuntimeInfo in target:
+        runtime = target[GodotRuntimeInfo]
+        _require_slot(ctx, target.label, {
+            "platform": runtime.platform,
+            "cpu": runtime.cpu,
+            "environment": runtime.environment,
+            "variant": runtime.variant,
+        })
+        return runtime
+    if ctx.attr.platform in ["linux", "macos"]:
+        return _declared_runtime(ctx, target)
+    return None
+
+def _runtime_payload(ctx, target):
+    """The toolchain value of a runtime payload that is no component."""
+    _require_mobile_payload(ctx, target)
+    runtime = _payload_runtime(ctx, target)
+    payload = _payload_facts(ctx, target, runtime)
+    return struct(
+        role = "runtime",
+        payload = target,
+        runtime = runtime,
+        files = target[DefaultInfo].files,
+        version = payload.version,
+        provenance = _provenance(ctx, "runtime", payload),
+    )
+
+def _runtime_component_impl(ctx):
+    target = ctx.attr.runtime
+    godot = _forwarded(target, "runtime", ctx.label, ctx.attr.engine)
     if godot:
         _require_forwarded_slot(ctx, target, godot)
     else:
-        runtime = target[GodotRuntimeInfo] if GodotRuntimeInfo in target else None
-        if runtime:
-            _require_slot(ctx, target.label, {
-                "platform": runtime.platform,
-                "cpu": runtime.cpu,
-                "environment": runtime.environment,
-                "variant": runtime.variant,
-            })
-        elif ctx.attr.platform in ["linux", "macos"]:
-            runtime = _declared_runtime(ctx, target)
-        producer = _producer(target)
-        kind = "source" if producer or (runtime and runtime.facts_source == "source") else "prebuilt"
-        if runtime:
-            version = runtime.version
-        else:
-            version = producer.canonical_version if producer else ctx.attr.version
-        _require_version(version, kind)
-        godot = struct(
-            role = "runtime",
-            payload = target,
-            runtime = runtime,
-            files = target[DefaultInfo].files,
-            version = version,
-            provenance = _provenance(
-                ctx,
-                "runtime",
-                version,
-                kind,
-                runtime.origin if runtime else str(target.label),
-                producer,
-                _artifact(target),
-            ),
-        )
+        godot = _runtime_payload(ctx, target)
     return [
         platform_common.ToolchainInfo(godot = godot),
         godot.provenance,

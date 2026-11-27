@@ -11,26 +11,37 @@ MACOS_MINIMUM_OS = "11.0"
 IOS_MINIMUM_OS = "15.0"
 _GODOT_SUPPORTED_VERSION_RANGE = ">=4.7.2 <5.0.0"
 
+def _canonical_number(text):
+    # Godot's version names write numbers without leading zeros.
+    return text.isdigit() and str(int(text)) == text
+
+def _parse_prerelease(suffix):
+    for channel in ["dev", "beta", "rc"]:
+        if suffix.startswith(channel):
+            number = suffix[len(channel):]
+            if _canonical_number(number) and int(number) > 0:
+                return struct(channel = channel, number = int(number))
+    return None
+
 def _parse_version(version):
     parts = version.split("-")
     if len(parts) > 2:
         return None
     numbers = parts[0].split(".")
-    if len(numbers) != 3 or any([
-        not part.isdigit() or str(int(part)) != part
-        for part in numbers
-    ]):
+    if len(numbers) != 3 or not all([_canonical_number(part) for part in numbers]):
         return None
     prerelease = None
     if len(parts) == 2:
-        for channel in ["dev", "beta", "rc"]:
-            if parts[1].startswith(channel):
-                number = parts[1][len(channel):]
-                if number.isdigit() and str(int(number)) == number and int(number) > 0:
-                    prerelease = struct(channel = channel, number = int(number))
+        prerelease = _parse_prerelease(parts[1])
         if prerelease == None:
             return None
     return struct(numbers = [int(part) for part in numbers], prerelease = prerelease)
+
+def _in_supported_range(parsed):
+    # The range starts at the stable 4.7.2 release, so its prereleases fall below it.
+    if parsed.numbers[0] != 4 or parsed.numbers < [4, 7, 2]:
+        return False
+    return parsed.numbers != [4, 7, 2] or parsed.prerelease == None
 
 def dotted_version(version):
     """
@@ -78,11 +89,7 @@ def godot_version_error(version):
             "Godot version must be canonical major.minor.patch with optional -devN, " +
             "-betaN or -rcN, for example 4.7.2 or 4.8.0-beta1; got %r" % version
         )
-    if (
-        parsed.numbers[0] != 4 or
-        parsed.numbers < [4, 7, 2] or
-        (parsed.numbers == [4, 7, 2] and parsed.prerelease != None)
-    ):
+    if not _in_supported_range(parsed):
         return "rules_godot requires Godot 4.7.2 or newer within Godot 4 (%s); got %s" % (
             _GODOT_SUPPORTED_VERSION_RANGE,
             version,

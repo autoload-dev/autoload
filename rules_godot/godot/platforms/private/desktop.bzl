@@ -24,14 +24,13 @@ load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "pack_fa
 
 visibility(["//godot/platforms/private/tests", "//godot/private"])
 
-def _runtime_file(runtime, operating_system):
+def _check_runtime(runtime, operating_system):
     # Only the runtime's own facts are checked; its version and variant are never
     # compared with the editor that exported the pack.
     if runtime.platform != operating_system:
         fail("%s runtime cannot package a %s app" % (runtime.platform, operating_system))
     if not runtime.executable:
         fail("desktop runtime must provide an executable")
-    return runtime.executable
 
 def _liquid_glass_icon(ctx, pack):
     """Compile the .icon of application/liquid_glass_icon with actool, as Godot does."""
@@ -135,11 +134,22 @@ def _package_binaries(ctx, binaries, linked_dsyms):
     return struct(packaged = dict(zip(binaries.keys(), files.values())), symbols = symbols)
 
 def _bundle_layout(operating_system):
-    """Where an application bundle holds resource paths and the files beside its executable."""
-    macos = operating_system == "macos"
+    """The paths inside an operating system's application bundle, and the bundle's and archive's suffixes."""
+    if operating_system == "macos":
+        return struct(
+            executable = "Contents/MacOS/",
+            resources = "Contents/Resources/",
+            beside_executable = "Contents/Frameworks/",
+            bundle_suffix = ".app",
+            archive_suffix = ".zip",
+            placed = {},
+        )
     return struct(
-        resources = "Contents/Resources/" if macos else "",
-        beside_executable = "Contents/Frameworks/" if macos else "",
+        executable = "",
+        resources = "",
+        beside_executable = "",
+        bundle_suffix = ".bundle",
+        archive_suffix = ".tar.gz",
         placed = {},
     )
 
@@ -159,98 +169,135 @@ def _extension_copy(layout, owner, destination, source):
     layout.placed[placed] = owner.context
     return {"source": source.path, "destination": placed, "keep_mode": True}
 
-def _desktop_application_impl(ctx):
-    operating_system = ctx.attr._operating_system
-    if ctx.attr.platform_deps or ctx.attr.platform_resources:
-        fail("godot_app %s does not support nonempty platform_deps or platform_resources: %s" % (operating_system, [str(target.label) for target in ctx.attr.platform_deps + ctx.attr.platform_resources]))
-    name = ctx.attr.app_name or ctx.label.name
-    if name in [".", ".."] or "/" in name or "\\" in name:
-        fail("app_name must be a filename without separators")
-    runtime = ctx.attr.runtime[GodotRuntimeInfo]
+def _is_shared_library(file):
+    return file.extension in ["so", "dylib"] or ".so." in file.basename
 
-    # A transitioned label attribute, as the macOS backend's pack is, arrives as a list.
-    pack_target = ctx.attr.pack[0] if type(ctx.attr.pack) == "list" else ctx.attr.pack
-    pack = pack_target[GodotPackInfo]
-    if operating_system == "macos":
-        check_minimum_os(ctx.attr.minimum_os_version, "macos_minimum_os_version", "macos", runtime, pack.project.runtime_extensions)
-    runtime_executable = _runtime_file(runtime, operating_system)
-    binary_relative = "Contents/MacOS/" + name if operating_system == "macos" else name
-    binaries = {binary_relative: runtime_executable}
-    linked_dsyms = {runtime_executable: runtime.debug_symbols}
-    binary_contexts = {}
-    pack_file = pack.pack_file
-    bundle = ctx.actions.declare_directory(
-        ctx.label.name + "/" + name + (".app" if operating_system == "macos" else ".bundle"),
-    )
-    archive = ctx.actions.declare_file(
-        ctx.label.name + "/" + name + (".zip" if operating_system == "macos" else ".tar.gz"),
-    )
-    executable = ctx.actions.declare_file(ctx.label.name + "/" + name + ".run")
-    manifest = ctx.actions.declare_file(ctx.label.name + ".bundle.json")
-    copies = []
-    copied_files = []
-    for destination, source in runtime.bundle_files.items():
-        copied_files.append(source)
-        copies.append({"source": source.path, "destination": destination})
+def _native_code(extension):
+    """The extension's library and the shared libraries it needs, by resource path."""
+    library = extension.library
+    return {
+        path: file
+        for path, file in extension.runtime_resource_paths.items()
+        if file == library.file or (path in library.runtime_dependencies and _is_shared_library(file))
+    }
 
-    # Destinations are resource paths: extension libraries stay loose files beside the
-    # mounted pack. The library and the shared libraries it needs are native code to
-    # package; its descriptor and other runtime files are copied (_extension_copy).
-    layout = _bundle_layout(operating_system)
-    prefix = layout.resources
+def _place_extension(bundle_files, layout, extension):
+    """
+    Add an extension's files to the bundle's binaries and copies.
+
+    Its library and the shared libraries it needs are native code to package. Its
+    descriptor and other runtime files are copied.
+    """
+    library = extension.library
+    context = "res://%s: %s" % (extension.descriptor_path, library.tags)
+    if library.debug_symbols:
+        bundle_files.linked_dsyms[library.file] = library.debug_symbols
+    native = _native_code(extension)
+    owner = struct(context = context, beside_executable = library.beside_executable)
+    for destination, source in extension.runtime_resource_paths.items():
+        if destination in native:
+            bundle_files.binaries[layout.resources + destination] = source
+            bundle_files.binary_contexts[layout.resources + destination] = context
+        else:
+            bundle_files.copies.append((source, _extension_copy(layout, owner, destination, source)))
+
+def _bundle_files(runtime, pack, layout, binary_relative):
+    """
+    Split the runtime's and the extensions' files into native code to package and files to copy.
+
+    Extension files keep their resource paths, as loose files beside the mounted pack.
+    Each copy pairs a File with its entry in the packager's manifest.
+    """
+    bundle_files = struct(
+        binaries = {binary_relative: runtime.executable},
+        binary_contexts = {},
+        linked_dsyms = {runtime.executable: runtime.debug_symbols},
+        copies = [
+            (source, {"source": source.path, "destination": destination})
+            for destination, source in runtime.bundle_files.items()
+        ],
+    )
     for extension in pack.project.runtime_extensions:
-        library = extension.library
-        context = "res://%s: %s" % (extension.descriptor_path, library.tags)
-        if library.debug_symbols:
-            linked_dsyms[library.file] = library.debug_symbols
-        native = {
-            path: file
-            for path, file in extension.runtime_resource_paths.items()
-            if file == library.file or (path in library.runtime_dependencies and (file.extension in ["so", "dylib"] or ".so." in file.basename))
-        }
-        for destination, source in extension.runtime_resource_paths.items():
-            if destination in native:
-                binaries[prefix + destination] = source
-                binary_contexts[prefix + destination] = context
-                continue
-            copied_files.append(source)
-            copies.append(_extension_copy(layout, struct(context = context, beside_executable = library.beside_executable), destination, source))
-    packaged_binaries = _package_binaries(ctx, binaries, linked_dsyms)
-    for destination, source in packaged_binaries.packaged.items():
-        if destination == binary_relative:
-            runtime_executable = source
-            continue
-        copied_files.append(source)
-        copies.append({"source": source.path, "destination": destination, "context": binary_contexts.get(destination)})
-    args = ctx.actions.args()
-    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])} | pack_facts(pack), engine = ctx.attr.runtime, pack = pack)
-    inputs = [runtime_executable, pack_file, manifest]
-    if operating_system == "macos":
-        metadata = _macos_metadata(ctx, pack, name)
-        copied_files.append(metadata.privacy)
-        copies.append({
+        _place_extension(bundle_files, layout, extension)
+    return bundle_files
+
+def _add_macos_metadata(ctx, pack, name, args):
+    """
+    Pass the shell files of Godot's macOS export to the packager.
+
+    Returns the packager's inputs and the privacy manifest's copy.
+    """
+    metadata = _macos_metadata(ctx, pack, name)
+    args.add("--infoplist-base", metadata.plist)
+    args.add_all(metadata.resources, before_each = "--resources", expand_directories = False)
+    if pack.icons:
+        # The icon Godot rendered for the pack.
+        args.add("--icons", pack.icons[0].path)
+    return struct(
+        inputs = [metadata.plist] + metadata.resources + pack.icons,
+        copy = (metadata.privacy, {
             "source": metadata.privacy.path,
             "destination": "Contents/Resources/PrivacyInfo.xcprivacy",
-        })
-        args.add("--infoplist-base", metadata.plist)
-        inputs.append(metadata.plist)
-        args.add_all(metadata.resources, before_each = "--resources", expand_directories = False)
-        inputs.extend(metadata.resources)
-        if pack.icons:
-            # The icon Godot rendered for the pack.
-            args.add("--icons", pack.icons[0].path)
-            inputs.extend(pack.icons)
-    ctx.actions.write(manifest, json.encode(copies))
+        }),
+    )
+
+def _check_platform_inputs(ctx, operating_system):
+    platform_inputs = ctx.attr.platform_deps + ctx.attr.platform_resources
+    if platform_inputs:
+        fail("godot_app %s does not support nonempty platform_deps or platform_resources: %s" % (operating_system, [str(target.label) for target in platform_inputs]))
+
+def _app_name(ctx):
+    name = ctx.attr.app_name or ctx.label.name
+    if name in [".", ".."] or any([separator in name for separator in ["/", "\\"]]):
+        fail("app_name must be a filename without separators")
+    return name
+
+def _pack(ctx):
+    # A transitioned label attribute, as the macOS backend's pack is, arrives as a list.
+    pack_target = ctx.attr.pack[0] if type(ctx.attr.pack) == "list" else ctx.attr.pack
+    return pack_target[GodotPackInfo]
+
+def _desktop_application_impl(ctx):
+    operating_system = ctx.attr._operating_system
+    _check_platform_inputs(ctx, operating_system)
+    name = _app_name(ctx)
+    runtime = ctx.attr.runtime[GodotRuntimeInfo]
+    pack = _pack(ctx)
+    macos = operating_system == "macos"
+    if macos:
+        check_minimum_os(ctx.attr.minimum_os_version, "macos_minimum_os_version", "macos", runtime, pack.project.runtime_extensions)
+    _check_runtime(runtime, operating_system)
+    layout = _bundle_layout(operating_system)
+    binary_relative = layout.executable + name
+    bundle = ctx.actions.declare_directory(ctx.label.name + "/" + name + layout.bundle_suffix)
+    archive = ctx.actions.declare_file(ctx.label.name + "/" + name + layout.archive_suffix)
+    executable = ctx.actions.declare_file(ctx.label.name + "/" + name + ".run")
+    manifest = ctx.actions.declare_file(ctx.label.name + ".bundle.json")
+    bundle_files = _bundle_files(runtime, pack, layout, binary_relative)
+    packaged_binaries = _package_binaries(ctx, bundle_files.binaries, bundle_files.linked_dsyms)
+    runtime_executable = packaged_binaries.packaged[binary_relative]
+    copies = bundle_files.copies + [
+        (source, {"source": source.path, "destination": destination, "context": bundle_files.binary_contexts.get(destination)})
+        for destination, source in packaged_binaries.packaged.items()
+        if destination != binary_relative
+    ]
+    args = ctx.actions.args()
+    engine_check = check_engine(ctx, {"--library": depset([runtime.executable])} | pack_facts(pack), engine = ctx.attr.runtime, pack = pack)
+    inputs = [runtime_executable, pack.pack_file, manifest]
+    if macos:
+        metadata = _add_macos_metadata(ctx, pack, name, args)
+        inputs.extend(metadata.inputs)
+        copies.append(metadata.copy)
+    ctx.actions.write(manifest, json.encode([entry for _, entry in copies]))
     args.add("--operating-system", operating_system)
     args.add("--runtime", runtime_executable)
-
     args.add("--cpu", pack.cpus[0])
-    args.add("--pack", pack_file)
+    args.add("--pack", pack.pack_file)
     args.add("--output", bundle.path)
     args.add("--archive", archive)
     args.add("--app-name", name)
     args.add("--manifest", manifest)
-    inputs += copied_files
+    inputs += [source for source, _ in copies]
     ctx.actions.run(
         executable = ctx.executable._packager,
         inputs = depset(inputs, transitive = [runtime.files]),
