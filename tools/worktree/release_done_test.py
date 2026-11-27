@@ -156,6 +156,15 @@ class InspectCheckoutTest(unittest.TestCase):
         )
         self.assertTrue(checkout.had_upstream)
 
+    def test_a_branch_pushed_under_another_name(self) -> None:
+        self.commit("second")
+        run_git(
+            self.clone, "push", "--quiet", "--set-upstream", "origin", "claude/x:claude/y"
+        )
+        checkout = self.inspect()
+        self.assertEqual(checkout.origin_branch, "claude/y")
+        self.assertTrue(checkout.branch_on_origin)
+
     def test_another_remote_is_not_origin(self) -> None:
         archive = self.origin.with_name("archive.git")
         run_git(archive.parent, "init", "--quiet", "--bare", str(archive))
@@ -206,7 +215,7 @@ class SweepTest(unittest.TestCase):
 
         def inspect(path: str, branch: str) -> Checkout:
             self.inspected.append(path)
-            return Checkout(path == "/dirty", "h", False, False, True)
+            return Checkout(path == "/dirty", "h", False, False, True, branch)
 
         def pull_requests(branch: str) -> tuple[PullRequest, ...]:
             self.asked.append(branch)

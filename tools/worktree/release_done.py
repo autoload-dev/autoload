@@ -61,6 +61,7 @@ class Slot:
     branch_on_origin: bool
     had_upstream: bool  # the branch tracked a branch of origin once
     pull_requests: tuple[PullRequest, ...] | None  # None when they could not be read
+    origin_branch: str = ""
 
     @property
     def known_pull_requests(self) -> tuple[PullRequest, ...]:
@@ -183,17 +184,35 @@ class Checkout:
     head_on_origin: bool  # a ref of origin reaches HEAD
     branch_on_origin: bool
     had_upstream: bool  # the branch tracked a branch of origin
+    origin_branch: str  # its name on origin, which its pull requests name as their head
 
 
 # A checkout the decision does not need to read: its slot stays for another reason.
 UNREAD = Checkout(
-    dirty=False, head="", head_on_origin=False, branch_on_origin=False, had_upstream=False
+    dirty=False,
+    head="",
+    head_on_origin=False,
+    branch_on_origin=False,
+    had_upstream=False,
+    origin_branch="",
 )
+
+
+def _origin_branch(path: Path | str, branch: str) -> tuple[str, bool]:
+    """
+    The name of the branch on origin, the local one unless it tracks another, and whether it
+    tracks one there at all.
+    """
+    if _git_config(path, f"branch.{branch}.remote") != "origin":
+        return branch, False
+    merge = _git_config(path, f"branch.{branch}.merge")
+    return (merge.removeprefix("refs/heads/") or branch), bool(merge)
 
 
 def inspect_checkout(path: Path | str, branch: str) -> Checkout:
     """Read a checkout's state from Git; the clone's remote-tracking refs should be fresh."""
     head = git(path, "rev-parse", "HEAD")
+    origin_branch, had_upstream = _origin_branch(path, branch)
     return Checkout(
         dirty=bool(git(path, "status", "--porcelain")),
         head=head,
@@ -207,10 +226,14 @@ def inspect_checkout(path: Path | str, branch: str) -> Checkout:
             )
         ),
         branch_on_origin=git_succeeds(
-            path, "show-ref", "--verify", "--quiet", f"refs/remotes/origin/{branch}"
+            path,
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/remotes/origin/{origin_branch}",
         ),
-        had_upstream=_git_config(path, f"branch.{branch}.remote") == "origin"
-        and bool(_git_config(path, f"branch.{branch}.merge")),
+        had_upstream=had_upstream,
+        origin_branch=origin_branch,
     )
 
 
@@ -310,7 +333,7 @@ def _verdict(entry: dict, branch: str, actions: Actions) -> Verdict:
     except UNREADABLE:
         return Verdict(False, "checkout unreadable")
     # The pull requests cost a request to GitHub; a dirty checkout stays anyway.
-    prs = () if checkout.dirty else actions.pull_requests(branch)
+    prs = () if checkout.dirty else actions.pull_requests(checkout.origin_branch)
     return decide(
         Slot(entry["slot"], branch, idle_ms, pull_requests=prs, **vars(checkout))
     )
