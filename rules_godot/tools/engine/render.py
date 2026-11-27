@@ -16,6 +16,7 @@ from typing import Any, NamedTuple
 try:
     from . import build_profile, define_analysis, variants
     from .build_file import Constants, Plus, Rule, write
+    from .class_db import DEFINE, is_scoped
     from .generators import generated_files, generator_rules, spec_path
     from .include_graph import (
         CompileGroup,
@@ -26,12 +27,12 @@ try:
         reached_directories,
     )
     from .source_tree import write_json
-    from .tree import DEFINE, is_scoped
 except ImportError:
     import build_profile
     import define_analysis
     import variants
     from build_file import Constants, Plus, Rule, write
+    from class_db import DEFINE, is_scoped
     from generators import generated_files, generator_rules, spec_path
     from include_graph import (
         CompileGroup,
@@ -42,7 +43,6 @@ except ImportError:
         reached_directories,
     )
     from source_tree import write_json
-    from tree import DEFINE, is_scoped
 
 
 # ==== Build facts =============================================================

@@ -27,6 +27,8 @@ _CONFIGURE_ENVIRONMENT = [
 _ATTRS = {
     "name": "godot_linux_x86_64_template_release",
     "tree": _TREE,
+    "patches": [],
+    "patch_strip": 1,
     "platform": "linux",
     "cpu": "x86_64",
     "build_target": "template_release",
@@ -50,6 +52,8 @@ _ATTRS = {
     "_build_file": "tools/engine/build_file.py",
     "_tree": "tools/engine/tree.py",
     "_tree_link": "tools/engine/tree_link.py",
+    "_class_db": "tools/engine/class_db.py",
+    "_patches": "tools/engine/patches.py",
     "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
@@ -63,14 +67,12 @@ _ATTRS = {
     "runtime_profiles": {},
 }
 
-def _tree_json(patches = [], patch_strip = 1):
+def _tree_json():
     return json.encode({
         "archive": _ARCHIVE,
         "sha256": _SHA256,
         "strip_prefix": "godot-4.7.2-stable",
         "version": "4.7.2",
-        "patches": patches,
-        "patch_strip": patch_strip,
         "digest": "0" * 64,
     })
 
@@ -146,11 +148,13 @@ def _test_configure_command_carries_the_recipe(env):
     ctx, errors = _build(
         enabled_modules = ["gdscript", "svg"],
         build_name = "studio",
-        tree = _tree_json(patches = [_PATCH_LABEL], patch_strip = 2),
+        patches = [_PATCH_LABEL],
+        patch_strip = 2,
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 12 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        ["watch"] * 14 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+            "watch",
             "execute",
             "execute",
             "delete",
@@ -159,7 +163,23 @@ def _test_configure_command_carries_the_recipe(env):
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
 
-    # The patches are the tree's; the recipe's pin digest covers them.
+    # The recipe patches its own copies of the files its patches touch, and its pin digest
+    # covers the patches.
+    env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
+        _PYTHON,
+        "tools/engine/tree_link.py",
+        "--tree",
+        _TREE_DIRECTORY,
+        "--recipe",
+        ".",
+        "--path",
+        "",
+        "--patch-strip",
+        "2",
+        "--patch",
+        _PATCH_LABEL,
+    ]).in_order()
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(_PATCH_LABEL)
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "download_and_extract")).contains_exactly([])
     env.expect.that_collection(_configure(ctx).args).contains_exactly(_CONFIGURE_COMMAND).in_order()
@@ -173,11 +193,12 @@ def _test_a_recipe_links_its_engine_tree(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree_link.py", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", ""],
+        [_PYTHON, "tools/engine/tree_link.py", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", "", "--patch-strip", "1"],
     ).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
         "tools/engine/tree.py",
         "tools/engine/tree_link.py",
+        "tools/engine/class_db.py",
     ])
 
 def _test_a_failed_link_fails(env):
@@ -262,7 +283,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 12,
+        ["watch"] * 14,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -271,7 +292,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 12,
+        ["watch"] * 14,
     )
 
 # Configuration runs rules_python's interpreter, whatever Python the host's PATH has.

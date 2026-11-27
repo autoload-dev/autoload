@@ -264,8 +264,9 @@ editor; [pin the recipes](#pin-the-recipes) so that any host builds every slot.
 
 Hub components are named `editor_<platform>_<cpu>` and
 `runtime_<platform>_<cpu>[_<environment>]_<variant>`. The engine's other repositories are
-`@<name>_source`, its source archive; `@<name>_tree`, its sources extracted and patched
-once; `@<name>_<row>`, one source recipe per row, such as
+`@godot_source_<digest>`, its source archive, and `@godot_tree_<digest>`, those sources
+extracted once, both named by the first 12 digits of the archive's SHA-256 and shared by
+every engine of that archive; `@<name>_<row>`, one source recipe per row, such as
 `@my_engine_macos_arm64_editor` or `@my_engine_ios_arm64_simulator_template_release`;
 `@<name>_source_android_shell`, the Android shell library built from source; and, for
 pinned binaries, `@<name>_editor_<platform>`, `@<name>_templates_<platform>`,
@@ -311,11 +312,13 @@ options that cut one game's runtime belong in that application's
 them.
 
 Patches use the host `patch` executable with fuzz disabled and strip level 1
-(`patch_strip`); every hunk must apply. They apply once, to the engine's tree: the recipes
-and the Android shell library link its files hard instead of extracting the sources
-again, so a recipe's repository holds only what it generates, a few megabytes, and a
-change to rules_godot's rendering tools renders the recipes again without extracting
-anything.
+(`patch_strip`); every hunk must apply. The engine tree holds the archive's files only,
+so engines of one source share it: each recipe and the Android shell library link its
+files hard into their own repositories, hold copies of their own of the files the patches
+touch, add or delete, and apply the patches to those. A recipe's repository therefore
+holds only what it generates or patches, a few megabytes; the tree's files are read-only,
+so nothing writes through a link into another recipe's sources. A change to a patch, or to
+rules_godot's rendering tools, prepares the recipes again without extracting anything.
 `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
 simulator switch, module selection, raw `profile` and `build_profile` paths (an
@@ -407,7 +410,7 @@ becomes Bazel targets. Commit the lock file with the change that requires it.
 
 An Android runtime is Godot's Java/Kotlin library, the Android shell library, with the
 engine library inside. An engine that builds Android runtimes from source builds the shell
-library from the same patched sources, so a fork's Java changes come with its sources.
+library from the same sources and patches, so a fork's Java changes come with its sources.
 rules_godot adds the shell library's Maven dependencies, including `kotlin-stdlib` at
 Godot's Kotlin version, to your shared `maven` repository; repin it after adding
 rules_godot (`RULES_JVM_EXTERNAL_REPIN=1 bazel run @maven//:pin`). The contribution pins
