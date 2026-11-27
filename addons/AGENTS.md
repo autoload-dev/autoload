@@ -92,7 +92,12 @@ provision the Android SDK first. To run one module alone:
 bazel test --config=all -- @autoload_<module>//... //examples/addons/<module>/... //e2e/addons/<module>/...  # leave out e2e/ if the module has none
 bazel test --test_tag_filters=android //examples/addons/<module>/...   # the Android release builds
 bazel test --test_tag_filters=ios //examples/addons/<module>/...       # the iOS Simulator release builds
+bazel run //e2e/addons/<module>:edit      # open the end-to-end test project in the editor
+bazel run //e2e/addons/<module>:update    # write its UIDs and node IDs into the checkout
 ```
+
+The module's README names only the example's commands
+(no-end-to-end-tests-in-public-documentation, [conventions.md](../docs/internal/conventions.md)).
 
 Each example project with an `app` declares its release builds, `android_release`
 and `ios_release` ([examples/releases.bzl](../examples/releases.bzl)), which carry their

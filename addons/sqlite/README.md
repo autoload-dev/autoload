@@ -28,11 +28,11 @@ database.close()
 3. Run the add-on's own tests without a graphical display:
 
    ```sh
-   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
+   bazel test //examples/addons/sqlite/tests:exported
    ```
 
-   Building them validates the GDScript; the tests check parameterized round trips,
-   values and errors, and load the extension from an exported production pack.
+   Building it validates the GDScript; the test loads the extension from an exported
+   production pack and runs the demo's query.
 
 ## Reuse the add-on
 
@@ -60,7 +60,6 @@ Run from the repository root:
 ```sh
 bazel run //examples/addons/sqlite:edit
 bazel run //examples/addons/sqlite:update
-bazel run //e2e/addons/sqlite:update
 bazel build //examples/addons/sqlite:pack
 ```
 

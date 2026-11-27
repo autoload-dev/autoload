@@ -30,7 +30,6 @@ application shipping a pack that contains the add-on links and packages it witho
 | `native/backends/apple/` | Objective-C++ with AppAuth for iOS and macOS, linked into the extension library |
 | `native/backends/unsupported/` | Linux and the editor: the add-on loads and every login ends with `UNSUPPORTED` |
 | `examples/addons/app_auth/` at the repository root | The application with the login button and the result screen |
-| `e2e/addons/app_auth/` at the repository root | The GdUnit contract suite |
 
 The pattern fits an SDK published as an Android library on Maven, as Objective-C sources, or both,
 that a game reaches through one script API. It does not fit SDKs that ship dynamic Apple
@@ -97,11 +96,11 @@ bundle and archive without fetching any AppAuth artifact.
    | Tap **Log in** again while a login is open | **Busy**: the first login continues |
    | Log in with the network disabled | **Network error** |
 
-4. Run the add-on's checks: the native unit tests, the GdUnit contract suite and the
-   exported demo, none of which uses the network:
+4. Run the add-on's checks: the native unit tests and the exported demo, neither of which
+   uses the network:
 
    ```sh
-   bazel test --build_tests_only @autoload_app_auth//... //examples/addons/app_auth/... //e2e/addons/app_auth/...
+   bazel test --build_tests_only @autoload_app_auth//... //examples/addons/app_auth/...
    ```
 
 
@@ -187,13 +186,13 @@ module's [MODULE.bazel](MODULE.bazel):
 ## Work on the add-on
 
 ```sh
-bazel run //examples/addons/app_auth:edit     # open the demo in the editor
-bazel run //e2e/addons/app_auth:edit    # open the test project
-bazel run //examples/addons/app_auth:update   # write UIDs and node IDs into the checkout
-bazel run //e2e/addons/app_auth:update
-bazel test @autoload_app_auth//app_auth/native/tests # only validation and ID-token decoding
-bazel test //e2e/addons/app_auth/login   # only the GdUnit suite of the login API
+bazel run //examples/addons/app_auth:edit           # open the demo in the editor
+bazel run //examples/addons/app_auth:update         # write UIDs and node IDs into the checkout
+bazel test @autoload_app_auth//app_auth/native/tests  # only validation and ID-token decoding
 ```
+
+To test your own game's use of `AppAuthLogin` and `AppAuthResult` with GdUnit suites, follow
+the [GdUnit add-on](../gdunit/README.md#setup).
 
 The parts table at the top maps the repository. The
 [extension guide](../../rules_godot/docs/public/gdextension.md#platform-libraries) and the

@@ -121,9 +121,8 @@ declaration order:
 | SQLite add-on | Extension `sqlite` | `//addons/sqlite` |
 | Platform Paths add-on | Extension `platform_paths` | `//addons/platform_paths` |
 | SQLite demo | Project `sqlite` | `//examples/addons/sqlite` |
-| SQLite end-to-end test project | Project `sqlite` | `//e2e/addons/sqlite` |
-| SQLite database suites | Executable `database` | `//e2e/addons/sqlite/database` |
-| Platform Paths operating-system location suites | Executable `locations` | `//e2e/addons/platform_paths/locations` |
+| An add-on's end-to-end test project | Project `<name>` | `//e2e/addons/<name>` |
+| Its suites of one topic | Executable `<topic>` | `//e2e/addons/<name>/<topic>` |
 | Lichtpost | Production project `lichtpost` | `//examples/lichtpost` |
 | Lichtpost scene content | Resources `main` | `//examples/lichtpost/main` |
 | Lichtpost gameplay suites | Executable `tests` | `//examples/lichtpost/tests` |
@@ -314,14 +313,13 @@ labels with an [export platform](platforms.md#export-platforms).
 
    ```sh
    bazel run //examples/addons/sqlite:update
-   bazel run //e2e/addons/sqlite:update
-   bazel test //examples/addons/sqlite:update.test //e2e/addons/sqlite:update.test
+   bazel test //examples/addons/sqlite:update.test
    ```
 
-4. Run the add-on's suites and exported content, which validates their scripts:
+4. Run the demo's exported content, which validates its scripts:
 
    ```sh
-   bazel test //e2e/addons/sqlite/database //examples/addons/sqlite/tests:exported
+   bazel test //examples/addons/sqlite/tests:exported
    ```
 
 5. Export its production content:
