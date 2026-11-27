@@ -24,6 +24,7 @@ load(":project_tests.bzl", "project_test_suite")
 load(":reproducibility.bzl", "import_and_pack_reproducibility_test")
 load(":resource_composition_tests.bzl", "resource_composition_test_suite")
 load(":setting_values.bzl", "override_cases", "setting_value_cases")
+load(":shell_assets_tests.bzl", "shell_assets_test_suite")
 load(":sidecar_tests.bzl", "sidecar_test_suite")
 load(":source_run_tests.bzl", "source_run_test_suite")
 load(":supply_chain_tests.bzl", "supply_chain_test_suite")
@@ -92,6 +93,8 @@ supply_chain_test_suite(name = "supply_chain_test_suite")
 file_roles_test_suite(name = "file_roles_test_suite")
 
 versions_test_suite(name = "versions_test_suite")
+
+shell_assets_test_suite(name = "shell_assets_test_suite")
 
 validation_test_suite(name = "validation_test_suite")
 
