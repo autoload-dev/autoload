@@ -16,6 +16,6 @@ gdunit_test(
     name = "unit_tests",
     size = "small",
     project = "//game:app",
-    suites = [":suites"],
+    suites = ["suites"],
     tags = ["godot_process"],
 )

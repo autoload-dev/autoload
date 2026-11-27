@@ -6,6 +6,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // ==== Grouping ================================================================
@@ -17,11 +19,13 @@ type unit struct {
 	files, other []string
 }
 
-// A grouping assigns the package's resources to import units by their names.
+// A grouping assigns the package's resources to import units by their names. The names of
+// the package's other targets, its project's and its test's are reserved: no unit takes them.
 type grouping struct {
-	p       *packageFiles
-	units   map[string]*unit
-	claimed map[string]bool
+	p        *packageFiles
+	units    map[string]*unit
+	claimed  map[string]bool
+	reserved map[string]bool
 }
 
 // units groups the package's resources into import units by their names. An existing
@@ -31,9 +35,12 @@ type grouping struct {
 // that a target of another kind lists, such as a godot_addon, belongs to no unit. It returns
 // nil when an existing target's srcs are no literal list, whose files it cannot know.
 func (p *packageFiles) units() map[string]*unit {
-	g := &grouping{p: p, units: map[string]*unit{}, claimed: map[string]bool{}}
+	g := &grouping{p: p, units: map[string]*unit{}, claimed: map[string]bool{}, reserved: map[string]bool{}}
 	if !g.claimExisting() {
 		return nil
+	}
+	if p.prefix == "" {
+		g.reserved[p.project.label.Name] = true
 	}
 	members := p.members()
 	g.addGLTFs(members)
@@ -41,8 +48,10 @@ func (p *packageFiles) units() map[string]*unit {
 	return g.units
 }
 
-// claimExisting gives each existing godot_resources target the files it lists, and claims
-// the files other targets list. It reports false for srcs that are no literal list.
+// claimExisting gives each existing godot_resources target the files it lists, claims the
+// files other targets list in any attribute, and reserves the names of the targets it leaves
+// alone: those of other kinds, kept ones and those without files to list. It reports false
+// for srcs that are no literal list.
 func (g *grouping) claimExisting() bool {
 	if g.p.args.File == nil {
 		return true
@@ -51,16 +60,26 @@ func (g *grouping) claimExisting() bool {
 		srcs := r.AttrStrings("srcs")
 		switch {
 		case !isKind(g.p.args.Config, r, resourcesKind):
-			g.claim(srcs...)
-		case r.Attr("srcs") != nil && len(srcs) == 0:
+			g.claimAll(r)
+		case r.Attr("srcs") != nil && srcs == nil:
 			return false
-		case r.ShouldKeep():
+		case r.ShouldKeep() || len(srcs) == 0:
 			g.claim(srcs...)
 		default:
 			g.units[r.Name()] = g.existingUnit(srcs)
+			continue
 		}
+		g.reserved[r.Name()] = true
 	}
 	return true
+}
+
+// claimAll claims the strings of every list attribute of a target of another kind, such as
+// an add-on's srcs and editor_srcs.
+func (g *grouping) claimAll(r *rule.Rule) {
+	for _, key := range r.AttrKeys() {
+		g.claim(r.AttrStrings(key)...)
+	}
 }
 
 func (g *grouping) claim(files ...string) {
@@ -87,6 +106,9 @@ func (g *grouping) existingUnit(srcs []string) *unit {
 }
 
 func (g *grouping) add(name, file string) {
+	if g.reserved[name] {
+		name += "_resources"
+	}
 	u, ok := g.units[name]
 	if !ok {
 		u = &unit{}
@@ -119,6 +141,9 @@ func (g *grouping) addGLTF(name string) {
 // that an asset's name gives way to the others.
 func (g *grouping) addRest(members []string) {
 	test := slices.ContainsFunc(members, g.p.isSuite)
+	if test {
+		g.reserved[g.p.defaultTestName()] = true
+	}
 	var assets []string
 	for _, name := range members {
 		switch {
@@ -143,7 +168,7 @@ func (g *grouping) addRest(members []string) {
 func (g *grouping) assetName(name string) string {
 	base := path.Base(name)
 	unitName := targetName(strings.TrimSuffix(base, path.Ext(base)))
-	if _, taken := g.units[unitName]; taken {
+	if _, taken := g.units[unitName]; taken || g.reserved[unitName] {
 		unitName = targetName(base)
 	}
 	return unitName

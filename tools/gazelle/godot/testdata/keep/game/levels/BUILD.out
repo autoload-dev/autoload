@@ -40,10 +40,27 @@ godot_resources(
 )
 
 godot_resources(
+    name = "generated_paths",
+    resource_paths = {":make_tres": "levels/made_too.tres"},
+)
+
+godot_resources(
+    name = "later",
+    srcs = [],
+    deps = [":environment"],
+)
+
+godot_resources(
     name = "pinned",
     srcs = ["pinned.tres"],
     prefix = "levels",
     deps = ["//game/hand:chosen"],  # keep
+)
+
+godot_resources(
+    name = "frozen_resources",
+    srcs = ["frozen/extra.tres"],
+    prefix = "levels",
 )
 
 godot_resources(

@@ -38,6 +38,16 @@ class FileReferencesTest(unittest.TestCase):
             ],
         )
 
+    def test_only_the_script_itself_extends_a_class(self) -> None:
+        script = (
+            'extends "res://base.gd"\n\nclass Helper extends GdUnitTestSuite:\n\tpass\n'
+        )
+        self.assertEqual(file_references("res://a.gd", script)["extends"], None)
+        inner_first = "class Helper extends Node:\n\tpass\n\nextends GdUnitTestSuite\n"
+        self.assertEqual(
+            file_references("res://b.gd", inner_first)["extends"], "GdUnitTestSuite"
+        )
+
     def test_a_scene_authors_its_uid_and_references_by_path_and_uid(self) -> None:
         scene = (
             '[gd_scene format=3 uid="uid://scene"]\n\n'

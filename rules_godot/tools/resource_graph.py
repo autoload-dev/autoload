@@ -1522,10 +1522,11 @@ class _AnySource:
 
 
 def _extended_class(script: list) -> str | None:
-    """The global class a script extends by name, if it does."""
-    for keyword, name in pairwise(script):
-        if keyword[1] == "extends" and name[0] == "identifier":
-            return name[1]
+    """The global class the script itself extends by name, not one of its inner classes."""
+    for i, (_, value, _) in enumerate(script):
+        if value == "extends" and _at(script, i - 2)[1] != "class":
+            base = _at(script, i + 1)
+            return base[1] if base[0] == "identifier" else None
     return None
 
 

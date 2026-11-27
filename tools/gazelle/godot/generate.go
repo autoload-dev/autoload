@@ -8,6 +8,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -47,8 +48,9 @@ func (l *godotLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 		log.Printf("%s: a godot_resources target's srcs are no list of files; leaving the package's resources as they are", args.Rel)
 		return result
 	}
-	if suites := p.addResources(&result, units); gc.tests && p.needsTest(suites) {
-		add(&result, p.testRule(suites), nil)
+	suites := p.addResources(&result, units)
+	if name, ok := p.testName(suites); gc.tests && ok {
+		add(&result, p.testRule(name, suites), nil)
 	}
 	return result
 }
@@ -115,44 +117,59 @@ func (p *packageFiles) resourcesRule(name string, u *unit) (*rule.Rule, unitImpo
 	return r, imports
 }
 
-func (p *packageFiles) testRule(suites []string) *rule.Rule {
-	r := rule.NewRule(gdunitTestKind, p.testName())
+func (p *packageFiles) testRule(name string, suites []string) *rule.Rule {
+	r := rule.NewRule(gdunitTestKind, name)
 	r.SetAttr("project", p.project.label.Rel("", p.args.Rel).String())
 	r.SetAttr("suites", suites)
 	return r
 }
 
-// testName names the package's GdUnit test after the package, or `tests` in the project's own
-// package, whose project takes its name.
-func (p *packageFiles) testName() string {
+// defaultTestName names the package's GdUnit test after the package, or `tests` in the
+// project's own package, whose project takes its name.
+func (p *packageFiles) defaultTestName() string {
 	if p.prefix == "" {
 		return "tests"
 	}
 	return targetName(path.Base(p.args.Rel))
 }
 
-// needsTest reports whether the package's suites need a generated test: there are some, and
-// no test of a person's runs a part of them.
-func (p *packageFiles) needsTest(suites []string) bool {
-	return len(suites) > 0 && !p.testedByHand(suites)
-}
-
-// testedByHand reports whether a gdunit_test of the package already runs some of its suites
-// but not all of them, as a person chose.
-func (p *packageFiles) testedByHand(suites []string) bool {
-	if p.args.File == nil {
-		return false
+// testName names the test of the package's suites: the existing test that runs them all,
+// else the default name. A package without suites, or whose suites a person's test runs in
+// part, gets none.
+func (p *packageFiles) testName(suites []string) (string, bool) {
+	if len(suites) == 0 {
+		return "", false
 	}
-	for _, r := range p.args.File.Rules {
-		if isKind(p.args.Config, r, gdunitTestKind) && runsSomeOf(r, suites) {
-			return true
+	for _, r := range p.existingTests() {
+		runs := p.labels(r.AttrStrings("suites"))
+		if slices.Equal(runs, p.labels(suites)) {
+			return r.Name(), true
+		}
+		if slices.ContainsFunc(runs, func(l string) bool { return slices.Contains(p.labels(suites), l) }) {
+			return "", false
 		}
 	}
-	return false
+	return p.defaultTestName(), true
 }
 
-func runsSomeOf(test *rule.Rule, suites []string) bool {
-	runs := test.AttrStrings("suites")
-	slices.Sort(runs)
-	return !slices.Equal(runs, suites) && slices.ContainsFunc(runs, func(s string) bool { return slices.Contains(suites, s) })
+func (p *packageFiles) existingTests() []*rule.Rule {
+	if p.args.File == nil {
+		return nil
+	}
+	return slices.DeleteFunc(slices.Clone(p.args.File.Rules), func(r *rule.Rule) bool {
+		return !isKind(p.args.Config, r, gdunitTestKind)
+	})
+}
+
+// labels returns labels in one spelling, absolute and sorted, so that `suites`, `:suites`
+// and `//pkg:suites` compare equal.
+func (p *packageFiles) labels(values []string) []string {
+	absolute := make([]string, len(values))
+	for i, value := range values {
+		absolute[i] = value
+		if l, err := label.Parse(value); err == nil {
+			absolute[i] = l.Abs(p.args.Config.RepoName, p.args.Rel).String()
+		}
+	}
+	return sortedUnique(absolute)
 }

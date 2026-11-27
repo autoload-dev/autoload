@@ -54,8 +54,9 @@ func (im *importer) add(value string, inProject bool) {
 
 // Imports indexes godot_resources targets by their files, add-ons and extensions by the
 // resource paths Godot loads them from, an add-on's directory, as `res://<directory>/` (by
-// default `addons/<name>`), and an extension's .gdextension file, and extensions by the
-// classes their C++ sources in the package register.
+// default `addons/<name>`), and an extension's .gdextension file (by default
+// `addons/<name>/<name>.gdextension`), and extensions by the classes their C++ sources in
+// the package register.
 func (l *godotLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	im := &importer{lang: l, c: c, project: getConfig(c).project, pkg: f.Pkg}
 	switch {
@@ -114,9 +115,11 @@ func (im *importer) addon(r *rule.Rule) {
 }
 
 func (im *importer) extension(r *rule.Rule) {
-	if resourcePath := r.AttrString("resource_path"); resourcePath != "" {
-		im.add("res://"+resourcePath, true)
+	resourcePath := r.AttrString("resource_path")
+	if resourcePath == "" {
+		resourcePath = "addons/" + r.Name() + "/" + r.Name() + ".gdextension"
 	}
+	im.add("res://"+resourcePath, true)
 	srcs := sourceFiles(r)
 	resPaths := make([]string, len(srcs))
 	for i, src := range srcs {

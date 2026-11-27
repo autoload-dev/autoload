@@ -27,6 +27,11 @@ godot_resources(
     ],
 )
 
+godot_resources(
+    name = "tests_resources",
+    srcs = ["tests/notes.tres"],
+)
+
 gdunit_test(
     name = "tests",
     project = ":other",

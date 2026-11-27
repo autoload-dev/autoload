@@ -274,7 +274,7 @@ a project directly in `examples/`, is described in the
 [example guidance](../../examples/AGENTS.md#common-workflows). Related
 operating-system contexts can share one project. No other module holds projects: an add-on
 module holds none ([RG021](#rg021)), and the white-box fixture projects of the ruleset module
-and the input trees in a `testdata` directory of a Go test, such as those of the
+and the input trees in a `testdata` directory of a Go test outside the consumers, such as those of the
 [Gazelle language](gazelle.md#tests), are outside this check. There is no per-directory admission list.
 
 The check inventories the projects and the authored `project.godot` files of every consumer.

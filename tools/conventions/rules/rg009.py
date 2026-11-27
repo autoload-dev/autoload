@@ -22,10 +22,13 @@ class ProjectPlaces:
         """Report configurations outside a project at a fixed place."""
         for path in sorted(workspace.godot_configurations):
             # The white-box fixtures of the ruleset module may live anywhere there, and a
-            # `testdata` directory holds the input trees of a Go test, such as those of the
-            # Gazelle language, which no consumer builds.
+            # `testdata` directory outside the consumers holds the input trees of a Go test,
+            # such as those of the Gazelle language, which no consumer builds.
             ruleset = workspace.owner(path.as_posix()) == RULESET_MODULE
-            if ruleset or "testdata" in path.parts:
+            test_input = (
+                "testdata" in path.parts and workspace.consumer_root(path) is None
+            )
+            if ruleset or test_input:
                 continue
             if workspace.project(path) is None:
                 yield Finding(
