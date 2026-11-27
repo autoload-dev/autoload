@@ -4,7 +4,6 @@ import contextlib
 import io
 import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +23,7 @@ from tools.checkout.metadata_sync import (
     list_sidecars,
     place_metadata,
 )
+from tools.tests.stub_program import write_stub_program
 
 _AUTHORED = """config_version=5
 
@@ -113,8 +113,7 @@ class ViewTest(unittest.TestCase):
         return self.runfiles / short_path
 
     def manifest(self, editor: str) -> dict:
-        self.write(self.runfiles / "editor", f"#!{sys.executable}\n" + editor)
-        (self.runfiles / "editor").chmod(0o755)
+        write_stub_program(self.runfiles / "editor", editor)
         return {
             "label": "//game:edit",
             "workspace": "",

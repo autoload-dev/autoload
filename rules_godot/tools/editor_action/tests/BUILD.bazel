@@ -7,7 +7,10 @@ py_test(
     size = "small",
     srcs = ["action_plugin_test.py"],
     # Carries the action plugin, data of the tools that run editor actions only.
-    deps = ["//tools/editor_action:action_lib"],
+    deps = [
+        "//tools/editor_action:action_lib",
+        "//tools/tests:stub_program",
+    ],
 )
 
 py_test(

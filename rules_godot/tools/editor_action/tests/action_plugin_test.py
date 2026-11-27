@@ -1,7 +1,6 @@
 import contextlib
 import io
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +8,7 @@ from unittest import mock
 
 from tools.editor_action import action as editor_action
 from tools.editor_action.action import join_action, run_action
+from tools.tests.stub_program import write_stub_program
 
 # The record of a successful export.
 SUCCESS = {"operation": "export", "verdict": "success", "diagnostics": [], "facts": {}}
@@ -28,8 +28,8 @@ class ActionPluginTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
             editor = base / "editor"
-            editor.write_text(
-                f"#!{sys.executable}\n"
+            write_stub_program(
+                editor,
                 "import json, pathlib, sys, time\n"
                 "root = pathlib.Path(sys.argv[sys.argv.index('--path') + 1])\n"
                 "behavior = json.loads((root / 'stub.json').read_text())\n"
@@ -40,9 +40,8 @@ class ActionPluginTest(unittest.TestCase):
                 "sys.stdout.flush()\n"
                 "if behavior.get('hang'):\n"
                 "    time.sleep(60)\n"
-                "sys.exit(behavior.get('exit', 0))\n"
+                "sys.exit(behavior.get('exit', 0))\n",
             )
-            editor.chmod(0o755)
             work, root = base / "work", base / "work" / "project"
             root.mkdir(parents=True)
             (root / "project.godot").write_text("config_version=5\n")

@@ -11,5 +11,6 @@ py_test(
         "//tools/inputs:runfiles_lib",
         "//tools/pack:pck_lib",
         "//tools/source_run:run_lib",
+        "//tools/tests:stub_program",
     ],
 )

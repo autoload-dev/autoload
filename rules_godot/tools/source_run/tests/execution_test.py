@@ -18,6 +18,7 @@ from unittest import mock
 from tools.inputs.runfiles import locate
 from tools.pack.pck import write_pck
 from tools.source_run.run import ExecutionError, pack_descriptors, run
+from tools.tests.stub_program import write_stub_program
 
 
 def run_manifest(**fields: Any) -> dict[str, Any]:
@@ -64,10 +65,7 @@ if _override.exists():
 
 def fake_editor(base: Path, body: str, logger: bool = True) -> Path:
     """An executable standing in for the Godot editor, with the logger unless disabled."""
-    editor = base / "editor"
-    editor.write_text(f"#!{sys.executable}\n" + (START_LOGGER if logger else "") + body)
-    editor.chmod(0o755)
-    return editor
+    return write_stub_program(base / "editor", (START_LOGGER if logger else "") + body)
 
 
 # A fake editor's stand-in for rules_godot's logger autoload: it records an error

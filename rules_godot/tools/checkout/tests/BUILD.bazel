@@ -9,6 +9,7 @@ py_test(
     deps = [
         "//tools/checkout:editor_lib",
         "//tools/checkout:metadata_sync_lib",
+        "//tools/tests:stub_program",
     ],
 )
 

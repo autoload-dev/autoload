@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_testonly = True)
 
@@ -7,4 +7,13 @@ py_test(
     size = "small",
     srcs = ["template_test.py"],
     deps = ["//tools:template_lib"],
+)
+
+# Writes executable Python stubs, such as a stand-in for the Godot editor, for the tests of
+# the tools that start programs.
+py_library(
+    name = "stub_program",
+    testonly = True,
+    srcs = ["stub_program.py"],
+    visibility = ["//tools:__subpackages__"],
 )
