@@ -43,6 +43,14 @@ class ClassFragmentTest(unittest.TestCase):
             {"Inner": {"path": "res://other.gd", "names": []}}, header["inner"]
         )
 
+    def test_annotation_arguments_may_nest_brackets(self) -> None:
+        header = script_header(
+            '@icon("res://i.svg")\n@warning_ignore(("unused"))\n@tool\nclass_name C\n'
+        )
+        self.assertEqual("res://i.svg", header["icon"])
+        self.assertTrue(header["is_tool"])
+        self.assertEqual("C", header["class"])
+
     def test_member_annotations_leave_the_class(self) -> None:
         header = script_header("extends Node\n@abstract func f()\n")
         self.assertFalse(header["is_abstract"])
