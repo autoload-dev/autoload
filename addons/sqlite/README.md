@@ -71,6 +71,8 @@ targets, [CPU selection](../../rules_godot/docs/public/platforms.md#export-platf
 source-built and prerelease engines and release-symbol commands.
 
 The extension's C++ code is in [`database.cc`](sqlite/database.cc). The
-[module](MODULE.bazel) takes the official [SQLite amalgamation](https://www.sqlite.org/amalgamation.html)
-from the Bazel Central Registry's `sqlite3` module, which compiles the C library
-independently from the C++ binding. GdUnit and its suites belong to the Godot test project's `database/` package and are absent from production packs.
+[module](MODULE.bazel) depends on the Bazel Central Registry's `sqlite3` module, whose
+`cc_library` compiles the official [SQLite amalgamation](https://www.sqlite.org/amalgamation.html)
+apart from the C++ binding. SQLite's extension loader stays compiled in but disabled, since
+the add-on never enables it. GdUnit and its suites belong to the Godot test project's
+`database/` package and are absent from production packs.
