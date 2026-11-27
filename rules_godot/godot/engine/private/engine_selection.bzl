@@ -50,20 +50,31 @@ def _part_error(mod, engines, kind, tag):
         return "%s declares godot_engines.%s twice for the engine %r" % (mod.name, kind, tag.engine)
     return None
 
-def _module_engines(mod, _fail):
-    """Return the tags of each engine a module registers, by name, or None after an error."""
+def _registered_engines(mod, _fail):
+    """Return the engine tags of a module by name, or None after an error."""
     engines = {}
     for tag in mod.tags.engine:
         error = _registration_error(mod, engines, tag)
         if error:
             return _fail(error)
         engines[tag.name] = {"engine": tag}
+    return engines
+
+def _completed_engines(mod, engines, _fail):
+    """Add each part tag of a module to the engine it names; return None after an error."""
     for kind, tag in [(kind, tag) for kind in _PARTS for tag in getattr(mod.tags, kind)]:
         error = _part_error(mod, engines, kind, tag)
         if error:
             return _fail(error)
         engines[tag.engine][kind] = tag
     return engines
+
+def _module_engines(mod, _fail):
+    """Return the tags of each engine a module registers, by name, or None after an error."""
+    engines = _registered_engines(mod, _fail)
+    if engines == None:
+        return None
+    return _completed_engines(mod, engines, _fail)
 
 def _requests(modules, tag_attributes, _fail):
     """Return each engine name's requests, one per module that registers it, or None after an error."""

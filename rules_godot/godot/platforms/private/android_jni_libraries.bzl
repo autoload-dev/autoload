@@ -17,25 +17,32 @@ load(
 
 visibility("private")
 
-def _strip_libraries(ctx, libraries):
-    """Return unique stripped delivery entries and their original debug-symbol inputs."""
+def _delivery_entries(ctx, libraries):
+    """
+    The libraries by their path in the delivery, each path once.
+
+    A library that comes twice is delivered once. Two Files at one path fail.
+    """
     entries = {}
     for library in libraries:
         path = library["abi"] + "/" + library.get("name", library["file"].basename)
-        if path in entries:
-            if entries[path]["file"] != library["file"]:
-                fail((
-                    "%s: duplicate Android library: %s from %s conflicts with %s from %s; " +
-                    "provide distinct delivery names or reuse the same native File"
-                ) % (
-                    library.get("origin", str(ctx.label)),
-                    path,
-                    library["file"].path,
-                    entries[path]["file"].path,
-                    entries[path].get("origin", str(ctx.label)),
-                ))
-            continue
-        entries[path] = library
+        delivered = entries.setdefault(path, library)
+        if delivered["file"] != library["file"]:
+            fail((
+                "%s: duplicate Android library: %s from %s conflicts with %s from %s; " +
+                "provide distinct delivery names or reuse the same native File"
+            ) % (
+                library.get("origin", str(ctx.label)),
+                path,
+                library["file"].path,
+                delivered["file"].path,
+                delivered.get("origin", str(ctx.label)),
+            ))
+    return entries
+
+def _strip_libraries(ctx, libraries):
+    """Return unique stripped delivery entries and their original debug-symbol inputs."""
+    entries = _delivery_entries(ctx, libraries)
     symbols = {path: entry["file"] for path, entry in entries.items()}
     files = packaged(ctx, {
         ctx.label.name + "_stripped/" + path: file
@@ -100,30 +107,30 @@ def _platform_slice_abi(ctx):
         fail("%s: the target platform has no CPU of the CPU table" % ctx.label)
     return CPU_TABLE[cpu].android_abi
 
+def _engine_library(target, abi):
+    library = {
+        "file": _single_library(target),
+        "abi": abi,
+        "name": "libgodot_android.so",
+    }
+    if GodotEngineVersionInfo not in target:
+        return library
+
+    # The AAR manifest names the version of a source-built engine, not the
+    # prebuilt one the AAR came with.
+    engine_version = target[GodotEngineVersionInfo]
+    return library | {
+        "version": engine_version.version,
+        "build": engine_version.build.path,
+        "hash": engine_version.hash.path,
+        "inputs": [engine_version.build, engine_version.hash],
+    }
+
 def _engine_aar_impl(ctx):
-    libraries = []
     engine_libraries = dict(ctx.attr.engine_libraries)
     if ctx.attr.engine_library:
         engine_libraries[ctx.attr.engine_library[0]] = _platform_slice_abi(ctx)
-    for target, abi in engine_libraries.items():
-        file = _single_library(target)
-        library = {
-            "file": file,
-            "abi": abi,
-            "name": "libgodot_android.so",
-        }
-
-        # The AAR manifest names the version of a source-built engine, not the
-        # prebuilt one the AAR came with.
-        if GodotEngineVersionInfo in target:
-            engine_version = target[GodotEngineVersionInfo]
-            library |= {
-                "version": engine_version.version,
-                "build": engine_version.build.path,
-                "hash": engine_version.hash.path,
-                "inputs": [engine_version.build, engine_version.hash],
-            }
-        libraries.append(library)
+    libraries = [_engine_library(target, abi) for target, abi in engine_libraries.items()]
     stripped = _strip_libraries(ctx, libraries)
     libraries = stripped.libraries
     symbols = stripped.symbols
@@ -185,6 +192,15 @@ def _provided(target, provider, field):
     """Return a depset field of a target's provider, empty without the provider."""
     return getattr(target[provider], field) if provider in target else depset()
 
+def _extension_libraries(extension, abi):
+    """The extension's library and its runtime dependencies, delivered under abi."""
+    library = extension.library
+    origin = "res://%s: %s (ABI %s)" % (extension.descriptor_path, library.tags, abi)
+    return [{"file": library.file, "abi": abi, "origin": origin}] + [
+        {"file": file, "abi": abi, "origin": origin + " runtime dependency " + path}
+        for path, file in library.runtime_dependencies.items()
+    ]
+
 def _jni_libraries_impl(ctx):
     libraries = []
     pack = ctx.attr.pack[GodotPackInfo]
@@ -195,12 +211,8 @@ def _jni_libraries_impl(ctx):
     # delivers those configured for its CPU, with their runtime dependencies.
     for extension in pack.project.runtime_extensions:
         library = extension.library
-        if library.operating_system != "android" or library.cpu != target_cpu:
-            continue
-        origin = "res://%s: %s (ABI %s)" % (extension.descriptor_path, library.tags, abi)
-        libraries.append({"file": library.file, "abi": abi, "origin": origin})
-        for path, file in library.runtime_dependencies.items():
-            libraries.append({"file": file, "abi": abi, "origin": origin + " runtime dependency " + path})
+        if library.operating_system == "android" and library.cpu == target_cpu:
+            libraries += _extension_libraries(extension, abi)
     stripped = _strip_libraries(ctx, libraries)
     libraries = stripped.libraries
     symbols = stripped.symbols
