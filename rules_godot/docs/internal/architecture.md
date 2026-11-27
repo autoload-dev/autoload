@@ -2,9 +2,10 @@
 
 The project and pack API is in `godot/defs.bzl`; `godot/app.bzl` provides the unified
 application API, which `godot/private/app.bzl` implements. Export platforms from
-`godot/platforms/defs.bzl` select the operating system, CPU set and iOS environment. The application backends, the operating-system rules
-`godot_app` selects, live under `godot/platforms/private/`. `godot_android_runtime`, which
-generated engine hubs load, is in `godot/platforms/private/android.bzl`.
+`godot/platforms/defs.bzl` select the operating system, CPU set and iOS environment. The
+application backends, the operating-system rules `godot_app` selects, live under
+`godot/platforms/private/`. `godot_android_runtime`, which generated engine hubs load, is in
+`godot/platforms/private/android.bzl`.
 `godot_app` selects optional macOS signing through `//godot:macos_signing`; the private
 signer is `godot/platforms/private/macos_signing.bzl`.
 Providers in `godot/providers.bzl` join the independent build layers.
