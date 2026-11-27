@@ -1,4 +1,4 @@
-"""Stripping, build IDs and UUIDs of native code."""
+"""Stripping, build IDs, UUIDs and the CPU and SDK identity of native code."""
 
 import os
 import struct
@@ -7,7 +7,14 @@ import unittest
 from pathlib import Path
 
 from tools.platforms import native_symbols
-from tools.platforms.native_fixtures import elf, macho
+from tools.platforms.native_fixtures import elf, macho, universal
+
+
+def _with_command(thin: bytes, body: bytes) -> bytes:
+    """Return the thin Mach-O file with body appended as one more load command."""
+    count, size = struct.unpack_from("<II", thin, 16)
+    header = thin[:16] + struct.pack("<II", count + 1, size + len(body)) + thin[24:32]
+    return header + thin[32:] + body
 
 
 class NativeSymbolsTest(unittest.TestCase):
@@ -46,6 +53,58 @@ class NativeSymbolsTest(unittest.TestCase):
         path.write_bytes(universal)
         self.assertEqual(native_symbols.native_format(path), "macho")
         self.assertIsNone(native_symbols.native_format(self.runtime))
+
+    def test_version_min_commands_name_the_sdk(self) -> None:
+        # LC_VERSION_MIN_IPHONEOS names the device for arm64 and the Simulator otherwise.
+        for command, cpu, sdk in [
+            (0x24, "arm64", "macos"),
+            (0x25, "arm64", "ios_device"),
+            (0x25, "x86_64", "ios_simulator"),
+        ]:
+            self.assertEqual(
+                native_symbols.native_slices(
+                    _with_command(macho(cpu=cpu), struct.pack("<4I", command, 16, 0, 0))
+                ),
+                {cpu: sdk},
+            )
+        # The last command that names an SDK decides, even when it names an unknown one.
+        unknown = struct.pack("<6I", 0x32, 24, 99, 0, 0, 0)
+        with self.assertRaisesRegex(ValueError, "Missing or unsupported Mach-O SDK"):
+            native_symbols.native_slices(_with_command(macho(sdk="macos"), unknown))
+        with self.assertRaisesRegex(ValueError, "Truncated Mach-O build version"):
+            native_symbols.native_slices(
+                _with_command(macho(), struct.pack("<II", 0x32, 16) + bytes(8))
+            )
+
+    def test_malformed_mach_o_files_are_rejected(self) -> None:
+        thin = macho(sdk="macos")
+        for data, message in [
+            (thin[:16] + struct.pack("<II", 1, 64) + thin[24:], "load commands$"),
+            (thin[:16] + struct.pack("<II", 2, 24) + thin[24:], "load command$"),
+            (thin[:36] + struct.pack("<I", 4) + thin[40:], "load command size"),
+            (
+                thin[:16] + struct.pack("<II", 1, 32) + thin[24:] + bytes(8),
+                "declared size",
+            ),
+            (struct.pack(">II", 0xCAFEBABE, 2) + bytes(16), "universal CPU table"),
+            (
+                struct.pack(">IIIIII", 0xCAFEBABE, 1, 0x0100000C, 0, 8, len(thin))
+                + bytes(4)
+                + thin,
+                "overlapping universal slice",
+            ),
+            (b"\xcf\xfa\xed\xfe" + bytes(4) + thin[8:], "Mach-O CPU type 0"),
+            (b"\x7fELF" + bytes([3, 1]) + bytes(32), "Unsupported ELF encoding"),
+            (b"\x7fELF" + bytes([2, 1, 1]) + bytes(32), "Unsupported ELF machine 0"),
+            (b"\xce\xfa\xed\xfe" + bytes(32), "Unsupported native binary format"),
+        ]:
+            with (
+                self.subTest(message=message),
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                native_symbols.native_slices(data)
+        with self.assertRaisesRegex(ValueError, "Duplicate CPU slice"):
+            native_symbols.native_slices(universal(thin, thin))
 
 
 if __name__ == "__main__":
