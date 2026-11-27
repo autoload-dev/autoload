@@ -12,6 +12,16 @@ godot_cc_extension(
 )
 
 godot_resources(
+    name = "both",
+    srcs = ["both/both.gd"],
+    prefix = "twins",
+    deps = [
+        ":static_twin",
+        ":twin",
+    ],
+)
+
+godot_resources(
     name = "twins",
     srcs = ["twins.gd"],
     prefix = "twins",

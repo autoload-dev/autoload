@@ -144,8 +144,8 @@ type godotConfig struct {
 	// Whether Godot skips the directory: it or a directory above holds a .gdignore, or its
 	// name begins with a dot.
 	ignored bool
-	// The directory, relative to the repository's root.
-	rel string
+	// The directory, relative to the repository's root, and the repository's name.
+	rel, repo string
 	// The targets that the files of a format need, by suffix: `# gazelle:godot_format_dep
 	// .dart //path/to:extension`, such as the extension of a script language.
 	formatDeps map[string][]label.Label
@@ -168,8 +168,8 @@ func (*godotLang) KnownDirectives() []string {
 
 func (*godotLang) Configure(c *config.Config, rel string, f *rule.File) {
 	gc := *getConfig(c)
+	gc.rel, gc.repo = rel, c.RepoName
 	if f != nil {
-		gc.rel = rel
 		gc.applyDirectives(f.Directives)
 	}
 	dir := filepath.Join(c.RepoRoot, filepath.FromSlash(rel))
@@ -185,6 +185,7 @@ func (*godotLang) Configure(c *config.Config, rel string, f *rule.File) {
 }
 
 func (gc *godotConfig) applyDirectives(directives []rule.Directive) {
+	inherited := gc.formatDeps
 	for _, d := range directives {
 		switch d.Key {
 		case extensionDirective:
@@ -192,14 +193,15 @@ func (gc *godotConfig) applyDirectives(directives []rule.Directive) {
 		case testDirective:
 			gc.tests = d.Value != "disabled"
 		case formatDirective:
-			gc.addFormatDep(d)
+			gc.addFormatDep(d, inherited)
 		}
 	}
 }
 
 // addFormatDep records the target a format needs from a directive's `<suffix> <label>`,
-// for the directory and those below; a directory's own config gets a copy first.
-func (gc *godotConfig) addFormatDep(d rule.Directive) {
+// for the directory and those below. The directives of a directory for a suffix replace
+// those it inherits for it, and a directory's own config gets a copy first.
+func (gc *godotConfig) addFormatDep(d rule.Directive, inherited map[string][]label.Label) {
 	fields := strings.Fields(d.Value)
 	if len(fields) != 2 {
 		log.Printf("%s: gazelle:%s takes a suffix and a label, such as `.dart //path/to:extension`", gc.rel, formatDirective)
@@ -215,7 +217,10 @@ func (gc *godotConfig) addFormatDep(d rule.Directive) {
 		formatDeps = map[string][]label.Label{}
 	}
 	suffix := "." + strings.TrimPrefix(strings.ToLower(fields[0]), ".")
-	formatDeps[suffix] = append(slices.Clone(formatDeps[suffix]), dep.Abs("", gc.rel))
+	if slices.Equal(formatDeps[suffix], inherited[suffix]) {
+		formatDeps[suffix] = nil
+	}
+	formatDeps[suffix] = append(slices.Clone(formatDeps[suffix]), inRepository(dep, gc.repo, gc.rel))
 	gc.formatDeps = formatDeps
 }
 

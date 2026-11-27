@@ -20,8 +20,13 @@ type unit struct {
 	files, other []string
 	// Which attributes that Resolve sets the existing target keeps, and its deps, among
 	// which the choice of a person stays when several targets provide a reference.
-	kept   map[string]bool
-	chosen []label.Label
+	kept              map[string]bool
+	deps, runtimeDeps []label.Label
+}
+
+// chosen returns the providers the existing target names in deps and runtime_deps.
+func (u *unit) chosen() []label.Label {
+	return append(slices.Clone(u.deps), u.runtimeDeps...)
 }
 
 // A grouping assigns the package's resources to import units by their names. The names of
@@ -73,7 +78,8 @@ func (g *grouping) claimExisting() bool {
 		default:
 			u := g.existingUnit(srcs)
 			u.kept = keptResolveAttrs(r)
-			u.chosen = g.p.absolute(r.AttrStrings("deps"))
+			u.deps = g.p.absolute(r.AttrStrings("deps"))
+			u.runtimeDeps = g.p.absolute(r.AttrStrings("runtime_deps"))
 			g.units[r.Name()] = u
 			continue
 		}

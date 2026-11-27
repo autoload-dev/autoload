@@ -1,6 +1,9 @@
 load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
+# The tests' Dart scripts run with another build of the language.
+# gazelle:godot_format_dep .dart //addons/test_dart
+
 # The Dart scripts the language extension compiles.
 filegroup(
     name = "dart_fixtures",
@@ -33,7 +36,7 @@ godot_resources(
     runtime_deps = [":data"],
     deps = [
         ":fixtures",
-        "//addons/dart_lang",
+        "//addons/test_dart",
         "//game/main/shared",
         "@gdunit//gdunit",
     ],

@@ -166,8 +166,12 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 		return
 	}
 	gc := getConfig(c)
-	rv := resolver{c: c, ix: ix, project: gc.project, from: from, formatDeps: gc.formatDeps, chosen: ui.chosen}
+	rv := resolver{c: c, ix: ix, project: gc.project, from: from, formatDeps: gc.formatDeps, chosen: ui.chosen()}
+	// A person's deps stand for what the target loads; runtime_deps leaves those out.
 	deps := map[string]bool{}
+	for _, dep := range ui.unit.deps {
+		deps[rv.relative(dep)] = true
+	}
 	if !ui.kept["deps"] {
 		deps = rv.deps(ui)
 		setLabels(r, "deps", deps)
@@ -271,8 +275,8 @@ func (rv resolver) override(ref reference) (label.Label, bool) {
 
 // choose picks the target among those the index holds for a reference: none when the
 // referencing target is among them, which another target may share a file with. When
-// several provide it, the one the existing target already depends on stays; without such a
-// choice, a message asks for one.
+// several provide it, those the existing target already names stay; with none or several
+// of them, a message asks for the one it uses.
 func (rv resolver) choose(ref reference, results []resolve.FindResult) []label.Label {
 	if slices.ContainsFunc(results, func(r resolve.FindResult) bool { return r.IsSelfImport(rv.from) }) {
 		return nil
@@ -280,14 +284,20 @@ func (rv resolver) choose(ref reference, results []resolve.FindResult) []label.L
 	if len(results) == 1 {
 		return []label.Label{results[0].Label}
 	}
-	chosen := slices.DeleteFunc(slices.Clone(results), func(r resolve.FindResult) bool {
-		return !slices.ContainsFunc(rv.chosen, r.Label.Equal)
-	})
-	if len(chosen) == 1 {
-		return []label.Label{chosen[0].Label}
+	var chosen []label.Label
+	for _, r := range results {
+		if slices.ContainsFunc(rv.chosen, r.Label.Equal) {
+			chosen = append(chosen, r.Label)
+		}
 	}
-	log.Printf("%s: %s %s is provided by several targets, %s and %s; add the one it uses to its deps", rv.from, ref.Kind, ref.Value, results[0].Label, results[1].Label)
-	return nil
+	switch len(chosen) {
+	case 0:
+		log.Printf("%s: %s %s is provided by several targets, %s and %s; add the one it uses to its deps or runtime_deps", rv.from, ref.Kind, ref.Value, results[0].Label, results[1].Label)
+	case 1:
+	default:
+		log.Printf("%s: %s %s is provided by several targets that its deps name, %s and %s; keep the one it uses", rv.from, ref.Kind, ref.Value, chosen[0], chosen[1])
+	}
+	return chosen
 }
 
 // candidates returns the index keys that may provide a reference, the most specific first: a

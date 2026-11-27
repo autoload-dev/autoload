@@ -52,9 +52,15 @@ godot_resources(
 
 godot_resources(
     name = "pinned",
-    srcs = ["pinned.tres"],
+    srcs = [
+        "pinned.tres",
+        "reader.gd",
+    ],
     prefix = "levels",
-    deps = ["//game/hand:chosen"],  # keep
+    deps = [
+        ":environment",
+        "//game/hand:chosen",
+    ],  # keep
 )
 
 godot_resources(

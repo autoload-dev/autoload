@@ -15,7 +15,7 @@ Sections: Diagnostics, Script tokens, Scan, Reference scanning, Graph, Single fi
 """
 
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Container, Iterable, Iterator, Mapping
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
@@ -134,9 +134,17 @@ def _literal_constant(script: list, i: int) -> tuple[str, str] | None:
 
 
 def _literal_constants(script: list) -> dict[str, str]:
-    """The script's constants whose whole value is a string literal, by name."""
+    """
+    The script's constants whose whole value is a string literal, by name. A name the script
+    declares more than once, such as in an inner class, names nothing certain and is left out.
+    """
+    declared = Counter(
+        name[1]
+        for keyword, name in pairwise(script)
+        if keyword[1] in ("const", "var") and name[0] == "identifier"
+    )
     found = (_literal_constant(script, i) for i in range(len(script)))
-    return dict(item for item in found if item)
+    return {name: value for name, value in filter(None, found) if declared[name] == 1}
 
 
 # ==== Scan ====================================================================
