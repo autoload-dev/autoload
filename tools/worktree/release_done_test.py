@@ -1,5 +1,6 @@
 """Tests of which pool slots release_done.py releases and of the Git state it reads."""
 
+import ast
 import dataclasses
 import subprocess
 import tempfile
@@ -30,6 +31,13 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(
             decide(DONE), release_done.Verdict(True, "pull request #7 merged")
         )
+
+    def test_keeps_commits_after_a_merged_pull_request(self) -> None:
+        # Pushed to the branch after its pull request merged, without a new one yet.
+        slot = dataclasses.replace(
+            DONE, head="h2", head_on_origin=True, branch_on_origin=True
+        )
+        self.assertEqual(decide(slot), release_done.Verdict(False, "not merged"))
 
     def test_releases_a_merged_branch_still_on_origin(self) -> None:
         slot = dataclasses.replace(DONE, branch_on_origin=True, head_on_origin=True)
@@ -148,6 +156,15 @@ class InspectCheckoutTest(unittest.TestCase):
         )
         self.assertTrue(checkout.had_upstream)
 
+    def test_another_remote_is_not_origin(self) -> None:
+        archive = self.origin.with_name("archive.git")
+        run_git(archive.parent, "init", "--quiet", "--bare", str(archive))
+        run_git(self.clone, "remote", "add", "archive", str(archive))
+        self.commit("second")
+        run_git(self.clone, "push", "--quiet", "--set-upstream", "archive", "claude/x")
+        checkout = self.inspect()
+        self.assertEqual((checkout.head_on_origin, checkout.had_upstream), (False, False))
+
     def test_a_local_commit_is_not_on_origin(self) -> None:
         self.commit("second")
         self.assertFalse(self.inspect().head_on_origin)
@@ -235,12 +252,20 @@ class SweepTest(unittest.TestCase):
         )
 
 
+class OlderPythonTest(unittest.TestCase):
+    def test_parses_as_python_3_9(self) -> None:
+        # Hooks may run it with macOS's own Python; the formatter writes newer syntax.
+        source = Path(release_done.__file__).read_text()
+        ast.parse(source, feature_version=(3, 9))
+
+
 class GithubRepositoryTest(unittest.TestCase):
     def test_origin_urls(self) -> None:
         for url in (
             "https://github.com/autoload-dev/autoload.git",
             "git@github.com:autoload-dev/autoload.git",
             "ssh://git@github.com/autoload-dev/autoload",
+            "ssh://git@github.com:22/autoload-dev/autoload.git",
         ):
             with self.subTest(url), tempfile.TemporaryDirectory() as clone:
                 run_git(clone, "init", "--quiet")
