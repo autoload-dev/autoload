@@ -13,6 +13,8 @@ load("//godot/private:view.bzl", "GodotViewInfo")
 load(":pack_actions.bzl", "PackActionsInfo", "pack_actions", "pack_manifest")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _KINDS = ["node_ids", "resource_uids"]
 _CHECKS = ["GodotNodeIds", "GodotResourceUids"]

@@ -1,6 +1,8 @@
 load("//godot:defs.bzl", "godot_pack", "godot_test")
 load("//godot/private/tests/adapter:fake_adapter.bzl", "fake_adapter_test")
 
+package(default_testonly = True)
+
 # Every GDScript rules_godot stages into a project loads in a project that treats every
 # GDScript warning as an error: building these tests runs the imports, the initialization,
 # the probes, the validation, the export and the shell probe, and running them the run logger

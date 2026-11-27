@@ -3,7 +3,10 @@ load("//godot/platforms/private/tests:backends.bzl", "godot_linux_application")
 load("//godot/private/tests:packaging.bzl", "fixture_pack")
 
 # A Linux application whose runtime and extension library Bazel's --strip may strip.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 genrule(
     name = "library",

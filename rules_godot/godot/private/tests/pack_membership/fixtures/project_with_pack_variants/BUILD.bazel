@@ -3,7 +3,10 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 
 # One game exported as packs that differ in brand, script export mode, selection and
 # prerequisite packs, plus packs that carry a C ABI extension.
-package(default_visibility = ["//godot/private/tests/pack_membership:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/pack_membership:__subpackages__"],
+)
 
 exports_files(["project.godot"])
 

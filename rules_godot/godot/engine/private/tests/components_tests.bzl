@@ -10,6 +10,8 @@ load("//godot/engine/private:resolution.bzl", "engine_toolchain")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _RUNTIME = Label("//godot:runtime_toolchain_type")
 
 def _required_impl(ctx):

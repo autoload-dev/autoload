@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # The only runtime components a desktop consumer registers: release slots for Linux and macOS,
 # no Android or iOS runtime and no mobile SDK.
 [

@@ -1,8 +1,6 @@
 """godot_android_toolchains settles one NDK API level and registers host and Linux tools per host."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load(
     "//godot/platforms/private:android_toolchains.bzl",
     "android_toolchain_declarations",
@@ -10,12 +8,10 @@ load(
     "linux_ndk_impl",
     "plan_android_toolchains",
 )
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:repository_templates.bzl", "starlark_dict")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 

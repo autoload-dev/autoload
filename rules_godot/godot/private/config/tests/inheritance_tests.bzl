@@ -5,6 +5,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/config:settings.bzl", "configured_context", "context_attrs")
 load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 
+visibility("private")
+
 PropertiesInfo = provider(doc = "Observed inherited platform properties.", fields = ["common", "child", "operating_system", "cpu"])
 PlatformSlicesInfo = provider(doc = "Properties collected across the requested platform slices.", fields = ["values"])
 

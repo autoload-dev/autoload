@@ -3,6 +3,8 @@ load("//godot:defs.bzl", "godot_test")
 load("//godot/private/tests:pack_forms.bzl", "pack_form")
 load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/pack_forms/fixtures/project_with_runtime_inputs"
 
 # The fixture's pack in each form: Godot's export, and written without Godot's conversions.

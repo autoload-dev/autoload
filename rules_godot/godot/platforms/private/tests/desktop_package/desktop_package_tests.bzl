@@ -13,6 +13,8 @@ load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot/platforms/private/tests:backends.bzl", "godot_linux_application")
 load("//godot/private/tests:action_inputs.bzl", "godot_actions", "mapped_cache_keys")
 
+visibility("private")
+
 _RUNTIMES = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:"
 _MACOS_APP = "//godot/platforms/private/tests/desktop_package/fixtures/macos_app_from_project:"
 _SYMBOLS = "//godot/platforms/private/tests/desktop_package/fixtures/apps_with_native_symbols:"

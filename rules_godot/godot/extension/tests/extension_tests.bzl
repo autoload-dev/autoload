@@ -14,6 +14,8 @@ load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load(":descriptor_tests.bzl", "descriptor_contents")
 
+visibility("private")
+
 _SMALL = {"size": "small"}
 
 def _extension(name, **kwargs):

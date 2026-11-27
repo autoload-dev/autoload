@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//tools:ruleset"])
 
 py_library(
     name = "zip_archive_lib",
@@ -19,7 +19,6 @@ py_binary(
 py_library(
     name = "package_desktop_lib",
     srcs = ["package_desktop.py"],
-    visibility = ["//tools:ruleset"],
     deps = [
         ":native_symbols_lib",
         ":zip_archive_lib",
@@ -41,7 +40,6 @@ py_binary(
 py_library(
     name = "check_engine_version_lib",
     srcs = ["check_engine_version.py"],
-    visibility = ["//tools:ruleset"],
     deps = [":native_symbols_lib"],
 )
 
@@ -67,7 +65,6 @@ py_library(
         "shell_overrides.py",
     ],
     data = glob(["templates/*.tpl"]),
-    visibility = ["//tools:ruleset"],
     deps = ["//tools:template_lib"],
 )
 
@@ -79,7 +76,6 @@ py_binary(
 py_library(
     name = "compile_icon_lib",
     srcs = ["compile_icon.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 py_binary(
@@ -91,7 +87,6 @@ py_binary(
 py_library(
     name = "package_android_lib",
     srcs = ["package_android.py"],
-    visibility = ["//tools:ruleset"],
     deps = [":zip_archive_lib"],
 )
 
@@ -103,14 +98,12 @@ py_binary(
 py_library(
     name = "native_symbols_lib",
     srcs = ["native_symbols.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 py_library(
     name = "native_fixtures",
     testonly = True,
     srcs = ["native_fixtures.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 py_binary(
@@ -126,7 +119,6 @@ py_binary(
 py_library(
     name = "package_symbols_lib",
     srcs = ["package_symbols.py"],
-    visibility = ["//tools:ruleset"],
     deps = [
         ":native_symbols_lib",
         ":package_desktop_lib",
@@ -157,7 +149,6 @@ py_library(
 py_library(
     name = "apple_bundle_lib",
     srcs = ["apple_bundle.py"],
-    visibility = ["//tools:ruleset"],
     deps = ["//tools:digest_lib"],
 )
 
@@ -175,5 +166,4 @@ py_binary(
 py_library(
     name = "check_maven_minimums_lib",
     srcs = ["check_maven_minimums.py"],
-    visibility = ["//tools:ruleset"],
 )

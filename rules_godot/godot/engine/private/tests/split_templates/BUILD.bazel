@@ -1,3 +1,5 @@
+package(default_testonly = True)
+
 exports_files([
     "fixtures.bzl",
     "split_templates.zip",

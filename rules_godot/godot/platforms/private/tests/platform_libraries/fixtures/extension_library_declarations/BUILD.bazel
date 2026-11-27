@@ -5,7 +5,10 @@ load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixtur
 # Extensions whose library iOS cannot link, whose iOS library is a dynamic framework, whose
 # Android library has a runtime dependency, and two extensions whose Android libraries share
 # a file name.
-package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
+)
 
 [
     genrule(

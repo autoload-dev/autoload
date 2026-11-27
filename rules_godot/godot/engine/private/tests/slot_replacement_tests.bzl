@@ -9,6 +9,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo", "resolution_probe")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _RELEASE_OVERRIDE = "//godot/engine/private/tests/fixtures/release_override"
 
 def _desktop_probe(name):

@@ -7,6 +7,8 @@ through the outputs of other actions, so this aspect collects every action and t
 platforms it configures.
 """
 
+visibility("//godot/platforms/private/tests/...")
+
 ReachedActionsInfo = provider(
     doc = "Actions a target reaches through its dependencies, and the target platforms of those dependencies.",
     fields = {

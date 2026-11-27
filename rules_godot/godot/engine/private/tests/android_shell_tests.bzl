@@ -1,12 +1,10 @@
 """godot_android_shell prepares Godot's Android shell library from an extracted, patched source."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:source_repositories.bzl", "android_shell_impl")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _SOURCE = Label("//godot/engine/private/tests:source.json")
 _MANIFEST_PATH = "platform/android/java/lib/src/main/AndroidManifest.xml"

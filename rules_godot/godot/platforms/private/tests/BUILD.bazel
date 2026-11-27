@@ -8,6 +8,8 @@ load(":shell_inputs_tests.bzl", "shell_inputs_test_suite")
 load(":shell_overrides_tests.bzl", "shell_overrides_test_suite")
 load(":signing_inputs_tests.bzl", "signing_inputs_test_suite")
 
+package(default_testonly = True)
+
 resolution_probe(
     name = "probe",
     tags = ["manual"],

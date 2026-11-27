@@ -3,7 +3,10 @@ load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_re
 
 # Two macOS applications that differ only in application_id, packaging one pack with an
 # add-on whose editor part registers an export plugin, and whose project autoloads a script.
-package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests:__subpackages__"],
+)
 
 godot_resources(
     name = "main",

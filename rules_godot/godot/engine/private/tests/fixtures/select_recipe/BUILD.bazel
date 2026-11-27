@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 config_setting(
     name = "optimized",
     values = {"compilation_mode": "opt"},

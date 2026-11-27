@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_testonly = True)
+
 # Writes empty Godot PCKs for the tests of the tools that write and read packs.
 py_library(
     name = "empty_pck",

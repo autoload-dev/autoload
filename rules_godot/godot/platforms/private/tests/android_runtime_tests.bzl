@@ -13,6 +13,8 @@ load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot/platforms/private:android.bzl", "godot_android_runtime")
 load(":android_settings.bzl", "ANDROID_SDK", "OWN_TOOLCHAINS")
 
+visibility("private")
+
 def _platform(name):
     return {"//command_line_option:platforms": str(Label("//godot/platforms:" + name))} | OWN_TOOLCHAINS
 

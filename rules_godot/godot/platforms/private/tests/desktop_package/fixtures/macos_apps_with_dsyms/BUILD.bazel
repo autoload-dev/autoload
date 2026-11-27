@@ -7,7 +7,10 @@ load("//godot/private/tests:packaging.bzl", "generate_dsym_extension")
 
 # macOS applications whose runtime and extension rules_cc links, with and without
 # --apple_generate_dsym.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 _MACOS = ["@platforms//os:macos"]
 

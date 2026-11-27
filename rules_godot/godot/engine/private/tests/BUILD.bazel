@@ -25,7 +25,10 @@ load(":selection_tests.bzl", "selection_test_suite")
 load(":slot_replacement_tests.bzl", "slot_replacement_test_suite")
 load(":source_build_inputs_tests.bzl", "source_build_inputs_test_suite")
 
-package(default_visibility = ["//godot/engine/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/engine/private/tests:__subpackages__"],
+)
 
 # Plain target platforms: these tests observe toolchain resolution only.
 [platform(

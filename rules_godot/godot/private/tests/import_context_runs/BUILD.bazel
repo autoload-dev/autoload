@@ -1,5 +1,7 @@
 load("//godot:defs.bzl", "godot_test")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/import_context_runs/fixtures/composed_configuration"
 
 # Run tests: main/configured_test.gd checks the composed State autoload, the application

@@ -4,6 +4,8 @@ load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 load("//godot/private:configured_app.bzl", "godot_configured_app")
 load(":library_composition_tests.bzl", "library_composition_test_suite")
 
+package(default_testonly = True)
+
 # How platform libraries reach Android and iOS applications through a project's add-on, an
 # extension or the application, as each export configuration packages them.
 

@@ -20,7 +20,7 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
 | [RG008](#rg008) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
 | [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
-| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel, but test-only targets, which Bazel's test-only check guards | Error; missing role flags are reported as not checked |
 | [public-documentation-links](#public-documentation-links) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
@@ -307,13 +307,17 @@ godot_resources(
 )
 ```
 
-The check resolves inputs from authored label, label-list and
-label-keyed-string attributes, resolved by Bazel to their defining target or source file
-across the workspace's modules. Declarations inside a test scope and test-only targets are
-consumers, not subjects. Missing effective role flags are reported as not checked. Bazel's
-own test-only dependency check covers edges to marked targets; this rule also covers
-unmarked targets and source files by their location. Indirect paths and configured closures
-remain outside this automated subset.
+Bazel's own [test-only dependency check](https://bazel.build/reference/be/common-definitions#common.testonly)
+rejects a production target that depends on a test-only target; test operations and most
+test packages mark their targets test-only
+([test packages](verification-architecture.md#test-only-packages)). The rule covers what that
+check leaves through: source files of a test scope, and targets of a test scope that are not
+marked test-only, such as those of a mixed package. It resolves inputs from authored label,
+label-list and label-keyed-string attributes, resolved by Bazel to their defining target or
+source file across the workspace's modules. Declarations inside a test scope and test-only
+targets are consumers, not subjects; a test-only input is left to Bazel. Missing effective
+role flags are reported as not checked. Indirect paths and configured closures remain
+outside this automated subset.
 
 ## public-documentation-links
 

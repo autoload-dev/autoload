@@ -4,12 +4,17 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 load(":context.bzl", "no_project")
 load(":values.bzl", "bool_value")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-exports_files(glob(["*.bzl"]))
+# The modules as files, for the module's own documentation and repository rules.
+exports_files(
+    glob(["*.bzl"]),
+    visibility = ["//:__subpackages__"],
+)
 
 # Text templates the rules of this package expand.
 exports_files(glob(["*.tpl"]))
@@ -20,7 +25,7 @@ exports_files(glob(["*.tpl"]))
 label_setting(
     name = "project_setting",
     build_setting_default = ":no_project",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # What a failed content validation does: fail, the default, fails the build; report
@@ -39,20 +44,20 @@ string_flag(
 # The value of :project outside every operation: no context, no imports.
 no_project(
     name = "no_project",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # The project file of the default project, for projects that only add settings.
 exports_files(
     ["default_project.godot"],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # The project of operations that name none, such as a godot_test of a few scripts.
 godot_project(
     name = "default_project",
     project_file = "default_project.godot",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # godot_run and godot_test targets without headless select on this; the
@@ -60,7 +65,7 @@ godot_project(
 config_setting(
     name = "display",
     flag_values = {"//godot:headless": "false"},
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # Bazel's sharding and test filter for the test adapters' cases, which every
@@ -68,7 +73,7 @@ config_setting(
 godot_resources(
     name = "test_cases",
     resource_paths = {"test_cases.gd": "addons/rules_godot_test/cases.gd"},
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # Bazel's --strip, as applications apply it to the native code they package.
@@ -116,7 +121,7 @@ py_binary(
 label_flag(
     name = "build_profile",
     build_setting_default = ":no_build_profile",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # The label of that build profile as a string, which godot_app sets with it; empty without
@@ -125,7 +130,7 @@ label_flag(
 string_flag(
     name = "build_profile_label",
     build_setting_default = "",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # The runtime an application packages needs no tuning: it has no build profile, and it
@@ -137,14 +142,14 @@ config_setting(
     name = "untuned_fastbuild",
     flag_values = {":build_profile_label": ""},
     values = {"compilation_mode": "fastbuild"},
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 config_setting(
     name = "untuned_dbg",
     flag_values = {":build_profile_label": ""},
     values = {"compilation_mode": "dbg"},
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 config_setting(
@@ -155,7 +160,7 @@ config_setting(
         "//godot:engine_lto": LTO_DEFAULT,
         "//godot:engine_vfe": str(VFE_DEFAULT),
     },
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 selects.config_setting_group(
@@ -165,14 +170,14 @@ selects.config_setting_group(
         ":untuned_dbg",
         ":untuned_defaults",
     ],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # No build profile: the class generator keeps every class.
 filegroup(
     name = "no_build_profile",
     srcs = [],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 config_setting(
@@ -188,7 +193,7 @@ bool_value(
         ":stamp_enabled": True,
         "//conditions:default": False,
     }),
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bzl_library(
@@ -539,4 +544,9 @@ bzl_library(
 bzl_library(
     name = "versions",
     srcs = ["versions.bzl"],
+)
+
+bzl_library(
+    name = "visibility",
+    srcs = ["visibility.bzl"],
 )

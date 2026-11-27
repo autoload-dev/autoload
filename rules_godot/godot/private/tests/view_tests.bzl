@@ -11,6 +11,8 @@ load("//godot:defs.bzl", "godot_pack", "godot_run", "godot_test")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(":action_inputs.bzl", "GodotActionsInfo", "actions_of", "expect_not_read", "expect_reads", "godot_actions")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_addons"
 
 # #129: the probe creates no autoload whose script it does not stage. Its configuration

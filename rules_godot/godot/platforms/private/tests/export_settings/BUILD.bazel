@@ -4,6 +4,8 @@ load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 load("//godot/private/tests:packaging.bzl", "pack_facts")
 load(":export_settings_tests.bzl", "export_settings_test_suite")
 
+package(default_testonly = True)
+
 _DEFAULT = "//godot/platforms/private/tests/export_settings/fixtures/packs_with_and_without_version_options:"
 
 _CONFIGURED = "//godot/platforms/private/tests/export_settings/fixtures/packs_with_export_options:"

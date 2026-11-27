@@ -3,6 +3,8 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//godot/engine/private:define_analysis.bzl", "godot_define_analysis", "godot_source_defines")
 load(":per_file_copt.bzl", "header_with_per_file_copt")
 
+package(default_testonly = True)
+
 # A source whose preprocessing reads some of its definitions: through a header, a pasted
 # name and #ifndef. The others appear only in a comment, in an inactive branch, or not at
 # all. -w and -Werror would silence or fail the analysis' warning; it removes them.

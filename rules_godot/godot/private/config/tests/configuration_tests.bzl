@@ -5,6 +5,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot/private/config:settings.bzl", "CPU_TABLE", "configured_context", "context_attrs", "cpu_tag", "export_platform_error", "ios_cpu")
 
+visibility("private")
+
 _CapturedInfo = provider(doc = "Configured regression observations.", fields = ["configured", "independent"])
 
 def _capture_impl(ctx):

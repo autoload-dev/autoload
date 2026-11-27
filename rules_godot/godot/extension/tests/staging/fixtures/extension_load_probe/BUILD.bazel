@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 
 # A project whose pack's export loads a C ABI extension.
-package(default_visibility = ["//godot/extension/tests/staging:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/extension/tests/staging:__pkg__"],
+)
 
 godot_cc_extension(
     name = "hello",

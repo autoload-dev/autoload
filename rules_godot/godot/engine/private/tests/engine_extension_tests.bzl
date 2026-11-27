@@ -5,12 +5,10 @@ Sections: Engine selection, Binaries, Built from source.
 """
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _ENGINE = {
     "name": "godot",

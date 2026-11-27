@@ -12,6 +12,8 @@ load(":isolation_tests.bzl", "isolation_test_suite")
 load(":signing_tests.bzl", "signing_test_suite")
 load(":transition_tests.bzl", "export_fixture", "platform_slice_fixture", "platform_slices_fixture", "runtime_platform_slice_fixture", "transition_test_suite")
 
+package(default_testonly = True)
+
 app_test_suite(name = "app_test_suite")
 
 bundle_format_test_suite(name = "bundle_format_test_suite")

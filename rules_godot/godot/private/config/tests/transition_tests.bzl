@@ -6,6 +6,8 @@ load("//godot/private/config:settings.bzl", "configured_context", "context_attrs
 load("//godot/private/config:transitions.bzl", "content_transition", "platform_slice_transition")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _ExportInfo = provider(doc = "Configured regression observations.", fields = ["file"])
 _PlatformSliceInfo = provider(doc = "Configured regression observations.", fields = ["cpu", "file", "runtime"])
 _PlatformSlicesInfo = provider(doc = "Configured regression observations.", fields = ["cpus", "files", "runtimes"])

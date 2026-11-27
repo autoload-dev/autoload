@@ -4,7 +4,10 @@ load("//godot/platforms/private/tests/platform_libraries:library_fixtures.bzl", 
 
 # Extensions without a library for an application's operating system, and projects that
 # disable extensions for the runtime, deliver none to the application.
-package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
+)
 
 genrule(
     name = "extension_library",

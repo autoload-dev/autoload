@@ -2,6 +2,8 @@ load("@rules_python//python:defs.bzl", "py_test")
 load(":desktop_package_tests.bzl", "desktop_package_test_suite")
 load(":signing.bzl", "adhoc_signed")
 
+package(default_testonly = True)
+
 _RUNTIMES = "//godot/platforms/private/tests/desktop_package/fixtures/desktop_runtimes_without_engine:"
 
 _MACOS_APP = "//godot/platforms/private/tests/desktop_package/fixtures/macos_app_from_project:"

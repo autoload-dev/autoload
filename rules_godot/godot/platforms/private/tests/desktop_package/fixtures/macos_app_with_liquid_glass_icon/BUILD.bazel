@@ -4,7 +4,10 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
 # A macOS application whose pack names an Icon Composer .icon of the project as its
 # Liquid Glass icon, with the stub macOS runtime.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 godot_resources(
     name = "icon",

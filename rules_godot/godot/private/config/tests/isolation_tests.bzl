@@ -10,6 +10,8 @@ load("//godot:providers.bzl", "GodotDesktopAppInfo")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _MODE = str(Label("//godot:macos_signing"))
 
 _RUNTIMES = "//godot/private/config/tests/fixtures/desktop_runtimes_only"

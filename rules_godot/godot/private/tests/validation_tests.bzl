@@ -10,6 +10,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(":action_inputs.bzl", "GodotActionsInfo", "actions_of", "godot_actions", "input_paths")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/validation"
 
 def _validation_of(target, unit):
