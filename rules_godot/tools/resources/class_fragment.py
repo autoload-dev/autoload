@@ -15,7 +15,7 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
+from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.resources.text import tokens
 
 CACHE = ".godot/global_script_class_cache.cfg"

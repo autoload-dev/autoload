@@ -6,8 +6,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools import godot_export
-from tools.godot_export import exclusive_export, export_lock, export_presets, validate_pck
+from tools.editor_action import export
+from tools.editor_action.export import (
+    exclusive_export,
+    export_lock,
+    export_presets,
+    validate_pck,
+)
 from tools.pack.tests.empty_pck import pck_bytes, write_pck
 from tools.resources.node_ids import with_node_ids
 
@@ -19,7 +24,7 @@ class GodotExportTest(unittest.TestCase):
         temp = self.enterContext(tempfile.TemporaryDirectory())
         self.export_lock = Path(temp) / "export.lock"
         self.enterContext(
-            mock.patch.object(godot_export, "export_lock", return_value=self.export_lock)
+            mock.patch.object(export, "export_lock", return_value=self.export_lock)
         )
 
     def test_export_preset_escapes_strings(self) -> None:
@@ -158,11 +163,11 @@ class GodotExportTest(unittest.TestCase):
                     },
                 }
                 with (
-                    mock.patch.object(godot_export, "run_action", editor),
-                    mock.patch.object(godot_export, "export_presets", return_value=""),
-                    mock.patch.object(godot_export, "write_report"),
+                    mock.patch.object(export, "run_action", editor),
+                    mock.patch.object(export, "export_presets", return_value=""),
+                    mock.patch.object(export, "write_report"),
                 ):
-                    godot_export.pack(manifest, base / "out.pck", base / "r.json", base)
+                    export.pack(manifest, base / "out.pck", base / "r.json", base)
                 self.assertEqual([expected], exported)
                 self.assertEqual(scene, (base / "main.tscn").read_text())
 
@@ -192,10 +197,10 @@ class GodotExportTest(unittest.TestCase):
                 "owner": "//game:pack",
             }
             with (
-                mock.patch.object(godot_export, "run_action", editor),
-                mock.patch.object(godot_export, "export_presets", return_value=""),
+                mock.patch.object(export, "run_action", editor),
+                mock.patch.object(export, "export_presets", return_value=""),
             ):
-                godot_export.pack(manifest, base / "out.pck", base / "report.json", base)
+                export.pack(manifest, base / "out.pck", base / "report.json", base)
             self.assertEqual(
                 [["--export-pack", "Bazel", str(base / "out.pck")]], launches
             )
@@ -234,8 +239,8 @@ class GodotExportTest(unittest.TestCase):
                 "owner": "//game:pack",
             }
             with (
-                mock.patch.object(godot_export, "run_action", editor),
-                mock.patch.object(godot_export, "export_presets", return_value=""),
+                mock.patch.object(export, "run_action", editor),
+                mock.patch.object(export, "export_presets", return_value=""),
                 self.assertRaisesRegex(
                     RuntimeError,
                     "//game:pack: Godot did not know the class ProbeData, ProbeNode "
@@ -243,7 +248,7 @@ class GodotExportTest(unittest.TestCase):
                     "the export",
                 ),
             ):
-                godot_export.pack(manifest, base / "out.pck", base / "report.json", base)
+                export.pack(manifest, base / "out.pck", base / "report.json", base)
 
     def test_zero_exit_bogus_export_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

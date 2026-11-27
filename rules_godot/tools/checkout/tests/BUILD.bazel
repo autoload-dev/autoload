@@ -1,0 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "editor_view_test",
+    size = "small",
+    srcs = ["editor_view_test.py"],
+    deps = [
+        "//tools/checkout:editor_lib",
+        "//tools/checkout:metadata_sync_lib",
+    ],
+)
+
+py_test(
+    name = "runtime_profile_test",
+    size = "small",
+    srcs = ["runtime_profile_test.py"],
+    deps = ["//tools/checkout:runtime_profile_lib"],
+)

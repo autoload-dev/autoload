@@ -4,18 +4,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_staging import (
+from tools.inputs.manifest import add_resource_path_manifests, resource_path
+from tools.inputs.mapped_paths import resolver
+from tools.inputs.originals import (
     IMPORT_ARCHIVE,
-    add_resource_path_manifests,
     copy_file,
     executable,
-    resource_path,
     same_content,
-    stage,
-    validate_staged_paths,
     write_archive,
 )
-from tools.mapped_paths import resolver
+from tools.staging.files import validate_staged_paths
+from tools.staging.project import stage
 
 
 class StagingTest(unittest.TestCase):

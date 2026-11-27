@@ -402,7 +402,7 @@ def mapped_path(file):
     Return a File's path as path mapping stages it: an output's without its configuration.
 
     The manifests of actions that support path mapping name files this way, so that they
-    are the same in every target configuration; tools/mapped_paths.py resolves them.
+    are the same in every target configuration; tools/inputs/mapped_paths.py resolves them.
 
     Args:
         file: A File.

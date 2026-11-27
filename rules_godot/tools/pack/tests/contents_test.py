@@ -3,7 +3,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_export import export_presets
 from tools.pack.contents import content_selection, inspect_export
 
 
@@ -23,8 +22,6 @@ class PackContentsTest(unittest.TestCase):
                 ({"main.gd"}, {"dlc/level.gd", "model.bin"}),
                 content_selection(manifest, base),
             )
-        with self.assertRaisesRegex(ValueError, "literal export filter"):
-            export_presets({"preset_platform": "Linux"}, ["levels/[1].json"])
 
     def test_generated_uid_of_an_excluded_script_is_a_leak(self) -> None:
         with self.assertRaisesRegex(

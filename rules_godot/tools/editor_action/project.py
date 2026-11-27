@@ -1,8 +1,8 @@
 """
 Isolated Godot project actions: imports, initialization and editor probes.
 
-The action manifest is the entire input set. Exports are in godot_export.py and
-the staging both share in godot_staging.py.
+The action manifest is the entire input set. Exports are in export.py; the staging both
+share is in tools/staging.
 
 Sections: Import, Importers.
 """
@@ -14,21 +14,12 @@ import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
-from tools.godot_staging import (
-    ACTION_DIRECTORY,
-    Original,
-    add_manifest_arguments,
-    copy_file,
-    join_action,
-    load_manifest,
-    resource_path,
-    run_action,
-    same_content,
-    staged_project,
-    write_archive,
-)
+from tools.editor_action.action import ACTION_DIRECTORY, join_action, run_action
+from tools.inputs.manifest import add_manifest_arguments, load_manifest, resource_path
+from tools.inputs.originals import Original, copy_file, same_content, write_archive
 from tools.project.config import override_tags
 from tools.resources.files import import_base, sidecars_of
+from tools.staging.project import staged_project
 
 # ==== Import ==================================================================
 

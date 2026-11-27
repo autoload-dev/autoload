@@ -31,10 +31,7 @@ py_test(
     name = "contents_test",
     size = "small",
     srcs = ["contents_test.py"],
-    deps = [
-        "//tools:godot_export_lib",
-        "//tools/pack:contents_lib",
-    ],
+    deps = ["//tools/pack:contents_lib"],
 )
 
 py_test(

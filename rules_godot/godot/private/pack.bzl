@@ -637,7 +637,7 @@ _pack_export = rule(
             """,
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_export"),
+            default = Label("//tools/editor_action:export"),
             executable = True,
             cfg = "exec",
         ),

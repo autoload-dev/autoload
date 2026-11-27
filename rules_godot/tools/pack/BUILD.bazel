@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-# Packs: Godot's PCK format, what a pack contains, the selection of its resources from the
-# graph, the writer of its PCK and the merge of its extension descriptors.
+# Packs without Godot: Godot's PCK format, what a pack contains, the writer of its PCK and
+# the merge of its extension descriptors.
 package(default_visibility = ["//tools:__subpackages__"])
 
 # Godot's PCK format, which the build tools and the ruleset's tests read and write.
@@ -9,6 +9,7 @@ py_library(
     name = "pck_lib",
     srcs = ["pck.py"],
     visibility = ["//tools:ruleset"],
+    deps = ["//tools/resources:files_lib"],
 )
 
 py_library(
@@ -28,11 +29,13 @@ py_library(
     deps = [
         ":contents_lib",
         ":pck_lib",
-        "//tools:godot_staging_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
         "//tools/resources:class_fragment_lib",
         "//tools/resources:files_lib",
         "//tools/resources:text_lib",
         "//tools/resources:uids_lib",
+        "//tools/staging:files_lib",
     ],
 )
 

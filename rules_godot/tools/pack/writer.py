@@ -15,21 +15,16 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
-from tools.godot_staging import (
-    add_manifest_arguments,
-    extension_list,
-    load_manifest,
-    open_original,
-    read_original,
-    staged_files,
-)
+from tools.inputs.manifest import add_manifest_arguments, load_manifest
+from tools.inputs.originals import open_original, read_original
 from tools.pack.contents import content_selection, write_report
-from tools.pack.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
+from tools.pack.pck import Content, engine_version, pck_files, write_pck
 from tools.resources.class_fragment import CACHE as CLASS_CACHE
 from tools.resources.class_fragment import class_cache, fragment
-from tools.resources.files import IMPORT, UID, hidden_by, is_sidecar_named
+from tools.resources.files import EXTENSION_LIST, IMPORT, UID, hidden_by, is_sidecar_named
 from tools.resources.text import IMPORTER, REMAP_PATH, remap_section
 from tools.resources.uids import declares_uids, known_uids, uid_cache
+from tools.staging.files import extension_list, staged_files
 
 UID_CACHE = ".godot/uid_cache.bin"
 

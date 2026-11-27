@@ -152,7 +152,7 @@ def _metadata_list(ctx, files, initialized, index):
         index: The project's metadata index, or None.
 
     Returns:
-        The JSON File the action writes; tools/godot_metadata_sync.py reads it.
+        The JSON File the action writes; tools/checkout/metadata_sync.py reads it.
     """
     out = ctx.actions.declare_file(ctx.label.name + ".metadata.json")
     checkout = {path: file for path, file in files.combined.items() if _in_checkout(file)}
@@ -656,12 +656,12 @@ _godot_view = rule(
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_actions"),
+            default = Label("//tools/editor_action:project"),
             executable = True,
             cfg = "exec",
         ),
         "_metadata_sync": attr.label(
-            default = Label("//tools:godot_metadata_sync"),
+            default = Label("//tools/checkout:metadata_sync"),
             executable = True,
             cfg = "exec",
         ),

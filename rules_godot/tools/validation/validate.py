@@ -35,19 +35,14 @@ import sys
 from collections.abc import Container, Iterable, Iterator, Sequence
 from pathlib import Path
 
-from tools.godot_staging import (
-    ACTION_DIRECTORY,
-    Original,
-    add_manifest_arguments,
-    join_action,
-    load_manifest,
-    run_action,
-    staged_project,
-)
+from tools.editor_action.action import ACTION_DIRECTORY, join_action, run_action
+from tools.inputs.manifest import add_manifest_arguments, load_manifest
+from tools.inputs.originals import Original
 from tools.project.config import compose_project
 from tools.resources.class_fragment import CACHE, class_cache
 from tools.resources.text import Heading, Token, headings, lex, res_path
 from tools.resources.uids import known_uids, uid_sources
+from tools.staging.project import staged_project
 
 
 def _section_end(text: str, sections: list[Heading], index: int) -> int:

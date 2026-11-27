@@ -1,8 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-# The content validation of units: the global script classes of a unit's scripts, the
-# interface its dependents' validations read, and the validation that loads its files in
-# the editor. The rules of godot/private run the binaries.
+# The content validation of units: the interface its dependents' validations read, and the
+# validation that loads its files in the editor. The rules of godot/private run the binaries.
 package(default_visibility = ["//tools:__subpackages__"])
 
 # What the validations of a unit's dependents read from it (#158): a tool of its own, so a
@@ -11,8 +10,8 @@ py_library(
     name = "unit_interface_lib",
     srcs = ["unit_interface.py"],
     deps = [
-        "//tools:godot_staging_lib",
-        "//tools:mapped_paths_lib",
+        "//tools/inputs:mapped_paths_lib",
+        "//tools/inputs:originals_lib",
         "//tools/resources:class_fragment_lib",
         "//tools/resources:files_lib",
         "//tools/resources:text_lib",
@@ -31,16 +30,16 @@ py_binary(
 py_library(
     name = "validate_lib",
     srcs = ["validate.py"],
-    data = [
-        "validate.gd",
-        "//tools:action_plugin",
-    ],
+    data = ["validate.gd"],
     deps = [
-        "//tools:godot_staging_lib",
+        "//tools/editor_action:action_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
         "//tools/project:config_lib",
         "//tools/resources:class_fragment_lib",
         "//tools/resources:text_lib",
         "//tools/resources:uids_lib",
+        "//tools/staging:project_lib",
     ],
 )
 

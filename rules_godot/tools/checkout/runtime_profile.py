@@ -25,15 +25,11 @@ from collections.abc import Collection, Mapping
 from pathlib import Path
 from typing import Any
 
-from tools.godot_run import report
-from tools.godot_staging import (
-    add_manifest_arguments,
-    join_action,
-    load_manifest,
-    run_action,
-    staged_project,
-)
-from tools.godot_sync import Runfile, sync_main
+from tools.checkout.sync import Runfile, sync_main
+from tools.editor_action.action import join_action, run_action
+from tools.inputs.manifest import add_manifest_arguments, load_manifest
+from tools.inputs.runfiles import report
+from tools.staging.project import staged_project
 
 
 class ProfileError(Exception):

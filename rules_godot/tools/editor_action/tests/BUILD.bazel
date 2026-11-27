@@ -1,0 +1,39 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "action_plugin_test",
+    size = "small",
+    srcs = ["action_plugin_test.py"],
+    # Carries the action plugin, data of the tools that run editor actions only.
+    deps = ["//tools/editor_action:action_lib"],
+)
+
+py_test(
+    name = "project_test",
+    size = "small",
+    srcs = ["project_test.py"],
+    deps = [
+        "//tools/editor_action:project_lib",
+        "//tools/inputs:originals_lib",
+    ],
+)
+
+py_test(
+    name = "export_configuration_test",
+    size = "small",
+    srcs = ["export_configuration_test.py"],
+    deps = ["//tools/editor_action:export_lib"],
+)
+
+py_test(
+    name = "export_test",
+    size = "small",
+    srcs = ["export_test.py"],
+    deps = [
+        "//tools/editor_action:export_lib",
+        "//tools/pack/tests:empty_pck",
+        "//tools/resources:node_ids_lib",
+    ],
+)

@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-# The action's parameters and its result record; see tools/godot_staging.py.
+# The action's parameters and its result record; see tools/editor_action/action.py.
 
 const DIRECTORY: String = "res://addons/rules_godot_action/"
 

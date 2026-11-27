@@ -511,7 +511,7 @@ _godot_project = rule(
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_actions"),
+            default = Label("//tools/editor_action:project"),
             executable = True,
             cfg = "exec",
         ),

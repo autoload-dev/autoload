@@ -2,7 +2,7 @@
 Isolated Godot exports of packs and their applications' shell files.
 
 The action manifest is the entire input set. The staging and editor runs are
-shared with the project actions through godot_staging.py.
+shared with the project actions through tools/staging and action.py.
 
 Sections: Export lock, Export presets, Pack assembly.
 """
@@ -20,23 +20,15 @@ from pathlib import Path
 from typing import Any
 
 from tools import template
-from tools.godot_staging import (
-    add_manifest_arguments,
-    copy_file,
-    extension_list,
-    gd_string,
-    join_action,
-    load_manifest,
-    run_action,
-    staged_project,
-)
+from tools.editor_action.action import join_action, run_action
+from tools.inputs.manifest import add_manifest_arguments, load_manifest
+from tools.inputs.originals import copy_file
 from tools.pack.contents import (
     content_selection,
     excluded_with_sidecars,
     write_report,
 )
 from tools.pack.pck import (
-    EXTENSION_LIST,
     add_pck_files,
     engine_version,
     normalize_project_features,
@@ -46,6 +38,10 @@ from tools.pack.pck import (
     write_pck,
 )
 from tools.project.config import validate_literal
+from tools.resources.files import EXTENSION_LIST
+from tools.resources.text import gd_string
+from tools.staging.files import extension_list
+from tools.staging.project import staged_project
 
 _ADAPTIVE_ICON = Path(__file__).parent / "adaptive_icon.xml.tpl"
 

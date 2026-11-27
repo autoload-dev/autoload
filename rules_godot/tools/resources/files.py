@@ -37,6 +37,8 @@ SIDECAR_SUFFIXES = (IMPORT, UID)
 REMAP = ".remap"
 # The files that make Godot skip their directory.
 DIRECTORY_MARKERS = (".gdignore", "project.godot")
+# The project data file that lists the extensions Godot loads when the runtime starts.
+EXTENSION_LIST = ".godot/extension_list.cfg"
 
 
 def is_sidecar_named(path: str) -> bool:

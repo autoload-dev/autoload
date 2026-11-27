@@ -2,14 +2,18 @@
 
 import unittest
 
-from tools import godot_export
-from tools.godot_export import export_presets
+from tools.editor_action import export
+from tools.editor_action.export import export_presets
 
 
 class ExportConfigurationTest(unittest.TestCase):
     def test_omitted_script_mode_uses_godot_default(self) -> None:
         text = export_presets({"preset_platform": "Linux"})
         self.assertNotIn("script_export_mode=", text)
+
+    def test_excluded_paths_cannot_be_literal_export_filters(self) -> None:
+        with self.assertRaisesRegex(ValueError, "literal export filter"):
+            export_presets({"preset_platform": "Linux"}, ["levels/[1].json"])
 
     def test_preset_fields_use_godot_literal_types(self) -> None:
         text = export_presets(
@@ -54,11 +58,11 @@ class ExportConfigurationTest(unittest.TestCase):
                 "game_plugin/enabled": "bool",
             },
         }
-        godot_export.validate_export_facts(
+        export.validate_export_facts(
             {"authored_export_options": {"game_plugin/enabled": "true"}}, facts
         )
         with self.assertRaisesRegex(ValueError, "game_plugin/enabled"):
-            godot_export.validate_export_facts(
+            export.validate_export_facts(
                 {"authored_export_options": {"game_plugin/enabled": '"wrong"'}},
                 {
                     "options": {"game_plugin/enabled": "wrong"},
@@ -67,7 +71,7 @@ class ExportConfigurationTest(unittest.TestCase):
             )
 
     def test_unauthored_registered_options_are_not_checked(self) -> None:
-        godot_export.validate_export_facts(
+        export.validate_export_facts(
             {"authored_export_options": {}},
             {
                 "options": {"gradle_build/use_gradle_build": False},
@@ -77,13 +81,13 @@ class ExportConfigurationTest(unittest.TestCase):
 
     def test_unknown_export_option_requires_registered_plugin(self) -> None:
         with self.assertRaisesRegex(ValueError, "an extension.s export plugin"):
-            godot_export.validate_export_facts(
+            export.validate_export_facts(
                 {"authored_export_options": {"unknown/key": "true"}},
                 {"options": {}, "option_types": {}},
             )
 
     def test_authored_hidden_option_is_validated_without_policy_membership(self) -> None:
-        godot_export.validate_export_facts(
+        export.validate_export_facts(
             {"authored_export_options": {"capabilities/performance_a12": "true"}},
             {
                 "options": {"capabilities/performance_a12": True},
@@ -98,10 +102,8 @@ class ExportConfigurationTest(unittest.TestCase):
             "authored_export_options": {"binary_format/embed_pck": "true"},
         }
         with self.assertRaisesRegex(ValueError, "an extension.s export plugin"):
-            godot_export.validate_export_facts(
-                manifest, {"options": {}, "option_types": {}}
-            )
-        godot_export.validate_export_facts(
+            export.validate_export_facts(manifest, {"options": {}, "option_types": {}})
+        export.validate_export_facts(
             manifest,
             {
                 "options": {"binary_format/embed_pck": True},

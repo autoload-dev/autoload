@@ -1,0 +1,75 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# The programs bazel run starts that work on the checkout: the editor view that links into
+# it, the runner of checkout writers with their tests, the metadata sync and the runtime
+# profile's derivation and sync.
+package(default_visibility = ["//tools:__subpackages__"])
+
+py_library(
+    name = "sync_lib",
+    srcs = ["sync.py"],
+    deps = ["//tools/inputs:runfiles_lib"],
+)
+
+py_library(
+    name = "metadata_sync_lib",
+    srcs = ["metadata_sync.py"],
+    deps = [
+        ":sync_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/inputs:runfiles_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:index_lib",
+        "//tools/staging:files_lib",
+    ],
+)
+
+py_binary(
+    name = "metadata_sync",
+    srcs = ["metadata_sync.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":metadata_sync_lib"],
+)
+
+py_library(
+    name = "editor_lib",
+    srcs = ["editor.py"],
+    data = ["editor_view.gitignore.tpl"],
+    deps = [
+        ":metadata_sync_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/inputs:runfiles_lib",
+        "//tools/project:config_lib",
+        "//tools/resources:files_lib",
+        "//tools/staging:files_lib",
+    ],
+)
+
+py_binary(
+    name = "editor",
+    srcs = ["editor.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":editor_lib"],
+)
+
+# Derives and syncs a runtime profile: a tool of its own, with the action plugin it joins and
+# its own profile plugin, so a change to it reruns only profile derivations.
+py_library(
+    name = "runtime_profile_lib",
+    srcs = ["runtime_profile.py"],
+    data = glob(["profile/*"]),
+    deps = [
+        ":sync_lib",
+        "//tools/editor_action:action_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:runfiles_lib",
+        "//tools/staging:project_lib",
+    ],
+)
+
+py_binary(
+    name = "runtime_profile",
+    srcs = ["runtime_profile.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":runtime_profile_lib"],
+)

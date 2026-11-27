@@ -16,14 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any
 
+from tools.resources.files import EXTENSION_LIST
+
 _MAGIC = 0x43504447
 
 
 # ==== Reading =================================================================
-
-
-# Godot loads the extensions this file lists when the runtime starts.
-EXTENSION_LIST = ".godot/extension_list.cfg"
 
 
 @dataclass(frozen=True)

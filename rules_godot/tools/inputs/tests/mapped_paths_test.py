@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.mapped_paths import resolve_paths, resolver
+from tools.inputs.mapped_paths import resolve_paths, resolver
 
 
 class MappedPathsTest(unittest.TestCase):

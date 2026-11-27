@@ -15,8 +15,9 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tools.godot_run import ExecutionError, locate, pack_descriptors, run
+from tools.inputs.runfiles import locate
 from tools.pack.pck import write_pck
+from tools.source_run.run import ExecutionError, pack_descriptors, run
 
 
 def run_manifest(**fields: Any) -> dict[str, Any]:
@@ -122,7 +123,7 @@ assert (root / "native/libhello.so").read_bytes() == b"extension library"
 assert (root / "native/hello.gdextension").read_text() == "[configuration]\\n"
 """,
             )
-            with mock.patch("tools.godot_run.locate", side_effect=existing_runfile):
+            with mock.patch("tools.inputs.runfiles.locate", side_effect=existing_runfile):
                 self.assertEqual(
                     0,
                     run(
@@ -180,7 +181,7 @@ assert (root / "native/hello.gdextension").read_text() == "[configuration]\\n"
             incomplete = {key: value for key, value in manifest.items() if key != field}
             with (
                 self.subTest(field=field),
-                mock.patch("tools.godot_run.locate") as locate,
+                mock.patch("tools.inputs.runfiles.locate") as locate,
                 self.assertRaisesRegex(
                     ExecutionError, f"Missing required run manifest field: '{field}'"
                 ),
@@ -203,7 +204,7 @@ assert (root / "native/hello.gdextension").read_text() == "[configuration]\\n"
             )
             stderr = io.StringIO()
             with (
-                mock.patch("tools.godot_run.locate", side_effect=existing_runfile),
+                mock.patch("tools.inputs.runfiles.locate", side_effect=existing_runfile),
                 mock.patch.dict(
                     os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": str(base / "outputs")}
                 ),
@@ -286,7 +287,9 @@ print((root / "override.cfg").read_text())
                 )
                 stdout = io.StringIO()
                 with (
-                    mock.patch("tools.godot_run.locate", side_effect=existing_runfile),
+                    mock.patch(
+                        "tools.inputs.runfiles.locate", side_effect=existing_runfile
+                    ),
                     contextlib.redirect_stdout(stdout),
                 ):
                     self.assertEqual(0, run(manifest))
@@ -345,7 +348,9 @@ assert pathlib.Path("dlc/extra.pck").read_bytes() == b"additional pack"
                 name = next(iter(manifest["additional_packs"]))
                 message = f"Additional pack {name} collides with a staged file"
                 with (
-                    mock.patch("tools.godot_run.locate", side_effect=existing_runfile),
+                    mock.patch(
+                        "tools.inputs.runfiles.locate", side_effect=existing_runfile
+                    ),
                     mock.patch.dict(
                         os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": str(base / "outputs")}
                     ),
@@ -541,7 +546,7 @@ print("source run passed")
                 "application/config/build_number": "57",
             }
             with (
-                mock.patch("tools.godot_run.locate", side_effect=existing_runfile),
+                mock.patch("tools.inputs.runfiles.locate", side_effect=existing_runfile),
                 mock.patch.dict(
                     os.environ,
                     {

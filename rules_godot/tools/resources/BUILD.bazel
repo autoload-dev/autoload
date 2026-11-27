@@ -46,7 +46,7 @@ py_library(
     ],
     deps = [
         ":text_lib",
-        "//tools:mapped_paths_lib",
+        "//tools/inputs:mapped_paths_lib",
     ],
 )
 
@@ -66,7 +66,7 @@ py_library(
         ":files_lib",
         ":node_ids_lib",
         ":uids_lib",
-        "//tools:godot_staging_lib",
+        "//tools/inputs:originals_lib",
     ],
 )
 

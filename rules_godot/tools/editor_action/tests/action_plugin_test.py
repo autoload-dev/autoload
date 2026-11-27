@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools import godot_staging
-from tools.godot_staging import join_action, run_action
+from tools.editor_action import action as editor_action
+from tools.editor_action.action import join_action, run_action
 
 # The record of a successful export.
 SUCCESS = {"operation": "export", "verdict": "success", "diagnostics": [], "facts": {}}
@@ -50,8 +50,8 @@ class ActionPluginTest(unittest.TestCase):
             join_action(root, work, "export")
             stderr = io.StringIO()
             with (
-                mock.patch.object(godot_staging, "_ACTION_TIMEOUT_SECONDS", timeout),
-                mock.patch.object(godot_staging, "_RECORD_GRACE_SECONDS", grace),
+                mock.patch.object(editor_action, "_ACTION_TIMEOUT_SECONDS", timeout),
+                mock.patch.object(editor_action, "_RECORD_GRACE_SECONDS", grace),
                 contextlib.redirect_stderr(stderr),
             ):
                 try:

@@ -1,0 +1,15 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "execution_test",
+    size = "small",
+    srcs = ["execution_test.py"],
+    data = ["//tools/source_run:errors.gd"],
+    deps = [
+        "//tools/inputs:runfiles_lib",
+        "//tools/pack:pck_lib",
+        "//tools/source_run:run_lib",
+    ],
+)

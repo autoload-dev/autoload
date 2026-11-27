@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tools import runtime_profile
-from tools.runtime_profile import (
+from tools.checkout import runtime_profile
+from tools.checkout.runtime_profile import (
     ProfileError,
     check_file,
     compose_profile,

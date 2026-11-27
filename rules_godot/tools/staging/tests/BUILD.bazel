@@ -1,0 +1,16 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "staging_test",
+    size = "small",
+    srcs = ["staging_test.py"],
+    deps = [
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:mapped_paths_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/staging:files_lib",
+        "//tools/staging:project_lib",
+    ],
+)

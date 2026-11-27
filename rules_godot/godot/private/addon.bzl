@@ -557,7 +557,7 @@ _godot_addon = rule(
             providers = [GodotProjectInfo],
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_actions"),
+            default = Label("//tools/editor_action:project"),
             executable = True,
             cfg = "exec",
         ),

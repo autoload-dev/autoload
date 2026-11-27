@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-from tools.godot_staging import open_original, tree_entries
+from tools.inputs.originals import open_original, tree_entries
 from tools.resources.files import is_sidecar_named
 from tools.resources.node_ids import missing_node_ids
 from tools.resources.uids import (

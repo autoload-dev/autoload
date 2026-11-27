@@ -315,8 +315,8 @@ below boot a real packaged application. Multiple assertions share each useful
 project context; the directory layout does not require a project per assertion or a
 BUILD file per source directory.
 
-Focused tests such as `godot_staging_test`, `execution_test`, `editor_view_test` and `versions_test`
-live in a `tests/` subpackage of the package they test, such as `tools/tests/`. `//godot/private/engine/tests:pinned_godot_sources_match_the_reviewed_android_shell_test` checks the pinned
+Focused tests such as `staging_test`, `execution_test`, `editor_view_test` and `versions_test`
+live in a `tests/` subpackage of the package they test, such as `tools/pack/tests/`. `//godot/private/engine/tests:pinned_godot_sources_match_the_reviewed_android_shell_test` checks the pinned
 Godot sources against the [reviewed Android shell](../../rules_godot/docs/internal/android-shell.md#review-a-godot-version). They are not additional checked-in Godot
 projects. Pack-membership assertions live in `//godot/private/tests/pack_membership`.
 

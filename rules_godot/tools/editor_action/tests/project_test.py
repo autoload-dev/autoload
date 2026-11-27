@@ -5,15 +5,15 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools import godot_actions
-from tools.godot_actions import (
+from tools.editor_action import project as project_actions
+from tools.editor_action.project import (
     import_base,
     import_resources,
     importable_suffixes,
     importer_mismatches,
     initialize,
 )
-from tools.godot_staging import IMPORT_ARCHIVE, write_archive
+from tools.inputs.originals import IMPORT_ARCHIVE, write_archive
 
 
 class GodotActionsTest(unittest.TestCase):
@@ -50,7 +50,7 @@ class GodotActionsTest(unittest.TestCase):
                 "outputs": [],
                 "editor": "editor",
             }
-            with mock.patch.object(godot_actions, "run_action", editor):
+            with mock.patch.object(project_actions, "run_action", editor):
                 import_resources(manifest, output, base)
             with tarfile.open(output) as stream:
                 self.assertEqual(
@@ -89,7 +89,7 @@ class GodotActionsTest(unittest.TestCase):
                 "tools": ["addons/md/icon.svg", "addons/md/importer.gd"],
                 "editor": "editor",
             }
-            with mock.patch.object(godot_actions, "run_action", editor):
+            with mock.patch.object(project_actions, "run_action", editor):
                 import_resources(manifest, output, base)
             with tarfile.open(output) as stream:
                 self.assertEqual(
@@ -140,7 +140,7 @@ class GodotActionsTest(unittest.TestCase):
             ) -> dict:
                 return records[args[0]]
 
-            with mock.patch.object(godot_actions, "run_action", editor):
+            with mock.patch.object(project_actions, "run_action", editor):
                 with self.assertRaisesRegex(
                     RuntimeError,
                     "//addons:md registers an importer for the suffix 'txt'(.|\n)*"
@@ -189,7 +189,9 @@ class GodotActionsTest(unittest.TestCase):
                     "outputs": ["mine.png"],
                     "editor": "editor",
                 }
-                with mock.patch.object(godot_actions, "run_action", return_value=record):
+                with mock.patch.object(
+                    project_actions, "run_action", return_value=record
+                ):
                     if fails:
                         with self.assertRaisesRegex(
                             RuntimeError,
@@ -231,7 +233,7 @@ class GodotActionsTest(unittest.TestCase):
                     "editor": "editor",
                 }
                 output = base / "out"
-                with mock.patch.object(godot_actions, "run_action", editor):
+                with mock.patch.object(project_actions, "run_action", editor):
                     if fails:
                         with self.assertRaisesRegex(
                             RuntimeError, "global_script_class_cache.cfg"

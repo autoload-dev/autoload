@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_staging import copy_file
+from tools.inputs.originals import copy_file
 
 # Godot's terminal colors and cursor movements.
 _ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")

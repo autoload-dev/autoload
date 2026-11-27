@@ -6,7 +6,7 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
-from tools.godot_run import report, runfile_locator
+from tools.inputs.runfiles import report, runfile_locator
 
 # Resolves a Bazel short path of the runfiles to the file.
 Runfile = Callable[[str], Path]

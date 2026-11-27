@@ -66,7 +66,7 @@ _godot_runtime_profile_derived = rule(
             doc = "Classes the profile never disables, besides the ruleset's own list.",
         ),
         "_actions": attr.label(
-            default = Label("//tools:runtime_profile"),
+            default = Label("//tools/checkout:runtime_profile"),
             executable = True,
             cfg = "exec",
         ),
@@ -94,7 +94,7 @@ def _sync_impl(ctx, test):
 
 _SYNC = sync_rules(
     implementation = _sync_impl,
-    runner = Label("//tools:runtime_profile"),
+    runner = Label("//tools/checkout:runtime_profile"),
     # The godot_runtime_profile macro documents these attributes.
     attrs = {
         "derived": attr.label(mandatory = True, providers = [GodotRuntimeProfileInfo]),

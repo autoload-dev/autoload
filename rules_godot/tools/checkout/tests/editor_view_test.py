@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.godot_editor import (
+from tools.checkout.editor import (
     EditorError,
     Layout,
     link_directories,
@@ -18,7 +18,7 @@ from tools.godot_editor import (
     plan_layout,
     sync,
 )
-from tools.godot_metadata_sync import (
+from tools.checkout.metadata_sync import (
     check_metadata,
     index_updates,
     list_sidecars,
@@ -272,7 +272,7 @@ class ViewTest(unittest.TestCase):
         view = self.base / "view"
         layout = plan_layout({}, {"data/version.json": self.runfile("version.json")}, {})
         record = sync(view, self.workspace, layout, {})
-        with mock.patch("tools.godot_editor.same_content") as same_content:
+        with mock.patch("tools.checkout.editor.same_content") as same_content:
             sync(view, self.workspace, layout, record)
         same_content.assert_not_called()
         # Bazel replaces a rebuilt output with a new file.

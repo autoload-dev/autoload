@@ -1,13 +1,11 @@
 """
 Run a declared project or PCK with isolated writable state; report its exit code.
 
-Sections: Runfiles, Execution, Project staging, Pack staging, Error logger, Run, Command
-line.
+Sections: Execution, Project staging, Pack staging, Error logger, Run, Command line.
 """
 
 import argparse
 import contextlib
-import functools
 import json
 import os
 import shutil
@@ -21,88 +19,20 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 
-from python.runfiles import runfiles as bazel_runfiles
-
-from tools.godot_staging import (
-    NEW_SESSION,
-    Original,
-    apply_metadata,
-    child_environment,
-    copy_file,
-    gd_string,
-    resource_path,
-    stage,
-    stop_process_group,
-    tree_entries,
-    tree_files,
-)
+from tools.editor_action.process import NEW_SESSION, child_environment, stop_process_group
+from tools.inputs.manifest import resource_path
+from tools.inputs.originals import copy_file, tree_files
+from tools.inputs.runfiles import runfile_locator
 from tools.pack.pck import add_pck_files, pck_file_contents
 from tools.project.config import compose_project
 from tools.project.statements import statement_groups
+from tools.resources.text import gd_string
+from tools.staging.files import import_results
+from tools.staging.project import apply_metadata, stage
 
 
 class ExecutionError(RuntimeError):
     """An execution failure with actionable diagnostics already captured."""
-
-
-def report(message: str) -> None:
-    """Tell the user something, with main-repository labels as they write them."""
-    print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
-
-
-# ==== Runfiles ================================================================
-
-
-@functools.cache
-def _manifest(path: str) -> bazel_runfiles.Runfiles:
-    """A runfiles manifest, read once."""
-    return bazel_runfiles.CreateManifestBased(path)
-
-
-def _in_directories(key: str) -> list[Path]:
-    roots = (os.environ.get(variable) for variable in ("RUNFILES_DIR", "TEST_SRCDIR"))
-    return [Path(root) / key for root in roots if root]
-
-
-def _in_manifest(key: str) -> list[Path]:
-    manifest = os.environ.get("RUNFILES_MANIFEST_FILE")
-    # The key is canonical already: no repository mapping applies.
-    found = manifest and _manifest(manifest).Rlocation(key, source_repo="")
-    return [Path(found)] if found else []
-
-
-def _beside_program(key: str) -> list[Path]:
-    """A runfile in the .runfiles directory the running program lies in."""
-    parents = Path(sys.argv[0]).parents
-    return [parent / key for parent in parents if parent.name.endswith(".runfiles")]
-
-
-def locate(key: str) -> Path:
-    """
-    The path of the runfile with a runfiles key, such as `_main/pkg/file`: in the runfiles
-    directories, the manifest or beside the program.
-    """
-    candidates = [*_in_directories(key), *_in_manifest(key), *_beside_program(key)]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-    raise FileNotFoundError(f"Runfile {key} was not found")
-
-
-def runfile_key(short_path: str, workspace: str) -> str:
-    """The runfiles key of a Bazel short path; external repositories start with ../."""
-    if short_path.startswith("../"):
-        return short_path[3:]
-    return workspace + "/" + short_path if workspace else short_path
-
-
-def runfile_locator(workspace: str) -> Callable[[str], Path]:
-    """Resolve a Bazel short path of the runfiles of a target in workspace."""
-
-    def runfile(short_path: str) -> Path:
-        return locate(runfile_key(short_path, workspace))
-
-    return runfile
 
 
 # ==== Execution ===============================================================
@@ -219,58 +149,6 @@ def _exit_status(code: int) -> int:
 
 
 # ==== Project staging =========================================================
-
-
-def _present_trees(keys: list[str], runfile: Callable[[str], Path]) -> list[str]:
-    """
-    Import results that exist in the runfiles.
-
-    Bazel omits an empty tree artifact from runfiles; an import unit without
-    importable files has an empty import result.
-    """
-    trees = []
-    for key in keys:
-        try:
-            trees.append(str(runfile(key)))
-        except FileNotFoundError:
-            pass
-    return trees
-
-
-def import_results(
-    project: dict, runfile: Callable[[str], Path]
-) -> tuple[list[str], list[str]]:
-    """
-    A project's import results and its initialization, as present tree paths.
-
-    The initialization carries Godot's global caches; staged after the imports, it
-    replaces what Godot re-derived from them.
-    """
-    imports = [
-        line
-        for line in runfile(project["imports"]).read_text(encoding="utf-8").splitlines()
-        if line
-    ]
-    return (
-        _present_trees(imports, runfile),
-        _present_trees([project["initialized"]], runfile),
-    )
-
-
-def tree_files_by_path(imports: list[str], initialized: list[str]) -> dict[str, Original]:
-    """Import results, then Godot's caches, which replace what they re-derived."""
-    generated: dict[str, Original] = {}
-    for tree in imports:
-        for path, original in tree_entries(Path(tree)):
-            generated.setdefault(path, original)
-    for tree in initialized:
-        generated.update(tree_entries(Path(tree)))
-    return generated
-
-
-def generated_files(project: dict, runfile: Callable[[str], Path]) -> dict[str, Original]:
-    """A project's import results, then Godot's caches, by resource path."""
-    return tree_files_by_path(*import_results(project, runfile))
 
 
 def _resolved(paths: dict[str, str], runfile: Callable[[str], Path]) -> dict[str, str]:
@@ -410,7 +288,7 @@ def _stage_additional_packs(
 
 
 # The autoload that records the errors Godot reports while the game runs.
-_LOGGER = Path(__file__).parent / "run" / "errors.gd"
+_LOGGER = Path(__file__).parent / "errors.gd"
 
 # The logger's name beside the project, where Godot reports errors of it.
 _LOGGER_NAME = "rules_godot_errors.gd"

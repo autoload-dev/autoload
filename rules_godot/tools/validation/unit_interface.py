@@ -35,14 +35,14 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.godot_staging import (
+from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
+from tools.inputs.originals import (
     IMPORT_ARCHIVE,
     Original,
     read_original,
     tree_entries,
     write_originals,
 )
-from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.resources.class_fragment import skip_arguments
 from tools.resources.files import IMPORT, import_base
 from tools.resources.text import IMPORTER, REMAP_PATH, Token, lex, remap_section

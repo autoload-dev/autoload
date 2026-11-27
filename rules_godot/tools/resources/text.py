@@ -9,6 +9,7 @@ of their actions.
 Sections: Formats and paths, Lexer, Text resources, Identities.
 """
 
+import json
 import posixpath
 import re
 import unicodedata
@@ -364,6 +365,11 @@ def remap_section(text: str) -> str | None:
         return None
     end = next((start for _, start in starts if start > remap), len(text))
     return text[remap:end]
+
+
+def gd_string(value: str) -> str:
+    """A Godot string literal of value."""
+    return json.dumps(value, ensure_ascii=False)
 
 
 # ==== Identities ==============================================================
