@@ -36,7 +36,8 @@ godot_resources(
         "main/native_counter/counter.gd.uid",
     ],
     tags = ["manual"],
-    deps = [":counter"],
+    # Two extensions register NativeCounter; each scene uses its own.
+    deps = [":counter"],  # keep
 )
 
 godot_pack(
@@ -79,7 +80,7 @@ godot_resources(
         "main/native_counter/counter.gd.uid",
     ],
     tags = ["manual"],
-    deps = [":static_counter"],
+    deps = [":static_counter"],  # keep
 )
 
 godot_pack(
