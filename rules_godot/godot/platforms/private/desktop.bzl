@@ -22,7 +22,7 @@ load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 load(":shell.bzl", "ENGINE_CHECK_ATTRS", "SHELL_ATTRS", "check_engine", "pack_facts", "privacy_manifest", "release_values", "shell_file")
 
-visibility(["//godot", "//godot/platforms", "//godot/platforms/private/tests"])
+visibility(["//godot/platforms/private/tests", "//godot/private"])
 
 def _runtime_file(runtime, operating_system):
     # Only the runtime's own facts are checked; its version and variant are never

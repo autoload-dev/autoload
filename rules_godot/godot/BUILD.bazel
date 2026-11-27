@@ -108,10 +108,11 @@ constraint_setting(
     visibility = ["//visibility:private"],
 )
 
+# godot_app's implementation in //godot/private declares the backends that name it.
 constraint_value(
     name = "editor_variant_needs_linux_or_macos",
     constraint_setting = ":editor_variant_support",
-    visibility = ["//visibility:private"],
+    visibility = ["//godot/private:__pkg__"],
 )
 
 config_setting(
@@ -177,27 +178,19 @@ string_flag(
     ],
 )
 
+# godot_app's implementation in //godot/private selects the signed or unsigned backend by it.
 config_setting(
     name = "macos_signing_unsigned",
     flag_values = {":macos_signing": "unsigned"},
-    visibility = ["//visibility:private"],
+    visibility = ["//godot/private:__pkg__"],
 )
 
 bzl_library(
     name = "app",
     srcs = ["app.bzl"],
     deps = [
-        "//godot/engine/private:components",
-        "//godot/engine/private:optimization",
-        "//godot/platforms/private:android",
-        "//godot/platforms/private:desktop",
-        "//godot/platforms/private:ios",
-        "//godot/platforms/private:macos_signing",
+        "//godot/private:app",
         "//godot/private:configured_app",
-        "//godot/private:run",
-        "//godot/private:versions",
-        "//godot/private/config:application",
-        "//godot/private/config:settings",
     ],
 )
 
