@@ -9,6 +9,7 @@ py_binary(
         "generator.py",
         "include_graph.py",
         "source_tree.py",
+        "tree.py",
     ],
     main = "generator.py",
 )
@@ -28,6 +29,7 @@ py_binary(
         "pin.py",
         "render.py",
         "source_tree.py",
+        "tree.py",
         "variants.py",
     ],
     main = "pin.py",
@@ -54,6 +56,8 @@ py_library(
         "render.py",
         "revision.py",
         "source_tree.py",
+        "tree.py",
+        "tree_link.py",
         "variants.py",
     ],
 )
@@ -68,5 +72,7 @@ exports_files([
     "module_graph.py",
     "render.py",
     "source_tree.py",
+    "tree.py",
+    "tree_link.py",
     "variants.py",
 ])

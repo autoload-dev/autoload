@@ -5,9 +5,9 @@ register classes.
 Godot's build profile disables classes through core/disabled_classes.gen.h, which
 core/object/class_db.h includes, so nearly every source would depend on it, and changing
 the profile would recompile them all. Only class registration evaluates it, through
-GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. Rendering therefore lets class_db.h
-include the profile only where GODOT_DECLARES_BUILD_PROFILE is defined, and defines it
-for the sources that can reach a registration. Elsewhere GD_IS_CLASS_ENABLED names an
+GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. An engine's tree therefore lets
+class_db.h include the profile only where GODOT_DECLARES_BUILD_PROFILE is defined
+(tree.py), and rendering defines it for the sources that can reach a registration. Elsewhere GD_IS_CLASS_ENABLED names an
 undeclared identifier, so a source the scan misses fails to compile instead of
 registering a disabled class.
 
@@ -22,8 +22,12 @@ from typing import Any
 
 try:
     from .include_graph import Generated, components
+    from .tree import CLASS_DB as _CLASS_DB
+    from .tree import HEADER
 except ImportError:
     from include_graph import Generated, components
+    from tree import CLASS_DB as _CLASS_DB
+    from tree import HEADER
 
 # ==== Profile files ===========================================================
 
@@ -65,27 +69,6 @@ def class_list_spec(
 
 # ==== Scoping =================================================================
 
-HEADER = "core/disabled_classes.gen.h"
-DEFINE = "GODOT_DECLARES_BUILD_PROFILE"
-_CLASS_DB = "core/object/class_db.h"
-
-_UPSTREAM = """\
-#define GD_IS_CLASS_ENABLED(m_class) is_class_enabled_v<m_class>
-
-#include "core/disabled_classes.gen.h" // IWYU pragma: keep.
-"""
-
-_SCOPED = f"""\
-// rules_godot gives the build profile only to the sources that register classes, so a
-// profile change recompiles those alone (tools/engine/build_profile.py).
-#ifdef {DEFINE}
-#define GD_IS_CLASS_ENABLED(m_class) is_class_enabled_v<m_class>
-#include "core/disabled_classes.gen.h" // IWYU pragma: keep.
-#else
-#define GD_IS_CLASS_ENABLED(m_class) GODOT_BUILD_PROFILE_NOT_DECLARED_FOR_##m_class
-#endif
-"""
-
 # What evaluates the profile, outside class_db.h, which defines it: the registration
 # macros, and the trait itself, whose primary template would silently count a disabled
 # class as enabled. A specialization, such as the profile's own, evaluates nothing, and
@@ -94,24 +77,6 @@ _REGISTRATION = re.compile(
     r"\bGDREGISTER_\w+|\bGD_IS_CLASS_ENABLED\b"
     r"|\bis_class_enabled_v\b|(?<!struct )\bis_class_enabled[ \t]*<"
 )
-
-
-def scope(root: Path) -> bool:
-    """
-    Rewrite class_db.h to include the build profile only where it is declared.
-
-    Return whether the tree has upstream's include, which a fork may have changed; then
-    every source keeps the profile.
-    """
-    path = root / _CLASS_DB
-    text = path.read_text() if path.is_file() else ""
-    if text.count(_SCOPED) == 1:
-        # Scoped already, for another runtime variant of the recipe.
-        return True
-    if text.count(_UPSTREAM) != 1:
-        return False
-    path.write_text(text.replace(_UPSTREAM, _SCOPED))
-    return True
 
 
 def _registers(root: Path, name: str, generated: Mapping[str, Generated]) -> bool:

@@ -136,7 +136,10 @@ bzl_library(
 bzl_library(
     name = "repositories",
     srcs = ["repositories.bzl"],
-    deps = [":source_repositories"],
+    deps = [
+        ":source_repositories",
+        ":tree_repository",
+    ],
 )
 
 bzl_library(
@@ -154,6 +157,12 @@ bzl_library(
         "//godot/private/config:settings",
         "//godot/private/engine:profiles",
     ],
+)
+
+bzl_library(
+    name = "tree_repository",
+    srcs = ["tree_repository.bzl"],
+    deps = ["//godot/private:patches"],
 )
 
 bzl_library(

@@ -264,7 +264,8 @@ editor; [pin the recipes](#pin-the-recipes) so that any host builds every slot.
 
 Hub components are named `editor_<platform>_<cpu>` and
 `runtime_<platform>_<cpu>[_<environment>]_<variant>`. The engine's other repositories are
-`@<name>_source`, its sources; `@<name>_<row>`, one source recipe per row, such as
+`@<name>_source`, its source archive; `@<name>_tree`, its sources extracted and patched
+once; `@<name>_<row>`, one source recipe per row, such as
 `@my_engine_macos_arm64_editor` or `@my_engine_ios_arm64_simulator_template_release`;
 `@<name>_source_android_shell`, the Android shell library built from source; and, for
 pinned binaries, `@<name>_editor_<platform>`, `@<name>_templates_<platform>`,
@@ -310,7 +311,11 @@ options that cut one game's runtime belong in that application's
 them.
 
 Patches use the host `patch` executable with fuzz disabled and strip level 1
-(`patch_strip`); every hunk must apply, to every recipe and to the Android shell library.
+(`patch_strip`); every hunk must apply. They apply once, to the engine's tree: the recipes
+and the Android shell library link its files hard instead of extracting the sources
+again, so a recipe's repository holds only what it generates, a few megabytes, and a
+change to rules_godot's rendering tools renders the recipes again without extracting
+anything.
 `build_options` accepts upstream options;
 options rules_godot controls are rejected: Godot's `platform`, `arch` and `target`, the iOS
 simulator switch, module selection, raw `profile` and `build_profile` paths (an

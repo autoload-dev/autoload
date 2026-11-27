@@ -114,6 +114,16 @@ py_test(
 )
 
 py_test(
+    name = "tree_test",
+    size = "small",
+    srcs = ["tree_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
     name = "variants_test",
     size = "small",
     srcs = ["variants_test.py"],
