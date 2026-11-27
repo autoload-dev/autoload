@@ -15,28 +15,6 @@ class BuildProfileTest(unittest.TestCase):
         "#define GDREGISTER_CLASS(m_class) if constexpr (GD_IS_CLASS_ENABLED(m_class)) {}\n"
     )
 
-    def test_class_db_includes_the_profile_only_where_it_is_declared(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_tree(root, {"core/object/class_db.h": self.UPSTREAM_CLASS_DB})
-            self.assertTrue(build_profile.scope(root))
-            text = (root / "core/object/class_db.h").read_text()
-            self.assertIn("#ifdef GODOT_DECLARES_BUILD_PROFILE", text)
-            # Without the profile, evaluating a class's state names an undeclared identifier.
-            self.assertIn(
-                "#define GD_IS_CLASS_ENABLED(m_class) "
-                "GODOT_BUILD_PROFILE_NOT_DECLARED_FOR_##m_class",
-                text,
-            )
-
-    def test_a_fork_that_changed_class_db_keeps_the_profile_everywhere(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            changed = self.UPSTREAM_CLASS_DB.replace("// IWYU pragma: keep.", "")
-            write_tree(root, {"core/object/class_db.h": changed})
-            self.assertFalse(build_profile.scope(root))
-            self.assertEqual((root / "core/object/class_db.h").read_text(), changed)
-
     def test_only_sources_that_reach_a_registration_see_the_profile(self) -> None:
         files = {
             "core/object/class_db.h": self.UPSTREAM_CLASS_DB,

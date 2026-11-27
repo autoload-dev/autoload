@@ -734,6 +734,30 @@ class Context:
             )
         return next(iter(owners), None)
 
+    @cached_property
+    def calls(self) -> tuple[Call, ...]:
+        """The parsed calls of every BUILD file of the workspace's modules, in file order."""
+        calls = dict.fromkeys(
+            call
+            for module in self.workspace.modules
+            for call in self.starlark.calls(module)
+        )
+        return tuple(
+            sorted(calls, key=lambda call: (call.location.path, call.location.line))
+        )
+
+    @cached_property
+    def target_names(self) -> Mapping[str, frozenset[str | None]]:
+        """
+        The names of the targets that each BUILD file declares by name; None stands for a
+        name that is no literal. Calls without a name, such as package(), declare none.
+        """
+        names: dict[str, set[str | None]] = defaultdict(set)
+        for call in self.calls:
+            if "name" in call.attrs:
+                names[call.location.path].add(call.literal_name)
+        return MappingProxyType({path: frozenset(found) for path, found in names.items()})
+
     def declarations(self, module: Module) -> tuple[Declaration, ...]:
         """Join parsed source calls and evaluated targets, retaining macro fan-out."""
         if module not in self._declarations:

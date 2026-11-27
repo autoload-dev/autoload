@@ -118,17 +118,17 @@ def _recipe_profiles(row, runtime_profiles):
     """The runtime profiles a recipe declares variants of: a runtime's, not an editor's."""
     return {} if row.build_target == "editor" else runtime_profiles
 
-def recipe_declarations(name, source, plan, common, lock_file = None, runtime_profiles = {}):
+def recipe_declarations(name, tree, plan, common, lock_file = None, runtime_profiles = {}):
     """
     Return the recipe and Android shell repositories of a plan_rows result.
 
     Args:
         name: The name plan_rows took.
-        source: Label of the `:source.json` descriptor of a godot_engine_source repository.
+        tree: Label of the `:tree.json` descriptor of the engine's godot_engine_tree
+            repository, which every recipe and the Android shell link.
         plan: A plan_rows result.
         common: The godot_engine_build attributes every recipe takes: enabled_modules,
-            default_modules, custom_modules, patches, patch_strip, renderers, build_options
-            and build_name.
+            default_modules, custom_modules, renderers, build_options and build_name.
         lock_file: Optional Label of the lock file that pins every recipe.
         runtime_profiles: The engine's registered runtime profiles: each label string's
             build options as JSON; each runtime recipe declares a runtime variant of each.
@@ -143,7 +143,7 @@ def recipe_declarations(name, source, plan, common, lock_file = None, runtime_pr
     declarations = [
         struct(rule = "godot_engine_build", attrs = dict(
             name = recipe.repository,
-            source = source,
+            tree = tree,
             platform = recipe.row.platform,
             cpu = recipe.row.cpu,
             build_target = recipe.row.build_target,
@@ -157,9 +157,7 @@ def recipe_declarations(name, source, plan, common, lock_file = None, runtime_pr
     if plan.android:
         declarations.append(struct(rule = "godot_android_shell", attrs = dict(
             name = name + "_source_android_shell",
-            source = source,
-            patches = common["patches"],
-            patch_strip = common["patch_strip"],
+            tree = tree,
         )))
     return declarations
 

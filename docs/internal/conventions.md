@@ -9,9 +9,9 @@ rule's name, applicability, automated coverage and limits; the
 and naming conventions mean. External repositories and source files are separate identities,
 not authored target declarations. Coverage that rests on Bazel's evaluation, such as that of
 RG002, [documented-targets-exist](#documented-targets-exist), RG007,
-[application-content](#application-content), RG012 and RG026, leaves out the registry test
-modules ([registry-test-module-in-bcr](#registry-test-module-in-bcr)), which the check does not
-load (see the [rule framework](#rule-framework)).
+[application-content-under-main](#application-content-under-main), RG012 and RG026, leaves out
+the registry test modules ([registry-test-module-in-bcr](#registry-test-module-in-bcr)), which
+the check does not load (see the [rule framework](#rule-framework)).
 
 RG002, RG007, RG012 and RG026 keep the numbered IDs they had before rules had names, as a
 temporary exception: the move to Bazel-native boundaries and symbolic macros removes or
@@ -24,12 +24,20 @@ reduces them, and they get names once that change has merged.
 | [no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [documented-targets-exist](#documented-targets-exist) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
-| [application-content](#application-content) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
+| [application-content-under-main](#application-content-under-main) | Application content lives under its project's `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
+| [application-tests-under-tests](#application-tests-under-tests) | An application's tests live in its `tests/` package | Required | The test calls of every application project's root package | Error |
 | [projects-at-fixed-places](#projects-at-fixed-places) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
 | [no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [engine-files-under-engines](#engine-files-under-engines) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
-| [addon-module-layout](#addon-module-layout) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
+| [addon-module-named-after-directory](#addon-module-named-after-directory) | The module `addons/<module>/` is named `autoload_<module>` | Required | The `module()` of every add-on module | Error |
+| [addon-modules-own-template-files](#addon-modules-own-template-files) | Add-on modules own the files of the generator's template | Required | Every add-on module and its registry templates | Error |
+| [registry-templates-have-their-module](#registry-templates-have-their-module) | Registry templates belong to an existing add-on module | Required | Every directory of `.bcr/addons/` | Error |
+| [no-stray-entries-in-addon-module-roots](#no-stray-entries-in-addon-module-roots) | An add-on module's root holds only its files, add-ons and the packages others load | Required | The root entries of every add-on module | Error |
+| [no-test-only-dependencies-in-addon-modules](#no-test-only-dependencies-in-addon-modules) | Add-on modules have no regular dependency that only their tests load | Required | The regular `bazel_dep`s of every add-on module | Error |
+| [addon-module-examples-define-edit-and-pack](#addon-module-examples-define-edit-and-pack) | Every add-on module has example projects, each defining `edit` and `pack` | Required | The example projects of every add-on module | Error; computed names are reported as not checked |
+| [unique-extension-names](#unique-extension-names) | No two add-on modules' extensions share a name | Required | Every `godot_cc_extension` call of the add-on modules | Error; computed names are reported as not checked |
+| [backends-under-native](#backends-under-native) | An add-on's backends live in its `native/backends/` | Required | Every `backends/` directory | Error |
 | [no-claude-md](#no-claude-md) | Agent instructions live in `AGENTS.md` | Required | Every `CLAUDE.md` in the working tree | Error |
 | [linked-skills](#linked-skills) | Skills live in `.agents/skills` and are linked for Claude Code | Required | Every skill in `.agents/skills/` and every entry of `.claude/skills/` | Error |
 | [project-named-after-directory](#project-named-after-directory) | A package's Godot project is named like its directory | Required | `godot_project` calls of every package that holds a `project.godot` | Error |
@@ -204,7 +212,7 @@ their production eligibility. This rule does not traverse a test's dependency cl
 classify separately declared suites and test data; those still follow the broader ownership
 policy. Loading-time flags do not establish configured resource membership or runtime behavior.
 
-## application-content
+## application-content-under-main
 
 **Application content lives under `main/` of its physical project.** The place of a project
 establishes ownership in every consumer, following
@@ -236,12 +244,6 @@ configuration use the case root's `main/`. Contexts for one operating system may
 their configuration and `main/`. Several resource paths of one physical source produce one
 finding.
 
-An application's tests, such as the exported demo's of an add-on module, live in its
-`tests/` package, never in the project's root package. The check reports every call in the
-root package of a project in `examples/` whose kind ends in `_test` or is a declared test
-operation ([RG007](#rg007)); `godot_metadata_sync`'s `update.test` is a consistency check of
-the project and stays beside it.
-
 There is no blanket exemption for regression projects, test-only project compositions or
 macro-generated projects. Test-only suites and helpers belong in a project's `tests/` scope;
 an add-on module's end-to-end test project in `e2e/addons/<module>/` is test-only as a whole,
@@ -253,6 +255,15 @@ Godot-resource subset. Missing role/membership facts and unresolved aggregate in
 reported as not checked. The check does not classify undeclared files or require an empty
 `main/` where no application-owned resources exist. No manually listed application roots or
 reusable-resource exemptions select applicability.
+
+## application-tests-under-tests
+
+**An application's tests live in its `tests/` package.** An application's tests, such as the
+exported demo's of an add-on module, never sit in the project's root package, which holds
+what the application ships. The check reports every call in the root package of a project in
+`examples/` whose kind ends in `_test` or is a declared test operation ([RG007](#rg007));
+`godot_metadata_sync`'s `update.test` is a consistency check of the project and stays beside
+it.
 
 ## projects-at-fixed-places
 
@@ -383,44 +394,67 @@ such as dependency patches in `third_party/`, and lock files at the root
 of the repository, such as `multitool.lock.json`, are outside this rule. The check does not
 read module or patch contents and does not prove that a recipe consumes them.
 
-## addon-module-layout
+## addon-module-named-after-directory
 
-**Add-on modules share one layout, and backends live in `native/backends/`.** This
-repository's add-on modules in `addons/<module>/` follow the layout of the add-on generator's
-template, so that the same tasks build, test and release every module and nothing but the
-root module's declaration lists it. Each module:
+**The module `addons/<module>/` is named `autoload_<module>`.** This repository's add-on
+modules follow the add-on generator's template, so that the same tasks build, test and
+release every module and nothing but the root module's declaration lists it; the root module
+names each by the module name its `MODULE.bazel` declares. The check reads that declaration.
 
-- is named `autoload_<module>` and owns the files of the generator's module template, such
-  as `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.bazelrc`, `.bazelignore`,
-  and its registry test module `bcr/smoke`;
-- holds in its root only those files and its lock file, its add-ons, `third_party/` with
-  what makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and
-  packages that a Starlark file outside them names by label, as `//<package>` in the module
-  or `@autoload_<module>//<package>` anywhere, such as Firebase's `config`. An add-on is a
-  directory whose BUILD file declares a target named like it, as the generator writes it.
-  The check thus rejects directories nothing uses rather than keep a list of allowed
-  packages;
-- owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`, `presubmit.yml`
-  and `source.template.json`. Templates in `.bcr/addons/` without their module are removed with
-  it. Their contents, like those of the module's other shared files, such as its `.bazelrc`,
-  are what the generator writes
-  ([shared-module-files-as-generated](#shared-module-files-as-generated));
-- has no regular dependency that only its `tests/` packages load from: every consumer
-  inherits it. CI builds the module from the root module, where its development
-  dependencies are not active, so tests that need such a library live in
-  `e2e/addons/<module>/`;
-- has at least one example project in the root module's
-  `examples/addons/<module>/`, the directory itself or one subdirectory per scenario, each
-  defining the targets `edit` and `pack`. An example project that builds an application
-  defines `app` too, which its release builds of `examples/releases.bzl` require;
-- gives each `godot_cc_extension` a name no other add-on module uses: on iOS it names the
-  extension's framework, and an application's frameworks share one directory.
+## addon-modules-own-template-files
 
-In every add-on, including those of `examples/`, a `backends/` directory sits in `native/`:
-the backends implement the platform-independent API beside them. The check reads the files
-and the parsed calls of the BUILD files without loading Bazel; it reports a stray `backends/`
-directory once. A target name that is no string literal, such as one an example project
-computes, is reported as not checked.
+**Add-on modules own the files of the generator's template.** Each module owns the files of
+the generator's module template, such as `MODULE.bazel`, `README.md`, `REPO.bazel`,
+`BUILD.bazel`, `.bazelrc`, `.bazelignore` and its registry test module `bcr/smoke`, and its
+registry templates in `.bcr/addons/<module>/`: `metadata.template.json`, `presubmit.yml` and
+`source.template.json`. The contents of those that every module shares are what the
+generator writes ([shared-module-files-as-generated](#shared-module-files-as-generated)).
+
+## registry-templates-have-their-module
+
+**Registry templates belong to an existing add-on module.** Templates in
+`.bcr/addons/<module>/` are removed with their module; the check reports a directory there
+whose module `addons/<module>/` does not exist.
+
+## no-stray-entries-in-addon-module-roots
+
+**An add-on module's root holds only its files, add-ons and the packages others load.** The
+root holds the template's files and its lock file, its add-ons, `third_party/` with what
+makes its dependencies usable, `tests/` for module-wide unit tests, `bcr/`, and packages that
+a Starlark file outside them names by label, as `//<package>` in the module or
+`@autoload_<module>//<package>` anywhere, such as Firebase's `config`. An add-on is a
+directory whose BUILD file declares a target named like it, as the generator writes it. The
+check thus rejects directories nothing uses rather than keep a list of allowed packages.
+
+## no-test-only-dependencies-in-addon-modules
+
+**Add-on modules have no regular dependency that only their tests load.** Every consumer
+inherits a module's regular dependencies. CI builds the module from the root module, where
+its development dependencies are not active, so tests that need such a library live in
+`e2e/addons/<module>/`. The check reports a regular `bazel_dep` whose repository only Starlark
+files in `tests/` directories name.
+
+## addon-module-examples-define-edit-and-pack
+
+**Every add-on module has example projects, each defining `edit` and `pack`.** A module has
+at least one example project in the root module's `examples/addons/<module>/`, the directory
+itself or one subdirectory per scenario. An example project that builds an application
+defines `app` too, which its release builds of `examples/releases.bzl` require. The check
+reads the parsed calls of the BUILD files; a target name that is no string literal is
+reported as not checked.
+
+## unique-extension-names
+
+**No two add-on modules' extensions share a name.** On iOS the name of a `godot_cc_extension`
+names the extension's framework, and an application's frameworks share one directory. The
+check reads the parsed calls of the add-on modules' BUILD files; a name that is no string
+literal is reported as not checked.
+
+## backends-under-native
+
+**An add-on's backends live in its `native/backends/`.** In every add-on, including those of
+`examples/`, a `backends/` directory sits in `native/`: the backends implement the
+platform-independent API beside them. The check reports a stray `backends/` directory once.
 
 ## no-claude-md
 
@@ -658,12 +692,16 @@ formats results and chooses the exit status.
 
 The [context](../../tools/conventions/context.py) exposes read-only evidence tools: the
 workspace files, documents, modules and projects, Starlark calls, Bazel rules and
-inspection, and the joins of them (`context.declarations`, `context.sources`). The Bazel tool,
+inspection, and the joins of them (`context.calls`, `context.target_names`,
+`context.declarations`, `context.sources`). The Bazel tool,
 which runs the modules' loading queries, is [bazel.py](../../tools/conventions/bazel.py);
 the context decodes its output. The public
 members of `context.py` carry their documentation. The documentation rules share
 [documents](../../tools/conventions/documents.py): which pages are internal and the local
-link destinations of a Markdown source.
+link destinations of a Markdown source. The add-on module rules share
+[addon_modules](../../tools/conventions/addon_modules.py): the add-on modules, the files of
+the generator's module template and the files of a module. A rule imports evidence modules
+only, never another rule's module.
 
 Tools load evidence lazily, cache it per tool/context instance and return immutable records and
 read-only attribute maps. Bazel evidence covers the loaded modules
