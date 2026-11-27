@@ -15,7 +15,7 @@ try:
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from build_profile import (  # type: ignore[no-redef]
+    from build_profile import (
         build_options,
         class_list_spec,
         read_profile,
@@ -143,7 +143,7 @@ def run(spec: dict[str, Any], inputs: dict[str, str], outputs: dict[str, str]) -
                 import methods
 
                 namespace = {"methods": methods}
-                # The inline builder is declared upstream engine source.
+                # The inline builder is upstream engine source, which the build trusts like the rest.
                 exec(compile(spec["inline"], spec["code_file"], "exec"), namespace)  # noqa: S102
                 function = namespace[spec["function"]]
             else:

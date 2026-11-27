@@ -672,6 +672,8 @@ godot_addon = macro(
     """,
     implementation = _addon_macro_impl,
     inherit_attrs = _godot_addon,
+    # This dictionary excludes inherited package_metadata; it defines no custom field.
+    # Remove the exclusion when macro inheritance stops exposing that built-in attribute.
     # buildifier: disable=attr-applicable_licenses
     attrs = {
         "directory": attr.string(

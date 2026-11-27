@@ -12,6 +12,10 @@ common --repo_contents_cache_gc_max_age=2d
 # Keep the Aspect tools' telemetry off.
 common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
 
+# Source files that no exports_files names stay private to their package, as in rules_python:
+# another package reaches a file only through an exports_files with an explicit visibility.
+common --incompatible_no_implicit_file_export
+
 build --incompatible_strict_action_env
 # Application settings must not create separate compiler/code-generator builds.
 build --incompatible_exclude_starlark_flags_from_exec_config

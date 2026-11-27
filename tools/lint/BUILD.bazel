@@ -5,7 +5,11 @@ load(":files.bzl", "FILE_TOOLS", "FILE_TOOL_PATHS")
 
 # The gate of the lint check (check.bzl): it fails with the reports of the linters that found
 # something in a target.
-exports_files(["check.sh"])
+# A private attribute, which Bazel checks against this package, where the aspect is defined.
+exports_files(
+    ["check.sh"],
+    visibility = ["//visibility:private"],
+)
 
 # The Python packages of the linters, from PyPI as @lint_pypi (MODULE.bazel). `bazel run
 # //tools/lint:requirements.update` relocks them; the resolution leaves out releases newer

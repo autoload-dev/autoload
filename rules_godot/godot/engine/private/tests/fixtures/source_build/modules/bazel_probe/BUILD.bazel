@@ -12,7 +12,11 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-exports_files([
-    "register_types.cpp",
-    "register_types.h",
-])
+# The source-built runtime fixture compiles the module's code.
+exports_files(
+    [
+        "register_types.cpp",
+        "register_types.h",
+    ],
+    visibility = ["//godot/engine/private/tests/fixtures/source_built_runtime:__pkg__"],
+)

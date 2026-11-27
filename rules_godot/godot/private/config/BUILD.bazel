@@ -15,12 +15,13 @@ load(
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-exports_files([
-    "application.bzl",
-    "native.bzl",
-    "settings.bzl",
-    "transitions.bzl",
-])
+# The modules, which the package's bzl_library targets list. Private to this package, also
+# in a consumer's build without --incompatible_no_implicit_file_export, which would make
+# the files its targets use public.
+exports_files(
+    glob(["*.bzl"]),
+    visibility = ["//visibility:private"],
+)
 
 # `platform(flags = ...)` of an export platform sets these values, also in consuming
 # modules. They remain implementation state, not supported independent CLI choices.

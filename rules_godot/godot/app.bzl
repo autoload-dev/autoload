@@ -507,6 +507,8 @@ godot_app = macro(
     # Common inheritance gives testonly Bazel's package default; other common
     # attributes are declared below or disabled.
     inherit_attrs = "common",
+    # This dictionary excludes inherited package_metadata; it defines no custom field.
+    # Remove the exclusion when macro inheritance stops exposing that built-in attribute.
     # buildifier: disable=attr-applicable_licenses
     attrs = {
         "expect_failure": None,

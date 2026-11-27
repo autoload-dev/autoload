@@ -28,7 +28,7 @@ from typing import Any, NamedTuple
 try:
     from .source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 except ImportError:
-    from source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES  # type: ignore[no-redef]
+    from source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 
 DIRECTORY = "_custom_modules"
 MANIFEST = "_custom_modules.json"
