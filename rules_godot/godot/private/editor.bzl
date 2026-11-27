@@ -1,11 +1,11 @@
 """Open a project in the Godot editor on an editor view of the checkout, and sync its metadata."""
 
-load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:execution.bzl", "RUN_EXEC_GROUPS", "exec_group_editor")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_kinds")
 load("//godot/private:paths.bzl", "with_extensions_for")
 load("//godot/private:run.bzl", "import_results", "launcher")
-load("//godot/private:sync.bzl", "declare_sync", "sync_launcher", "sync_rules")
+load("//godot/private:sync.bzl", "TEST_SIZE_ATTRS", "declare_sync", "sync_launcher", "sync_rules")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 
 visibility("//godot/...")
@@ -121,8 +121,16 @@ _godot_editor = rule(
     cfg = engine_transition,
 )
 
-def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engine = "", **kwargs):
-    """
+def _editor_macro_impl(name, visibility, project, deps, **kwargs):
+    _godot_editor(
+        name = name,
+        visibility = visibility,
+        view = declare_view(name, project, deps, kwargs, engine = kwargs.get("engine")),
+        **kwargs
+    )
+
+godot_editor = macro(
+    doc = """
     Open a project in the Godot editor with `bazel run`, editing the checkout.
 
     The editor view is a Godot project under `.godot-editor/<package>/<name>` in the
@@ -158,29 +166,24 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engi
     ```
 
     `bazel run :edit` opens the editor on `.godot-editor/<package>/edit`.
-
-    Args:
-        name: Name of the executable target.
-        project: The godot_project whose configuration the editor view uses.
-        deps: What the editor view lists for editing: godot_resources and add-ons,
-            as an IDE project view lists targets.
-        env: Environment variables set for the editor, besides the user's own.
-        write_sidecars: Write the sidecars the checkout lacks before the editor
-            opens, as godot_metadata_sync does. Without it, the run names them and Godot
-            writes its own when it finds the files, reimporting assets.
-        engine: The engine the operation uses, by engine name; empty keeps the build's
-            engine, the default one or the one --@autoload_rules_godot//godot:engine
-            names.
-        **kwargs: Common attributes, such as tags and visibility.
-    """
-    _godot_editor(
-        name = name,
-        view = declare_view(name, project, deps, kwargs, engine = engine),
-        env = env,
-        write_sidecars = write_sidecars,
-        engine = engine,
-        **kwargs
-    )
+    """,
+    implementation = _editor_macro_impl,
+    inherit_attrs = _godot_editor,
+    attrs = {
+        "view": None,
+        "project": attr.label(
+            doc = "The godot_project whose configuration the editor view uses.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "deps": attr.label_list(
+            doc = """
+            What the editor view lists for editing: godot_resources and add-ons, as an IDE
+            project view lists targets.
+            """,
+        ),
+    },
+)
 
 def _metadata_sync_impl(ctx, test):
     project = ctx.attr.view[GodotViewInfo]
@@ -213,8 +216,17 @@ _godot_metadata_sync_test = rule(**_METADATA_SYNC.test)
 
 _METADATA_SYNC_RULES = struct(writer = _godot_metadata_sync, test = _godot_metadata_sync_test)
 
-def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, engine = "", **kwargs):
-    """
+def _metadata_sync_macro_impl(name, visibility, project, deps, size, timeout, engine, **kwargs):
+    declare_sync(
+        _METADATA_SYNC_RULES,
+        name,
+        {"view": declare_view(name, project, deps, kwargs, engine = engine), "engine": engine},
+        {"size": size or None, "timeout": timeout or None},
+        kwargs | {"visibility": visibility},
+    )
+
+godot_metadata_sync = macro(
+    doc = """
     Write the metadata Godot keeps beside a project's checkout files, and test for it.
 
     Godot keeps a script's or shader's UID in a `.uid` file beside it and an
@@ -247,21 +259,20 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, e
     )
     ```
 
-    Args:
-        name: Name of the writer; the test is `<name>.test`.
-        project: The godot_project whose configuration the files are read under.
-        deps: The godot_resources whose checkout files get their metadata.
-        size: Bazel test size of `<name>.test`; Bazel's default applies when unset.
-        timeout: Bazel test timeout of `<name>.test`; derived from size when unset.
-        engine: The engine the operation uses, by engine name; empty keeps the build's
-            engine, the default one or the one --@autoload_rules_godot//godot:engine
-            names.
-        **kwargs: Common attributes of both targets, such as tags and visibility.
-    """
-    declare_sync(
-        _METADATA_SYNC_RULES,
-        name,
-        {"view": declare_view(name, project, deps, kwargs, engine = engine), "engine": engine},
-        {"size": size, "timeout": timeout},
-        kwargs,
-    )
+    The macro declares the writer `<name>`, its test `<name>.test` and `<name>.view`, the
+    project the two read.
+    """,
+    implementation = _metadata_sync_macro_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "project": attr.label(
+            doc = "The godot_project whose configuration the files are read under.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "deps": attr.label_list(
+            doc = "The godot_resources whose checkout files get their metadata.",
+        ),
+        "engine": attr.string(doc = ENGINE_DOC),
+    } | TEST_SIZE_ATTRS,
+)

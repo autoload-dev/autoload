@@ -5,7 +5,10 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 load("//godot/platforms/private:android.bzl", "godot_android_runtime")
 
-package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests:__subpackages__"],
+)
 
 godot_android_runtime(
     name = "android_release",

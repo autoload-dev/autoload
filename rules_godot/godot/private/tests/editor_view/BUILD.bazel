@@ -5,6 +5,8 @@ load(":editor_view_tests.bzl", "editor_view_test_suite")
 load(":metadata_sync_tests.bzl", "metadata_sync_test_suite")
 load(":runtime_profile_tests.bzl", "runtime_profile_test_suite")
 
+package(default_testonly = True)
+
 _EDITED = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view:"
 
 # Run test: the editor view opens headless in a copy of the fixture's checkout, where its

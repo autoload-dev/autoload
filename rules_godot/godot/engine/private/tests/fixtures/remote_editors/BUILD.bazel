@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_editor_component")
 
+package(default_testonly = True)
+
 # Editors of the stand-in remote execution platforms: tests may run there, bazel run
 # launches never do. execution_test.bzl picks the one whose operating system differs from
 # the host.

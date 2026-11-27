@@ -12,6 +12,8 @@ load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _SDK = "@rules_android//toolchains/android_sdk:toolchain_type"
 _ANDROID = "@rules_android//toolchains/android:toolchain_type"
 _CC = "@bazel_tools//tools/cpp:toolchain_type"

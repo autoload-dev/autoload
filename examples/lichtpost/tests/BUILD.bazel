@@ -59,7 +59,6 @@ gdunit_test(
     size = "small",
     project = "//examples/lichtpost",
     suites = [":suites"],
-    tags = ["godot_process"],
 )
 
 godot_resources(

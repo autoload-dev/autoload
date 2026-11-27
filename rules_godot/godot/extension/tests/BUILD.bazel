@@ -14,6 +14,8 @@ load(":godot_cpp_bindings_tests.bzl", "godot_cpp_bindings_test_suite")
 load(":run_staging_tests.bzl", "run_staging_test_suite")
 load(":source_features_tests.bzl", "source_features_test_suite")
 
+package(default_testonly = True)
+
 godot_cc_extension(
     name = "automatic_fixture",
     srcs = ["static_fixture.cc"],

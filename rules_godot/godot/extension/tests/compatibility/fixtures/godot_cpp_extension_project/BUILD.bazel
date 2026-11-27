@@ -3,7 +3,10 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 
 # A pack whose main scene loads a godot-cpp extension built against the 4.7 extension API
 # and an imported texture, then checks the running engine's version.
-package(default_visibility = ["//godot/extension/tests/compatibility:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/extension/tests/compatibility:__pkg__"],
+)
 
 godot_cc_extension(
     name = "extension",

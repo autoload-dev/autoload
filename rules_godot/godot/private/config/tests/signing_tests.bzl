@@ -6,6 +6,8 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot:providers.bzl", "GodotDesktopAppInfo")
 
+visibility("private")
+
 _MODE = str(Label("//godot:macos_signing"))
 
 _MACOS_HOST = {

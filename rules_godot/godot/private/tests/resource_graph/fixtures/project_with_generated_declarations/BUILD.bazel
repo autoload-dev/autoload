@@ -5,7 +5,10 @@ load(":godot_files.bzl", "godot_package_resources")
 # A project whose sources come from the macro that godot_build_files generates, with the
 # runtime references declared beside it, and its resource graph that requires declared
 # edges.
-package(default_visibility = ["//godot/private/tests/resource_graph:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/resource_graph:__pkg__"],
+)
 
 godot_package_resources(
     name = "sources",

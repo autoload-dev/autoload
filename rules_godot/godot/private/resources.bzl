@@ -19,7 +19,11 @@ load(
 load("//godot/private:paths.bzl", "collect_resource_paths", "godot_ignore_markers", "godot_ignored", "mapped_paths", "merge_resource_paths", "sidecar_source", "validate_namespace", "validate_resource_path")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 
-visibility(["//godot", "//godot/private/config"])
+visibility([
+    "//godot",
+    "//godot/private/config",
+    "//godot/testing",
+])
 
 # ==== Target classification ===================================================
 

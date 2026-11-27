@@ -4,6 +4,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 
+visibility("private")
+
 _CcFeaturesInfo = provider(doc = "Requested Bazel features found on the real C++ dependency graph.", fields = ["features"])
 
 def _cc_features_impl(_target, ctx):

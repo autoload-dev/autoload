@@ -25,7 +25,6 @@ godot_test(
     ],
     main = "main/direct.gd",
     project = ":script_run",
-    tags = ["godot_process"],
     deps = [
         ":direct",
         ":icon",

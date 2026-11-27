@@ -9,6 +9,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 def _test_ios_bridge_forwards_payload_providers(name):
     analysis_test(
         name = name,

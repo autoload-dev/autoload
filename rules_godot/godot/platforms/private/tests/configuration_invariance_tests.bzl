@@ -24,6 +24,8 @@ load(
 )
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "MOBILE_FIXTURE", "OWN_TOOLCHAINS")
 
+visibility("private")
+
 _FORMAT = str(Label("//godot:android_format"))
 _SIGNING = str(Label("//godot:macos_signing"))
 

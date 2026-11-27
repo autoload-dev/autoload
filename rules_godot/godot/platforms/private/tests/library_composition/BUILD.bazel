@@ -1,8 +1,10 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//godot:app.bzl", "godot_configured_app")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
-load("//godot/private:configured_app.bzl", "godot_configured_app")
 load(":library_composition_tests.bzl", "library_composition_test_suite")
+
+package(default_testonly = True)
 
 # How platform libraries reach Android and iOS applications through a project's add-on, an
 # extension or the application, as each export configuration packages them.
@@ -59,7 +61,7 @@ configured_outputs(
 # the project's add-on libraries reach its dex files and manifest.
 py_test(
     name = "android_multi_abi_bundles_carry_platform_libraries_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_bundles_test.py"],
     args = _BUNDLE_TOOL_ARGS + [
         "--app=$(rootpath :android_multi_abi_bundles_carry_platform_libraries_test_app)",
@@ -79,12 +81,14 @@ godot_configured_app(
     name = "android_release_bundle_symbols_match_stripped_extension_test_app",
     android_format = "aab",
     app = _ANDROID_APPS + "app",
-    # ANDROID_RELEASE of //godot/private:configured_app.bzl, which a BUILD file cannot unpack.
+    # The native settings of a release whose debug symbols ship apart, as the repository's
+    # android-release configuration sets them.
     compilation_mode = "opt",
     copts = [
         "-g",
         "-fdebug-compilation-dir=.",
     ],
+    debug_symbols = _ANDROID_APPS + "app.debug_symbols",
     platform = "//godot/platforms:android_arm64",
     strip = "always",
     tags = ["manual"],
@@ -94,7 +98,7 @@ godot_configured_app(
 # symbols hold the same library with DWARF.
 py_test(
     name = "android_release_bundle_symbols_match_stripped_extension_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_debug_symbols_test.py"],
     args = _BUNDLE_TOOL_ARGS + [
         "--app=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_app)",

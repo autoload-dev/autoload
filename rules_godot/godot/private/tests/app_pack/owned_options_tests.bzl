@@ -5,6 +5,8 @@ load("//godot/private:export_options.bzl", "resolve_export_options")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":failures.bzl", "failure_test")
 
+visibility("private")
+
 _APPLICATION_CONTEXT = {
     "application_id": "org.example.policy",
     "macos_minimum_os_version": "11.0",

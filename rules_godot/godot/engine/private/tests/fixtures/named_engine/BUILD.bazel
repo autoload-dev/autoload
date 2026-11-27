@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # The engine "custom": a Linux x86_64 editor and release runtime that fill slots only in
 # builds with --@autoload_rules_godot//godot:engine=custom, whatever their registration order.
 godot_editor_component(

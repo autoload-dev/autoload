@@ -10,6 +10,8 @@ action's execution requirements, so these tests check the second condition.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 
+visibility("private")
+
 _ANALYSIS = "//godot/engine/private/tests/define_analysis:analysis"
 
 def _action(target, mnemonic):

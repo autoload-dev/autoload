@@ -5,6 +5,7 @@ load(
     "string_flag",
     "string_setting",
 )
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 load(
     ":settings.bzl",
     "CPU_CONSTRAINTS",
@@ -27,7 +28,7 @@ exports_files([
     string_flag(
         name = name,
         build_setting_default = default,
-        visibility = ["//visibility:public"],
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
     for name, default in {
         "operating_system": "",
@@ -41,7 +42,7 @@ exports_files([
 string_setting(
     name = "application_context",
     build_setting_default = "{}",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # A macOS application's edge records the build's minimum; the project context restores it.
@@ -61,7 +62,7 @@ bool_setting(
         name = name,
         constraint_values = condition.constraint_values,
         flag_values = condition.flag_values,
-        visibility = ["//visibility:public"],
+        visibility = NOT_ACTUALLY_PUBLIC,
     )
     for name, condition in DISPATCH_CONDITIONS.items()
 ]
@@ -108,7 +109,7 @@ bool_setting(
 # and CPU: these toolchains carry nothing and only choose that execution platform.
 toolchain_type(
     name = "target_execution_toolchain_type",
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 [

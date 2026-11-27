@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 # A project with two imported SVG assets, a script and a main scene, exported with
 # an explicit script export mode.
-package(default_visibility = ["//godot:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot:__subpackages__"],
+)
 
 exports_files(["project.godot"])
 

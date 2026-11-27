@@ -87,7 +87,11 @@ Replace `//path/to:target` with your test label.
 The add-on module [`autoload_gdunit`](../../../addons/gdunit/README.md) provides
 `gdunit_test`, a `godot_test` that runs [GdUnit4](https://github.com/godot-gdunit-labs/gdUnit4)
 suites. Its README describes how to depend on it, what a suite is, how the test passes and
-fails and how to shard and filter suites.
+fails and how to shard and filter suites. It builds on `adapter_test` of
+`@autoload_rules_godot//godot/testing:adapter.bzl`, which a module for another test
+framework can use the same way: the framework's main script, its test adapter, receives the
+list of cases and rules_godot's selection of the cases of a shard and `--test_filter`.
+`adapter_test` is public but may still change; pin the rules_godot release you build on.
 
 Bazel owns test-result caching and selected configuration matrices. Declare
 separate test targets, with a project of their own where the configuration differs, and choose toolchains and target platforms using normal Bazel

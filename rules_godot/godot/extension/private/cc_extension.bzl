@@ -6,6 +6,7 @@ and the shared library linked from it.
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE")
 
 visibility(["//godot/extension/..."])
 
@@ -13,7 +14,7 @@ visibility(["//godot/extension/..."])
 _RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
 
 # Attributes of the link alone; the cc_library has its own linkstatic.
-_LINK_ATTRS = ["dynamic_deps", "env", "link_extra_lib", "linkstatic", "malloc", "reexport_deps", "stamp"]
+_LINK_ATTRS = ["linkstatic"]
 
 def native_archive(name, srcs, hdrs, deps, entry_symbol, tags, kwargs):
     """Declare the cc_library of the extension's C++ code, which iOS links into the application."""
@@ -34,7 +35,7 @@ def native_archive(name, srcs, hdrs, deps, entry_symbol, tags, kwargs):
         deps = deps,
         alwayslink = True,
         linkstatic = True,
-        visibility = ["//visibility:private"],
+        visibility = CALLER_PACKAGE,
         # The extension builds it in its own configuration, without --strip.
         tags = tags + ["manual"],
         **archive_kwargs
@@ -43,7 +44,7 @@ def native_archive(name, srcs, hdrs, deps, entry_symbol, tags, kwargs):
 def generated_attrs(attrs):
     """The attributes of a private target godot_cc_extension generates from its own attrs."""
     return {key: attrs[key] for key in ["testonly", "target_compatible_with"] if key in attrs} | {
-        "visibility": ["//visibility:private"],
+        "visibility": CALLER_PACKAGE,
         "tags": attrs["tags"] + ["manual"],
     }
 
@@ -63,10 +64,9 @@ def shared_library(name, archive, entry_symbol, attrs):
         The name of the shared library target.
     """
 
-    # Native filename exception: Godot descriptors and existing packaged libraries
-    # use lib<name>_native.so. Remove when rules_cc separates the label from the
-    # shared-library filename without changing descriptor/resource identities.
-    shared = "lib" + name + "_native.so"
+    # A cc_binary names its output after the target. The part after the slash keeps the
+    # delivered file lib<name>_native.so, while the target stays in the macro's namespace.
+    shared = name + ".shared/lib" + name + "_native.so"
 
     # The shared library also takes the attributes common to all rules and the link's own.
     generated = generated_attrs(attrs)

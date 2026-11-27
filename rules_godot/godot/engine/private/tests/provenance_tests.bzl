@@ -5,6 +5,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _PROBE = "//godot/engine/private/tests:probe"
 _SOURCE_BUILT_SET = "//godot/engine/private/tests/fixtures/source_built_ios"
 

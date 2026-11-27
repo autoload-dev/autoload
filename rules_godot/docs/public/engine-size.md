@@ -173,7 +173,9 @@ godot_runtime_profile(
 )
 ```
 
-`bazel run //path/to:update_profile` writes `runtime.gdbuild` beside the target; commit it.
+`profile` names the file in the package, so create it empty before the first run
+(`touch path/to/runtime.gdbuild`). `bazel run //path/to:update_profile` then writes the
+detection into it; commit it.
 It is one file, as Godot writes it: `disabled_classes` and `disabled_build_options`, which
 holds the build options and the module switches the detection turns off, such as
 `disable_physics_3d` and `module_openxr_enabled`. Register it in `MODULE.bazel` with a
@@ -182,8 +184,7 @@ holds the build options and the module switches the detection turns off, such as
 The profile also turns off the drivers the detection finds unused; they must agree with the
 engine's `renderers` from [step 2](#2-choose-the-renderers).
 
-`bazel test //path/to:update_profile.test` fails while the file is missing or differs from
-the detection, and names the command that writes it, so the profile follows the project.
+`bazel test //path/to:update_profile.test` fails while the file differs from the detection, and names the command that writes it, so the profile follows the project.
 
 The profile is the detection minus two sets of classes. The first is a list of classes the
 engine creates itself, such as `Image`, `Script` and `Shader`, which Godot's detection

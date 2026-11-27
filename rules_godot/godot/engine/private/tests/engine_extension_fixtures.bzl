@@ -6,11 +6,10 @@ those of engine selection and binaries, engine_source_recipes_tests.bzl those bu
 source.
 """
 
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _ENGINE = {
     "name": "godot",

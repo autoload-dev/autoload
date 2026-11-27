@@ -18,6 +18,8 @@ load(":expected_failures.bzl", "failure_test")
 load(":manifests.bzl", "manifest_content")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_addons"
 _PROJECT = _FIXTURE
 _CONTEXT = str(Label("//godot/private:project_setting"))

@@ -3,6 +3,8 @@
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:view.bzl", "GodotViewInfo")
 
+visibility("private")
+
 _VARIANT = str(Label("//godot:variant"))
 
 def _variant_transition_impl(_settings, attr):

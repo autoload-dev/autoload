@@ -1,6 +1,8 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 load("//godot/engine/private/tests:engines.bzl", "cc_info_stand_in")
 
+package(default_testonly = True)
+
 # An iOS runtime payload needs CcInfo, as an XCFramework import supplies; it is never linked.
 cc_info_stand_in(
     name = "ios",

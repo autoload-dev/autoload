@@ -13,6 +13,8 @@ load("//godot/platforms/private:maven.bzl", "MavenCoordinatesInfo", "maven_coord
 load(":action_graph.bzl", "mentions", "reached", "reached_actions", "reads", "written_contents")
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "MOBILE_FIXTURE")
 
+visibility("private")
+
 _GRAPH = "godot/private/engine/android/maven_graph_install.json"
 _ACTIVITY = "godot/private/engine/android/godot_4_7/GodotApp.java"
 

@@ -4,10 +4,10 @@ that build from source.
 """
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
 load(":engine_extension_fixtures.bzl", "extension")
+
+visibility("private")
 
 _engine = extension.engine
 _source = extension.source

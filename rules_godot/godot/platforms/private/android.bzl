@@ -3,7 +3,8 @@ Godot Android applications built by rules_android, without a nested Gradle build
 """
 
 load("@rules_android//rules:rules.bzl", "aar_import", "android_application", "android_binary", "android_library")
-load("//godot/private:macros.bzl", "common_kwargs", "filegroup_kwargs")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs", "filegroup_kwargs")
 load("//godot/private/engine:profiles.bzl", "ANDROID_SHELL_DEPS")
 load(":android_bootstrap.bzl", "godot_android_bootstrap")
 load(":android_jni_libraries.bzl", "godot_android_engine_aar", "godot_android_jni_libraries")
@@ -25,10 +26,32 @@ _ACTIVITY_DEPS = [
     Label("@maven//:androidx_core_core_splashscreen"),
 ]
 
-_PRIVATE = ["//visibility:private"]
+def _android_runtime_impl(name, visibility, shell, engine_library, **kwargs):
+    # Unset common attributes stay unset on rules_android's aar_import.
+    kwargs = {key: value for key, value in kwargs.items() if value != None}
+    aar = shell
+    if engine_library != None:
+        # The shell's own classes, for plugins to compile against without the engine.
+        aar_import(
+            name = name + ".shell",
+            aar = shell,
+            deps = _SHELL_DEPS,
+            visibility = CALLER_PACKAGE,
+            **common_kwargs(kwargs)
+        )
+        godot_android_engine_aar(
+            name = name + ".engine_aar",
+            aar = shell,
+            engine_library = engine_library,
+            shell_classes = ":" + name + ".shell",
+            visibility = CALLER_PACKAGE,
+            **common_kwargs(kwargs)
+        )
+        aar = ":" + name + ".engine_aar"
+    aar_import(name = name, aar = aar, deps = _SHELL_DEPS, visibility = visibility, **kwargs)
 
-def godot_android_runtime(name, shell, engine_library = None, **kwargs):
-    """
+godot_android_runtime = macro(
+    doc = """
     Join Godot's Android shell library with an engine library into one aar_import runtime.
 
     `shell` is an Android shell AAR file, such as the one of an official release or the
@@ -40,8 +63,7 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     over the CPU. Delivery copies are stripped as Bazel's `--strip` asks; the
     `<name>.debug_symbols` of applications with this runtime contain them unstripped.
     The ruleset supplies the shell library's Maven dependencies. Use the result as the
-    payload of a godot_runtime_component for an Android slot. This macro returns no
-    value.
+    payload of a godot_runtime_component for an Android slot.
 
     Example:
     ```starlark
@@ -51,33 +73,20 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
         engine_library = "@godot_android_arm64_release//:libgodot_android.so",
     )
     ```
-
-    Args:
-        name: Public aar_import target name.
-        shell: Godot's Android shell .aar file.
-        engine_library: Optional engine library .so target of the current platform slice.
-        **kwargs: Remaining aar_import attributes, such as tags and visibility.
-    """
-    aar = shell
-    if engine_library:
-        # The shell's own classes, for plugins to compile against without the engine.
-        aar_import(
-            name = name + ".shell",
-            aar = shell,
-            deps = _SHELL_DEPS,
-            visibility = _PRIVATE,
-            **common_kwargs(kwargs)
-        )
-        godot_android_engine_aar(
-            name = name + ".engine_aar",
-            aar = shell,
-            engine_library = engine_library,
-            shell_classes = ":" + name + ".shell",
-            visibility = _PRIVATE,
-            **common_kwargs(kwargs)
-        )
-        aar = ":" + name + ".engine_aar"
-    aar_import(name = name, aar = aar, deps = _SHELL_DEPS, **kwargs)
+    """,
+    implementation = _android_runtime_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "shell": attr.label(
+            doc = "Godot's Android shell .aar file.",
+            allow_single_file = [".aar"],
+            mandatory = True,
+        ),
+        "engine_library": attr.label(
+            doc = "Optional engine library .so target of the current platform slice.",
+        ),
+    },
+)
 
 def _application_runtime(name, runtime, common):
     """The fixed runtime, or one that resolves the runtime component per platform slice."""
@@ -85,7 +94,7 @@ def _application_runtime(name, runtime, common):
         return runtime
 
     # Resolve the runtime component inside each platform slice of the Android split.
-    _runtime_bridge_android(name = name + ".godot_runtime", visibility = _PRIVATE, **common)
+    _runtime_bridge_android(name = name + ".godot_runtime", visibility = CALLER_PACKAGE, **common)
     return ":" + name + ".godot_runtime"
 
 def _application_libraries(name, pack, runtime, deps, common):
@@ -109,13 +118,13 @@ def _application_libraries(name, pack, runtime, deps, common):
         name = name + ".godot_jni_libraries",
         pack = pack,
         runtime = runtime,
-        visibility = _PRIVATE,
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_platform_libraries(
         name = name + ".godot_platform_libraries",
         deps = [pack],
-        visibility = _PRIVATE,
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_manifest_order(
@@ -123,7 +132,7 @@ def _application_libraries(name, pack, runtime, deps, common):
         leading = _ACTIVITY_DEPS + [runtime],
         pack = pack,
         application_deps = deps,
-        visibility = _PRIVATE,
+        visibility = CALLER_PACKAGE,
         **common
     )
     jni = ":" + name + ".godot_jni_libraries"
@@ -163,7 +172,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
         manifest_values = manifest_values,
         manifest_override = manifest,
         resource_overrides = resource_files,
-        visibility = _PRIVATE,
+        visibility = CALLER_PACKAGE,
         **common
     )
     bootstrap = ":" + name + ".godot_bootstrap"
@@ -172,7 +181,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
             name = name + ".godot_bootstrap." + group,
             srcs = [bootstrap],
             output_group = group,
-            visibility = _PRIVATE,
+            visibility = CALLER_PACKAGE,
             **filegroup_kwargs(common)
         )
     shell_library = []
@@ -183,7 +192,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
             manifest = bootstrap + ".shell_manifest",
             exports_manifest = 1,
             custom_package = "com.godot.game.shell",
-            visibility = _PRIVATE,
+            visibility = CALLER_PACKAGE,
             **common
         )
         shell_library = [bootstrap + ".shell_library"]
@@ -203,7 +212,7 @@ def _application_debug_symbols(name, jni_libraries, runtime, visibility, common)
         jni_libraries = jni_libraries,
         runtime = runtime,
         output_name = name.rsplit("/", 1)[-1] + "_debug_symbols.zip",
-        visibility = _PRIVATE,
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_debug_symbols(
@@ -213,19 +222,81 @@ def _application_debug_symbols(name, jni_libraries, runtime, visibility, common)
         **common
     )
 
-def godot_android_application(
+def _android_application_impl(
         name,
+        visibility,
         pack,
         application_id,
-        runtime = None,
-        deps = [],
-        manifest_values = {},
-        manifest = None,
-        bundle = False,
-        engine_settings = {},
-        visibility = None,
+        runtime,
+        deps,
+        manifest_values,
+        manifest,
+        bundle,
+        resource_files,
+        engine,
+        engine_optimize,
+        engine_lto,
+        engine_vfe,
+        build_profile,
         **kwargs):
-    """
+    # Unset common attributes stay unset on rules_android's legacy macros.
+    kwargs = {key: value for key, value in kwargs.items() if value != None}
+    common = common_kwargs(kwargs)
+    engine_settings = dict(
+        engine = engine,
+        engine_optimize = engine_optimize,
+        engine_lto = engine_lto,
+        engine_vfe = engine_vfe,
+        build_profile = build_profile,
+    )
+    runtime = _application_runtime(name, runtime, common | engine_settings)
+    libraries = _application_libraries(name, pack, runtime, deps, common)
+    bootstrap = _application_bootstrap(
+        name,
+        pack,
+        deps,
+        manifest = manifest,
+        manifest_values = manifest_values,
+        resource_files = resource_files,
+        common = common,
+    )
+    _application_debug_symbols(name, libraries.jni_libraries, runtime, visibility, common)
+    native_app = name + ".native_apk"
+    if bundle:
+        # A bundle config makes android_application build an .aab from an
+        # android_binary base module named <name>_base.
+        native_app = name + ".native_bundle"
+        kwargs["bundle_config_file"] = Label("//godot/platforms:android_bundle_config.pb.json")
+    (android_application if bundle else android_binary)(
+        name = native_app,
+        srcs = [bootstrap.java],
+        manifest = bootstrap.manifest,
+        # The merger treats applicationId as its package override; the application's
+        # values fill the placeholders of every merged manifest.
+        manifest_values = {"applicationId": application_id} | manifest_values,
+        custom_package = "com.godot.game",
+        assets = [bootstrap.assets],
+        assets_dir = bootstrap.assets_dir,
+        # The pack's launcher icons replace the Android shell library's defaults.
+        resource_files = [bootstrap.resources] + resource_files,
+        deps = libraries.deps + _ACTIVITY_DEPS + bootstrap.shell_library + deps,
+        # Native libraries stay uncompressed so the device need not extract
+        # them, as android:extractNativeLibs="false" in Godot's export requires.
+        nocompress_extensions = ["pck", "so"],
+        visibility = CALLER_PACKAGE,
+        **kwargs
+    )
+    (godot_android_app_bundle if bundle else godot_android_apk)(
+        name = name,
+        app = ":" + native_app,
+        application_id = application_id,
+        toolchains = kwargs.get("toolchains", []),
+        visibility = visibility,
+        **common
+    )
+
+godot_android_application = macro(
+    doc = """
     Build an APK or an Android App Bundle using rules_android.
 
     The runtime is the Android runtime component the runtime toolchain resolves for
@@ -283,82 +354,56 @@ def godot_android_application(
     every packaged ABI, the layout Play Console and crash reporters take. The
     application packages these libraries stripped as Bazel's `--strip` asks: always,
     or by default in fastbuild only.
-
-    Example:
-        godot_android_application(
-            name = "app",
-            pack = ":pack",
-            application_id = "org.example.game",
-        )
-
-    See [Android prerequisites](../../platforms.md#android).
-
-    Args:
-        name: APK target name; also the label when neither the export option
-            package/name nor the project's config/name sets one.
-        pack: Godot PCK target with its project extension providers.
-        runtime: Optional fixed Android runtime that replaces the resolved runtime
-            component; ruleset fixtures use it to isolate packaging.
-        application_id: Android application identifier.
-        deps: Additional platform libraries of the application itself; the project's
-            platform libraries come through the pack.
-        manifest: Optional application manifest, which becomes the main manifest; the
-            shell manifest merges below it, as `godot_app.android_manifest` documents.
-        manifest_values: Values for the placeholders of the application's and its
-            platform libraries' manifests, as `godot_app.android_manifest_values`
-            documents; keys the merger treats as overrides fail analysis naming their
-            owner. The applicationId override is added here.
-        bundle: Build an unsigned Android App Bundle instead of an APK; it keeps the
-            PCK uncompressed in the APKs Google Play generates from the bundle.
-        engine_settings: The application's engine, engine_optimize, engine_lto, engine_vfe and build_profile,
-            for the runtime component it resolves.
-        visibility: Visibility of the APK or bundle target.
-        **kwargs: Remaining android_binary attributes, including signing options.
-    """
-    common = common_kwargs(kwargs)
-    runtime = _application_runtime(name, runtime, common | engine_settings)
-    libraries = _application_libraries(name, pack, runtime, deps, common)
-    resource_files = kwargs.pop("resource_files", [])
-    bootstrap = _application_bootstrap(
-        name,
-        pack,
-        deps,
-        manifest = manifest,
-        manifest_values = manifest_values,
-        resource_files = resource_files,
-        common = common,
-    )
-    _application_debug_symbols(name, libraries.jni_libraries, runtime, visibility, common)
-    native_app = name + ".native_apk"
-    if bundle:
-        # A bundle config makes android_application build an .aab from an
-        # android_binary base module named <name>_base.
-        native_app = name + ".native_bundle"
-        kwargs["bundle_config_file"] = Label("//godot/platforms:android_bundle_config.pb.json")
-    (android_application if bundle else android_binary)(
-        name = native_app,
-        srcs = [bootstrap.java],
-        manifest = bootstrap.manifest,
-        # The merger treats applicationId as its package override; the application's
-        # values fill the placeholders of every merged manifest.
-        manifest_values = {"applicationId": application_id} | manifest_values,
-        custom_package = "com.godot.game",
-        assets = [bootstrap.assets],
-        assets_dir = bootstrap.assets_dir,
-        # The pack's launcher icons replace the Android shell library's defaults.
-        resource_files = [bootstrap.resources] + resource_files,
-        deps = libraries.deps + _ACTIVITY_DEPS + bootstrap.shell_library + deps,
-        # Native libraries stay uncompressed so the device need not extract
-        # them, as android:extractNativeLibs="false" in Godot's export requires.
-        nocompress_extensions = ["pck", "so"],
-        visibility = _PRIVATE,
-        **kwargs
-    )
-    (godot_android_app_bundle if bundle else godot_android_apk)(
-        name = name,
-        app = ":" + native_app,
-        application_id = application_id,
-        toolchains = kwargs.get("toolchains", []),
-        visibility = visibility,
-        **common
-    )
+    """,
+    implementation = _android_application_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "pack": attr.label(
+            doc = "Godot PCK target with its project extension providers.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "application_id": attr.string(
+            doc = "Android application identifier, or the make variable that names it.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "runtime": attr.label(
+            doc = """
+            Optional fixed Android runtime that replaces the resolved runtime component;
+            ruleset fixtures use it to isolate packaging.
+            """,
+            configurable = False,
+        ),
+        "deps": attr.label_list(
+            doc = """
+            Additional platform libraries of the application itself; the project's platform
+            libraries come through the pack.
+            """,
+        ),
+        "manifest_values": attr.string_dict(
+            doc = """
+            Values for the placeholders of the application's and its platform libraries'
+            manifests, as `godot_app.android_manifest_values` documents; keys the merger
+            treats as overrides fail analysis naming their owner. The applicationId
+            override is added here.
+            """,
+        ),
+        "manifest": attr.label(
+            doc = """
+            Optional application manifest, which becomes the main manifest; the shell
+            manifest merges below it, as `godot_app.android_manifest` documents.
+            """,
+            configurable = False,
+        ),
+        "bundle": attr.bool(
+            doc = """
+            Build an unsigned Android App Bundle instead of an APK; it keeps the PCK
+            uncompressed in the APKs Google Play generates from the bundle.
+            """,
+            configurable = False,
+        ),
+        "debug_key": attr.label(doc = "The key android_binary signs debug builds with."),
+        "resource_files": attr.label_list(doc = "Android resources of the application itself."),
+    } | ENGINE_SETTINGS_ATTRS,
+)

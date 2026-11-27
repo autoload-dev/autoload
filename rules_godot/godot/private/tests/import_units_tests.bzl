@@ -11,6 +11,8 @@ load("//godot/private:view.bzl", "GodotViewInfo")
 load(":manifests.bzl", "written_content")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _PROJECT_FILE = _FIXTURE + ":project.godot"
 

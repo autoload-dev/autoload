@@ -2,6 +2,8 @@
 
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("//godot/platforms/private/tests/...")
+
 # The application for Android and iOS whose project selects each operating system's platform
 # library.
 MOBILE_FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"

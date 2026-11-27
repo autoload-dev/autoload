@@ -7,10 +7,10 @@ module(
     bazel_compatibility = [">=9.0.0"],
 )
 
-# gdunit_test builds on rules_godot's test adapter (godot/private:adapter.bzl), which other
-# repositories can load since after 0.1.1 but which is no supported API: raise the version to
-# the release that has it before this module is released, and keep the two in step. Builds in
-# this repository use the rules beside it (addons/module.bazelrc and the root MODULE.bazel).
+# gdunit_test builds on rules_godot's test adapter (godot/testing:adapter.bzl), public API that
+# may still change, which releases after 0.1.1 provide: raise the version to the release that
+# has it before this module is released, and keep the two in step. Builds in this repository
+# use the rules beside it (addons/module.bazelrc and the root MODULE.bazel).
 bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
 
 # GdUnit4 at a commit of its main branch; its add-on directory becomes //gdunit.

@@ -1,21 +1,20 @@
 """
 Build an application under an export platform and build settings of its own, instead of a
-`--config`.
-
-`godot_configured_app` names the configuration of a `godot_app`, such as a multi-ABI release
-App Bundle or an iOS Simulator build, in a BUILD file. The repository builds and tests such
-applications in the same invocation as the desktop targets, without a Bazel configuration or
-server of their own. It is not supported API: the repository's other modules load it across
-repositories. The ruleset's tests extend the same transition (`configured_settings`).
+`--config`: the implementation of `godot_configured_app`, `ANDROID_RELEASE` and
+`APPLE_RELEASE`, which `godot:app.bzl` exports. The platform tests extend the same
+transition (`configured_settings`).
 """
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private:macros.bzl", "VOLATILE_API")
 load("//godot/private/config:native.bzl", "PLATFORMS", "STRIP")
 load("//godot/private/config:settings.bzl", "VARIANT")
 
-# The repository's root and add-on modules load it; it is not supported API.
-visibility("public")
+visibility([
+    "//godot",
+    "//godot/platforms/private/tests/...",
+])
 
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
 _COPT = "//command_line_option:copt"
@@ -72,19 +71,47 @@ def configured_settings(settings, attr):
 
 # The attributes of the configuration; an unset one keeps the build's own setting.
 CONFIGURED_ATTRS = {
-    "platform": attr.label(doc = "The export platform or platform slice, such as `//examples:android_distribution`; the build's own target platform by default."),
-    "compilation_mode": attr.string(doc = "C++ optimization, `--compilation_mode`, such as `opt` for a release build.", values = ["", "fastbuild", "dbg", "opt"]),
-    "strip": attr.string(doc = "`--strip`: whether linking strips the libraries, such as `always` for release libraries whose debug symbols ship apart.", values = ["", "always", "sometimes", "never"]),
-    "copts": attr.string_list(doc = "C++ options appended to `--copt`, such as `-g` for debug symbols of an optimized build."),
-    "apple_generate_dsym": attr.bool(doc = "`--apple_generate_dsym`: Apple applications get their debug symbols as `.dSYM` directories."),
-    "objc_enable_binary_stripping": attr.bool(doc = "`--objc_enable_binary_stripping`: Apple binaries are stripped of their debug symbols."),
-    "android_format": attr.string(doc = "The Android delivery format, `//godot:android_format`: `apk` or `aab`.", values = ["", "apk", "aab"]),
-    "macos_signing": attr.string(doc = "How macOS applications are signed, `//godot:macos_signing`, such as `adhoc`.", values = ["", "unsigned", "adhoc"]),
-    "variant": attr.string(doc = "The `//godot:variant` setting: which of Godot's binaries the build is for.", values = ["", "debug", "editor", "release"]),
+    "platform": attr.label(
+        doc = """
+        The export platform or platform slice, such as `//examples:android_distribution`; the
+        build's own target platform by default.
+        """,
+    ),
+    "compilation_mode": attr.string(
+        doc = "C++ optimization, `--compilation_mode`, such as `opt` for a release build.",
+        values = ["", "fastbuild", "dbg", "opt"],
+    ),
+    "strip": attr.string(
+        doc = """
+        `--strip`: whether linking strips the libraries, such as `always` for release
+        libraries whose debug symbols ship apart.
+        """,
+        values = ["", "always", "sometimes", "never"],
+    ),
+    "copts": attr.string_list(
+        doc = "C++ options appended to `--copt`, such as `-g` for debug symbols of an optimized build.",
+    ),
+    "apple_generate_dsym": attr.bool(
+        doc = "`--apple_generate_dsym`: Apple applications get their debug symbols as `.dSYM` directories.",
+    ),
+    "objc_enable_binary_stripping": attr.bool(
+        doc = "`--objc_enable_binary_stripping`: Apple binaries are stripped of their debug symbols.",
+    ),
+    "android_format": attr.string(
+        doc = "The Android delivery format, `//godot:android_format`: `apk` or `aab`.",
+        values = ["", "apk", "aab"],
+    ),
+    "macos_signing": attr.string(
+        doc = "How macOS applications are signed, `//godot:macos_signing`, such as `adhoc`.",
+        values = ["", "unsigned", "adhoc"],
+    ),
+    "variant": attr.string(
+        doc = "The `//godot:variant` setting: which of Godot's binaries the build is for.",
+        values = ["", "debug", "editor", "release"],
+    ),
 }
 
-# The native settings of a release build whose debug symbols ship apart, as the root
-# module's .bazelrc configurations android-release and ios-release set them.
+# The native settings of a release build whose debug symbols ship apart.
 ANDROID_RELEASE = {
     "compilation_mode": "opt",
     # Do not encode a changing sandbox directory in DWARF.
@@ -139,30 +166,64 @@ _configured = transition(
 )
 
 _configured_target = rule(
-    implementation = configured_providers,
     doc = "The default outputs and application providers of a target built under an export platform and build settings of its own.",
+    implementation = configured_providers,
     attrs = CONFIGURED_ATTRS | {
-        "target": attr.label(mandatory = True, cfg = _configured, doc = "The target to build."),
+        "target": attr.label(doc = "The target to build.", mandatory = True, cfg = _configured),
     },
 )
 
-def godot_configured_app(name, app, **kwargs):
-    """
-    Build a `godot_app` and its debug symbols under an export platform and build settings.
-
-    The macro declares `<name>`, the application, and `<name>.debug_symbols`, its debug
-    symbols, both under the same configuration.
-
-    Args:
-        name: the name of the application target.
-        app: the label of a `godot_app`.
-        **kwargs: the attributes of CONFIGURED_ATTRS, and common attributes such as `tags`
-            and `visibility`, of both targets.
-    """
-    label = native.package_relative_label(app)
-    _configured_target(name = name, target = label, **kwargs)
+def _configured_app_impl(name, visibility, app, debug_symbols, **kwargs):
+    _configured_target(name = name, visibility = visibility, target = app, **kwargs)
     _configured_target(
         name = name + ".debug_symbols",
-        target = label.same_package_label(label.name + ".debug_symbols"),
+        visibility = visibility,
+        target = debug_symbols,
         **kwargs
     )
+
+godot_configured_app = macro(
+    doc = """
+    Build a godot_app and its debug symbols under an export platform and build settings of
+    their own, instead of a `--config`.
+
+    A configured application lets one `bazel build` or `bazel test` invocation build a
+    mobile or release application beside the desktop targets. The macro declares `<name>`,
+    the application, and `<name>.debug_symbols`, its debug symbols, both under the same
+    configuration. They carry the application's default outputs and its providers, such as
+    rules_android's AndroidBundleInfo and ApkInfo and rules_apple's AppleBundleInfo. An
+    attribute that is unset keeps the build's own setting. ANDROID_RELEASE and
+    APPLE_RELEASE, from the same module, hold the native settings of a release whose debug
+    symbols ship apart; pass them with `**`. See
+    [release builds](../../platforms.md#release-builds-in-one-invocation).
+
+    Example:
+    ```starlark
+    load("@autoload_rules_godot//godot:app.bzl", "ANDROID_RELEASE", "godot_configured_app")
+
+    godot_configured_app(
+        name = "android_release",
+        app = ":app",
+        debug_symbols = ":app.debug_symbols",
+        platform = "@autoload_rules_godot//godot/platforms:android_arm64",
+        android_format = "aab",
+        tags = ["manual"],
+        **ANDROID_RELEASE
+    )
+    ```
+    """ + VOLATILE_API,
+    implementation = _configured_app_impl,
+    inherit_attrs = _configured_target,
+    attrs = {
+        "target": None,
+        "app": attr.label(doc = "The godot_app to build.", mandatory = True),
+        "debug_symbols": attr.label(
+            doc = """
+            The godot_app's debug symbols, `<app>.debug_symbols`. The caller names it: a
+            macro may only use the labels its caller passes of targets that godot_app exports
+            to its caller's package alone.
+            """,
+            mandatory = True,
+        ),
+    },
+)

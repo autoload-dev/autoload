@@ -9,6 +9,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _FIXTURES = "//godot/engine/private/tests/fixtures"
 _PLATFORMS = "//godot/engine/private/tests:"
 _PROBE = "//godot/engine/private/tests:probe"
