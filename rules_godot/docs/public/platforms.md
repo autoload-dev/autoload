@@ -1097,3 +1097,42 @@ filegroup(
     output_group = "archive",
 )
 ```
+
+## Bill of materials and licenses
+
+rules_godot, the engines it downloads or builds, and godot-cpp declare their identity and
+license as [package metadata](https://github.com/bazel-contrib/supply-chain), which SBOM and
+license tools read from an application's build graph. With
+[`@supply_chain_tools`](https://github.com/bazel-contrib/supply-chain/tree/main/tools), write a
+software bill of materials of an application as SPDX:
+
+```starlark
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@supply_chain_tools//sbom:sbom.bzl", "sbom")
+load("@supply_chain_tools//sbom:spdx.bzl", "spdx")
+
+package(default_package_metadata = [":package_metadata"])
+
+package_metadata(
+    name = "package_metadata",
+    purl = "pkg:generic/my_game@1.0.0",
+    visibility = ["//visibility:public"],
+)
+
+sbom(
+    name = "app_sbom",
+    target = ":app",
+)
+
+spdx(
+    name = "app_spdx",
+    sbom = ":app_sbom",
+)
+```
+
+The SBOM reads the graph from analysis and builds none of the application's outputs. Your
+`package_metadata` must be visible to rules_godot, since the targets its macros declare in
+your package carry it too. The SBOM names `pkg:bazel/autoload_rules_godot` (MPL-2.0), and
+`pkg:generic/godot@<version>` and `pkg:generic/godot-cpp` (MIT), whose `checksum` names the
+archive they come from where rules_godot knows its digest. Godot is one package: the licenses of the libraries it bundles are
+not listed apart.

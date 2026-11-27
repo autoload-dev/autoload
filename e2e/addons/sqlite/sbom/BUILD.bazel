@@ -1,8 +1,8 @@
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
-load("@rules_python//python:defs.bzl", "py_test")
 load("@supply_chain_tools//sbom:sbom.bzl", "sbom")
 load("@supply_chain_tools//sbom:spdx.bzl", "spdx")
+load("//tools/artifact_tests:spdx_packages_test.bzl", "spdx_packages_test")
 
 package(
     default_package_metadata = [":package_metadata"],
@@ -34,14 +34,13 @@ spdx(
 )
 
 # Build-output test: the SBOM of a pack names the add-on module and the SQLite library it
-# links, each with its license. The SBOM reads the pack's graph from analysis and builds none
-# of its outputs, so no Godot process starts.
-py_test(
+# links, each with its license.
+spdx_packages_test(
     name = "sqlite_pack_sbom_names_licensed_packages_test",
     size = "small",
-    srcs = ["spdx_test.py"],
-    args = ["$(rootpath :spdx)"],
-    data = [":spdx"],
-    main = "spdx_test.py",
-    tags = ["analysis_only"],
+    packages = {
+        "pkg:bazel/autoload_sqlite": "MPL-2.0",
+        "pkg:bazel/sqlite3": "blessing",
+    },
+    spdx = ":spdx",
 )

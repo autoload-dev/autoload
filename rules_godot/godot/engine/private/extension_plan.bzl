@@ -649,6 +649,7 @@ def _engine_declarations(selection, profiles, _fail):
         engine = engine.name,
         default_engine = selection.default,
         toolchains_repository = TOOLCHAINS_REPOSITORY,
+        version = engine.version,
     )
     if source:
         covered = {slot["name"]: True for slot in slots} | {"android_" + variant: True for variant in plan.android_shells}
