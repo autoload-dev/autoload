@@ -174,6 +174,26 @@ godot_engine_source(
     version = "4.7.3-rc",
 )
 
+# The engine trees of the recipes below: each extracts and patches its sources once, and
+# its recipes link their files.
+godot_engine_tree = use_repo_rule(
+    "//godot/engine/private:repositories.bzl",
+    "godot_engine_tree",
+)
+
+godot_engine_tree(
+    name = "godot_tree",
+    dev_dependency = True,
+    source = "@godot_sources//:source.json",
+)
+
+godot_engine_tree(
+    name = "godot_tree_beta",
+    dev_dependency = True,
+    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
+    source = "@godot_sources_beta//:source.json",
+)
+
 # The source-built runtimes of //godot/platforms/private/tests/engine_probe, which its
 # engines package composes into components and its tests add with --extra_toolchains;
 # beside the registered engines' editors, only those tests fetch and build them. Android
@@ -205,13 +225,13 @@ godot_engine_build(
     cpu = "arm64",
     dev_dependency = True,
     platform = "android",
-    source = "@godot_sources//:source.json",
+    tree = "@godot_tree//:tree.json",
 )
 
 godot_android_shell(
     name = "probe_android_shell",
     dev_dependency = True,
-    source = "@godot_sources//:source.json",
+    tree = "@godot_tree//:tree.json",
 )
 
 godot_engine_build(
@@ -228,7 +248,7 @@ godot_engine_build(
     ],
     environment = "simulator",
     platform = "ios",
-    source = "@godot_sources//:source.json",
+    tree = "@godot_tree//:tree.json",
 )
 
 godot_engine_build(
@@ -244,16 +264,14 @@ godot_engine_build(
         "freetype",
         "bazel_probe",
     ],
-    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platform = "android",
-    source = "@godot_sources_beta//:source.json",
+    tree = "@godot_tree_beta//:tree.json",
 )
 
 godot_android_shell(
     name = "beta_probe_android_shell",
     dev_dependency = True,
-    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
-    source = "@godot_sources_beta//:source.json",
+    tree = "@godot_tree_beta//:tree.json",
 )
 
 godot_engine_build(
@@ -274,9 +292,8 @@ godot_engine_build(
         "bazel_probe",
     ],
     environment = "simulator",
-    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platform = "ios",
-    source = "@godot_sources_beta//:source.json",
+    tree = "@godot_tree_beta//:tree.json",
 )
 
 # A source recipe with its editor beside it, as an engine of godot_engines declares them:
@@ -292,7 +309,7 @@ godot_engine_build(
     cpu = "arm64",
     dev_dependency = True,
     platform = "macos",
-    source = "@godot_sources//:source.json",
+    tree = "@godot_tree//:tree.json",
 )
 
 # Desktop export platform tests run on an execution platform of their operating system and
@@ -320,7 +337,7 @@ godot_engine_build(
     cpu = "arm64",
     dev_dependency = True,
     platform = "android",
-    source = "@godot_sources//:source.json",
+    tree = "@godot_tree//:tree.json",
 )
 
 # ==== Maven ===================================================================

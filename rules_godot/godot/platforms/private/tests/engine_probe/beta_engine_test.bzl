@@ -41,7 +41,8 @@ _EDGES = [
 def _inputs_impl(target, ctx):
     # Follow the actual Apple/Android transitions rather than resolving a second engine or
     # pack configuration. These identities are private target names of the engine
-    # repositories, including the source generator's compile archives.
+    # repositories, including the source generator's compile archives; the engine AAR is
+    # known by its rule, since godot_android_runtime names it after the runtime.
     files = []
     if GodotPackInfo in target:
         files.append(target[GodotPackInfo].pack_file)
@@ -54,7 +55,7 @@ def _inputs_impl(target, ctx):
                     archive = library.static_library or library.pic_static_library
                     if archive:
                         files.append(archive)
-        if target.label.name == "release.engine_aar":
+        if ctx.rule.kind == "godot_android_engine_aar":
             files += target[DefaultInfo].files.to_list()
         if target.label.name in ["godot", "libgodot_android.so"]:
             files += target[DefaultInfo].files.to_list()
