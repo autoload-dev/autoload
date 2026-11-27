@@ -20,11 +20,3 @@ godot_editor(
     project = ":gdunit",
     deps = ["//examples/addons/gdunit/tests:suites"],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

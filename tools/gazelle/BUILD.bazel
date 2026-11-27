@@ -1,75 +1,33 @@
-load("@gazelle//:def.bzl", "gazelle_binary")
-load("@rules_multirun//:defs.bzl", "multirun")
-load("//:addons.bzl", "ADDON_REPOSITORIES")
-load(":defs.bzl", "addon_gazelles", "module_gazelle")
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
-# Gazelle with the languages this repository generates declarations for: `starlark`, the
-# bzl_library targets of bazel_skylib's plugin, which this module patches (MODULE.bazel), and
-# `lint`, the filegroups of the lint check's Markdown and GDScript (lint/lint.go).
+# Gazelle with the bzl_library targets of bazel_skylib's plugin, which this module patches
+# (MODULE.bazel): the only BUILD declarations the repository generates, those of the ruleset.
 gazelle_binary(
     name = "gazelle_binary",
-    languages = [
-        "@bazel_skylib_gazelle_plugin//bzl",
-        "//tools/gazelle/lint",
-    ],
+    languages = ["@bazel_skylib_gazelle_plugin//bzl"],
 )
 
-# Gazelle runs from this module for each module it maintains, with the module's directory as
-# its repository root; the module's root BUILD file holds its directives. `bazel run
-# //tools/gazelle:<module>` updates the module's BUILD files, and
-# `bazel run //tools/gazelle:<module>_check` fails with the diff where one differs from what
-# Gazelle generates. The root module's are `root` and `root_check`, an add-on module's
-# `addons.<directory>` and `addons.<directory>_check`, all add-on modules' `addons` and
-# `addons_check`; `update` and `check` run them for every module.
-# The ruleset's bzl_library targets leave out its white-box tests' modules.
-module_gazelle(
-    name = "rules_godot",
-    directory = "rules_godot",
-    languages = {
-        "starlark": ["-exclude=**/tests"],
-        "lint": [],
-    },
-)
+# Gazelle runs from this module with the ruleset's directory as its repository root; the
+# ruleset's root BUILD file holds its directives, and its bzl_library targets leave out its
+# white-box tests' modules. `bazel run //tools/gazelle:update` updates its BUILD files,
+# `bazel run //tools/gazelle:check` fails with the diff where one differs from what Gazelle
+# generates.
+_ARGS = [
+    "-repo_root=rules_godot",
+    "-exclude=**/tests",
+    "rules_godot",
+]
 
-module_gazelle(
-    name = "root",
-    directory = ".",
-    languages = {"lint": []},
-)
-
-addon_gazelles(
-    name = "addons",
-    repositories = ADDON_REPOSITORIES,
-)
-
-multirun(
+gazelle(
     name = "update",
-    commands = [
-        "rules_godot",
-        "root",
-        "addons",
-    ],
+    args = _ARGS,
+    gazelle = ":gazelle_binary",
+    mode = "fix",
 )
 
-# The checks only read, so they run at once, as each module's do (defs.bzl).
-multirun(
+gazelle(
     name = "check",
-    buffer_output = True,
-    commands = [
-        "rules_godot_check",
-        "root_check",
-        "addons_check",
-    ],
-    jobs = 0,
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "defs.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
+    args = _ARGS,
+    gazelle = ":gazelle_binary",
+    mode = "diff",
 )

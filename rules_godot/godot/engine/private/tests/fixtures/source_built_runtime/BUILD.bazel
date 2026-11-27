@@ -99,19 +99,3 @@ godot_app(
     pack = ":pack",
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["main/main.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

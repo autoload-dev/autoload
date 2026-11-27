@@ -40,30 +40,3 @@ py_test(
     main = "adapter_test_follows_test_encyclopedia_test.py",
     tags = ["godot_process"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["adapter_test_follows_test_encyclopedia_test.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "fake_adapter.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

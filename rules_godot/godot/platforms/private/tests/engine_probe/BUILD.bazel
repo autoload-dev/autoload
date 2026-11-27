@@ -256,37 +256,3 @@ py_test(
     target_compatible_with = _MACOS,
     deps = ["//tools/platforms:apple_bundle_lib"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "android_source_bundle_test.py",
-        "ios_source_app_test.py",
-        "validate_android_beta.py",
-        "validate_android_beta_test.py",
-        "validate_ios_beta.py",
-        "validate_ios_beta_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "beta_engine_test.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -136,7 +136,7 @@ small tables/examples; use diagrams only for relationships that need them.
 
 1. Update definitions and their documentation together. Regenerate the
    `bzl_library` targets of new modules with Gazelle
-   (`bazel run //tools/gazelle:rules_godot`). Choose the sole entrypoint of each
+   (`bazel run //tools/gazelle:update`). Choose the sole entrypoint of each
    new public symbol, list a new entrypoint in `_BCR_DOCS`, and update guides
    and examples to use that load path.
 2. Bazel's built-in `starlark_doc_extract` extracts the metadata from the

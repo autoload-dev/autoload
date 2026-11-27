@@ -117,36 +117,3 @@ py_test(
     srcs = ["variants_test.py"],
     deps = ["//tools/engine:support"],
 )
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "build_profile_test.py",
-        "compile_options_test.py",
-        "configure_recipe_test.py",
-        "define_analysis_test.py",
-        "generator_capture_test.py",
-        "generator_test.py",
-        "include_directories_test.py",
-        "include_graph_test.py",
-        "module_graph_test.py",
-        "pin_test.py",
-        "render_test.py",
-        "renderers_test.py",
-        "revision_test.py",
-        "source_files.py",
-        "swift_module_test.py",
-        "variants_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

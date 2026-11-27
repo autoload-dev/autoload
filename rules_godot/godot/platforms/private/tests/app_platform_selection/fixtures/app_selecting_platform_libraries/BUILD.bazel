@@ -143,38 +143,3 @@ godot_app(
     pack = ":pack",
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/libraries/android_addon.gd",
-        "main/libraries/ios_addon.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = ["native/hello.cc"],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["android/make_aar.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

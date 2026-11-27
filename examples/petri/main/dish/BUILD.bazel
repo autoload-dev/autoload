@@ -12,19 +12,3 @@ godot_resources(
     ],
     prefix = "main/dish",
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["dish.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

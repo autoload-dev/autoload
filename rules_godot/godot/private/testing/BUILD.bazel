@@ -78,29 +78,3 @@ bzl_library(
         "@rules_apple//apple:providers",
     ],
 )
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "apple_bundle.py",
-        "inspect_android_bundle.py",
-        "inspect_ios_app.py",
-        "native_symbols.py",
-        "pck.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "android_bundle_test.bzl",
-        "ios_app_test.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

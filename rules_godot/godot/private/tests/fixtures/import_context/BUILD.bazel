@@ -248,37 +248,3 @@ godot_resources(
     prefix = "res://lib/",
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "content_configuration/helper.gd",
-        "foreign/main.gd",
-        "import_input_configuration/state.gd",
-        "main/addon/inventory.gd",
-        "main/configuration.gd",
-        "main/configured_test.gd",
-        "main/main.gd",
-        "main/marker.gd",
-        "main/other.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = ["native/hello.cc"],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

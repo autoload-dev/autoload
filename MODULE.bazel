@@ -58,10 +58,9 @@ python.toolchain(python_version = "3.14")
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
 python_config.explicit_init_py(default = True)
 
-# The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them. Not a
-# development dependency: the lint check (tools/lint/check.bzl) runs gdlint from them in
-# every module that uses it, such as the ruleset.
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+# The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them: the
+# file lint (tools/lint/files.py) runs gdlint and gdformat from them in this module alone.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_dependency = True)
 pip.parse(
     hub_name = "lint_pypi",
     python_version = "3.14",

@@ -16,30 +16,3 @@ py_test(
 )
 
 resource_graph_test_suite(name = "resource_graph_test_suite")
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["resource_graph_test.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "resource_graph_tests.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

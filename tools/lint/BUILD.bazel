@@ -19,8 +19,8 @@ lock(
     ],
 )
 
-# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py), which the aspect
-# `gdlint` runs (linters.bzl).
+# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py), which the file
+# lint runs (files.py).
 py_binary(
     name = "gdscript",
     srcs = ["gdscript.py"],
@@ -92,7 +92,8 @@ py_test(
 )
 
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
-# Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format.
+# Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format,
+# the files without targets by the file lint.
 py_test(
     name = "workflows_test",
     size = "small",
@@ -102,30 +103,4 @@ py_test(
         "//:workflows",
         "@multitool//tools/jactionlint",
     ],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "check_test.py",
-        "gdscript.py",
-        "gdscript_test.py",
-        "linters_test.py",
-        "workflows_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "check.bzl",
-        "linters.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
 )

@@ -582,7 +582,7 @@ the tag. Registry test modules are outside it.
 ## RG027
 
 **The add-on modules' Python targets carry `lint-genfiles`.** The root module lints the add-on
-modules' Python with its own, in the work `lint` over their repositories
+modules' Python with its own, in `bazel build --config=lint` over their repositories
 (`tools/lint/check.bzl`), so the add-on modules need no Bazel server of their own for it.
 rules_lint lints only the main repository's sources, unless a target carries the tag
 `lint-genfiles`; without it, an add-on module's Python would pass the lint unseen.
@@ -609,19 +609,18 @@ bazel run //tools/conventions
 The command runs every registered convention rule that judges more than one file at a time
 across all owned modules. Violations include the stable rule ID, file, line and a link to this
 catalogue. The checker reports unreviewed computed macro names separately. Exit status `1`
-indicates convention findings; `2` indicates an incomplete audit. The work `conventions`,
-which the Linux job runs, runs this command, and `aspect check`, the pre-push hook's, runs that work.
+indicates convention findings; `2` indicates an incomplete audit. `aspect check`, the
+pre-push hook's, and the Linux job run this command.
 
-The rules that judge each file on its own, [fixture-references](#fixture-references), [public-documentation-links](#public-documentation-links),
-[region-headers](#region-headers) and [reading-order](#reading-order), run in the lint check instead (`--config=check`,
-[check.bzl](../../tools/lint/check.bzl)), on the filegroups that Gazelle declares for each
-package's Markdown, Python, Starlark, GDScript and C++ ([lint.go](../../tools/gazelle/lint/lint.go)).
-Bazel caches their findings per package, so a change rechecks only its own packages.
-[files.py](../../tools/conventions/files.py) names each file by its path in the repository,
-from the module its main repository's `MODULE.bazel` names or the add-on module whose
-repository holds it. `bazel run //tools/conventions -- --rule region-headers` still runs one of them
-over the whole checkout, as `/code-health` does. Files outside every package, such as those
-of the registry test modules, are outside the lint check.
+The rules that judge each file on its own, [fixture-references](#fixture-references),
+[public-documentation-links](#public-documentation-links), [region-headers](#region-headers)
+and [reading-order](#reading-order), run in the
+[file lint](verification-recipes.md#the-file-lint) instead, on the Markdown, Python,
+Starlark, GDScript and C++ files it selects: the changed files in `aspect check` and the
+pre-commit hook, every file Git lists in the Linux job.
+[files.py](../../tools/conventions/files.py) takes the files by their paths in the
+repository; each rule picks its own among them. `bazel run //tools/conventions -- --rule
+region-headers` still runs one of them over the whole checkout, as `/code-health` does.
 
 The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
 `XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
@@ -663,7 +662,7 @@ against one context and attaches their metadata to findings. It sorts diagnostic
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
 aborts the run rather than being merged. The rules that judge each file on its own are
 registered in [per_file.py](../../tools/conventions/per_file.py), whose library needs no
-Bazel: the lint check runs them per package, and the CLI only when they are named.
+Bazel: the file lint runs them, and the CLI only when they are named.
 `Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
 the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)

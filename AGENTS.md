@@ -50,10 +50,11 @@ aspect tests                              # the fast tests of the root module an
 aspect fix                                # format the changed files, regenerate BUILD declarations and what the checks compare
 aspect ci linux                           # what CI's Linux job runs (macos for the macOS job's)
 aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
-bazel build --config=lint -- //...        # lint Python, Markdown and GDScript, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
+bazel build --config=lint -- //...        # lint Python, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
+bazel run //tools/lint:files              # lint the changed files without targets: GDScript, Markdown, shell, per-file conventions (-- --scope=all for every file)
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
-bazel run //tools/gazelle:update          # regenerate the BUILD declarations Gazelle maintains
+bazel run //tools/gazelle:update          # regenerate the ruleset's bzl_library targets
 (cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets

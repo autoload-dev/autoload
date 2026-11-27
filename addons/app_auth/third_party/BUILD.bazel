@@ -1,10 +1,2 @@
 # Build files of third-party archives, which MODULE.bazel names.
 exports_files(["appauth.BUILD.bazel"])
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

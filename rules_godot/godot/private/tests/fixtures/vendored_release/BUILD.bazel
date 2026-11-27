@@ -51,30 +51,3 @@ godot_pack(
     tags = ["manual"],
     deps = [":main"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/main.gd",
-        "sentry/sentry_logger.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

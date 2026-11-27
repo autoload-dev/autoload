@@ -104,27 +104,3 @@ godot_pack(
     tags = ["manual"],
     deps = ["@autoload_gdunit//gdunit"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "empty/EmptyTest.gd",
-        "failing/FailingTest.gd",
-        "orphan/OrphanTest.gd",
-        "passing/PassingTest.gd",
-        "passing/suites/StringTest.gd",
-        "passing/support/Totals.gd",
-        "skipped/SkippedTest.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

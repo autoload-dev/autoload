@@ -18,19 +18,3 @@ godot_resources(
     resource_paths = {"//godot/private/tests/fixtures/import_context:foreign/main.gd": "foreign/main.gd"},
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["helper.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

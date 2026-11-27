@@ -38,15 +38,3 @@ engine_test(
 )
 
 engine_upgrade_test_suite(name = "engine_upgrade_test_suite")
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "engine_upgrade_tests.bzl",
-        "engines.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

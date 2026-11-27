@@ -12,14 +12,6 @@ godot_test(
     tags = ["godot_process"],
 )
 
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
-
 # `godot_app` tags its targets `manual`: only this test builds the desktop application.
 build_test(
     name = "app_build_test",

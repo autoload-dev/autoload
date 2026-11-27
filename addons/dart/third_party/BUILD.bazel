@@ -3,11 +3,3 @@ exports_files([
     "dart_sdk.BUILD.bazel",
     "dart_sdk.patch",
 ])
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

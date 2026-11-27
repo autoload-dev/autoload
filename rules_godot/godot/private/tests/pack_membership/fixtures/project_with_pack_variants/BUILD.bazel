@@ -197,31 +197,3 @@ filegroup(
     output_group = "selection",
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/dlc/level.gd",
-        "main/main.gd",
-        "main/shared/math.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = ["hello.cc"],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

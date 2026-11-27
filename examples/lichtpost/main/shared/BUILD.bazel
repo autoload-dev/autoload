@@ -13,19 +13,3 @@ godot_resources(
         "//examples/lichtpost/main/shared/palette",
     ],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["primitives.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

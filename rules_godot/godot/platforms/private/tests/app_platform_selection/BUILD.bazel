@@ -379,35 +379,3 @@ ios_app_test(
     tags = ["godot_process"],
     target_compatible_with = _MACOS,
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "editor_app_test.py",
-        "host_app_test.py",
-        "ios_environment_test.py",
-        "selected_app_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "app_outputs_tests.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

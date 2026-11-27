@@ -98,30 +98,3 @@ android_bundle_test(
         "godot_process",
     ],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/main.gd",
-        "main/native_counter/counter.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = ["native/counter.cc"],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -449,34 +449,3 @@ godot_app(
     platform_resources = ["app_notice.txt"],
     tags = ["manual"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/libraries/ios_addon.gd",
-        "main/main.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "editor_hello.cc",
-        "hello.cc",
-        "hello_support.cc",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

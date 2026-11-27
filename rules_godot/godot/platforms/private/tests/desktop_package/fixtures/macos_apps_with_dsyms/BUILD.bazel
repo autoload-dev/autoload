@@ -124,22 +124,3 @@ filegroup(
     tags = ["manual"],
     target_compatible_with = _MACOS,
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "dsym_engine.cc",
-        "dsym_extension.cc",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

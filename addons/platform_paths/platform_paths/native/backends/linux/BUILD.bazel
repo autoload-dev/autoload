@@ -18,23 +18,3 @@ cc_library(
         "//platform_paths/native:backend_api",
     ],
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "linux_backend.cc",
-        "xdg_directories.cc",
-        "xdg_directories.h",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -112,35 +112,3 @@ godot_project(
     tags = ["manual"],
     deps = [":self_importing"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "main/uses.gd",
-        "md_importer/importer.gd",
-        "md_importer/plugin.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = [
-        "main/input.md",
-        "main/notes.md",
-        "md_importer/own.md",
-    ],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

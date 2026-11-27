@@ -16,11 +16,3 @@ godot_resources(
     ],
     prefix = "main/hud/fonts",
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

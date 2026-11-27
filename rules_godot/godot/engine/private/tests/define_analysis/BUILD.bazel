@@ -84,36 +84,3 @@ py_test(
     args = ["$(rootpath //godot/engine/private:define_analysis.awk)"],
     data = ["//godot/engine/private:define_analysis.awk"],
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "probe.h",
-        "source.cpp",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "define_analysis_test.py",
-        "diagnostics_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "per_file_copt.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

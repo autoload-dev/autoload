@@ -63,11 +63,3 @@ godot_runtime_component(
     variant = "release",
     version = "4.7.2",
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

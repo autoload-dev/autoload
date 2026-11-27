@@ -155,33 +155,6 @@ bzl_library(
     ],
 )
 
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "archives.bzl",
-        "catalogue.bzl",
-        "components.bzl",
-        "define_analysis.bzl",
-        "engine_selection.bzl",
-        "extension_plan.bzl",
-        "generator.bzl",
-        "hub.bzl",
-        "optimization.bzl",
-        "pin.bzl",
-        "prebuilt.bzl",
-        "registration.bzl",
-        "repositories.bzl",
-        "resolution.bzl",
-        "selection.bzl",
-        "source_build_rows.bzl",
-        "source_repositories.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
-
 bzl_library(
     name = "catalogue",
     srcs = ["catalogue.bzl"],

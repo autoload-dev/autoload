@@ -4,22 +4,6 @@ load("@bazel_skylib//rules:build_test.bzl", "build_test")
 # MODULE.bazel registers it with this module and this lock file.
 exports_files(["simulation.lock.json"])
 
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
-
 # Fails while the lock file has no current pin for one of the engine's recipes, naming the
 # pin command, as after a change of its modules, options or rules_godot's code. The check is
 # the same on every host, so CI's Linux job runs it alone: its tag keeps it out of the macOS

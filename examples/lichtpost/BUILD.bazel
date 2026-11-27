@@ -98,19 +98,3 @@ godot_editor(
 android_release(name = "android_release")
 
 ios_release(name = "ios_release")
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

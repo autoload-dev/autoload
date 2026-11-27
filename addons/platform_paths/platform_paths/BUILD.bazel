@@ -25,11 +25,3 @@ godot_cc_extension(
         "//conditions:default": ["//platform_paths/native/backends/linux"],
     }),
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
