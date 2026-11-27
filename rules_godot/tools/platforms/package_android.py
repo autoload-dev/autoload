@@ -42,6 +42,54 @@ def library_version(library: dict[str, str]) -> str | None:
     return f"{library['version']}.{build}.{hash_}"
 
 
+# Archive signatures, which cover the shell library's old contents.
+_SIGNATURES = {".RSA", ".SF", ".DSA"}
+
+
+def _kept(path: PurePosixPath) -> bool:
+    """Whether an entry of the shell library stays in the engine AAR."""
+    if path.full_match("jni/*/libgodot_android.so"):
+        return False
+    return not (path.parts[0] == "META-INF" and path.suffix.upper() in _SIGNATURES)
+
+
+def _shell_entries(aar: str | Path) -> dict[str, bytes]:
+    """Return the files of the shell library without its engine libraries and signatures."""
+    entries = {}
+    with zipfile.ZipFile(aar) as source:
+        for entry in source.infolist():
+            if entry.is_dir():
+                continue
+            path = PurePosixPath(entry.filename)
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError("unsafe AAR entry: " + entry.filename)
+            if _kept(path):
+                entries[entry.filename] = source.read(entry)
+    return entries
+
+
+# Android's package manager installs only native libraries named lib*.so.
+_LIBRARY_NAME = re.compile(r"lib[^/\\]*\.so")
+
+
+def _library_name(library: dict[str, str]) -> str:
+    """Return the file name of a native library, lib*.so."""
+    name = library.get("name", Path(library["source"]).name)
+    if not _LIBRARY_NAME.fullmatch(name):
+        raise ValueError("Android native libraries must be named lib*.so: " + name)
+    return name
+
+
+def _source_built_version(manifest: list[dict[str, str]]) -> str | None:
+    """Return the version the source-built engine libraries name, which must be one."""
+    versions = {version for library in manifest if (version := library_version(library))}
+    if len(versions) > 1:
+        raise ValueError(
+            "The engine libraries name different versions: " + ", ".join(sorted(versions))
+        )
+    return versions.pop() if versions else None
+
+
 def package(
     output: str | Path, manifest: list[dict[str, str]], aar: str | Path | None = None
 ) -> None:
@@ -52,52 +100,18 @@ def package(
     An AAR's manifest names the version of source-built engine libraries, which
     must all name the same one.
     """
-    entries: dict[str, bytes] = {}
-    libraries: dict[str, Path] = {}
-    if aar:
-        with zipfile.ZipFile(aar) as source:
-            for entry in source.infolist():
-                if entry.is_dir():
-                    continue
-                path = PurePosixPath(entry.filename)
-                if path.is_absolute() or ".." in path.parts:
-                    raise ValueError("unsafe AAR entry: " + entry.filename)
-                if (
-                    len(path.parts) == 3
-                    and path.parts[0] == "jni"
-                    and path.name == "libgodot_android.so"
-                ):
-                    continue
-                # Existing archive signatures cover the old contents.
-                if path.parts[0] == "META-INF" and path.suffix.upper() in {
-                    ".RSA",
-                    ".SF",
-                    ".DSA",
-                }:
-                    continue
-                entries[entry.filename] = source.read(entry)
-    versions = {version for library in manifest if (version := library_version(library))}
-    if len(versions) > 1:
-        raise ValueError(
-            "The engine libraries name different versions: " + ", ".join(sorted(versions))
-        )
-    if aar and versions:
+    entries = _shell_entries(aar) if aar else {}
+    version = _source_built_version(manifest)
+    if aar and version:
         entries["AndroidManifest.xml"] = set_library_version(
-            entries["AndroidManifest.xml"].decode(), versions.pop()
+            entries["AndroidManifest.xml"].decode(), version
         ).encode()
+    libraries: dict[str, Path] = {}
     for library in manifest:
         abi = library["abi"]
         if abi not in ABIS:
             raise ValueError("unsupported Android ABI: " + abi)
-        name = library.get("name", Path(library["source"]).name)
-        if (
-            not name.startswith("lib")
-            or not name.endswith(".so")
-            or "/" in name
-            or "\\" in name
-        ):
-            raise ValueError("Android native libraries must be named lib*.so: " + name)
-        destination = ("jni/" if aar else "lib/") + abi + "/" + name
+        destination = ("jni/" if aar else "lib/") + abi + "/" + _library_name(library)
         if destination in entries or destination in libraries:
             raise ValueError("duplicate Android library: " + destination)
         libraries[destination] = Path(library["source"])
