@@ -1,0 +1,41 @@
+name: Temporary define analysis on Linux
+
+# Temporary: reproduces the define analysis failure of Linux source recipes. Removed before
+# the pull request merges.
+on:
+  push:
+    branches: [claude/define-analysis-linux]
+
+permissions:
+  contents: read
+
+jobs:
+  define-analysis:
+    name: Define analysis on Linux (temporary)
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+      - name: Tools
+        run: |
+          ls -l "$(command -v awk)" /etc/alternatives/awk || true
+          awk -W version 2>&1 | head -1 || true
+          gcc --version | head -1
+          printf 'a/b.c:26: warning: macro "X" is not used [-Wunused-macros]\n' \
+            | awk -v wrapper=a/b.c 'index($0, wrapper ":") == 1 && $0 ~ /: warning: macro .*is not used/ { print "matched" }'
+      - name: Analyze one library
+        if: ${{ !cancelled() }}
+        run: >-
+          aspect exec -- bazel build --config=source-engine --sandbox_debug
+          '@@autoload_rules_godot++godot_engines+godot_linux_x86_64_template_release//:_macros__thirdparty__spirv-reflect'
+          2>&1 | grep -v "Unexpected unused-macro" | tail -60
+      - name: Script
+        if: ${{ !cancelled() }}
+        run: |
+          f=$(find -L bazel-bin/external/autoload_rules_godot++godot_engines+godot_linux_x86_64_template_release/_macros -name '_macros__thirdparty__spirv-reflect.sh' | head -1)
+          sed -n '1,12p;/analyze /{p;q}' "$f" | cut -c1-600
