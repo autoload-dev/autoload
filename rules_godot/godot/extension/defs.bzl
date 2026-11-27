@@ -886,7 +886,11 @@ godot_cc_extension = macro(
         "includes": attr.string_list(doc = "Include directories of the extension's code, as cc_library's."),
         "linkopts": attr.string_list(doc = "Linker options of the extension's libraries, as cc_library's."),
         "linkstatic": attr.bool(
-            doc = "Whether the shared library links its C++ dependencies statically, as cc_binary's.",
+            doc = """
+            Whether the shared library links its C++ dependencies statically, as cc_binary's;
+            True by default, so the library needs no shared library of its dependencies.
+            """,
+            default = True,
         ),
         "srcs": attr.label_list(doc = "C/C++ source labels.", allow_files = True, mandatory = True),
         "entry_symbol": attr.string(
