@@ -1,7 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project")
 load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
 load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
@@ -89,22 +88,6 @@ bool_value(
         ":strip_fastbuild": True,
         "//conditions:default": False,
     }),
-)
-
-py_library(
-    name = "project_config_lib",
-    srcs = ["project_config.py"],
-    visibility = [
-        "//godot/private/tests:__pkg__",
-        "//tools:__pkg__",
-        "//tools/platforms:__pkg__",
-    ],
-)
-
-py_binary(
-    name = "project_config",
-    srcs = ["project_config.py"],
-    main = "project_config.py",
 )
 
 # The build profile of the runtime an application packages, which godot_app's build_profile

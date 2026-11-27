@@ -2,14 +2,14 @@
 
 visibility(["//godot/..."])
 
-GODOT_MINIMUM_VERSION = "4.7.2"
+_GODOT_MINIMUM_VERSION = "4.7.2"
 
 # The macOS and iOS floors: the default minimums of applications, and the least a
 # source-built engine compiles for, since the libc++ of current Xcode supports no earlier
 # version. Source recipes carry the target their sources name, which may be lower.
 MACOS_MINIMUM_OS = "11.0"
 IOS_MINIMUM_OS = "15.0"
-GODOT_SUPPORTED_VERSION_RANGE = ">=4.7.2 <5.0.0"
+_GODOT_SUPPORTED_VERSION_RANGE = ">=4.7.2 <5.0.0"
 
 def _parse_version(version):
     parts = version.split("-")
@@ -84,7 +84,7 @@ def godot_version_error(version):
         (parsed.numbers == [4, 7, 2] and parsed.prerelease != None)
     ):
         return "rules_godot requires Godot 4.7.2 or newer within Godot 4 (%s); got %s" % (
-            GODOT_SUPPORTED_VERSION_RANGE,
+            _GODOT_SUPPORTED_VERSION_RANGE,
             version,
         )
     return None
@@ -181,7 +181,7 @@ def require_supported_source_version(version, *, _fail = fail):
     if separator and status in ["dev", "alpha", "beta", "rc"]:
         if not require_supported_godot_version(number, _fail = _fail):
             return False
-        if number == GODOT_MINIMUM_VERSION:
+        if number == _GODOT_MINIMUM_VERSION:
             _fail("Source prerelease is older than the supported stable floor: " + version)
             return False
         return True

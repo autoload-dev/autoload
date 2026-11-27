@@ -17,7 +17,6 @@ import sys
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
-from godot.private.project_config import write_back
 from tools.godot_files import (
     DIRECTORY_MARKERS,
     is_hidden,
@@ -35,6 +34,7 @@ from tools.godot_staging import (
     same_content,
     validate_staged_paths,
 )
+from tools.project_config import write_back
 
 # The runner's own state inside a view, beside Godot's.
 STATE = ".godot/rules_godot"

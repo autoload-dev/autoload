@@ -41,7 +41,7 @@ py_library(
 # docs/internal/android-shell.md#review-a-godot-version.
 py_test(
     name = "pinned_godot_sources_match_the_reviewed_android_shell_test",
-    size = "medium",
+    size = "small",
     srcs = ["android_shell_review_test.py"],
     args = ["$(rlocationpath %s)" % source for source in _PINNED_SOURCES],
     data = _PINNED_SOURCES + ["//godot/private/engine:android_sources"],

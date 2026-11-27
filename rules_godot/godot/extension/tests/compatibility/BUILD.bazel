@@ -17,7 +17,7 @@ godot_test(
 
 engine_test(
     name = "godot_cpp_extension_loads_in_stable_engine_test",
-    size = "medium",
+    size = "small",
     engine = "stable",
     tags = ["godot_process"],
     test = ":godot_cpp_extension_loads_in_stable_engine_test_run",
@@ -33,7 +33,7 @@ godot_test(
 
 engine_test(
     name = "godot_cpp_extension_loads_in_beta_engine_test",
-    size = "medium",
+    size = "small",
     engine = "beta",
     tags = ["godot_process"],
     test = ":godot_cpp_extension_loads_in_beta_engine_test_run",

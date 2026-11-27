@@ -33,7 +33,7 @@ _TESTS = {
 # the adapter's exit code alone, as Bazel's test encyclopedia requires.
 py_test(
     name = "adapter_test_follows_test_encyclopedia_test",
-    size = "medium",
+    size = "small",
     srcs = ["adapter_test_follows_test_encyclopedia_test.py"],
     args = ["$(rootpath :%s)" % name for name in _TESTS],
     data = [":" + name for name in _TESTS],

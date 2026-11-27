@@ -164,7 +164,7 @@ ENVIRONMENT_CONSTRAINTS = {
 # Feature tags whose value a platform slice's configuration establishes: the operating
 # system, CPU, variant and iOS environment. Custom features cannot claim them,
 # so that they cannot change which configured extension library Godot loads.
-RESERVED_FEATURE_TAGS = (
+_RESERVED_FEATURE_TAGS = (
     OPERATING_SYSTEM_CONSTRAINTS.keys() +
     CPU_TABLE.keys() +
     ["debug", "release", "template_debug", "template_release"] +
@@ -175,7 +175,7 @@ RESERVED_FEATURE_TAGS = (
 # some of which depend on run time or export options (texture formats, movie, threads).
 # Custom features cannot claim them, and checks count them as present, since analysis
 # cannot know them: https://docs.godotengine.org/en/stable/tutorials/export/feature_tags.html
-ENGINE_FEATURE_TAGS = RESERVED_FEATURE_TAGS + [
+ENGINE_FEATURE_TAGS = _RESERVED_FEATURE_TAGS + [
     "32",
     "64",
     "astc",

@@ -1,3 +1,4 @@
+load("@bazel_skylib//rules:run_binary.bzl", "run_binary")
 load("@rules_android//rules:rules.bzl", "aar_import", "android_library")
 load("//godot:app.bzl", "godot_app")
 load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
@@ -53,21 +54,20 @@ android_library(
     tags = ["manual"],
 )
 
-genrule(
+run_binary(
     name = "plugin_aar",
     srcs = [
         "plugin/AndroidManifest.xml",
         ":libplugin_classes.jar",
     ],
     outs = ["plugin.aar"],
-    cmd = " ".join([
-        "python3 $(execpath plugin/make_aar.py)",
+    args = [
         "$(execpath plugin/AndroidManifest.xml)",
         "$(execpath :libplugin_classes.jar)",
-        "$@",
-    ]),
+        "$(execpath plugin.aar)",
+    ],
     tags = ["manual"],
-    tools = ["plugin/make_aar.py"],
+    tool = "//godot/platforms/private/tests:make_aar",
 )
 
 aar_import(

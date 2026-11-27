@@ -19,7 +19,6 @@ from collections.abc import Collection, Iterator
 from pathlib import Path
 from typing import Any
 
-from godot.private.project_config import validate_literal
 from tools import template
 from tools.godot_staging import (
     add_manifest_arguments,
@@ -46,6 +45,7 @@ from tools.pck import (
     pck_files,
     write_pck,
 )
+from tools.project_config import validate_literal
 
 _ADAPTIVE_ICON = Path(__file__).parent / "adaptive_icon.xml.tpl"
 

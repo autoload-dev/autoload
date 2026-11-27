@@ -50,7 +50,7 @@ in_context(
 # The class fragments merged into the cache Godot's own scan writes in the initialization.
 py_test(
     name = "class_cache_matches_godot_test",
-    size = "medium",
+    size = "small",
     srcs = ["class_cache_test.py"],
     args = ["$(rootpaths :class_cache_inputs)"],
     data = [":class_cache_inputs"],
@@ -202,7 +202,7 @@ godot_resources(
 [
     py_test(
         name = "validation_runs_no_project_code_%s_test" % project,
-        size = "medium",
+        size = "small",
         srcs = ["project_code_validation_test.py"],
         args = ["$(rootpaths :%s_validations_reported)" % project],
         data = [":%s_validations_reported" % project],
@@ -283,7 +283,7 @@ godot_addon(
 [
     py_test(
         name = "validation_follows_warning_settings_%s_test" % project,
-        size = "medium",
+        size = "small",
         srcs = ["warning_validation_test.py"],
         args = [
             project,
@@ -348,7 +348,7 @@ reported_build(
 
 py_test(
     name = "parse_error_fails_only_its_validation_test",
-    size = "medium",
+    size = "small",
     srcs = ["parse_error_validation_test.py"],
     args = ["$(rootpaths :broken_build)"],
     data = [":broken_build"],
@@ -413,7 +413,7 @@ reported_build(
 
 py_test(
     name = "script_errors_fail_their_validations_test",
-    size = "medium",
+    size = "small",
     srcs = ["script_error_validation_test.py"],
     args = ["$(rootpaths :script_error_validations_reported)"],
     data = [":script_error_validations_reported"],
@@ -487,7 +487,7 @@ reported_build(
 
 py_test(
     name = "dependents_validate_against_interfaces_test",
-    size = "medium",
+    size = "small",
     srcs = ["interface_validation_test.py"],
     args = ["$(rootpaths :interface_validations_reported)"],
     data = [":interface_validations_reported"],
@@ -585,7 +585,7 @@ reported_build(
 
 py_test(
     name = "extension_without_platform_library_fails_its_users_test",
-    size = "medium",
+    size = "small",
     srcs = ["absent_extension_validation_test.py"],
     args = ["$(rootpaths :platform_probe_validations_reported)"],
     data = [":platform_probe_validations_reported"],

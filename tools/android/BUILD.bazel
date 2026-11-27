@@ -36,7 +36,7 @@ py_test(
     srcs = ["requirements_test.py"],
     data = MODULE_FILES + [
         "sdk.json",
-        "@autoload_rules_godot//godot/platforms/private:android_toolchains.bzl",
+        "@autoload_rules_godot//godot/platforms/private:android_linux_toolchains.json",
     ],
     deps = [
         ":requirements_lib",

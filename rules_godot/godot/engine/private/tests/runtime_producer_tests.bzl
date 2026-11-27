@@ -7,6 +7,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "prebuilt_runtime")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 visibility("private")
 
@@ -14,12 +15,7 @@ _SOURCE_BINARY = "//godot/engine/private/tests/fixtures/source_built_runtime:god
 _SOURCE_BINARY_X86_64 = "//godot/engine/private/tests/fixtures/source_built_runtime:godot_x86_64"
 
 def _stand_in(name):
-    native.genrule(
-        name = name,
-        outs = [name + ".txt"],
-        cmd = "touch $@",
-        tags = ["manual"],
-    )
+    fixture_file(name = name, out = name + ".txt")
 
 # A prebuilt payload reports the facts its archive declares, places its bundle files at
 # their destinations and declares no deployment target or debug symbols.

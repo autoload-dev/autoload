@@ -20,6 +20,7 @@ load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private/config:transitions.bzl", "platform_slice_transition")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
 load(":library_fixtures.bzl", "dynamic_xcframework_fixture")
@@ -146,11 +147,10 @@ def _shared_library_exports_only_the_entry_symbol(env, target):
     env.expect.that_collection(links.argv).contains("-Wl,--version-script," + scripts[0])
 
 def _test_hdrs_reach_the_archive_the_shared_library_links(name):
-    native.genrule(
+    fixture_file(
         name = name + "_header",
-        outs = [name + "_fixture.h"],
-        cmd = "echo '#pragma once' > $@",
-        tags = ["manual"],
+        out = name + "_fixture.h",
+        content = "#pragma once",
     )
     _extension(name + "_extension", hdrs = [":" + name + "_header"])
     analysis_test(

@@ -15,20 +15,16 @@ load("//godot/private:repository_templates.bzl", "fill_template", "starlark_dict
 
 visibility(["//godot", "//godot/platforms/private/tests"])
 
-# The Android versions tools/android/sdk.json pins as build_tools, api_levels and ndk,
-# from Google's SDK repository (repository2-3.xml).
+# Google's SDK repository (repository2-3.xml).
 _REPOSITORY = "https://dl.google.com/android/repository/"
 
-_PLATFORMS = {
-    "35": struct(
-        archive = "platform-35_r02.zip",
-        integrity = "sha256-CYjKytAbOKGKR7rBSgaV8ka8dsGwbA7rjrDcglqwyOA=",
-    ),
-    "36": struct(
-        archive = "platform-36_r02.zip",
-        integrity = "sha256-N2BzaaKMW2QLOnmYho1FiY68t3dWWg6F+azzbyljHS4=",
-    ),
-}
+# The Linux build tools, NDK and SDK platforms, at the versions tools/android/sdk.json pins
+# as build_tools, ndk and api_levels. Data, so the repository's setup check reads them too.
+_PINS = Label(":android_linux_toolchains.json")
+
+def _pins(ctx):
+    """The archives and versions of the Linux toolchains: build_tools, ndk and platforms."""
+    return json.decode(ctx.read(ctx.attr._pins))
 
 _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 
@@ -49,28 +45,23 @@ def _require_revision(ctx, directory, expected, _fail):
 
 # ==== Linux SDK ===============================================================
 
-_LINUX_BUILD_TOOLS = struct(
-    version = "35.0.0",
-    archive = "build-tools_r35_linux.zip",
-    integrity = "sha256-vTpJZpEuuLMO0NALDNprZUO5SdX/4AvqVMBMgeFWHYg=",
-    strip_prefix = "android-15",
-)
-
 _SDK_TEMPLATES = "@rules_android//rules/android_sdk_repository:"
 
 def _linux_sdk_impl(ctx):
-    build_tools = _LINUX_BUILD_TOOLS.version
+    pins = _pins(ctx)
+    build_tools = pins["build_tools"]["version"]
     ctx.download_and_extract(
-        url = _REPOSITORY + _LINUX_BUILD_TOOLS.archive,
-        integrity = _LINUX_BUILD_TOOLS.integrity,
-        stripPrefix = _LINUX_BUILD_TOOLS.strip_prefix,
+        url = _REPOSITORY + pins["build_tools"]["archive"],
+        integrity = pins["build_tools"]["integrity"],
+        stripPrefix = pins["build_tools"]["strip_prefix"],
         output = "build-tools/" + build_tools,
     )
     _require_revision(ctx, "build-tools/%s/" % build_tools, build_tools, fail)
-    for level, platform in _PLATFORMS.items():
+    platforms = pins["platforms"]
+    for level, platform in platforms.items():
         ctx.download_and_extract(
-            url = _REPOSITORY + platform.archive,
-            integrity = platform.integrity,
+            url = _REPOSITORY + platform["archive"],
+            integrity = platform["integrity"],
             stripPrefix = "android-" + level,
             output = "platforms/android-" + level,
         )
@@ -96,8 +87,8 @@ create_system_images_filegroups = _create_system_images_filegroups
             "__repository_name__": ctx.name,
             "__build_tools_version__": build_tools,
             "__build_tools_directory__": build_tools,
-            "__api_levels__": ", ".join(['"%s"' % level for level in _PLATFORMS]),
-            "__default_api_level__": sorted(_PLATFORMS)[0],
+            "__api_levels__": ", ".join(['"%s"' % level for level in platforms]),
+            "__default_api_level__": sorted(platforms)[0],
             "__system_image_dirs__": "",
         },
     )
@@ -106,34 +97,29 @@ create_system_images_filegroups = _create_system_images_filegroups
 _linux_sdk = repository_rule(
     doc = "The pinned Linux build tools and platforms, as rules_android's SDK repository.",
     implementation = _linux_sdk_impl,
+    attrs = {"_pins": attr.label(default = _PINS)},
 )
 
 # ==== Linux NDK ===============================================================
-
-_LINUX_NDK = struct(
-    version = "29.0.14206865",
-    archive = "android-ndk-r29-linux.zip",
-    integrity = "sha256-Sru83IQvPUh5IG6WldUnCWA+Ut1o08H/8Es7Xnowjs8=",
-    strip_prefix = "android-ndk-r29",
-)
 
 def linux_ndk_impl(ctx, *, _fail = fail):
     """
     Download the pinned Linux NDK and generate rules_android_ndk's BUILD files for it.
 
     Args:
-        ctx: Repository rule context with the api_level attribute.
+        ctx: Repository rule context with the api_level and _pins attributes.
         _fail: Replaces fail in Starlark unit tests.
 
     Returns:
         The repository's metadata; None after an error.
     """
+    ndk = _pins(ctx)["ndk"]
     ctx.download_and_extract(
-        url = _REPOSITORY + _LINUX_NDK.archive,
-        integrity = _LINUX_NDK.integrity,
-        stripPrefix = _LINUX_NDK.strip_prefix,
+        url = _REPOSITORY + ndk["archive"],
+        integrity = ndk["integrity"],
+        stripPrefix = ndk["strip_prefix"],
     )
-    if not _require_revision(ctx, "", _LINUX_NDK.version, _fail):
+    if not _require_revision(ctx, "", ndk["version"], _fail):
         return None
 
     # rules_android_ndk asks the host's clang for its resource directory; this clang
@@ -179,6 +165,7 @@ _linux_ndk = repository_rule(
             doc = "Native API level the NDK compiles for.",
             mandatory = True,
         ),
+        "_pins": attr.label(default = _PINS),
     },
 )
 
@@ -196,7 +183,7 @@ def hub_impl(ctx, *, _fail = fail):
     Generate the hub that registers the host's and the Linux SDK and NDK toolchains.
 
     Args:
-        ctx: Repository rule context with the hub's template attributes.
+        ctx: Repository rule context with the hub's template attributes and _pins.
         _fail: Replaces fail in Starlark unit tests.
     """
     if ctx.os.name == "mac os x":
@@ -206,6 +193,8 @@ def hub_impl(ctx, *, _fail = fail):
     else:
         _fail("Unsupported operating system: " + ctx.os.name)
         return
+
+    levels = list(_pins(ctx)["platforms"])
 
     # A Linux host serves Linux executors with its own SDK and NDK, under the same target
     # names; other hosts fetch the Linux SDK and NDK only when toolchain resolution selects
@@ -221,12 +210,12 @@ def hub_impl(ctx, *, _fail = fail):
             starlark_dict(
                 {
                     ":api_level_" + level: "%s//:sdk-%s" % (sdk, level)
-                    for level in _PLATFORMS
+                    for level in levels
                 },
                 indent = "        ",
             ),
             "Linux executors have the Android SDK platforms %s only. Set " % (
-                ", ".join(_PLATFORMS)
+                ", ".join(levels)
             ) + "--@androidsdk//:api_level to one of them or build on this host.",
         )
     ctx.template("target_systems.bzl", Label(_NDK_TEMPLATES + "target_systems.bzl.tpl"), {})
@@ -242,7 +231,7 @@ def hub_impl(ctx, *, _fail = fail):
         "{LINUX_SDK}": linux_sdk,
         "{API_LEVEL_SETTINGS}": "\n\n".join([
             fill_template(ctx, ctx.attr._api_level_template, {"{LEVEL}": level})
-            for level in _PLATFORMS
+            for level in levels
         ]),
     }) + "\n")
 
@@ -255,6 +244,7 @@ _hub = repository_rule(
         "_api_level_template": attr.label(
             default = Label(":android_toolchains_api_level.BUILD.tpl"),
         ),
+        "_pins": attr.label(default = _PINS),
     },
 )
 
