@@ -11,8 +11,8 @@ load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFra
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:paths.bzl", "resource_path")
 load("//godot/private:symbols.bzl", "linked_dsym")
-load("//godot/private:variant.bzl", "variant")
-load("//godot/private/config:settings.bzl", "CPU_TABLE", "OPERATING_SYSTEM_CONSTRAINTS", "target_platform")
+load("//godot/private:variant.bzl", "VARIANT_ATTRS", "variant")
+load("//godot/private/config:settings.bzl", "CPU_TABLE", "OPERATING_SYSTEM_CONSTRAINTS", "PLATFORM_ATTRS", "target_platform")
 
 visibility("private")
 
@@ -378,6 +378,14 @@ def configured_library(ctx, target, prefix, context):
 
 # ==== Configuration ===========================================================
 
+# The attributes library_context reads, which every rule that configures a library carries.
+LIBRARY_ATTRS = {
+    "_tool": attr.label(
+        default = Label("//godot/private/config:tool"),
+        providers = [BuildSettingInfo],
+    ),
+} | PLATFORM_ATTRS | VARIANT_ATTRS
+
 def library_context(ctx):
     """
     Return what the configuration fixes for an extension library, and its feature tags.
@@ -386,7 +394,7 @@ def library_context(ctx):
     and the variant.
 
     Args:
-        ctx: Rule context of the extension.
+        ctx: Rule context of a rule with LIBRARY_ATTRS.
 
     Returns:
         A struct of operating_system, cpu, environment, tool (whether the configuration

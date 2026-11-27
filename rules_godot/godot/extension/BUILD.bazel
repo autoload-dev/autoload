@@ -11,12 +11,6 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
-# Text templates that this package's repository rules name.
-exports_files(
-    glob(["*.tpl"]),
-    visibility = ["//visibility:private"],
-)
-
 bzl_library(
     name = "defs",
     srcs = ["defs.bzl"],

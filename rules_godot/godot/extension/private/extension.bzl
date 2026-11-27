@@ -4,7 +4,6 @@ library and gives projects its files' resource paths, its tool view, and the mac
 declares both.
 """
 
-load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo", "apple_provider")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
@@ -16,11 +15,9 @@ load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN", "RUN_EXEC_GROUPS")
 load("//godot/private:macros.bzl", "CALLER_PACKAGE")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private:symbols.bzl", "keep_debug_info")
-load("//godot/private:variant.bzl", "VARIANT_ATTRS")
 load("//godot/private:versions.bzl", "dotted_version", "require_supported_godot_minimum")
-load("//godot/private/config:settings.bzl", "PLATFORM_ATTRS")
 load("//godot/private/config:transitions.bzl", "tool_transition")
-load(":library.bzl", "configured_library", "library_context")
+load(":library.bzl", "LIBRARY_ATTRS", "configured_library", "library_context")
 
 visibility(["//godot/extension"])
 
@@ -218,11 +215,7 @@ _OWN_ATTRS = {
         default = Label(":descriptor.gdextension.tpl"),
         allow_single_file = True,
     ),
-    "_tool": attr.label(
-        default = Label("//godot/private/config:tool"),
-        providers = [BuildSettingInfo],
-    ),
-} | PLATFORM_ATTRS | VARIANT_ATTRS
+} | LIBRARY_ATTRS
 
 # The tool view: the extension in the tool configuration. Editor actions reach it on
 # their execution platform and godot_editor and bazel run on the host.
