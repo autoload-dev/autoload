@@ -470,6 +470,8 @@ def _test_lacking_slots_build_from_the_release_sources(env):
     source = _declared(declarations, "godot_source")
     env.expect.that_collection([declaration.rule for declaration in source]).contains_exactly(["godot_engine_source"])
     env.expect.that_str(source[0].attrs["version"]).equals("4.7.2")
+    tree = _declared(declarations, "godot_tree")
+    env.expect.that_collection([declaration.rule for declaration in tree]).contains_exactly(["godot_engine_tree"])
     recipes = _recipes(declarations)
     env.expect.that_collection(recipes.keys()).contains_at_least([
         "godot_android_arm64_template_debug",
@@ -587,7 +589,16 @@ def _test_editor_recipes_take_the_editor_policy(env):
     editor = recipes["godot_macos_arm64_editor"]
     env.expect.that_collection(editor["enabled_modules"]).contains_exactly(["gdscript", "text_server_fb", "svg"])
     env.expect.that_dict(editor["build_options"]).contains_exactly({"vulkan": "no"})
-    env.expect.that_collection(editor["patches"]).contains_exactly(["//:fork.patch"])
+
+    # The policy's patches apply once, to the engine tree every recipe links.
+    env.expect.that_dict(_declared(declarations, "godot_tree")[0].attrs).contains_exactly({
+        "name": "godot_tree",
+        "source": "@godot_source//:source.json",
+        "patches": ["//:fork.patch"],
+        "patch_strip": 1,
+    })
+    env.expect.that_str(editor["tree"]).equals("@godot_tree//:tree.json")
+    env.expect.that_collection(editor.keys()).not_contains("patches")
     runtime = recipes["godot_macos_arm64_template_release"]
     env.expect.that_collection(runtime["enabled_modules"]).contains_exactly(["gdscript", "text_server_fb"])
     env.expect.that_dict(runtime["build_options"]).contains_exactly({"disable_3d": "yes"})

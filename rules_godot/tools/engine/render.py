@@ -26,6 +26,7 @@ try:
         reached_directories,
     )
     from .source_tree import write_json
+    from .tree import DEFINE, is_scoped
 except ImportError:
     import build_profile
     import define_analysis
@@ -41,6 +42,7 @@ except ImportError:
         reached_directories,
     )
     from source_tree import write_json
+    from tree import DEFINE, is_scoped
 
 
 # ==== Build facts =============================================================
@@ -367,7 +369,7 @@ def object_rules(
                     "_INCLUDES", [d for d in directories if d in reached[source]]
                 ),
                 deps=_source_deps(includes.graph, includes.targets, source),
-                local_defines=[build_profile.DEFINE] if reads else [],
+                local_defines=[DEFINE] if reads else [],
             )
             result.labels.append(":" + name)
             result.readers.update([":" + name] if reads else [])
@@ -765,7 +767,7 @@ def render(
     With runtime variants, the package declares each variant's graph too, selected by the
     build profile.
     """
-    tree = Tree(root, build_profile.scope(root), TreeCache(root), Constants())
+    tree = Tree(root, is_scoped(root), TreeCache(root), Constants())
     base = render_graph(args, graph, tree)
     rules = _package_rules(args, base, runtime_variants, tree)
     header = header_rules(args, bool(graph["swift_sources"]))

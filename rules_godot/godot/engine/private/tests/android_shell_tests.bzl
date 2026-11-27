@@ -1,4 +1,4 @@
-"""godot_android_shell prepares Godot's Android shell library from an extracted, patched source."""
+"""godot_android_shell prepares Godot's Android shell library from its engine tree."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 
@@ -8,7 +8,7 @@ load("//godot/engine/private:source_repositories.bzl", "android_shell_impl")
 # buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
 
-_SOURCE = Label("//godot/engine/private/tests:source.json")
+_TREE = Label("//godot/engine/private/tests:tree.json")
 _MANIFEST_PATH = "platform/android/java/lib/src/main/AndroidManifest.xml"
 _MANIFEST = """<manifest android:versionName="${godotLibraryVersion}">
 
@@ -16,30 +16,32 @@ _MANIFEST = """<manifest android:versionName="${godotLibraryVersion}">
     </application>
 </manifest>
 """
-_PATCH = "/usr/bin/patch"
+_PYTHON = "/usr/bin/python3"
 
 def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides):
     ctx = mocks.repository_ctx(
         attr = {
             "name": "godot_android_shell",
-            "source": _SOURCE,
-            "patches": [],
-            "patch_strip": 1,
+            "tree": _TREE,
             "_build_template": "android_shell.BUILD.tpl",
             "_kotlin_android": "@@rules_kotlin+//kotlin:android.bzl",
             "_kotlin_core": "@@rules_kotlin+//kotlin:core.bzl",
+            "_python": _PYTHON,
+            "_tree": "tools/engine/tree.py",
         } | overrides,
         files = {
-            str(_SOURCE): json.encode({
-                "archive": "source.tar.gz",
+            str(_TREE): json.encode({
+                "archive": "@@godot_sources//:source.tar.gz",
                 "sha256": "0" * 64,
                 "strip_prefix": "godot-%s" % version,
                 "version": version,
+                "patches": ["@@//engines:java.patch"],
+                "patch_strip": 1,
             }),
             _MANIFEST_PATH: manifest,
         },
-        which = {"patch": _PATCH},
         execute = execute,
+        path = lambda value: mocks.path(value) if str(value) == str(_TREE) else str(value),
     )
     errors, fail_ = mocks.errors()
     android_shell_impl(ctx, _fail = fail_)
@@ -48,24 +50,35 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
 def _files(ctx):
     return {call.path: call.content for call in mocks.calls(ctx, "file")}
 
-def _test_shell_extracts_and_patches_the_source(env):
-    ctx, errors = _shell(patches = ["java.patch"], patch_strip = 2)
+# The shell links the library's files of its engine tree, patched already, and extracts
+# nothing itself.
+def _test_shell_links_the_library_of_its_engine_tree(env):
+    ctx, errors = _shell()
     env.expect.that_collection(errors).contains_exactly([])
-    extract = mocks.calls(ctx, "extract")[0]
-    env.expect.that_str(extract.archive).equals(str(_SOURCE.same_package_label("source.tar.gz")))
-    env.expect.that_str(extract.stripPrefix).equals("godot-4.7.2")
-    env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PATCH, "-p2", "-F0", "-t", "-N", "-i", "java.patch"],
-    ).in_order()
-    methods = [call.method for call in ctx.calls]
-    env.expect.that_collection(methods[:5]).contains_exactly(
-        ["extract", "getenv", "watch", "execute", "file"],
-    ).in_order()
+    env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
+    env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
+        _PYTHON,
+        "tools/engine/tree.py",
+        "link",
+        "--tree",
+        str(_TREE).rpartition("/")[0],
+        "--recipe",
+        ".",
+        "--path",
+        "platform/android/java/lib",
+    ]).in_order()
 
-def _test_rejected_patch_stops_the_shell(env):
-    ctx, errors = _shell(patches = ["java.patch"], execute = {_PATCH: {"return_code": 1}})
-    env.expect.that_collection(errors).has_size(1)
-    env.expect.that_str(errors[0]).contains("Error applying patch java.patch")
+    # The tree's patches change the shell's sources, so the shell is prepared again with them.
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
+        "tools/engine/tree.py",
+        "@@//engines:java.patch",
+    ])
+
+def _test_a_failed_link_stops_the_shell(env):
+    ctx, errors = _shell(execute = {_PYTHON: {"return_code": 1, "stderr": "denied"}})
+    env.expect.that_collection(errors).contains_exactly([
+        "godot_android_shell: linking the engine tree failed:\n\ndenied",
+    ])
     env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "template")).contains_exactly([])
 
@@ -136,8 +149,8 @@ def android_shell_test_suite(name):
     test_suite(
         name = name,
         basic_tests = [
-            _test_shell_extracts_and_patches_the_source,
-            _test_rejected_patch_stops_the_shell,
+            _test_shell_links_the_library_of_its_engine_tree,
+            _test_a_failed_link_stops_the_shell,
             _test_each_variant_gets_a_build_config,
             _test_manifest_gets_version_and_min_sdk,
             _test_manifest_without_placeholder_fails,

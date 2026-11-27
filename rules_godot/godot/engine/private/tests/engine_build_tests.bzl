@@ -1,4 +1,4 @@
-"""godot_engine_build extracts and patches one recipe and passes it to the configure-only capture."""
+"""godot_engine_build links one recipe to its engine tree and passes it to the configure-only capture."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 
@@ -8,10 +8,12 @@ load("//godot/engine/private:source_repositories.bzl", "engine_build_impl", "pro
 # buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
 
-_SOURCE = Label("//godot/engine/private/tests:source.json")
+_TREE = Label("//godot/engine/private/tests:tree.json")
+_TREE_DIRECTORY = str(_TREE).rpartition("/")[0]
+_ARCHIVE = "@@godot_sources//:source.tar.gz"
+_PATCH_LABEL = "@@//engines:fork.patch"
 _SHA256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a"
 _PYTHON = "/usr/bin/python3"
-_PATCH = "/usr/bin/patch"
 
 # The variables Godot's configuration reads, watched before anything else.
 _CONFIGURE_ENVIRONMENT = [
@@ -26,7 +28,7 @@ _CONFIGURE_ENVIRONMENT = [
 
 _ATTRS = {
     "name": "godot_linux_x86_64_template_release",
-    "source": _SOURCE,
+    "tree": _TREE,
     "platform": "linux",
     "cpu": "x86_64",
     "build_target": "template_release",
@@ -34,8 +36,6 @@ _ATTRS = {
     "enabled_modules": ["gdscript", "text_server_fb"],
     "default_modules": False,
     "custom_modules": {},
-    "patches": [],
-    "patch_strip": 1,
     "renderers": [],
     "build_options": {},
     "build_name": "custom",
@@ -50,6 +50,7 @@ _ATTRS = {
     "_variants": "tools/engine/variants.py",
     "_generators": "tools/engine/generators.py",
     "_build_file": "tools/engine/build_file.py",
+    "_tree": "tools/engine/tree.py",
     "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
@@ -63,27 +64,37 @@ _ATTRS = {
     "runtime_profiles": {},
 }
 
-def _build(*, which = {"python3": _PYTHON, "patch": _PATCH}, execute = {}, path = None, environ = {}, files = {}, **overrides):
+def _tree_json(patches = [], patch_strip = 1):
+    return json.encode({
+        "archive": _ARCHIVE,
+        "sha256": _SHA256,
+        "strip_prefix": "godot-4.7.2-stable",
+        "version": "4.7.2",
+        "patches": patches,
+        "patch_strip": patch_strip,
+        "scons": "0" * 64,
+    })
+
+def _paths(path):
+    """Bazel's paths: a struct for the tree descriptor, whose directory the recipe links."""
+    mapping = path or str
+    return lambda value: mocks.path(value) if str(value) == str(_TREE) else mapping(value)
+
+def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(
         attr = _ATTRS | overrides,
-        files = {str(_SOURCE): json.encode({
-            "archive": "source.tar.gz",
-            "sha256": _SHA256,
-            "strip_prefix": "godot-4.7.2-stable",
-            "version": "4.7.2",
-        })} | files,
-        which = which,
+        files = {str(_TREE): tree or _tree_json()} | files,
         execute = execute,
-        path = path,
+        path = _paths(path),
         environ = environ,
     )
     errors, fail_ = mocks.errors()
     engine_build_impl(ctx, _fail = fail_)
     return ctx, errors
 
-def _configure(ctx, python = _PYTHON):
-    """The arguments of the configure call."""
-    calls = [call for call in mocks.calls(ctx, "execute") if call.args[0] == python]
+def _configure(ctx):
+    """The configure call."""
+    calls = [call for call in mocks.calls(ctx, "execute") if call.args[1:2] == ["tools/engine/configure.py"]]
     return calls[0] if calls else None
 
 def _options(arguments):
@@ -126,7 +137,7 @@ _CONFIGURE_COMMAND = [
     "--patch-strip",
     "2",
     "--patch",
-    "fork.patch",
+    _PATCH_LABEL,
     # The settings a recipe with runtime variants selects them on, here without any.
     "--build-profile-label",
     "@@//godot/private:build_profile_label",
@@ -136,34 +147,47 @@ def _test_configure_command_carries_the_recipe(env):
     ctx, errors = _build(
         enabled_modules = ["gdscript", "svg"],
         build_name = "studio",
-        patches = ["fork.patch"],
-        patch_strip = 2,
+        tree = _tree_json(patches = [_PATCH_LABEL], patch_strip = 2),
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 10 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
-            "extract",
-            "getenv",
+        ["watch"] * 11 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "watch",
             "execute",
-            "download_and_extract",
             "execute",
             "delete",
             "file",
         ],
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
-    extract = mocks.calls(ctx, "extract")[0]
-    env.expect.that_str(extract.archive).equals(str(_SOURCE.same_package_label("source.tar.gz")))
-    env.expect.that_str(extract.stripPrefix).equals("godot-4.7.2-stable")
-    env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PATCH, "-p2", "-F0", "-t", "-N", "-i", "fork.patch"],
-    ).in_order()
-    env.expect.that_str(mocks.calls(ctx, "download_and_extract")[0].output).equals("_scons")
+
+    # The patches are the tree's; the recipe's pin digest covers them.
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(_PATCH_LABEL)
+    env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
+    env.expect.that_collection(mocks.calls(ctx, "download_and_extract")).contains_exactly([])
     env.expect.that_collection(_configure(ctx).args).contains_exactly(_CONFIGURE_COMMAND).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly(
         ["WORKSPACE.bazel"],
     )
+
+# A recipe holds its generated files and links the engine tree's sources hard: no recipe
+# extracts them again.
+def _test_a_recipe_links_its_engine_tree(env):
+    ctx, errors = _build()
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
+        [_PYTHON, "tools/engine/tree.py", "link", "--tree", _TREE_DIRECTORY, "--recipe", "."],
+    ).in_order()
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(
+        "tools/engine/tree.py",
+    )
+
+def _test_a_failed_link_fails(env):
+    ctx, errors = _build(execute = {_PYTHON + " tools/engine/tree.py": {"return_code": 1, "stderr": "denied"}})
+    env.expect.that_collection(errors).contains_exactly([
+        "godot_linux_x86_64_template_release: linking the engine tree failed:\n\ndenied",
+    ])
+    env.expect.that_bool(_configure(ctx) == None).equals(True)
 
 def _test_build_options_become_sorted_options(env):
     ctx, errors = _build(build_options = {"production": "yes", "lto": "full", "builtin_zlib": "no"})
@@ -240,7 +264,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 10,
+        ["watch"] * 11,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -249,15 +273,14 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 10,
+        ["watch"] * 11,
     )
 
 # Configuration runs rules_python's interpreter, whatever Python the host's PATH has.
 def _test_rules_python_runs_configure(env):
-    ctx, errors = _build(which = {"python3": "/opt/bin/python3", "patch": _PATCH})
+    ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_bool(_configure(ctx) != None).equals(True)
-    env.expect.that_bool(_configure(ctx, "/opt/bin/python3") != None).equals(False)
+    env.expect.that_str(_configure(ctx).args[0]).equals(_PYTHON)
 
 # Configuration ends after a fixed timeout.
 def _test_a_fixed_timeout_bounds_configure(env):
@@ -266,19 +289,9 @@ def _test_a_fixed_timeout_bounds_configure(env):
     env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 1800, "quiet": True})
 
 def _test_failed_configure_fails(env):
-    ctx, errors = _build(execute = {_PYTHON: {"return_code": 1, "stdout": "out", "stderr": "err"}})
+    ctx, errors = _build(execute = {_PYTHON + " tools/engine/configure.py": {"return_code": 1, "stdout": "out", "stderr": "err"}})
     env.expect.that_collection(errors).contains_exactly(["Godot graph configuration failed:\nout\nerr"])
     env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
-
-def _test_rejected_patch_stops_the_recipe(env):
-    ctx, errors = _build(
-        patches = ["fork.patch"],
-        execute = {_PATCH: {"return_code": 1, "stdout": "1 out of 1 hunk FAILED"}},
-    )
-    env.expect.that_collection(errors).has_size(1)
-    env.expect.that_str(errors[0]).contains("Error applying patch fork.patch")
-    env.expect.that_collection(mocks.calls(ctx, "download_and_extract")).contains_exactly([])
-    env.expect.that_bool(_configure(ctx) == None).equals(True)
 
 _LOCK = "engines/godot.lock.json"
 
@@ -315,7 +328,7 @@ def _test_a_lock_file_renders_without_configuring_on_this_host(env):
     build = _written_build(ctx)
     env.expect.that_str(build).contains("# BUILD from the lock file\n")
     env.expect.that_str(build).contains('name = "pin"')
-    env.expect.that_str(build).contains('archive = "%s"' % _SOURCE.same_package_label("source.tar.gz"))
+    env.expect.that_str(build).contains('archive = "%s"' % _ARCHIVE)
     env.expect.that_str(build).contains('strip_prefix = "godot-4.7.2-stable"')
     env.expect.that_str(build).contains('exec_compatible_with = ["@@platforms//os:linux"]')
     env.expect.that_str(build).contains('"--platform", "linuxbsd", "--cpu", "x86_64"')
@@ -415,7 +428,8 @@ def engine_build_test_suite(name):
             _test_rules_python_runs_configure,
             _test_a_fixed_timeout_bounds_configure,
             _test_failed_configure_fails,
-            _test_rejected_patch_stops_the_recipe,
+            _test_a_recipe_links_its_engine_tree,
+            _test_a_failed_link_fails,
             _test_a_lock_file_renders_without_configuring_on_this_host,
             _test_pins_configure_where_godot_accepts_the_recipe,
         ],

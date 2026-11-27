@@ -324,7 +324,12 @@ _TUNED = "_tuned"
 _TUNED_VISIBILITY = ["//:registration"]
 
 def _policy(engine, build):
-    """The godot_engine_build attributes of an engine's recipes: its build tag's, or the official policy."""
+    """
+    The build policy of an engine: its build tag's, or the official policy.
+
+    It holds the godot_engine_build attributes of the engine's recipes and the patches of
+    its engine tree.
+    """
     policy = dict(_OFFICIAL_POLICY)
     if build:
         policy = {attribute: getattr(build, attribute) for attribute in _OFFICIAL_POLICY}
@@ -421,7 +426,7 @@ def source_recipes(parts, source, covered, profiles = {}):
             options, as runtime_profiles returns them.
 
     Returns:
-        A struct of `declarations`, the source archive and recipe repositories, `slots`,
+        A struct of `declarations`, the source archive, engine tree and recipe repositories, `slots`,
         the source-built hub slots, `android`, their Android runtimes by name, `tuned`,
         the binary slots a build whose runtime needs tuning leaves to them, and `pinning`,
         the hub attributes of its lock file.
@@ -431,11 +436,15 @@ def source_recipes(parts, source, covered, profiles = {}):
     rows = [row for row in ROWS if not (row.build_target == "editor" and slot_name(row) in covered)]
     rows_plan = plan_rows(engine.name, rows, version = source["version"])
     archive = engine.name + "_source"
+    tree = engine.name + "_tree"
     policy = _policy(engine, build)
+
+    # The policy's patches apply once, to the engine tree all recipes share.
+    patches = {attribute: policy.pop(attribute) for attribute in ["patches", "patch_strip"]}
     lock_file = engine.lock_file
     declarations = recipe_declarations(
         engine.name,
-        "@%s//:source.json" % archive,
+        "@%s//:tree.json" % tree,
         rows_plan,
         policy,
         lock_file,
@@ -444,7 +453,10 @@ def source_recipes(parts, source, covered, profiles = {}):
     _recipe_policies(declarations, build, _editor_policy(policy, parts.get("editor")))
     source_slots, android, tuned = _tuned_slots(rows_plan, covered)
     return struct(
-        declarations = [_declaration("godot_engine_source", name = archive, **source)] + declarations,
+        declarations = [
+            _declaration("godot_engine_source", name = archive, **source),
+            _declaration("godot_engine_tree", name = tree, source = "@%s//:source.json" % archive, **patches),
+        ] + declarations,
         slots = source_slots,
         android = android,
         tuned = tuned,
