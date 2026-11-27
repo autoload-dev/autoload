@@ -33,7 +33,7 @@ jobs:
         run: >-
           aspect exec -- bazel build --sandbox_debug
           '@@autoload_rules_godot++godot_engines+godot_linux_x86_64_template_release//:_macros__thirdparty__spirv-reflect'
-          2>&1 | grep -v "Unexpected unused-macro" | tail -60
+          2>&1 | grep -m3 "Unexpected unused-macro"
       - name: Script
         if: ${{ !cancelled() }}
         run: |

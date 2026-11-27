@@ -12,7 +12,7 @@
         split(substr($0, length(wrapper) + 2), position, ":")
         unused[position[1]] = 1
     } else if (index($0, "-Wunused-macros") > 0) {
-        print "Unexpected unused-macro warning: " $0 > "/dev/stderr"
+        print "Unexpected unused-macro warning: " $0 " [wrapper=" wrapper "] [index=" index($0, wrapper ":") "] [len=" length(wrapper) "]" > "/dev/stderr"
         failed = 1
     }
 }
