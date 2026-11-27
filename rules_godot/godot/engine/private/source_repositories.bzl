@@ -8,7 +8,7 @@ they generate.
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.
 
-Sections: Engine source, Engine tree, Engine build, Android shell.
+Sections: Engine source, Tree links, Engine build, Android shell.
 """
 
 load("//godot/private:versions.bzl", "require_supported_source_version")
@@ -63,7 +63,7 @@ def engine_source_impl(ctx, *, _fail = fail):
     # local or remote, may reuse them.
     return ctx.repo_metadata(reproducible = bool(ctx.attr.sha256))
 
-# ==== Engine tree =============================================================
+# ==== Tree links ==============================================================
 
 def _read_tree(ctx):
     """

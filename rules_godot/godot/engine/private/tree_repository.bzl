@@ -8,15 +8,11 @@ recipes again without extracting the sources again.
 
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.
-
-Sections: Engine tree.
 """
 
 load("//godot/private:patches.bzl", "apply_repository_patches")
 
 visibility(["//godot/..."])
-
-# ==== Engine tree =============================================================
 
 _SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
 

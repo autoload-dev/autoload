@@ -12,6 +12,8 @@ recipe's sources; what a configuration creates stays in the recipe's directories
 The scoping, here because the tree applies it, lets class_db.h include the build profile
 only where GODOT_DECLARES_BUILD_PROFILE is defined; build_profile.py defines it for the
 sources that can reach a registration.
+
+Sections: Preparation, Linking.
 """
 
 import argparse
@@ -22,6 +24,8 @@ import stat
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+# ==== Preparation =============================================================
 
 HEADER = "core/disabled_classes.gen.h"
 DEFINE = "GODOT_DECLARES_BUILD_PROFILE"
@@ -43,11 +47,6 @@ _SCOPED = f"""\
 #define GD_IS_CLASS_ENABLED(m_class) GODOT_BUILD_PROFILE_NOT_DECLARED_FOR_##m_class
 #endif
 """
-
-# The tree repository's own files, which a recipe repository writes for itself.
-_REPOSITORY_FILES = frozenset(
-    {"BUILD", "BUILD.bazel", "REPO.bazel", "WORKSPACE", "WORKSPACE.bazel", "tree.json"}
-)
 
 _WRITABLE = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
 
@@ -87,6 +86,17 @@ def prepare(root: Path) -> None:
             os.chmod(entry.path, entry.stat(follow_symlinks=False).st_mode & ~_WRITABLE)
 
 
+# ==== Linking =================================================================
+
+# The tree repository's own files, which a recipe repository writes for itself.
+_REPOSITORY_FILES = frozenset(
+    {"BUILD", "BUILD.bazel", "REPO.bazel", "WORKSPACE", "WORKSPACE.bazel", "tree.json"}
+)
+
+# Linking is a system call per file, about 15,000 for Godot's tree; threads overlap them.
+_LINK_THREADS = 8
+
+
 def _link_file(source: str, target: str) -> None:
     """Link a file hard, or copy it where the tree lies on another file system."""
     try:
@@ -95,10 +105,6 @@ def _link_file(source: str, target: str) -> None:
         if error.errno not in (errno.EXDEV, errno.EPERM, errno.EMLINK):
             raise
         shutil.copyfile(source, target)
-
-
-# Linking is a system call per file, about 15,000 for Godot's tree; threads overlap them.
-_LINK_THREADS = 8
 
 
 def link(tree: Path, recipe: Path, path: str = "") -> None:
