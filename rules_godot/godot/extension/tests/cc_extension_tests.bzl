@@ -71,7 +71,7 @@ def _test_tool_branch_of_deps_builds_the_tool_library(name):
     ]:
         analysis_test(
             name = name + "_" + configuration,
-            target = "lib%s_extension_native.so" % name,
+            target = "%s_extension.shared/lib%s_extension_native.so" % (name, name),
             impl = _tool_branch_of_deps_builds_the_tool_library,
             attrs = {"linked": attr.string(), "unlinked": attr.string()},
             attr_values = _SMALL | {"linked": linked, "unlinked": unlinked},
@@ -108,7 +108,7 @@ def _test_shared_library_finds_its_dependencies_beside_it(name):
     _extension(name + "_extension")
     analysis_test(
         name = name,
-        target = "lib%s_extension_native.so" % name,
+        target = "%s_extension.shared/lib%s_extension_native.so" % (name, name),
         impl = _shared_library_finds_its_dependencies_beside_it,
         attr_values = _SMALL,
     )
@@ -124,13 +124,13 @@ def _test_shared_library_exports_only_the_entry_symbol(name):
     _extension(name + "_extension")
     analysis_test(
         name = name + "_host",
-        target = "lib%s_extension_native.so" % name,
+        target = "%s_extension.shared/lib%s_extension_native.so" % (name, name),
         impl = _shared_library_exports_only_the_entry_symbol,
         attr_values = _SMALL,
     )
     analysis_test(
         name = name + "_android",
-        target = "lib%s_extension_native.so" % name,
+        target = "%s_extension.shared/lib%s_extension_native.so" % (name, name),
         impl = _shared_library_exports_only_the_entry_symbol,
         attr_values = _SMALL | _ANDROID_SDK,
         config_settings = _ANDROID,
@@ -157,7 +157,7 @@ def _test_hdrs_reach_the_archive_the_shared_library_links(name):
         name = name,
         targets = {
             "archive": name + "_extension.native",
-            "shared": "lib%s_extension_native.so" % name,
+            "shared": "%s_extension.shared/lib%s_extension_native.so" % (name, name),
         },
         impl = _hdrs_reach_the_archive_the_shared_library_links,
         attrs = {"header": attr.string()},

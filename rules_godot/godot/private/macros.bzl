@@ -12,6 +12,11 @@ VOLATILE_API = (
 
 _COMMON = ["tags", "testonly", "target_compatible_with", "exec_compatible_with"]
 
+# The visibility of a macro's internal target that its caller's package may inspect, as the
+# analysis tests of the calling package do, such as a run's view. A relative label resolves in
+# the package of the target, which is the caller's, also for a symbolic macro's targets.
+CALLER_PACKAGE = [":__pkg__"]
+
 def common_kwargs(kwargs):
     """
     Return the attributes a macro's helper targets share with its main target.

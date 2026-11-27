@@ -264,8 +264,8 @@ B3 covers what load visibility cannot express: `visibility()` names packages of 
 repository only, so a module that a generated repository loads, such as the engine recipes'
 `godot/engine/private:generator.bzl`, keeps public load visibility, and Bazel would let any
 module load it. No other module does: what the examples, the consumer scenarios and the
-add-on modules need from the ruleset is public API, and what only they need, such as the
-artifact test rules and `godot_configured_app`, lives in the root module. Buildifier's
+add-on modules need from the ruleset is public API, such as `godot_configured_app`, and what
+only they need, the artifact test rules, lives in the root module. Buildifier's
 `bzl-visibility` warning is no check of this boundary: it drops the repository of a label and
 compares paths as strings, so it catches a load across modules only by chance. Tags select tests; packages own
 them. A mobile test carries its tag where its package declares it, and no `test_suite` lists them.

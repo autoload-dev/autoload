@@ -1,7 +1,6 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app", "godot_configured_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-load("//examples:configured_app.bzl", "godot_configured_app")
 load("//tools/artifact_tests:ios_app_test.bzl", "ios_app_test")
 
 # The iOS smoke path: an iOS application that embeds a godot-cpp extension as a dynamic
@@ -106,6 +105,7 @@ godot_app(
     godot_configured_app(
         name = "simulator_" + app,
         app = ":" + app,
+        debug_symbols = ":" + app + ".debug_symbols",
         platform = "@autoload_rules_godot//godot/platforms:ios_sim_x86_64",
         tags = ["manual"],
     )
