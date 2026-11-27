@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # How long a slot must have been unused before it is released: a session that has just merged
@@ -163,6 +164,12 @@ class Checkout:
     had_upstream: bool
 
 
+# A checkout the decision does not need to read: its slot stays for another reason.
+UNREAD = Checkout(
+    dirty=False, head="", head_on_origin=False, branch_on_origin=False, had_upstream=False
+)
+
+
 def inspect_checkout(path: Path | str, branch: str) -> Checkout:
     """Read a checkout's state from Git; the clone's remote-tracking refs should be fresh."""
     head = git(path, "rev-parse", "HEAD")
@@ -248,7 +255,7 @@ def _verdict(entry: dict, branch: str, actions: Actions) -> Verdict:
     idle_ms = int(entry.get("idle_ms", 0))
     if not branch or idle_ms < IDLE_GRACE_MS:
         return decide(
-            Slot(entry["slot"], branch, idle_ms, False, False, "", False, False, ())
+            Slot(entry["slot"], branch, idle_ms, pull_requests=(), **vars(UNREAD))
         )
     try:
         checkout = actions.inspect(entry["path"], branch)
@@ -261,13 +268,21 @@ def _verdict(entry: dict, branch: str, actions: Actions) -> Verdict:
     )
 
 
+def _branch(entry: dict) -> str:
+    return "" if entry.get("detached") else entry.get("branch", "")
+
+
 def sweep(listing: dict, actions: Actions, report: Callable[[str], None]) -> int:
     """Release the done slots of a listing; returns how many were released."""
+    entries = list(leased_slots(listing))
+    # Reading the slots costs Git and GitHub round trips each; the hook waits for them.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        verdicts = list(
+            pool.map(lambda entry: _verdict(entry, _branch(entry), actions), entries)
+        )
     released = 0
-    for entry in leased_slots(listing):
-        branch = "" if entry.get("detached") else entry.get("branch", "")
-        verdict = _verdict(entry, branch, actions)
-        name = f"{entry['slot']} {branch or '(detached)'}"
+    for entry, verdict in zip(entries, verdicts):
+        name = f"{entry['slot']} {_branch(entry) or '(detached)'}"
         if not verdict.release:
             report(f"keep    {name}: {verdict.reason}")
         elif actions.release is None:

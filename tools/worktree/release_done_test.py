@@ -153,6 +153,19 @@ class InspectCheckoutTest(unittest.TestCase):
         self.assertFalse(self.inspect().head_on_origin)
 
 
+def leased(slot: str, **overrides: object) -> dict:
+    """A leased slot of this clone, held for two hours, as `aspect worktree list` lists it."""
+    entry = {
+        "slot": slot,
+        "state": "leased",
+        "owned_here": True,
+        "branch": f"claude/{slot}",
+        "idle_ms": 2 * HOUR,
+        "path": f"/{slot}",
+    }
+    return {**entry, **overrides}
+
+
 class SweepTest(unittest.TestCase):
     """Which listed slots the sweep reads, releases and reports."""
 
@@ -160,56 +173,12 @@ class SweepTest(unittest.TestCase):
         "pools": [
             {
                 "slots": [
-                    {
-                        "slot": "done",
-                        "state": "leased",
-                        "owned_here": True,
-                        "branch": "claude/done",
-                        "idle_ms": 2 * HOUR,
-                        "path": "/done",
-                        "agent": {"kind": "k", "id": "i"},
-                    },
-                    {
-                        "slot": "dirty",
-                        "state": "leased",
-                        "owned_here": True,
-                        "branch": "claude/dirty",
-                        "idle_ms": 2 * HOUR,
-                        "path": "/dirty",
-                    },
-                    {
-                        "slot": "busy",
-                        "state": "leased",
-                        "owned_here": True,
-                        "branch": "claude/busy",
-                        "idle_ms": 1,
-                        "path": "/busy",
-                    },
-                    {
-                        "slot": "free",
-                        "state": "free",
-                        "owned_here": True,
-                        "branch": "",
-                        "idle_ms": 2 * HOUR,
-                        "path": "/free",
-                    },
-                    {
-                        "slot": "other",
-                        "state": "leased",
-                        "owned_here": False,
-                        "branch": "claude/other",
-                        "idle_ms": 2 * HOUR,
-                        "path": "/other",
-                    },
-                    {
-                        "slot": "stranded",
-                        "state": "leased",
-                        "owned_here": True,
-                        "stranded": True,
-                        "branch": "claude/stranded",
-                        "idle_ms": 2 * HOUR,
-                        "path": "/stranded",
-                    },
+                    leased("done", agent={"kind": "k", "id": "i"}),
+                    leased("dirty"),
+                    leased("busy", idle_ms=1),
+                    leased("free", state="free", branch=""),
+                    leased("other", owned_here=False),
+                    leased("stranded", stranded=True),
                 ]
             }
         ]
@@ -238,7 +207,7 @@ class SweepTest(unittest.TestCase):
     def test_releases_only_done_slots_of_this_clone(self) -> None:
         self.assertEqual(self.sweep(dry_run=False), 1)
         self.assertEqual(self.released, ["done"])
-        self.assertEqual(self.inspected, ["/done", "/dirty"])
+        self.assertCountEqual(self.inspected, ["/done", "/dirty"])
         # A dirty checkout stays without asking GitHub.
         self.assertEqual(self.asked, ["claude/done"])
         self.assertEqual(
