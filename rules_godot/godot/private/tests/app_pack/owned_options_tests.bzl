@@ -3,7 +3,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private:export_options.bzl", "resolve_export_options")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
-load(":failures.bzl", "failure_test")
+load("//godot/private/tests:expected_failures.bzl", "failure_test")
 
 visibility("private")
 
@@ -150,7 +150,7 @@ _unsupported_profile = rule(implementation = _unsupported_profile_impl)
 
 def _test_unsupported_engine_profile_fails(name):
     _unsupported_profile(name = name + "_subject", tags = ["manual"])
-    failure_test(name, "rules_godot has no engine profile for Godot 4.9", [":" + name + "_subject"])
+    failure_test(name, ":" + name + "_subject", "rules_godot has no engine profile for Godot 4.9")
 
 def _policy_fixture_impl(ctx):
     profile = dict(engine_profile("4.7.2"))
@@ -217,7 +217,7 @@ def _test_malformed_owned_policy_fails(name):
             tags = ["manual"],
         )
         targets.append(":" + name + "_" + case)
-    failure_test(name, "Godot 4.7.2 / macos / binary_format/embed_pck", targets)
+    failure_test(name, targets, "Godot 4.7.2 / macos / binary_format/embed_pck")
 
 def owned_options_test_suite(name):
     test_suite(

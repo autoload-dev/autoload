@@ -1,0 +1,99 @@
+"""
+The files a change touches, for the tools that review a change: the working tree against a
+commit, untracked files included (changed_paths), or the index against HEAD (staged_paths),
+whose files index_checkout writes out.
+A branch's change starts at its merge base with a base ref (merge_base), so that commits
+which landed on the base after the branch point are not part of it.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import subprocess
+import tempfile
+from collections.abc import Iterator
+from dataclasses import dataclass
+from pathlib import Path
+
+
+class GitError(subprocess.CalledProcessError):
+    """A failed Git command, which reports what Git printed."""
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}: {self.stderr.strip()}"
+
+
+def git(repo: Path, *arguments: str) -> str:
+    """Git's output in `repo`; GitError when it fails."""
+    result = subprocess.run(
+        ["git", "-C", str(repo), *arguments], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        raise GitError(result.returncode, result.args, result.stdout, result.stderr)
+    return result.stdout
+
+
+@dataclass(frozen=True)
+class ChangedPath:
+    """A file of a change: its path before and after it."""
+
+    before: str | None  # None for a file the change adds
+    after: str | None  # None for a file the change deletes
+
+    @property
+    def label(self) -> str:
+        """The path, or `old → new` for a renamed file."""
+        return " → ".join(dict.fromkeys(p for p in (self.before, self.after) if p))
+
+
+def parse_name_status(output: str) -> list[ChangedPath]:
+    """The files of `git diff --name-status -z -M` output, renames as one file."""
+    fields = output.split("\0")
+    paths: list[ChangedPath] = []
+    index = 0
+    while index < len(fields) and fields[index]:
+        status = fields[index][0]
+        if status in "RC":
+            old, new = fields[index + 1], fields[index + 2]
+            paths.append(ChangedPath(old if status == "R" else None, new))
+            index += 3
+            continue
+        path = fields[index + 1]
+        paths.append(
+            ChangedPath(None if status == "A" else path, None if status == "D" else path)
+        )
+        index += 2
+    return paths
+
+
+def merge_base(repo: Path, base: str) -> str | None:
+    """The merge base of HEAD with `base`, or None when they have none."""
+    try:
+        return git(repo, "merge-base", base, "HEAD").strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
+    """The files that differ between the commit and the working tree, untracked included."""
+    paths = parse_name_status(git(repo, "diff", "--name-status", "-z", "-M", since))
+    untracked = git(repo, "ls-files", "-z", "--others", "--exclude-standard")
+    paths += [ChangedPath(None, path) for path in untracked.split("\0") if path]
+    return paths
+
+
+def staged_paths(repo: Path) -> list[ChangedPath]:
+    """The files the index changes against HEAD, or that it adds before a first commit."""
+    return parse_name_status(git(repo, "diff", "--cached", "--name-status", "-z", "-M"))
+
+
+@contextlib.contextmanager
+def index_checkout(repo: Path) -> Iterator[Path]:
+    """
+    A temporary directory holding every file of the index as the index holds it, which is
+    what the next commit records; removed afterwards. It needs no stash, which a
+    repository's worktrees share, and leaves the working tree untouched.
+    """
+    with tempfile.TemporaryDirectory(prefix="index-") as directory:
+        git(repo, "checkout-index", "--all", f"--prefix={directory}/")
+        yield Path(directory)

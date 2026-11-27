@@ -1,0 +1,18 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# The files a change touches (changes.py), for the file lint and Code Health.
+py_library(
+    name = "changes",
+    srcs = ["changes.py"],
+    visibility = [
+        "//tools/code_health:__pkg__",
+        "//tools/lint:__pkg__",
+    ],
+)
+
+py_test(
+    name = "changes_test",
+    size = "small",
+    srcs = ["changes_test.py"],
+    deps = [":changes"],
+)

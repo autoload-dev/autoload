@@ -55,7 +55,10 @@ py_binary(
     data = FILE_TOOLS.values(),
     env = FILE_TOOL_PATHS,
     visibility = ["//tools/format:__pkg__"],
-    deps = ["@rules_python//python/runfiles"],
+    deps = [
+        "//tools/git:changes",
+        "@rules_python//python/runfiles",
+    ],
 )
 
 py_test(

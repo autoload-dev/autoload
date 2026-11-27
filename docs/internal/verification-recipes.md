@@ -112,8 +112,16 @@ time:
 ```sh
 bazel run //tools/lint:files                      # the files changed since the merge base with origin/main
 bazel run //tools/lint:files -- --scope=all       # every file Git lists, as the Linux job runs it
-bazel run //tools/lint:files -- path/to/file.md   # the files given, as the pre-commit hook runs it
+bazel run //tools/lint:files -- --scope=staged    # the staged files as the index holds them, as the pre-commit hook runs it
+bazel run //tools/lint:files -- path/to/file.md   # the files given
 ```
+
+`--scope=staged` checks what the commit records: it checks the index out into a temporary
+directory, about a third of a second, and runs the tools there, so that a partially staged
+file is checked without its unstaged changes and the working tree stays untouched. pre-commit
+and lint-staged instead set the unstaged changes aside, with a patch file or `git stash`,
+and restore them afterwards; the repository's worktrees share the stash, and a hook stopped
+midway would leave the working tree without them.
 
 `aspect check`, and with it the pre-push hook, lints the changed files, but rumdl checks every
 Markdown file in each run: its rules MD057 and MD051 resolve the local links and their
