@@ -13,6 +13,7 @@ go_library(
         "language.go",
         "resolve.go",
         "scanner.go",
+        "tests.go",
         "units.go",
     ],
     data = [":scanner"],

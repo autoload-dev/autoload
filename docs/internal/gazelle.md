@@ -81,9 +81,14 @@ A target provides the `res://` paths and UIDs of its files and the global classe
 sources in the package register (`register_class<…>`, `GDREGISTER_CLASS(…)`); an add-on
 provides every path below its `directory`. Paths and class names hold within one project:
 a reference resolves to a target of the referencing project, or to one outside every project,
-such as an add-on, never to another project's. A built-in class resolves to nothing. A
-reference that several targets provide resolves to nothing too, with a message that asks for
-a resolve directive.
+such as an add-on, never to another project's. A built-in class resolves to nothing.
+
+When several targets provide a reference, such as a class that two builds of one extension
+register, the target keeps the one its `deps` already name; without that choice it gets none,
+and a message asks for it. A format can need a target that no file names, such as the
+extension of a script language: `# gazelle:godot_format_dep .dart //path/to:extension` adds
+it to every unit that holds a file of the format, and resolves a reference to a file of the
+format that no target provides, such as a script the extension compiles, to it.
 
 ## A person's choices
 
@@ -109,7 +114,8 @@ a resolve directive.
 | `# gazelle:resolve godot class <Name> <label>` | The target that provides a global class, such as an add-on module's extension class |
 | `# gazelle:resolve godot res res://<path> <label>` | The target that provides a resource path |
 | `# gazelle:resolve godot uid uid://<id> <label>` | The target that provides a UID |
-| `# gazelle:resolve_regexp godot res <regexp> <label>` | The target that provides every matching resource path, such as the `.dart` scripts of a Dart extension |
+| `# gazelle:resolve_regexp godot res <regexp> <label>` | The target that provides every matching resource path |
+| `# gazelle:godot_format_dep <suffix> <label>` | A target that the files of a format need, such as `.dart //path/to:extension` for a script language |
 
 The resolve directives are Gazelle's own; `class`, `res` and `uid` are the kinds of reference.
 A directive takes precedence over the index. Gazelle's `map_kind` applies to the three kinds.

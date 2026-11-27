@@ -9,9 +9,12 @@ package godot
 
 import (
 	"flag"
+	"log"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -40,6 +43,7 @@ const (
 	suiteBaseClass     = "GdUnitTestSuite"
 	extensionDirective = "godot_extension"
 	testDirective      = "godot_gdunit_test"
+	formatDirective    = "godot_format_dep"
 )
 
 type godotLang struct {
@@ -140,6 +144,11 @@ type godotConfig struct {
 	// Whether Godot skips the directory: it or a directory above holds a .gdignore, or its
 	// name begins with a dot.
 	ignored bool
+	// The directory, relative to the repository's root.
+	rel string
+	// The targets that the files of a format need, by suffix: `# gazelle:godot_format_dep
+	// .dart //path/to:extension`, such as the extension of a script language.
+	formatDeps map[string][]label.Label
 }
 
 func getConfig(c *config.Config) *godotConfig {
@@ -154,12 +163,13 @@ func (*godotLang) RegisterFlags(*flag.FlagSet, string, *config.Config) {}
 func (*godotLang) CheckFlags(*flag.FlagSet, *config.Config) error { return nil }
 
 func (*godotLang) KnownDirectives() []string {
-	return []string{extensionDirective, testDirective}
+	return []string{extensionDirective, testDirective, formatDirective}
 }
 
 func (*godotLang) Configure(c *config.Config, rel string, f *rule.File) {
 	gc := *getConfig(c)
 	if f != nil {
+		gc.rel = rel
 		gc.applyDirectives(f.Directives)
 	}
 	dir := filepath.Join(c.RepoRoot, filepath.FromSlash(rel))
@@ -181,8 +191,32 @@ func (gc *godotConfig) applyDirectives(directives []rule.Directive) {
 			gc.enabled = d.Value != "disabled"
 		case testDirective:
 			gc.tests = d.Value != "disabled"
+		case formatDirective:
+			gc.addFormatDep(d)
 		}
 	}
+}
+
+// addFormatDep records the target a format needs from a directive's `<suffix> <label>`,
+// for the directory and those below; a directory's own config gets a copy first.
+func (gc *godotConfig) addFormatDep(d rule.Directive) {
+	fields := strings.Fields(d.Value)
+	if len(fields) != 2 {
+		log.Printf("%s: gazelle:%s takes a suffix and a label, such as `.dart //path/to:extension`", gc.rel, formatDirective)
+		return
+	}
+	dep, err := label.Parse(fields[1])
+	if err != nil {
+		log.Printf("%s: gazelle:%s %s: %v", gc.rel, formatDirective, d.Value, err)
+		return
+	}
+	formatDeps := maps.Clone(gc.formatDeps)
+	if formatDeps == nil {
+		formatDeps = map[string][]label.Label{}
+	}
+	suffix := "." + strings.TrimPrefix(strings.ToLower(fields[0]), ".")
+	formatDeps[suffix] = append(slices.Clone(formatDeps[suffix]), dep.Abs("", gc.rel))
+	gc.formatDeps = formatDeps
 }
 
 // isHidden reports whether a directory's name begins with a dot, which hides it from Godot.

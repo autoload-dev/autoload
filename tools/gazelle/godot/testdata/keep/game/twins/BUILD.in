@@ -16,5 +16,5 @@ godot_resources(
     srcs = ["twins.gd"],
     prefix = "twins",
     # Both extensions register Twin; this scene uses the first.
-    deps = [":twin"],  # keep
+    deps = [":twin"],
 )
