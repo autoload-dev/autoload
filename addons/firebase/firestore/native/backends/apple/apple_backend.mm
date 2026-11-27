@@ -38,11 +38,16 @@ NSData *to_firestore_blob(const PackedByteArray &bytes) {
 // floats and strings.
 id to_firestore_scalar(const Variant &value) {
   switch (value.get_type()) {
-  case Variant::NIL: return [NSNull null];
-  case Variant::BOOL: return @((bool)value);
-  case Variant::INT: return @((int64_t)value);
-  case Variant::FLOAT: return @((double)value);
-  default: return ns(value.stringify());
+  case Variant::NIL:
+    return [NSNull null];
+  case Variant::BOOL:
+    return @((bool)value);
+  case Variant::INT:
+    return @((int64_t)value);
+  case Variant::FLOAT:
+    return @((double)value);
+  default:
+    return ns(value.stringify());
   }
 }
 
@@ -50,10 +55,14 @@ id to_firestore_scalar(const Variant &value) {
 // other arrays lists.
 id to_firestore(const Variant &value) {
   switch (value.get_type()) {
-  case Variant::DICTIONARY: return to_firestore_map(value);
-  case Variant::PACKED_BYTE_ARRAY: return to_firestore_blob(value);
-  case Variant::ARRAY: return to_firestore_array(value);
-  default: return to_firestore_scalar(value);
+  case Variant::DICTIONARY:
+    return to_firestore_map(value);
+  case Variant::PACKED_BYTE_ARRAY:
+    return to_firestore_blob(value);
+  case Variant::ARRAY:
+    return to_firestore_array(value);
+  default:
+    return to_firestore_scalar(value);
   }
 }
 

@@ -39,9 +39,16 @@ BackendResult user_directory(const std::string &contents, const std::string &key
     }
     for (; pos < line.size(); ++pos) {
       char c = line[pos];
-      if (c == '"') { closed = true; ++pos; break; }
+      if (c == '"') {
+        closed = true;
+        ++pos;
+        break;
+      }
       if (c == '\\') {
-        if (++pos == line.size()) { valid = false; break; }
+        if (++pos == line.size()) {
+          valid = false;
+          break;
+        }
         c = line[pos];
         if (c != '\\' && c != '"' && c != '$' && c != '`') path += '\\';
       } else if (c == '$' || c == '`') {

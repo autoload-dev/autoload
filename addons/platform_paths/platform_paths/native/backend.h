@@ -4,9 +4,19 @@
 #include <string>
 
 namespace platform_paths {
-enum Category { TEMPORARY = 0, APPLICATION_SUPPORT, APPLICATION_CACHE, DOCUMENTS, DOWNLOADS };
-enum class Status { OK = 0, UNAVAILABLE = 1, INTEGRATION_UNAVAILABLE = 2, ERROR = 3 };
-enum class Scope { NONE = 0, APPLICATION = 1, USER_DOMAIN = 2, TEMPORARY = 3 };
+enum Category { TEMPORARY = 0,
+                APPLICATION_SUPPORT,
+                APPLICATION_CACHE,
+                DOCUMENTS,
+                DOWNLOADS };
+enum class Status { OK = 0,
+                    UNAVAILABLE = 1,
+                    INTEGRATION_UNAVAILABLE = 2,
+                    ERROR = 3 };
+enum class Scope { NONE = 0,
+                   APPLICATION = 1,
+                   USER_DOMAIN = 2,
+                   TEMPORARY = 3 };
 
 // Each value owns its strings; no platform handles or Godot objects cross this boundary.
 struct BackendResult {

@@ -10,14 +10,14 @@
 
 namespace {
 
-void check(const char* error, const char* step) {
+void check(const char *error, const char *step) {
   if (error != nullptr) {
     std::fprintf(stderr, "%s: %s\n", step, error);
     std::exit(1);
   }
 }
 
-Dart_Handle check(Dart_Handle handle, const char* step) {
+Dart_Handle check(Dart_Handle handle, const char *step) {
   if (Dart_IsError(handle)) {
     std::fprintf(stderr, "%s: %s\n", step, Dart_GetError(handle));
     std::exit(1);
@@ -25,14 +25,14 @@ Dart_Handle check(Dart_Handle handle, const char* step) {
   return handle;
 }
 
-}  // namespace
+} // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   if (argc != 2) {
     std::fprintf(stderr, "usage: %s <snapshot>\n", argv[0]);
     return 2;
   }
-  char* error = nullptr;
+  char *error = nullptr;
   DartEngine_SnapshotData snapshot = DartEngine_AotSnapshotFromFile(argv[1], &error);
   check(error, "loading the snapshot");
   Dart_Isolate isolate = DartEngine_CreateIsolate(snapshot, &error);

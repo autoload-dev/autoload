@@ -29,7 +29,6 @@ constexpr const char *SNAPSHOT_NAME = "libdart_scripts.so";
 
 // ==== Dart helpers ===========================================================
 
-
 Dart_Handle lookup_library(const char *p_url) {
 	return Dart_LookupLibrary(Dart_NewStringFromCString(p_url));
 }
@@ -123,14 +122,12 @@ bool scalar_to_variant(Dart_Handle p_value, Variant &r_value) {
 
 // ==== Callables ==============================================================
 
-
 // A Dart function that Godot calls as a Callable, such as a signal's target. Two are equal
 // when their functions are equal in Dart, as two tear-offs of one object's method are, so
 // Dart code can disconnect what it connected.
 class DartCallable : public CallableCustom {
 public:
-	DartCallable(Dart_Handle p_function, uint32_t p_hash) :
-			function(Dart_NewPersistentHandle(p_function)), function_hash(p_hash) {}
+	DartCallable(Dart_Handle p_function, uint32_t p_hash) : function(Dart_NewPersistentHandle(p_function)), function_hash(p_hash) {}
 
 	~DartCallable() override {
 		if (Runtime::get().get_isolate() == nullptr) {
@@ -197,7 +194,6 @@ private:
 };
 
 // ==== Natives and messages ===================================================
-
 
 // The functions package:godot/src/natives.dart declares.
 
@@ -283,7 +279,6 @@ void report_message_error(Dart_Handle p_error, Dart_Isolate) {
 } // namespace
 
 // ==== Runtime ================================================================
-
 
 Runtime &Runtime::get() {
 	static Runtime runtime;
@@ -389,7 +384,6 @@ bool Runtime::report(Dart_Handle p_handle, const char *p_context) {
 }
 
 // ==== Conversion =============================================================
-
 
 Dart_Handle Runtime::object_to_dart(Object *p_object) {
 	if (p_object == nullptr) {
@@ -523,7 +517,6 @@ Dictionary Runtime::map_to_variant(Dart_Handle p_map) {
 }
 
 // ==== Scope ==================================================================
-
 
 Scope::Scope() {
 	Dart_Isolate isolate = Runtime::get().get_isolate();

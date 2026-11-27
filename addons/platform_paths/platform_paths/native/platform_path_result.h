@@ -16,8 +16,14 @@ protected:
   static void _bind_methods();
 
 public:
-  enum Status { OK = 0, UNAVAILABLE = 1, INTEGRATION_UNAVAILABLE = 2, ERROR = 3 };
-  enum Scope { NONE = 0, APPLICATION = 1, USER_DOMAIN = 2, TEMPORARY = 3 };
+  enum Status { OK = 0,
+                UNAVAILABLE = 1,
+                INTEGRATION_UNAVAILABLE = 2,
+                ERROR = 3 };
+  enum Scope { NONE = 0,
+               APPLICATION = 1,
+               USER_DOMAIN = 2,
+               TEMPORARY = 3 };
   int64_t get_category() const { return category; }
   Status get_status() const { return static_cast<Status>(value.status); }
   godot::String get_path() const { return godot::String::utf8(value.path.c_str()); }

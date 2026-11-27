@@ -17,9 +17,15 @@ NSDictionary<NSString *, id> *ns(const Dictionary &parameters) {
     const Variant value = parameters[keys[i]];
     id converted = nil;
     switch (value.get_type()) {
-    case Variant::INT: converted = @((int64_t)value); break;
-    case Variant::FLOAT: converted = @((double)value); break;
-    default: converted = ns((String)value); break;
+    case Variant::INT:
+      converted = @((int64_t)value);
+      break;
+    case Variant::FLOAT:
+      converted = @((double)value);
+      break;
+    default:
+      converted = ns((String)value);
+      break;
     }
     result[ns((String)keys[i])] = converted;
   }

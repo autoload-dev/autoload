@@ -23,6 +23,17 @@ class _CLASS_ extends _BASE_ with Ready {
 final script = Script(_CLASS_.new);
 )";
 
+// Dart's reserved words, and those of them that steer control flow, separated by spaces.
+const char *const RESERVED_WORDS =
+		"abstract as assert async await base break case catch class const continue covariant "
+		"default deferred do dynamic else enum export extends extension external factory false "
+		"final finally for Function get hide if implements import in interface is late library "
+		"mixin new null of on operator part required rethrow return sealed set show static super "
+		"switch sync this throw true try type typedef var void when while with yield";
+const char *const CONTROL_FLOW_KEYWORDS =
+		"break case catch continue default do else finally for if rethrow return switch throw try "
+		"while yield await";
+
 // The class a new script for p_base extends: the nearest of p_base and its ancestors that
 // package:godot has a view of, else Node.
 String view_class(const String &p_base) {
@@ -60,23 +71,11 @@ void DartLanguage::_finish() {
 }
 
 PackedStringArray DartLanguage::_get_reserved_words() const {
-	return PackedStringArray({
-			"abstract", "as", "assert", "async", "await", "base", "break", "case", "catch", "class",
-			"const", "continue", "covariant", "default", "deferred", "do", "dynamic", "else", "enum",
-			"export", "extends", "extension", "external", "factory", "false", "final", "finally", "for",
-			"Function", "get", "hide", "if", "implements", "import", "in", "interface", "is", "late",
-			"library", "mixin", "new", "null", "of", "on", "operator", "part", "required", "rethrow",
-			"return", "sealed", "set", "show", "static", "super", "switch", "sync", "this", "throw",
-			"true", "try", "type", "typedef", "var", "void", "when", "while", "with", "yield",
-	});
+	return String(RESERVED_WORDS).split(" ");
 }
 
 bool DartLanguage::_is_control_flow_keyword(const String &p_keyword) const {
-	const PackedStringArray keywords({
-			"break", "case", "catch", "continue", "default", "do", "else", "finally", "for", "if",
-			"rethrow", "return", "switch", "throw", "try", "while", "yield", "await",
-	});
-	return keywords.has(p_keyword);
+	return String(CONTROL_FLOW_KEYWORDS).split(" ").has(p_keyword);
 }
 
 PackedStringArray DartLanguage::_get_comment_delimiters() const {

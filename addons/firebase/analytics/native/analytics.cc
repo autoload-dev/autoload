@@ -10,11 +10,14 @@ namespace {
 // strings as they are, other values in their Godot string form.
 Variant parameter_value(const Variant &value) {
   switch (value.get_type()) {
-  case Variant::BOOL: return int64_t(bool(value));
+  case Variant::BOOL:
+    return int64_t(bool(value));
   case Variant::INT:
   case Variant::FLOAT:
-  case Variant::STRING: return value;
-  default: return value.stringify();
+  case Variant::STRING:
+    return value;
+  default:
+    return value.stringify();
   }
 }
 

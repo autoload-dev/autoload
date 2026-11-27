@@ -8,7 +8,7 @@
 using namespace godot;
 
 namespace {
-const char *const OPERATORS[] = {"==", "!=",          "<",                  ">",  ">=",
+const char *const OPERATORS[] = {"==", "!=", "<", ">", ">=",
                                  "<=", "array-contains", "array-contains-any", "in", "not-in"};
 
 // Firestore paths alternate collection and document IDs: collections have an odd number of
@@ -24,7 +24,8 @@ bool is_path(const String &path, bool document) {
 // The operators whose value is a list of values.
 const char *const LIST_OPERATORS[] = {"array-contains-any", "in", "not-in"};
 
-template <size_t N> bool contains(const char *const (&names)[N], const String &name) {
+template <size_t N>
+bool contains(const char *const (&names)[N], const String &name) {
   for (const char *candidate : names) {
     if (name == candidate) return true;
   }
@@ -75,8 +76,10 @@ bool is_stored_as_is(Variant::Type type) {
   case Variant::INT:
   case Variant::FLOAT:
   case Variant::STRING:
-  case Variant::PACKED_BYTE_ARRAY: return true;
-  default: return false;
+  case Variant::PACKED_BYTE_ARRAY:
+    return true;
+  default:
+    return false;
   }
 }
 

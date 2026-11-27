@@ -126,7 +126,7 @@ public:
     const int result = sqlite3_step(statement);
     if (result != SQLITE_DONE) {
       last_error = result == SQLITE_ROW ? "Use query for statements returning rows"
-                                       : String::utf8(sqlite3_errmsg(database));
+                                        : String::utf8(sqlite3_errmsg(database));
     }
     sqlite3_finalize(statement);
     return result == SQLITE_DONE;
