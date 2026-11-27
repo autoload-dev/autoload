@@ -67,3 +67,17 @@ py_test(
     ],
     tags = ["no-sandbox"],
 )
+
+# Whether a pull request reaches the source-engine tests, which the Source engine workflow
+# reads to run them by itself.
+py_library(
+    name = "source_engine_changes_lib",
+    srcs = ["source_engine_changes.py"],
+)
+
+py_test(
+    name = "source_engine_changes_test",
+    size = "small",
+    srcs = ["source_engine_changes_test.py"],
+    deps = [":source_engine_changes_lib"],
+)
