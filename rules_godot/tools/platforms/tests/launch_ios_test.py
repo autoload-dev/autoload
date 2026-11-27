@@ -1,6 +1,7 @@
-"""Tests of the iOS launcher: bundles, Simulator and device choice, installs."""
+"""Tests of the iOS launcher: bundles, device listing, Simulator and device choice, installs."""
 
 import dataclasses
+import io
 import os
 import plistlib
 import shutil
@@ -188,6 +189,13 @@ class SimulatorChoiceTest(unittest.TestCase):
         with self.assertRaisesRegex(LaunchError, "no Simulator runs"):
             self.choose(_simulators(_sim("A", "iPhone 17")), "--no-start-device")
 
+    def test_a_name_without_a_suitable_simulator_fails(self) -> None:
+        simulators = _simulators(_sim("A", "iPhone 17", runtime=(14, 0)))
+        with self.assertRaisesRegex(
+            LaunchError, r"no Simulator iPhone 17 with iOS 15\.0 or newer"
+        ):
+            self.choose(simulators, "--device=iPhone 17")
+
 
 class DeviceChoiceTest(unittest.TestCase):
     def device(self, **changes: object) -> launch_ios.Device:
@@ -207,6 +215,9 @@ class DeviceChoiceTest(unittest.TestCase):
     def test_a_named_device_must_be_connected(self) -> None:
         with self.assertRaisesRegex(LaunchError, "not connected"):
             self.choose([self.device(connected=False)], "--device=UDID")
+        with self.assertRaisesRegex(LaunchError, "no iOS device Tablet; --list-devices"):
+            self.choose([self.device()], "--device=Tablet")
+        self.assertEqual(self.choose([self.device()], "--device=Phone").identifier, "ID")
 
     def test_preflight_names_what_to_fix(self) -> None:
         with self.assertRaisesRegex(LaunchError, "Developer Mode disabled"):
@@ -258,12 +269,58 @@ class InstallTest(unittest.TestCase):
             )
         self.assertFalse([call for call in self.calls if "uninstall" in call])
 
+    def test_storage_and_signing_failures_are_conflicts(self) -> None:
+        for output in ["Insufficient storage", "not enough space", "Out of space"]:
+            self.assertEqual(
+                launch_ios._conflict(output), "the device has too little free storage"
+            )
+        self.assertEqual(
+            launch_ios._conflict("Upgrade failed"),
+            "it is signed by another team or with other entitlements",
+        )
+        self.assertIsNone(launch_ios._conflict("The bundle is invalid"))
+
     def test_a_locked_device_is_not_uninstalled_from(self) -> None:
         self.failure = "The device is locked."
         device = launch_ios.Device("ID", "Phone", "UDID", True, "enabled", True)
         with self.assertRaisesRegex(LaunchError, "unlock the device"):
             launch_ios.install_on_device(device, _BUNDLE, "copy.app", _options())
         self.assertFalse([call for call in self.calls if "uninstall" in call])
+
+
+class ListingTest(unittest.TestCase):
+    def test_simulators_are_listed_booted_first(self) -> None:
+        simulators = _simulators(
+            _sim("A", "iPhone 17"), _sim("B", "iPhone 17", "Booted", (26, 4))
+        )
+        with (
+            mock.patch.object(launch_ios.Simulators, "load", return_value=simulators),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as output,
+        ):
+            launch_ios.list_devices(simulator=True)
+        self.assertEqual(
+            output.getvalue(),
+            "Simulators:\n"
+            "  B  Booted    iPhone 17, iOS 26.4\n"
+            "  A  Shutdown  iPhone 17, iOS 27.0\n",
+        )
+
+    def test_devices_are_listed_with_their_state(self) -> None:
+        found = [
+            launch_ios.Device("ID", "Phone", "UDID", True, "enabled", True),
+            launch_ios.Device("ID2", "Pad", "", True, "disabled", False),
+        ]
+        with (
+            mock.patch.object(launch_ios, "devices", return_value=found),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as output,
+        ):
+            launch_ios.list_devices(simulator=False)
+        self.assertEqual(
+            output.getvalue(),
+            "Devices:\n"
+            "  UDID  connected  Phone, Developer Mode enabled\n"
+            "  ID2  not connected  Pad, Developer Mode disabled\n",
+        )
 
 
 class EnvironmentTest(unittest.TestCase):
