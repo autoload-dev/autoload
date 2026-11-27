@@ -160,7 +160,8 @@ def _names_await(body: list[Token]) -> bool:
 
 def _return_type(signature: list[Token]) -> list[str] | None:
     """The values of a signature's return type tokens; None if it declares none."""
-    # The return type follows the parameters, whose defaults may hold lambdas with their own.
+    # The return type follows the parameters. Their defaults may hold lambdas with
+    # return types of their own.
     values = [token.value for token in signature]
     after = skip_arguments(signature, values.index("(")) if "(" in values else len(values)
     return values[after + 2 : -1] if values[after : after + 2] == ["-", ">"] else None
@@ -176,8 +177,8 @@ def _stub(signature: list[Token], body: list[Token]) -> str | None:
     """
     identifiers = {token.value for token in body if token.category == "identifier"}
     awaits = "await" in identifiers
-    # A lambda's await makes the lambda a coroutine, not the function; telling the lambda's
-    # extent apart would take a parser.
+    # An await in a lambda makes the lambda a coroutine, not the function. Telling
+    # where the lambda ends would take a parser.
     if awaits and "func" in identifiers:
         return None
     if _names_await(body):

@@ -370,9 +370,9 @@ def _without_synthesized(features: list[str], synthesized: set[str]) -> list[str
         raise ValueError(
             "Synthesized CPU tags absent from ECFG: " + ", ".join(sorted(missing))
         )
-    # Godot 4.7/4.8 appends plugin features after preset features and preserves
-    # duplicate occurrences in ECFG. Consume only our one preset occurrence;
-    # a later plugin occurrence must reach structural-conflict validation.
+    # Godot 4.7 and 4.8 append the plugins' features after the preset's and keep
+    # duplicates in ECFG. Only the preset's occurrence goes, so that a plugin's
+    # later occurrence still reaches the structural-conflict validation.
     remaining = list(features)
     for tag in synthesized:
         remaining.remove(tag)

@@ -179,7 +179,7 @@ def _resolve(
     # A script path followed by a chain of inner classes records no base either.
     if len(names) > 1:
         return ""
-    # Godot opens the path as written; a relative one is no script it can scan.
+    # Godot opens the path as written, so a relative path names no script it scans.
     parent = scripts.get(path)
     if parent is None or path in visiting:
         return ""

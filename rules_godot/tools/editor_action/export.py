@@ -209,9 +209,9 @@ def validate_export_facts(manifest: dict, facts: dict) -> None:
 
 def _exclude_filter(excluded: Collection[str]) -> str:
     """The exclude filter of the preset: the excluded paths with their sidecars."""
-    # Selection belongs to the project declaration. The only exclusion filter
-    # passed to Godot is an expanded, inspectable list of declared paths, which
-    # Godot reads as comma-separated glob patterns.
+    # The project declaration selects the files. Godot gets one exclude filter only:
+    # the declared paths, listed one by one, which it reads as comma-separated glob
+    # patterns.
     paths = sorted(excluded_with_sidecars(excluded))
     unfilterable = [
         path for path in paths if any(character in path for character in "*,?[]")
@@ -367,13 +367,12 @@ def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
     """
     Record what Godot decides for a pack's export and render its application images.
 
-    The probe exports the staged project once more, without its files, and the
-    export is thrown away: Godot reports the export options with their
-    defaults, the project settings with the export's feature overrides and the
-    version options' values, and renders the icons and splash images the
-    specification lists into their outputs. An image whose source has a file
-    type Godot uses as it is, such as a macOS .icns icon or an Android vector
-    drawable, is copied instead.
+    The probe exports the staged project once more, without its files, and throws
+    the export away. Godot reports the export options with their defaults, and the
+    project settings with the export's feature overrides and the version options'
+    values. It renders the icons and splash images that the specification lists into
+    their outputs. An image whose source Godot uses as it is, such as a macOS .icns
+    icon or an Android vector drawable, is copied instead.
     """
     spec = manifest["shell"]
     for directory in spec.get("directories", []):
@@ -436,14 +435,14 @@ def configuration(manifest: dict, output: Path, report: Path, execroot: Path) ->
     """
     Export a pack's configuration: the PCK files a pack written without Godot needs from it.
 
-    Godot exports the staged project without its files, as the shell probe does; the
-    resulting project.binary depends on the project settings, the preset and the
-    variant only, so content changes never rerun this. The output PCK holds that
-    project.binary and the text server's support data where the runtime needs it:
-    where Godot's export packed it, or where the project lists translations, whose
-    locales Godot would read from files this export does not stage. The report holds
-    the facts the writer needs: the export's feature tags and the settings naming
-    files the runtime reads raw.
+    Godot exports the staged project without its files, as the shell probe does. The
+    resulting project.binary depends only on the project settings, the preset and the
+    variant, so content changes never rerun this export. The output PCK holds that
+    project.binary and, where the runtime needs it, the text server's support data:
+    where Godot's export packed it, or where the project lists translations. Godot
+    would read their locales from files that this export does not stage. The report
+    holds the facts the writer needs: the export's feature tags and the settings that
+    name files the runtime reads raw.
     """
     with staged_project(manifest, execroot, "godot-configuration-") as (work, root, _):
         _export_nothing(manifest, root)

@@ -93,7 +93,7 @@ def _member_files(
         for path in selected
         if path in staged and path not in left_out and not path.endswith(IMPORT)
     }
-    # The UIDs staging gave files without an authored .uid sidecar, which Godot packs.
+    # Godot packs the UID sidecars that staging gave files without an authored one.
     for path in list(files):
         sidecar = path + UID
         if not is_sidecar_named(path) and sidecar in staged:
@@ -182,7 +182,7 @@ def pack_files(
     uids = _packed_uids(files, staged, owners)
     _add_raw_images(files, staged, facts, uids)
     scripts = {path: staged.text(path) for path in files if path.endswith(".gd")}
-    # The files read for the caches go in from memory rather than being read again.
+    # The files read for the caches go in from memory, so they are not read again.
     for path, read in staged.texts.items():
         if path in files and not isinstance(files[path], bytes):
             files[path] = read.encode("utf-8")

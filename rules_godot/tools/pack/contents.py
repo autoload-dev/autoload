@@ -39,7 +39,8 @@ def _require_excluded(paths: set[str], excluded: set[str]) -> None:
 def _require_selected(
     paths: set[str], selected: set[str], ignored: Collection[str]
 ) -> None:
-    # Metadata becomes Godot-owned UID/import tables. Converted resources use remaps.
+    # Godot packs sidecars into its own UID and import tables, and converted
+    # resources under a remap.
     missing = sorted(
         path
         for path in selected
