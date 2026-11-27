@@ -12,7 +12,7 @@ IOS_MINIMUM_OS = "15.0"
 _GODOT_SUPPORTED_VERSION_RANGE = ">=4.7.2 <5.0.0"
 
 def _canonical_number(text):
-    # A decimal number without a sign or leading zeros, as Godot's version names write it.
+    # Godot's version names write numbers without leading zeros.
     return text.isdigit() and str(int(text)) == text
 
 def _parse_prerelease(suffix):
@@ -38,7 +38,7 @@ def _parse_version(version):
     return struct(numbers = [int(part) for part in numbers], prerelease = prerelease)
 
 def _in_supported_range(parsed):
-    # Godot 4 from the floor on; a prerelease of the floor precedes it.
+    # The range starts at the stable 4.7.2 release, so its prereleases fall below it.
     if parsed.numbers[0] != 4 or parsed.numbers < [4, 7, 2]:
         return False
     return parsed.numbers != [4, 7, 2] or parsed.prerelease == None

@@ -37,8 +37,8 @@ def _ios_values(attr):
     return {"ios_minimum_os_version": version, "ios_families": sorted(families)}
 
 # The values the export for each operating system uses. A host build without --platforms
-# carries no operating system here and gets the macOS values; a Linux pack ignores them,
-# as it ignores application_id.
+# carries no operating system, so it gets the macOS values. A Linux pack of such a build
+# ignores them, as it ignores application_id.
 _EXPORT_VALUES = {
     "android": _android_values,
     "macos": _macos_values,
