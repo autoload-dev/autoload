@@ -152,3 +152,10 @@ py_test(
     srcs = ["launch_entry_test.py"],
     data = ["//tools/platforms/launch"],
 )
+
+py_test(
+    name = "validate_artifacts_test",
+    size = "small",
+    srcs = ["validate_artifacts_test.py"],
+    deps = ["//tools/platforms:validate_artifacts_lib"],
+)
