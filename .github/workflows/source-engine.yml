@@ -1,40 +1,78 @@
 name: Source engine
 
-# The only CI run of the source-engine tests: it builds and runs every source-engine case
-# on main on the schedule below, on any branch on manual dispatch, and on a pull request
-# labelled `source-engine` when it is labelled and on each push while it has the label.
-# Merges leave them out. Policy:
+# The only CI run of the source-engine tests: it builds and runs every source-engine case on
+# a pull request whose changes reach them (tools/ci/source_engine_changes.py) or that has the
+# label `source-engine`, when it gets the label and on each push, and on any branch on manual
+# dispatch. Merges leave them out. Policy:
 # docs/internal/verification-platforms.md#source-engine-workflow.
 on:
-  schedule:
-    # GitHub starts scheduled runs late under load, worst at the top of the hour: runs meant
-    # for 03:00 in Berlin started between 10:23 and 12:04 UTC, while the daytime CI ran. An
-    # off-hour minute in the night of UTC and Berlin alike keeps the run ahead of the day.
-    - cron: "37 0 * * *"
   pull_request:
-    types: [labeled, synchronize]
+    types: [opened, reopened, synchronize, labeled]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A newer run on the same branch replaces one still building engines.
-concurrency:
-  group: source-engine-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  # Whether a push of a pull request reaches the source-engine tests; a label decides by
+  # itself. Never for a fork's pull request, which does not run on the self-hosted runners.
+  changes:
+    name: Source engine changes
+    if: >-
+      github.event_name == 'pull_request' && github.event.action != 'labeled'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A newer push cancels the run of an older one, even when its own job is skipped.
+    concurrency:
+      group: source-engine-${{ github.ref }}
+      cancel-in-progress: true
+    outputs:
+      reaches: ${{ steps.changes.outputs.reaches }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge base of the pull request's commits, without their files' contents.
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - name: Find changes that reach the source-engine tests
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: python3 -m tools.ci.source_engine_changes "$BASE" "$HEAD"
+
+  # Skipped, not failed, on a pull request that neither reaches the tests nor has the label,
+  # and when another label is added.
   source-engine:
     name: Source engine
+    needs: changes
     timeout-minutes: 60
     runs-on: macos-ci
-    # A pull request runs only with the label, when it gets the label rather than another, and
-    # never a fork's on the self-hosted runners.
     if: >-
-      github.event_name != 'pull_request'
-      || (contains(github.event.pull_request.labels.*.name, 'source-engine')
-      && (github.event.action != 'labeled' || github.event.label.name == 'source-engine')
-      && github.event.pull_request.head.repo.full_name == github.repository)
+      !cancelled() && (
+        github.event_name != 'pull_request'
+        || (
+          github.event.pull_request.head.repo.full_name == github.repository
+          && (
+            (github.event.action == 'labeled' && github.event.label.name == 'source-engine')
+            || (
+              github.event.action != 'labeled'
+              && (
+                contains(github.event.pull_request.labels.*.name, 'source-engine')
+                || needs.changes.outputs.reaches == 'true'
+              )
+            )
+          )
+        )
+      )
+    # A newer run on the same branch replaces one still building engines. A run for another
+    # label, which skips both jobs, leaves it alone.
+    concurrency:
+      group: source-engine-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
