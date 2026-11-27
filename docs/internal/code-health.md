@@ -72,10 +72,50 @@ rules. Long files are fine; a file is split by its dependencies, never by its le
 6. **Split by dependencies.** A part becomes a file of its own when it has dependencies, users
    or a change rhythm of its own, which `aspect code-health --history` shows. A region is no
    substitute for a split that is due.
+7. **Comments in plain language.** Comments, docstrings and `doc` strings explain what the code
+   cannot show, in words a first-time reader understands. [Comments](#comments) says how.
 
 The rules follow what research supports: navigation follows cues and dependencies rather than
 linear reading, the order of definitions matters less than their distance, and size alone
 predicts defects poorly while low cohesion and co-change predict them well.
+
+### Comments
+
+A comment earns its place when it tells the reader something the code does not: why the code
+does this, what a value means, what breaks without it, or where a rule comes from. A file's
+head says what the file is for. A docstring or `doc` says what a function, rule or attribute
+does for its caller, not how it works inside.
+
+Write a comment the way you would explain the code to a colleague:
+
+- Use short, whole sentences, one point each. Put the subject first.
+- Prefer everyday words. For a concept the [glossary](glossary.md) names, use its term; do not
+  coin another.
+- Say who does what: "the export writes the list", not "the list is written".
+- Leave out what the code already says. When a sentence needs a third clause, write a second
+  sentence instead.
+- If a clear comment is hard to write, look at the code first: a better name or a smaller
+  function may make the comment shorter or unnecessary.
+
+When code changes, read the comments around it again. A comment that is still correct but hard
+to follow needs rewriting too: write it anew so it reads naturally, rather than adding words
+until it fits. Keep it about as long as before. A comment moves with the code it explains and
+goes when that code goes.
+
+| Hard to follow | Plain |
+|---|---|
+| `# Selects a pack's resources from the graph and checks that what they reference is available: a tool of its own, so a change to it reruns only selections, and a change to it alone no graph scans.` | `# Selects a pack's resources from the graph and checks that their references exist. It is a tool of its own, so changing it reruns pack selections but no graph scans.` |
+| `# The runner of runs and tests, which the rules of godot/private start. The run logger is its data only.` | `# Runs projects and packs for godot_run and godot_test. Only this binary carries the run logger, not its library.` |
+
+These rules draw on Ousterhout's advice to comment what is not obvious to a first-time reader
+([Writing Comments](https://web.stanford.edu/~ouster/cgi-bin/cs190-winter18/lecture.php?topic=comments)),
+on a study that found obvious comments to be the most common comment smell
+([Jabrayilzade et al. 2024](https://link.springer.com/10.1007/s10664-023-10425-5)), on studies of
+comments that drift from their code and of the bugs that follow
+([Wen et al. 2019](https://www.inf.usi.ch/faculty/lanza/PUBS/P/Wen2019a.pdf),
+[Radmanesh et al. 2024](https://arxiv.org/abs/2409.10781)), and on plain-language guides for
+technical writing ([Google](https://developers.google.com/style/translation),
+[Australian Government Style Manual](https://www.stylemanual.gov.au/format-writing-and-structure/clear-language-and-writing-style)).
 
 ## The code-health skill
 
@@ -84,5 +124,6 @@ the Code Health of a change: by default the diff since the merge base with `orig
 the files it is given. Like `/simplify`, it lets subagents produce findings and decides
 itself: it deduplicates and sorts them, applies those it selects and names the reasons for the
 rest. Its subagents review the structure (rules 1 to 3), the order and layout (rules 4 and 5),
-the boundaries with the change history (rule 6), and CodeScene's findings. It runs before every
+the boundaries with the change history (rule 6), the comments (rule 7), and CodeScene's
+findings. It runs before every
 pull request, between `/simplify` and `/code-review`.
