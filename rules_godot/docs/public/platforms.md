@@ -1132,16 +1132,7 @@ spdx(
 
 The SBOM reads the graph from analysis and builds none of the application's outputs. Your
 `package_metadata` must be visible to rules_godot, since the targets its macros declare in
-your package carry it too. The SBOM names:
-
-- `pkg:bazel/autoload_rules_godot`, MPL-2.0.
-- `pkg:generic/godot@<version>`, MIT, for each engine the application uses: the prebuilt
-  export templates and editors with their archive's digest as `checksum`, source-built
-  runtimes and Android shells with their source archive's, and the engine's repository of
-  components without one.
-- `pkg:generic/godot-cpp`, MIT, with its archive's digest, for godot-cpp extensions.
-
-Godot counts as one package: the licenses of the libraries it bundles, which its
-`COPYRIGHT.txt` lists, are not declared apart, and an engine's patches keep the source
-archive's identity. Source-built runtimes, Android shells and godot-cpp carry their license
-text.
+your package carry it too. The SBOM names `pkg:bazel/autoload_rules_godot` (MPL-2.0), and
+`pkg:generic/godot@<version>` and `pkg:generic/godot-cpp` (MIT), whose `checksum` names the
+archive they come from. Godot is one package: the licenses of the libraries it bundles are
+not listed apart.

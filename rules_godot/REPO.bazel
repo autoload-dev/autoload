@@ -1,3 +1,2 @@
-# Every target of the module carries its package metadata, which SBOM and license tools read;
-# the repositories its repository rules create, such as Godot's, declare their own.
+# Every target of the module carries its package metadata (docs/public/platforms.md).
 repo(default_package_metadata = ["//:package_metadata"])

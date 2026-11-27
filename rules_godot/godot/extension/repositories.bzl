@@ -29,9 +29,8 @@ godot_cpp_bindings = repository_rule(
     link against the repository's generated bindings and upstream C++ library.
     The repository name determines the dependency label; with name = "godot_cpp", the
     public library target is @godot_cpp//:godot_cpp. Its CcInfo propagates headers,
-    include paths and link inputs through the C++ toolchain. Every target of the
-    repository carries godot-cpp's package metadata, its MIT license with the license
-    text, for SBOM and license tools.
+    include paths and link inputs through the C++ toolchain. Every target carries
+    godot-cpp's package metadata.
 
     See [godot-cpp integration](../../gdextension.md).
     """,

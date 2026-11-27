@@ -193,7 +193,7 @@ def _test_configure_command_carries_the_recipe(env):
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly([
         "WORKSPACE.bazel",
         "REPO.bazel",
-        "_package_metadata/LICENSE.txt",
+        "_package_metadata/LICENSE",
         "_package_metadata/BUILD.bazel",
     ])
 

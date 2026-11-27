@@ -169,7 +169,7 @@ def _test_no_enabled_classes_generate_every_class(env):
     # No build profile; the repository writes only its package metadata.
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly([
         "REPO.bazel",
-        "_package_metadata/LICENSE.md",
+        "_package_metadata/LICENSE",
         "_package_metadata/BUILD.bazel",
     ])
     substitutions = _substitutions(ctx)

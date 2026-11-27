@@ -183,7 +183,7 @@ def godot_cpp_bindings_impl(ctx, *, _fail = fail):
     })
     write_package_metadata(
         ctx,
-        source_purl("godot-cpp", checksum = "sha256:" + ctx.attr.sha256 if ctx.attr.sha256 else ""),
+        source_purl("godot-cpp", sha256 = ctx.attr.sha256),
         "LICENSE.md",
     )
 

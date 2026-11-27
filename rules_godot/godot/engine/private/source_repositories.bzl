@@ -74,7 +74,7 @@ def _write_tree_metadata(ctx, tree):
     """Give the repository's targets the package metadata of the tree's source archive."""
     write_package_metadata(
         ctx,
-        source_purl("godot", tree["version"], "sha256:" + tree["sha256"]),
+        source_purl("godot", tree["version"], sha256 = tree["sha256"]),
         "%s/LICENSE.txt" % ctx.path(ctx.attr.tree).dirname,
     )
 

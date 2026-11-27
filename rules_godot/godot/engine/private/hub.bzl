@@ -177,7 +177,7 @@ engine_hub = repository_rule(
         "display_name": attr.string(doc = "Apparent hub name for the generated comment.", mandatory = True),
         "engine": attr.string(doc = "Name of the engine every component belongs to; empty for the default engine."),
         "default_engine": attr.bool(doc = "Whether the named engine is also the default engine, which builds that name none take."),
-        "version": attr.string(doc = "Canonical Godot version of the engine, which the package metadata of the hub's targets names."),
+        "version": attr.string(doc = "Godot version of the engine, which the hub's package metadata names."),
         "toolchains_repository": attr.string(doc = "The extension's repository of every engine's toolchains, which registers the hub's components."),
         "android_runtimes": attr.string(doc = """
             JSON object of variant to {"shell": label, "engine_libraries": {CPU: label}};
