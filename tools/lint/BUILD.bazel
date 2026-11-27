@@ -31,6 +31,34 @@ py_binary(
     ],
 )
 
+# The file lint (files.py): the linters and formatters of files without targets of their own,
+# each named by the variable that holds its runfiles path.
+py_binary(
+    name = "files",
+    srcs = ["files.py"],
+    data = [
+        ":gdscript",
+        "//tools/conventions:files",
+        "@multitool//tools/rumdl",
+        "@multitool//tools/shellcheck",
+    ],
+    env = {
+        "CONVENTIONS": "$(rlocationpath //tools/conventions:files)",
+        "GDLINT": "$(rlocationpath :gdscript)",
+        "RUMDL": "$(rlocationpath @multitool//tools/rumdl)",
+        "SHELLCHECK": "$(rlocationpath @multitool//tools/shellcheck)",
+    },
+    visibility = ["//tools/format:__pkg__"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_test(
+    name = "files_test",
+    size = "small",
+    srcs = ["files_test.py"],
+    deps = [":files"],
+)
+
 py_test(
     name = "gdscript_test",
     size = "small",

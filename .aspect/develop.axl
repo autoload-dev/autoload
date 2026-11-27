@@ -88,6 +88,18 @@ def tool_checks(ctx: TaskContext) -> int:
     children = [spawn(ctx, "bazel", ["run", target]) for target in TOOL_CHECKS]
     return _first_failure([child.wait().code for child in children])
 
+def file_lint(ctx: TaskContext, arguments) -> int:
+    """Run the file lint (tools/lint/files.py): the linters of files without targets.
+
+    Args:
+        ctx: the running task's context.
+        arguments: its arguments: the scope, such as `--scope=all`, or the files.
+
+    Returns:
+        Its exit code.
+    """
+    return run(ctx, "bazel", ["run", "//tools/lint:files", "--"] + list(arguments))
+
 def steps(ctx: TaskContext, steps):
     """Run named steps in order; stop at the first failure unless asked to keep going.
 
@@ -124,9 +136,7 @@ def run_checks(ctx: TaskContext, every: bool):
     scope = ["--scope=all"] if every else []
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"] + scope)),
-        # The lint check of the filegroups that Gazelle declares per package, which are no
-        # tests (tools/lint/check.bzl): Markdown, GDScript and the per-file convention rules.
-        ("lint", lambda: bazel(ctx, "build", ["--config=check", "--config=sources"])),
+        ("lint", lambda: file_lint(ctx, scope)),
         ("bazel", lambda: bazel_tests(ctx, ["--config=check", "--config=fast"])),
         ("tools", lambda: tool_checks(ctx)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
@@ -163,6 +173,7 @@ def _ci_steps(ctx: TaskContext, host: str):
         ("format", lambda: run_work(ctx, "format")),
         ("tools", lambda: tool_checks(ctx)),
         ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android, parallel = False)),
+        ("file-lint", lambda: file_lint(ctx, ["--scope=all"])),
     ]
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
