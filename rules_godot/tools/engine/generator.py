@@ -144,7 +144,7 @@ def run(spec: dict[str, Any], inputs: dict[str, str], outputs: dict[str, str]) -
 
                 namespace = {"methods": methods}
                 # The inline builder is upstream engine source, which the build trusts like the rest.
-                exec(compile(spec["inline"], spec["code_file"], "exec"), namespace)
+                exec(compile(spec["inline"], spec["code_file"], "exec"), namespace)  # noqa: S102
                 function = namespace[spec["function"]]
             else:
                 module_spec = importlib.util.spec_from_file_location(
