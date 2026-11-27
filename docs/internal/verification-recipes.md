@@ -116,8 +116,20 @@ bazel run //tools/lint:files -- path/to/file.md   # the files given, as the pre-
 `aspect check`, and with it the pre-push hook, lints the changed files. A finding fails the
 run with the tool's own diagnostics, one per line as `<path>:<line>: <message>`; a tool that
 cannot check exits with another code than 1, which fails the run too. With `--fix` it runs
-the formatters that have no place in rules_lint's `format_multirun` instead, which
-`aspect format` runs through [tools/format](../../tools/format/BUILD.bazel).
+the formatters that rules_lint's `format_multirun` has no place for instead: `rumdl fmt` on
+Markdown and clang-format on Objective-C. `aspect format` runs them through
+[tools/format](../../tools/format/BUILD.bazel), beside Ruff, Buildifier, clang-format on C
+and C++ ([.clang-format](../../.clang-format), with Godot's style for the Dart extension;
+[.gitattributes](../../.gitattributes) leaves Godot's engine modules out, whose lock files pin
+their files) and shfmt on shell scripts
+([.editorconfig](../../.editorconfig)).
+
+gdformat, GDScript's formatter, is left out: it rewrites the repository's scripts in a style
+of its own, such as `class Name:` with `extends` on the next line and method chains broken
+into `. method(` lines, so a third of them would change for the worse. google-java-format is
+left out too: its `--aosp` style fits most of the 17 Java files, but it would need a Maven
+artifact, a `java_binary` with the JVM's `--add-exports` flags and a JDK in every formatter
+run, and the engine's own Android files, which keep Godot's tabs, excluded.
 
 To add a linter, add its executable to `//tools/lint:files` with the variable that names its
 runfiles path, and a `Tool` to `TOOLS` in `files.py` with the files it takes and its

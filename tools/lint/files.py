@@ -80,6 +80,13 @@ _RUMDL = ("--config", ".rumdl.toml", "--no-cache")
 TOOLS = (
     # GDScript's declaration order (gdscript.py, .gdlintrc).
     Tool("gdlint", ("*.gd",), check=(".gdlintrc",), executable="GDLINT"),
+    # Objective-C, which rules_lint's formatter leaves out; //tools/format formats C and C++.
+    Tool(
+        "clang-format",
+        ("*.m", "*.mm"),
+        fix=("-i", "--style=file", "--fallback-style=none"),
+        executable="CLANG_FORMAT",
+    ),
     Tool(
         "rumdl",
         ("*.md",),

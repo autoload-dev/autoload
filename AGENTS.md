@@ -49,7 +49,7 @@ aspect check                              # every check and the fast tests, as t
 aspect tests                              # the fast tests of the root module and the ruleset (--tier=all for every test)
 aspect fix                                # format the changed files, regenerate BUILD declarations and what the checks compare
 aspect ci linux                           # what CI's Linux job runs (macos for the macOS job's)
-aspect format                             # format and lint Starlark in changed files (--scope=all for the whole tree)
+aspect format                             # format changed files (Python, Starlark, C/C++/ObjC, shell, Markdown) and lint Starlark (--scope=all for the whole tree)
 bazel build --config=lint -- //...        # lint Python, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
 bazel run //tools/lint:files              # lint the changed files without targets: GDScript, Markdown, shell, per-file conventions (-- --scope=all for every file)
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory

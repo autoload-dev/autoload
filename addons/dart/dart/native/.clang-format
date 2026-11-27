@@ -1,0 +1,14 @@
+# Godot's style (.clang-format of godotengine/godot), in which these sources are written: tabs,
+# with the repository's style (/.clang-format) otherwise.
+BasedOnStyle: InheritParentConfig
+AccessModifierOffset: -4
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+AllowShortFunctionsOnASingleLine: Inline
+ConstructorInitializerIndentWidth: 8
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: false
+IndentCaseLabels: true
+IndentWidth: 4
+TabWidth: 4
+UseTab: Always
