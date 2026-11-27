@@ -7,6 +7,7 @@ line.
 
 import argparse
 import contextlib
+import functools
 import json
 import os
 import shutil
@@ -51,9 +52,19 @@ def report(message: str) -> None:
 # ==== Runfiles ================================================================
 
 
+@functools.cache
+def _runfiles(manifest: str, directory: str) -> bazel_runfiles.Runfiles | None:
+    """The runfiles of these locations, read once: a manifest is parsed whole."""
+    return bazel_runfiles.Create(
+        {"RUNFILES_MANIFEST_FILE": manifest, "RUNFILES_DIR": directory}
+    )
+
+
 def locate(key: str) -> Path:
     """The path of the runfile with a runfiles key, such as `_main/pkg/file`."""
-    runfiles = bazel_runfiles.Create()
+    runfiles = _runfiles(
+        os.environ.get("RUNFILES_MANIFEST_FILE", ""), os.environ.get("RUNFILES_DIR", "")
+    )
     found = runfiles.Rlocation(key) if runfiles else None
     if not found or not Path(found).exists():
         raise FileNotFoundError(f"Runfile {key} was not found")

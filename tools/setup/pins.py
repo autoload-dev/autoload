@@ -14,6 +14,7 @@ from typing import Any
 
 from tools.setup.modules import (
     declarations,
+    label_path,
     literals,
     module_paths,
     registry_test_modules,
@@ -79,8 +80,9 @@ def _format(value: Any) -> str:
 def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
     """The pins of one module that other modules must agree on, with their file."""
     path = root / module
+    source = (path / "MODULE.bazel").read_text()
     locations = {
-        "MODULE.bazel": module_pins((path / "MODULE.bazel").read_text()),
+        "MODULE.bazel": module_pins(source),
         ".bazelversion": {"bazelversion": (path / ".bazelversion").read_text().strip()},
     }
     for file, pins in locations.items():
@@ -88,20 +90,22 @@ def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
         for key, value in pins.items():
             if key not in UNPINNED:
                 yield key, location, value
-    yield from _shared_lock_files(root, module)
+    yield from _shared_lock_files(root, module, source)
 
 
-def _shared_lock_files(root: Path, module: str) -> Iterator[tuple[str, str, str]]:
-    """The digests of a module's shared tool lock files, with their file."""
-    for declaration in declarations((root / module / "MODULE.bazel").read_text()):
+def _shared_lock_files(
+    root: Path, module: str, source: str
+) -> Iterator[tuple[str, str, str]]:
+    """The digests of the shared tool lock files a module's MODULE.bazel names, with their file."""
+    for declaration in declarations(source):
         values = literals(declaration.keywords)
         name = values.get("name")
         if declaration.kind != MAVEN or name not in SHARED_LOCK_FILES:
             continue
-        package, _, file = values["lock_file"].removeprefix("//").partition(":")
-        location = Path(module) / package / file
-        digest = hashlib.sha256((root / location).read_bytes()).hexdigest()[:12]
-        yield f"{MAVEN}:{name}.lock_file", location.as_posix(), f"sha256 {digest}"
+        lock_file = label_path(root / module, values["lock_file"])
+        digest = hashlib.sha256(lock_file.read_bytes()).hexdigest()[:12]
+        location = lock_file.relative_to(root).as_posix()
+        yield f"{MAVEN}:{name}.lock_file", location, f"sha256 {digest}"
 
 
 def drifts(root: Path) -> list[str]:

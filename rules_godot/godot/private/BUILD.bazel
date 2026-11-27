@@ -5,7 +5,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
 load(":context.bzl", "no_project")
-load(":flags.bzl", "bool_value")
+load(":values.bzl", "bool_value")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
@@ -521,7 +521,6 @@ filegroup(
         "editor.bzl",
         "execution.bzl",
         "export_options.bzl",
-        "flags.bzl",
         "graph.bzl",
         "import_units.bzl",
         "macros.bzl",
@@ -544,6 +543,7 @@ filegroup(
         "shell_assets.bzl",
         "symbols.bzl",
         "sync.bzl",
+        "values.bzl",
         "variant.bzl",
         "versions.bzl",
         "view.bzl",
@@ -553,8 +553,8 @@ filegroup(
 )
 
 bzl_library(
-    name = "flags",
-    srcs = ["flags.bzl"],
+    name = "values",
+    srcs = ["values.bzl"],
     deps = ["@bazel_skylib//rules:common_settings"],
 )
 

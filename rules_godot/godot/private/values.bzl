@@ -1,4 +1,4 @@
-"""Values of rules_godot that rules read like build settings."""
+"""Configurable values that rules read like build settings."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
