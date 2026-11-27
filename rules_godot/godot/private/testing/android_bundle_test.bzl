@@ -2,6 +2,7 @@
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo")
 load("@rules_java//java/common:java_common.bzl", "java_common")
+load("//godot/private:paths.bzl", "runfile_key")
 
 # The repository's consumer scenarios load it; it is not supported API.
 visibility("public")
@@ -9,10 +10,6 @@ visibility("public")
 def _quote(value):
     # bazel_skylib is only a development dependency of this module.
     return "'" + value.replace("'", "'\\''") + "'"
-
-def _runfile(ctx, path):
-    # Runfiles paths of external files start with ../<repository>.
-    return path[3:] if path.startswith("../") else ctx.workspace_name + "/" + path
 
 def _android_bundle_test_impl(ctx):
     bundle = ctx.attr.bundle[AndroidBundleInfo].unsigned_aab
@@ -30,7 +27,7 @@ def _android_bundle_test_impl(ctx):
         files.append(ctx.file.debug_symbols)
     launcher = ctx.actions.declare_file(ctx.label.name)
     arguments = [
-        '%s "$runfiles/%s"' % (flag, _runfile(ctx, path))
+        '%s "$runfiles/%s"' % (flag, runfile_key(ctx, path))
         for flag, path in args
     ] + ["--library " + library for library in ctx.attr.apk_libraries] + [
         "--manifest-entry " + _quote(entry)
@@ -46,7 +43,7 @@ def _android_bundle_test_impl(ctx):
         template = ctx.file._launcher_template,
         output = launcher,
         substitutions = {
-            "{INSPECTOR}": _runfile(ctx, inspector.short_path),
+            "{INSPECTOR}": runfile_key(ctx, inspector.short_path),
             "{ARGUMENTS}": "\n".join(["  %s \\" % argument for argument in arguments]),
             "{APPLICATION_ID}": ctx.attr.application_id,
         },

@@ -69,8 +69,8 @@ def launcher(ctx, data):
         template = ctx.file._launcher_template,
         output = executable,
         substitutions = {
-            "{RUNNER}": runfile_key(ctx, ctx.executable._runner),
-            "{MANIFEST}": runfile_key(ctx, manifest),
+            "{RUNNER}": runfile_key(ctx, ctx.executable._runner.short_path),
+            "{MANIFEST}": runfile_key(ctx, manifest.short_path),
         },
         is_executable = True,
     )

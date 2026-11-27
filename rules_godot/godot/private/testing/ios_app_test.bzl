@@ -1,13 +1,10 @@
 """Test what an iOS application contains, without running it."""
 
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private:paths.bzl", "runfile_key")
 
 # The repository's consumer scenarios load it; it is not supported API.
 visibility("public")
-
-def _runfile(ctx, path):
-    # Runfiles paths of external files start with ../<repository>.
-    return path[3:] if path.startswith("../") else ctx.workspace_name + "/" + path
 
 def _ios_app_test_impl(ctx):
     bundle = ctx.attr.app[AppleBundleInfo].archive
@@ -22,7 +19,7 @@ def _ios_app_test_impl(ctx):
     if ctx.attr.debug_symbols:
         arguments.append("  --dsym-required \\")
         arguments += [
-            '  --dsym "$runfiles/%s" \\' % _runfile(ctx, file.short_path)
+            '  --dsym "$runfiles/%s" \\' % runfile_key(ctx, file.short_path)
             for file in ctx.files.debug_symbols
         ]
     if not arguments:
@@ -35,8 +32,8 @@ def _ios_app_test_impl(ctx):
         template = ctx.file._launcher_template,
         output = launcher,
         substitutions = {
-            "{INSPECTOR}": _runfile(ctx, inspector.short_path),
-            "{APP}": _runfile(ctx, bundle.short_path),
+            "{INSPECTOR}": runfile_key(ctx, inspector.short_path),
+            "{APP}": runfile_key(ctx, bundle.short_path),
             "{ARGUMENTS}": "\n".join(arguments),
         },
         is_executable = True,
