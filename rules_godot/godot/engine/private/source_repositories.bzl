@@ -312,7 +312,7 @@ def _recipe_error(ctx):
     if not ctx.attr.lock_file:
         return None
     if not ctx.attr.lock_key or not ctx.attr.repin:
-        return "%s: lock_file needs lock_key and repin, as godot_engine_source_build sets them" % ctx.attr.name
+        return "%s: lock_file needs lock_key and repin, as the godot_engines extension sets them" % ctx.attr.name
     return None
 
 def _read_environment(ctx):

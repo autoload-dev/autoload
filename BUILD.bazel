@@ -59,12 +59,10 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
-# The rules of gdlint and rumdl, which the lint check reads (tools/lint/check.bzl).
+# The rules of gdlint, which the file lint reads from the checkout and
+# //tools/lint:gdscript_test from its runfiles.
 exports_files(
-    [
-        ".gdlintrc",
-        ".rumdl.toml",
-    ],
+    [".gdlintrc"],
     visibility = ["//visibility:public"],
 )
 

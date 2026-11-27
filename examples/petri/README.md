@@ -41,7 +41,7 @@ pins every recipe, so no host configures them.
    layout and scene suites. All pass.
 3. `bazel build //examples/petri:app --@autoload_rules_godot//godot:macos_signing=adhoc`
    on macOS, or without the signing flag on Linux, builds the desktop app with the
-   source-built runtime. Find its bundle and archive under `bazel-bin/projects/petri/`.
+   source-built runtime. Find its bundle and archive under `bazel-bin/examples/petri/`.
 4. `bazel run //examples/petri:edit` opens the project in the source-built editor;
    `bazel run //examples/petri:test_edit` opens the test context with GdUnit and the
    suites.

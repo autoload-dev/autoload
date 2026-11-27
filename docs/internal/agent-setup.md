@@ -29,7 +29,7 @@ check enforces both ([no-claude-md](conventions.md#no-claude-md) and
 
 ## Worktrees
 
-Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose slots keep their
+Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose worktree slots keep their
 path, so a new worktree starts with a warm Bazel server and output base. Claude Code's
 worktrees (`claude --worktree`, subagents with worktree isolation) take a slot through the
 `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json`
