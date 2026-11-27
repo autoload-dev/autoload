@@ -126,10 +126,8 @@ TOOLS = (
 
 
 def _git(root: Path, *arguments: str) -> list[str]:
-    output = subprocess.run(
-        ["git", *arguments], cwd=root, check=True, capture_output=True, text=True
-    ).stdout
-    return [line for line in output.split("\0") if line]
+    """The NUL-separated paths Git prints."""
+    return [path for path in changes.git(root, *arguments).split("\0") if path]
 
 
 def listed_files(root: Path) -> list[str]:

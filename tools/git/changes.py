@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def _git(repo: Path, *arguments: str) -> str:
+def git(repo: Path, *arguments: str) -> str:
+    """Git's output in `repo`; CalledProcessError when it fails."""
     return subprocess.run(
         ["git", "-C", str(repo), *arguments],
         check=True,
@@ -57,15 +58,15 @@ def parse_name_status(output: str) -> list[ChangedPath]:
 def merge_base(repo: Path, base: str) -> str | None:
     """The merge base of HEAD with `base`, or None when they have none."""
     try:
-        return _git(repo, "merge-base", base, "HEAD").strip()
+        return git(repo, "merge-base", base, "HEAD").strip()
     except subprocess.CalledProcessError:
         return None
 
 
 def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
     """The files that differ between the commit and the working tree, untracked included."""
-    paths = parse_name_status(_git(repo, "diff", "--name-status", "-z", "-M", since))
-    untracked = _git(repo, "ls-files", "-z", "--others", "--exclude-standard")
+    paths = parse_name_status(git(repo, "diff", "--name-status", "-z", "-M", since))
+    untracked = git(repo, "ls-files", "-z", "--others", "--exclude-standard")
     paths += [ChangedPath(None, path) for path in untracked.split("\0") if path]
     return paths
 
@@ -73,5 +74,5 @@ def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
 def staged_paths(repo: Path) -> list[ChangedPath]:
     """The files the index changes against HEAD."""
     return parse_name_status(
-        _git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
+        git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
     )
