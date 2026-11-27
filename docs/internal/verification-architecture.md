@@ -190,6 +190,11 @@ To check sizes against run times, run the tests in question with
 timeout, and look at more than one run of a test near a boundary. It is not on by default,
 because it flags every analysis test that keeps the default size.
 
+The measure is a cold CI runner, not a local run alone. A test that starts a JVM, such as
+bundletool in `android_bundle_test` and the App Bundle checks of the platform tests, ran in
+seconds locally but passed the 60 s of `small` on CI's macOS runner, which shares its virtual
+machine with other jobs; such a test is `medium`.
+
 Size says nothing about the cost of a test's build, so it does not select the fast tests.
 A test whose build or run starts a Godot process carries the `godot_process` tag, which
 `godot_test` and the test operations built on it add themselves

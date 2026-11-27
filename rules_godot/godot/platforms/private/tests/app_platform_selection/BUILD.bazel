@@ -337,7 +337,7 @@ configured_outputs(
 
 android_bundle_test(
     name = "android_dual_abi_bundle_declares_sdk_versions_test",
-    size = "small",
+    size = "medium",
     application_id = "org.example.contract",
     bundle = ":android_dual_abi_bundle_sdk_app",
     bundletool = "@bundletool//file",
