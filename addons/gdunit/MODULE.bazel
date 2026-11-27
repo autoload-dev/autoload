@@ -12,6 +12,7 @@ module(
 # has it before this module is released, and keep the two in step. Builds in this repository
 # use the rules beside it (addons/module.bazelrc and the root MODULE.bazel).
 bazel_dep(name = "autoload_rules_godot", version = "0.1.1")
+bazel_dep(name = "package_metadata", version = "0.0.15")
 
 # GdUnit4 at a commit of its main branch; its add-on directory becomes //gdunit.
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

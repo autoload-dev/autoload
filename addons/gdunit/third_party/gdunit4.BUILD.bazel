@@ -1,6 +1,35 @@
 # GdUnit4's sources at a commit: the files of its add-on directory, which
 # //gdunit assembles into the add-on.
-package(default_visibility = ["@autoload_gdunit//gdunit:__pkg__"])
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+
+package(
+    default_package_metadata = [":package_metadata"],
+    default_visibility = ["@autoload_gdunit//gdunit:__pkg__"],
+)
+
+# The archive's identity and license, for the SBOM and license tools that read package
+# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = (
+        purl.builder()
+            .type("github")
+            .namespace("godot-gdunit-labs")
+            .name("gdUnit4")
+            .version("0127a55f4543dfc24746f6e5c7ba6f94105d51f2")
+            .build()
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:MIT",
+    text = "addons/gdUnit4/LICENSE",
+)
 
 # The editor plugin and the scenes it docks. Godot instantiates scenes while packing, these
 # create GdUnit's singletons, and the export then crashes at exit. GdUnit's runtime classes

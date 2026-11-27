@@ -29,9 +29,7 @@ of its own, which the root module consumes:
 ```text
 MODULE.bazel                      # the consuming root module: pins, toolchains, overrides
 addons/sqlite/                    # the add-on module autoload_sqlite
-  MODULE.bazel
-  third_party/
-    sqlite.BUILD.bazel            # build file of the pinned SQLite archive
+  MODULE.bazel                    # depends on the registry's sqlite3 module
   sqlite/
     BUILD.bazel                   # reusable extension
     database.cc

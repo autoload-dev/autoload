@@ -20,7 +20,7 @@ bazel_dep(name = "rules_multitool", version = "1.0.0")
 # bazel_skylib's plugin and the Godot declarations of the repository's own language. It runs
 # from this module for every module, so the others' graphs keep their own Gazelle; this one
 # is the version this module's graph already holds.
-bazel_dep(name = "gazelle", version = "0.51.3", dev_dependency = True)
+bazel_dep(name = "gazelle", version = "0.54.0", dev_dependency = True)
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.9.2", dev_dependency = True)
 
 # Runs Gazelle's languages and modules one after another (tools/gazelle).
@@ -382,6 +382,25 @@ godot_cpp_bindings(
 # rules_dart, whose analysis summaries setting the root's .bazelrc propagates to the exec
 # configuration for the Dart add-on (autoload_dart).
 bazel_dep(name = "rules_dart", version = "0.10.0", dev_dependency = True)
+
+# The SBOM rules the consumer scenarios check package metadata with. Their registry release,
+# 0.0.1, predates the sbom rule, so this module and the Go module it runs come from one commit
+# of their repository; replace the overrides with a registry version once one has the rule.
+bazel_dep(name = "package_metadata", version = "0.0.15", dev_dependency = True)
+bazel_dep(name = "supply_chain_tools", version = "0.0.1", dev_dependency = True)
+archive_override(
+    module_name = "supply_chain_tools",
+    integrity = "sha256-MNYaXQJW9SJSWWru+YhERS3ZnIZBvjjLDxmb53OsRrk=",
+    strip_prefix = "supply-chain-b096bfe928df459d8a413fb970fd6b0787235eeb/tools",
+    urls = ["https://github.com/bazel-contrib/supply-chain/archive/b096bfe928df459d8a413fb970fd6b0787235eeb.tar.gz"],
+)
+
+archive_override(
+    module_name = "supply-chain-go",
+    integrity = "sha256-MNYaXQJW9SJSWWru+YhERS3ZnIZBvjjLDxmb53OsRrk=",
+    strip_prefix = "supply-chain-b096bfe928df459d8a413fb970fd6b0787235eeb/lib/supplychain-go",
+    urls = ["https://github.com/bazel-contrib/supply-chain/archive/b096bfe928df459d8a413fb970fd6b0787235eeb.tar.gz"],
+)
 
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
