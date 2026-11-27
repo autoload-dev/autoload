@@ -73,10 +73,11 @@ companion target promises fewer prerequisites, for example symbol access indepen
 Use providers for semantic file access in custom rules instead of scraping paths or selecting
 arbitrary default files. Test execution reports follow Bazel's test-result interfaces.
 
-Additional macro target names follow [RG002](../../../docs/internal/conventions.md#rg002): `<name>.<role>`.
-The convention, including slash-suffixed rules_android basenames, is owned there. A dotted name does
-not grant public visibility, and output-group keys and artifact filenames do not inherit
-the target separator.
+Additional macro target names follow
+[snake-case-target-names](../../../docs/internal/conventions.md#snake-case-target-names):
+`<name>.<role>`. The convention, including slash-suffixed rules_android basenames, is owned
+there. A dotted name does not grant public visibility, and output-group keys and artifact
+filenames do not inherit the target separator.
 
 Public guides link to the registry's documentation and show short build, run, output group
 and companion target examples.

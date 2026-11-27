@@ -83,9 +83,10 @@ test:source-engine --build_tests_only
 test:source-engine --test_tag_filters=source_engine
 
 # The test tiers of `aspect tests` (.aspect/develop.axl). fast: every test but those that
-# start a Godot process (RG026) or need a mobile operating system's toolchains, the desktop smoke tests
-# included, which `aspect check` and the pre-push hook run. all: every test this host can
-# run. Both leave out the tests that build an engine from source (source_engine).
+# start a Godot process (godot-process-tests-tagged) or need a mobile operating system's
+# toolchains, the desktop smoke tests included, which `aspect check` and the pre-push hook
+# run. all: every test this host can run. Both leave out the tests that build an engine
+# from source (source_engine).
 test:fast --build_tests_only
 test:fast --test_tag_filters=-godot_process,-source_engine,-android,-ios
 test:all --build_tests_only

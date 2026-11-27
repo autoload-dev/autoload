@@ -8,25 +8,24 @@ rule's name, applicability, automated coverage and limits; the
 [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the layout
 and naming conventions mean. External repositories and source files are separate identities,
 not authored target declarations. Coverage that rests on Bazel's evaluation, such as that of
-RG002, [documented-targets-exist](#documented-targets-exist),
-[application-content-under-main](#application-content-under-main), RG012 and RG026, leaves out
+[snake-case-target-names](#snake-case-target-names),
+[documented-targets-exist](#documented-targets-exist),
+[application-content-under-main](#application-content-under-main),
+[production-independent-of-tests](#production-independent-of-tests) and
+[godot-process-tests-tagged](#godot-process-tests-tagged), leaves out
 the registry test modules ([registry-test-module-in-bcr](#registry-test-module-in-bcr)), which
 the check does not load (see the [rule framework](#rule-framework)).
-
-RG002, RG012 and RG026 keep the numbered IDs they had before rules had names, as a
-temporary exception: the move to Bazel-native boundaries and symbolic macros removes or
-reduces them, and they get names once that change has merged.
 
 | Name | Rule | Policy | Automated coverage | Enforcement |
 |---|---|---|---|---|
 | [snake-case-package-paths](#snake-case-package-paths) | Package segments use lower snake case | Required | Every BUILD file, relative to the nearest module | Error |
-| [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
+| [snake-case-target-names](#snake-case-target-names) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
 | [no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [documented-targets-exist](#documented-targets-exist) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [application-content-under-main](#application-content-under-main) | Application content lives under its project's `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
 | [application-tests-under-tests](#application-tests-under-tests) | An application's tests live in its `tests/` package | Required | The test calls of every application project's root package | Error |
 | [projects-at-fixed-places](#projects-at-fixed-places) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
-| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel, but test-only targets, which Bazel's test-only check guards | Error; missing role flags are reported as not checked |
+| [production-independent-of-tests](#production-independent-of-tests) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel, but test-only targets, which Bazel's test-only check guards | Error; missing role flags are reported as not checked |
 | [no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [engine-files-under-engines](#engine-files-under-engines) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [addon-module-named-after-directory](#addon-module-named-after-directory) | The module `addons/<module>/` is named `autoload_<module>` | Required | The `module()` of every add-on module | Error |
@@ -47,7 +46,7 @@ reduces them, and they get names once that change has merged.
 | [shared-module-files-as-generated](#shared-module-files-as-generated) | Add-on modules keep the shared files as the add-on generator writes them | Required | The shared files of every add-on module and its registry templates | Error |
 | [region-headers-named-in-head](#region-headers-named-in-head) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [definitions-before-callers](#definitions-before-callers) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
-| [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules and the tests `godot_test` declares, which tag themselves, by its loading graph | Error |
+| [godot-process-tests-tagged](#godot-process-tests-tagged) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules and the tests `godot_test` declares, which tag themselves, by its loading graph | Error |
 
 The rule of the public API's boundary is retired: Bazel's load and target visibility enforce it
 (see the [boundary rules](verification-architecture.md#boundary-rules)). The rules that
@@ -58,7 +57,7 @@ their demos and end-to-end tests are projects of the root module
 ([projects-at-fixed-places](#projects-at-fixed-places)). Choosing the main entry point and
 useful package boundaries still requires judgment; the checks do not elect a primary target.
 
-RG007, which required the targets of Godot test operations to be test-only, is retired:
+The rule that required the targets of Godot test operations to be test-only is retired:
 `godot_test`, and the test operations built on it, reject `testonly = False`, and Bazel's
 test-only check protects their targets. A macro that wraps a test operation and declares
 helpers of its own marks them test-only itself; no check covers that.
@@ -95,7 +94,7 @@ repository below a module that is no module itself, marked by its `REPO.bazel`, 
 It does not scan fetched repositories, Bazel output trees or generated BUILD templates as if
 they were maintained packages.
 
-## RG002
+## snake-case-target-names
 
 **Ordinary target names use lower snake case.** Authored logical target names follow the same
 spelling as snake-case-package-paths. Consistent names make labels easy to type and distinguish
@@ -146,13 +145,14 @@ names are checked against that main name, including its existing underscores.
 
 **Computed macro roots remain a review obligation**: `generator_name` may identify an internal
 helper instead of the authored invocation. Review the expression and its inputs while
-preserving output filenames, registration symbols and resource paths. Record
-the roots in `REVIEWED` in [the RG002 module](../../tools/conventions/rules/rg002.py), by BUILD
-path. The roots are the call's emitted names without a role; every other emitted owned label is
-checked against exactly one of them. A changed root set requires renewed review; stale
-reviews fail. Missing required ownership or review evidence fails the check.
-Incomplete review evidence is reported as `RG002 not checked`. This strictness does not
-change other conventions' coverage policy.
+preserving output filenames, registration symbols and resource paths. Record the roots in
+`REVIEWED` in
+[snake_case_target_names.py](../../tools/conventions/rules/snake_case_target_names.py),
+by BUILD path. The roots are the call's emitted names without a role; every other emitted owned
+label is checked against exactly one of them. A changed root set requires renewed review; stale
+reviews fail. Missing required ownership or review evidence fails the check. Incomplete review
+evidence is reported as `snake-case-target-names not checked`. This strictness does not change
+other conventions' coverage policy.
 
 ## no-fixtures-in-public-documentation
 
@@ -264,7 +264,7 @@ Configurations must belong to a project at a fixed place. Temporary projects con
 inside source strings and generated configuration templates are outside the inventory. The
 check does not require a project or BUILD package for each assertion.
 
-## RG012
+## production-independent-of-tests
 
 **Production targets are independent of test scopes.** A target that is not test-only must
 not consume targets or source files owned by a test scope. Mark the consumer `testonly` when
@@ -579,7 +579,7 @@ audit, as for [release-archives-without-tests](#release-archives-without-tests).
 names, so a definition that passes another on without calling it counts as a caller as well.
 Starlark files are outside it.
 
-## RG026
+## godot-process-tests-tagged
 
 **Tests that start a Godot process carry the `godot_process` tag.** A Godot process, in the
 test's build or in the test itself, is what makes a test expensive to rerun; the fast tests
