@@ -37,3 +37,22 @@ class CommonContentTest(unittest.TestCase):
                         ("x86_64", other),
                     ]
                 )
+
+    def test_a_descriptor_needs_sectioned_unique_keys(self) -> None:
+        for text, message in [
+            ('entry_symbol="example_init"\n', "arm64 has an unsectioned key"),
+            (
+                '[configuration]\nentry_symbol="a"\nentry_symbol="b"\n',
+                r"arm64 repeats \('configuration', 'entry_symbol'\)",
+            ),
+        ]:
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, message):
+                common_content.merge_descriptors([("arm64", text)])
+
+    def test_the_union_is_sorted_by_section_and_key(self) -> None:
+        merged = common_content.merge_descriptors(
+            [("arm64", '[libraries]\nz="z"\na="a"\n[configuration]\nentry_symbol="e"\n')]
+        )
+        self.assertEqual(
+            '[configuration]\nentry_symbol="e"\n\n[libraries]\na="a"\nz="z"\n', merged
+        )
