@@ -136,7 +136,8 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
 [scan_test.go](../../tools/gazelle/godot/scan_test.go) tests the scanner, and
 `//tools/gazelle/godot:generation_test` runs Gazelle over each tree in
 [testdata](../../tools/gazelle/godot/testdata) and compares the BUILD files it writes with
-the trees' `BUILD.out` files: a new tree of two projects, a tree whose BUILD files a person
-edited, and the first tree as Gazelle left it, which a second run must leave unchanged. After an
+the trees' `BUILD.out` files: a new tree of two projects and a tree whose BUILD files a person
+edited. `second_run_test` runs Gazelle over the first tree with its `BUILD.out` files as
+input, which a second run must leave unchanged. After an
 intended change of the output, `UPDATE_SNAPSHOTS=true bazel run
 //tools/gazelle/godot:generation_test` rewrites the expected files.

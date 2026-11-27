@@ -3,6 +3,7 @@
 package godot
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -129,7 +130,7 @@ type scriptScan struct {
 	tokens  []token
 	// The names the script declares itself, and the capitalized names it uses.
 	local   map[string]bool
-	classes []string
+	used    []string
 	// Whether the tokens are inside the braces of an enum, whose identifiers are its values.
 	inEnum bool
 }
@@ -161,8 +162,8 @@ func (s *scriptScan) visit(i int, t token) {
 
 // addClassReferences references the capitalized names the script uses but does not declare.
 func (s *scriptScan) addClassReferences() {
-	for _, name := range s.classes {
-		if !s.local[name] && !s.declares(name) {
+	for _, name := range s.used {
+		if !s.local[name] && !slices.Contains(s.classes, name) {
 			s.refs = append(s.refs, reference{kindClass, name})
 		}
 	}
@@ -174,15 +175,6 @@ func (s *scriptScan) before(i, n int) token {
 		return token{}
 	}
 	return s.tokens[i-n]
-}
-
-func (s *scriptScan) declares(class string) bool {
-	for _, declared := range s.scanned.classes {
-		if declared == class {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *scriptScan) visitString(i int, text string) {
@@ -206,7 +198,7 @@ func (s *scriptScan) visitDeclaration(i int, text string) bool {
 	case text == "enum":
 		s.inEnum = true
 	case previous.text == "class_name":
-		s.scanned.classes = append(s.scanned.classes, text)
+		s.classes = append(s.classes, text)
 	case s.inEnum || previous.kind == identifier && declaringKeywords[previous.text]:
 		s.local[text] = true
 	default:
@@ -221,10 +213,10 @@ func (s *scriptScan) visitUse(i int, text string) {
 	switch {
 	case previous.text == "extends":
 		s.extends = text
-		s.classes = append(s.classes, text)
+		s.used = append(s.used, text)
 	case previous.kind == punctuation && strings.Contains(".$%@", previous.text):
 		// A member, a node path or an annotation.
 	case unicode.IsUpper(rune(text[0])):
-		s.classes = append(s.classes, text)
+		s.used = append(s.used, text)
 	}
 }

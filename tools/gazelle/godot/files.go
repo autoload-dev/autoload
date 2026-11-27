@@ -7,17 +7,18 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
 // ==== Formats =================================================================
 
-// The sidecars Godot writes beside a file: its import settings and its UID.
+// The sidecars Godot writes beside a file: its import settings and its UID, as the ruleset's
+// build tools know them (rules_godot/tools/godot_files.py).
 var sidecarSuffixes = []string{".import", ".uid"}
 
 // Formats whose files are resources by their suffix; a file of any other format is one when
@@ -63,7 +64,7 @@ func (l *godotLang) directoryFiles(args language.GenerateArgs) []string {
 		}
 	}
 	files = append(files, l.pendingFiles(args)...)
-	sort.Strings(files)
+	slices.Sort(files)
 	return files
 }
 
@@ -84,8 +85,12 @@ func isSourceOfGodot(c *config.Config, name string) bool {
 	return !strings.HasPrefix(name, ".") && name != projectFile && !slices.Contains(c.ValidBuildFileNames, name)
 }
 
-// scanFile returns what scan finds in a file of the repository, which it reads once.
+// scanFile returns what scan finds in a file of the repository, which it reads once, and
+// only when scan reads its format.
 func (l *godotLang) scanFile(c *config.Config, rel, resPath string) scanned {
+	if !scannable(rel) {
+		return scanned{}
+	}
 	name := filepath.Join(c.RepoRoot, filepath.FromSlash(rel))
 	if s, ok := l.scans[name]; ok {
 		return s
@@ -103,8 +108,7 @@ type packageFiles struct {
 	project *project
 	// The package's directory relative to its project's.
 	prefix string
-	// The package's files that Godot sees, relative to it.
-	files map[string]bool
+	// The package's files that Godot sees, relative to it, with what scan found in each.
 	scans map[string]scanned
 }
 
@@ -112,15 +116,19 @@ func (l *godotLang) newPackageFiles(args language.GenerateArgs, p *project, file
 	pf := &packageFiles{
 		args:    args,
 		project: p,
-		prefix:  strings.TrimPrefix(strings.TrimPrefix(args.Rel, p.rel), "/"),
-		files:   map[string]bool{},
+		prefix:  pathtools.TrimPrefix(args.Rel, p.rel),
 		scans:   map[string]scanned{},
 	}
 	for _, name := range files {
-		pf.files[name] = true
 		pf.scans[name] = l.scanFile(args.Config, path.Join(args.Rel, name), pf.resPath(name))
 	}
 	return pf
+}
+
+// has reports whether the package holds a file that Godot sees.
+func (p *packageFiles) has(name string) bool {
+	_, ok := p.scans[name]
+	return ok
 }
 
 // resPath returns the res:// path of a file of the package.
@@ -137,14 +145,14 @@ func (p *packageFiles) fileOf(resPath string) (string, bool) {
 			return "", false
 		}
 	}
-	return name, p.files[name]
+	return name, p.has(name)
 }
 
 // sidecars returns the sidecars of a file that the package holds.
 func (p *packageFiles) sidecars(name string) []string {
 	var found []string
 	for _, suffix := range sidecarSuffixes {
-		if p.files[name+suffix] {
+		if p.has(name + suffix) {
 			found = append(found, name+suffix)
 		}
 	}
@@ -154,11 +162,11 @@ func (p *packageFiles) sidecars(name string) []string {
 // isSidecar reports whether a file is the sidecar of another file of the package.
 func (p *packageFiles) isSidecar(name string) bool {
 	source := sidecarSource(name)
-	return source != "" && p.files[source]
+	return source != "" && p.has(source)
 }
 
 func (p *packageFiles) isAsset(name string) bool {
-	return importableFormats[format(name)] || p.files[name+".import"]
+	return importableFormats[format(name)] || p.has(name+".import")
 }
 
 func (p *packageFiles) isSuite(name string) bool {
@@ -170,12 +178,12 @@ func (p *packageFiles) isSuite(name string) bool {
 func (p *packageFiles) members() []string {
 	named := p.namedPaths()
 	var members []string
-	for name := range p.files {
+	for name := range p.scans {
 		if !p.isSidecar(name) && p.isResource(name, named) {
 			members = append(members, name)
 		}
 	}
-	sort.Strings(members)
+	slices.Sort(members)
 	return members
 }
 

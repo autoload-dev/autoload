@@ -4,13 +4,14 @@ package godot
 
 import (
 	"log"
+	"maps"
 	"path"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -71,7 +72,7 @@ func (l *godotLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 func (im *importer) resources(r *rule.Rule) {
 	prefix, strip := r.AttrString("prefix"), r.AttrString("strip_prefix")
 	for _, src := range sourceFiles(r) {
-		im.resourceFile(src, "res://"+path.Join(prefix, strings.TrimPrefix(strings.TrimPrefix(src, strip), "/")))
+		im.resourceFile(src, "res://"+path.Join(prefix, pathtools.TrimPrefix(src, strip)))
 	}
 }
 
@@ -169,12 +170,7 @@ func setLabels(r *rule.Rule, key string, labels map[string]bool) {
 		r.DelAttr(key)
 		return
 	}
-	sorted := make([]string, 0, len(labels))
-	for l := range labels {
-		sorted = append(sorted, l)
-	}
-	sort.Strings(sorted)
-	r.SetAttr(key, sorted)
+	r.SetAttr(key, slices.Sorted(maps.Keys(labels)))
 }
 
 // lookup finds the target that provides a reference: the one a resolve directive names, else

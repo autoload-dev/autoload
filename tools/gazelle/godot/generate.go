@@ -4,9 +4,9 @@ package godot
 
 import (
 	"log"
+	"maps"
 	"path"
 	"slices"
-	"sort"
 
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -66,13 +66,8 @@ func add(result *language.GenerateResult, r *rule.Rule, imports interface{}) {
 // addResources declares the units in the order of their names, an empty one as empty, and
 // returns the labels of those that hold suites.
 func (p *packageFiles) addResources(result *language.GenerateResult, units map[string]*unit) []string {
-	names := make([]string, 0, len(units))
-	for name := range units {
-		names = append(names, name)
-	}
-	sort.Strings(names)
 	var suites []string
-	for _, name := range names {
+	for _, name := range slices.Sorted(maps.Keys(units)) {
 		u := units[name]
 		if len(u.files) == 0 && len(u.other) == 0 {
 			result.Empty = append(result.Empty, rule.NewRule(resourcesKind, name))
@@ -109,7 +104,7 @@ func (p *packageFiles) resourcesRule(name string, u *unit) (*rule.Rule, unitImpo
 		imports.refs = append(imports.refs, p.scans[file].refs...)
 		imports.literals = append(imports.literals, p.scans[file].literals...)
 	}
-	sort.Strings(srcs)
+	slices.Sort(srcs)
 	imports.refs = sortedReferences(imports.refs)
 	imports.literals = sortedUnique(imports.literals)
 	r := rule.NewRule(resourcesKind, name)

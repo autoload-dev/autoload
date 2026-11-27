@@ -20,6 +20,7 @@ go_library(
         "@gazelle//config",
         "@gazelle//label",
         "@gazelle//language",
+        "@gazelle//pathtools",
         "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
@@ -48,4 +49,13 @@ gazelle_generation_test(
     size = "small",
     gazelle_binary = ":gazelle",
     test_data = glob(["testdata/**"]),
+)
+
+# A second run over the tree of testdata/project as the first left it changes nothing.
+gazelle_generation_test(
+    name = "second_run_test",
+    size = "small",
+    build_in_suffix = ".out",
+    gazelle_binary = ":gazelle",
+    test_data = glob(["testdata/project/**"]),
 )

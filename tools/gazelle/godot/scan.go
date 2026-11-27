@@ -80,29 +80,47 @@ func leavesProject(relative string) bool {
 
 // ==== Scanning ================================================================
 
+// The scanners of the formats whose references scan reads, by suffix.
+var scanners = map[string]func(resPath string, content []byte) scanned{
+	".gd":          scanScript,
+	".tscn":        scanTextResource,
+	".tres":        scanTextResource,
+	".gdshader":    scanShader,
+	".gdshaderinc": scanShader,
+	".shader":      scanShader,
+	".shaderinc":   scanShader,
+	".gltf":        func(resPath string, content []byte) scanned { return scanned{members: gltfMembers(resPath, content)} },
+	".uid":         func(_ string, content []byte) scanned { return scanned{uid: strings.TrimSpace(string(content))} },
+	".import":      func(_ string, content []byte) scanned { return scanned{uid: importUID(content)} },
+	".c":           scanNative,
+	".cc":          scanNative,
+	".cpp":         scanNative,
+	".cxx":         scanNative,
+	".h":           scanNative,
+	".hh":          scanNative,
+	".hpp":         scanNative,
+}
+
+// scannable reports whether scan reads anything in a file of the name's format.
+func scannable(name string) bool {
+	_, ok := scanners[format(name)]
+	return ok
+}
+
 // scan reads the references of the file at the res:// path resPath, by its format. Formats
 // it does not know reference nothing.
 func scan(resPath string, content []byte) scanned {
 	var s scanned
-	switch strings.ToLower(path.Ext(resPath)) {
-	case ".gd":
-		s = scanScript(resPath, content)
-	case ".tscn", ".tres":
-		s = scanTextResource(resPath, content)
-	case ".gdshader", ".gdshaderinc", ".shader", ".shaderinc":
-		s = scanShader(resPath, content)
-	case ".gltf":
-		s.members = gltfMembers(resPath, content)
-	case ".uid":
-		s.uid = strings.TrimSpace(string(content))
-	case ".import":
-		s.uid = importUID(content)
-	case ".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp":
-		s.classes = nativeClasses(content)
+	if scanner, ok := scanners[format(resPath)]; ok {
+		s = scanner(resPath, content)
 	}
 	s.refs = sortedReferences(s.refs)
 	s.literals = sortedUnique(s.literals)
 	return s
+}
+
+func scanNative(_ string, content []byte) scanned {
+	return scanned{classes: nativeClasses(content)}
 }
 
 // addPath adds a reference to the UID or the res:// path that value names relative to

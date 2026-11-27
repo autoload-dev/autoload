@@ -76,7 +76,7 @@ func (g *grouping) existingUnit(srcs []string) *unit {
 	for _, src := range srcs {
 		switch {
 		case g.p.isSidecar(src):
-		case g.p.files[src]:
+		case g.p.has(src):
 			u.files = append(u.files, src)
 			g.claim(src)
 		case isLabel(src) || slices.Contains(g.p.args.GenFiles, src):
