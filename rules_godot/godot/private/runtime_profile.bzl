@@ -4,12 +4,12 @@ Derive what an application's runtime leaves out from its project, and keep it in
 Sections: Derivation, Writer and test.
 """
 
-load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "engine_transition")
+load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
-load("//godot/private:macros.bzl", "common_kwargs")
+load("//godot/private:macros.bzl", "caller_package", "common_kwargs")
 load("//godot/private:paths.bzl", "exec_paths")
-load("//godot/private:sync.bzl", "declare_sync", "sync_launcher", "sync_rules")
+load("//godot/private:sync.bzl", "TEST_SIZE_ATTRS", "declare_sync", "sync_launcher", "sync_rules")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 
@@ -79,17 +79,17 @@ _godot_runtime_profile_derived = rule(
 
 def _sync_impl(ctx, test):
     derived = ctx.attr.derived[GodotRuntimeProfileInfo].profile
-    target = "/".join([part for part in [ctx.label.package, ctx.attr.profile] if part])
-    checked_in = ctx.file.checked_in
+    checked_in = ctx.file.profile
+    if checked_in.short_path.startswith("../") or not checked_in.is_source:
+        fail("%s: profile must be a file of this repository's checkout" % ctx.label)
     return sync_launcher(
         ctx,
         test,
         {
             "built": derived.short_path,
-            "checked_in": checked_in.short_path if checked_in else "",
-            "target": target,
+            "checked_in": checked_in.short_path,
         },
-        ctx.runfiles(files = [derived] + ([checked_in] if checked_in else [])),
+        ctx.runfiles(files = [derived, checked_in]),
     )
 
 _SYNC = sync_rules(
@@ -98,8 +98,7 @@ _SYNC = sync_rules(
     # The godot_runtime_profile macro documents these attributes.
     attrs = {
         "derived": attr.label(mandatory = True, providers = [GodotRuntimeProfileInfo]),
-        "checked_in": attr.label(allow_single_file = True),
-        "profile": attr.string(mandatory = True),
+        "profile": attr.label(allow_single_file = True, mandatory = True),
     },
     docs = (
         "Write a derived runtime profile into the checkout; the rule behind godot_runtime_profile.",
@@ -115,17 +114,36 @@ _godot_runtime_profile_test = rule(**_SYNC.test)
 
 _SYNC_RULES = struct(writer = _godot_runtime_profile_writer, test = _godot_runtime_profile_test)
 
-def godot_runtime_profile(
+def _runtime_profile_impl(
         name,
+        visibility,
         project,
+        deps,
         profile,
-        deps = [],
-        keep_classes = [],
-        size = None,
-        timeout = None,
-        engine = "",
+        keep_classes,
+        size,
+        timeout,
+        engine,
         **kwargs):
-    """
+    derived = name + ".derived"
+    _godot_runtime_profile_derived(
+        name = derived,
+        view = declare_view(name, project, deps, kwargs, engine = engine),
+        keep_classes = keep_classes,
+        engine = engine,
+        # The caller's package may inspect the derivation, as its analysis tests do.
+        **(common_kwargs(kwargs) | {"visibility": caller_package()})
+    )
+    declare_sync(
+        _SYNC_RULES,
+        name,
+        {"derived": ":" + derived, "profile": profile},
+        {"size": size or None, "timeout": timeout or None},
+        kwargs | {"visibility": visibility},
+    )
+
+godot_runtime_profile = macro(
+    doc = """
     Derive from a project what an application's runtime leaves out, and keep it in the checkout.
 
     A runtime that leaves out the engine classes and build options a game never uses is
@@ -140,7 +158,8 @@ def godot_runtime_profile(
     detection turns off, such as `disable_physics_3d` and `module_openxr_enabled`. The
     classes the engine needs whatever the project names, which the ruleset lists for the
     engine's minor, and `keep_classes` are taken out of `disabled_classes`.
-    `bazel run :<name>` writes the file to `profile` and says to commit it. Register the file
+    `bazel run :<name>` writes the file to `profile` and says to commit it; create it empty
+    before the first run, since `profile` names a file of the checkout. Register the file
     in `MODULE.bazel` with a `godot_engines.runtime_profile` tag, and name it as `godot_app`'s
     `build_profile`: the application's runtime then leaves out those classes and options.
 
@@ -167,40 +186,38 @@ def godot_runtime_profile(
 
     `bazel run :update_profile` writes `release.gdbuild`.
 
-    Args:
-        name: Name of the writer; the test is `<name>.test`.
-        project: The godot_project whose configuration the project is derived under.
-        profile: The checked-in build profile this target writes and tests, as a path relative
-            to the package, such as `release.gdbuild`.
-        deps: The godot_resources and add-ons that make up the project, as for godot_pack;
+    The macro declares the writer `<name>`, its test `<name>.test`, the derivation
+    `<name>.derived` and `<name>.view`, the project the derivation reads.
+    """,
+    implementation = _runtime_profile_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "project": attr.label(
+            doc = "The godot_project whose configuration the project is derived under.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "profile": attr.label(
+            doc = """
+            The checked-in build profile this target writes and tests, a file of the
+            package such as `release.gdbuild`.
+            """,
+            allow_single_file = True,
+            mandatory = True,
+            configurable = False,
+        ),
+        "deps": attr.label_list(
+            doc = """
+            The godot_resources and add-ons that make up the project, as for godot_pack;
             detection reads their files.
-        keep_classes: Classes the profile never disables, beyond the ruleset's own list for
-            the engine's minor. Name those the game creates by name or loads on some paths.
-        size: Bazel test size of `<name>.test`; Bazel's default applies when unset.
-        timeout: Bazel test timeout of `<name>.test`; derived from size when unset.
-        engine: The engine whose editor detects, by engine name; empty keeps the build's
-            engine, the default one or the one --@autoload_rules_godot//godot:engine
-            names.
-        **kwargs: Common attributes of every target, such as tags and visibility.
-    """
-    derived = name + ".derived"
-    _godot_runtime_profile_derived(
-        name = derived,
-        view = declare_view(name, project, deps, kwargs, engine = engine),
-        keep_classes = keep_classes,
-        engine = engine,
-        **(common_kwargs(kwargs) | {"visibility": ["//visibility:private"]})
-    )
-
-    checked_in = native.glob([profile], allow_empty = True)
-    declare_sync(
-        _SYNC_RULES,
-        name,
-        {
-            "derived": ":" + derived,
-            "checked_in": checked_in[0] if checked_in else None,
-            "profile": profile,
-        },
-        {"size": size, "timeout": timeout},
-        kwargs,
-    )
+            """,
+        ),
+        "keep_classes": attr.string_list(
+            doc = """
+            Classes the profile never disables, beyond the ruleset's own list for the
+            engine's minor. Name those the game creates by name or loads on some paths.
+            """,
+        ),
+        "engine": attr.string(doc = ENGINE_DOC),
+    } | TEST_SIZE_ATTRS,
+)

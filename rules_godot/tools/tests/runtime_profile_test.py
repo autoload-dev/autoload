@@ -155,7 +155,7 @@ class SyncTest(unittest.TestCase):
     def place(self) -> str:
         return self.capture(place_file, self.built, "app/app.gdbuild", self.workspace)[1]
 
-    def check(self, checked_in: Path | None) -> tuple[int, str]:
+    def check(self, checked_in: Path) -> tuple[int, str]:
         return self.capture(
             check_file, self.built, checked_in, "app/app.gdbuild", "//app:profile"
         )
@@ -179,10 +179,12 @@ class SyncTest(unittest.TestCase):
         self.place()
         self.assertEqual("derived\n", target.read_text())
 
-    def test_the_test_fails_for_a_missing_file_and_names_the_command(self) -> None:
-        status, report = self.check(None)
+    def test_the_test_fails_for_an_empty_file_and_names_the_command(self) -> None:
+        # The file a user creates empty before the first run.
+        self.checked_in.write_text("")
+        status, report = self.check(self.checked_in)
         self.assertEqual(1, status)
-        self.assertIn("app/app.gdbuild is missing", report)
+        self.assertIn("app/app.gdbuild does not match", report)
         self.assertIn("bazel run //app:profile", report)
 
     def test_the_test_fails_for_a_stale_file_and_shows_the_difference(self) -> None:

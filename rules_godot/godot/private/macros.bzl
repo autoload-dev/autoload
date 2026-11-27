@@ -12,6 +12,20 @@ VOLATILE_API = (
 
 _COMMON = ["tags", "testonly", "target_compatible_with", "exec_compatible_with"]
 
+# It reads native.package_relative_label and declares nothing, so it needs no name.
+# buildifier: disable=unnamed-macro
+def caller_package():
+    """
+    Return the visibility of a macro's internal target that its caller's package may inspect.
+
+    A symbolic macro's targets are private to the macro; the analysis tests of the calling
+    package inspect some of them, such as a run's view.
+
+    Returns:
+        A visibility list of the calling package.
+    """
+    return [str(native.package_relative_label(":__pkg__"))]
+
 def common_kwargs(kwargs):
     """
     Return the attributes a macro's helper targets share with its main target.

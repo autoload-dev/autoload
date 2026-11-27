@@ -1,5 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_android//rules:rules.bzl", "android_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("//godot/platforms/private:android_runtime_bridge.bzl", "plugin_api_android")
 load(":defs.bzl", "godot_export_platform")
 
@@ -146,4 +147,13 @@ bzl_library(
     name = "defs",
     srcs = ["defs.bzl"],
     deps = ["//godot/private/config:settings"],
+)
+
+# The entry support every iOS application links, the same for all of them; one target, since
+# objc_library rejects the slash of an application backend's name.
+objc_library(
+    name = "ios_entry_support",
+    srcs = ["ios_entry_support.mm"],
+    sdk_frameworks = ["UIKit"],
+    visibility = ["//godot:__subpackages__"],
 )
