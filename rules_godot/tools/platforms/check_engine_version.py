@@ -296,7 +296,7 @@ def _check_android_abi(args: argparse.Namespace) -> None:
 
 
 def _check_ios_platform_slice(args: argparse.Namespace) -> None:
-    """Fail unless every iOS engine library has objects of the export's slice."""
+    """Fail unless every iOS engine library has objects of the export's platform slice."""
     if not args.ios_platform_slice:
         return
     cpu, sdk = args.ios_platform_slice.split(":")

@@ -36,7 +36,7 @@ def _configuration(entries: Entries) -> Entries:
 
 
 def _add(merged: Entries, entries: Entries, platform_slice: str) -> None:
-    """Add a slice's entries to the merged ones, which must hold the same value for a key."""
+    """Add a platform slice's entries to the merged ones, which must agree on each key's value."""
     for identity, value in entries.items():
         if merged.get(identity, value) != value:
             raise ValueError(f"Descriptor {identity} conflicts at {platform_slice}")
