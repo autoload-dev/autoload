@@ -38,9 +38,7 @@ else:
 
    The independent native policy test lives in `native/backends/linux/tests/`; the demo's
    `tests/` owns the exported-demo check, which runs the demo PCK through its ordinary
-   startup. The add-on's Godot suites of the result objects and of real operating-system
-   locations live in a test project of their own, as
-   [test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership) lays out.
+   startup.
 
 4. Export the production content as a PCK:
 
