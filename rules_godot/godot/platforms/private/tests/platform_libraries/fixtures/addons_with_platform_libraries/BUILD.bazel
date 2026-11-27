@@ -71,7 +71,7 @@ godot_extension(
 
 genrule(
     name = "extension_library",
-    outs = ["extension_library/libandroid_contract_fixture.so"],
+    outs = ["extension_library/libandroid_library_fixture.so"],
     cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
     tags = ["manual"],
 )

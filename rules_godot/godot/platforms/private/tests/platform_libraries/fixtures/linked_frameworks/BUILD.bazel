@@ -1,6 +1,6 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
-load("//godot/extension/tests:extension_contracts.bzl", "dynamic_xcframework_fixture")
+load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixture")
 
 # Extensions that link dynamic frameworks, as add-ons link a vendor's SDK: the first links
 # FixtureAnalytics, which links FixtureCore; the second links FixtureCore itself; the third,

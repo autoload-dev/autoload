@@ -184,7 +184,7 @@ def _host_test_and_macos_app_share_validations(env, targets):
 
 _STRIPPABLE = [
     "Game",
-    "native/bin/{tags}/libandroid_contract_fixture.so",
+    "native/bin/{tags}/libandroid_library_fixture.so",
 ]
 
 def _tagless(path):

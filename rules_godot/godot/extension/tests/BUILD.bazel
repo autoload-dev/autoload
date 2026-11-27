@@ -3,7 +3,7 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_pack", "godot_run", "godot_test")
 load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
-load("//godot/extension/tests:extension_contracts.bzl", "extension_library_fixture")
+load("//godot/extension/tests:library_fixtures.bzl", "extension_library_fixture")
 load("//godot/platforms:defs.bzl", "godot_export_platform")
 load(":cc_extension_tests.bzl", "cc_extension_test_suite")
 load(":configured_library_tests.bzl", "configured_library_test_suite")
@@ -246,10 +246,10 @@ filegroup(
         "cc_extension_tests.bzl",
         "configured_library_tests.bzl",
         "descriptor_tests.bzl",
-        "extension_contracts.bzl",
         "extension_platform_libraries_tests.bzl",
         "extension_tests.bzl",
         "godot_cpp_bindings_tests.bzl",
+        "library_fixtures.bzl",
         "run_staging_tests.bzl",
         "source_features_tests.bzl",
     ],

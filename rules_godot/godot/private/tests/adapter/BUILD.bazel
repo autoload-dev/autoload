@@ -9,7 +9,7 @@ package(default_testonly = True)
 
 _CASES = "//godot/private/tests/adapter/fixtures/cases"
 
-# The fake adapter's tests, in the order adapter_contract_test.py takes them, with their
+# The fake adapter's tests, in the order adapter_test_follows_test_encyclopedia_test.py takes them, with their
 # cases target.
 _TESTS = {
     "passing_cases": "passing",
@@ -34,10 +34,10 @@ _TESTS = {
 py_test(
     name = "adapter_test_follows_test_encyclopedia_test",
     size = "medium",
-    srcs = ["adapter_contract_test.py"],
+    srcs = ["adapter_test_follows_test_encyclopedia_test.py"],
     args = ["$(rootpath :%s)" % name for name in _TESTS],
     data = [":" + name for name in _TESTS],
-    main = "adapter_contract_test.py",
+    main = "adapter_test_follows_test_encyclopedia_test.py",
     tags = ["godot_process"],
 )
 
@@ -52,7 +52,7 @@ filegroup(
 filegroup(
     name = "python_files",
     testonly = True,
-    srcs = ["adapter_contract_test.py"],
+    srcs = ["adapter_test_follows_test_encyclopedia_test.py"],
     tags = ["python_files"],
     visibility = ["//visibility:private"],
 )

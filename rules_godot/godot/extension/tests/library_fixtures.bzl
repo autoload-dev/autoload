@@ -16,7 +16,7 @@ visibility([
 
 def _fixture_impl(ctx):
     output = ctx.actions.declare_file(
-        ctx.label.name + "/" + ctx.attr.filename if ctx.attr.filename else "libandroid_contract_fixture.so",
+        ctx.label.name + "/" + ctx.attr.filename if ctx.attr.filename else "libandroid_library_fixture.so",
     )
     ctx.actions.write(output, "Metadata-only Android library fixture; never loaded.\n")
     return [DefaultInfo(files = depset([output]))]

@@ -22,7 +22,7 @@ load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private/config:transitions.bzl", "platform_slice_transition")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
-load(":extension_contracts.bzl", "dynamic_xcframework_fixture")
+load(":library_fixtures.bzl", "dynamic_xcframework_fixture")
 
 _SMALL = {"size": "small"}
 _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
