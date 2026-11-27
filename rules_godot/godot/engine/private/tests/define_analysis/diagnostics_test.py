@@ -60,6 +60,17 @@ class DiagnosticsTest(unittest.TestCase):
             'WRAPPER:3:9: warning: macro "UNREAD_ENABLED" is not used [-Wunused-macros]\n'
         )
 
+    def test_coloured_gcc(self) -> None:
+        # GCC on Linux: no column, and an erase-in-line sequence after each colour.
+        self.assert_header(
+            "\033[01m\033[KWRAPPER:1:\033[m\033[K \033[01;35m\033[Kwarning: \033[m\033[K"
+            'macro "\033[01m\033[KGODOT_DEFINE_ANALYSIS_CANARY\033[m\033[K" is not used '
+            "[\033[01;35m\033[K-Wunused-macros\033[m\033[K]\n"
+            "\033[01m\033[KWRAPPER:3:\033[m\033[K \033[01;35m\033[Kwarning: \033[m\033[K"
+            'macro "\033[01m\033[KUNREAD_ENABLED\033[m\033[K" is not used '
+            "[\033[01;35m\033[K-Wunused-macros\033[m\033[K]\n"
+        )
+
     def test_a_silent_compiler_fails(self) -> None:
         result = self.analyse("")
         self.assertNotEqual(result.returncode, 0)
