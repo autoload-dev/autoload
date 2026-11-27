@@ -5,7 +5,8 @@
 #
 #   worktree.sh create   reads {"name", "session_id", "cwd"} on stdin; leases a slot on a new
 #                        branch claude/<name> from origin's default branch, as Claude's own
-#                        worktrees start, and prints its directory last on stdout
+#                        worktrees start, and prints its directory last on stdout; first
+#                        releases the slots whose work is done (tools/worktree/release_done.py)
 #   worktree.sh remove   reads {"worktree_path", "cwd"} on stdin; ends the lease, keeping the
 #                        slot and the branch; refuses a worktree that holds uncommitted work
 set -euo pipefail
@@ -41,6 +42,10 @@ case "${1:-}" in
         # A released worktree keeps its branch, which a worktree of the same name takes up again.
         create=("--create=$base")
         git show-ref --verify --quiet "refs/heads/claude/$name" && create=()
+        # Slots whose pull request has merged go back to the pool first, so that this lease
+        # finds a warm one; sessions rarely end in a way that releases theirs. Never fatal.
+        python3 "$(dirname "${BASH_SOURCE[0]}")/../worktree/release_done.py" --aspect="$aspect" \
+            >&2 || echo "worktree.sh: releasing done slots failed" >&2
         exec "$aspect" worktree add "claude/$name" ${create[@]+"${create[@]}"} --output=path \
             --agent-kind=claude-code ${session:+"--agent-id=$session"}
         ;;
