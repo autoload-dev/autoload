@@ -26,39 +26,11 @@ _ACTIVITY_DEPS = [
     Label("@maven//:androidx_core_core_splashscreen"),
 ]
 
-def godot_android_runtime(name, shell, engine_library = None, **kwargs):
-    """
-    Join Godot's Android shell library with an engine library into one aar_import runtime.
-
-    `shell` is an Android shell AAR file, such as the one of an official release or the
-    AAR of a source-built shell library. Without `engine_library`, the shell's own JNI
-    libraries are used. With it, the shell AAR is repacked in the configuration of each
-    platform slice, as the engine AAR, with that platform slice's engine library as
-    `jni/<abi>/libgodot_android.so`; the ABI follows the CPU of the platform slice, so
-    one target per variant serves every CPU, and `engine_library` may be a select()
-    over the CPU. Delivery copies are stripped as Bazel's `--strip` asks; the
-    `<name>.debug_symbols` of applications with this runtime contain them unstripped.
-    The ruleset supplies the shell library's Maven dependencies. Use the result as the
-    payload of a godot_runtime_component for an Android slot. This macro returns no
-    value.
-
-    Example:
-    ```starlark
-    godot_android_runtime(
-        name = "android_release",
-        shell = "@godot_android_shell//:release.aar",
-        engine_library = "@godot_android_arm64_release//:libgodot_android.so",
-    )
-    ```
-
-    Args:
-        name: Public aar_import target name.
-        shell: Godot's Android shell .aar file.
-        engine_library: Optional engine library .so target of the current platform slice.
-        **kwargs: Remaining aar_import attributes, such as tags and visibility.
-    """
+def _android_runtime_impl(name, visibility, shell, engine_library, **kwargs):
+    # Unset common attributes stay unset on rules_android's aar_import.
+    kwargs = {key: value for key, value in kwargs.items() if value != None}
     aar = shell
-    if engine_library:
+    if engine_library != None:
         # The shell's own classes, for plugins to compile against without the engine.
         aar_import(
             name = name + ".shell",
@@ -76,7 +48,45 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
             **common_kwargs(kwargs)
         )
         aar = ":" + name + ".engine_aar"
-    aar_import(name = name, aar = aar, deps = _SHELL_DEPS, **kwargs)
+    aar_import(name = name, aar = aar, deps = _SHELL_DEPS, visibility = visibility, **kwargs)
+
+godot_android_runtime = macro(
+    doc = """
+    Join Godot's Android shell library with an engine library into one aar_import runtime.
+
+    `shell` is an Android shell AAR file, such as the one of an official release or the
+    AAR of a source-built shell library. Without `engine_library`, the shell's own JNI
+    libraries are used. With it, the shell AAR is repacked in the configuration of each
+    platform slice, as the engine AAR, with that platform slice's engine library as
+    `jni/<abi>/libgodot_android.so`; the ABI follows the CPU of the platform slice, so
+    one target per variant serves every CPU, and `engine_library` may be a select()
+    over the CPU. Delivery copies are stripped as Bazel's `--strip` asks; the
+    `<name>.debug_symbols` of applications with this runtime contain them unstripped.
+    The ruleset supplies the shell library's Maven dependencies. Use the result as the
+    payload of a godot_runtime_component for an Android slot.
+
+    Example:
+    ```starlark
+    godot_android_runtime(
+        name = "android_release",
+        shell = "@godot_android_shell//:release.aar",
+        engine_library = "@godot_android_arm64_release//:libgodot_android.so",
+    )
+    ```
+    """,
+    implementation = _android_runtime_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "shell": attr.label(
+            doc = "Godot's Android shell .aar file.",
+            allow_single_file = [".aar"],
+            mandatory = True,
+        ),
+        "engine_library": attr.label(
+            doc = "Optional engine library .so target of the current platform slice.",
+        ),
+    },
+)
 
 def _application_runtime(name, runtime, common):
     """The fixed runtime, or one that resolves the runtime component per platform slice."""

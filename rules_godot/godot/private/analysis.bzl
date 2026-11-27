@@ -55,8 +55,16 @@ _resource_graph = rule(
     cfg = engine_transition,
 )
 
-def godot_resource_graph(name, project, deps = [], validate = True, require_declared = False, engine = "", **kwargs):
-    """
+def _resource_graph_macro_impl(name, visibility, project, deps, **kwargs):
+    _resource_graph(
+        name = name,
+        visibility = visibility,
+        view = declare_view(name, project, deps, kwargs, engine = kwargs.get("engine")),
+        **kwargs
+    )
+
+godot_resource_graph = macro(
+    doc = """
     Emit a deterministic file/UID graph for resources; optionally validate references.
 
     Does not execute Godot or modify Bazel dependencies.
@@ -78,26 +86,16 @@ def godot_resource_graph(name, project, deps = [], validate = True, require_decl
     ```
 
     See [detected references](../../resources.md#detected-references).
-
-    Args:
-        name: Name of the graph target.
-        project: The godot_project whose configuration the graph reads.
-        deps: The godot_resources whose files the graph scans.
-        validate: Fail on missing static references, invalid UID ownership or
-            conflicting identities. Dynamic references remain warnings.
-        require_declared: Require inferred runtime file references to have matching
-            runtime_references entries. Project configuration references are
-            implicit; import inputs are checked for availability.
-        engine: The engine whose editor imports the scanned resources, by engine name;
-            empty keeps the build's engine, the default one or the one
-            --@autoload_rules_godot//godot:engine names.
-        **kwargs: Common attributes, such as tags and visibility.
-    """
-    _resource_graph(
-        name = name,
-        view = declare_view(name, project, deps, kwargs, engine = engine),
-        validate = validate,
-        require_declared = require_declared,
-        engine = engine,
-        **kwargs
-    )
+    """,
+    implementation = _resource_graph_macro_impl,
+    inherit_attrs = _resource_graph,
+    attrs = {
+        "view": None,
+        "project": attr.label(
+            doc = "The godot_project whose configuration the graph reads.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "deps": attr.label_list(doc = "The godot_resources whose files the graph scans."),
+    },
+)
