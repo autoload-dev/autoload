@@ -1,5 +1,5 @@
 """
-Engine acquisition: immutable sources and configure-only source recipes.
+Engine acquisition: immutable sources, the engine tree and configure-only source recipes.
 
 godot_engines declares these repositories for each engine it registers; the ruleset's own
 test fixtures also declare them directly.
@@ -13,18 +13,22 @@ load(
     "engine_build_impl",
     "engine_source_impl",
 )
+load("//godot/engine/private:tree_repository.bzl", _godot_engine_tree = "godot_engine_tree")
 
 visibility(["//..."])
 
 # ==== Repository rules ========================================================
 
+# Defined apart, so that a change to the rules here keeps the extracted sources.
+godot_engine_tree = _godot_engine_tree
+
 godot_engine_source = repository_rule(
     doc = """
-    Acquire one immutable Godot source archive for godot_engine_build recipes.
+    Acquire one immutable Godot source archive for an engine tree.
 
     Call through use_repo_rule in MODULE.bazel, or from a module extension. The
-    repository exports `:source.json`, the descriptor recipes take as `source`, and the
-    archive itself; it never extracts or configures the sources. Upstream releases and
+    repository exports `:source.json`, the descriptor godot_engine_tree takes as `source`,
+    and the archive itself; it never extracts or configures the sources. Upstream releases and
     fork archives alike are pinned by digest and their canonical Godot version, which
     every recipe checks against the extracted version.py.
 
@@ -62,15 +66,16 @@ godot_engine_build = repository_rule(
     Configure one fixed Godot source recipe and emit granular rules_cc build targets.
 
     Call through use_repo_rule in MODULE.bazel, or from a module extension. The recipe
-    extracts the archive of a godot_engine_source descriptor into its own repository,
-    applies the patches, adds the modules and captures the upstream build graph; SCons
-    never compiles. Compilation runs later as Bazel actions, only for the outputs a build
-    requests. The recipe registers nothing: name its outputs as component payloads.
-    Fetching runs rules_python's Python 3.14, needs patch when patches are
-    supplied, and the target operating system's SDK. Bazel's repo contents cache, local
-    or remote (--experimental_remote_repo_contents_cache), reuses Android, iOS and macOS
-    recipes; Linux recipes configure on every host, because Godot enables Linux features
-    by the packages installed there.
+    links the files of its engine's godot_engine_tree hard into its own repository, adds
+    the custom modules and captures the upstream build graph; SCons never compiles. Its
+    repository holds only the files it generates beside those links, a few megabytes, so
+    the recipes of an engine share one extracted, patched copy of its sources.
+    Compilation runs later as Bazel actions, only for the outputs a build requests. The
+    recipe registers nothing: name its outputs as component payloads. Fetching runs
+    rules_python's Python 3.14 and needs the target operating system's SDK. Bazel's repo
+    contents cache, local or remote (--experimental_remote_repo_contents_cache), reuses
+    Android, iOS and macOS recipes; Linux recipes configure on every host, because Godot
+    enables Linux features by the packages installed there.
 
     Example (MODULE.bazel):
     ```starlark
@@ -82,18 +87,21 @@ godot_engine_build = repository_rule(
         cpu = "arm64",
         build_target = "template_release",
         platform = "macos",
-        source = "@godot_sources//:source.json",
+        tree = "@godot_tree//:tree.json",
     )
     ```
 
     A source contradicting the descriptor's version, unknown or rules_godot-controlled
-    options, unresolvable modules and rejected patch hunks fail the recipe. See
+    options and unresolvable modules fail the recipe. See
     [source-built engines](../../engine.md) for custom modules, options and patches.
     """,
     implementation = engine_build_impl,
     attrs = {
-        "source": attr.label(
-            doc = "The `:source.json` descriptor of a godot_engine_source repository.",
+        "tree": attr.label(
+            doc = """
+            The `:tree.json` descriptor of the engine's godot_engine_tree repository: the
+            extracted, patched sources the recipe configures and compiles.
+            """,
             mandatory = True,
             allow_single_file = [".json"],
         ),
@@ -135,14 +143,6 @@ godot_engine_build = repository_rule(
             source tree is watched.
             """,
             allow_files = [".py"],
-        ),
-        "patches": attr.label_list(
-            doc = "Patch files applied in order; any rejected or ambiguous hunk fails the recipe.",
-            allow_files = [".patch", ".diff"],
-        ),
-        "patch_strip": attr.int(
-            doc = "Number of leading path components removed from each patch filename.",
-            default = 1,
         ),
         "renderers": attr.string_list(
             doc = """
@@ -198,6 +198,8 @@ godot_engine_build = repository_rule(
         "_variants": attr.label(default = Label("//tools/engine:variants.py")),
         "_generators": attr.label(default = Label("//tools/engine:generators.py")),
         "_build_file": attr.label(default = Label("//tools/engine:build_file.py")),
+        "_tree": attr.label(default = Label("//tools/engine:tree.py")),
+        "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
         "_build_profile_label": attr.label(default = Label("//godot/private:build_profile_label")),
         "_cc_rules": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_platforms_constraint": attr.label(default = Label("@platforms//os:android")),
@@ -217,10 +219,11 @@ godot_engine_build = repository_rule(
 
 godot_android_shell = repository_rule(
     doc = """
-    Build Godot's Java/Kotlin Android shell library from a source descriptor.
+    Build Godot's Java/Kotlin Android shell library from an engine tree.
 
     Call through use_repo_rule in MODULE.bazel, or from a module extension. The
-    repository extracts the source, applies the patches and exposes `:debug` and
+    repository links the shell library's files of a godot_engine_tree, whose patches
+    apply to them, and exposes `:debug` and
     `:release`, the Android shell library of each template variant built with rules_android and
     rules_kotlin; their `.aar` outputs, such as `:release.aar`, are godot_android_runtime
     shells. Java and Kotlin target Godot's language level per target, so no Kotlin
@@ -232,26 +235,24 @@ godot_android_shell = repository_rule(
     godot_android_shell = use_repo_rule(
         "@autoload_rules_godot//godot/engine/private:repositories.bzl", "godot_android_shell",
     )
-    godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
+    godot_android_shell(name = "godot_shell", tree = "@godot_tree//:tree.json")
     ```
     """,
     implementation = android_shell_impl,
     attrs = {
-        "source": attr.label(
-            doc = "The `:source.json` descriptor of a godot_engine_source repository.",
+        "tree": attr.label(
+            doc = """
+            The `:tree.json` descriptor of the engine's godot_engine_tree repository, whose
+            patches, such as a fork's Java changes, the shell library includes.
+            """,
             mandatory = True,
             allow_single_file = [".json"],
-        ),
-        "patches": attr.label_list(
-            doc = "Patch files applied in order, such as a fork's Java changes.",
-            allow_files = [".patch", ".diff"],
-        ),
-        "patch_strip": attr.int(
-            doc = "Number of leading path components removed from each patch filename.",
-            default = 1,
         ),
         "_build_template": attr.label(default = Label("//godot/engine/private:android_shell.BUILD.tpl")),
         "_kotlin_android": attr.label(default = Label("@rules_kotlin//kotlin:android.bzl")),
         "_kotlin_core": attr.label(default = Label("@rules_kotlin//kotlin:core.bzl")),
+        "_python": attr.label(default = Label("@python_3_14_host//:python")),
+        "_tree": attr.label(default = Label("//tools/engine:tree.py")),
+        "_tree_link": attr.label(default = Label("//tools/engine:tree_link.py")),
     },
 )
