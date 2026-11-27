@@ -16,4 +16,4 @@ what covers the whole repository, such as verification, conventions and releasin
 | [Export option inventory](export-option-inventory.md) | Reviewed disposition of every built-in exporter option and how to compare a new Godot version | Adding a Godot minor or changing owned/rejected export options |
 | [Export-plugin hook inventory](export-plugin-hook-inventory.md) | Reviewed disposition and Bazel declaration that replaces every `EditorExportPlugin` hook | Adding a Godot minor or porting an add-on's export plugin |
 | [Maintainer tools](maintainer-tools.md) | The resource-graph query and BUILD source-manifest tools | Those tools change |
-| [API documentation maintenance](api-reference.md) | Public API inventory, registry metadata and documentation checks | Public surface or documentation tooling changes |
+| [API documentation maintenance](api-reference.md) | Public entrypoints, output interfaces and registry metadata | Public surface or documentation tooling changes |

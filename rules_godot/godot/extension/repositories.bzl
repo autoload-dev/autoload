@@ -32,17 +32,6 @@ godot_cpp_bindings = repository_rule(
     include paths and link inputs through the C++ toolchain.
 
     See [godot-cpp integration](../../gdextension.md).
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//:godot_cpp` (library): link the generated C++ bindings through CcInfo
-      - prerequisites: repository acquired
-    - `@{repository}//:{api_path}` (files): inspect the selected upstream extension API dataset
-      - prerequisites: repository acquired
-    - `@{repository}//:LICENSE.md` (files): distribute the upstream binding license
-      - prerequisites: repository acquired
     """,
     implementation = godot_cpp_bindings_impl,
     attrs = {

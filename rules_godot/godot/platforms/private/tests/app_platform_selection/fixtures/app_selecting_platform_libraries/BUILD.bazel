@@ -12,8 +12,6 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 # export context plugin records what each export saw.
 package(default_visibility = [
     "//godot/platforms/private/tests/app_platform_selection:__subpackages__",
-    # The API contract cases analyze it.
-    "//godot/tests/api_contracts:__pkg__",
 ])
 
 _PROJECT = "//godot/platforms/private/tests/app_platform_selection/fixtures/project_with_desktop_apps:"

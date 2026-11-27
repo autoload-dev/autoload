@@ -140,7 +140,7 @@ dot, such as `game.debug_symbols` or `update.test`. Only documented companion ta
 the same notation also names private helpers. A file subset belongs in an output group
 unless a separate operation or analysis boundary is required. See the
 [API documentation](https://registry.bazel.build/modules/autoload_rules_godot) for each
-rule's defaults, groups, companion targets and providers.
+rule and its attributes.
 
 A short label is the same target, not an alias or dispatcher. Both example add-ons expose
 their extension directly under matching package/target names. Keep library output

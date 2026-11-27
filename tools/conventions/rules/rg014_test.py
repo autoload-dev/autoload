@@ -83,7 +83,7 @@ class EngineLayoutTest(RepositoryTest):
             self.evaluate(
                 "multitool.lock.json",
                 "third_party/godot_simulator.patch",
-                "tools/docs/api.patch",
+                "tools/ci/api.patch",
                 *self.project("examples/game"),
             ),
         )

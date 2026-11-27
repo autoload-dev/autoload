@@ -425,15 +425,6 @@ godot_editor_component = macro(
         version = "4.7.2",
     )
     ```
-
-    ### Default outputs
-    - files (many): build the editor payload and its runfiles; no run behavior
-
-    ### Generated targets
-    - `{name}.toolchain` (metadata): register the slot with editor_toolchain_type; toolchain resolution is a separate boundary
-      - purpose: analysis_boundary
-      - visibility: caller
-      - testonly: inherit
     """,
     implementation = _editor_macro_impl,
     attrs = _COMMON | {
@@ -477,15 +468,6 @@ godot_runtime_component = macro(
         version = "4.7.2",
     )
     ```
-
-    ### Default outputs
-    - files (many): build the runtime payload; no run behavior
-
-    ### Generated targets
-    - `{name}.toolchain` (metadata): register the slot with runtime_toolchain_type; toolchain resolution is a separate boundary
-      - purpose: analysis_boundary
-      - visibility: caller
-      - testonly: inherit
     """,
     implementation = _runtime_macro_impl,
     attrs = _COMMON | {

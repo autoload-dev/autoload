@@ -41,15 +41,6 @@ godot_engine_source = repository_rule(
         version = "4.7.2",
     )
     ```
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//:source.json` (files): the source descriptor godot_engine_build recipes take as source
-      - prerequisites: archive acquired
-    - `@{repository}//:{archive}` (files): the acquired archive, which recipes extract independently
-      - prerequisites: archive acquired
     """,
     implementation = engine_source_impl,
     attrs = {
@@ -98,24 +89,6 @@ godot_engine_build = repository_rule(
     A source contradicting the descriptor's version, unknown or rules_godot-controlled
     options, unresolvable modules and rejected patch hunks fail the recipe. See
     [source-built engines](../../engine.md) for custom modules, options and patches.
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//:godot` (executable): the desktop editor or template executable, a component payload
-      - prerequisites: desktop recipe
-      - availability: desktop
-    - `@{repository}//:godot` (files): the Android engine library with provenance
-      - prerequisites: Android recipe
-      - availability: android
-    - `@{repository}//:engine_library` (library): link the engine library through CcInfo; the iOS component payload
-      - prerequisites: recipe configured with the owning operating system's SDK
-    - `@{repository}//:libgodot_android.so` (library): the Android engine library, godot_android_runtime's engine_library
-      - prerequisites: Android recipe
-      - availability: android
-    - `@{repository}//:engine_manifest.json` (files): inspect captured SCons configuration facts
-      - prerequisites: recipe configured
     """,
     implementation = engine_build_impl,
     attrs = {
@@ -261,13 +234,6 @@ godot_android_shell = repository_rule(
     )
     godot_android_shell(name = "godot_shell", source = "@godot_sources//:source.json")
     ```
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//:{variant}` (files): the Android shell library of one template variant; its .aar output is a godot_android_runtime shell
-      - prerequisites: Android SDK
     """,
     implementation = android_shell_impl,
     attrs = {

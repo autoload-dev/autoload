@@ -8,8 +8,6 @@ python-version = "3.14"
 [analysis]
 # Available only inside Bazel runfiles or Godot's SCons environment.
 allowed-unresolved-imports = [
-  "google.protobuf.**",
-  "stardoc.**",
   "SCons.**",
   "methods",
 ]

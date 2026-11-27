@@ -12,8 +12,6 @@ py_library(
         "layout.py",
         "python_modules.py",
     ],
-    # The API documentation's checks read Bazel evidence through it (tools/docs).
-    visibility = ["//visibility:public"],
     deps = ["//tools/setup:modules_lib"],
 )
 

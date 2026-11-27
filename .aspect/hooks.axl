@@ -68,7 +68,7 @@ def _pre_push_impl(ctx: TaskContext):
 
 pre_push = task(
     implementation = _pre_push_impl,
-    summary = "Before a push: check the checkout's formatting, lint, engine pins, conventions, tests, API documentation and Code Health.",
+    summary = "Before a push: check the checkout's formatting, lint, engine pins, conventions, tests and Code Health.",
     args = {
         "keep_going": KEEP_GOING,
         # The hook's remote name and URL, which Git appends; the checks read the checkout.

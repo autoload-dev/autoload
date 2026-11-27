@@ -456,9 +456,6 @@ godot_resources = rule(
 
     See [resource composition](../../resources.md) for resource paths, generated
     files, import ordering and runtime reference cycles.
-
-    ### Default outputs
-    - files (many): build declared resource files; no run behavior
     """,
     implementation = _resources_impl,
     attrs = {

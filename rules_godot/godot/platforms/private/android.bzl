@@ -52,9 +52,6 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
     )
     ```
 
-    ### Default outputs
-    - files (many): build imported AAR metadata and engine libraries; no run behavior
-
     Args:
         name: Public aar_import target name.
         shell: Godot's Android shell .aar file.

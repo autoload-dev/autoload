@@ -318,7 +318,7 @@ changes, and add or delete rows with it. Keep an ID when a row is renamed. Relat
 their leading entry instead of repeating its support.
 
 [ROOT]: ../../../README.md
-[API]: ../../godot/tests/api/modules.bzl
+[API]: ../../BUILD.bazel
 [RES]: ../public/resources.md
 [DEV]: ../public/development.md
 [PLAT]: ../public/platforms.md

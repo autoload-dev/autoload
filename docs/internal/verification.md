@@ -50,7 +50,7 @@ alone does not identify the kind because tests can inspect artifacts without lau
 |---|---|---|
 | Source quality | Formatting, language/type diagnostics and repository conventions | `bazel build --config=lint` in each module, `--config=check` on any build or test, `bazel run //tools/conventions` |
 | Setup validation | SDK requirements agree with consumers; the modules' shared pins agree; CI cleanup works | `bazel test //tools/android:requirements_test //tools/setup:pins_test //tools/ci:setup_action_test`, all in `aspect tests` |
-| API/documentation contracts | Inventories, metadata, visibility and docstrings | `bazel test //godot/tests/api/... //godot/tests/api_contracts/...` in `rules_godot/` |
+| API documentation | The registry's documentation metadata builds | `bazel test //godot/tests:bcr_docs_test` in `rules_godot/` |
 | Analysis and focused behavior tests | Declared dependencies, error paths, build-tool behavior | `bazel test //...` in `rules_godot/` (the white-box tests), `bazel test //e2e/rules_godot/...` (the regression scenarios); individual owning Bazel test targets |
 | Source runs | GdUnit suites, native unit tests and example behavior, with the content validation of what they build | The examples' and add-on modules' test targets |
 | Artifact build | A pack, desktop app, APK/AAB or IPA can be produced for the selected target platform | The tests tagged `android` or `ios`, and desktop targets |

@@ -4,10 +4,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 
-visibility([
-    "//godot/engine/private/tests",
-    "//godot/tests/api_contracts",
-])
+visibility("private")
 
 _BINDING_HEADER = "gen/include/godot_cpp/classes/node.hpp"
 

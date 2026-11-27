@@ -1,6 +1,6 @@
 ---
 name: bazel-api-docs
-description: Document and maintain rules_godot's Bazel APIs and CI documentation checks. Use when adding, changing, reviewing or removing public Starlark rules, macros, providers, aspects, repository rules, module extensions, tag classes, toolchains or configuration APIs.
+description: Document and maintain rules_godot's Bazel APIs and the registry's documentation metadata. Use when adding, changing, reviewing or removing public Starlark rules, macros, providers, aspects, repository rules, module extensions, tag classes, toolchains or configuration APIs.
 ---
 
 # Bazel API documentation
@@ -9,8 +9,8 @@ Treat the Starlark definitions as the API documentation's source of truth: the
 Bazel Central Registry renders it from their extracted docstrings. Write English
 documentation using Bazel's `.bzl` style and Stardoc conventions. Read
 [upstream practices](references/upstream.md) when changing this standard or
-its enforcement; use [the maintenance guide](../../../rules_godot/docs/internal/api-reference.md)
-for API inventory and metadata details, and the
+its tooling; use [the maintenance guide](../../../rules_godot/docs/internal/api-reference.md)
+for public entrypoints and metadata details, and the
 [API documentation recipe](../../../docs/internal/verification-recipes.md#api-documentation)
 for its checks.
 
@@ -20,27 +20,24 @@ for its checks.
   APIs in `godot:defs.bzl`; use dedicated extension, platform, engine,
   toolchain, repository and provider modules for those tasks. Keep platform
   dependency boundaries rather than forcing every API into one facade.
-- Assign every `rules_godot/godot/**/*.bzl` module a role in
-  `rules_godot/godot/tests/api/modules.bzl`: public entrypoint,
-  generated-repository implementation, or private implementation support. A
-  public name does not become private merely because it is absent from the
-  facade.
-- Give each symbol exactly one public load path. Identify
-  symbols by the defining file and name that Bazel reports and by API kind, so a
-  renamed export cannot introduce a second public entrypoint for the same API.
+- List each public entrypoint in `_BCR_DOCS` of `rules_godot/BUILD.bazel`; the
+  registry documents every symbol it exports, so an entrypoint exports only its
+  public symbols. Every other `rules_godot/godot/**/*.bzl` module is
+  implementation. A public name does not become private merely because it is
+  absent from the facade.
+- Give each symbol exactly one public load path, also under another name.
   Re-export private implementations only through their intended entrypoint.
 - Keep implementation modules under `private/` and restrict their actual
   Starlark load visibility. Directory names and BUILD source visibility alone
   do not enforce Starlark load visibility.
 - Helpers loaded by generated repositories are implementation details, not
-  consumer APIs. Classify them in `CROSS_REPOSITORY_MODULES`; exclude them
-  from BCR metadata. Keep useful
+  consumer APIs: keep them out of `_BCR_DOCS`. Keep useful
   implementation explanations in source comments and docstrings. Never export
   them through public consumer entrypoints, even under a different name.
 - Generated repositories can have caller-chosen names. Their implementation
   modules therefore need explicit public load visibility for cross-repository
-  loads, despite being outside the supported public API. Preserve and check
-  this technical access when changing the documentation inventory.
+  loads, despite being outside the supported public API. Preserve this
+  technical access when changing them.
 - Document repository configuration and the library targets consumers actually
   use. For godot-cpp, keep `godot_cpp_bindings` and the generated
   `@godot_cpp//:godot_cpp` dependency in `godot_cc_extension` documented; its
@@ -99,7 +96,7 @@ for its checks.
 | API kind | Documentation source | Required contract |
 | --- | --- | --- |
 | Module | Leading docstring | Purpose, supported entrypoints and relevant setup/guide links |
-| Rule, aspect, symbolic macro | `doc` and each public `attr.*(doc = ...)` | Inputs, accepted providers, outputs/providers, execution or configuration behavior, constraints |
+| Rule, aspect, symbolic macro | `doc` and each public `attr.*(doc = ...)` | Inputs, accepted providers, returned providers, execution or configuration behavior, constraints |
 | Legacy macro or public function | Docstring with `Args:`; `Returns:` when returning a value | Every parameter, forwarding through `**kwargs`, created targets/visibility or return value |
 | Provider | `provider(doc = ..., fields = {name: description})` | Purpose, every field's type/shape, optionality, meaning and producer/consumer relationships |
 | Repository rule | `doc` and each public attribute's `doc` | Acquisition/pinning, generated repositories/targets, host tools, environment inputs, failure conditions |
@@ -125,8 +122,8 @@ implementation contexts. Name prerequisite targets and setup; mark placeholder
 artifacts as illustrative. Prefer existing tested examples to new untested
 mini-projects.
 
-Explain `DefaultInfo`, custom providers, output groups, generated filenames and
-runtime/runfiles behavior when consumers use them. Toolchains must distinguish
+Explain custom providers and runtime/runfiles behavior when consumers use them.
+Toolchains must distinguish
 execution platform from target platform; packaging APIs must state relevant
 SDK, signing and native-linking requirements. Describe actual error conditions.
 Document deprecations with their replacement and migration implications.
@@ -135,38 +132,24 @@ Keep guides for setup, composition, architecture and troubleshooting. Link from
 the reference instead of duplicating long explanations. Use plain prose and
 small tables/examples; use diagrams only for relationships that need them.
 
-## Extract and enforce
+## Extract the registry's metadata
 
-1. Update definitions and their documentation together. Classify new modules
-   in `rules_godot/godot/tests/api/modules.bzl`, and regenerate their
-   `bzl_library` targets with Gazelle (`bazel run //tools/gazelle:rules_godot`), through
-   which the inventory's test finds unlisted modules. Choose the primary
-   owner of each new public symbol and update guides/examples to use that load
-   path.
-2. Extract unfiltered export inventories with Bazel's built-in
-   `starlark_doc_extract`, using declared `bzl_library` dependencies. Check
-   documentation and ownership against every public export before selecting
-   the primary symbols of the registry's metadata. That selection must never hide new APIs.
-   Do not replace Bazel evaluation with regexes or a Python Starlark emulator.
-3. Publish each public contract at its sole entrypoint. Do not publish
-   generated-repository implementation modules. Reject duplicate owners,
-   additional public load paths, unowned exports, implementation helpers leaked
-   through public entrypoints and selected symbols missing from extraction.
-4. Follow the [API documentation recipe](../../../docs/internal/verification-recipes.md#api-documentation)
+1. Update definitions and their documentation together. Regenerate the
+   `bzl_library` targets of new modules with Gazelle
+   (`bazel run //tools/gazelle:rules_godot`). Choose the sole entrypoint of each
+   new public symbol, list a new entrypoint in `_BCR_DOCS`, and update guides
+   and examples to use that load path.
+2. Bazel's built-in `starlark_doc_extract` extracts the metadata from the
+   declared `bzl_library` dependencies: `bazel build //:bcr_docs` in
+   `rules_godot/`. Do not replace Bazel evaluation with regexes or a Python
+   Starlark emulator.
+3. Follow the [API documentation recipe](../../../docs/internal/verification-recipes.md#api-documentation)
    for checking, and the [verification policy](../../../docs/internal/verification.md)
    for completion evidence.
-5. Keep the documentation check enforcing complete source/export inventory,
-   structured descriptions and unique primary ownership.
-   Buildifier supplements these gates. Cover meaningful rejection cases,
-   including second public exports, unrestricted private support modules and
-   generated-repository modules losing external load access.
-   Unsupported new API kinds must fail until extraction and checking are extended.
-6. For a BCR documentation archive, use only `//godot/tests/api:bcr_docs` of the
-   ruleset's module, the curated
-   evaluated metadata for public primary contracts. Never archive all extractor
-   outputs: those also contain unfiltered inventories and test fixtures. Archive
-   publication is a separate release integration.
+4. For a BCR documentation archive, use only `//:bcr_docs` of the ruleset's
+   module. Archive publication is a separate release integration.
 
-Nonempty descriptions and links are machine-checkable.
-Accurate behavior, useful examples, compatibility implications and explanatory
-quality require source review.
+Buildifier's docstring warnings check only module and function docstrings, and
+exempt short functions. The documentation of rules, macros, aspects, attributes,
+provider fields and tag classes, accurate behavior, useful examples,
+compatibility implications and explanatory quality require source review.

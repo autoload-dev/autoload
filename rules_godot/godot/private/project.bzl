@@ -573,14 +573,6 @@ godot_project = macro(
     ```
 
     See [resource and configuration semantics](../../resources.md).
-
-    ### Default outputs
-    - metadata (none): name the configuration context operations use; no build or run behavior
-
-    ### Generated targets
-    - `{name}.named_addons` (metadata): The add-ons the project names, which the operations of the project reach without the project; not for direct use
-      - purpose: analysis_boundary
-      - visibility: caller
     """,
     implementation = _project_macro_impl,
     inherit_attrs = _godot_project,

@@ -27,6 +27,46 @@ exports_files([
     "README.md",
 ])
 
+# The extractions of the public entrypoints, by name: the Stardoc metadata the Bazel Central
+# Registry renders as the API reference, which the release workflow archives
+# (.github/workflows/release_prep.sh). Each entrypoint exports exactly its public symbols, so
+# the extraction takes all of them.
+_BCR_DOCS = {
+    "bcr_docs_godot_app": "//godot:app.bzl",
+    "bcr_docs_godot_defs": "//godot:defs.bzl",
+    "bcr_docs_godot_engine_defs": "//godot/engine:defs.bzl",
+    "bcr_docs_godot_extension_defs": "//godot/extension:defs.bzl",
+    "bcr_docs_godot_extension_repositories": "//godot/extension:repositories.bzl",
+    "bcr_docs_godot_extensions": "//godot:extensions.bzl",
+    "bcr_docs_godot_platforms_defs": "//godot/platforms:defs.bzl",
+    "bcr_docs_godot_providers": "//godot:providers.bzl",
+}
+
+[
+    starlark_doc_extract(
+        name = name,
+        src = module,
+        render_main_repo_name = True,
+        # Gazelle's bzl_library beside the module, named after its file, and the modules
+        # its libraries miss: those that @bazel_tools's http.bzl loads, which has no
+        # bzl_library, and rules_apple's internal aspects, whose libraries are private to
+        # rules_apple and which its public library reaches. Drop each once its upstream
+        # module has a public bzl_library that Gazelle can resolve.
+        deps = [
+            module.removesuffix(".bzl"),
+            "@bazel_tools//tools/build_defs/repo:cache.bzl",
+            "@bazel_tools//tools/build_defs/repo:utils.bzl",
+            "@rules_apple//apple",
+        ],
+    )
+    for name, module in _BCR_DOCS.items()
+]
+
+filegroup(
+    name = "bcr_docs",
+    srcs = [":%s.binaryproto" % name for name in _BCR_DOCS],
+)
+
 # The module's declarations and Bazel settings with those of its registry test module, which
 # the root module's setup checks read (tools/setup/checkout.py). bcr/ is ignored, so its files
 # belong to this package.

@@ -135,7 +135,7 @@ godot_engines.binaries(
 `android_debug_shell_urls` pin the release and debug Android shells. An uncatalogued
 version without a `source` tag needs the editors of its `binaries` and builds nothing from
 source. The [API documentation](https://registry.bazel.build/modules/autoload_rules_godot)
-of `godot_engines` lists every attribute and the generated targets.
+of `godot_engines` lists every attribute.
 
 A module completes only the engines it registers. The root module's request owns its
 engine name, identical requests from dependencies share one engine, and conflicting ones

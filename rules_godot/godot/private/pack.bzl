@@ -798,16 +798,6 @@ godot_pack = macro(
 
     Example: godot_pack(name = "pack", project = ":project", deps = [":game"]).
     See [export behavior](../../resources.md).
-
-    ### Default outputs
-    - files (one): build output_name.pck; no run behavior
-
-    ### Output groups
-    - `report`: Godot export JSON report
-      - prerequisites: execution-platform editor
-    - `export_facts`: What Godot reports about the export, as JSON
-      - prerequisites: execution-platform editor
-    - `selection`: Selected content JSON and the selection's warnings
     """,
     implementation = _pack_macro_impl,
     inherit_attrs = _pack_export,

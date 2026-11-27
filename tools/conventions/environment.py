@@ -7,7 +7,6 @@ def nested_tool_environment(environment: Mapping[str, str]) -> dict[str, str]:
     """
     Copy caller variables for a nested Bazel. rules_python enables safe-path mode for its own
     launcher; passing it through changes the imports of other repositories' Python scripts.
-    The API documentation's checks (tools/docs) use it for their nested Bazel too.
     """
     return {
         name: value for name, value in environment.items() if name != "PYTHONSAFEPATH"

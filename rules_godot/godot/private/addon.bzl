@@ -669,14 +669,6 @@ godot_addon = macro(
     ```
 
     See [add-ons](../../resources.md#add-ons) and [importers](../../resources.md#importers).
-
-    ### Default outputs
-    - files (many): build the files of both parts; no run behavior
-
-    ### Generated targets
-    - `{name}.editor` (metadata): the editor part as resources of test-only operations, such as suites of its editor tooling, which products cannot reach
-      - visibility: caller
-      - testonly: true
     """,
     implementation = _addon_macro_impl,
     inherit_attrs = _godot_addon,

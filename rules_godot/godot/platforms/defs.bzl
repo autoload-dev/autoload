@@ -32,9 +32,6 @@ def godot_export_platform(
     `exec_properties` here. A child that sets another operating system, CPU or iOS
     environment fails analysis.
 
-    ### Default outputs
-    - metadata (none): select operating system and CPUs; no run behavior
-
     Args:
         name: Public export platform target name, selected through --platforms.
         operating_system: Operating system: linux, macos, android or ios.
