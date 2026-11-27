@@ -78,7 +78,10 @@ filegroup(
 # The GitHub workflows and jactionlint's settings, which //tools/lint:workflows_test lints with.
 filegroup(
     name = "workflows",
-    srcs = glob([".github/workflows/*.yml"]) + [".github/jactionlint.yaml"],
+    srcs = glob([
+        ".github/workflows/*.yml",
+        ".github/workflows/*.yaml",
+    ]) + [".github/jactionlint.yaml"],
     visibility = ["//tools/lint:__pkg__"],
 )
 
