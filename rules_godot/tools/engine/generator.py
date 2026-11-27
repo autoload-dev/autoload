@@ -143,7 +143,7 @@ def run(spec: dict[str, Any], inputs: dict[str, str], outputs: dict[str, str]) -
                 import methods
 
                 namespace = {"methods": methods}
-                # The inline builder is declared upstream engine source.
+                # The inline builder is upstream engine source, which the build trusts like the rest.
                 exec(compile(spec["inline"], spec["code_file"], "exec"), namespace)
                 function = namespace[spec["function"]]
             else:

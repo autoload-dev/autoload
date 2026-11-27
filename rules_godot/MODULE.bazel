@@ -473,9 +473,9 @@ maven_development.install(
 # depend on the Starlark libraries of the modules whose files they load. rules_android 0.8.1
 # exports its API files but keeps the transitive Starlark library private; rules_android_ndk
 # 0.1.5 exports no files. Each patch changes BUILD visibility only; an override applies only
-# where this module is the root. Remove a patch once its module's release makes the library
-# public or exports rules.bzl; neither rules_android's nor rules_android_ndk's main branch
-# does in November 2026.
+# where this module is the root. Remove a patch once a release of its module makes //rules:bzl
+# public or exports rules.bzl; neither rules_android 0.8.1 nor rules_android_ndk 0.1.5, the
+# latest releases, does.
 single_version_override(
     module_name = "rules_android",
     patch_strip = 1,
