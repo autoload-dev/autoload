@@ -35,7 +35,6 @@ import sys
 from collections.abc import Container, Iterable, Iterator, Sequence
 from pathlib import Path
 
-from tools.class_fragment import CACHE, class_cache
 from tools.godot_staging import (
     ACTION_DIRECTORY,
     Original,
@@ -48,6 +47,7 @@ from tools.godot_staging import (
 from tools.project.config import compose_project
 from tools.resources.text import Heading, Token, headings, lex, res_path
 from tools.resources.uids import known_uids, uid_sources
+from tools.validation.class_fragment import CACHE, class_cache
 
 
 def _section_end(text: str, sections: list[Heading], index: int) -> int:
@@ -515,7 +515,7 @@ def extensions_hint(manifest: dict) -> str:
 # ==== Validation ==============================================================
 
 
-_VALIDATE = Path(__file__).parent / "validation" / "validate.gd"
+_VALIDATE = Path(__file__).parent / "validate.gd"
 
 _NOT_UTF8 = (
     "not valid UTF-8, as which Godot reads scripts, scenes and resources; the "

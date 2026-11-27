@@ -48,11 +48,11 @@ py_library(
     deps = [
         ":contents_lib",
         ":pck_lib",
-        "//tools:class_fragment_lib",
         "//tools:godot_staging_lib",
         "//tools/resources:files_lib",
         "//tools/resources:text_lib",
         "//tools/resources:uids_lib",
+        "//tools/validation:class_fragment_lib",
     ],
 )
 

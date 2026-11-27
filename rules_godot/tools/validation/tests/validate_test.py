@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.godot_validation import (
+from tools.validation.validate import (
     closure_autoloads,
     extensions_hint,
     remove_tool_mode,

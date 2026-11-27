@@ -45,6 +45,14 @@ py_library(
     ],
 )
 
+# The action plugin that records each editor action's result, which the content validation
+# carries as data beside the tools of this package that run editor actions.
+filegroup(
+    name = "action_plugin",
+    srcs = glob(["action/*"]),
+    visibility = ["//tools/validation:__pkg__"],
+)
+
 py_library(
     name = "godot_actions_lib",
     srcs = ["godot_actions.py"],
@@ -84,65 +92,6 @@ py_binary(
     name = "runtime_profile",
     srcs = ["runtime_profile.py"],
     deps = [":runtime_profile_lib"],
-)
-
-py_library(
-    name = "class_fragment_lib",
-    srcs = ["class_fragment.py"],
-    deps = [
-        ":mapped_paths_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-py_binary(
-    name = "class_fragment",
-    srcs = ["class_fragment.py"],
-    deps = [
-        ":mapped_paths_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-# What the validations of a unit's dependents read from it (#158): a tool of its own, so a
-# change to it reruns only interfaces.
-py_library(
-    name = "unit_interface_lib",
-    srcs = ["unit_interface.py"],
-    deps = [
-        ":class_fragment_lib",
-        ":godot_staging_lib",
-        ":mapped_paths_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-py_binary(
-    name = "unit_interface",
-    srcs = ["unit_interface.py"],
-    deps = [":unit_interface_lib"],
-)
-
-# The per-unit content validation: a tool of its own, so a change to it reruns only
-# validations.
-py_library(
-    name = "godot_validation_lib",
-    srcs = ["godot_validation.py"],
-    data = glob(["action/*"]) + ["validation/validate.gd"],
-    deps = [
-        ":class_fragment_lib",
-        ":godot_staging_lib",
-        "//tools/project:config_lib",
-        "//tools/resources:text_lib",
-        "//tools/resources:uids_lib",
-    ],
-)
-
-py_binary(
-    name = "godot_validation",
-    srcs = ["godot_validation.py"],
-    deps = [":godot_validation_lib"],
 )
 
 py_library(

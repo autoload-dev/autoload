@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.godot_staging import read_original
 from tools.resources.files import import_base
-from tools.unit_interface import (
+from tools.validation.unit_interface import (
     AssetInterface,
     asset_interface,
     interface_files,

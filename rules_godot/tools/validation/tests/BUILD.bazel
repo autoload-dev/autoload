@@ -1,0 +1,25 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "class_fragment_test",
+    size = "small",
+    srcs = ["class_fragment_test.py"],
+    data = ["//godot/private/tests/validation:class_headers"],
+    deps = ["//tools/validation:class_fragment_lib"],
+)
+
+py_test(
+    name = "unit_interface_test",
+    size = "small",
+    srcs = ["unit_interface_test.py"],
+    deps = ["//tools/validation:unit_interface_lib"],
+)
+
+py_test(
+    name = "validate_test",
+    size = "small",
+    srcs = ["validate_test.py"],
+    deps = ["//tools/validation:validate_lib"],
+)

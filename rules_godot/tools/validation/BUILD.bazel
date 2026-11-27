@@ -1,0 +1,75 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# The content validation of units: the global script classes of a unit's scripts, the
+# interface its dependents' validations read, and the validation that loads its files in
+# the editor. The rules of godot/private run the binaries.
+package(default_visibility = ["//tools:__subpackages__"])
+
+py_library(
+    name = "class_fragment_lib",
+    srcs = ["class_fragment.py"],
+    visibility = [
+        "//godot/private/tests/validation:__pkg__",
+        "//tools:__subpackages__",
+    ],
+    deps = [
+        "//tools:mapped_paths_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_binary(
+    name = "class_fragment",
+    srcs = ["class_fragment.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [
+        "//tools:mapped_paths_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+# What the validations of a unit's dependents read from it (#158): a tool of its own, so a
+# change to it reruns only interfaces.
+py_library(
+    name = "unit_interface_lib",
+    srcs = ["unit_interface.py"],
+    deps = [
+        ":class_fragment_lib",
+        "//tools:godot_staging_lib",
+        "//tools:mapped_paths_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_binary(
+    name = "unit_interface",
+    srcs = ["unit_interface.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":unit_interface_lib"],
+)
+
+# The per-unit content validation: a tool of its own, so a change to it reruns only
+# validations.
+py_library(
+    name = "validate_lib",
+    srcs = ["validate.py"],
+    data = [
+        "validate.gd",
+        "//tools:action_plugin",
+    ],
+    deps = [
+        ":class_fragment_lib",
+        "//tools:godot_staging_lib",
+        "//tools/project:config_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
+    ],
+)
+
+py_binary(
+    name = "validate",
+    srcs = ["validate.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":validate_lib"],
+)

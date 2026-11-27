@@ -24,7 +24,7 @@ godot_project(
 filegroup(
     name = "class_headers",
     srcs = glob(["fixtures/classes/*.gd"]),
-    visibility = ["//tools/tests:__pkg__"],
+    visibility = ["//tools/validation/tests:__pkg__"],
 )
 
 godot_resources(
@@ -56,7 +56,7 @@ py_test(
     data = [":class_cache_inputs"],
     main = "class_cache_test.py",
     tags = ["godot_process"],
-    deps = ["//tools:class_fragment_lib"],
+    deps = ["//tools/validation:class_fragment_lib"],
 )
 
 # A unit whose closure holds a global class with an authored UID, used by a scene through

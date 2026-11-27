@@ -1,6 +1,6 @@
 extends SceneTree
 
-# A unit's validation, which tools/godot_validation.py runs with --editor --script: it
+# A unit's validation, which tools/validation/validate.py runs with --editor --script: it
 # registers the closure's UIDs, loads the unit's scripts and then its scenes, and records
 # every error and warning Godot reports while each one loads.
 #

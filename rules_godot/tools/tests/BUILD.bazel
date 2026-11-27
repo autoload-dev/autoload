@@ -95,30 +95,8 @@ py_test(
 )
 
 py_test(
-    name = "class_fragment_test",
-    size = "small",
-    srcs = ["class_fragment_test.py"],
-    data = ["//godot/private/tests/validation:class_headers"],
-    deps = ["//tools:class_fragment_lib"],
-)
-
-py_test(
-    name = "godot_validation_test",
-    size = "small",
-    srcs = ["godot_validation_test.py"],
-    deps = ["//tools:godot_validation_lib"],
-)
-
-py_test(
     name = "runtime_profile_test",
     size = "small",
     srcs = ["runtime_profile_test.py"],
     deps = ["//tools:runtime_profile_lib"],
-)
-
-py_test(
-    name = "unit_interface_test",
-    size = "small",
-    srcs = ["unit_interface_test.py"],
-    deps = ["//tools:unit_interface_lib"],
 )

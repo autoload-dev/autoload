@@ -4,7 +4,7 @@ import os
 import unittest
 from pathlib import Path
 
-from tools.class_fragment import class_cache, fragment, script_header
+from tools.validation.class_fragment import class_cache, fragment, script_header
 
 _FIXTURE = "godot/private/tests/validation/fixtures/classes"
 

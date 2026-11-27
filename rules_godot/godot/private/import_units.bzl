@@ -244,7 +244,7 @@ def unit_interface(ctx, unit, own_import):
     A script's interface is the script without its function bodies; an imported asset's is
     an empty file whose .import file remaps to a stand-in of its resource's class. A body
     or asset content change yields the same interface, so no dependent validation reruns.
-    tools/unit_interface.py states what Godot reads and why the interface is exact.
+    tools/validation/unit_interface.py states what Godot reads and why the interface is exact.
 
     Args:
         ctx: Analysis context of a rule with a _unit_interface tool.
@@ -459,17 +459,17 @@ def validate_unit(ctx, context, unit, closure):
 # The tools and flags per-unit validations, class fragments and interfaces need.
 VALIDATION_ATTRS = {
     "_unit_interface": attr.label(
-        default = Label("//tools:unit_interface"),
+        default = Label("//tools/validation:unit_interface"),
         executable = True,
         cfg = "exec",
     ),
     "_class_fragment": attr.label(
-        default = Label("//tools:class_fragment"),
+        default = Label("//tools/validation:class_fragment"),
         executable = True,
         cfg = "exec",
     ),
     "_validation": attr.label(
-        default = Label("//tools:godot_validation"),
+        default = Label("//tools/validation:validate"),
         executable = True,
         cfg = "exec",
     ),

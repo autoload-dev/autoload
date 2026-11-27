@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tools.class_fragment import CACHE, class_cache
+from tools.validation.class_fragment import CACHE, class_cache
 
 FILES = [Path(path) for path in sys.argv[1:]]
 sys.argv = sys.argv[:1]

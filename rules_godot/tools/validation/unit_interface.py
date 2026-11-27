@@ -35,7 +35,6 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from tools.class_fragment import skip_arguments
 from tools.godot_staging import (
     IMPORT_ARCHIVE,
     Original,
@@ -46,6 +45,7 @@ from tools.godot_staging import (
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.resources.files import IMPORT, import_base
 from tools.resources.text import IMPORTER, REMAP_PATH, Token, lex, remap_section
+from tools.validation.class_fragment import skip_arguments
 
 # The class of the resource each of Godot's own importers produces, which a stand-in has: a
 # preloaded resource types its constant by its class. Other importers, such as an add-on's,
