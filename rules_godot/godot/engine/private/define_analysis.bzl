@@ -33,13 +33,13 @@ reported unused can still change a module the source imports.
 Sections: godot_source_defines, godot_define_analysis.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_helper.bzl", "cc_helper")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:actions.bzl", "PATH_MAPPING")
-load("//godot/private:flags.bzl", "FlagInfo")
 
 visibility(["//godot/..."])
 
@@ -73,15 +73,6 @@ _CANARY = "#define GODOT_DEFINE_ANALYSIS_CANARY 1\n"
 _PER_FILE_COPT = "//command_line_option:per_file_copt"
 
 _PER_FILE_COPT_SET = str(Label("//godot/engine/private:per_file_copt_set"))
-
-def _setting_impl(ctx):
-    return [FlagInfo(value = ctx.build_setting_value)]
-
-per_file_copt_setting = rule(
-    doc = "Whether the build sets --per_file_copt, which Starlark cannot read otherwise.",
-    implementation = _setting_impl,
-    build_setting = config.bool(flag = False),
-)
 
 def _per_file_copt_impl(settings, _attr):
     return {_PER_FILE_COPT_SET: bool(settings[_PER_FILE_COPT])}
@@ -209,7 +200,7 @@ def _source_defines_impl(ctx):
         compilation_contexts = [dep[CcInfo].compilation_context for dep in ctx.attr.deps],
     )
     command, env, requirements = None, {}, {}
-    if toolchain.compiler not in _CL_COMPILERS and not ctx.attr._per_file_copt_set[FlagInfo].value:
+    if toolchain.compiler not in _CL_COMPILERS and not ctx.attr._per_file_copt_set[BuildSettingInfo].value:
         command, env, requirements = _command(ctx, toolchain, features, wrapper, context)
     return [GodotSourceDefinesInfo(
         definitions = definitions,

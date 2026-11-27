@@ -4,6 +4,7 @@ Extensions, and the extension libraries rules_cc builds for them.
 Sections: Library classification, Library placement, godot_extension.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleDynamicFrameworkInfo", "AppleFrameworkImportInfo", "apple_provider")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
@@ -14,7 +15,6 @@ load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:addon.bzl", "extension_addon")
 load("//godot/private:context.bzl", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN", "RUN_EXEC_GROUPS")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:paths.bzl", "resource_path")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private:symbols.bzl", "keep_debug_info", "linked_dsym")
@@ -420,7 +420,7 @@ def _configured_context(ctx):
             ", ".join(OPERATING_SYSTEM_CONSTRAINTS),
             ", ".join([str(row.constraint) for row in CPU_TABLE.values()]),
         ))
-    tool = ctx.attr._tool[FlagInfo].value
+    tool = ctx.attr._tool[BuildSettingInfo].value
     selected = variant(ctx)
     tags = [platform.operating_system, platform.cpu]
     if platform.environment == "simulator":
@@ -609,7 +609,7 @@ _OWN_ATTRS = {
         default = Label("//godot/extension:descriptor.gdextension.tpl"),
         allow_single_file = True,
     ),
-    "_tool": attr.label(default = Label("//godot/private/config:tool"), providers = [FlagInfo]),
+    "_tool": attr.label(default = Label("//godot/private/config:tool"), providers = [BuildSettingInfo]),
 } | PLATFORM_ATTRS | VARIANT_ATTRS
 
 # The tool view: the extension in the tool configuration. Editor actions reach it on

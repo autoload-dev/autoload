@@ -1,5 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load(":define_analysis.bzl", "per_file_copt_setting")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
 
 # The ruleset's packages may depend on this package's implementation libraries, such as
 # the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
@@ -12,7 +12,7 @@ exports_files(
 )
 
 # Whether the build sets --per_file_copt; the define analysis keeps every definition then.
-per_file_copt_setting(
+bool_setting(
     name = "per_file_copt_set",
     build_setting_default = False,
     visibility = ["//visibility:public"],
@@ -52,7 +52,7 @@ bzl_library(
     srcs = ["define_analysis.bzl"],
     deps = [
         "//godot/private:actions",
-        "//godot/private:flags",
+        "@bazel_skylib//rules:common_settings",
         "@rules_cc//cc:action_names",
         "@rules_cc//cc:find_cc_toolchain",
         "@rules_cc//cc/common:cc_common",
@@ -81,11 +81,11 @@ bzl_library(
         ":define_analysis",
         ":optimization",
         "//godot/private:actions",
-        "//godot/private:flags",
         "//godot/private:providers",
         "//godot/private:symbols",
         "//godot/private:versions",
         "//godot/private/config:native",
+        "@bazel_skylib//rules:common_settings",
         "@rules_cc//cc/common:cc_common",
         "@rules_cc//cc/common:cc_info",
     ],
@@ -102,8 +102,8 @@ bzl_library(
     srcs = ["optimization.bzl"],
     deps = [
         ":selection",
-        "//godot/private:flags",
         "//godot/private/config:native",
+        "@bazel_skylib//rules:common_settings",
     ],
 )
 

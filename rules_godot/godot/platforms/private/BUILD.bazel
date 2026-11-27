@@ -189,7 +189,7 @@ bzl_library(
         ":desktop",
         ":launch",
         "//godot:providers",
-        "//godot/private:flags",
+        "@bazel_skylib//rules:common_settings",
     ],
 )
 

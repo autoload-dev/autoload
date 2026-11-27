@@ -1,11 +1,11 @@
 """
 Export platform state and validation; not independent consumer flags.
 
-Sections: Settings, CPU table and errors, Constraints and tags, Platform slices,
+Sections: CPU table and errors, Constraints and tags, Platform slices,
 Dispatch conditions, Configured context.
 """
 
-load("//godot/private:flags.bzl", "FlagInfo", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
 visibility(["//godot/..."])
 
@@ -35,25 +35,6 @@ MERGE_ANDROID_MANIFEST_PERMISSIONS = "//command_line_option:merge_android_manife
 TOOL = str(Label("//godot/private/config:tool"))
 
 VARIANT = str(Label("//godot:variant"))
-
-# ==== Settings ================================================================
-
-export_platform_setting = string_flag
-
-def _setting_impl(ctx):
-    return [FlagInfo(value = ctx.build_setting_value)]
-
-application_context_setting = rule(
-    implementation = _setting_impl,
-    build_setting = config.string(flag = False),
-)
-
-# Whether this is the tool configuration, in which Godot runs as a build tool: an
-# extension's tool view sets it, and //godot:tool matches it.
-tool_setting = rule(
-    implementation = _setting_impl,
-    build_setting = config.bool(flag = False),
-)
 
 # ==== CPU table and errors ====================================================
 
@@ -547,9 +528,9 @@ def context_attrs():
 def _declared_state(ctx):
     """The export platform state the flags declare: its operating system and environment, CPUs and platform slices."""
     return struct(
-        system = (ctx.attr._operating_system[FlagInfo].value, ctx.attr._environment[FlagInfo].value),
-        cpus = ctx.attr._cpus[FlagInfo].value,
-        platform_slices = ctx.attr._platform_slices[FlagInfo].value,
+        system = (ctx.attr._operating_system[BuildSettingInfo].value, ctx.attr._environment[BuildSettingInfo].value),
+        cpus = ctx.attr._cpus[BuildSettingInfo].value,
+        platform_slices = ctx.attr._platform_slices[BuildSettingInfo].value,
     )
 
 def _split_list(value):
@@ -605,7 +586,7 @@ def configured_context(ctx):
     operating_system = platform.operating_system
     cpu = platform.cpu
     environment = platform.environment
-    export_platform = ctx.attr._export_platform[FlagInfo].value
+    export_platform = ctx.attr._export_platform[BuildSettingInfo].value
     slices = _exported_slices(ctx, platform) if export_platform else _unexported_slices(ctx, platform)
     cpus = slices.cpus
     platform_slices = slices.platform_slices
@@ -619,5 +600,5 @@ def configured_context(ctx):
         environment = environment,
         export_platform = export_platform,
         platform_slices = platform_slices,
-        application_context = json.decode(ctx.attr._application_context[FlagInfo].value),
+        application_context = json.decode(ctx.attr._application_context[BuildSettingInfo].value),
     )

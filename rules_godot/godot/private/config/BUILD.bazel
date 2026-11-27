@@ -1,12 +1,10 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_setting", "string_flag", "string_setting")
 load(
     ":settings.bzl",
     "CPU_CONSTRAINTS",
     "DISPATCH_CONDITIONS",
     "OPERATING_SYSTEM_CONSTRAINTS",
-    "application_context_setting",
-    "export_platform_setting",
-    "tool_setting",
 )
 
 package(default_visibility = ["//godot:__subpackages__"])
@@ -21,7 +19,7 @@ exports_files([
 # `platform(flags = ...)` of an export platform sets these values, also in consuming
 # modules. They remain implementation state, not supported independent CLI choices.
 [
-    export_platform_setting(
+    string_flag(
         name = name,
         build_setting_default = default,
         visibility = ["//visibility:public"],
@@ -35,20 +33,20 @@ exports_files([
     }.items()
 ]
 
-application_context_setting(
+string_setting(
     name = "application_context",
     build_setting_default = "{}",
     visibility = ["//visibility:public"],
 )
 
 # A macOS application's edge records the build's minimum; the project context restores it.
-application_context_setting(
+string_setting(
     name = "macos_minimum_os_outside_application",
     build_setting_default = "",
 )
 
 # An extension's tool view sets it; //godot:tool matches it.
-tool_setting(
+bool_setting(
     name = "tool",
     build_setting_default = False,
 )
@@ -150,7 +148,7 @@ bzl_library(
 bzl_library(
     name = "settings",
     srcs = ["settings.bzl"],
-    deps = ["//godot/private:flags"],
+    deps = ["@bazel_skylib//rules:common_settings"],
 )
 
 bzl_library(

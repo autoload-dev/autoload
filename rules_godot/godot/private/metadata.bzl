@@ -5,7 +5,7 @@ Packs complete it in the copy they export; godot_metadata_sync writes it into
 the checkout.
 """
 
-load("//godot/private:flags.bzl", "FlagInfo")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
 visibility("//godot/...")
 
@@ -28,7 +28,7 @@ METADATA = {
 METADATA_ATTRS = {
     "_metadata_" + kind: attr.label(
         default = Label("//godot/metadata:" + kind),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     )
     for kind in METADATA
 }
@@ -69,4 +69,4 @@ def metadata_modes(ctx):
     Returns:
         A dict of kind to value.
     """
-    return {kind: getattr(ctx.attr, "_metadata_" + kind)[FlagInfo].value for kind in METADATA}
+    return {kind: getattr(ctx.attr, "_metadata_" + kind)[BuildSettingInfo].value for kind in METADATA}

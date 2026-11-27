@@ -1,10 +1,11 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
 load(":context.bzl", "no_project")
-load(":flags.bzl", "bool_value", "string_flag")
+load(":flags.bzl", "bool_value")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
@@ -278,16 +279,16 @@ bzl_library(
         ":actions",
         ":configuration",
         ":execution",
-        ":flags",
         ":metadata",
         ":paths",
+        "@bazel_skylib//rules:common_settings",
     ],
 )
 
 bzl_library(
     name = "metadata",
     srcs = ["metadata.bzl"],
-    deps = [":flags"],
+    deps = ["@bazel_skylib//rules:common_settings"],
 )
 
 bzl_library(
@@ -338,7 +339,7 @@ bzl_library(
 bzl_library(
     name = "pack_conversion",
     srcs = ["pack_conversion.bzl"],
-    deps = [":flags"],
+    deps = ["@bazel_skylib//rules:common_settings"],
 )
 
 bzl_library(
@@ -363,7 +364,6 @@ bzl_library(
         ":configuration",
         ":context",
         ":execution",
-        ":flags",
         ":import_units",
         ":paths",
         ":providers",
@@ -377,7 +377,7 @@ bzl_library(
 bzl_library(
     name = "release",
     srcs = ["release.bzl"],
-    deps = [":flags"],
+    deps = ["@bazel_skylib//rules:common_settings"],
 )
 
 bzl_library(
@@ -434,9 +434,9 @@ bzl_library(
     name = "symbols",
     srcs = ["symbols.bzl"],
     deps = [
-        ":flags",
         "//godot/private/config:native",
         "@apple_support//lib:apple_support",
+        "@bazel_skylib//rules:common_settings",
         "@rules_cc//cc:find_cc_toolchain",
         "@rules_cc//cc/common:cc_common",
     ],
@@ -454,7 +454,7 @@ bzl_library(
 bzl_library(
     name = "variant",
     srcs = ["variant.bzl"],
-    deps = [":flags"],
+    deps = ["@bazel_skylib//rules:common_settings"],
 )
 
 bzl_library(
@@ -553,6 +553,12 @@ filegroup(
 )
 
 bzl_library(
+    name = "flags",
+    srcs = ["flags.bzl"],
+    deps = ["@bazel_skylib//rules:common_settings"],
+)
+
+bzl_library(
     name = "configuration",
     srcs = ["configuration.bzl"],
 )
@@ -560,11 +566,6 @@ bzl_library(
 bzl_library(
     name = "export_options",
     srcs = ["export_options.bzl"],
-)
-
-bzl_library(
-    name = "flags",
-    srcs = ["flags.bzl"],
 )
 
 bzl_library(

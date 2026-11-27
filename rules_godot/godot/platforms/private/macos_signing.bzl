@@ -1,7 +1,7 @@
 """Sign an assembled macOS application bundle."""
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot:providers.bzl", "GodotDesktopAppInfo")
-load("//godot/private:flags.bzl", "FlagInfo")
 load(":desktop.bzl", "desktop_result")
 load(":launch.bzl", "LAUNCH_ATTRS")
 
@@ -13,7 +13,7 @@ def _sign_impl(ctx):
     app = ctx.attr.app[GodotDesktopAppInfo]
     if app.operating_system != "macos":
         fail("godot_macos_sign requires a macOS application")
-    mode = ctx.attr._mode[FlagInfo].value
+    mode = ctx.attr._mode[BuildSettingInfo].value
     if mode not in ["adhoc", "certificate"]:
         fail("macOS signer requires adhoc or certificate mode")
     identity = "-" if mode == "adhoc" else ctx.attr.identity
