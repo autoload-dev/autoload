@@ -1,5 +1,6 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # One game exported as packs that differ in brand, script export mode, selection and
 # prerequisite packs, plus packs that carry a C ABI extension.
@@ -13,11 +14,10 @@ godot_resources(
     tags = ["manual"],
 )
 
-genrule(
+fixture_file(
     name = "version",
-    outs = ["version.json"],
-    cmd = "echo '{\"version\": 1}' > $@",
-    tags = ["manual"],
+    out = "version.json",
+    content = '{"version": 1}',
 )
 
 godot_resources(

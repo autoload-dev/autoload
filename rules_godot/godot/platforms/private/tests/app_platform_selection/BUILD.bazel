@@ -1,6 +1,7 @@
 # Sections: Run tests, Export features, Desktop apps, Android apps, iOS simulator apps,
 # Debug symbols.
 
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
@@ -103,11 +104,10 @@ py_test(
             tags = ["manual"],
             deps = [_DESKTOP + "start_pack"],
         ),
-        genrule(
+        copy_file(
             name = "ios_start_pack_" + export_platform,
-            srcs = [":ios_start_pack_%s_export" % export_platform],
-            outs = ["ios_start_pack_%s.pck" % export_platform],
-            cmd = "cp $< $@",
+            src = ":ios_start_pack_%s_export" % export_platform,
+            out = "ios_start_pack_%s.pck" % export_platform,
             tags = ["manual"],
         ),
     ]

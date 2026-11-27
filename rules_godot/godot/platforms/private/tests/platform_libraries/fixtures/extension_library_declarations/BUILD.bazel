@@ -1,6 +1,7 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixture")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # Extensions whose library iOS cannot link, whose iOS library is a dynamic framework, whose
 # Android library has a runtime dependency, and two extensions whose Android libraries share
@@ -8,11 +9,9 @@ load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixtur
 package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
 
 [
-    genrule(
+    fixture_file(
         name = name,
-        outs = [name + "/" + filename],
-        cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
-        tags = ["manual"],
+        out = name + "/" + filename,
     )
     for name, filename in {
         "extension_library": "libandroid_library_fixture.so",
