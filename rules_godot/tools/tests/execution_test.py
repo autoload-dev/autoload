@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tools.godot_run import ExecutionError, pack_descriptors, run
+from tools.godot_run import ExecutionError, locate, pack_descriptors, run
 from tools.pck import write_pck
 
 
@@ -564,6 +564,20 @@ print("source run passed")
             self.assertIsNone(
                 json.loads((reports / "godot/runner.json").read_text())["error"]
             )
+
+
+class LocateTest(unittest.TestCase):
+    def test_manifest_keys_may_contain_spaces(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "with space.txt"
+            target.write_text("")
+            manifest = Path(directory) / "MANIFEST"
+            # Bazel escapes a space of a key in a line that then starts with one.
+            manifest.write_text(f" _main/dir\\swith\\sspace/file.txt {target}\n")
+            environment = {"RUNFILES_MANIFEST_FILE": str(manifest)}
+            with mock.patch.dict(os.environ, environment, clear=True):
+                found = locate("_main/dir with space/file.txt")
+        self.assertEqual(target.resolve(), found)
 
 
 if __name__ == "__main__":

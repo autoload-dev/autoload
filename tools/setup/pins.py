@@ -84,7 +84,8 @@ def _shared_lock_files(
     for declaration in declarations(source):
         values = literals(declaration.keywords)
         name = values.get("name")
-        if declaration.kind != MAVEN or name not in SHARED_LOCK_FILES:
+        shared = declaration.kind == MAVEN and name in SHARED_LOCK_FILES
+        if not shared or "lock_file" not in values:
             continue
         lock_file = label_path(root / module, values["lock_file"])
         digest = hashlib.sha256(lock_file.read_bytes()).hexdigest()[:12]

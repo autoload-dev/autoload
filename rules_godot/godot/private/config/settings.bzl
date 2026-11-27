@@ -528,7 +528,10 @@ def context_attrs():
 def _declared_state(ctx):
     """The export platform state the flags declare: its operating system and environment, CPUs and platform slices."""
     return struct(
-        system = (ctx.attr._operating_system[BuildSettingInfo].value, ctx.attr._environment[BuildSettingInfo].value),
+        system = (
+            ctx.attr._operating_system[BuildSettingInfo].value,
+            ctx.attr._environment[BuildSettingInfo].value,
+        ),
         cpus = ctx.attr._cpus[BuildSettingInfo].value,
         platform_slices = ctx.attr._platform_slices[BuildSettingInfo].value,
     )

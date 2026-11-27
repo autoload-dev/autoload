@@ -609,7 +609,10 @@ _OWN_ATTRS = {
         default = Label("//godot/extension:descriptor.gdextension.tpl"),
         allow_single_file = True,
     ),
-    "_tool": attr.label(default = Label("//godot/private/config:tool"), providers = [BuildSettingInfo]),
+    "_tool": attr.label(
+        default = Label("//godot/private/config:tool"),
+        providers = [BuildSettingInfo],
+    ),
 } | PLATFORM_ATTRS | VARIANT_ATTRS
 
 # The tool view: the extension in the tool configuration. Editor actions reach it on
