@@ -2,17 +2,18 @@
 # does not name unused: the lines between the canary on line 1 and the #include on the
 # last. Clang writes `<wrapper>:<line>:<column>: warning: macro is not used`, GCC
 # `... warning: macro "NAME" is not used`; Apple's compiler wrapper colours them whatever
-# the options say. An unused-macro warning in another form, or a canary the compiler does
-# not name, fails.
+# the options say, and GCC on Linux follows each colour with an erase to the end of the
+# line. An unused-macro warning in another form, or a canary the compiler does not name,
+# fails.
 #
 # Usage: awk -v wrapper=<wrapper> -f define_analysis.awk < diagnostics > header
 {
-    gsub(/\033\[[0-9;]*m/, "")
+    gsub(/\033\[[0-9;]*[mK]/, "")
     if (index($0, wrapper ":") == 1 && $0 ~ /: warning: macro .*is not used/) {
         split(substr($0, length(wrapper) + 2), position, ":")
         unused[position[1]] = 1
     } else if (index($0, "-Wunused-macros") > 0) {
-        print "Unexpected unused-macro warning: " $0 " [wrapper=" wrapper "] [index=" index($0, wrapper ":") "] [len=" length(wrapper) "]" > "/dev/stderr"
+        print "Unexpected unused-macro warning: " $0 > "/dev/stderr"
         failed = 1
     }
 }

@@ -21,21 +21,11 @@ jobs:
           persist-credentials: false
       - name: Set up repository
         uses: ./.github/actions/setup
-      - name: Tools
-        run: |
-          ls -l "$(command -v awk)" /etc/alternatives/awk || true
-          awk -W version 2>&1 | head -1 || true
-          gcc --version | head -1
-          printf 'a/b.c:26: warning: macro "X" is not used [-Wunused-macros]\n' \
-            | awk -v wrapper=a/b.c 'index($0, wrapper ":") == 1 && $0 ~ /: warning: macro .*is not used/ { print "matched" }'
-      - name: Analyze one library
-        if: ${{ !cancelled() }}
+      - name: Check MODULE.bazel.lock
+        run: echo "common --config=ci" > ci.bazelrc
+      - name: Set up the Android SDK
+        run: aspect work android:setup
+      - name: Root module source-engine tests
         run: >-
-          aspect exec -- bazel build --sandbox_debug
-          '@@autoload_rules_godot++godot_engines+godot_linux_x86_64_template_release//:_macros__thirdparty__spirv-reflect'
-          2>&1 | grep -m3 "Unexpected unused-macro"
-      - name: Script
-        if: ${{ !cancelled() }}
-        run: |
-          f=$(find -L bazel-bin/external/autoload_rules_godot++godot_engines+godot_linux_x86_64_template_release/_macros -name '_macros__thirdparty__spirv-reflect.sh' | head -1)
-          sed -n '1,12p;/analyze /{p;q}' "$f" | cut -c1-600
+          aspect exec -- bazel test --config=source-engine --keep_going
+          --test_tag_filters=source_engine,-ios -- //...
