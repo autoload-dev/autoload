@@ -1,0 +1,51 @@
+load("@gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+# The Gazelle language that declares Godot projects, resources and GdUnit tests
+# (docs/internal/gazelle.md).
+go_library(
+    name = "godot",
+    srcs = [
+        "files.go",
+        "gdscript.go",
+        "generate.go",
+        "language.go",
+        "resolve.go",
+        "scan.go",
+        "units.go",
+    ],
+    importpath = "github.com/autoload-dev/autoload/tools/gazelle/godot",
+    visibility = ["//tools/gazelle:__pkg__"],
+    deps = [
+        "@gazelle//config",
+        "@gazelle//label",
+        "@gazelle//language",
+        "@gazelle//repo",
+        "@gazelle//resolve",
+        "@gazelle//rule",
+    ],
+)
+
+go_test(
+    name = "godot_test",
+    size = "small",
+    srcs = ["scan_test.go"],
+    embed = [":godot"],
+)
+
+# Gazelle with this language alone, which the golden tests run.
+gazelle_binary(
+    name = "gazelle",
+    testonly = True,
+    languages = [":godot"],
+)
+
+# Each directory of testdata/ is a repository: Gazelle runs over it and its BUILD.out files
+# are what it must write over its BUILD.in files. `UPDATE_SNAPSHOTS=true bazel run
+# //tools/gazelle/godot:generation_test` rewrites them.
+gazelle_generation_test(
+    name = "generation_test",
+    size = "small",
+    gazelle_binary = ":gazelle",
+    test_data = glob(["testdata/**"]),
+)

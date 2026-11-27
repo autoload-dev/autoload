@@ -1,0 +1,15 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
+
+godot_project(
+    name = "game",
+    project_file = "project.godot",
+    visibility = ["//game:__subpackages__"],
+)
+
+godot_resources(
+    name = "icon",
+    srcs = [
+        "icon.svg",
+        "icon.svg.import",
+    ],
+)

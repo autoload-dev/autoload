@@ -1,0 +1,8 @@
+[gd_resource type="Resource" load_steps=3 format=3 uid="uid://level"]
+
+[ext_resource type="Environment" uid="uid://env" path="res://levels/garden_environment.tres" id="1_e"]
+[ext_resource type="Texture2D" uid="uid://sky" path="res://levels/sky.png" id="2_s"]
+
+[resource]
+environment = ExtResource("1_e")
+sky = ExtResource("2_s")

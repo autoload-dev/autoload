@@ -1,33 +1,82 @@
 load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@rules_multirun//:defs.bzl", "multirun")
 
-# Gazelle with the bzl_library targets of bazel_skylib's plugin, which this module patches
-# (MODULE.bazel): the only BUILD declarations the repository generates, those of the ruleset.
+# Gazelle with the languages this repository generates BUILD declarations with: `starlark`,
+# the bzl_library targets of bazel_skylib's plugin, which this module patches (MODULE.bazel),
+# and `godot`, the Godot projects, resources and GdUnit tests of the examples and the
+# consumer scenarios (godot/, docs/internal/gazelle.md).
 gazelle_binary(
     name = "gazelle_binary",
-    languages = ["@bazel_skylib_gazelle_plugin//bzl"],
+    languages = [
+        "@bazel_skylib_gazelle_plugin//bzl",
+        "//tools/gazelle/godot",
+    ],
 )
 
-# Gazelle runs from this module with the ruleset's directory as its repository root; the
-# ruleset's root BUILD file holds its directives, and its bzl_library targets leave out its
-# white-box tests' modules. `bazel run //tools/gazelle:update` updates its BUILD files,
-# `bazel run //tools/gazelle:check` fails with the diff where one differs from what Gazelle
-# generates.
-_ARGS = [
+# Each run names its repository root and its language; Gazelle's exclusions apply to every
+# language of a run. The ruleset's root BUILD file holds its directives, and its bzl_library
+# targets leave out its white-box tests' modules. The Godot language runs in the root module
+# over the Godot projects there; the root BUILD file holds its directives.
+# `bazel run //tools/gazelle:<run>` updates a run's BUILD files, `<run>_check` fails with the
+# diff where one differs from what Gazelle generates; `update` and `check` do so for every run.
+_ROOT = [
+    "-repo_root=.",
+    "-lang=godot",
+    "examples",
+    "e2e",
+]
+
+_RULES_GODOT = [
     "-repo_root=rules_godot",
+    "-lang=starlark",
     "-exclude=**/tests",
     "rules_godot",
 ]
 
 gazelle(
-    name = "update",
-    args = _ARGS,
+    name = "root",
+    args = _ROOT,
     gazelle = ":gazelle_binary",
     mode = "fix",
 )
 
 gazelle(
-    name = "check",
-    args = _ARGS,
+    name = "root_check",
+    args = _ROOT,
     gazelle = ":gazelle_binary",
     mode = "diff",
+)
+
+gazelle(
+    name = "rules_godot",
+    args = _RULES_GODOT,
+    gazelle = ":gazelle_binary",
+    mode = "fix",
+)
+
+gazelle(
+    name = "rules_godot_check",
+    args = _RULES_GODOT,
+    gazelle = ":gazelle_binary",
+    mode = "diff",
+)
+
+# Updates run one after another, since runs may write the same BUILD files.
+multirun(
+    name = "update",
+    commands = [
+        ":root",
+        ":rules_godot",
+    ],
+)
+
+# The checks only read, so they run at once with their output kept apart.
+multirun(
+    name = "check",
+    buffer_output = True,
+    commands = [
+        ":root_check",
+        ":rules_godot_check",
+    ],
+    jobs = 0,
 )

@@ -1,0 +1,63 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+genrule(
+    name = "make_tres",
+    outs = ["made.tres"],
+    cmd = "touch $@",
+)
+
+godot_resources(
+    name = "environment",
+    srcs = ["garden_environment.tres"],
+    prefix = "levels",
+)
+
+godot_resources(
+    name = "level",
+    srcs = ["level_01.tres"],
+    prefix = "levels",
+    deps = [
+        ":environment",
+        ":sky",
+        "//game/umbrella",  # keep
+    ],
+)
+
+godot_resources(
+    name = "generated",
+    srcs = [
+        "made.tres",
+        "//game/other:file",
+    ],
+    prefix = "levels",
+)
+
+# keep
+godot_resources(
+    name = "frozen",
+    srcs = ["frozen.tres"],
+    prefix = "elsewhere",
+)
+
+godot_resources(
+    name = "pinned",
+    srcs = ["pinned.tres"],
+    prefix = "levels",
+    deps = ["//game/hand:chosen"],  # keep
+)
+
+godot_resources(
+    name = "levels",
+    srcs = ["new.tres"],
+    prefix = "levels",
+    deps = [":frozen"],
+)
+
+godot_resources(
+    name = "sky",
+    srcs = [
+        "sky.png",
+        "sky.png.import",
+    ],
+    prefix = "levels",
+)

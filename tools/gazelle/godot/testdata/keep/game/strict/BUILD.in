@@ -1,0 +1,2 @@
+# The suites run only under another project's test (gazelle:godot_gdunit_test).
+# gazelle:godot_gdunit_test disabled

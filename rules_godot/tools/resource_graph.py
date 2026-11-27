@@ -71,7 +71,7 @@ LEAF_FORMATS = frozenset(
     }
 )
 
-# Files godot_build_files collects without a reference scanner.
+# Formats Godot loads that no scanner of the graph reads.
 OPAQUE_FORMATS = frozenset(
     {".res", ".scn", ".svg", ".glb", ".obj", ".fbx", ".csv", ".json", ".gdextension"}
 )

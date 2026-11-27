@@ -1,0 +1,11 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
+
+godot_resources(
+    name = "shared",
+    srcs = [
+        "body.gd",
+        "body.gd.uid",
+        "palette.tres",
+    ],
+    prefix = "main/shared",
+)

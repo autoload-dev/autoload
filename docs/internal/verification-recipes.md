@@ -86,8 +86,10 @@ documentation of rules, attributes and provider fields needs review. See
 [Gazelle](../../tools/gazelle/BUILD.bazel) generates the ruleset's `bzl_library` targets,
 one per Starlark module outside its `tests` packages, named after the file. Their
 directives, including where an external load's library lives, are in the ruleset's root
-[BUILD file](../../rules_godot/BUILD.bazel). After adding, moving or removing a Starlark
-module of the ruleset, regenerate them from the repository root:
+[BUILD file](../../rules_godot/BUILD.bazel). Its Godot language declares the Godot projects,
+resources and GdUnit tests of `examples/` and `e2e/` ([Gazelle for Godot](gazelle.md)). After
+adding, moving or removing a Starlark module of the ruleset or a file of a Godot project,
+regenerate them from the repository root:
 
 ```sh
 bazel run //tools/gazelle:update

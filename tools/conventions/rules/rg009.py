@@ -21,9 +21,13 @@ class ProjectPlaces:
     def unplaced(workspace: Workspace) -> Iterable[Finding]:
         """Report configurations outside a project at a fixed place."""
         for path in sorted(workspace.godot_configurations):
-            # The white-box fixtures of the ruleset module may live anywhere there.
+            # The white-box fixtures of the ruleset module may live anywhere there, and a
+            # `testdata` directory holds the input trees of a Go test, such as those of the
+            # Gazelle language, which no consumer builds.
             ruleset = workspace.owner(path.as_posix()) == RULESET_MODULE
-            if not ruleset and workspace.project(path) is None:
+            if ruleset or "testdata" in path.parts:
+                continue
+            if workspace.project(path) is None:
                 yield Finding(
                     Location(path.as_posix(), 1),
                     "Godot configurations must belong to a project at a fixed place "

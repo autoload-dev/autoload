@@ -15,9 +15,9 @@ for the ruleset's own tests; the scanner scope is described in
 Maintainers can query a test fixture's graph with the repository tool:
 
 ```sh
-bazel build //godot/private/tests/resource_graph/fixtures/project_with_generated_declarations:graph
+bazel build //godot/private/tests/resource_graph/fixtures/declared_project:graph
 bazel run //tools:resource_graph -- query \
-  --graph "$PWD/bazel-bin/godot/private/tests/resource_graph/fixtures/project_with_generated_declarations/graph.graph.json" \
+  --graph "$PWD/bazel-bin/godot/private/tests/resource_graph/fixtures/declared_project/graph.graph.json" \
   --direction affected res://main/content.tres
 ```
 
@@ -27,17 +27,5 @@ affected UID queries include the previous and current owners of a moved stable U
 reachability prefers its current owner. These are conservative file graphs, not automatic
 Bazel target selection.
 
-For initial BUILD maintenance, the source-manifest generator generates
-one marked `.bzl` macro, scans one package without crossing nested Bazel package
-boundaries, collects a `.uid` or `.import` sidecar only together with its file, preserves
-manual BUILD files, and supports idempotent `--check`:
-
-```sh
-bazel run //tools:godot_build_files -- --root "$PWD/path/to/package"
-bazel run //tools:godot_build_files -- --root "$PWD/path/to/package" --check
-```
-
-Load `godot_package_resources` from the generated file and pass explicit dependencies,
-resource paths of generated files and policy attributes from the hand-written BUILD.
-This is source enumeration, not a Gazelle extension or automatic dependency
-resolution. Both tools are optional.
+The repository's Gazelle language for Godot generates the declarations of Godot projects,
+resources and GdUnit tests; see [Gazelle for Godot](../../../docs/internal/gazelle.md).

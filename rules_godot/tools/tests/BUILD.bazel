@@ -77,13 +77,6 @@ py_test(
 )
 
 py_test(
-    name = "godot_build_files_test",
-    size = "small",
-    srcs = ["godot_build_files_test.py"],
-    deps = ["//tools:godot_build_files_lib"],
-)
-
-py_test(
     name = "action_plugin_test",
     size = "small",
     srcs = ["action_plugin_test.py"],
