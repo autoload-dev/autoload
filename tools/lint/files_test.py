@@ -186,6 +186,20 @@ class FilesTest(unittest.TestCase):
         )
         self.assertEqual(["a.md"], self.recorded("md"))
 
+    def test_a_whole_tree_tool_checks_every_listed_file_and_fixes_the_given(self) -> None:
+        whole = replace(self.tool("links", check=(), fix=()), whole_tree=True)
+        tools = (whole, self.tool("md", check=()))
+        self.write("a.md")
+        self.write("docs/b.md")
+        self.write("c.txt")
+        self.git("init", "-q", "-b", "main")
+        self.assertEqual(0, self.lint(tools, ["a.md"])[0])
+        self.assertEqual(["a.md", "docs/b.md"], self.recorded("links"))
+        self.assertEqual(["a.md"], self.recorded("md"))
+        (self.bin / "links.log").unlink()
+        self.assertEqual(0, self.lint(tools, ["a.md"], fix=True)[0])
+        self.assertEqual(["a.md"], self.recorded("links"))
+
     def test_the_repository_s_tools_each_check_or_fix(self) -> None:
         names = [tool.name for tool in TOOLS]
         self.assertEqual(len(names), len(set(names)))

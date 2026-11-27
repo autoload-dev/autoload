@@ -59,17 +59,18 @@ first when an add-on needs rules that are not released yet.
 ## What the archive contains
 
 Every archive holds its module's directory at its root, under `<module>-X.Y.Z/`, with the
-repository's `LICENSE`. Each module's `.gitattributes` leaves every `tests/` directory out
-of it (RG023); the ruleset's also leaves out its guides in `docs/` and the link to the
-repository's Bazelisk wrapper. `bcr/` stays in, because the registry's presubmit builds the
-module's registry test module, `bcr/<name>/`, from the archive (RG020). Each test module is
-a consumer of its module with a flat project, which registers the official engine itself;
-the add-on modules register none for consumers.
+repository's `LICENSE`. Each module's `.gitattributes` leaves every `tests/` directory out of
+it (release-archives-without-tests); the ruleset's also leaves out its guides in `docs/` and
+the link to the repository's Bazelisk wrapper. `bcr/` stays in, because the registry's
+presubmit builds the module's registry test module, `bcr/<name>/`, from the archive
+(registry-test-module-in-bcr). Each test module is a consumer of its module with a flat project,
+which registers the official engine itself; the add-on modules register none for consumers.
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
-module by `bazel run //tools/addons:new --` and checked by the conventions (RG015), so a module is ready to
-publish from its first commit; it is published when its tag is pushed. `.bcr/config.yml`
-lists only the ruleset: every release names its module root itself (`publish.yaml`).
+module by `bazel run //tools/addons:new --` and checked by the conventions
+(addon-modules-own-template-files), so a module is ready to publish from its first commit; it
+is published when its tag is pushed. `.bcr/config.yml` lists only the ruleset: every release
+names its module root itself (`publish.yaml`).
 
 The registry runs the test module on Linux and macOS with Bazel 9
 ([presubmit.yml](../../.bcr/rules_godot/presubmit.yml)). A first submission and any later change to

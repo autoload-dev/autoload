@@ -233,11 +233,11 @@ The add-on modules follow the same split by how a test runs, with four kinds tha
 | Add-on unit test | The add-on module, beside the unit or in its `tests/<unit>/` | The language's test tool, such as `cc_test` or `py_test`, without a Godot project, on regular dependencies only: CI builds the module from the root module, where its development dependencies are not active |
 | Add-on end-to-end test | `e2e/addons/<module>/` in the root module | Godot runs or project builds through the module's public targets, such as GdUnit suites |
 | Demo test | `examples/addons/<module>/tests/` | Checks of the example application itself, such as its exported pack running headless |
-| Registry test module | `bcr/<name>/` of every released module ([RG020](conventions.md#rg020)) | A consumer module that the registry builds from the release archive |
+| Registry test module | `bcr/<name>/` of every released module ([registry-test-module-in-bcr](conventions.md#registry-test-module-in-bcr)) | A consumer module that the registry builds from the release archive |
 
 The public rules of `@autoload_<module>`, such as `gdunit_test`, are tested from
 `e2e/addons/<module>/` like any other end-to-end claim: an add-on module runs no Godot
-([RG021](conventions.md#rg021)).
+([no-godot-in-addon-modules](conventions.md#no-godot-in-addon-modules)).
 
 This keeps [design principle V](../../rules_godot/docs/internal/principles.md#v-examples-demonstrate-test-projects-isolate): examples stay focused demonstrations, and ruleset tests
 stay out of them with a small scope.
@@ -369,12 +369,13 @@ is not a name or a name's only qualifier, and neither is a number.
 
 Bazel's [BUILD style guide](https://bazel.build/build/style-guide) asks for descriptive
 snake_case names, the `_test` suffix, a suffix per variant and no meaningless suffixes.
-[rules_testing](https://rules-testing.readthedocs.io/en/latest/analysis_tests.html) names
-test functions after the behavior they test, prefixes arranged targets with the test's name
-and puts each rule's tests in their own directory. rules_go keeps `<subject>_tests.bzl` files
-that export `*_test_suite` functions, and rules_oci names its consumer smoke module
-`e2e/smoke`. Ours live in `bcr/<name>/` of each released module, so that a registry test
-module is recognizable by its place (RG020). The `test_` prefix is what Python's `unittest` discovers.
+[rules_testing](https://rules-testing.readthedocs.io/en/latest/analysis_tests.html) names test
+functions after the behavior they test, prefixes arranged targets with the test's name and puts
+each rule's tests in their own directory. rules_go keeps `<subject>_tests.bzl` files that
+export `*_test_suite` functions, and rules_oci names its consumer smoke module `e2e/smoke`.
+Ours live in `bcr/<name>/` of each released module, so that a registry test module is
+recognizable by its place (registry-test-module-in-bcr). The `test_` prefix is what Python's
+`unittest` discovers.
 
 ## Verifications without precedent
 
@@ -390,7 +391,7 @@ names the kind that carries its claim, or says that none does.
 | Isolation test in a temporary consumer without mobile toolchains | Removed | Consumer scenarios for visibility. Analysis tests for toolchain resolution without mobile toolchains, using test toolchains in the ruleset's `tests` packages. | Its claims split into two existing kinds. A whole module that registers no mobile toolchain has a precedent only as a BCR smoke module; rules_godot's `bcr/smoke` is that module and registers only the prebuilt desktop engine. |
 | Reproducibility experiment | Rewritten | A build-output test that imports and exports a fixture twice in its sandbox and compares the digests | rules_go's reproducibility test and rules_rust's `determinism_tester` are relatives. If one test cannot run the import twice, a test-only rule runs the tool in two actions that differ only in an unused salt input. |
 | Fetch and re-evaluation checks of the engine module extension in a fresh consumer module | Removed | None. Its tag evaluation, conflicts and errors become Starlark unit tests with a mocked `module_ctx`. | What remains is that no recipe repository is fetched and that a second evaluation after `clean --expunge` gives the same toolchains. No surveyed ruleset guards fetches or re-evaluates an extension. |
-| Automated public-API check (RG005) | Removed | Load visibility and target visibility (B1, B2) | No surveyed ruleset automates this check, while rules_cc, rules_apple and rules_java enforce the same boundary through Bazel |
+| Automated public-API check (a convention rule) | Removed | Load visibility and target visibility (B1, B2) | No surveyed ruleset automates this check, while rules_cc, rules_apple and rules_java enforce the same boundary through Bazel |
 
 The design principles require that changes to dependency modeling or invalidation validate both
 sides. Action-input analysis tests show both sides, and determinism tests show that unchanged

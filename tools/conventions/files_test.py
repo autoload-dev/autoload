@@ -33,19 +33,22 @@ class FilesTest(unittest.TestCase):
 
     def test_reports_a_finding_at_the_file_s_repository_path(self) -> None:
         script = self.write("rules_godot/tools/a.py", "# ---- Section ----\nx = 1\n")
-        code, output = self.check("--rule", "region-headers", script)
+        code, output = self.check("--rule", "region-headers-named-in-head", script)
         self.assertEqual(1, code)
-        self.assertIn("rules_godot/tools/a.py:1: region-headers", output)
+        self.assertIn("rules_godot/tools/a.py:1: region-headers-named-in-head", output)
 
     def test_judges_documents_by_their_place(self) -> None:
         guide = self.write(
             "rules_godot/docs/public/guide.md", "See [internals](../internal/a.md).\n"
         )
         internal = self.write("rules_godot/docs/internal/a.md", "See [more](b.md).\n")
-        code, output = self.check("--rule", "public-documentation-links", guide, internal)
+        code, output = self.check(
+            "--rule", "no-internal-links-in-public-documentation", guide, internal
+        )
         self.assertEqual(1, code)
         self.assertIn(
-            "rules_godot/docs/public/guide.md:1: public-documentation-links", output
+            "rules_godot/docs/public/guide.md:1: no-internal-links-in-public-documentation",
+            output,
         )
         self.assertNotIn("docs/internal/a.md:1", output)
 
@@ -53,24 +56,36 @@ class FilesTest(unittest.TestCase):
         clean = self.write("a.py", "x = 1\n")
         self.assertEqual(
             (0, ""),
-            self.check("--rule", "region-headers", "--rule", "reading-order", clean),
+            self.check(
+                "--rule",
+                "region-headers-named-in-head",
+                "--rule",
+                "definitions-before-callers",
+                clean,
+            ),
         )
-        self.assertEqual(2, self.check("--rule", "RG001", clean)[0])
+        self.assertEqual(
+            2, self.check("--rule", "project-named-after-directory", clean)[0]
+        )
 
     def test_the_tool_leaves_out_per_file_rules_unless_named(self) -> None:
-        per_file = {rule.info.id for rule in RULES}
+        per_file = {rule.info.name for rule in RULES}
         self.assertEqual(
             {
-                "fixture-references",
-                "public-documentation-links",
-                "region-headers",
-                "reading-order",
+                "snake-case-package-paths",
+                "no-claude-md",
+                "no-fixtures-in-public-documentation",
+                "no-internal-links-in-public-documentation",
+                "region-headers-named-in-head",
+                "definitions-before-callers",
+                "shared-module-files-as-generated",
             },
             per_file,
         )
-        self.assertFalse(per_file & {rule.info.id for rule in select()})
+        self.assertFalse(per_file & {rule.info.name for rule in select()})
         self.assertEqual(
-            ["region-headers"], [rule.info.id for rule in select(["region-headers"])]
+            ["region-headers-named-in-head"],
+            [rule.info.name for rule in select(["region-headers-named-in-head"])],
         )
 
 

@@ -19,9 +19,10 @@ bazel test --config=all -- @autoload_sqlite//... //examples/addons/sqlite/... //
 These run the chosen example's tests, as CI's host jobs do; an add-on module's example
 runs with the module's tests ([add-on guidance](../addons/AGENTS.md#tests-and-ci)).
 
-No tool names an application (RG022); its own targets and tests are what CI runs. For a more focused test, editor or sidecar command,
-read that example's README. Required timing and the evidence of each host job come from the root
-verification policy, not from the existence of these commands.
+No tool names an application (no-component-names-in-tooling); its own targets and tests are
+what CI runs. For a more focused test, editor or sidecar command, read that example's README.
+Required timing and the evidence of each host job come from the root verification policy, not
+from the existence of these commands.
 
 ## Scope and design
 
