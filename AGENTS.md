@@ -53,7 +53,7 @@ aspect format                             # format changed files (Python, Starla
 bazel build --config=lint -- //...        # lint Python, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
 bazel run //tools/lint:files              # lint the changed files without targets: GDScript, Markdown, shell, per-file conventions (-- --scope=all for every file)
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
-aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
+aspect generate                           # regenerate MODULE.bazel.lock, the add-on declarations and shared module files
 bazel run //tools/gazelle:update          # regenerate the ruleset's bzl_library targets
 (cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main

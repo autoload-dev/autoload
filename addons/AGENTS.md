@@ -13,8 +13,11 @@ bazel run //tools/addons:new -- <module> --addon <addon>   # one more add-on in 
 
 It writes [tools/addons/template](../tools/addons/template), which builds and tests in both host jobs from
 the start, and a new module's registry templates in `.bcr/addons/<module>/`. From then on
-the module owns those files: nothing regenerates them. Improve the template, not one module,
-when a pattern should hold for all of them. A new add-on gets its own module, unless it must
+the module owns those files, but for its shared files, the settings every module keeps as the
+generator writes them, such as `.bazelrc`, `.gitattributes` and the registry templates
+(shared-module-files, [conventions.md](../docs/internal/conventions.md)): `aspect generate`
+writes them again for every module. Improve the template, not one module, when a pattern
+should hold for all of them. A new add-on gets its own module, unless it must
 be versioned with others, such as products that share one SDK.
 
 # Module layout
@@ -26,7 +29,7 @@ The conventions check enforces it (RG015, [conventions.md](../docs/internal/conv
   Settings for all modules go in that file.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
-  registry's checks of a release. Edit them there like any other file of the module.
+  registry's checks of a release. They are shared files: change them in the template.
 - `bcr/smoke/`, the registry test module the presubmit runs: a consumer of the module's
   add-ons that registers the official engine, as applications do (RG020). Keep it using the
   module's public targets. In this repository it uses the rules beside it through

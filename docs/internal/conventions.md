@@ -12,7 +12,7 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 
 | ID | Rule | Policy | Automated coverage | Enforcement |
 |---|---|---|---|---|
-| [RG001](#rg001) | Package segments use lower snake case | Required | All inventoried owned BUILD paths, relative to the nearest module | Error |
+| [RG001](#rg001) | Package segments use lower snake case | Required | Every BUILD file, relative to the nearest module | Error |
 | [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
 | [fixture-references](#fixture-references) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
@@ -30,6 +30,7 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
 | [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
+| [shared-module-files](#shared-module-files) | Add-on modules keep the shared files as the add-on generator writes them | Required | The shared files of every add-on module and its registry templates | Error |
 | [region-headers](#region-headers) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [reading-order](#reading-order) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
@@ -68,9 +69,11 @@ even when only the leaf directory contains a BUILD file. A module root has no pa
 segment. Names of directories containing only assets are outside this rule unless they
 form part of a package path.
 
-The checker inventories Git-tracked and untracked, non-ignored `BUILD`/`BUILD.bazel` files
-and resolves each against its nearest `MODULE.bazel`. It does not scan fetched repositories,
-Bazel output trees or generated BUILD templates as if they were maintained packages.
+The check reads each `BUILD`/`BUILD.bazel` file Git lists, tracked or untracked and not
+ignored, and resolves it against the nearest `MODULE.bazel` on disk; a BUILD file of a
+repository below a module that is no module itself, marked by its `REPO.bazel`, is outside it.
+It does not scan fetched repositories, Bazel output trees or generated BUILD templates as if
+they were maintained packages.
 
 ## RG002
 
@@ -388,10 +391,9 @@ root module's declaration lists it. Each module:
   The check thus rejects directories nothing uses rather than keep a list of allowed
   packages;
 - owns registry templates in `.bcr/addons/<module>/`: `metadata.template.json`,
-  `presubmit.yml` and a `source.template.json` that releases the archive
-  `autoload_<module>-{VERSION}`. Templates in `.bcr/addons/` without their module are
-  removed with it;
-- imports the shared settings: `.bazelrc` imports `addons/module.bazelrc`;
+  `presubmit.yml` and `source.template.json`. Templates in `.bcr/addons/` without their
+  module are removed with it. Their contents, like those of the module's other shared files,
+  such as its `.bazelrc`, are what the generator writes ([shared-module-files](#shared-module-files));
 - has no regular dependency that only its `tests/` packages load from: every consumer
   inherits it. CI builds the module from the root module, where its development
   dependencies are not active, so tests that need such a library live in
@@ -405,7 +407,9 @@ root module's declaration lists it. Each module:
 
 In every add-on, including those of `examples/`, a `backends/` directory sits in `native/`:
 the backends implement the platform-independent API beside them. The check reads the files
-and their text without loading Bazel; it reports a stray `backends/` directory once.
+and the parsed calls of the BUILD files without loading Bazel; it reports a stray `backends/`
+directory once. A target name that is no string literal, such as one an example project
+computes, is reported as not checked.
 
 ## RG017
 
@@ -502,6 +506,19 @@ visibility, and the arguments of dev dependencies in `MODULE.bazel`, which only 
 own builds evaluate. Modules that are never released, such as the root module, are outside
 it.
 
+## shared-module-files
+
+**Add-on modules keep the shared files as the add-on generator writes them.** Some files of
+the generator's module template are settings every module shares: `.bazelignore`, `.bazelrc`,
+`.bazelversion`, `.gitattributes`, `.gitignore`, `REPO.bazel` and the registry test module's
+`.bazelrc` and `.bazelversion`, and the registry templates `presubmit.yml`,
+`source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. They are
+listed in [tools/addons/new.py](../../tools/addons/new.py) and stay as the generator writes
+them, so a change of the template or of the ruleset's metadata reaches every module:
+`aspect generate` writes them again for every add-on module, and the check compares each with
+what the generator writes. A module's own files, such as its `MODULE.bazel` and `README.md`,
+are outside it.
+
 ## region-headers
 
 **Regions start with a region header the file's head names.** A file with several topics is
@@ -567,12 +584,13 @@ catalogue. The checker reports unreviewed computed macro names separately. Exit 
 indicates convention findings; `2` indicates an incomplete audit. `aspect check`, the
 pre-push hook's, and the Linux job run this command.
 
-The rules that judge each file on its own, [fixture-references](#fixture-references),
-[public-documentation-links](#public-documentation-links), [region-headers](#region-headers)
-and [reading-order](#reading-order), run in the
-[file lint](verification-recipes.md#the-file-lint) instead, on the Markdown, Python,
-Starlark, GDScript and C++ files it selects: the changed files in `aspect check` and the
-pre-commit hook, every file Git lists in the Linux job.
+The rules that judge each file on its own, [RG001](#rg001), [RG017](#rg017),
+[fixture-references](#fixture-references),
+[public-documentation-links](#public-documentation-links), [region-headers](#region-headers),
+[reading-order](#reading-order) and [shared-module-files](#shared-module-files), run in the
+[file lint](verification-recipes.md#the-file-lint) instead, on the files it selects: the
+changed files in `aspect check` and the pre-commit hook, every file Git lists in the Linux
+job.
 [files.py](../../tools/conventions/files.py) takes the files by their paths in the
 repository; each rule picks its own among them. `bazel run //tools/conventions -- --rule
 region-headers` still runs one of them over the whole checkout, as `/code-health` does.
@@ -590,7 +608,7 @@ the entries of the most recent loading inputs are kept.
 Run one rule independently or list the registered rules:
 
 ```sh
-bazel run //tools/conventions -- --rule RG001
+bazel run //tools/conventions -- --rule RG019
 bazel run //tools/conventions -- --list-rules
 ```
 
@@ -660,11 +678,29 @@ without launching subprocesses; context tests exercise real parsing and evidence
 - Bazel loading identifies which calls produce targets and evaluates the names of Bazel's
   built-in rules, so no list of function names guesses which helpers are target
   declarations.
-- The checker uses only Python's standard library and a token scan of the parser's
-  formatted call to recognize literal `name` arguments. It never evaluates Starlark with
-  Python.
+- Starlark is read by two parsers and evaluated by neither: Buildozer for the calls of BUILD
+  files, and Python's parser, whose syntax covers Starlark's, for what Buildozer does not
+  expose, the string literals of BUILD, `MODULE.bazel` and `.bzl` files and the declarations
+  of `MODULE.bazel` ([tools/setup/modules.py](../../tools/setup/modules.py)). Buildozer prints
+  another name for a call whose `name` is computed, such as the package's inside a
+  comprehension, so Python's parser reads Buildozer's formatted call to tell whether `name`
+  is a string literal. No regular expression or token scan reads Starlark.
 - Semgrep patterns and `rules_lint` alone supply neither the Starlark nor the ownership
-  semantics the rules need.
+  semantics the rules need; ast-grep and Semgrep have no Starlark grammar, and Buildifier and
+  Ruff have no plugin interface, so no external engine replaces the checker. Rules that other
+  tools enforce are retired instead, as the beginning of this page lists.
+- alint 0.23 (November 2026), whose built-in rules check a repository's shape, was tried for
+  the rules about files and directories and rejected. It expressed the `CLAUDE.md` rule
+  ([RG017](#rg017)) fully, the package segments ([RG001](#rg001)) only with a message that
+  names the BUILD file but not the segment, and the engine layout ([RG014](#rg014)) with nine
+  rules that report two of its cases twice; a `**` inside a brace pattern matched nothing
+  without an error. It has no rule for the target of a symbolic link ([RG018](#rg018)) or for
+  a call's name ([RG019](#rg019)). Its whole-tree run took 0.3 s. One rule it expresses fully
+  does not outweigh a pre-1.0 binary with one maintainer, a release every few days and a
+  second rule language beside the checker's.
+- The contents of files that the add-on generator writes are checked by comparing them with
+  what it writes ([shared-module-files](#shared-module-files)), not by a second description
+  of the same content.
 - [Pluggy](https://pluggy.readthedocs.io/en/stable/) would provide hook registration and
   result collection, but the domain context and evidence adapters would still be ours, so
   rules are registered explicitly and not discovered.

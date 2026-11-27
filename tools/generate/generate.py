@@ -4,6 +4,7 @@ Regenerate the repository's generated files.
 | Generated files | Regenerated here | Checked |
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | by Bazel itself, which fails to load a stale one (see there) |
+| The add-on modules' shared files, such as their .bazelrc and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | by every CI command, whose `--config=ci` sets `--lockfile_mode=error` (shared.bazelrc) |
 | The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | by a `build_test` of the hub's `:pinned` beside each, which fails on a stale pin |
 
@@ -11,7 +12,7 @@ Regenerate the repository's generated files.
 (`aspect pre-commit`) passes the staged ones, or everything without paths. Bazel runs in each
 file's own module.
 
-Sections: Lock files, Entry points.
+Sections: Lock files, Shared files, Entry points.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tools.addons import declarations
+from tools.addons import declarations, new
 from tools.setup.modules import ADDONS, RULESET, module_paths
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -73,15 +74,51 @@ def lock_files(modules: list[str]) -> int:
     return status
 
 
+# ==== Shared files ============================================================
+
+
+def unstaged_files() -> list[str]:
+    """The files whose working-tree contents differ from what Git's index stages."""
+    output = subprocess.run(
+        ["git", "diff", "--name-only"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return output.splitlines()
+
+
+def shared_files(paths: list[str]) -> int:
+    """
+    Write the add-on modules' shared files that differ from what the generator writes. With
+    paths, as the pre-commit hook passes the staged files, a shared file that holds edits,
+    staged among the paths or unstaged, is not overwritten: the run fails instead.
+    """
+    stale = new.stale_shared_files(ROOT)
+    edited = set(paths) | set(unstaged_files()) if paths else set()
+    if overwritten := sorted(p.as_posix() for p in stale if p.as_posix() in edited):
+        print(
+            "The add-on generator writes the add-on modules' shared files; change its "
+            "template (tools/addons/template) instead of: " + ", ".join(overwritten)
+        )
+        return 1
+    new.write_files(ROOT, stale)
+    return 0
+
+
 # ==== Entry points ============================================================
 
 
 def regenerate(paths: list[str]) -> int:
     """
-    Write the root module's declarations of the add-on modules, and regenerate the
-    MODULE.bazel.lock files that depend on the paths, or all of them without paths.
+    Write the root module's declarations of the add-on modules and their shared files, and
+    regenerate the MODULE.bazel.lock files that depend on the paths, or all of them without
+    paths.
     """
     declarations.write(ROOT)
+    if shared_files(paths) != 0:
+        return 1
     everything = not paths
     modules = list(LOCKED_MODULES) if everything else locked_modules_shaped_by(paths)
     return lock_files(modules)
