@@ -87,8 +87,8 @@ class CompileOptionsTest(unittest.TestCase):
     ) -> None:
         upstream = ["-O3", "-Os", "-Og", "-g2", "-gdwarf-4", "-ffast-math", "-DNDEBUG"]
         self.assertEqual(
-            platform_compile_options("linuxbsd", upstream)[:2],
-            ["-ffast-math", "-DNDEBUG"],
+            platform_compile_options("linuxbsd", upstream),
+            ["-ffast-math", "-DNDEBUG", "-ffunction-sections", "-fdata-sections"],
         )
         apple = ["-Wl,-S", "-Wl,-x", "-Wl,-dead_strip", "-ObjC", "-framework", "Metal"]
         self.assertEqual(

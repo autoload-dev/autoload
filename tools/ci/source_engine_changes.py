@@ -17,8 +17,8 @@ a hunk that names a call of `godot_engine*` or `godot_android_shell`, or one of 
 constants those calls take, which these files hold for nothing else. Code that every build
 shares, such as the ruleset's rules or shared.bazelrc, is not watched; a pull request that
 may break source-built engines through it carries the label, as does one that changes how
-the workflow runs the tests: the work `source-engine:full` (tools/ci/work.py) and the configs
-`source-engine` of the bazelrc files.
+the workflow runs the tests: the work `source-engine:full` and `source-engine:linux`
+(tools/ci/work.py) and the configs `source-engine` of the bazelrc files.
 
     python3 -m tools.ci.source_engine_changes <base> <head>
 

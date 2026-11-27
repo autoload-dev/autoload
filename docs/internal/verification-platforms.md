@@ -121,7 +121,8 @@ commit, so CI has no host job for them. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them on
 macOS, `source-engine:full`, and on Linux those Linux can build, `source-engine:linux`: the
 Android engines and the applications' Linux engines, without the iOS cases and the
-macOS-only patched-engine scenario. It runs them on each push of a pull request whose
+macOS-only patched-engine scenario (`aspect ci source-engine --host=<host>`, macOS by
+default). It runs them on each push of a pull request whose
 changes reach them or that carries the label `source-engine`, and on manual dispatch for any
 branch. A change reaches them when it touches the engine recipes, repositories or their tools, the engines of the examples or of the patched-engine scenario, or a package
 with a test tagged `source_engine`
@@ -129,7 +130,7 @@ with a test tagged `source_engine`
 the tagged packages from their BUILD files). Its job is skipped, not failed, on other pull
 requests; it is no required check. Code that every build shares, such as the ruleset's rules
 or `shared.bazelrc`, does not reach them, nor does a change of how the workflow runs them,
-such as the work `source-engine:full`: a pull request that may break source-built engines
+such as the work `source-engine:full` or `source-engine:linux`: a pull request that may break source-built engines
 that way carries the label. Stale
 recipe pins need no dispatch to show: `//examples/engines/simulation:pinned_test`, a fast
 test that the pre-push hook runs too, fails on a pin whose inputs changed, such as
@@ -143,8 +144,8 @@ root module tagged `source_engine` join them in `source-engine:full`.
 
 ### Apple hosts
 
-The work that needs a macOS runner is the macOS job, with the apps with source-built engines
-and the iOS apps. Their [CI](../../.github/workflows/ci.yml) jobs
+The work that needs a macOS runner is the macOS job, with the iOS apps, and the Source engine
+workflow's macOS job, with the source-built iOS engines and the patched-engine scenario. Their [CI](../../.github/workflows/ci.yml) jobs
 run on the self-hosted runners labeled `macos-ci`: four runners in one macOS VM, which keep
 their tools and repository cache on their own disk between jobs and share a Bazel cache
 server on the VM's host with the host's own builds. The VM, its runners and its

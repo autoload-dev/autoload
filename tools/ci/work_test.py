@@ -99,12 +99,13 @@ class CallersTest(unittest.TestCase):
         self.assertIn("bazel test --config=source-engine -- //...", commands)
 
     def test_linux_runs_the_source_engine_tests_it_can_build(self) -> None:
-        # Those of both modules but the iOS ones; the patched-engine scenario is macOS's.
+        # Those of both modules, whose iOS cases Bazel skips; the patched-engine scenario is
+        # macOS's.
         commands = [step.command for step in KNOWN["source-engine:linux"].steps()]
         self.assertEqual(
             [
-                "bazel test --config=source-engine-linux //...",
-                "bazel test --config=source-engine-linux -- //...",
+                "bazel test --config=source-engine //...",
+                "bazel test --config=source-engine -- //...",
             ],
             commands,
         )
