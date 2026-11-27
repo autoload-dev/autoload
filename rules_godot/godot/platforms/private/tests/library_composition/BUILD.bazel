@@ -1,6 +1,6 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
-load("//godot/platforms/private/tests:configured_app.bzl", "godot_configured_app")
+load("//godot:app.bzl", "godot_configured_app")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 load(":library_composition_tests.bzl", "library_composition_test_suite")
 

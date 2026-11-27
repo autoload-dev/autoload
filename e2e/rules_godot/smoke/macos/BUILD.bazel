@@ -1,8 +1,7 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app", "godot_configured_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
 load("@rules_python//python:defs.bzl", "py_test")
-load("//examples:configured_app.bzl", "godot_configured_app")
 
 # The macOS smoke path: build, inspect and boot a macOS application whose C ABI and
 # godot-cpp extensions load and whose imported texture is usable, and sign it ad hoc.

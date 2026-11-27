@@ -639,6 +639,32 @@ Connect does. A changed build number repackages the applications and reuses
 imports, packs and native results; a changed version also reruns the pack
 exports.
 
+## Release builds in one invocation
+
+A `--config` selects one configuration for a whole build. To build a mobile or release
+application beside the desktop targets in the same `bazel build` or `bazel test`, declare it
+with `godot_configured_app` from `@autoload_rules_godot//godot:app.bzl`. It builds a
+`godot_app` and its debug symbols under an export platform and build settings of its own;
+`ANDROID_RELEASE` and `APPLE_RELEASE` hold the native settings of a release whose debug
+symbols ship apart, as the `--config` examples above set them:
+
+```starlark
+load("@autoload_rules_godot//godot:app.bzl", "ANDROID_RELEASE", "godot_configured_app")
+
+godot_configured_app(
+    name = "android_release",
+    app = ":app",
+    debug_symbols = ":app.debug_symbols",
+    platform = "@autoload_rules_godot//godot/platforms:android_arm64",
+    android_format = "aab",
+    tags = ["manual"],
+    **ANDROID_RELEASE
+)
+```
+
+`android_release` is the App Bundle and `android_release.debug_symbols` its debug symbols.
+The macro is public API that may still change: pin the rules_godot release you build on.
+
 ## Debug symbols
 
 Every application provides the debug symbols of its native code for a release

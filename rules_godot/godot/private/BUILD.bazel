@@ -455,6 +455,18 @@ bzl_library(
 )
 
 bzl_library(
+    name = "configured_app",
+    srcs = ["configured_app.bzl"],
+    deps = [
+        ":macros",
+        "//godot/private/config:native",
+        "//godot/private/config:settings",
+        "@rules_android//rules:bzl",
+        "@rules_apple//apple:providers",
+    ],
+)
+
+bzl_library(
     name = "configuration",
     srcs = ["configuration.bzl"],
 )
