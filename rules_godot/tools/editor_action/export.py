@@ -16,6 +16,7 @@ import re
 import struct
 import sys
 from collections.abc import Collection, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -206,21 +207,25 @@ def validate_export_facts(manifest: dict, facts: dict) -> None:
             )
 
 
-def export_presets(
-    manifest: dict, excluded: Collection[str] = (), export_only: str = ""
-) -> str:
+def _exclude_filter(excluded: Collection[str]) -> str:
+    """The exclude filter of the preset: the excluded paths with their sidecars."""
     # Selection belongs to the project declaration. The only exclusion filter
     # passed to Godot is an expanded, inspectable list of declared paths, which
     # Godot reads as comma-separated glob patterns.
-    excluded = sorted(excluded_with_sidecars(excluded))
+    paths = sorted(excluded_with_sidecars(excluded))
     unfilterable = [
-        path for path in excluded if any(character in path for character in "*,?[]")
+        path for path in paths if any(character in path for character in "*,?[]")
     ]
     if unfilterable:
         raise ValueError(
             "Excluded resources cannot be literal export filter entries; they contain one of * , ? [ ]: "
             + ", ".join(unfilterable)
         )
+    return ",".join(paths)
+
+
+def _preset_fields(manifest: dict) -> list[str]:
+    """The preset's fields: its custom features and an authored script export mode."""
     # godot_pack validates the preset fields and option names at analysis.
     authored = manifest.get("preset_settings", {})
     fields = []
@@ -231,6 +236,14 @@ def export_presets(
         fields.append(
             "script_export_mode=" + validate_literal(authored["script_export_mode"])
         )
+    return fields
+
+
+def export_presets(
+    manifest: dict, excluded: Collection[str] = (), export_only: str = ""
+) -> str:
+    exclude_filter = _exclude_filter(excluded)
+    fields = _preset_fields(manifest)
     options = [
         f"{key}={validate_literal(value)}"
         for layer in ["preset_prelude", "export_options"]
@@ -247,7 +260,7 @@ def export_presets(
         ),
         "PLATFORM": gd_string(manifest["preset_platform"]),
         "PRESET_SETTINGS": "\n".join(fields),
-        "EXCLUDE_FILTER": gd_string(",".join(excluded)),
+        "EXCLUDE_FILTER": gd_string(exclude_filter),
         "OPTIONS": "\n".join(options),
     }
     return template.fill(_EXPORT_PRESETS, values)
@@ -269,6 +282,87 @@ def _export_nothing(manifest: dict, root: Path) -> None:
 # ==== Pack assembly ===========================================================
 
 
+@dataclass(frozen=True)
+class _ShellOutputs:
+    """Where the shell probe puts the images that Godot renders or uses as they are."""
+
+    execroot: Path
+    work: Path
+    # The macOS .icns file, which holds the images without an output of their own.
+    icns: Path | None
+
+    def probe_image(self, image: dict) -> dict[str, Any]:
+        """An image of the specification as the probe's script reads it, with absolute paths."""
+        return {
+            **image,
+            "sources": [_absolute(self.execroot, source) for source in image["sources"]],
+            # Images without an output of their own go into the .icns file.
+            "output": str(
+                (self.execroot / image["output"]).absolute()
+                if "output" in image
+                else self.work / "images" / (image["name"] + ".png")
+            ),
+        } | ({"copy": {"extension": ".icns"}} if self.icns else {})
+
+    def copy_destination(self, image: dict) -> Path:
+        """Where the file that Godot uses as an image goes: the copy's output, else the .icns file."""
+        copy = image.get("copy", {}).get("output")
+        destination = self.execroot / copy if copy else self.icns
+        assert destination is not None
+        return destination
+
+
+def _copy_used_files(
+    images: list[dict], copied: dict[str, str], root: Path, outputs: _ShellOutputs
+) -> None:
+    """Copy the staged files that Godot uses as images as they are, by image name."""
+    for image in images:
+        if image["name"] in copied:
+            destination = outputs.copy_destination(image)
+            if not destination.exists():
+                source = copied[image["name"]].removeprefix("res://")
+                copy_file(root / source, destination)
+
+
+def _require_rendered(images: list[dict], rendered: set[str]) -> None:
+    missing = [
+        i["name"] for i in images if i.get("required") and i["name"] not in rendered
+    ]
+    if missing:
+        raise RuntimeError(
+            "Godot rendered no image for " + ", ".join(missing) + "; the project "
+            "or the export options name an image that does not load"
+        )
+
+
+def _write_icns(path: Path | None, images: list[dict], rendered: set[str]) -> None:
+    """Write the .icns file of the rendered images, unless Godot copied one or rendered none."""
+    if path is None or path.exists():
+        return
+    sizes = {i["size"]: Path(i["output"]) for i in images if i["name"] in rendered}
+    if sizes:
+        path.write_bytes(icns({size: png.read_bytes() for size, png in sizes.items()}))
+
+
+def _write_adaptive_icon(
+    adaptive: dict | None, rendered: set[str], execroot: Path
+) -> None:
+    """Write the Android adaptive icon the specification names, if Godot rendered its foreground."""
+    if not adaptive or adaptive["foreground"] not in rendered:
+        return
+    # Godot's adaptive icon names a monochrome layer only when it renders one.
+    path = execroot / adaptive["output"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    monochrome = '    <monochrome android:drawable="@mipmap/icon_monochrome"/>'
+    path.write_text(
+        template.fill(
+            _ADAPTIVE_ICON,
+            {"MONOCHROME": monochrome if adaptive["monochrome"] in rendered else ""},
+        ),
+        encoding="utf-8",
+    )
+
+
 def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
     """
     Record what Godot decides for a pack's export and render its application images.
@@ -287,20 +381,8 @@ def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
     icns_output = execroot / spec["icns"] if "icns" in spec else None
     with staged_project(manifest, execroot, "godot-shell-") as (work, root, _):
         _export_nothing(manifest, root)
-        images: list[dict[str, Any]] = [
-            {
-                **image,
-                "sources": [_absolute(execroot, source) for source in image["sources"]],
-                # Images without an output of their own go into the .icns file.
-                "output": str(
-                    (execroot / image["output"]).absolute()
-                    if "output" in image
-                    else work / "images" / (image["name"] + ".png")
-                ),
-            }
-            | ({"copy": {"extension": ".icns"}} if icns_output else {})
-            for image in spec["images"]
-        ]
+        outputs = _ShellOutputs(execroot, work, icns_output)
+        images = [outputs.probe_image(image) for image in spec["images"]]
         join_action(
             root,
             work,
@@ -320,45 +402,11 @@ def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
                 + record["output"]
             )
         rendered = set(facts.pop("rendered"))
-        copied: dict[str, str] = facts.pop("copied")
-        for image in images:
-            if image["name"] in copied:
-                copy = image.get("copy", {}).get("output")
-                destination = execroot / copy if copy else icns_output
-                assert destination is not None
-                if not destination.exists():
-                    source = copied[image["name"]].removeprefix("res://")
-                    copy_file(root / source, destination)
-        missing = [
-            i["name"] for i in images if i.get("required") and i["name"] not in rendered
-        ]
-        if missing:
-            raise RuntimeError(
-                "Godot rendered no image for " + ", ".join(missing) + "; the project "
-                "or the export options name an image that does not load"
-            )
-        if icns_output and not icns_output.exists():
-            sizes = {
-                i["size"]: Path(i["output"]) for i in images if i["name"] in rendered
-            }
-            if sizes:
-                # One .icns file holds the images, while the staging directory exists.
-                icns_output.write_bytes(
-                    icns({size: path.read_bytes() for size, path in sizes.items()})
-                )
-    adaptive = spec.get("adaptive_icon")
-    if adaptive and adaptive["foreground"] in rendered:
-        # Godot's adaptive icon names a monochrome layer only when it renders one.
-        path = execroot / adaptive["output"]
-        path.parent.mkdir(parents=True, exist_ok=True)
-        monochrome = '    <monochrome android:drawable="@mipmap/icon_monochrome"/>'
-        path.write_text(
-            template.fill(
-                _ADAPTIVE_ICON,
-                {"MONOCHROME": monochrome if adaptive["monochrome"] in rendered else ""},
-            ),
-            encoding="utf-8",
-        )
+        _copy_used_files(images, facts.pop("copied"), root, outputs)
+        _require_rendered(images, rendered)
+        # One .icns file holds the images, while the staging directory exists.
+        _write_icns(icns_output, images, rendered)
+    _write_adaptive_icon(spec.get("adaptive_icon"), rendered, execroot)
     output.write_text(
         json.dumps(facts, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
@@ -375,6 +423,13 @@ def validate_pck(path: Path) -> dict:
     if path.stat().st_size < 100:
         raise RuntimeError("Godot produced an empty PCK")
     return contents
+
+
+def _needs_support_data(name: str, exported: dict[str, bytes], facts: dict) -> bool:
+    """Whether the configuration holds the text server's support data of that name."""
+    if not name:
+        return False
+    return name in exported or bool(facts["translations"])
 
 
 def configuration(manifest: dict, output: Path, report: Path, execroot: Path) -> None:
@@ -411,7 +466,7 @@ def configuration(manifest: dict, output: Path, report: Path, execroot: Path) ->
             )
         }
         name = facts.pop("support_data", "")
-        if name and (name in exported or facts["translations"]):
+        if _needs_support_data(name, exported, facts):
             files[name] = exported.get(name) or support_data.read_bytes()
         write_pck(output, files, engine_version(manifest["version"]))
     report.write_text(
@@ -489,9 +544,11 @@ def main() -> None:
     execroot = Path.cwd()
     manifest = load_manifest(args)
     output = args.output.absolute()
+    if args.mode == "check-options" and args.facts is None:
+        parser.error("check-options requires --facts")
+    if args.mode in ("pack", "configuration") and args.report is None:
+        parser.error(args.mode + " requires --report")
     if args.mode == "check-options":
-        if args.facts is None:
-            parser.error("check-options requires --facts")
         validate_export_facts(
             manifest, json.loads(args.facts.read_text(encoding="utf-8"))
         )
@@ -499,8 +556,6 @@ def main() -> None:
     elif args.mode == "shell":
         shell_assets(manifest, output, execroot)
     else:
-        if args.report is None:
-            parser.error(args.mode + " requires --report")
         run = configuration if args.mode == "configuration" else pack
         run(manifest, output, args.report.absolute(), execroot)
 
