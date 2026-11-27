@@ -13,10 +13,10 @@ func _ready() -> void:
 		failures.append("The godot-cpp extension did not register BazelNode")
 	else:
 		var node = ClassDB.instantiate("BazelNode")
-		if not node is Node:
-			failures.append("BazelNode is not a Node")
 		if node is Node:
 			node.free()
+		else:
+			failures.append("BazelNode is not a Node")
 	var has_probe := ClassDB.class_exists("BazelProbe")
 	var engine_name := ""
 	if has_probe != expect_source:
