@@ -112,6 +112,34 @@ class PinsTest(unittest.TestCase):
             self.run_check(),
         )
 
+    def lock(self, module: str, name: str, content: str) -> None:
+        """Declare a Maven installation with a lock file of the given content."""
+        path = self.root / module
+        (path / "third_party").mkdir(exist_ok=True)
+        (path / "third_party" / f"{name}.json").write_text(content)
+        source = (path / "MODULE.bazel").read_text()
+        (path / "MODULE.bazel").write_text(
+            source
+            + f'maven.install(name = "{name}", lock_file = "//third_party:{name}.json")\n'
+        )
+
+    def test_the_shared_tool_lock_files_must_be_equal(self) -> None:
+        self.lock(".", "bazel_worker_maven", "{}")
+        self.lock("examples", "bazel_worker_maven", "{}")
+        self.lock("tests", "bazel_worker_maven", '{"drifted": true}')
+        status, output = self.run_check()
+        self.assertEqual(1, status)
+        self.assertIn(
+            "tests/third_party/bazel_worker_maven.json: "
+            "maven.install:bazel_worker_maven.lock_file is ",
+            output,
+        )
+
+    def test_other_lock_files_may_differ(self) -> None:
+        self.lock(".", "maven", "{}")
+        self.lock("examples", "maven", '{"other": true}')
+        self.assertEqual((0, ""), self.run_check())
+
     def test_bazel_versions_are_shared_pins(self) -> None:
         self.write(
             "examples",

@@ -135,6 +135,8 @@ use_repo(maven, "maven", "rules_android_maven")
 # The root module may pin those repositories: pinned artifacts are fetched lazily through
 # Bazel's shared repository cache. Google's Maven Central mirror avoids Maven Central's rate
 # limits; the Maven resolver records which repository actually holds each artifact.
+# The lock files equal the ruleset's, which declares the same installations
+# (tools/setup/pins.py).
 maven.install(
     name = "rules_android_maven",
     known_contributing_modules = ["rules_android"],

@@ -18,6 +18,9 @@ filegroup(
         "addons.MODULE.bazel",
         "buildbuddy.bazelrc",
         "shared.bazelrc",
+        "//third_party/maven:android_ide_common_30_1_3_install.json",
+        "//third_party/maven:bazel_worker_maven_install.json",
+        "//third_party/maven:rules_android_maven_install.json",
     ],
     visibility = [
         "//tools/android:__pkg__",

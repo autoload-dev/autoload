@@ -6,6 +6,7 @@ cannot see that they drift apart. This check reads every MODULE.bazel with Pytho
 ast and compares each pin that two or more modules declare.
 """
 
+import hashlib
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
@@ -34,6 +35,14 @@ MAVEN = "maven.install"
 # Each consumer module overrides the ruleset with its checkout, so its version is no pin.
 # An add-on module declares the release it needs instead.
 UNPINNED = {"bazel_dep:autoload_rules_godot"}
+# The Maven installations of tools that the root module pins as the ruleset does. Their
+# lock files must agree; they cannot be one file, since repinning writes the copy in the
+# module that runs it.
+SHARED_LOCK_FILES = {
+    "android_ide_common_30_1_3",
+    "bazel_worker_maven",
+    "rules_android_maven",
+}
 
 
 def _key(kind: str, name: str | None, attribute: str) -> str:
@@ -79,6 +88,20 @@ def _shared_pins(root: Path, module: str) -> Iterator[tuple[str, str, Any]]:
         for key, value in pins.items():
             if key not in UNPINNED:
                 yield key, location, value
+    yield from _shared_lock_files(root, module)
+
+
+def _shared_lock_files(root: Path, module: str) -> Iterator[tuple[str, str, str]]:
+    """The digests of a module's shared tool lock files, with their file."""
+    for declaration in declarations((root / module / "MODULE.bazel").read_text()):
+        values = literals(declaration.keywords)
+        name = values.get("name")
+        if declaration.kind != MAVEN or name not in SHARED_LOCK_FILES:
+            continue
+        package, _, file = values["lock_file"].removeprefix("//").partition(":")
+        location = Path(module) / package / file
+        digest = hashlib.sha256((root / location).read_bytes()).hexdigest()[:12]
+        yield f"{MAVEN}:{name}.lock_file", location.as_posix(), f"sha256 {digest}"
 
 
 def drifts(root: Path) -> list[str]:
