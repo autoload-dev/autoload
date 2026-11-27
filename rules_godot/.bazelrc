@@ -1,15 +1,3 @@
-common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
-
-build --incompatible_strict_action_env
-# Application settings must not create separate compiler/code-generator builds.
-build --incompatible_exclude_starlark_flags_from_exec_config
-# rules_android's tools and the Android packaging tests of the ruleset's tests packages need
-# Java 21, as the consumer modules set it.
-build --java_runtime_version=remotejdk_21
-build --tool_java_runtime_version=remotejdk_21
-build --java_language_version=21
-build --tool_java_language_version=21
-
 # The targets tagged source_engine build an engine from source: builds leave them out too,
 # as the tests do (shared.bazelrc), unless --config=source-engine selects them.
 build --build_tag_filters=-source_engine
