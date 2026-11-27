@@ -21,5 +21,5 @@ class ExportedFilesDeclareVisibility:
                     yield Finding(
                         call.location,
                         "exports_files without visibility makes the files public, whatever "
-                        "the package's default_visibility; name who may see them",
+                        "the package's default_visibility; name who may see them with visibility =",
                     )

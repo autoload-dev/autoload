@@ -9,9 +9,15 @@ load(":values.bzl", "bool_value")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-# Text templates that private attributes of this package's rules name.
+# The modules, which the package's bzl_library targets list, and the text templates that
+# private attributes of its rules name. Private to this package, also in a consumer's
+# build without --incompatible_no_implicit_file_export, which would make the files its
+# targets use public.
 exports_files(
-    glob(["*.tpl"]),
+    glob([
+        "*.bzl",
+        "*.tpl",
+    ]),
     visibility = ["//visibility:private"],
 )
 

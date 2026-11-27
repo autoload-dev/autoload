@@ -611,9 +611,9 @@ repository rule or module extension reads, such as an archive's `build_file`, a 
 `http_archive` or a Maven lock file, needs no export: they read a file by its label without a
 target. `--incompatible_no_implicit_file_export` (`shared.bazelrc`) keeps every file that no
 `exports_files` names private to its package, as in rules_python. That flag holds only in this
-repository's builds: a consumer without it sees a file that a target of its package uses as
-public, so a released module exports such a file with an explicit private visibility rather
-than leaving it out.
+repository's builds: in a consumer's build without it, a file that a target of its package
+uses is public, so a private package of a released module exports its files with an explicit
+private visibility. Pass `visibility` as a keyword; the check reads no positional one.
 
 The check reads the calls of every module's BUILD files through Buildozer and reports each
 `exports_files` call without a `visibility` argument. Buildifier has no such warning.

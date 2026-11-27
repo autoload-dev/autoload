@@ -71,5 +71,11 @@ py_library(
     ],
 )
 
-# The engine's repository rules (godot/engine/private/repositories.bzl) run this package's
-# scripts by label. A repository rule reads a file without a target, so no exports_files.
+# The scripts, which the engine's repository rules (godot/engine/private/repositories.bzl)
+# also run by label; a repository rule reads a file without a target. Private to this
+# package, also in a consumer's build without --incompatible_no_implicit_file_export,
+# which would make the files its targets use public.
+exports_files(
+    glob(["*.py"]),
+    visibility = ["//visibility:private"],
+)
