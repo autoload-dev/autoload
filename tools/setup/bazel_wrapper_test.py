@@ -78,6 +78,16 @@ class BazelWrapperTest(unittest.TestCase):
         self.assertEqual(Path(base.removeprefix("--output_base=")).parent, slot.parent)
         self.assertNotEqual(base, f"--output_base={slot}")
 
+    def test_a_profile_lies_in_the_output_user_root_an_rc_file_names(self) -> None:
+        # A CI runner's ~/.bazelrc points Bazel at its slot's output user root; a profile's
+        # base belongs there too, not in Bazel's default root under the runner's home.
+        (self.root / ".bazelrc").write_text(
+            "build --config=ci\nstartup --output_user_root=/slots/1/bazel\n"
+        )
+        profiled = self.run_wrapper("build", AUTOLOAD_BAZEL_PROFILE="android")
+        base = next(a for a in profiled if a.startswith("--output_base="))
+        self.assertRegex(base, r"^--output_base=/slots/1/bazel/[0-9a-f]{32}$")
+
     def test_a_nested_module_keeps_its_own_output_base_under_a_profile(self) -> None:
         # The ruleset's commands that root-module work starts, such as the contract
         # checker's, keep the ruleset's default server.

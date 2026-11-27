@@ -84,6 +84,16 @@ if [[ "$profile" != default && "$workspace" == "$root" ]]; then
         user_root="${XDG_CACHE_HOME:-$HOME/.cache}/bazel/_bazel_${USER:-$(id -un)}"
         md5=md5sum
     fi
+    # An rc file's --output_user_root, such as the one a CI runner's ~/.bazelrc names for
+    # its slot, moves every output base, so a profile's moves with it. The rc files are read
+    # in Bazel's order; the last setting wins.
+    for rc in /etc/bazel.bazelrc "$workspace/.bazelrc" "$HOME/.bazelrc"; do
+        [[ -f "$rc" ]] || continue
+        while read -r command options; do
+            [[ "$command" == startup && " $options " =~ \ --output_user_root=([^ ]+)\  ]] &&
+                user_root="${BASH_REMATCH[1]}"
+        done <"$rc"
+    done
     [[ -n "$base" ]] && user_root="${base%/*}"
     digest="$(printf '%s' "${base:-$workspace}:$profile" | "$md5" | cut -c1-32)"
     base="$user_root/$digest"
