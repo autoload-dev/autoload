@@ -34,7 +34,7 @@ visibility([
 ])
 
 GodotViewInfo = provider(
-    doc = """The project one operation runs Godot on: its project's configuration over the resources it names. Produced by godot_view; read by the operation's own rules.""",
+    doc = """The project one operation runs Godot on: its project's configuration over the resources it names. Produced by _godot_view; read by the operation's own rules.""",
     fields = {
         "project": "GodotProjectInfo of the context",
         "runtime_project_file": "project.godot File of the runtime purpose, which source runs start from",
@@ -606,7 +606,7 @@ def _view_impl(ctx):
         graph_manifest = graph.manifest,
     )]
 
-VIEW_ATTRS = {
+_VIEW_ATTRS = {
     "engine": attr.string(doc = "The operation's engine, which the view imports and validates with."),
     "project": attr.label(
         doc = "The godot_project whose configuration this operation uses.",
@@ -622,7 +622,7 @@ VIEW_ATTRS = {
     ),
 }
 
-godot_view = rule(
+_godot_view = rule(
     doc = """
     The project an operation runs Godot on: its project's configuration over the
     resources it names, with their imports, initialization, metadata and graph.
@@ -633,7 +633,7 @@ godot_view = rule(
     """,
     implementation = _view_impl,
     cfg = context_transition,
-    attrs = VIEW_ATTRS | {
+    attrs = _VIEW_ATTRS | {
         "named_addons": attr.label(
             doc = """
             The add-ons the project names, `<project>.named_addons`: reached in the
@@ -693,7 +693,7 @@ def declare_view(name, project, deps, kwargs, **attrs):
     Returns:
         The label string of the view, relative to the package.
     """
-    godot_view(
+    _godot_view(
         name = name + ".view",
         project = project,
         named_addons = named_addons_label(native.package_relative_label(project)),

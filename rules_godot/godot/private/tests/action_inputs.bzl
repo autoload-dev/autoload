@@ -95,9 +95,6 @@ def source_inputs(actions, prefix):
 def _reads(action, path):
     return any([candidate == path or candidate.endswith("/" + path) for candidate in input_paths(action)])
 
-def _mentions(action, text):
-    return any([text in argument for argument in action.argv or []])
-
 def expect_reads(env, target, mnemonic, path):
     """
     Assert that every action with the mnemonic declares the file as an input.
@@ -132,22 +129,6 @@ def expect_not_read(env, target, mnemonics, path):
             _reads(entry.action, path),
         ).equals(False)
 
-def expect_mentions(env, target, mnemonic, text, *, mentioned = True):
-    """
-    Assert whether the arguments of every action with the mnemonic contain a text.
-
-    Args:
-        env: The rules_testing environment.
-        target: The target under test, analyzed with the godot_actions aspect.
-        mnemonic: An action mnemonic.
-        text: A substring of one argument, such as a setting's value.
-        mentioned: Whether the text must appear.
-    """
-    actions = actions_of(target, mnemonic)
-    env.expect.where(mnemonic = mnemonic).that_int(len(actions)).is_greater_than(0)
-    for action in actions:
-        env.expect.where(mnemonic = mnemonic, text = text).that_bool(_mentions(action, text)).equals(mentioned)
-
 # ==== Built graph =============================================================
 
 # The import of each unit is a directory template (`map_directory`), which analysis does
@@ -155,7 +136,7 @@ def expect_mentions(env, target, mnemonic, text, *, mentioned = True):
 # result, the `<unit>.import` directory, also runs the actions whose outputs only the
 # import reads: these, of the project whose import configuration the unit's import
 # manifest `<unit>.import.json` names.
-IMPORT_INPUT_MNEMONICS = ["GodotImportConfig", "GodotImportFeatures", "GodotImportableSuffixes"]
+_IMPORT_INPUT_MNEMONICS = ["GodotImportConfig", "GodotImportFeatures", "GodotImportableSuffixes"]
 
 _GENERATED = ["FileWrite", "TemplateExpand"]
 
@@ -170,7 +151,7 @@ def build_graph(target):
     its executable and its validation outputs, and transitively those that produce their
     inputs. An action the target reaches but this build does not request, such as an
     output group's, is not part of it. The imports themselves are not part of it, since
-    analysis does not show them; the actions in IMPORT_INPUT_MNEMONICS whose outputs they
+    analysis does not show them; the actions in _IMPORT_INPUT_MNEMONICS whose outputs they
     read are.
 
     Args:
@@ -190,7 +171,7 @@ def build_graph(target):
 
             # Manifests name outputs by their mapped paths.
             by_path[mapped_path(output)] = output
-        if entry.action.mnemonic in IMPORT_INPUT_MNEMONICS:
+        if entry.action.mnemonic in _IMPORT_INPUT_MNEMONICS:
             for output in entry.action.outputs.to_list():
                 import_inputs.setdefault((entry.owner, output.dirname), []).extend(entry.action.outputs.to_list())
     info = target[DefaultInfo]
