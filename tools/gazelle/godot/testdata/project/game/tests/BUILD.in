@@ -1,0 +1,5 @@
+# The Dart scripts the language extension compiles.
+filegroup(
+    name = "dart_fixtures",
+    srcs = ["data/probe.dart"],
+)

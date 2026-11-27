@@ -247,6 +247,21 @@ func run():
             query_graph(graph, ["asset.tres"], reverse=True)["paths"],
         )
 
+    def test_a_constant_with_a_literal_value_names_what_a_script_loads(self) -> None:
+        self.source(
+            "main.gd",
+            'const ASSET := "res://asset.tres"\n'
+            'const BUILT = "res://" + "other.tres"\n'
+            "func run():\n    load(ASSET)\n    load(BUILT)\n",
+        )
+        self.source("asset.tres", "[gd_resource]\n")
+        graph = self.graph()
+        self.assertEqual(["dynamic_reference"], self.codes(graph))
+        self.assertEqual(
+            ["res://asset.tres", "res://main.gd"],
+            query_graph(graph, ["main.gd"])["paths"],
+        )
+
     def test_dynamic_references_are_unknown_even_with_manual_declarations(self) -> None:
         self.source(
             "main.gd", 'func run(path):\n    load(path)\n    load("res://" + path)\n'

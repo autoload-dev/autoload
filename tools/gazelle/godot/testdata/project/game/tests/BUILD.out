@@ -1,6 +1,12 @@
 load("@autoload_gdunit//gdunit:defs.bzl", "gdunit_test")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 
+# The Dart scripts the language extension compiles.
+filegroup(
+    name = "dart_fixtures",
+    srcs = ["data/probe.dart"],
+)
+
 godot_resources(
     name = "data",
     srcs = ["data/route.json"],
@@ -27,6 +33,7 @@ godot_resources(
     runtime_deps = [":data"],
     deps = [
         ":fixtures",
+        "//addons/dart_lang",
         "//game/main/shared",
         "@gdunit//gdunit",
     ],

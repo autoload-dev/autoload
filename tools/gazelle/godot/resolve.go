@@ -145,10 +145,13 @@ func isLabel(src string) bool {
 
 // A resolver finds the targets that provide the references of one target.
 type resolver struct {
-	c       *config.Config
-	ix      *resolve.RuleIndex
-	project *project
-	from    label.Label
+	c          *config.Config
+	ix         *resolve.RuleIndex
+	project    *project
+	from       label.Label
+	formatDeps map[string][]label.Label
+	// The deps the existing target chose.
+	chosen []label.Label
 }
 
 // Resolve sets a godot_resources target's deps to the targets that provide what its files
@@ -162,19 +165,36 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 	if !ok {
 		return
 	}
-	rv := resolver{c: c, ix: ix, project: getConfig(c).project, from: from}
+	gc := getConfig(c)
+	rv := resolver{c: c, ix: ix, project: gc.project, from: from, formatDeps: gc.formatDeps, chosen: ui.chosen}
 	deps := map[string]bool{}
 	if !ui.kept["deps"] {
-		deps = rv.all(ui.refs, nil)
+		deps = rv.deps(ui)
 		setLabels(r, "deps", deps)
 	}
 	if !ui.kept["runtime_deps"] {
-		runtime := make([]reference, 0, len(ui.literals))
-		for _, literal := range ui.literals {
-			runtime = append(runtime, reference{Kind: kindRes, Value: literal})
-		}
-		setLabels(r, "runtime_deps", rv.all(runtime, deps))
+		setLabels(r, "runtime_deps", rv.runtimeDeps(ui, deps))
 	}
+}
+
+// deps returns the targets that provide what the unit's files reference at load time, with
+// those their formats need.
+func (rv resolver) deps(ui unitImports) map[string]bool {
+	deps := rv.all(ui.refs, nil)
+	for _, dep := range ui.formatDeps {
+		deps[rv.relative(dep)] = true
+	}
+	return deps
+}
+
+// runtimeDeps returns the targets that provide the res:// paths the unit's literals name,
+// but not those of its deps.
+func (rv resolver) runtimeDeps(ui unitImports, deps map[string]bool) map[string]bool {
+	runtime := make([]reference, 0, len(ui.literals))
+	for _, literal := range ui.literals {
+		runtime = append(runtime, reference{Kind: kindRes, Value: literal})
+	}
+	return rv.all(runtime, deps)
 }
 
 // all returns the labels, relative to the target, of the targets that provide the
@@ -182,13 +202,17 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 func (rv resolver) all(refs []reference, skip map[string]bool) map[string]bool {
 	found := map[string]bool{}
 	for _, ref := range refs {
-		if dep, ok := rv.lookup(ref); ok {
-			if rel := dep.Rel(rv.from.Repo, rv.from.Pkg).String(); !skip[rel] {
+		for _, dep := range rv.lookup(ref) {
+			if rel := rv.relative(dep); !skip[rel] {
 				found[rel] = true
 			}
 		}
 	}
 	return found
+}
+
+func (rv resolver) relative(dep label.Label) string {
+	return dep.Rel(rv.from.Repo, rv.from.Pkg).String()
 }
 
 func setLabels(r *rule.Rule, key string, labels map[string]bool) {
@@ -199,23 +223,37 @@ func setLabels(r *rule.Rule, key string, labels map[string]bool) {
 	r.SetAttr(key, slices.Sorted(maps.Keys(labels)))
 }
 
-// lookup finds the target that provides a reference: the one a resolve directive names, else
-// the one the index holds, in the referencing project before outside every project. A
-// res:// path is also provided by the add-on whose directory holds it. A reference no target
-// provides, such as one to a built-in class, resolves to nothing; one to the referencing
-// target itself too.
-func (rv resolver) lookup(ref reference) (label.Label, bool) {
+// lookup finds the targets that provide a reference: the one a resolve directive names, else
+// the one the index holds, in the referencing project before outside every project, else
+// for a res:// path no target provides, the targets its format needs. A res:// path is also
+// provided by the add-on whose directory holds it. A reference no target provides, such as
+// one to a built-in class, resolves to nothing; one to the referencing target itself too.
+func (rv resolver) lookup(ref reference) []label.Label {
 	if dep, ok := rv.override(ref); ok {
-		return dep, dep != label.NoLabel && !dep.Equal(rv.from)
+		if dep == label.NoLabel || dep.Equal(rv.from) {
+			return nil
+		}
+		return []label.Label{dep}
 	}
+	if results := rv.indexed(ref); len(results) > 0 {
+		return rv.choose(ref, results)
+	}
+	if ref.Kind != kindRes {
+		return nil
+	}
+	return rv.formatDeps[format(ref.Value)]
+}
+
+// indexed returns the targets the index holds for the first of a reference's keys it knows.
+func (rv resolver) indexed(ref reference) []resolve.FindResult {
 	for _, value := range candidates(ref) {
 		for _, key := range []string{qualified(value, rv.project), value} {
 			if results := rv.ix.FindRulesByImportWithConfig(rv.c, importSpec(key), languageName); len(results) > 0 {
-				return rv.choose(ref, results)
+				return results
 			}
 		}
 	}
-	return label.NoLabel, false
+	return nil
 }
 
 // override returns the target a resolve directive names for the reference: one for its
@@ -230,17 +268,24 @@ func (rv resolver) override(ref reference) (label.Label, bool) {
 }
 
 // choose picks the target among those the index holds for a reference: none when the
-// referencing target is among them, which another target may share a file with, and none,
-// with a message, when several provide it.
-func (rv resolver) choose(ref reference, results []resolve.FindResult) (label.Label, bool) {
+// referencing target is among them, which another target may share a file with. When
+// several provide it, the one the existing target already depends on stays; without such a
+// choice, a message asks for one.
+func (rv resolver) choose(ref reference, results []resolve.FindResult) []label.Label {
 	if slices.ContainsFunc(results, func(r resolve.FindResult) bool { return r.IsSelfImport(rv.from) }) {
-		return label.NoLabel, false
+		return nil
 	}
-	if len(results) > 1 {
-		log.Printf("%s: %s %s is provided by several targets, %s and %s; add a resolve directive", rv.from, ref.Kind, ref.Value, results[0].Label, results[1].Label)
-		return label.NoLabel, false
+	if len(results) == 1 {
+		return []label.Label{results[0].Label}
 	}
-	return results[0].Label, true
+	chosen := slices.DeleteFunc(slices.Clone(results), func(r resolve.FindResult) bool {
+		return !slices.ContainsFunc(rv.chosen, r.Label.Equal)
+	})
+	if len(chosen) == 1 {
+		return []label.Label{chosen[0].Label}
+	}
+	log.Printf("%s: %s %s is provided by several targets, %s and %s; add the one it uses to its deps", rv.from, ref.Kind, ref.Value, results[0].Label, results[1].Label)
+	return nil
 }
 
 // candidates returns the index keys that may provide a reference, the most specific first: a

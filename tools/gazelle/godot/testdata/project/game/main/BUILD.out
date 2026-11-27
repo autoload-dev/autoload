@@ -23,6 +23,7 @@ godot_resources(
     prefix = "main",
     deps = [
         ":sky",
+        "//addons/dart_lang",
         "//addons/inventory",
         "//addons/inventory:tools",
         "//game/main/run",
