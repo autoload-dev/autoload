@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tools.godot_export import export_presets
-from tools.pack_contents import content_selection, inspect_export
+from tools.pack.contents import content_selection, inspect_export
 
 
 class PackContentsTest(unittest.TestCase):

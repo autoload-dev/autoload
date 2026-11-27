@@ -27,7 +27,7 @@ py_library(
     srcs = ["validate_android_beta.py"],
     deps = [
         "//tools:digest_lib",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
         "//tools/platforms:native_symbols_lib",
         "//tools/platforms:validate_artifacts_lib",
     ],
@@ -54,7 +54,7 @@ py_library(
     srcs = ["validate_ios_beta.py"],
     deps = [
         "//tools:digest_lib",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
         "//tools/platforms:apple_bundle_lib",
         "//tools/platforms:validate_artifacts_lib",
     ],

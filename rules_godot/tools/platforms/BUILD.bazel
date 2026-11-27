@@ -132,7 +132,7 @@ py_binary(
     deps = [
         ":apple_bundle_lib",
         "//tools:digest_lib",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
     ],
 )
 
@@ -142,7 +142,7 @@ py_library(
     deps = [
         ":apple_bundle_lib",
         "//tools:digest_lib",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
     ],
 )
 

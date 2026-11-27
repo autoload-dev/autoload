@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools import pck
+from tools.pack import pck
 
 
 def record(name: str, value: bytes) -> bytes:

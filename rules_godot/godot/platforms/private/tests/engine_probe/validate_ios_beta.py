@@ -25,7 +25,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from tools.digest import digest
-from tools.pck import pck_contents
+from tools.pack.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 from tools.platforms.validate_artifacts import command
 

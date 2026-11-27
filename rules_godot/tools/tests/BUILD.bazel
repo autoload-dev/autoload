@@ -1,20 +1,6 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_testonly = True)
-
-# Writes empty Godot PCKs for the tests of the tools that write and read packs.
-py_library(
-    name = "empty_pck",
-    testonly = True,
-    srcs = ["empty_pck.py"],
-)
-
-py_test(
-    name = "common_content_test",
-    size = "small",
-    srcs = ["common_content_test.py"],
-    deps = ["//tools:common_content_lib"],
-)
 
 py_test(
     name = "editor_view_test",
@@ -34,7 +20,7 @@ py_test(
     data = ["//tools:run/errors.gd"],
     deps = [
         "//tools:godot_run_lib",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
     ],
 )
 
@@ -43,39 +29,6 @@ py_test(
     size = "small",
     srcs = ["export_configuration_test.py"],
     deps = ["//tools:godot_export_lib"],
-)
-
-py_test(
-    name = "pck_features_test",
-    size = "small",
-    srcs = ["pck_features_test.py"],
-    deps = ["//tools:pck_lib"],
-)
-
-py_test(
-    name = "pack_writer_test",
-    size = "small",
-    srcs = ["pack_writer_test.py"],
-    deps = [
-        "//tools:pack_writer_lib",
-        "//tools:pck_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:uids_lib",
-    ],
-)
-
-# Pack selection over graphs that the scanner builds from small files.
-py_test(
-    name = "resource_graph_test",
-    size = "small",
-    srcs = ["resource_graph_test.py"],
-    deps = [
-        "//tools:pack_selection_lib",
-        "//tools/resource_graph:command_lib",
-        "//tools/resource_graph:graph_lib",
-        "//tools/resource_graph:query_lib",
-        "//tools/resources:text_lib",
-    ],
 )
 
 py_test(
@@ -104,8 +57,8 @@ py_test(
     size = "small",
     srcs = ["godot_export_test.py"],
     deps = [
-        ":empty_pck",
         "//tools:godot_export_lib",
+        "//tools/pack/tests:empty_pck",
         "//tools/resources:node_ids_lib",
     ],
 )
@@ -125,26 +78,6 @@ py_test(
     size = "small",
     srcs = ["mapped_paths_test.py"],
     deps = ["//tools:mapped_paths_lib"],
-)
-
-py_test(
-    name = "pack_contents_test",
-    size = "small",
-    srcs = ["pack_contents_test.py"],
-    deps = [
-        "//tools:godot_export_lib",
-        "//tools:pack_contents_lib",
-    ],
-)
-
-py_test(
-    name = "pck_test",
-    size = "small",
-    srcs = ["pck_test.py"],
-    deps = [
-        ":empty_pck",
-        "//tools:pck_lib",
-    ],
 )
 
 py_test(

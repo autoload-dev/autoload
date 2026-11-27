@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tools.pck import pck_member, project_features
+from tools.pack.pck import pck_member, project_features
 
 
 class IosEnvironmentTest(unittest.TestCase):

@@ -10,8 +10,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from tools import pack_selection
-from tools.pack_selection import SelectionError, select_pack
+from tools.pack import selection as pack_selection
+from tools.pack.selection import SelectionError, select_pack
 from tools.resource_graph.command import main
 from tools.resource_graph.graph import build_graph, require_declared
 from tools.resource_graph.query import query_graph

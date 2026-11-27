@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools import common_content
+from tools.pack import common_content
 
 
 class CommonContentTest(unittest.TestCase):

@@ -23,7 +23,7 @@ py_test(
         _FIXTURE + ":selection_reports",
     ],
     tags = ["godot_process"],
-    deps = ["//tools:pck_lib"],
+    deps = ["//tools/pack:pck_lib"],
 )
 
 # Run tests: the main scene checks the brand after Godot's -- separator, the shared script

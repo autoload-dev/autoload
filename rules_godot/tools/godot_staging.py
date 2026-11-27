@@ -25,7 +25,7 @@ from pathlib import Path, PurePosixPath
 from typing import IO
 
 from tools.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.pck import EXTENSION_LIST
+from tools.pack.pck import EXTENSION_LIST
 from tools.project.config import (
     compose_project,
     enable_plugins,

@@ -316,7 +316,7 @@ and the examples load them; the ruleset's white-box tests load them through its 
 dependency on the root module, `@autoload_dev`. They carry their own inspectors: the module
 boundary keeps the ruleset's `tools/platforms`, visible to the ruleset only, out of them.
 
-White-box tests depend on tool libraries such as `//tools:pck_lib` directly; those stay
+White-box tests depend on tool libraries such as `//tools/pack:pck_lib` directly; those stay
 private to the ruleset under B2.
 
 ## Coverage

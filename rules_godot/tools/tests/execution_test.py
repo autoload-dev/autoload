@@ -16,7 +16,7 @@ from typing import Any
 from unittest import mock
 
 from tools.godot_run import ExecutionError, locate, pack_descriptors, run
-from tools.pck import write_pck
+from tools.pack.pck import write_pck
 
 
 def run_manifest(**fields: Any) -> dict[str, Any]:

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from godot.platforms.private.tests.library_composition.ios_apps import unpacked
-from tools.pck import pck_file_contents, pck_file_member
+from tools.pack.pck import pck_file_contents, pck_file_member
 
 _FRAMEWORK = "libhello_dynamic.ios.release.framework"
 _SUPPORT = "HelloDynamicSupport.framework"

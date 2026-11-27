@@ -259,7 +259,7 @@ py_test(
     target_compatible_with = _REQUIRES_MACOS,
     deps = [
         ":ios_apps",
-        "//tools:pck_lib",
+        "//tools/pack:pck_lib",
     ],
 )
 

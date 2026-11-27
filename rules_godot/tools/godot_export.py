@@ -30,12 +30,12 @@ from tools.godot_staging import (
     run_action,
     staged_project,
 )
-from tools.pack_contents import (
+from tools.pack.contents import (
     content_selection,
     excluded_with_sidecars,
     write_report,
 )
-from tools.pck import (
+from tools.pack.pck import (
     EXTENSION_LIST,
     add_pck_files,
     engine_version,

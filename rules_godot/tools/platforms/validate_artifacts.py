@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from tools.digest import digest
-from tools.pck import pck_contents
+from tools.pack.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 
 # The consumer scenarios' smoke applications whose artifacts this check validates, in the

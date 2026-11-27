@@ -1,0 +1,77 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# Packs: Godot's PCK format, what a pack contains, the selection of its resources from the
+# graph, the writer of its PCK and the merge of its extension descriptors.
+package(default_visibility = ["//tools:__subpackages__"])
+
+# Godot's PCK format, which the build tools and the ruleset's tests read and write.
+py_library(
+    name = "pck_lib",
+    srcs = ["pck.py"],
+    visibility = ["//tools:ruleset"],
+)
+
+py_library(
+    name = "contents_lib",
+    srcs = ["contents.py"],
+    deps = [
+        "//tools:digest_lib",
+        "//tools/resources:files_lib",
+    ],
+)
+
+# Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
+# only selections, and a change to it alone no graph scans.
+py_library(
+    name = "selection_lib",
+    srcs = ["selection.py"],
+    deps = [
+        "//tools/resource_graph:graph_lib",
+        "//tools/resource_graph:query_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_binary(
+    name = "selection",
+    srcs = ["selection.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":selection_lib"],
+)
+
+# Writes a pack's PCK without Godot; a tool of its own, without the editor's action
+# plugin, so a change to either tool reruns only its own actions.
+py_library(
+    name = "writer_lib",
+    srcs = ["writer.py"],
+    deps = [
+        ":contents_lib",
+        ":pck_lib",
+        "//tools:class_fragment_lib",
+        "//tools:godot_staging_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
+    ],
+)
+
+py_binary(
+    name = "writer",
+    srcs = ["writer.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":writer_lib"],
+)
+
+py_library(
+    name = "common_content_lib",
+    srcs = ["common_content.py"],
+    deps = ["//tools/project:statements_lib"],
+)
+
+py_binary(
+    name = "common_content",
+    srcs = ["common_content.py"],
+    visibility = ["//godot/private:__pkg__"],
+    deps = ["//tools/project:statements_lib"],
+)

@@ -151,7 +151,7 @@ import_and_pack_reproducibility_test = rule(
             mandatory = True,
             aspects = [godot_actions],
             # The test exports with Godot, as an optimized build does; the writer's
-            # determinism test is in tools/tests/pack_writer_test.py.
+            # determinism test is in tools/pack/tests/writer_test.py.
             cfg = godot_export_transition,
             doc = "The godot_pack whose import manifests and export manifest the runs use.",
         ),

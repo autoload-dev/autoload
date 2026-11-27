@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.pck import add_pck_files, pck_contents, pck_file_contents
-from tools.tests.empty_pck import pck_bytes, write_pck
+from tools.pack.pck import add_pck_files, pck_contents, pck_file_contents
+from tools.pack.tests.empty_pck import pck_bytes, write_pck
 
 
 class PckTest(unittest.TestCase):

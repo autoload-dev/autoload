@@ -13,33 +13,9 @@ package_group(
     ],
 )
 
-# Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
-# only selections, and a change to it alone no graph scans.
-py_library(
-    name = "pack_selection_lib",
-    srcs = ["pack_selection.py"],
-    deps = [
-        "//tools/resource_graph:graph_lib",
-        "//tools/resource_graph:query_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:text_lib",
-    ],
-)
-
-py_binary(
-    name = "pack_selection",
-    srcs = ["pack_selection.py"],
-    deps = [":pack_selection_lib"],
-)
-
 py_library(
     name = "digest_lib",
     srcs = ["digest.py"],
-)
-
-py_library(
-    name = "pck_lib",
-    srcs = ["pck.py"],
 )
 
 py_library(
@@ -60,7 +36,7 @@ py_library(
     srcs = ["godot_staging.py"],
     deps = [
         ":mapped_paths_lib",
-        ":pck_lib",
+        "//tools/pack:pck_lib",
         "//tools/project:config_lib",
         "//tools/resources:files_lib",
         "//tools/resources:node_ids_lib",
@@ -170,15 +146,6 @@ py_binary(
 )
 
 py_library(
-    name = "pack_contents_lib",
-    srcs = ["pack_contents.py"],
-    deps = [
-        ":digest_lib",
-        "//tools/resources:files_lib",
-    ],
-)
-
-py_library(
     name = "godot_export_lib",
     srcs = ["godot_export.py"],
     data = glob(["action/*"]) + [
@@ -187,9 +154,9 @@ py_library(
     ],
     deps = [
         ":godot_staging_lib",
-        ":pack_contents_lib",
-        ":pck_lib",
         ":template_lib",
+        "//tools/pack:contents_lib",
+        "//tools/pack:pck_lib",
         "//tools/project:config_lib",
     ],
 )
@@ -200,34 +167,12 @@ py_binary(
     deps = [":godot_export_lib"],
 )
 
-# Writes a pack's PCK without Godot; a tool of its own, without the editor's action
-# plugin, so a change to either tool reruns only its own actions.
-py_library(
-    name = "pack_writer_lib",
-    srcs = ["pack_writer.py"],
-    deps = [
-        ":class_fragment_lib",
-        ":godot_staging_lib",
-        ":pack_contents_lib",
-        ":pck_lib",
-        "//tools/resources:files_lib",
-        "//tools/resources:text_lib",
-        "//tools/resources:uids_lib",
-    ],
-)
-
-py_binary(
-    name = "pack_writer",
-    srcs = ["pack_writer.py"],
-    deps = [":pack_writer_lib"],
-)
-
 py_library(
     name = "godot_run_lib",
     srcs = ["godot_run.py"],
     deps = [
         ":godot_staging_lib",
-        ":pck_lib",
+        "//tools/pack:pck_lib",
         "//tools/project:config_lib",
         "//tools/project:statements_lib",
         "@rules_python//python/runfiles",
@@ -323,16 +268,4 @@ py_binary(
         "//tools/resources:node_ids_lib",
         "//tools/resources:uids_lib",
     ],
-)
-
-py_library(
-    name = "common_content_lib",
-    srcs = ["common_content.py"],
-    deps = ["//tools/project:statements_lib"],
-)
-
-py_binary(
-    name = "common_content",
-    srcs = ["common_content.py"],
-    deps = ["//tools/project:statements_lib"],
 )

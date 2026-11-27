@@ -36,7 +36,7 @@ from tools.godot_staging import (
     tree_entries,
     tree_files,
 )
-from tools.pck import add_pck_files, pck_file_contents
+from tools.pack.pck import add_pck_files, pck_file_contents
 from tools.project.config import compose_project
 from tools.project.statements import statement_groups
 

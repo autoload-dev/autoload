@@ -25,8 +25,8 @@ from tools.godot_staging import (
     read_original,
     staged_files,
 )
-from tools.pack_contents import content_selection, write_report
-from tools.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
+from tools.pack.contents import content_selection, write_report
+from tools.pack.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
 from tools.resources.files import IMPORT, UID, hidden_by, is_sidecar_named
 from tools.resources.text import IMPORTER, REMAP_PATH, remap_section
 from tools.resources.uids import declares_uids, known_uids, uid_cache

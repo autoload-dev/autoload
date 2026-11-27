@@ -183,9 +183,9 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 [graph inspection rule](../../../godot/private/analysis.bzl),
 [format classes](../../../tools/resources/text.py) (analyzed, opaque and leaf),
 [scanner](../../../tools/resource_graph/graph.py): runtime/import input validation and unknown
-dynamic refs, [selector](../../../tools/pack_selection.py). Static scanning does not
+dynamic refs, [selector](../../../tools/pack/selection.py). Static scanning does not
 dynamically declare new Bazel inputs.
-[Pack format inspection](../../../tools/pck.py) validates the PCK structure.
+[Pack format inspection](../../../tools/pack/pck.py) validates the PCK structure.
 
 ### R07
 

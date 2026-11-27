@@ -48,7 +48,7 @@ py_test(
     data = [_FIXTURE + ":pack"],
     main = "pack_contents_test.py",
     tags = ["godot_process"],
-    deps = ["//tools:pck_lib"],
+    deps = ["//tools/pack:pck_lib"],
 )
 
 # Run tests: the packs build although the importer's editor plugin crashes Godot at
