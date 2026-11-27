@@ -176,7 +176,7 @@ def _test_a_recipe_links_its_engine_tree(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree.py", "link", "--tree", _TREE_DIRECTORY, "--recipe", "."],
+        [_PYTHON, "tools/engine/tree.py", "link", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", ""],
     ).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(
         "tools/engine/tree.py",

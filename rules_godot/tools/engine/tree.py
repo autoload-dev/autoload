@@ -19,6 +19,7 @@ import errno
 import os
 import shutil
 import stat
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -69,17 +70,24 @@ def is_scoped(root: Path) -> bool:
     return path.is_file() and path.read_text().count(_SCOPED) == 1
 
 
+def _entries(directory: str) -> Iterator[os.DirEntry[str]]:
+    """Every entry below a directory; symbolic links are entries, never followed."""
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            yield entry
+            if entry.is_dir(follow_symlinks=False):
+                yield from _entries(entry.path)
+
+
 def prepare(root: Path) -> None:
     """Scope the build profile and make every file of the extracted, patched tree read-only."""
     _scope(root)
-    for directory, _directories, names in os.walk(root):
-        for name in names:
-            path = Path(directory) / name
-            if not path.is_symlink():
-                path.chmod(path.stat().st_mode & ~_WRITABLE)
+    for entry in _entries(str(root)):
+        if entry.is_file(follow_symlinks=False):
+            os.chmod(entry.path, entry.stat(follow_symlinks=False).st_mode & ~_WRITABLE)
 
 
-def _link_file(source: Path, target: Path) -> None:
+def _link_file(source: str, target: str) -> None:
     """Link a file hard, or copy it where the tree lies on another file system."""
     try:
         os.link(source, target)
@@ -100,21 +108,20 @@ def link(tree: Path, recipe: Path, path: str = "") -> None:
     Directories are the recipe's own, files hard links to the tree's, and symbolic links
     within the tree stay symbolic links.
     """
+    top = tree / path
+    (recipe / path).mkdir(parents=True, exist_ok=True)
     files = []
-    for directory, directories, names in os.walk(tree / path if path else tree):
-        current = Path(directory)
-        target = recipe / current.relative_to(tree)
-        target.mkdir(parents=True, exist_ok=True)
-        if current == tree:
-            names = [name for name in names if name not in _REPOSITORY_FILES]
-        for name in [
-            *names,
-            *(name for name in directories if (current / name).is_symlink()),
-        ]:
-            if (current / name).is_symlink():
-                (target / name).symlink_to(os.readlink(current / name))
-            else:
-                files.append((current / name, target / name))
+    for entry in _entries(str(top)):
+        relative = os.path.relpath(entry.path, tree)
+        if relative in _REPOSITORY_FILES:
+            continue
+        target = os.path.join(recipe, relative)
+        if entry.is_symlink():
+            os.symlink(os.readlink(entry.path), target)
+        elif entry.is_dir():
+            os.mkdir(target)
+        else:
+            files.append((entry.path, target))
     with ThreadPoolExecutor(_LINK_THREADS) as executor:
         list(executor.map(lambda pair: _link_file(*pair), files))
 

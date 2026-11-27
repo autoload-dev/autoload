@@ -79,7 +79,7 @@ def _read_tree(ctx):
 
 def _link_tree(ctx, path = ""):
     """Link the engine tree's files below path, or all of them, into this repository; an error or None."""
-    command = [
+    result = ctx.execute([
         str(ctx.path(ctx.attr._python)),
         str(ctx.path(ctx.attr._tree)),
         "link",
@@ -87,10 +87,9 @@ def _link_tree(ctx, path = ""):
         str(ctx.path(ctx.attr.tree).dirname),
         "--recipe",
         ".",
-    ]
-    if path:
-        command.extend(["--path", path])
-    result = ctx.execute(command)
+        "--path",
+        path,
+    ])
     if result.return_code:
         return "%s: linking the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr)
     return None

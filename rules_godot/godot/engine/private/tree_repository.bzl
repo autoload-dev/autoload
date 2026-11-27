@@ -89,7 +89,6 @@ godot_engine_tree = repository_rule(
     ```
 
     A rejected or ambiguous patch hunk fails the tree.
-
     """,
     implementation = engine_tree_impl,
     attrs = {
