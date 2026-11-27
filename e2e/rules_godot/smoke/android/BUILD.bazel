@@ -68,7 +68,7 @@ godot_configured_app(
 
 android_bundle_test(
     name = "bundle_packages_extension_and_pack_test",
-    size = "small",
+    size = "medium",
     apk_libraries = [
         "lib/arm64-v8a/libgodot_android.so",
         "lib/arm64-v8a/libcounter_native.so",

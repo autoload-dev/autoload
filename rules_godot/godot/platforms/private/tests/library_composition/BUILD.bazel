@@ -61,7 +61,7 @@ configured_outputs(
 # the project's add-on libraries reach its dex files and manifest.
 py_test(
     name = "android_multi_abi_bundles_carry_platform_libraries_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_bundles_test.py"],
     args = _BUNDLE_TOOL_ARGS + [
         "--app=$(rootpath :android_multi_abi_bundles_carry_platform_libraries_test_app)",
@@ -97,7 +97,7 @@ godot_configured_app(
 # symbols hold the same library with DWARF.
 py_test(
     name = "android_release_bundle_symbols_match_stripped_extension_test",
-    size = "small",
+    size = "medium",
     srcs = ["android_debug_symbols_test.py"],
     args = _BUNDLE_TOOL_ARGS + [
         "--app=$(rootpath :android_release_bundle_symbols_match_stripped_extension_test_app)",
