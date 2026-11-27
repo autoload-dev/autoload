@@ -1,9 +1,12 @@
-"""RG002 regressions for authored names, generated helpers and artifact identity."""
+"""
+snake-case-target-names regressions for authored names, generated helpers and artifact
+identity.
+"""
 
 import unittest
 
 from tools.conventions.context import Call, Location
-from tools.conventions.rules.rg002 import TargetNames
+from tools.conventions.rules.snake_case_target_names import TargetNames
 from tools.conventions.test_support import Record, RepositoryTest
 
 

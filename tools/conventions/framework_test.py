@@ -5,8 +5,8 @@ from collections.abc import Iterable
 
 from tools.conventions.context import Call, Context, Location
 from tools.conventions.framework import Finding, RuleInfo, run
-from tools.conventions.registry import select
-from tools.conventions.rules.rg002 import TargetNames
+from tools.conventions.registry import ALL_RULES, select
+from tools.conventions.rules.snake_case_target_names import TargetNames
 from tools.conventions.test_support import RepositoryTest
 
 
@@ -75,12 +75,19 @@ class FrameworkTest(RepositoryTest):
         )
         context = self.context((call,), [{"name": "//:bad-name", "path": "BUILD.bazel"}])
         report = run(context, (TargetNames({}), DeclarationsRule()))
-        self.assertEqual(["RG002"], [item.rule.name for item in report.violations])
+        self.assertEqual(
+            ["snake-case-target-names"], [item.rule.name for item in report.violations]
+        )
         self.assertEqual((1, 1), (self.tools.call_requests, self.tools.rule_requests))
 
     def test_repeated_findings_are_a_rule_defect(self) -> None:
         with self.assertRaisesRegex(ValueError, "Duplicate convention findings"):
             run(self.context(), (RepeatingRule(),))
+
+    def test_every_rule_is_named_in_kebab_case_words(self) -> None:
+        # A name states the rule's claim in words, which a numbered ID does not.
+        for rule in ALL_RULES:
+            self.assertRegex(rule.info.name, r"^[a-z][a-z0-9]*(-[a-z0-9]+)+$")
 
     def test_duplicate_or_unknown_names_fail_before_running_rules(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be unique"):
