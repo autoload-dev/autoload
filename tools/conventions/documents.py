@@ -1,20 +1,14 @@
-"""
-Documentation evidence: which documentation is internal, and the local links and anchors
-of Markdown sources.
-"""
+"""Documentation evidence: which documentation is internal, and the local links of Markdown."""
 
 import posixpath
 import re
-from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from html import unescape
 from html.parser import HTMLParser
-from pathlib import Path
 from string import punctuation
 from urllib.parse import unquote, urlsplit
 
-from tools.conventions.context import Workspace
 from tools.conventions.layout import DOCS
 
 # The ruleset's internal pages live beside its public guides.
@@ -31,15 +25,6 @@ DESTINATION = re.compile(
 ESCAPE = re.compile(r"\\([" + re.escape(punctuation) + r"])")
 LITERAL = re.compile(r"<!--.*?(?:-->|\Z)|(?<!\\)(`+)(?!`)(.*?)(?<!`)\1(?!`)", re.DOTALL)
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
-# ATX headings, and setext headings: a paragraph line underlined with = or -.
-HEADING = re.compile(
-    r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$|^ {0,3}(\S.*?)[ \t]*\n {0,3}(?:=+|-+)[ \t]*$",
-    re.MULTILINE,
-)
-INLINE_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
-# Markup that GitHub renders away before it derives a heading's slug.
-MARKUP = re.compile(r"<[^>]*>|(?<!\w)[*_]+|[*_]+(?!\w)")
 
 
 def internal_document(path: str) -> bool:
@@ -51,14 +36,11 @@ class HTMLLinks(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.destinations: list[tuple[int, str]] = []
-        self.ids: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         for name, value in attrs:
             if name in {"href", "src"} and value is not None:
                 self.destinations.append((self.getpos()[0], value))
-            elif name in {"id", "name"} and value:
-                self.ids.append(value)
 
 
 def blank(text: str) -> str:
@@ -114,20 +96,12 @@ def destinations(text: str) -> Iterable[tuple[int, str]]:
     yield from html.destinations
 
 
-def agent_instructions(workspace: Workspace) -> tuple[str, ...]:
-    """Every AGENTS.md and every skill's SKILL.md."""
-    return tuple(
-        name for name in workspace.files if Path(name).name in {"AGENTS.md", "SKILL.md"}
-    )
-
-
 @dataclass(frozen=True)
 class Link:
-    """A local link: its line, the repository-relative path it resolves to and its fragment."""
+    """A local link: its line and the repository-relative path it resolves to."""
 
     line: int
     path: str
-    fragment: str
 
 
 def local_links(name: str, text: str) -> Iterable[Link]:
@@ -146,30 +120,4 @@ def local_links(name: str, text: str) -> Iterable[Link]:
             resolved = posixpath.normpath(path.lstrip("/"))
         else:
             resolved = posixpath.normpath(posixpath.join(posixpath.dirname(name), path))
-        # With a query, as in ?plain=1#L5, the fragment names a line, not a heading.
-        fragment = "" if destination.query else unquote(destination.fragment)
-        yield Link(line, resolved, fragment)
-
-
-def slug(heading: str) -> str:
-    """GitHub's fragment for a heading's source text, before numbering repeats."""
-    text = unescape(ESCAPE.sub(r"\1", MARKUP.sub("", INLINE_LINK.sub(r"\1", heading))))
-    return re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
-
-
-def anchors(text: str) -> frozenset[str]:
-    """
-    The fragments a Markdown document defines: GitHub's heading slugs, numbered when they
-    repeat, and the ``id`` or ``name`` of HTML elements.
-    """
-    seen: Counter[str] = Counter()
-    result: set[str] = set()
-    # Inline code in a heading keeps its text in the slug; comments render nothing.
-    blocks = COMMENT.sub(lambda match: blank(match[0]), block_source(text))
-    for match in HEADING.finditer(blocks):
-        base = slug(match[1] or match[2])
-        result.add(f"{base}-{seen[base]}" if seen[base] else base)
-        seen[base] += 1
-    html = HTMLLinks()
-    html.feed(LITERAL.sub(lambda match: blank(match[0]), blocks))
-    return frozenset(result | set(html.ids))
+        yield Link(line, resolved)

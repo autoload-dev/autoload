@@ -2,32 +2,25 @@
 
 from tools.conventions import per_file
 from tools.conventions.framework import Rule
-from tools.conventions.rules.rg001 import PackageNames
+from tools.conventions.rules.addon_module_layout import AddonModuleLayout
+from tools.conventions.rules.application_content import ApplicationContent
+from tools.conventions.rules.documented_targets_exist import CommandLabels
+from tools.conventions.rules.engine_files_under_engines import EngineLayout
+from tools.conventions.rules.linked_skills import SharedSkills
+from tools.conventions.rules.no_component_names_in_tooling import NoComponentNames
+from tools.conventions.rules.no_godot_in_addon_modules import NoGodotRunsInAddonModules
+from tools.conventions.rules.project_named_after_directory import ProjectTargetNames
+from tools.conventions.rules.projects_at_fixed_places import ProjectPlaces
+from tools.conventions.rules.registry_test_module_in_bcr import RegistryTestModules
+from tools.conventions.rules.release_archives_without_tests import ReleasedWithoutTests
 from tools.conventions.rules.rg002 import TargetNames
-from tools.conventions.rules.rg003 import ExplicitNames
-from tools.conventions.rules.rg006 import CommandLabels
 from tools.conventions.rules.rg007 import TestOnlyOperations
-from tools.conventions.rules.rg008 import ApplicationContent
-from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
-from tools.conventions.rules.rg014 import EngineLayout
-from tools.conventions.rules.rg015 import AddonModuleLayout
-from tools.conventions.rules.rg016 import LocalLinks
-from tools.conventions.rules.rg017 import AgentInstructions
-from tools.conventions.rules.rg018 import SharedSkills
-from tools.conventions.rules.rg019 import ProjectTargetNames
-from tools.conventions.rules.rg020 import RegistryTestModules
-from tools.conventions.rules.rg021 import NoGodotRunsInAddonModules
-from tools.conventions.rules.rg022 import NoComponentNames
-from tools.conventions.rules.rg023 import ReleasedWithoutTests
 from tools.conventions.rules.rg026 import GodotProcessTests
-from tools.conventions.rules.rg027 import LintedAddonPython
 
 # The rules that judge more than one file at a time, which the conventions tool runs.
 RULES: tuple[Rule, ...] = (
-    PackageNames(),
     TargetNames(),
-    ExplicitNames(),
     CommandLabels(),
     TestOnlyOperations(),
     ApplicationContent(),
@@ -35,8 +28,6 @@ RULES: tuple[Rule, ...] = (
     ProductionIsolation(),
     EngineLayout(),
     AddonModuleLayout(),
-    LocalLinks(),
-    AgentInstructions(),
     SharedSkills(),
     ProjectTargetNames(),
     RegistryTestModules(),
@@ -44,7 +35,6 @@ RULES: tuple[Rule, ...] = (
     NoComponentNames(),
     ReleasedWithoutTests(),
     GodotProcessTests(),
-    LintedAddonPython(),
 )
 
 
@@ -52,11 +42,11 @@ RULES: tuple[Rule, ...] = (
 ALL_RULES = RULES + per_file.RULES
 
 
-def select(ids: list[str] | None = None) -> tuple[Rule, ...]:
-    """The rules of the IDs, or else those the conventions tool runs."""
-    unknown = set(ids or []) - {rule.info.id for rule in ALL_RULES}
+def select(names: list[str] | None = None) -> tuple[Rule, ...]:
+    """The rules of the names, or else those the conventions tool runs."""
+    unknown = set(names or []) - {rule.info.name for rule in ALL_RULES}
     if unknown:
-        raise ValueError("Unknown convention rule IDs: " + ", ".join(sorted(unknown)))
-    if ids is None:
+        raise ValueError("Unknown convention rules: " + ", ".join(sorted(unknown)))
+    if names is None:
         return RULES
-    return tuple(rule for rule in ALL_RULES if rule.info.id in ids)
+    return tuple(rule for rule in ALL_RULES if rule.info.name in names)

@@ -10,11 +10,15 @@ in the root module, regenerating the root's declarations of the add-on modules
 tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add-on is
 named like the module unless --addon names it. In these trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. The
-written files belong to the module from then on: nothing regenerates them.
+written files belong to the module from then on, but for its shared files: the settings every
+module keeps as the generator writes them, which `aspect generate` writes again for every
+module and the file lint compares (`stale_shared_files`).
 
 `addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
 (`aspect work addon-template`, tools/addons/selftest.py): it is regenerated from scratch
 each time and removed afterwards, with its declaration.
+
+Sections: Names, Templates, Shared files, Generator.
 """
 
 import argparse
@@ -26,12 +30,11 @@ from pathlib import Path
 from tools.addons import declarations, registry
 from tools.addons.modules import ROOT, examples_path, module_name, module_path
 from tools.addons.uids import id_to_uid
+from tools.setup.modules import addon_modules
 
-TEMPLATE = Path(__file__).resolve().parent / "template"
-# Every template file ends in it, so that no tool takes the templates for sources.
-SUFFIX = ".tmpl"
+# ==== Names ===================================================================
+
 NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
-TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
 
 
 def words(name: str) -> list[str]:
@@ -77,6 +80,14 @@ class Names:
         }
 
 
+# ==== Templates ===============================================================
+
+TEMPLATE = Path(__file__).resolve().parent / "template"
+# Every template file ends in it, so that no tool takes the templates for sources.
+SUFFIX = ".tmpl"
+TOKEN = re.compile(r"\{\{([a-z_]+)\}\}")
+
+
 def render(text: str, tokens: dict[str, str]) -> str:
     return TOKEN.sub(lambda match: tokens.get(match[1], match[0]), text)
 
@@ -104,13 +115,94 @@ def copy_tree(tree: str, target: Path, tokens: dict[str, str]) -> list[Path]:
     return written
 
 
-def registry_templates(directory: str, root: Path, tokens: dict[str, str]) -> list[Path]:
-    """The templates publish-to-bcr reads for the module's releases, written once."""
-    templates = root / registry.templates_directory(directory)
-    written = copy_tree("bcr", templates, tokens)
-    metadata = templates / registry.METADATA
-    metadata.write_text(registry.metadata(directory, root))
-    return [*written, metadata]
+# ==== Shared files ============================================================
+
+# The files of the module template that every module keeps as the generator writes them, by
+# their path in the module; its registry templates in .bcr/addons/<module>/ are all shared.
+SHARED_MODULE_FILES = frozenset(
+    {
+        ".bazelignore",
+        ".bazelrc",
+        ".bazelversion",
+        ".gitattributes",
+        ".gitignore",
+        "REPO.bazel",
+        "bcr/smoke/.bazelrc",
+        "bcr/smoke/.bazelversion",
+    }
+)
+
+
+def bazel_version(root: Path) -> str:
+    return (root / ".bazelversion").read_text().strip()
+
+
+def write_files(root: Path, files: dict[Path, str]) -> list[Path]:
+    """
+    Write the files, by path relative to root, that are missing or differ; the others keep
+    their modification times, which Git and Bazel read.
+    """
+    written = []
+    for path, text in files.items():
+        target = root / path
+        if not target.is_file() or target.read_text() != text:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
+            written.append(target)
+    return written
+
+
+def registry_files(directory: str, root: Path, tokens: dict[str, str]) -> dict[Path, str]:
+    """
+    The templates publish-to-bcr reads for the releases of addons/<directory>, by path
+    relative to root: the bcr template tree and the metadata the ruleset's shares.
+    """
+    templates = registry.templates_directory(directory)
+    files = {
+        templates / render(relative, tokens): render(path.read_text(), tokens)
+        for path, relative in template_files("bcr")
+    }
+    files[templates / registry.METADATA] = registry.metadata(directory, root)
+    return files
+
+
+# The registry templates of every released module, by their names.
+REGISTRY_FILES = (*(relative for _, relative in template_files("bcr")), registry.METADATA)
+
+
+def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
+    """
+    What the generator writes to the shared files of the module addons/<directory>, by path
+    relative to root; the registry templates only for a module that is released, which has
+    them.
+    """
+    tokens = Names(directory).tokens(bazel_version(root))
+    module = module_path(directory)
+    files = {
+        module / relative: render(path.read_text(), tokens)
+        for path, relative in template_files("module")
+        if relative in SHARED_MODULE_FILES
+    }
+    if (root / registry.templates_directory(directory)).is_dir():
+        files.update(registry_files(directory, root, tokens))
+    return files
+
+
+def stale_shared_files(root: Path = ROOT) -> dict[Path, str]:
+    """
+    The shared files of every add-on module that differ from what the generator writes, by
+    path relative to root, with what it writes.
+    """
+    stale = {}
+    for module in addon_modules(root):
+        for path, text in shared_files(Path(module).name, root).items():
+            target = root / path
+            if not target.is_file() or target.read_text() != text:
+                stale[path] = text
+    return stale
+
+
+# ==== Generator ===============================================================
 
 
 def generate(
@@ -125,14 +217,14 @@ def generate(
     if invalid:
         raise ValueError(f"{invalid[0]}: use lower snake case, such as in_app_reviews")
     module = root / module_path(directory)
-    tokens = names.tokens((root / ".bazelversion").read_text().strip())
+    tokens = names.tokens(bazel_version(root))
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
         written += copy_tree("examples", root / examples_path(directory), tokens)
         written += declarations.write(root)
         if release:
-            written += registry_templates(directory, root, tokens)
+            written += write_files(root, registry_files(directory, root, tokens))
     return written + copy_tree("addon", module / names.addon, tokens)
 
 

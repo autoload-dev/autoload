@@ -11,8 +11,10 @@ for the rest. Change structure only: order, regions, heads, splits and merges of
 refactorings of CodeScene's findings. Never change behavior.
 
 The rules are in [readable files](../../../docs/internal/code-health.md#readable-files); the
-region header and the reading order are [region-headers](../../../docs/internal/conventions.md#region-headers)
-and [reading-order](../../../docs/internal/conventions.md#reading-order).
+region header and the reading order are
+[region-headers-named-in-head](../../../docs/internal/conventions.md#region-headers-named-in-head)
+and
+[definitions-before-callers](../../../docs/internal/conventions.md#definitions-before-callers).
 
 ## 1. Prepare
 
@@ -23,11 +25,12 @@ and [reading-order](../../../docs/internal/conventions.md#reading-order).
    regions changed together.
 2. Run `aspect code-health` (`-- --only <path>...` for given files) for CodeScene's findings
    and declined files. If CodeScene is unavailable, say so and leave out its subagent.
-3. Run `bazel run //tools/conventions -- --rule region-headers --rule reading-order` and the lint check, which
-   lints Python, GDScript and Markdown: `aspect exec -- bazel build --config=lint
-   --target_pattern_file=root.targets` in the root and `aspect exec -- bazel build
-   --config=lint //...` in `rules_godot/`. Their findings are fixed directly; the subagents
-   do not repeat them.
+3. Run
+   `bazel run //tools/conventions -- --rule region-headers-named-in-head --rule definitions-before-callers`
+   and the lint check, which lints Python, GDScript and Markdown:
+   `aspect exec -- bazel build --config=lint --target_pattern_file=root.targets` in the root
+   and `aspect exec -- bazel build --config=lint //...` in `rules_godot/`. Their findings are
+   fixed directly; the subagents do not repeat them.
 4. Choose each file's scope. A file in the busiest quarter of the history, or with five or
    more commits, is reviewed whole; other files only where the change touches them.
 
@@ -52,8 +55,9 @@ after the other.
 ## 3. Weigh and apply
 
 1. Merge findings that concern the same place or mechanism.
-2. Sort them: what makes a hook or check fail first (a declined file, region-headers, reading-order), then by
-   the file's commits, most first.
+2. Sort them: what makes a hook or check fail first (a declined file,
+   region-headers-named-in-head, definitions-before-callers), then by the file's commits, most
+   first.
 3. Resolve conflicts. When regions and a split are both proposed for one file, take the
    smaller change unless the history shows the parts change apart.
 4. Select. Leave out what changes behavior, undoes a cleanup of `/simplify`, or restructures

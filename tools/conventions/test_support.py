@@ -150,6 +150,14 @@ class RepositoryTest(unittest.TestCase):
     def workspace(self, files: tuple[str, ...] | None = None) -> Workspace:
         return Workspace(self.root, tuple(sorted(self.files)) if files is None else files)
 
+    def file_context(self, files: tuple[str, ...]) -> Context:
+        """
+        A context over some files, as the file lint gives a rule the changed ones: without
+        Bazel evidence and without the modules of the other files.
+        """
+        self.tools = StaticTools(self.root, (), ())
+        return Context(self.workspace(files), self.tools, self.tools)
+
     def context(
         self,
         calls: tuple[Call, ...] = (),

@@ -53,14 +53,20 @@ py_library(
     name = "per_file_rules_lib",
     srcs = [
         "documents.py",
-        "rules/fixture_references.py",
-        "rules/public_documentation_links.py",
-        "rules/reading_order.py",
-        "rules/region_headers.py",
+        "naming.py",
+        "rules/definitions_before_callers.py",
+        "rules/no_claude_md.py",
+        "rules/no_fixtures_in_public_documentation.py",
+        "rules/no_internal_links_in_public_documentation.py",
+        "rules/region_headers_named_in_head.py",
+        "rules/shared_module_files_as_generated.py",
+        "rules/snake_case_package_paths.py",
     ],
     deps = [
         ":context_lib",
         ":framework_lib",
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
     ],
 )
 
@@ -76,29 +82,23 @@ py_library(
 py_library(
     name = "rules_lib",
     srcs = [
-        "naming.py",
         "operations.py",
         "registry.py",
-        "rules/rg001.py",
+        "rules/addon_module_layout.py",
+        "rules/application_content.py",
+        "rules/documented_targets_exist.py",
+        "rules/engine_files_under_engines.py",
+        "rules/linked_skills.py",
+        "rules/no_component_names_in_tooling.py",
+        "rules/no_godot_in_addon_modules.py",
+        "rules/project_named_after_directory.py",
+        "rules/projects_at_fixed_places.py",
+        "rules/registry_test_module_in_bcr.py",
+        "rules/release_archives_without_tests.py",
         "rules/rg002.py",
-        "rules/rg003.py",
-        "rules/rg006.py",
         "rules/rg007.py",
-        "rules/rg008.py",
-        "rules/rg009.py",
         "rules/rg012.py",
-        "rules/rg014.py",
-        "rules/rg015.py",
-        "rules/rg016.py",
-        "rules/rg017.py",
-        "rules/rg018.py",
-        "rules/rg019.py",
-        "rules/rg020.py",
-        "rules/rg021.py",
-        "rules/rg022.py",
-        "rules/rg023.py",
         "rules/rg026.py",
-        "rules/rg027.py",
     ],
     deps = [
         ":context_lib",
@@ -179,9 +179,9 @@ py_test(
 )
 
 py_test(
-    name = "rg001_test",
+    name = "snake_case_package_paths_test",
     size = "small",
-    srcs = ["rules/rg001_test.py"],
+    srcs = ["rules/snake_case_package_paths_test.py"],
     deps = [
         ":context_lib",
         ":rules_lib",
@@ -201,20 +201,9 @@ py_test(
 )
 
 py_test(
-    name = "rg003_test",
+    name = "no_fixtures_in_public_documentation_test",
     size = "small",
-    srcs = ["rules/rg003_test.py"],
-    deps = [
-        ":context_lib",
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "fixture_references_test",
-    size = "small",
-    srcs = ["rules/fixture_references_test.py"],
+    srcs = ["rules/no_fixtures_in_public_documentation_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -222,9 +211,9 @@ py_test(
 )
 
 py_test(
-    name = "rg006_test",
+    name = "documented_targets_exist_test",
     size = "small",
-    srcs = ["rules/rg006_test.py"],
+    srcs = ["rules/documented_targets_exist_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -243,9 +232,9 @@ py_test(
 )
 
 py_test(
-    name = "rg008_test",
+    name = "application_content_test",
     size = "small",
-    srcs = ["rules/rg008_test.py"],
+    srcs = ["rules/application_content_test.py"],
     deps = [
         ":context_lib",
         ":rules_lib",
@@ -254,9 +243,9 @@ py_test(
 )
 
 py_test(
-    name = "rg009_test",
+    name = "projects_at_fixed_places_test",
     size = "small",
-    srcs = ["rules/rg009_test.py"],
+    srcs = ["rules/projects_at_fixed_places_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -275,9 +264,9 @@ py_test(
 )
 
 py_test(
-    name = "public_documentation_links_test",
+    name = "no_internal_links_in_public_documentation_test",
     size = "small",
-    srcs = ["rules/public_documentation_links_test.py"],
+    srcs = ["rules/no_internal_links_in_public_documentation_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -285,9 +274,9 @@ py_test(
 )
 
 py_test(
-    name = "rg014_test",
+    name = "engine_files_under_engines_test",
     size = "small",
-    srcs = ["rules/rg014_test.py"],
+    srcs = ["rules/engine_files_under_engines_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -295,9 +284,11 @@ py_test(
 )
 
 py_test(
-    name = "rg015_test",
+    name = "addon_module_layout_test",
     size = "small",
-    srcs = ["rules/rg015_test.py"],
+    srcs = ["rules/addon_module_layout_test.py"],
+    args = ["$(rootpath @buildifier_prebuilt//:buildozer)"],
+    data = ["@buildifier_prebuilt//:buildozer"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -306,9 +297,9 @@ py_test(
 )
 
 py_test(
-    name = "rg016_test",
+    name = "no_claude_md_test",
     size = "small",
-    srcs = ["rules/rg016_test.py"],
+    srcs = ["rules/no_claude_md_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -316,9 +307,9 @@ py_test(
 )
 
 py_test(
-    name = "rg017_test",
+    name = "linked_skills_test",
     size = "small",
-    srcs = ["rules/rg017_test.py"],
+    srcs = ["rules/linked_skills_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -326,9 +317,9 @@ py_test(
 )
 
 py_test(
-    name = "rg018_test",
+    name = "project_named_after_directory_test",
     size = "small",
-    srcs = ["rules/rg018_test.py"],
+    srcs = ["rules/project_named_after_directory_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -336,9 +327,9 @@ py_test(
 )
 
 py_test(
-    name = "rg019_test",
+    name = "registry_test_module_in_bcr_test",
     size = "small",
-    srcs = ["rules/rg019_test.py"],
+    srcs = ["rules/registry_test_module_in_bcr_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -346,9 +337,9 @@ py_test(
 )
 
 py_test(
-    name = "rg020_test",
+    name = "no_godot_in_addon_modules_test",
     size = "small",
-    srcs = ["rules/rg020_test.py"],
+    srcs = ["rules/no_godot_in_addon_modules_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -356,9 +347,9 @@ py_test(
 )
 
 py_test(
-    name = "rg021_test",
+    name = "no_component_names_in_tooling_test",
     size = "small",
-    srcs = ["rules/rg021_test.py"],
+    srcs = ["rules/no_component_names_in_tooling_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -366,9 +357,9 @@ py_test(
 )
 
 py_test(
-    name = "rg022_test",
+    name = "release_archives_without_tests_test",
     size = "small",
-    srcs = ["rules/rg022_test.py"],
+    srcs = ["rules/release_archives_without_tests_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -376,9 +367,9 @@ py_test(
 )
 
 py_test(
-    name = "rg023_test",
+    name = "region_headers_named_in_head_test",
     size = "small",
-    srcs = ["rules/rg023_test.py"],
+    srcs = ["rules/region_headers_named_in_head_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -386,19 +377,20 @@ py_test(
 )
 
 py_test(
-    name = "region_headers_test",
+    name = "shared_module_files_as_generated_test",
     size = "small",
-    srcs = ["rules/region_headers_test.py"],
+    srcs = ["rules/shared_module_files_as_generated_test.py"],
     deps = [
-        ":rules_lib",
+        ":per_file_rules_lib",
         ":test_support",
+        "//tools/addons:new_lib",
     ],
 )
 
 py_test(
-    name = "reading_order_test",
+    name = "definitions_before_callers_test",
     size = "small",
-    srcs = ["rules/reading_order_test.py"],
+    srcs = ["rules/definitions_before_callers_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -409,16 +401,6 @@ py_test(
     name = "rg026_test",
     size = "small",
     srcs = ["rules/rg026_test.py"],
-    deps = [
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "rg027_test",
-    size = "small",
-    srcs = ["rules/rg027_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
