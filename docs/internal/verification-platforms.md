@@ -69,7 +69,9 @@ needs Linux's Android toolchains is tagged `android`, one that needs macOS's iOS
 `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
 hosts, compatibility permitting, such as the `<app>_build_test` of each example's desktop
-`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The root module and the
+`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The engine pins' check,
+tagged `engine_pins`, gives the same result on every host, so only the Linux job runs it.
+The root module and the
 ruleset each run one `bazel test`, one after the other, the root module's over its add-on
 modules too: two servers that fetch the same repository at once can fail to move it into the
 shared repository contents cache. On Linux the formatter, the checks that are no Bazel

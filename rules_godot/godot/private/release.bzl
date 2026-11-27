@@ -1,6 +1,6 @@
 """Release metadata of packs and applications: explicit values, else build settings."""
 
-load("//godot/private:flags.bzl", "FlagInfo")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
 visibility("//godot/...")
 
@@ -8,11 +8,11 @@ visibility("//godot/...")
 RELEASE_ATTRS = {
     "_app_version": attr.label(
         default = Label("//godot:app_version"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
     "_build_number": attr.label(
         default = Label("//godot:build_number"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
 }
 
@@ -28,7 +28,7 @@ def app_version(ctx, explicit = ""):
         The explicit version, else --@autoload_rules_godot//godot:app_version, which may be
         empty.
     """
-    value = explicit or ctx.attr._app_version[FlagInfo].value
+    value = explicit or ctx.attr._app_version[BuildSettingInfo].value
     if value != value.strip() or any([c < " " for c in value.elems()]):
         fail("Application version must not contain whitespace at its ends or control " +
              "characters: %r" % value)
@@ -48,7 +48,7 @@ def build_number(ctx, explicit = 0, default = 0):
         The explicit build number, else --@autoload_rules_godot//godot:build_number, else
         default.
     """
-    value = explicit or ctx.attr._build_number[FlagInfo].value or default
+    value = explicit or ctx.attr._build_number[BuildSettingInfo].value or default
     if value < 0:
         fail("Build number must be positive, got %d" % value)
     return value

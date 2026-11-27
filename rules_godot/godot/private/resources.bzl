@@ -5,7 +5,7 @@ Sections: Target classification, Composition, Composition validation, godot_reso
 """
 
 load("//godot/private:actions.bzl", "write_manifest")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
+load("//godot/private:context.bzl", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load(
     "//godot/private:import_units.bzl",
@@ -534,7 +534,7 @@ godot_resources = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | VALIDATION_ATTRS | TRANSITION_ATTRS,
+    } | VALIDATION_ATTRS,
     toolchains = [config_common.toolchain_type(EDITOR_TOOLCHAIN, mandatory = False)],
 )
 

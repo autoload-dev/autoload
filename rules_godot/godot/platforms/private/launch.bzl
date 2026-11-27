@@ -39,10 +39,10 @@ def launcher(ctx, executable, manifest):
     for key, value in manifest.items():
         if type(value) == "tuple":
             files.append(value[0])
-            data[key] = runfile_key(ctx, value[0]) + "/" + value[1]
+            data[key] = runfile_key(ctx, value[0].short_path) + "/" + value[1]
         elif type(value) == "File":
             files.append(value)
-            data[key] = runfile_key(ctx, value)
+            data[key] = runfile_key(ctx, value.short_path)
         else:
             data[key] = value
     manifest_file = ctx.actions.declare_file(executable.basename + ".launch.json", sibling = executable)
@@ -51,8 +51,8 @@ def launcher(ctx, executable, manifest):
         template = ctx.file._launch_template,
         output = executable,
         substitutions = {
-            "{LAUNCHER}": runfile_key(ctx, ctx.file._launcher_entry),
-            "{MANIFEST}": runfile_key(ctx, manifest_file),
+            "{LAUNCHER}": runfile_key(ctx, ctx.file._launcher_entry.short_path),
+            "{MANIFEST}": runfile_key(ctx, manifest_file.short_path),
         },
         is_executable = True,
     )

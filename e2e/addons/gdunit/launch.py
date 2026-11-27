@@ -1,4 +1,4 @@
-"""Run a test launcher the way Bazel does, for the adapters' contract tests."""
+"""Run a test launcher the way Bazel does, for the adapters' tests."""
 
 import os
 import subprocess

@@ -5,23 +5,24 @@ Sections: Resource paths, Sidecars and ignores, Namespace validation, Path resol
 Execution paths, Extension loaders.
 """
 
-visibility(["//godot/engine/private", "//godot/extension", "//godot/platforms/private", "//godot/private/tests"])
+visibility(["//godot/engine/private", "//godot/extension", "//godot/platforms/private", "//godot/private/testing", "//godot/private/tests"])
 
 # ==== Resource paths ==========================================================
 
-def runfile_key(ctx, file):
+def runfile_key(ctx, short_path):
     """
-    Return a file's path below a runfiles directory, as launchers look it up.
+    Return a runfile's path below a runfiles directory, as launchers look it up.
 
     Args:
         ctx: Analysis context.
-        file: A file in the runfiles.
+        short_path: The runfile's short path; those of external files start with ../.
 
     Returns:
         The path relative to the runfiles directory.
     """
-    path = file.short_path
-    return path[3:] if path.startswith("../") else ctx.workspace_name + "/" + path
+    if short_path.startswith("../"):
+        return short_path[3:]
+    return ctx.workspace_name + "/" + short_path
 
 def _relative_posix(path):
     """Whether a path is relative POSIX: not empty or absolute, no backslash, colon or control character."""

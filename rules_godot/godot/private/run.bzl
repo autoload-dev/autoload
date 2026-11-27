@@ -69,8 +69,8 @@ def launcher(ctx, data):
         template = ctx.file._launcher_template,
         output = executable,
         substitutions = {
-            "{RUNNER}": runfile_key(ctx, ctx.executable._runner),
-            "{MANIFEST}": runfile_key(ctx, manifest),
+            "{RUNNER}": runfile_key(ctx, ctx.executable._runner.short_path),
+            "{MANIFEST}": runfile_key(ctx, manifest.short_path),
         },
         is_executable = True,
     )
@@ -265,7 +265,6 @@ _ATTRS = {
         default = [Label(constraint) for constraint in HOST_CONSTRAINTS],
         providers = [platform_common.ConstraintValueInfo],
     ),
-    "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
 } | METADATA_ATTRS
 
 def _runner(group = None):

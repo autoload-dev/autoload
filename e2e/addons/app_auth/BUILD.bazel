@@ -2,11 +2,6 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sy
 
 package(default_testonly = True)
 
-exports_files(
-    ["project.godot"],
-    visibility = ["//e2e/addons/app_auth/login:__pkg__"],
-)
-
 godot_project(
     name = "app_auth",
     project_file = "project.godot",

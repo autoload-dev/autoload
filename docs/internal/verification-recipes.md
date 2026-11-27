@@ -177,15 +177,15 @@ Xcode compiles, local, so Apple-heavy work gains less.
 When unsure, try it and compare: Bazel's summary line shows how many actions ran `remote`
 and the critical path, and the invocation page shows where the time went.
 
-To use Bazel flags for one task, set `RULES_GODOT_BAZEL_FLAGS` to whitespace-separated
+To use Bazel flags for one task, set `AUTOLOAD_BAZEL_FLAGS` to whitespace-separated
 flags. [tools/bazel](../../tools/bazel), which Bazelisk runs in place of Bazel in every
 module, adds them to every command that reads build options, including those of `aspect`
 tasks and of the build tools under `tools/`; the command's own flags win. A Bazel binary
 started without Bazelisk ignores the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect tests --tier=all
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
+AUTOLOAD_BAZEL_FLAGS=--config=buildbuddy aspect tests --tier=all
+AUTOLOAD_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
 ```
 
 Some work needs this host as execution platform even under a remote config, such as the
@@ -251,7 +251,7 @@ Use these project cases to find a concrete behavior:
 |---|---|
 | `editor_view` | Editor writeback, sidecars and disabled extensions, from `rules_godot/`: `//godot/private/tests/editor_view` |
 | `script_run` | Direct script execution, imports and command-line arguments: `//script_run` |
-| `adapter_contract` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's end-to-end tests: `bazel test //e2e/addons/gdunit/...` from the repository root |
+| `adapter_test` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/private/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's end-to-end tests: `bazel test //e2e/addons/gdunit/...` from the repository root |
 | `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from `rules_godot/`: `//godot/private/tests/validation` |
 | `import_context_runs` | Composed settings and autoloads applied at runtime, an import input's own kept private: `//godot/private/tests/import_context_runs`; sidecars, import units, path and collision failures and metadata policies are analysis tests in `//godot/private/tests` |
 | `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from `rules_godot/`: `//godot/private/tests/gltf_import` |

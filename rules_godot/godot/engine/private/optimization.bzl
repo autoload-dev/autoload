@@ -6,8 +6,8 @@ The engine rules' transitions apply these options to the engine's native graph o
 extensions and application code keep the build's own levels.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/engine/private:selection.bzl", "ENGINE", "ENGINE_ATTRS", "selected_engine")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
 visibility(["//godot/..."])
@@ -168,8 +168,8 @@ def optimization_error(compilation_mode, lto, vfe):
 
 # The settings the engine rules check before their transition applies and resets them.
 OPTIMIZATION_CHECK_ATTRS = {
-    "_engine_lto": attr.label(default = Label("//godot:engine_lto"), providers = [FlagInfo]),
-    "_engine_vfe": attr.label(default = Label("//godot:engine_vfe"), providers = [FlagInfo]),
+    "_engine_lto": attr.label(default = Label("//godot:engine_lto"), providers = [BuildSettingInfo]),
+    "_engine_vfe": attr.label(default = Label("//godot:engine_vfe"), providers = [BuildSettingInfo]),
 }
 
 def check_optimization(ctx):
@@ -181,8 +181,8 @@ def check_optimization(ctx):
     """
     error = optimization_error(
         ctx.var["COMPILATION_MODE"],
-        ctx.attr._engine_lto[FlagInfo].value,
-        ctx.attr._engine_vfe[FlagInfo].value,
+        ctx.attr._engine_lto[BuildSettingInfo].value,
+        ctx.attr._engine_vfe[BuildSettingInfo].value,
     )
     if error:
         fail("%s: %s" % (ctx.label, error))

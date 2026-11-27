@@ -254,6 +254,7 @@ py_library(
         ":godot_staging_lib",
         ":pck_lib",
         "//godot/private:project_config_lib",
+        "@rules_python//python/runfiles",
     ],
 )
 

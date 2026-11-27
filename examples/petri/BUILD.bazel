@@ -13,8 +13,6 @@ package(default_visibility = ["//visibility:public"])
 # Every target that runs Godot names the engine simulation (examples/engines/simulation),
 # Godot with the reaction_diffusion module whose class Petri's scripts use.
 
-exports_files(["project.godot"])
-
 godot_project(
     name = "petri",
     main_scene = "main/petri.tscn",

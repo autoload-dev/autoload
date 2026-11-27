@@ -1,7 +1,7 @@
 """The project a pack exports: its view combined with the native code of its platform slices."""
 
 load("//godot/private:actions.bzl", "write_manifest")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
+load("//godot/private:context.bzl", "reset_transition")
 load("//godot/private:graph.bzl", "project_graph")
 load("//godot/private:operation_addons.bzl", "operation_addons")
 load("//godot/private:project.bzl", "NamedAddonsInfo")
@@ -48,7 +48,7 @@ godot_pack_native = rule(
     cfg = reset_transition,
     attrs = {
         "deps": attr.label_list(doc = "The pack's selection, then the add-ons its project names."),
-    } | TRANSITION_ATTRS,
+    },
 )
 
 def _add_runtime_files(members, descriptors, name, extension):

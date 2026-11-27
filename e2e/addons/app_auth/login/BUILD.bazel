@@ -6,8 +6,8 @@ package(default_testonly = True)
 godot_resources(
     name = "suites",
     srcs = [
-        "LoginContractTest.gd",
-        "LoginContractTest.gd.uid",
+        "AppAuthLoginTest.gd",
+        "AppAuthLoginTest.gd.uid",
     ],
     prefix = "login",
     visibility = ["//e2e/addons/app_auth:__pkg__"],
@@ -28,7 +28,7 @@ gdunit_test(
 filegroup(
     name = "gdscript_files",
     testonly = True,
-    srcs = ["LoginContractTest.gd"],
+    srcs = ["AppAuthLoginTest.gd"],
     tags = ["gdscript"],
     visibility = ["//visibility:private"],
 )

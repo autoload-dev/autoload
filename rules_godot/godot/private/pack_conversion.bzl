@@ -1,6 +1,6 @@
 """How a pack's PCK is made: Godot's export, or written without Godot's conversions."""
 
-load("//godot/private:flags.bzl", "FlagInfo")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
 visibility("//godot/...")
 
@@ -8,7 +8,7 @@ visibility("//godot/...")
 PACK_CONVERSION_ATTRS = {
     "_pack_conversion": attr.label(
         default = Label("//godot:pack_conversion"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
 }
 
@@ -22,7 +22,7 @@ def pack_conversion(ctx):
     Returns:
         "godot" for Godot's export, "none" for the PCK written without Godot.
     """
-    flag = ctx.attr._pack_conversion[FlagInfo].value
+    flag = ctx.attr._pack_conversion[BuildSettingInfo].value
     optimized = ctx.var["COMPILATION_MODE"] == "opt"
     if flag == "auto":
         return "godot" if optimized else "none"

@@ -1,15 +1,5 @@
-common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
-
 import %workspace%/shared.bazelrc
 
-# The Java of this module's tools, and of the Android SDK's tools (tools/android/java.py), is
-# Bazel's own, as the ruleset's modules set it; the host's Java is not needed.
-
-# The Godot applications (examples/) and the ruleset's consumer scenarios (e2e/rules_godot/) build as
-# a consumer of the ruleset does.
-build --incompatible_strict_action_env
-# Application settings must not create separate compiler/code-generator builds.
-build --incompatible_exclude_starlark_flags_from_exec_config
 # rules_dart builds its summary analyzer for the exec platform with analysis summaries off;
 # the exec configuration has to keep that setting, or the analyzer depends on itself.
 build --experimental_propagate_custom_flag=@rules_dart//dart:analysis_summaries
@@ -19,10 +9,6 @@ build --experimental_propagate_custom_flag=@rules_dart//dart:analysis_summaries
 # macOS. 12.0 is the highest minimum of the examples' dependencies (AppAuth).
 build --macos_minimum_os=12.0
 build --host_macos_minimum_os=12.0
-build --java_runtime_version=remotejdk_21
-build --tool_java_runtime_version=remotejdk_21
-build --java_language_version=21
-build --tool_java_language_version=21
 
 # Runs an application from its sources with the editor: bazel run --config=editor //path/to:app
 build:editor --@autoload_rules_godot//godot:variant=editor

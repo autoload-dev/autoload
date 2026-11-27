@@ -11,8 +11,6 @@ load("//examples:releases.bzl", "android_release", "ios_release")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["project.godot"])
-
 godot_project(
     name = "platform_paths",
     main_scene = "main/paths_demo.tscn",

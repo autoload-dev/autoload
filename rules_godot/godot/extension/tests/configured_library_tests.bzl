@@ -22,7 +22,7 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load(":descriptor_tests.bzl", "descriptor_contents")
-load(":extension_contracts.bzl", "dynamic_xcframework_fixture", "extension_library_fixture", "xcframework_fixture")
+load(":library_fixtures.bzl", "dynamic_xcframework_fixture", "extension_library_fixture", "xcframework_fixture")
 
 _SMALL = {"size": "small"}
 _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}

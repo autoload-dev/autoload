@@ -31,7 +31,7 @@ gdunit_test(
 py_library(
     name = "support",
     srcs = [
-        "contract.py",
+        "launch.py",
         "pck.py",
     ],
 )
@@ -86,9 +86,9 @@ filegroup(
     name = "python_files",
     testonly = True,
     srcs = [
-        "contract.py",
         "gdunit4_pack_test.py",
         "gdunit_launcher_test.py",
+        "launch.py",
         "pck.py",
     ],
     tags = ["python_files"],

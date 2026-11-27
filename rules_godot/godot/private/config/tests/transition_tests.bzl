@@ -10,7 +10,6 @@ _ExportInfo = provider(doc = "Configured regression observations.", fields = ["f
 _PlatformSliceInfo = provider(doc = "Configured regression observations.", fields = ["cpu", "file", "runtime"])
 _PlatformSlicesInfo = provider(doc = "Configured regression observations.", fields = ["cpus", "files", "runtimes"])
 _RUNTIME = Label("//godot:runtime_toolchain_type")
-_ALLOW = attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist")
 
 def _export_impl(ctx):
     file = ctx.actions.declare_file(ctx.label.name + ".pck")
@@ -28,7 +27,7 @@ def _platform_slice_impl(ctx):
         runtime = Label(toolchain.godot.provenance.component).name if toolchain else None,
     )]
 
-_PLATFORM_SLICE_ATTRS = dict(context_attrs(), export = attr.label(cfg = content_transition), _allowlist_function_transition = _ALLOW)
+_PLATFORM_SLICE_ATTRS = dict(context_attrs(), export = attr.label(cfg = content_transition))
 
 platform_slice_fixture = rule(implementation = _platform_slice_impl, attrs = _PLATFORM_SLICE_ATTRS)
 
@@ -55,7 +54,6 @@ platform_slices_fixture = rule(
     implementation = _platform_slices_impl,
     attrs = {
         "platform_slice": attr.label(cfg = platform_slice_transition),
-        "_allowlist_function_transition": _ALLOW,
     },
 )
 

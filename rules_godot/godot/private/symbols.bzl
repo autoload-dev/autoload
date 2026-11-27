@@ -1,9 +1,9 @@
 """Stripped native code for applications and its unstripped original as debug symbols."""
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private/config:native.bzl", "LIBRARY_OPTIONS")
 
 visibility("//godot/...")
@@ -25,7 +25,7 @@ keep_debug_info = transition(
 STRIP_ATTRS = {
     "_strip": attr.label(
         default = Label("//godot/private:strip"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
     "_native_symbols": attr.label(
         default = Label("//tools/platforms:native_symbols"),
@@ -62,7 +62,7 @@ def packaged(ctx, files, macho = False):
     Returns:
         A dictionary of the same paths to the Files to package.
     """
-    if not files or not ctx.attr._strip[FlagInfo].value:
+    if not files or not ctx.attr._strip[BuildSettingInfo].value:
         return files
     cc_toolchain = find_cc_toolchain(ctx, mandatory = False)
     if not cc_toolchain:

@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The login API contract on the host, without network access or an identity provider.
+## The login API on the host, without network access or an identity provider.
 ## BUSY needs a pending login and is a manual check; the README's "Run the demo" lists it.
 
 const ISSUER := "https://demo.duendesoftware.com"

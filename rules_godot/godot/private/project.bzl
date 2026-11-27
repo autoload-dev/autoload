@@ -7,9 +7,8 @@ Sections: Configuration files, Named add-ons, godot_project.
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "PINNED_SETTINGS", "validate_autoloads", "validate_custom_feature", "validate_settings")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
+load("//godot/private:context.bzl", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:import_units.bzl", "importer_staging")
 load("//godot/private:paths.bzl", "exec_paths", "mapped_path", "mapped_paths", "validate_resource_path")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo")
@@ -278,7 +277,7 @@ def _flag_settings(ctx):
         label = str(flag.label).removeprefix("@@")
         if key in flags:
             fail("%s and %s both set the setting %s" % (flags[key], label, key))
-        value = (flag[BuildSettingInfo] if BuildSettingInfo in flag else flag[FlagInfo]).value
+        value = flag[BuildSettingInfo].value
         if type(value) not in ["string", "int", "bool"]:
             fail("%s: settings_from_flags takes string, int and bool build settings, not %s" % (label, type(value)))
         values[key] = json.encode(value)
@@ -491,7 +490,7 @@ _godot_project = rule(
             value or hide it. No check resolves a res:// path a value names.
             See [Settings from build settings](../../configuration.md#settings-from-build-settings).
             """,
-            providers = [[BuildSettingInfo], [FlagInfo]],
+            providers = [BuildSettingInfo],
         ),
         "deps": attr.label_list(
             doc = """
@@ -516,7 +515,7 @@ _godot_project = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | TRANSITION_ATTRS,
+    },
     toolchains = [EDITOR_TOOLCHAIN],
 )
 

@@ -22,13 +22,6 @@ visibility(["//godot/..."])
 PROJECT_SETTING = str(Label("//godot/private:project_setting"))
 NO_PROJECT = str(Label("//godot/private:no_project"))
 
-# The attribute every rule with a transition of its own declares.
-TRANSITION_ATTRS = {
-    "_allowlist_function_transition": attr.label(
-        default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-    ),
-}
-
 def _context_impl(settings, attr):
     project = getattr(attr, "project", None)
     return {

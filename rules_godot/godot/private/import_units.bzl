@@ -4,10 +4,10 @@ Import units: the import of one unit's own files, its class fragment, interface 
 Sections: Unit import, Class fragment and interface, Validation.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "PATH_MAPPING", "add_output_roots", "editor_manifest", "write_manifest")
 load("//godot/private:configuration.bzl", "merge_configuration")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_modes")
 load("//godot/private:paths.bzl", "mapped_path", "mapped_paths", "merge_resource_paths", "with_extensions_for")
 
@@ -372,7 +372,7 @@ def _run_validation(ctx, context, unit, plan):
         "authored_autoloads": mapped_path(context.authored_autoloads),
         "autoloads": plan.autoloads,
         "resource_uids": metadata_modes(ctx)["resource_uids"],
-        "mode": ctx.attr._content_validation[FlagInfo].value,
+        "mode": ctx.attr._content_validation[BuildSettingInfo].value,
     } | ({
         # Only then, so that platforms whose extensions agree validate alike.
         "absent_extensions": sorted([extension.descriptor_path for extension in plan.extensions.absent]),
@@ -475,6 +475,6 @@ VALIDATION_ATTRS = {
     ),
     "_content_validation": attr.label(
         default = Label("//godot/private:content_validation"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
 } | METADATA_ATTRS

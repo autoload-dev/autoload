@@ -14,8 +14,6 @@ package(default_visibility = ["//visibility:public"])
 
 _APPLICATION_ID = "dev.autoload.examples.firebase"
 
-exports_files(["project.godot"])
-
 # Placeholder configuration of a Firebase project: replace both files with those of your
 # Firebase apps, downloaded from the Firebase console.
 firebase_config(

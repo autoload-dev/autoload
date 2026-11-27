@@ -4,6 +4,24 @@
 # their GitHub URLs, as Bazel's own repository does; the registry's hashes verify them.
 common --module_mirrors=https://bcr.cloudflaremirrors.com
 
+# Collect unused entries of the repo contents cache after two days instead of 14. It holds
+# extracted repositories, among them a full Godot source tree per engine recipe, and grew
+# to about 1 TiB with the default.
+common --repo_contents_cache_gc_max_age=2d
+
+# Keep the Aspect tools' telemetry off.
+common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
+
+build --incompatible_strict_action_env
+# Application settings must not create separate compiler/code-generator builds.
+build --incompatible_exclude_starlark_flags_from_exec_config
+# Java 21 for rules_android's tools, the Android packaging tests and the Java of the Android
+# SDK's tools (tools/android/java.py): Bazel's own, so the host's Java is not needed.
+build --java_runtime_version=remotejdk_21
+build --tool_java_runtime_version=remotejdk_21
+build --java_language_version=21
+build --tool_java_language_version=21
+
 # Path mapping gives actions that do not depend on the target configuration one cache key
 # in every configuration: the dexing and desugaring of Android libraries, the Godot actions
 # rules_godot opts in, such as the imports and validations of a project's units, which a

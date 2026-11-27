@@ -2399,6 +2399,10 @@
     "androidx.annotation:annotation": [
       "androidx.annotation"
     ],
+    "androidx.annotation:annotation-experimental:aar": [
+      "androidx.annotation",
+      "androidx.annotation.experimental"
+    ],
     "androidx.concurrent:concurrent-futures": [
       "androidx.concurrent.futures"
     ],
@@ -2455,6 +2459,62 @@
       "androidx.privacysandbox.tools.core.model",
       "androidx.privacysandbox.tools.core.proto",
       "androidx.privacysandbox.tools.core.validator"
+    ],
+    "androidx.test.espresso:espresso-idling-resource:aar": [
+      "androidx.test.espresso",
+      "androidx.test.espresso.idling"
+    ],
+    "androidx.test.ext:junit:aar": [
+      "androidx.test.ext.junit.rules",
+      "androidx.test.ext.junit.runners"
+    ],
+    "androidx.test.services:storage:aar": [
+      "androidx.test.services.storage",
+      "androidx.test.services.storage.file",
+      "androidx.test.services.storage.internal"
+    ],
+    "androidx.test:annotation:aar": [
+      "androidx.test.annotation"
+    ],
+    "androidx.test:core:aar": [
+      "androidx.test.core.app",
+      "androidx.test.core.content.pm",
+      "androidx.test.core.graphics",
+      "androidx.test.core.internal.os",
+      "androidx.test.core.os",
+      "androidx.test.core.view"
+    ],
+    "androidx.test:monitor:aar": [
+      "androidx.test",
+      "androidx.test.annotation",
+      "androidx.test.internal.platform",
+      "androidx.test.internal.platform.app",
+      "androidx.test.internal.platform.content",
+      "androidx.test.internal.platform.os",
+      "androidx.test.internal.platform.reflect",
+      "androidx.test.internal.platform.util",
+      "androidx.test.internal.runner",
+      "androidx.test.internal.runner.hidden",
+      "androidx.test.internal.runner.intent",
+      "androidx.test.internal.runner.intercepting",
+      "androidx.test.internal.runner.lifecycle",
+      "androidx.test.internal.util",
+      "androidx.test.platform",
+      "androidx.test.platform.app",
+      "androidx.test.platform.concurrent",
+      "androidx.test.platform.device",
+      "androidx.test.platform.graphics",
+      "androidx.test.platform.io",
+      "androidx.test.platform.tracing",
+      "androidx.test.platform.ui",
+      "androidx.test.platform.view.inspector",
+      "androidx.test.runner",
+      "androidx.test.runner.intent",
+      "androidx.test.runner.intercepting",
+      "androidx.test.runner.lifecycle"
+    ],
+    "androidx.tracing:tracing:aar": [
+      "androidx.tracing"
     ],
     "com.almworks.sqlite4java:sqlite4java": [
       "com.almworks.sqlite4java",

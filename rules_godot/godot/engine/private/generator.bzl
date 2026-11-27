@@ -8,10 +8,10 @@ is public.
 Sections: Source generator, Revision and headers, Source library and binary.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot/private:actions.bzl", "PATH_MAPPING")
-load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:symbols.bzl", "linked_dsym")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS", "version_below")
@@ -75,7 +75,7 @@ def _add_registration(args, ctx):
     options; another profile may only disable classes.
     """
     if ctx.files.class_profile and not ctx.attr.registered_profile:
-        engine = ctx.attr._engine[FlagInfo].value
+        engine = ctx.attr._engine[BuildSettingInfo].value
         args.add("--registration", _registration(ctx.attr.class_profile.label, engine))
 
 def _generator_impl(ctx):
@@ -225,7 +225,7 @@ def _revision_impl(ctx):
     args.add("--hash-output", ctx.outputs.hash)
     args.add("--timestamp-output", ctx.outputs.timestamp)
     inputs = []
-    if ctx.attr._stamp[FlagInfo].value:
+    if ctx.attr._stamp[BuildSettingInfo].value:
         # Only this action reads the workspace status. A new commit changes
         # only the hash and time stamp files, so only the hash generator and
         # what links the engine run again.
@@ -279,7 +279,7 @@ godot_source_revision = rule(
         ),
         "_stamp": attr.label(
             default = Label("//godot/private:stamp"),
-            providers = [FlagInfo],
+            providers = [BuildSettingInfo],
         ),
     },
 )

@@ -1,6 +1,6 @@
 """The variant of a build: Godot's release or debug export template, or its editor."""
 
-load("//godot/private:flags.bzl", "FlagInfo")
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 
 visibility("//godot/...")
 
@@ -8,7 +8,7 @@ visibility("//godot/...")
 VARIANT_ATTRS = {
     "_variant": attr.label(
         default = Label("//godot:variant"),
-        providers = [FlagInfo],
+        providers = [BuildSettingInfo],
     ),
 }
 
@@ -24,4 +24,4 @@ def variant(ctx):
     """
 
     # The flag itself rejects other values.
-    return ctx.attr._variant[FlagInfo].value
+    return ctx.attr._variant[BuildSettingInfo].value

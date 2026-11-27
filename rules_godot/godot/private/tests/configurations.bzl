@@ -43,6 +43,5 @@ in_platform_slice = rule(
     implementation = _in_platform_slice_impl,
     attrs = {
         "target": attr.label(mandatory = True, cfg = platform_slice_transition),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )

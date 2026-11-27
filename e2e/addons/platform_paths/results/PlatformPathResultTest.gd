@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 
-func test_typed_snapshot_contract() -> void:
+func test_results_are_typed_snapshots() -> void:
 	var resolver := PlatformPaths.new()
 	var first: PlatformPathResult = resolver.resolve(-23)
 	assert_object(first).is_not_null()

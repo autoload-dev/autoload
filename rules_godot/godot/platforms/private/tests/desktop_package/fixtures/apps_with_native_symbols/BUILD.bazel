@@ -7,7 +7,7 @@ package(default_visibility = ["//godot/platforms/private/tests/desktop_package:_
 
 genrule(
     name = "library",
-    outs = ["library/libandroid_contract_fixture.so"],
+    outs = ["library/libandroid_library_fixture.so"],
     cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
     tags = ["manual"],
 )

@@ -135,6 +135,8 @@ use_repo(maven, "maven", "rules_android_maven")
 # The root module may pin those repositories: pinned artifacts are fetched lazily through
 # Bazel's shared repository cache. Google's Maven Central mirror avoids Maven Central's rate
 # limits; the Maven resolver records which repository actually holds each artifact.
+# The lock files equal the ruleset's, which declares the same installations
+# (tools/setup/pins.py).
 maven.install(
     name = "rules_android_maven",
     known_contributing_modules = ["rules_android"],
@@ -364,11 +366,10 @@ godot_cpp_bindings = use_repo_rule(
     "godot_cpp_bindings",
 )
 
-# Keep the API independent of the engine pin to exercise forward compatibility; the scenarios'
-# extension needs Node only.
+# The default API, 4.7, stays independent of the engine pin to exercise forward
+# compatibility; the scenarios' extension needs Node only.
 godot_cpp_bindings(
     name = "godot_cpp",
-    api_path = "gdextension/extension_api-4-7.json",
     dev_dependency = True,
     enabled_classes = ["Node"],
 )

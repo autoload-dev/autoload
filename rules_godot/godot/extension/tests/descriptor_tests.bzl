@@ -28,7 +28,7 @@ linux.x86_64.release = {"res://native/dependency_fixture.txt": ""}
 
 [libraries]
 
-linux.x86_64.release = "res://native/bin/linux.x86_64.release/libandroid_contract_fixture.so"
+linux.x86_64.release = "res://native/bin/linux.x86_64.release/libandroid_library_fixture.so"
 """
 
 def _test_dependencies_section_sits_between_others(name):

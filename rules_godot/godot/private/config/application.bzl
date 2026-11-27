@@ -107,7 +107,6 @@ loadable_pack = rule(
     attrs = {
         # Named deps so rules_android's and rules_apple's aspects reach the pack's native code.
         "deps": attr.label_list(mandatory = True, cfg = project_transition, providers = [GodotPackInfo]),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )
 
@@ -135,6 +134,5 @@ application_pack = rule(
         "ios_families": attr.string_list(default = ["iphone", "ipad"]),
         "android_min_sdk_version": attr.int(),
         "android_target_sdk_version": attr.int(),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )

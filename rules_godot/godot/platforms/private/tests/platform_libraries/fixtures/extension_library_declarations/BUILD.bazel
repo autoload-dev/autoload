@@ -1,6 +1,6 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project")
 load("//godot/extension:defs.bzl", "godot_extension")
-load("//godot/extension/tests:extension_contracts.bzl", "dynamic_xcframework_fixture")
+load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixture")
 
 # Extensions whose library iOS cannot link, whose iOS library is a dynamic framework, whose
 # Android library has a runtime dependency, and two extensions whose Android libraries share
@@ -15,7 +15,7 @@ package(default_visibility = ["//godot/platforms/private/tests/platform_librarie
         tags = ["manual"],
     )
     for name, filename in {
-        "extension_library": "libandroid_contract_fixture.so",
+        "extension_library": "libandroid_library_fixture.so",
         "android_helper": "libhelper.so",
         "android_collision_a": "libcollision.so",
         "android_collision_b": "libcollision.so",

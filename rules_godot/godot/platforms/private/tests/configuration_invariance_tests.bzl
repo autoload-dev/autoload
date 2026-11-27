@@ -62,7 +62,6 @@ _configured = rule(
         "android_format": attr.string(),
         "macos_signing": attr.string(),
         "merge_android_manifest_permissions": attr.bool(),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )
 

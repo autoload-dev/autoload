@@ -21,6 +21,8 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 
+from python.runfiles import runfiles as bazel_runfiles
+
 from godot.private.project_config import compose_project, statement_groups
 from tools.godot_staging import (
     NEW_SESSION,
@@ -51,40 +53,39 @@ def report(message: str) -> None:
 
 
 @functools.cache
-def _runfiles_manifest(path: str) -> dict[str, str]:
-    return dict(line.partition(" ")[::2] for line in Path(path).read_text().splitlines())
+def _manifest(path: str) -> bazel_runfiles.Runfiles:
+    """A runfiles manifest, read once."""
+    return bazel_runfiles.CreateManifestBased(path)
 
 
-def _in_runfiles_directory(key: str) -> Path | None:
-    root = os.environ.get("RUNFILES_DIR") or os.environ.get("TEST_SRCDIR")
-    if root and (Path(root) / key).exists():
-        return (Path(root) / key).resolve()
-    return None
+def _in_directories(key: str) -> list[Path]:
+    roots = (os.environ.get(variable) for variable in ("RUNFILES_DIR", "TEST_SRCDIR"))
+    return [Path(root) / key for root in roots if root]
 
 
-def _in_runfiles_manifest(key: str) -> Path | None:
+def _in_manifest(key: str) -> list[Path]:
     manifest = os.environ.get("RUNFILES_MANIFEST_FILE")
-    if not manifest:
-        return None
-    entries = _runfiles_manifest(manifest)
-    return Path(entries[key]).resolve() if key in entries else None
+    # The key is canonical already: no repository mapping applies.
+    found = manifest and _manifest(manifest).Rlocation(key, source_repo="")
+    return [Path(found)] if found else []
 
 
-def _beside_program(key: str) -> Path | None:
+def _beside_program(key: str) -> list[Path]:
     """A runfile in the .runfiles directory the running program lies in."""
-    for parent in Path(sys.argv[0]).parents:
-        if parent.name.endswith(".runfiles") and (parent / key).exists():
-            return (parent / key).resolve()
-    return None
+    parents = Path(sys.argv[0]).parents
+    return [parent / key for parent in parents if parent.name.endswith(".runfiles")]
 
 
 def locate(key: str) -> Path:
-    found = (
-        _in_runfiles_directory(key) or _in_runfiles_manifest(key) or _beside_program(key)
-    )
-    if found is None:
-        raise FileNotFoundError(f"Runfile {key} was not found")
-    return found
+    """
+    The path of the runfile with a runfiles key, such as `_main/pkg/file`: in the runfiles
+    directories, the manifest or beside the program.
+    """
+    candidates = [*_in_directories(key), *_in_manifest(key), *_beside_program(key)]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+    raise FileNotFoundError(f"Runfile {key} was not found")
 
 
 def runfile_key(short_path: str, workspace: str) -> str:

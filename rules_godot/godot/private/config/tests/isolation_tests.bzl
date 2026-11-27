@@ -121,7 +121,7 @@ def _test_invalid_signing_mode_fails(name):
 
 def _invalid_signing_mode_fails(env, target):
     env.expect.that_target(target).failures().contains_predicate(
-        matching.contains("macos_signing must be unsigned, adhoc or certificate"),
+        matching.contains("Error setting //godot:macos_signing: invalid value 'invalid'"),
     )
 
 def _test_raw_pck_is_no_start_pack(name):

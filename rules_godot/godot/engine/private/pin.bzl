@@ -95,8 +95,8 @@ def _engine_pin_impl(ctx):
     tool = ctx.attr._update[DefaultInfo]
     write = (_UPDATE if ctx.attr.partial else _REPLACE).format(
         lock = ctx.attr.lock,
-        merged = runfile_key(ctx, merged),
-        tool = runfile_key(ctx, ctx.executable._update),
+        merged = runfile_key(ctx, merged.short_path),
+        tool = runfile_key(ctx, ctx.executable._update.short_path),
     )
     ctx.actions.write(launcher, _LAUNCHER.format(
         lock = ctx.attr.lock,

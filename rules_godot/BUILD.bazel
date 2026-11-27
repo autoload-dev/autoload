@@ -79,6 +79,9 @@ filegroup(
         "MODULE.bazel",
         "bcr/smoke/.bazelversion",
         "bcr/smoke/MODULE.bazel",
+        "//third_party/maven:android_ide_common_30_1_3_install.json",
+        "//third_party/maven:bazel_worker_maven_install.json",
+        "//third_party/maven:rules_android_maven_install.json",
     ],
 )
 

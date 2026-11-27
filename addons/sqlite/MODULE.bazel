@@ -20,7 +20,6 @@ godot_cpp_bindings = use_repo_rule(
 
 godot_cpp_bindings(
     name = "godot_cpp",
-    api_path = "gdextension/extension_api-4-7.json",
     enabled_classes = ["RefCounted"],
 )
 
