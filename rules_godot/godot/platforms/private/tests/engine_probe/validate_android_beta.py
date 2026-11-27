@@ -32,76 +32,97 @@ CPP_ENTRY = "example_library_init"
 BETA_COMMIT = "4d10419cacd6d3009976e8f9fd3abd970fd58018"
 
 
+def cpp_descriptor(pack: dict[str, Any]) -> configparser.ConfigParser:
+    if CPP_DESCRIPTOR not in pack["extension_descriptors"]:
+        raise ValueError("Beta APK has no godot-cpp extension descriptor")
+    descriptor = configparser.ConfigParser(interpolation=None)
+    descriptor.read_string(pack["extension_descriptors"][CPP_DESCRIPTOR])
+    return descriptor
+
+
+def is_shared_library(path: str) -> bool:
+    return path.startswith("res://") and path.endswith(".so")
+
+
+def android_library(descriptor: configparser.ConfigParser) -> str:
+    """Return the resource path of the descriptor's one Android arm64 library."""
+    libraries = [
+        json.loads(value)
+        for tags, value in descriptor["libraries"].items()
+        if {"android", "arm64"}.issubset(tags.split("."))
+    ]
+    if len(libraries) != 1 or not is_shared_library(libraries[0]):
+        raise ValueError(
+            "godot-cpp descriptor must name one Android arm64 shared library"
+        )
+    return libraries[0]
+
+
+def check_cpp_descriptor(descriptor: configparser.ConfigParser) -> str:
+    """Check the godot-cpp descriptor, and return the APK member of its library."""
+    configuration = descriptor["configuration"]
+    if json.loads(configuration["entry_symbol"]) != CPP_ENTRY:
+        raise ValueError("godot-cpp descriptor names an unexpected entry symbol")
+    if json.loads(configuration["compatibility_minimum"]) != "4.7.2":
+        raise ValueError(
+            "The Beta example must retain its Godot 4.7.2 extension compatibility minimum"
+        )
+    return "lib/arm64-v8a/" + android_library(descriptor).rsplit("/", 1)[-1]
+
+
 def check_pack(data: bytes) -> tuple[dict[str, Any], str]:
     pack = pck_contents(data)
     if pack["godot_version"] != "4.8.0":
         raise ValueError(
             "Beta APK must contain a Godot 4.8.0 PCK, got " + pack["godot_version"]
         )
-    descriptor = configparser.ConfigParser(interpolation=None)
-    if CPP_DESCRIPTOR not in pack["extension_descriptors"]:
-        raise ValueError("Beta APK has no godot-cpp extension descriptor")
-    descriptor.read_string(pack["extension_descriptors"][CPP_DESCRIPTOR])
-    if json.loads(descriptor["configuration"]["entry_symbol"]) != CPP_ENTRY:
-        raise ValueError("godot-cpp descriptor names an unexpected entry symbol")
-    if json.loads(descriptor["configuration"]["compatibility_minimum"]) != "4.7.2":
-        raise ValueError(
-            "The Beta example must retain its Godot 4.7.2 extension compatibility minimum"
-        )
-    libraries = [
-        json.loads(value)
-        for tags, value in descriptor["libraries"].items()
-        if {"android", "arm64"}.issubset(tags.split("."))
-    ]
-    if (
-        len(libraries) != 1
-        or not libraries[0].startswith("res://")
-        or not libraries[0].endswith(".so")
-    ):
-        raise ValueError(
-            "godot-cpp descriptor must name one Android arm64 shared library"
-        )
-    return pack, "lib/arm64-v8a/" + libraries[0].rsplit("/", 1)[-1]
+    return pack, check_cpp_descriptor(cpp_descriptor(pack))
 
 
-def check_engine(
-    packaged: bytes, aar_engine_library: bytes, kind: str, source: bytes | None = None
-) -> dict[str, Any]:
-    expected_origin = "official" if kind == "official" else "custom"
+def engine_version(packaged: bytes, kind: str) -> str:
+    origin = "official" if kind == "official" else "custom"
     # Upstream's release archive keeps version.py's status="beta"; official
     # binaries append the release number. The embedded commit identifies beta1
     # independently of that difference in version labels. A source-built engine names
     # its version hash instead, which covers the pinned beta1 archive.
     status = rb"beta1" if kind == "official" else rb"beta(?:1)?"
-    pattern = rb"4\.8\." + status + rb"\." + expected_origin.encode()
-    version = re.search(pattern, packaged)
-    if version is None or kind == "official" and BETA_COMMIT.encode() not in packaged:
+    version = re.search(rb"4\.8\." + status + rb"\." + origin.encode(), packaged)
+    names_commit = kind != "official" or BETA_COMMIT.encode() in packaged
+    if version is None or not names_commit:
         raise ValueError(
-            "Packaged engine does not identify itself as Godot 4.8.beta1."
-            + expected_origin
+            "Packaged engine does not identify itself as Godot 4.8.beta1." + origin
         )
+    return version.group().decode()
+
+
+def check_source_engine(packaged: bytes, source: bytes | None) -> None:
+    if source is None:
+        raise ValueError(
+            "Source-built engine validation requires the compiled engine library"
+        )
+    # The application packages the engine stripped as Bazel's --strip asks.
+    if elf_file_build_id(packaged) != elf_file_build_id(source):
+        raise ValueError("Packaged engine differs from the compiled source-built engine")
+    if b"BazelProbe" not in source:
+        raise ValueError(
+            "Source-built engine does not contain the requested custom BazelProbe module"
+        )
+    if b"Godot Engine with Bazel patch" not in source:
+        raise ValueError(
+            "Source-built engine does not contain the expected engine-name patch"
+        )
+
+
+def check_engine(
+    packaged: bytes, aar_engine_library: bytes, kind: str, source: bytes | None = None
+) -> dict[str, Any]:
+    version = engine_version(packaged, kind)
     if packaged != aar_engine_library:
         raise ValueError("Packaged engine differs from the selected engine AAR")
     if kind == "source":
-        if source is None:
-            raise ValueError(
-                "Source-built engine validation requires the compiled engine library"
-            )
-        # The application packages the engine stripped as Bazel's --strip asks.
-        if elf_file_build_id(packaged) != elf_file_build_id(source):
-            raise ValueError(
-                "Packaged engine differs from the compiled source-built engine"
-            )
-        if b"BazelProbe" not in source:
-            raise ValueError(
-                "Source-built engine does not contain the requested custom BazelProbe module"
-            )
-        if b"Godot Engine with Bazel patch" not in source:
-            raise ValueError(
-                "Source-built engine does not contain the expected engine-name patch"
-            )
+        check_source_engine(packaged, source)
     return {
-        "version_string": version.group().decode(),
+        "version_string": version,
         "commit": BETA_COMMIT,
         "sha256": hashlib.sha256(packaged).hexdigest(),
         "matches_selected_aar": True,
@@ -143,8 +164,30 @@ def source_build_manifest(path: Path) -> dict:
     return manifest
 
 
+def check_cpp_library(tool: Path, data: bytes, library: Path) -> None:
+    """Check the packaged godot-cpp library, written to a file for readelf."""
+    if b"BazelNode" not in data:
+        raise ValueError(
+            "Packaged godot-cpp extension does not contain the BazelNode implementation"
+        )
+    library.write_bytes(data)
+    check_symbols(command([tool, "--dyn-syms", "--wide", library]), CPP_ENTRY)
+    header = command([tool, "--file-header", library])
+    if not re.search(r"Machine:\s+AArch64", header):
+        raise ValueError("Android godot-cpp extension is not an AArch64 ELF library")
+
+
+# The lines of aapt's badging that the report keeps.
+MANIFEST_SUMMARY = (
+    "package:",
+    "sdkVersion:",
+    "targetSdkVersion:",
+    "launchable-activity:",
+    "native-code:",
+)
+
+
 def verify(args: argparse.Namespace) -> dict[str, Any]:
-    tool = args.readelf
     with zipfile.ZipFile(args.engine_aar) as archive:
         aar_engine_library = archive.read(AAR_ENGINE_MEMBER)
     with (
@@ -159,32 +202,9 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
             args.source_library.read_bytes() if args.source_library else None,
         )
         cpp_data = archive.read(cpp_member)
-        if b"BazelNode" not in cpp_data:
-            raise ValueError(
-                "Packaged godot-cpp extension does not contain the BazelNode implementation"
-            )
-        cpp_library = Path(temporary) / Path(cpp_member).name
-        cpp_library.write_bytes(cpp_data)
-        check_symbols(command([tool, "--dyn-syms", "--wide", cpp_library]), CPP_ENTRY)
-        header = command([tool, "--file-header", cpp_library])
-        if not re.search(r"Machine:\s+AArch64", header):
-            raise ValueError("Android godot-cpp extension is not an AArch64 ELF library")
-        badging = command(
-            [
-                args.aapt,
-                "dump",
-                "badging",
-                args.artifact,
-            ]
-        )
-        signature = command(
-            [
-                args.apksigner,
-                "verify",
-                "--verbose",
-                args.artifact,
-            ]
-        )
+        check_cpp_library(args.readelf, cpp_data, Path(temporary) / Path(cpp_member).name)
+        badging = command([args.aapt, "dump", "badging", args.artifact])
+        signature = command([args.apksigner, "verify", "--verbose", args.artifact])
         native_paths = sorted(
             path
             for path in archive.namelist()
@@ -211,17 +231,7 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
         "native_libraries": native_paths,
         "signature_verification": signature,
         "manifest_summary": [
-            line
-            for line in badging.splitlines()
-            if line.startswith(
-                (
-                    "package:",
-                    "sdkVersion:",
-                    "targetSdkVersion:",
-                    "launchable-activity:",
-                    "native-code:",
-                )
-            )
+            line for line in badging.splitlines() if line.startswith(MANIFEST_SUMMARY)
         ],
         "device_execution": False,
     }
