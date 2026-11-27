@@ -12,7 +12,7 @@ from collections.abc import Container, Iterator, Mapping
 from pathlib import Path
 
 from tools.resources.files import is_sidecar_named
-from tools.resources.text import file_identities, headings, res_path
+from tools.resources.text import Heading, file_identities, headings, res_path
 
 TEXT_RESOURCES = (".tscn", ".tres")
 
@@ -51,6 +51,16 @@ def known_uids(files: dict[str, str], declared: Container[str]) -> dict[str, str
     }
 
 
+def _referenced_path(heading: Heading, scene: str) -> str | None:
+    """The resource path an ext_resource names, resolved against its scene; None if invalid."""
+    if "path" not in heading.attrs:
+        return None
+    try:
+        return res_path(heading.attrs["path"], "res://" + scene).removeprefix("res://")
+    except ValueError:
+        return None
+
+
 def _mismatches(
     text: str, scene: str, uids: dict[str, str]
 ) -> Iterator[tuple[str, str, int, int]]:
@@ -62,13 +72,10 @@ def _mismatches(
     where Godot writes it.
     """
     for heading in headings(text):
-        if heading.section != "ext_resource" or "path" not in heading.attrs:
+        if heading.section != "ext_resource":
             continue
-        try:
-            path = res_path(heading.attrs["path"], "res://" + scene).removeprefix(
-                "res://"
-            )
-        except ValueError:
+        path = _referenced_path(heading, scene)
+        if path is None:
             continue
         known, current = uids.get(path), heading.attrs.get("uid")
         if not known or current == known:
