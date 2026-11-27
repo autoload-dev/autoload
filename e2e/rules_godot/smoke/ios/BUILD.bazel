@@ -80,6 +80,7 @@ godot_resources(
         "main/native_counter/counter.gd.uid",
     ],
     tags = ["manual"],
+    # Two extensions register NativeCounter; this scene uses the static one.
     deps = [":static_counter"],  # keep
 )
 
