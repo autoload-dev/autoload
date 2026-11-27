@@ -3,6 +3,7 @@ The generated repositories of engines: each engine's hub, one component per slot
 extension's toolchains repository of every engine's components.
 """
 
+load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
@@ -165,6 +166,10 @@ def _hub_impl(ctx):
         "{COMPONENTS}": "".join([_declaration(slot, ctx.attr.engine, ctx.attr.default_engine) for slot in sorted(slots, key = lambda s: s["name"])]),
     })
 
+    # The hub's targets reach payloads of repositories without metadata of their own, such
+    # as a prebuilt Android shell's download.
+    write_package_metadata(ctx, source_purl("godot", ctx.attr.version))
+
 engine_hub = repository_rule(
     implementation = _hub_impl,
     attrs = {
@@ -172,6 +177,7 @@ engine_hub = repository_rule(
         "display_name": attr.string(doc = "Apparent hub name for the generated comment.", mandatory = True),
         "engine": attr.string(doc = "Name of the engine every component belongs to; empty for the default engine."),
         "default_engine": attr.bool(doc = "Whether the named engine is also the default engine, which builds that name none take."),
+        "version": attr.string(doc = "Canonical Godot version of the engine, which the package metadata of the hub's targets names."),
         "toolchains_repository": attr.string(doc = "The extension's repository of every engine's toolchains, which registers the hub's components."),
         "android_runtimes": attr.string(doc = """
             JSON object of variant to {"shell": label, "engine_libraries": {CPU: label}};

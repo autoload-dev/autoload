@@ -11,6 +11,7 @@ them; an implementation returns after an error.
 Sections: Engine source, Tree links, Engine build, Android shell.
 """
 
+load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata")
 load("//godot/private:versions.bzl", "require_supported_source_version")
 load("//godot/private/config:settings.bzl", "OPERATING_SYSTEM_CONSTRAINTS")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
@@ -68,6 +69,14 @@ def engine_source_impl(ctx, *, _fail = fail):
 def _read_tree(ctx):
     """Read the `tree.json` descriptor of the repository's engine tree, whose digest keys it."""
     return json.decode(ctx.read(ctx.path(ctx.attr.tree)))
+
+def _write_tree_metadata(ctx, tree):
+    """Give the repository's targets the package metadata of the tree's source archive."""
+    write_package_metadata(
+        ctx,
+        source_purl("godot", tree["version"], "sha256:" + tree["sha256"]),
+        "%s/LICENSE.txt" % ctx.path(ctx.attr.tree).dirname,
+    )
 
 def _link_tree(ctx, path = ""):
     """
@@ -488,6 +497,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     for placeholder in placeholders:
         ctx.delete(placeholder)
     _finish(ctx, tree, arguments, variants)
+    _write_tree_metadata(ctx, tree)
 
     # A pinned recipe depends only on the recipe, the sources and the lock file, and Android
     # and Apple configurations only on those and the environment recorded above, so Bazel's
@@ -559,6 +569,7 @@ def android_shell_impl(ctx, *, _fail = fail):
         "{JAVA_LEVEL}": repr(shell["java_level"]),
         "{DEPS}": repr([str(Label(dep)) for dep in shell["deps"]]),
     })
+    _write_tree_metadata(ctx, tree)
 
     # The engine tree determines the contents, so Bazel's repo contents cache, local or
     # remote, may reuse them.

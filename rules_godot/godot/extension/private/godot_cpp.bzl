@@ -7,6 +7,7 @@ them; the implementation returns after an error.
 
 load("//godot/private:patches.bzl", "apply_repository_patches")
 load("//godot/private:repository_templates.bzl", "starlark_list")
+load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata")
 
 visibility(["//godot/extension/..."])
 
@@ -180,6 +181,11 @@ def godot_cpp_bindings_impl(ctx, *, _fail = fail):
         "{DEFINES}": starlark_list(defines, indent = "    "),
         "{WINDOWS}": repr(str(ctx.attr._windows_constraint)),
     })
+    write_package_metadata(
+        ctx,
+        source_purl("godot-cpp", checksum = "sha256:" + ctx.attr.sha256 if ctx.attr.sha256 else ""),
+        "LICENSE.md",
+    )
 
     # A checksum-pinned archive and its patches determine the contents, so Bazel's repo
     # contents cache, local or remote, may reuse them.

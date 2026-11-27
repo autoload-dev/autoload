@@ -56,7 +56,7 @@ def _bindings(*, api = None, api_path = _API_PATH, execute = {}, **overrides):
             "_windows_constraint": "@@platforms//os:windows",
             "_build_template": "godot_cpp.BUILD.tpl",
         } | overrides,
-        files = {api_path: api or _api()},
+        files = {api_path: api or _api(), "LICENSE.md": "Copyright (c) godot-cpp contributors."},
         which = {"patch": _PATCH},
         execute = execute,
     )
@@ -165,7 +165,13 @@ def _test_enabled_classes_keep_ancestors(env):
 def _test_no_enabled_classes_generate_every_class(env):
     ctx, errors = _bindings()
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
+
+    # No build profile; the repository writes only its package metadata.
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly([
+        "REPO.bazel",
+        "_package_metadata/LICENSE.md",
+        "_package_metadata/BUILD.bazel",
+    ])
     substitutions = _substitutions(ctx)
     env.expect.that_str(substitutions["{PROFILE}"]).equals("None")
     env.expect.that_str(substitutions["{PROFILE_GENERATOR}"]).equals("None")

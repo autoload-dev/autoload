@@ -24,6 +24,7 @@ bzl_library(
     srcs = ["archives.bzl"],
     deps = [
         "//godot/private:repository_templates",
+        "//godot/private:supply_chain",
         "//godot/private:versions",
         "//godot/private/config:settings",
     ],
@@ -95,7 +96,10 @@ bzl_library(
 bzl_library(
     name = "hub",
     srcs = ["hub.bzl"],
-    deps = ["//godot/private/config:settings"],
+    deps = [
+        "//godot/private:supply_chain",
+        "//godot/private/config:settings",
+    ],
 )
 
 bzl_library(
@@ -152,6 +156,7 @@ bzl_library(
     name = "source_repositories",
     srcs = ["source_repositories.bzl"],
     deps = [
+        "//godot/private:supply_chain",
         "//godot/private:versions",
         "//godot/private/config:settings",
         "//godot/private/engine:profiles",
