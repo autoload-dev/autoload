@@ -109,7 +109,7 @@ For a module, that means:
 - Demo tests live in `examples/addons/<module>/tests/`, never in the project's root package.
 
 The root module lints the modules' Python too, in `bazel build --config=lint`, so every `py_binary`,
-`py_library` and `py_test` of a module carries the tag `lint-genfiles` (RG027). Findings name
+`py_library` and `py_test` of a module carries the tag `lint-genfiles`, or the lint fails. Findings name
 the files as `external/autoload_<module>+/...`; Ruff's fixes apply only through
 `aspect lint --fix` in the module's own directory. The modules' GDScript, Markdown and shell
 scripts need no targets for their lint: the

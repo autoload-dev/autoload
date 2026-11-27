@@ -36,7 +36,7 @@ KEEP_GOING = args.boolean(default = False, short = "k", description = "Run every
 def _targets(workspace: str):
     """A workspace's targets: the ruleset's own, the root module's with the add-on modules'.
 
-    The root module builds, tests and lints the add-on modules from there (RG027); its target
+    The root module builds, tests and lints the add-on modules from there; its target
     patterns are generated with their declarations (root.targets, tools/addons/declarations.py).
     """
     if workspace != ".":
