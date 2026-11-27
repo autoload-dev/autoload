@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from tools.platforms import check_engine_version
+from tools.platforms.native_fixtures import archive, macho
 
 LIBRARY = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -75,6 +76,43 @@ class CheckEngineVersionTest(unittest.TestCase):
                 "--library", str(library), "--assert-version", "4.8.0-beta1"
             )
         self.check_engine("--library", str(library), "--assert-version", "4.7.2")
+
+    def test_a_prerelease_number_in_the_engine_must_match_the_assertion(self) -> None:
+        library = self.root / "libgodot.a"
+        library.write_bytes(b"Godot Engine v4.8.beta2.official\0")
+        with self.assertRaisesRegex(
+            SystemExit,
+            "^engine_version assertion 4.8.0-beta1 contradicts inspected engine "
+            r"4\.8\.beta2\.official$",
+        ):
+            self.check_engine(
+                "--library", str(library), "--assert-version", "4.8.0-beta1"
+            )
+        self.check_engine("--library", str(library), "--assert-version", "4.8.0-beta2")
+        self.assertEqual(
+            (self.root / "engine_version").read_text(),
+            "Checked engine 4.8.beta2.official\n",
+        )
+        # An empty library names no version.
+        library.write_bytes(b"")
+        self.check_engine("--library", str(library), "--assert-version", "4.8.0-beta1")
+        self.assertEqual(
+            (self.root / "engine_version").read_text(),
+            "Checked engine without version facts\n",
+        )
+
+    def test_every_ios_library_without_the_platform_slice_is_reported(self) -> None:
+        libraries = []
+        for name in ["libgodot.a", "libother.a"]:
+            library = self.root / name
+            library.write_bytes(archive(macho(cpu="x86_64", sdk="ios_simulator")))
+            libraries += ["--ios-library", str(library)]
+        with self.assertRaisesRegex(
+            SystemExit,
+            r"(?s)^The iOS engine library libgodot\.a has.*\nThe iOS engine library libother\.a",
+        ):
+            self.check_engine(*libraries, "--ios-platform-slice", "arm64:ios_device")
+        self.check_engine(*libraries, "--ios-platform-slice", "x86_64:ios_simulator")
 
     def test_engine_aar_ships_the_engine_library_of_the_platform_slice_abi(self) -> None:
         native_libs = self.root / "native_libs.zip"

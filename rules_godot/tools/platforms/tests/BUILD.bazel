@@ -82,7 +82,10 @@ py_test(
     name = "check_engine_version_test",
     size = "small",
     srcs = ["check_engine_version_test.py"],
-    deps = ["//tools/platforms:check_engine_version_lib"],
+    deps = [
+        "//tools/platforms:check_engine_version_lib",
+        "//tools/platforms:native_fixtures",
+    ],
 )
 
 py_test(
