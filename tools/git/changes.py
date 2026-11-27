@@ -1,13 +1,17 @@
 """
 The files a change touches, for the tools that review a change: the working tree against a
-commit, untracked files included (changed_paths), or the index against HEAD (staged_paths).
+commit, untracked files included (changed_paths), or the index against HEAD (staged_paths),
+whose files index_checkout writes out.
 A branch's change starts at its merge base with a base ref (merge_base), so that commits
 which landed on the base after the branch point are not part of it.
 """
 
 from __future__ import annotations
 
+import contextlib
 import subprocess
+import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,3 +80,15 @@ def staged_paths(repo: Path) -> list[ChangedPath]:
     return parse_name_status(
         git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
     )
+
+
+@contextlib.contextmanager
+def index_checkout(repo: Path) -> Iterator[Path]:
+    """
+    A temporary directory holding every file of the index as the index holds it, which is
+    what the next commit records; removed afterwards. It needs no stash, which a
+    repository's worktrees share, and leaves the working tree untouched.
+    """
+    with tempfile.TemporaryDirectory(prefix="index-") as directory:
+        git(repo, "checkout-index", "--all", f"--prefix={directory}/")
+        yield Path(directory)

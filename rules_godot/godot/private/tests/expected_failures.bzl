@@ -5,7 +5,7 @@ load("@rules_testing//lib:truth.bzl", "matching")
 
 visibility(["//godot/private/tests/..."])
 
-def failure_test(name, target, message, config_settings = {}):
+def failure_test(name, target, message, config_settings = None):
     """
     Declare an analysis test that the analysis of target fails with message.
 
@@ -24,7 +24,7 @@ def failure_test(name, target, message, config_settings = {}):
         expect_failure = True,
         attrs = {"message": attr.string()},
         attr_values = {"message": message},
-        config_settings = config_settings,
+        config_settings = config_settings or {},
     )
 
 def _fails_with_message(env, targets):

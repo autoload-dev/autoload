@@ -22,7 +22,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -292,17 +291,15 @@ def run(
 def run_staged(tools: Mapping[Tool, str], root: Path) -> int:
     """
     Check the staged files as the index holds them, which is what the next commit records, as
-    `run` does. The tools run in a checkout of the whole index in a temporary directory, so
-    that neither unstaged changes nor untracked files hide or cause a finding, and the working
-    tree stays untouched: no stash, which the repository's worktrees share.
+    `run` does. The tools run in a checkout of the whole index, so that neither unstaged
+    changes nor untracked files hide or cause a finding.
     """
     files = staged_files(root)
     if not files:
         return 0
     indexed = _git(root, "ls-files", "-z", "--cached")
-    with tempfile.TemporaryDirectory(prefix="file-lint-") as checkout:
-        _git(root, "checkout-index", "--all", f"--prefix={checkout}/")
-        return _run_in(tools, files, _Tree(Path(checkout), indexed), fix=False)
+    with changes.index_checkout(root) as checkout:
+        return _run_in(tools, files, _Tree(checkout, indexed), fix=False)
 
 
 # ==== Command line ============================================================
@@ -327,7 +324,7 @@ def _executables(tools: Sequence[Tool]) -> dict[Tool, str]:
     return paths
 
 
-def main(argv: list[str]) -> int:
+def _arguments(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--scope", choices=("changed", "all", "staged"), default="changed"
@@ -339,18 +336,28 @@ def main(argv: list[str]) -> int:
     )
     parser.add_argument("files", nargs="*")
     args = parser.parse_args(argv)
+    given = args.files or args.fix
+    if args.scope == "staged" and given:
+        parser.error("--scope=staged checks the staged files; it takes no files or --fix")
+    return args
+
+
+def _files(args: argparse.Namespace, root: Path) -> list[str]:
+    """The files of a run outside the staged scope."""
+    if args.files:
+        directory = Path(os.environ.get("BUILD_WORKING_DIRECTORY", root))
+        return given_files(args.files, root, directory)
+    if args.scope == "all" or args.fix:
+        return listed_files(root)
+    return changed_files(root, _BASE)
+
+
+def main(argv: list[str]) -> int:
+    args = _arguments(argv)
     root = Path(os.environ.get("BUILD_WORKSPACE_DIRECTORY", "."))
     if args.scope == "staged":
         return run_staged(_executables(TOOLS), root)
-    if args.files:
-        files = given_files(
-            args.files, root, Path(os.environ.get("BUILD_WORKING_DIRECTORY", root))
-        )
-    elif args.scope == "all" or args.fix:
-        files = listed_files(root)
-    else:
-        files = changed_files(root, _BASE)
-    return run(_executables(TOOLS), files, root, fix=args.fix)
+    return run(_executables(TOOLS), _files(args, root), root, fix=args.fix)
 
 
 if __name__ == "__main__":
