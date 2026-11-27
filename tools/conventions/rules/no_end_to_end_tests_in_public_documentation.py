@@ -18,6 +18,12 @@ END_TO_END_TEST = re.compile(
 )
 
 
+def references(text: str) -> Iterable[int]:
+    """The numbers of the lines that reference an end-to-end test."""
+    lines = enumerate(text.splitlines(), 1)
+    return (number for number, line in lines if END_TO_END_TEST.search(line))
+
+
 class EndToEndTestReferences:
     info = RuleInfo(
         "no-end-to-end-tests-in-public-documentation",
@@ -25,13 +31,13 @@ class EndToEndTestReferences:
     )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
-        for name in context.workspace.documents:
-            # Internal documentation may name the end-to-end tests it describes.
-            if internal_document(name):
-                continue
-            for number, line in enumerate(context.workspace.text(name).splitlines(), 1):
-                if END_TO_END_TEST.search(line):
-                    yield Finding(
-                        Location(name, number),
-                        "show a runnable example from examples/ instead of an end-to-end test",
-                    )
+        # Internal documentation may name the end-to-end tests it describes.
+        public = (
+            name for name in context.workspace.documents if not internal_document(name)
+        )
+        for name in public:
+            for number in references(context.workspace.text(name)):
+                yield Finding(
+                    Location(name, number),
+                    "show a runnable example from examples/ instead of an end-to-end test",
+                )
