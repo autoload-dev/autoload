@@ -8,3 +8,13 @@ py_test(
     srcs = ["mapped_paths_test.py"],
     deps = ["//tools/inputs:mapped_paths_lib"],
 )
+
+py_test(
+    name = "manifest_test",
+    size = "small",
+    srcs = ["manifest_test.py"],
+    deps = [
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:mapped_paths_lib",
+    ],
+)

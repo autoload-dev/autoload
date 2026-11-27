@@ -4,8 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.inputs.manifest import add_resource_path_manifests, resource_path
-from tools.inputs.mapped_paths import resolver
 from tools.inputs.originals import (
     IMPORT_ARCHIVE,
     copy_file,
@@ -13,7 +11,6 @@ from tools.inputs.originals import (
     same_content,
     write_archive,
 )
-from tools.staging.files import validate_staged_paths
 from tools.staging.project import stage
 
 
@@ -59,26 +56,6 @@ class StagingTest(unittest.TestCase):
             member.mode = 0o755
             self.assertTrue(executable((root / "unit.tar", member)))
             self.assertFalse(executable(b"bytes"))
-
-    def test_resource_identities_reject_escaping_paths(self) -> None:
-        for path in ["../x", "/x", "a/../b", "a//b", "res://x", "a\\b", ""]:
-            with self.subTest(path=path), self.assertRaises(ValueError):
-                resource_path(path)
-        self.assertEqual(resource_path("generated/a.tres"), "generated/a.tres")
-
-    def test_staging_rejects_case_and_unicode_aliases_before_copying(self) -> None:
-        for paths in [
-            ("A.gd", "a.gd"),
-            ("Assets/a.gd", "assets/b.gd"),
-            ("a", "a/b"),
-            ("caf\u00e9/a.gd", "cafe\u0301/b.gd"),
-        ]:
-            with (
-                self.subTest(paths=paths),
-                self.assertRaisesRegex(ValueError, "Conflicting"),
-            ):
-                validate_staged_paths({path: "input" for path in paths})
-        validate_staged_paths({"a/a.gd": "one", "a/b.gd": "two"})
 
     def test_overlapping_imports_must_have_identical_content(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -311,27 +288,6 @@ class StagingTest(unittest.TestCase):
                 'enabled=PackedStringArray("res://addons/a/plugin.cfg", "res://addons/md/plugin.cfg")',
                 text,
             )
-
-    def test_resource_path_manifests_merge_unless_they_conflict(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            base = Path(temp)
-            for name, resource_paths in [
-                ("one", {"a.gd": "x/a.gd"}),
-                ("two", {"a.gd": "x/a.gd", "b.gd": "x/b.gd"}),
-                ("other", {"a.gd": "y/a.gd"}),
-            ]:
-                (base / name).write_text(json.dumps(resource_paths))
-            manifest = {"project_file": "project.godot"}
-            add_resource_path_manifests(
-                manifest, [base / "one", base / "two"], resolver([])
-            )
-            self.assertEqual(
-                {"a.gd": "x/a.gd", "b.gd": "x/b.gd"}, manifest["member_resource_paths"]
-            )
-            with self.assertRaisesRegex(
-                ValueError, "Conflicting staged sources for a.gd"
-            ):
-                add_resource_path_manifests(manifest, [base / "other"], resolver([]))
 
     def test_staging_points_references_at_the_files_uids(self) -> None:
         scene = (

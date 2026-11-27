@@ -140,9 +140,10 @@ and inactive feature overrides, then reconstructs per-purpose plugin lists.
 [staged project](../../../tools/staging/project.py): staging/extensions;
 [child environment](../../../tools/editor_action/process.py).
 [Godot project actions](../../../tools/editor_action/project.py): scan/conversion/output capture
-(section Import); importer/feature probes (Importers).
-[Godot exports](../../../tools/editor_action/export.py): generated presets (Export presets);
-export lock/workspace (Export lock); pack staging/rescan/export/report (Pack assembly).
+(region Import); importer/feature probes (region Importers).
+[Godot exports](../../../tools/editor_action/export.py): generated presets (region Export presets);
+export lock/workspace (region Export lock); pack staging/rescan/export/report (region Pack
+assembly).
 Per-import-unit output retention is .godot/imported changes + own sidecars; initialization captures
 changed staged-project files. Custom output paths/alternative project-data layout need review.
 
@@ -206,7 +207,7 @@ generator source/stamp and native compilation/link inputs feed actual executable
 [probe export script](../../../tools/editor_action/plugin/shell.gd),
 [action plugin](../../../tools/editor_action/plugin/plugin.gd),
 [engine profiles](../../../godot/private/engine/profiles.bzl) and
-[export shell mode](../../../tools/editor_action/export.py#L115).
+export shell mode (`shell_assets` in [the export tool](../../../tools/editor_action/export.py)).
 Probe reports actual defaults/settings/feature tags; engine profiles supply remaining versioned
 tables.
 The shell-assets action does not parse the already generated main PCK as its input.

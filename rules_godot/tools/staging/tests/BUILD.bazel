@@ -7,10 +7,14 @@ py_test(
     size = "small",
     srcs = ["project_test.py"],
     deps = [
-        "//tools/inputs:manifest_lib",
-        "//tools/inputs:mapped_paths_lib",
         "//tools/inputs:originals_lib",
-        "//tools/staging:files_lib",
         "//tools/staging:project_lib",
     ],
+)
+
+py_test(
+    name = "files_test",
+    size = "small",
+    srcs = ["files_test.py"],
+    deps = ["//tools/staging:files_lib"],
 )

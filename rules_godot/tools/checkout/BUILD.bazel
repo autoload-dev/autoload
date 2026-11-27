@@ -64,7 +64,6 @@ py_library(
         ":sync_lib",
         "//tools/editor_action:action_lib",
         "//tools/inputs:manifest_lib",
-        "//tools/inputs:runfiles_lib",
         "//tools/staging:project_lib",
     ],
 )
