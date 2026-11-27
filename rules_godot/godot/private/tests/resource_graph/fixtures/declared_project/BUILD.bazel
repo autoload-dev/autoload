@@ -3,7 +3,10 @@ load("//godot/private:analysis.bzl", "godot_resource_graph")
 
 # A project whose scene, script and resource are declared with the runtime references of the
 # script and the scene, and its resource graph that requires declared edges.
-package(default_visibility = ["//godot/private/tests/resource_graph:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/resource_graph:__pkg__"],
+)
 
 godot_resources(
     name = "sources",

@@ -2,7 +2,10 @@ load("//godot/platforms:defs.bzl", "godot_export_platform")
 
 # Export platforms with both CPUs of Android and of the iOS Simulator, each with a
 # constraint of its own; common_android also inherits a base platform's constraint.
-package(default_visibility = ["//godot/platforms/private/tests/app_platform_selection:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/app_platform_selection:__subpackages__"],
+)
 
 constraint_setting(name = "cpu_selection")
 

@@ -1,12 +1,10 @@
 """godot_engine_tree extracts, patches and prepares one engine's sources for all its recipes."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:tree_repository.bzl", "engine_tree_impl")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _SOURCE = Label("//godot/engine/private/tests:source.json")
 _SHA256 = "e954996374cbd1cb5d72e0e3781cc537408e6ce73b010b12c6c2f308a820690a"

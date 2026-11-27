@@ -9,6 +9,8 @@ load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load(":action_inputs.bzl", "build_graph", "expect_built_not_read", "expect_built_reads_output_of", "godot_actions")
 load(":expected_failures.bzl", "failure_test")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _CONFIGURED = [_FIXTURE + ":configured_check", _FIXTURE + ":configured_resources"]
 

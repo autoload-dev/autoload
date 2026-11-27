@@ -7,10 +7,12 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:defs.bzl", "godot_project", "godot_run", "godot_test")
 load("//godot:providers.bzl", "GodotPackInfo")
-load("//godot/private:run.bzl", "validate_run_sources")
+load("//godot/private:run.bzl", "godot_process_tags", "require_testonly", "validate_run_sources")
 load(":expected_failures.bzl", "failure_test")
 load(":manifests.bzl", "manifest_content")
 load(":mocks.bzl", "mocks")
+
+visibility("private")
 
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _PROJECT = _FIXTURE
@@ -142,14 +144,43 @@ def _run_engine_errors_reach_its_manifest(env, targets):
 # A run is a project with deps or a pack, never both.
 def _test_project_and_pack_together_fail(env):
     errors, fail_ = mocks.errors()
-    validate_run_sources("game", [":main"], None, ":pack", _fail = fail_)
-    validate_run_sources("game", [], ":project", ":pack", _fail = fail_)
-    validate_run_sources("game", [":main"], ":project", None, _fail = fail_)
-    validate_run_sources("game", [], None, ":pack", _fail = fail_)
+    validate_run_sources("game", ":project", ":pack", _fail = fail_)
+    validate_run_sources("game", ":project", None, _fail = fail_)
+    validate_run_sources("game", None, ":pack", _fail = fail_)
     env.expect.that_collection(errors).contains_exactly([
         "game: specify a project and deps, or a pack",
-        "game: specify a project and deps, or a pack",
     ])
+
+# A test is always test-only.
+def _test_test_only_false_fails(env):
+    errors, fail_ = mocks.errors()
+    require_testonly("check", True, _fail = fail_)
+    require_testonly("check", False, _fail = fail_)
+    env.expect.that_collection(errors).contains_exactly([
+        "check: a godot_test is test-only; remove testonly = False",
+    ])
+
+# A test starts Godot, so it carries godot_process, unless it is a smoke test.
+def _test_tests_carry_godot_process_unless_smoke(env):
+    env.expect.that_collection(godot_process_tags(None)).contains_exactly(["godot_process"])
+    env.expect.that_collection(godot_process_tags(["manual"])).contains_exactly(["manual", "godot_process"])
+    env.expect.that_collection(godot_process_tags(["smoke"])).contains_exactly(["smoke"])
+    env.expect.that_collection(godot_process_tags(["smoke", "godot_process"])).contains_exactly(["smoke"])
+    env.expect.that_collection(godot_process_tags(["godot_process"])).contains_exactly(["godot_process"])
+
+# deps beside a pack fail the run's analysis: the pack brings its content.
+def _test_deps_beside_a_pack_fail(name):
+    godot_run(
+        name = name + "_run",
+        pack = _PACKS + ":dlc_pack",
+        tags = ["manual"],
+        deps = _DEPS,
+    )
+    failure_test(
+        name = name,
+        target = name + "_run",
+        message = "*_run: specify a project and deps, or a pack",
+    )
 
 def source_run_test_suite(name):
     test_suite(
@@ -158,6 +189,7 @@ def source_run_test_suite(name):
             _test_additional_packs_reach_manifest_and_runfiles,
             _test_additional_packs_sharing_a_file_name_fail,
             _test_data_reaches_runfiles,
+            _test_deps_beside_a_pack_fail,
             _test_env_reaches_manifest,
             _test_headless_attribute_reaches_manifest,
             _test_run_engine_errors_reach_its_manifest,
@@ -165,5 +197,7 @@ def source_run_test_suite(name):
         ],
         basic_tests = [
             _test_project_and_pack_together_fail,
+            _test_test_only_false_fails,
+            _test_tests_carry_godot_process_unless_smoke,
         ],
     )

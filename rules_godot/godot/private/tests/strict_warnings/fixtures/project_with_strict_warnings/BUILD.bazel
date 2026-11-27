@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_project", "godot_resources")
 
 # A project that treats every GDScript warning as an error, with a main scene and an imported
 # texture.
-package(default_visibility = ["//godot/private/tests/strict_warnings:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/strict_warnings:__pkg__"],
+)
 
 godot_project(
     name = "project_with_strict_warnings",

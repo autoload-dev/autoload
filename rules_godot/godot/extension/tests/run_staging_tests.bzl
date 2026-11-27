@@ -7,6 +7,8 @@ load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private/tests:pack_actions.bzl", "PackActionsInfo", "pack_actions")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 
+visibility("private")
+
 _EXTENSION_ATTRS = {"extension": attr.label(providers = [GodotExtensionInfo])}
 
 def _editor_files(extension, resource_paths):

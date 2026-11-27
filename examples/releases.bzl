@@ -8,15 +8,8 @@ The release builds of the repository's applications, declared beside each one's 
 same Bazel invocation and configuration as everything else (shared.bazelrc).
 """
 
-# The ruleset's configured applications, which it does not support as API.
-# buildifier: disable=bzl-visibility
-load(
-    "@autoload_rules_godot//godot/private:configured_app.bzl",
-    "ANDROID_RELEASE",
-    "APPLE_RELEASE",
-    "godot_configured_app",
-)
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load(":configured_app.bzl", "ANDROID_RELEASE", "APPLE_RELEASE", "godot_configured_app")
 
 def _release_test(name, os_tag, target_compatible_with = []):
     """Build a release and its debug symbols as a test tagged with its mobile operating system, which starts Godot."""

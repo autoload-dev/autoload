@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_editor_component")
 
+package(default_testonly = True)
+
 # The engine "custom" with a macOS editor only: on Linux execution platforms only the
 # default engine has an editor.
 godot_editor_component(

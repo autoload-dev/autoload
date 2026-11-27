@@ -12,6 +12,8 @@ load("//godot/platforms:defs.bzl", "godot_export_platform")
 load("//godot/private/config:settings.bzl", "export_platform_declarations")
 load(":inheritance_tests.bzl", "PlatformSlicesInfo", "PropertiesInfo")
 
+visibility("private")
+
 def _test_constraint_values_reach_every_platform_slice(name):
     godot_export_platform(
         name = name + "_platform",

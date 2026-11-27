@@ -90,12 +90,16 @@ local_path_override(
 # (tools/addons/declarations.py).
 include("//:addons.MODULE.bazel")
 
+# The artifact test rules (tools/artifact_tests) load rules_android's, rules_apple's and
+# rules_java's providers also where the ruleset's own tests load them through @autoload_dev,
+# so these three are regular dependencies.
+bazel_dep(name = "rules_android", version = "0.8.1")
+bazel_dep(name = "rules_apple", version = "5.4.0")
+bazel_dep(name = "rules_java", version = "9.9.0")
+
 bazel_dep(name = "bazel_skylib", version = "1.9.2", dev_dependency = True)
-bazel_dep(name = "rules_android", version = "0.8.1", dev_dependency = True)
 bazel_dep(name = "rules_android_ndk", version = "0.1.5", dev_dependency = True)
-bazel_dep(name = "rules_apple", version = "5.4.0", dev_dependency = True)
 bazel_dep(name = "rules_cc", version = "0.2.28", dev_dependency = True)
-bazel_dep(name = "rules_java", version = "9.9.0", dev_dependency = True)
 bazel_dep(name = "rules_swift", version = "4.3.0", dev_dependency = True)
 bazel_dep(name = "rules_jvm_external", version = "7.2", dev_dependency = True)
 

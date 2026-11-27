@@ -5,6 +5,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load(":action_inputs.bzl", "actions_of", "expect_not_read", "expect_reads", "godot_actions")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_shared_unit"
 
 # FR-011 on both sides: a pack's initialization reads the scripts, scenes and assets of

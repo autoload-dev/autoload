@@ -5,7 +5,10 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 # only in the authored project.godot, a C ABI extension, a contributed setting and checkout files
 # without declared sidecars; and the same project with the extension disabled for the
 # editor.
-package(default_visibility = ["//godot/private/tests/editor_view:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/editor_view:__pkg__"],
+)
 
 godot_resources(
     name = "main",

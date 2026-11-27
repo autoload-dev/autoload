@@ -1,5 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 # The ruleset's packages may depend on this package's implementation libraries, such as
 # the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
@@ -8,14 +9,14 @@ package(default_visibility = ["//godot:__subpackages__"])
 
 exports_files(
     ["define_analysis.awk"],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # Whether the build sets --per_file_copt; the define analysis keeps every definition then.
 bool_setting(
     name = "per_file_copt_set",
     build_setting_default = False,
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bzl_library(

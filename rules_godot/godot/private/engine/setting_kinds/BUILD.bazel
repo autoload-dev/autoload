@@ -46,6 +46,5 @@ godot_test(
     data = [":tables"],
     main = "setting_kinds.gd",
     project = ":setting_kinds",
-    tags = ["godot_process"],
     deps = [":script"],
 )

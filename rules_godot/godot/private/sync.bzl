@@ -99,6 +99,20 @@ def sync_launcher(ctx, test, data, runfiles):
 
 # ==== Targets =================================================================
 
+# The size and timeout of a writer's test, `<name>.test`, as macro attributes.
+TEST_SIZE_ATTRS = {
+    "size": attr.string(
+        doc = "Bazel test size of `<name>.test`; Bazel's default applies when unset.",
+        values = ["", "small", "medium", "large", "enormous"],
+        configurable = False,
+    ),
+    "timeout": attr.string(
+        doc = "Bazel test timeout of `<name>.test`; derived from size when unset.",
+        values = ["", "short", "moderate", "long", "eternal"],
+        configurable = False,
+    ),
+}
+
 def declare_sync(rules, name, attrs, test_attrs, kwargs):
     """
     Declare a checkout writer and its test, `<name>.test`.

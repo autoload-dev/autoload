@@ -2,6 +2,14 @@
 
 visibility("//godot/...")
 
+# The notice that ends the documentation of public API that may still change, as rules_python
+# marks its volatile API (rules_godot/docs/internal/api-reference.md). Its lines keep the
+# indentation of the doc strings it ends.
+VOLATILE_API = (
+    "\n\n    Volatile API: public, but it may still change incompatibly in a release of" +
+    "\n    rules_godot. A module that builds on it pins the rules_godot release it works with.\n"
+)
+
 _COMMON = ["tags", "testonly", "target_compatible_with", "exec_compatible_with"]
 
 def common_kwargs(kwargs):

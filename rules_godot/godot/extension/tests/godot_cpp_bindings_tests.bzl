@@ -1,15 +1,11 @@
 """godot_cpp_bindings fetches godot-cpp and declares the bindings of one API selection."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/extension/private:godot_cpp.bzl", "GODOT_CPP_COMMIT", "GODOT_CPP_SHA256", "godot_cpp_bindings_impl")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:repository_templates.bzl", "starlark_list")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _API_PATH = "gdextension/extension_api-4-7.json"
 _PATCH = "/usr/bin/patch"

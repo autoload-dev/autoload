@@ -11,6 +11,8 @@ load(":action_inputs.bzl", "GodotActionsInfo", "godot_actions", "import_manifest
 load(":pack_actions.bzl", "PackActionsInfo", "pack_actions")
 load(":packaging.bzl", "in_export_platform")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_shared_unit"
 
 def _expect_one_import(env, target, subject, unit):

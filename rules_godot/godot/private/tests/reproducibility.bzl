@@ -11,6 +11,8 @@ load("//godot/private:paths.bzl", "mapped_path")
 load(":action_inputs.bzl", "GodotActionsInfo", "godot_actions")
 load(":pack_forms.bzl", "godot_export_transition")
 
+visibility("private")
+
 _TOOLCHAIN = "//godot:editor_toolchain_type"
 
 # The archive an import writes into its unit's result directory.

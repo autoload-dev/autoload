@@ -1,3 +1,5 @@
 load(":platform_library_propagation_tests.bzl", "platform_library_propagation_test_suite")
 
+package(default_testonly = True)
+
 platform_library_propagation_test_suite(name = "platform_library_propagation_test_suite")

@@ -1,7 +1,10 @@
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 
 # A project whose main scene reports an error and exits with 0.
-package(default_visibility = ["//godot/private/tests/run_errors:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/run_errors:__pkg__"],
+)
 
 godot_resources(
     name = "main",

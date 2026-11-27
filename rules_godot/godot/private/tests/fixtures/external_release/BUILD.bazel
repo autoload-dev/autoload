@@ -1,6 +1,9 @@
 # The release's files, grouped as a consumer's build_file groups an archive's; the add-ons and
 # resources that place them live in //godot/private/tests/fixtures/external_files.
-package(default_visibility = ["//visibility:public"])
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "runtime",

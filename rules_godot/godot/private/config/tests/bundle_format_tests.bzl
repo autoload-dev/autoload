@@ -5,6 +5,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 def _bundle_format_test(name, platform, compilation_mode, extension):
     # Its device and simulator runtimes come from the platform_slice_engines registration set.
     analysis_test(

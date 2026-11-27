@@ -5,63 +5,63 @@ Build an application under an export platform and build settings of its own, ins
 `godot_configured_app` names the configuration of a `godot_app`, such as a multi-ABI release
 App Bundle or an iOS Simulator build, in a BUILD file. The repository builds and tests such
 applications in the same invocation as the desktop targets, without a Bazel configuration or
-server of their own. It is not supported API: the repository's other modules load it across
-repositories. The ruleset's tests extend the same transition (`configured_settings`).
+server of their own: the examples' releases (`releases.bzl`) and the mobile smoke scenarios
+of `e2e/rules_godot/smoke/`. It uses only public labels and providers of the ruleset. The
+ruleset's platform tests keep a copy of the transition and its attributes
+(`rules_godot/godot/platforms/private/tests/configured_app.bzl`); change both together.
 """
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
-load("//godot/private/config:native.bzl", "PLATFORMS", "STRIP")
-load("//godot/private/config:settings.bzl", "VARIANT")
 
-# The repository's root and add-on modules load it; it is not supported API.
-visibility("public")
-
+_PLATFORMS = "//command_line_option:platforms"
+_STRIP = "//command_line_option:strip"
+_VARIANT = str(Label("@autoload_rules_godot//godot:variant"))
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
 _COPT = "//command_line_option:copt"
 _DSYM = "//command_line_option:apple_generate_dsym"
 _OBJCSTRIP = "//command_line_option:objc_enable_binary_stripping"
-_ANDROID_FORMAT = str(Label("//godot:android_format"))
-_MACOS_SIGNING = str(Label("//godot:macos_signing"))
+_ANDROID_FORMAT = str(Label("@autoload_rules_godot//godot:android_format"))
+_MACOS_SIGNING = str(Label("@autoload_rules_godot//godot:macos_signing"))
 
 # The settings the transition reads and writes.
-CONFIGURED_SETTINGS = [
-    PLATFORMS,
+_CONFIGURED_SETTINGS = [
+    _PLATFORMS,
     _COMPILATION_MODE,
-    STRIP,
+    _STRIP,
     _COPT,
     _DSYM,
     _OBJCSTRIP,
     _ANDROID_FORMAT,
     _MACOS_SIGNING,
-    VARIANT,
+    _VARIANT,
 ]
 
 # The attributes that replace a setting when they are set, by attribute name.
 _REPLACED = {
     "compilation_mode": _COMPILATION_MODE,
-    "strip": STRIP,
+    "strip": _STRIP,
     "apple_generate_dsym": _DSYM,
     "objc_enable_binary_stripping": _OBJCSTRIP,
     "android_format": _ANDROID_FORMAT,
     "macos_signing": _MACOS_SIGNING,
-    "variant": VARIANT,
+    "variant": _VARIANT,
 }
 
-def configured_settings(settings, attr):
+def _configured_settings(settings, attr):
     """
-    The settings of CONFIGURED_SETTINGS under the attributes of CONFIGURED_ATTRS.
+    The settings of _CONFIGURED_SETTINGS under the attributes of _CONFIGURED_ATTRS.
 
     Args:
-        settings: the incoming settings, at least those of CONFIGURED_SETTINGS.
+        settings: the incoming settings, at least those of _CONFIGURED_SETTINGS.
         attr: the attributes of the rule whose transition this is.
 
     Returns:
-        The outgoing value of each setting of CONFIGURED_SETTINGS.
+        The outgoing value of each setting of _CONFIGURED_SETTINGS.
     """
-    result = {setting: settings[setting] for setting in CONFIGURED_SETTINGS}
+    result = {setting: settings[setting] for setting in _CONFIGURED_SETTINGS}
     if attr.platform:
-        result[PLATFORMS] = [str(attr.platform)]
+        result[_PLATFORMS] = [str(attr.platform)]
     if attr.copts:
         result[_COPT] = list(settings[_COPT]) + attr.copts
     for name, setting in _REPLACED.items():
@@ -71,20 +71,49 @@ def configured_settings(settings, attr):
     return result
 
 # The attributes of the configuration; an unset one keeps the build's own setting.
-CONFIGURED_ATTRS = {
-    "platform": attr.label(doc = "The export platform or platform slice, such as `//examples:android_distribution`; the build's own target platform by default."),
-    "compilation_mode": attr.string(doc = "C++ optimization, `--compilation_mode`, such as `opt` for a release build.", values = ["", "fastbuild", "dbg", "opt"]),
-    "strip": attr.string(doc = "`--strip`: whether linking strips the libraries, such as `always` for release libraries whose debug symbols ship apart.", values = ["", "always", "sometimes", "never"]),
-    "copts": attr.string_list(doc = "C++ options appended to `--copt`, such as `-g` for debug symbols of an optimized build."),
-    "apple_generate_dsym": attr.bool(doc = "`--apple_generate_dsym`: Apple applications get their debug symbols as `.dSYM` directories."),
-    "objc_enable_binary_stripping": attr.bool(doc = "`--objc_enable_binary_stripping`: Apple binaries are stripped of their debug symbols."),
-    "android_format": attr.string(doc = "The Android delivery format, `//godot:android_format`: `apk` or `aab`.", values = ["", "apk", "aab"]),
-    "macos_signing": attr.string(doc = "How macOS applications are signed, `//godot:macos_signing`, such as `adhoc`.", values = ["", "unsigned", "adhoc"]),
-    "variant": attr.string(doc = "The `//godot:variant` setting: which of Godot's binaries the build is for.", values = ["", "debug", "editor", "release"]),
+_CONFIGURED_ATTRS = {
+    "platform": attr.label(
+        doc = """
+        The export platform or platform slice, such as `//examples:android_distribution`; the
+        build's own target platform by default.
+        """,
+    ),
+    "compilation_mode": attr.string(
+        doc = "C++ optimization, `--compilation_mode`, such as `opt` for a release build.",
+        values = ["", "fastbuild", "dbg", "opt"],
+    ),
+    "strip": attr.string(
+        doc = """
+        `--strip`: whether linking strips the libraries, such as `always` for release
+        libraries whose debug symbols ship apart.
+        """,
+        values = ["", "always", "sometimes", "never"],
+    ),
+    "copts": attr.string_list(
+        doc = "C++ options appended to `--copt`, such as `-g` for debug symbols of an optimized build.",
+    ),
+    "apple_generate_dsym": attr.bool(
+        doc = "`--apple_generate_dsym`: Apple applications get their debug symbols as `.dSYM` directories.",
+    ),
+    "objc_enable_binary_stripping": attr.bool(
+        doc = "`--objc_enable_binary_stripping`: Apple binaries are stripped of their debug symbols.",
+    ),
+    "android_format": attr.string(
+        doc = "The Android delivery format, `//godot:android_format`: `apk` or `aab`.",
+        values = ["", "apk", "aab"],
+    ),
+    "macos_signing": attr.string(
+        doc = "How macOS applications are signed, `//godot:macos_signing`, such as `adhoc`.",
+        values = ["", "unsigned", "adhoc"],
+    ),
+    "variant": attr.string(
+        doc = "The `//godot:variant` setting: which of Godot's binaries the build is for.",
+        values = ["", "debug", "editor", "release"],
+    ),
 }
 
-# The native settings of a release build whose debug symbols ship apart, as the root
-# module's .bazelrc configurations android-release and ios-release set them.
+# The native settings of a release build whose debug symbols ship apart, as the
+# configurations android-release and ios-release of the repository's .bazelrc set them.
 ANDROID_RELEASE = {
     "compilation_mode": "opt",
     # Do not encode a changing sandbox directory in DWARF.
@@ -105,7 +134,7 @@ APPLE_RELEASE = {
 # Providers of applications that inspection rules, such as android_bundle_test, read.
 _FORWARDED = [AndroidBundleInfo, ApkInfo, AppleBundleInfo, OutputGroupInfo]
 
-def forwarded_providers(target):
+def _forwarded_providers(target):
     """
     The application providers of a target, which inspection rules read.
 
@@ -117,7 +146,7 @@ def forwarded_providers(target):
     """
     return [target[provider] for provider in _FORWARDED if provider in target]
 
-def configured_providers(ctx):
+def _configured_providers(ctx):
     """
     The default outputs and application providers of the target a rule's `target` carries.
 
@@ -130,19 +159,19 @@ def configured_providers(ctx):
     target = ctx.attr.target[0]
     files = target[DefaultInfo].files
     providers = [DefaultInfo(files = files, runfiles = ctx.runfiles(transitive_files = files))]
-    return providers + forwarded_providers(target)
+    return providers + _forwarded_providers(target)
 
 _configured = transition(
-    implementation = configured_settings,
-    inputs = CONFIGURED_SETTINGS,
-    outputs = CONFIGURED_SETTINGS,
+    implementation = _configured_settings,
+    inputs = _CONFIGURED_SETTINGS,
+    outputs = _CONFIGURED_SETTINGS,
 )
 
 _configured_target = rule(
-    implementation = configured_providers,
     doc = "The default outputs and application providers of a target built under an export platform and build settings of its own.",
-    attrs = CONFIGURED_ATTRS | {
-        "target": attr.label(mandatory = True, cfg = _configured, doc = "The target to build."),
+    implementation = _configured_providers,
+    attrs = _CONFIGURED_ATTRS | {
+        "target": attr.label(doc = "The target to build.", mandatory = True, cfg = _configured),
     },
 )
 
@@ -156,7 +185,7 @@ def godot_configured_app(name, app, **kwargs):
     Args:
         name: the name of the application target.
         app: the label of a `godot_app`.
-        **kwargs: the attributes of CONFIGURED_ATTRS, and common attributes such as `tags`
+        **kwargs: the attributes of _CONFIGURED_ATTRS, and common attributes such as `tags`
             and `visibility`, of both targets.
     """
     label = native.package_relative_label(app)

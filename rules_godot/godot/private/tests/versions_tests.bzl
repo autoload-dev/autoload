@@ -3,7 +3,6 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 
 # Exercise the private validation helper at its boundary.
-# buildifier: disable=bzl-visibility
 load(
     "//godot/private:versions.bzl",
     "godot_minimum_error",
@@ -14,6 +13,8 @@ load(
     "version_below",
 )
 load(":mocks.bzl", "mocks")
+
+visibility("private")
 
 def _test_version_below_compares_numeric_parts(env):
     # Deployment targets compare by their numeric parts; a missing part is zero.

@@ -4,7 +4,10 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
 # A macOS application over Godot's export of a project that sets a name and a version, with
 # the stub macOS runtime.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 godot_project(
     name = "macos_app_from_project",

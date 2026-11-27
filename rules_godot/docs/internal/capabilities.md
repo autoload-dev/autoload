@@ -332,5 +332,5 @@ their leading entry instead of repeating its support.
 [ARCH]: architecture.md
 [CAT]: godot-pipeline/README.md
 [SENTRY]: ../../../addons/sentry/README.md
-[ADAPTER]: ../../godot/private/adapter.bzl
+[ADAPTER]: ../../godot/testing/adapter.bzl
 [PATHS-BUILD]: ../../../examples/addons/platform_paths/BUILD.bazel

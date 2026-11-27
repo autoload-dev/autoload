@@ -8,6 +8,8 @@ load("//godot/private/config:application.bzl", "application_context", "applicati
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":failures.bzl", "failure_test")
 
+visibility("private")
+
 def _test_application_context_derives_export_option_defaults(env):
     profile = engine_profile("4.7.2")
     android = resolve_export_options({}, struct(cpus = ["arm64"], operating_system = "android", application_context = {

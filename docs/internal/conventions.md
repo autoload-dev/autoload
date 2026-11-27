@@ -8,12 +8,12 @@ rule's name, applicability, automated coverage and limits; the
 [project layout guide](../../rules_godot/docs/public/project-layout.md) owns what the layout
 and naming conventions mean. External repositories and source files are separate identities,
 not authored target declarations. Coverage that rests on Bazel's evaluation, such as that of
-RG002, [documented-targets-exist](#documented-targets-exist), RG007,
+RG002, [documented-targets-exist](#documented-targets-exist),
 [application-content-under-main](#application-content-under-main), RG012 and RG026, leaves out
 the registry test modules ([registry-test-module-in-bcr](#registry-test-module-in-bcr)), which
 the check does not load (see the [rule framework](#rule-framework)).
 
-RG002, RG007, RG012 and RG026 keep the numbered IDs they had before rules had names, as a
+RG002, RG012 and RG026 keep the numbered IDs they had before rules had names, as a
 temporary exception: the move to Bazel-native boundaries and symbolic macros removes or
 reduces them, and they get names once that change has merged.
 
@@ -23,11 +23,10 @@ reduces them, and they get names once that change has merged.
 | [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
 | [no-fixtures-in-public-documentation](#no-fixtures-in-public-documentation) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [documented-targets-exist](#documented-targets-exist) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
-| [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
 | [application-content-under-main](#application-content-under-main) | Application content lives under its project's `main/` | Required | Production-eligible resource inputs physically owned by a project of a consumer | Error; unresolved membership is reported as not checked |
 | [application-tests-under-tests](#application-tests-under-tests) | An application's tests live in its `tests/` package | Required | The test calls of every application project's root package | Error |
 | [projects-at-fixed-places](#projects-at-fixed-places) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
-| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
+| [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel, but test-only targets, which Bazel's test-only check guards | Error; missing role flags are reported as not checked |
 | [no-internal-links-in-public-documentation](#no-internal-links-in-public-documentation) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [engine-files-under-engines](#engine-files-under-engines) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [addon-module-named-after-directory](#addon-module-named-after-directory) | The module `addons/<module>/` is named `autoload_<module>` | Required | The `module()` of every add-on module | Error |
@@ -48,7 +47,7 @@ reduces them, and they get names once that change has merged.
 | [shared-module-files-as-generated](#shared-module-files-as-generated) | Add-on modules keep the shared files as the add-on generator writes them | Required | The shared files of every add-on module and its registry templates | Error |
 | [region-headers-named-in-head](#region-headers-named-in-head) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [definitions-before-callers](#definitions-before-callers) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
-| [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
+| [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules and the tests `godot_test` declares, which tag themselves, by its loading graph | Error |
 
 The rule of the public API's boundary is retired: Bazel's load and target visibility enforce it
 (see the [boundary rules](verification-architecture.md#boundary-rules)). The rules that
@@ -58,6 +57,11 @@ modules, which hold no project ([no-godot-in-addon-modules](#no-godot-in-addon-m
 their demos and end-to-end tests are projects of the root module
 ([projects-at-fixed-places](#projects-at-fixed-places)). Choosing the main entry point and
 useful package boundaries still requires judgment; the checks do not elect a primary target.
+
+RG007, which required the targets of Godot test operations to be test-only, is retired:
+`godot_test`, and the test operations built on it, reject `testonly = False`, and Bazel's
+test-only check protects their targets. A macro that wraps a test operation and declares
+helpers of its own marks them test-only itself; no check covers that.
 
 Other tools enforce what three retired rules checked: explicit target names, resolving local
 links and the add-on modules' Python lint. Buildifier's default warnings
@@ -111,7 +115,11 @@ Additional targets generated by a rules_godot-owned macro are named `<name>.<rol
 [layout guide](../../rules_godot/docs/public/project-layout.md#package-and-target-names)
 describes. Bazel's
 [symbolic macro schema](https://github.com/bazelbuild/bazel/blob/9.3.0/site/en/extending/macros.md#naming)
-allows this separator. The checker examines the Bazel-evaluated expansions of owned macros,
+allows this separator, and enforces for every symbolic macro that its targets lie in its
+namespace: the name, or the name followed by `.`, `_` or `-`. The rule adds what Bazel does
+not check: the dot, the roles' spelling, and the namespaces of legacy macros. Bazel's query
+evidence names each target of a symbolic macro in its own `generator_name`, as it does for
+some legacy macros, so the rule cannot tell the two apart and treats them alike. The checker examines the Bazel-evaluated expansions of owned macros,
 including nested helpers; a compliant main name alone does not establish compliance for its
 helpers.
 
@@ -177,41 +185,6 @@ package. A label is reported at its command's line when no module or several mod
 contain the package, or when the package has no such rule. A resolved label does not prove
 that the documented workflow succeeds.
 
-## RG007
-
-**Godot test operations and their helpers are test-only.** The targets that `godot_test`
-and every macro declaring a Godot test, such as autoload_gdunit's `gdunit_test`, create
-must have effective `testonly = True`. This includes their generated case lists, resources
-and views of the project. They belong exclusively to the test operation and must not become production
-dependencies, following
-[test ownership](../../rules_godot/docs/public/project-layout.md#test-ownership).
-
-The operations set `testonly = True` on themselves and their helpers unless the caller
-passes `testonly = False`, so a test can sit in a mixed production/test package without
-further flags. The rule reports such opt-outs. The checker asks Bazel for
-[attribute defaults](https://bazel.build/query/language#xml), so it judges the effective
-value, including package defaults, without requiring a literal attribute.
-[Bazel's test-only dependency check](https://bazel.build/reference/be/common-definitions#common.testonly)
-then protects the marked targets from production consumers.
-
-Applicability comes from the evaluated `generator_function` metadata of these
-operations, including source aliases and comprehensions. A macro is a test operation when a
-call of it anywhere in the loaded modules declares a target of the rule class
-`_godot_test`, which `godot_test` creates, under the call's own name; no list names them. A
-suite macro whose Godot tests are fixtures with names of their own, as in the ruleset's
-analysis tests, is none. Each attributed rule target is
-checked. Each false flag is reported at the call with the affected target label. Missing
-scalar flags or missing generator evidence for a directly named operation are reported as
-not checked. Other targets at the same authored call with an unknown or different generator
-are also reported as not checked; their ownership must not be inferred from a neighboring
-test target. Arbitrary wrappers which hide the operation's
-identity are outside automated coverage; a `_test` suffix alone does not establish ownership.
-
-Shared runtime resources, code under test and existing projects supplied as inputs retain
-their production eligibility. This rule does not traverse a test's dependency closure or
-classify separately declared suites and test data; those still follow the broader ownership
-policy. Loading-time flags do not establish configured resource membership or runtime behavior.
-
 ## application-content-under-main
 
 **Application content lives under `main/` of its physical project.** The place of a project
@@ -261,7 +234,8 @@ reusable-resource exemptions select applicability.
 **An application's tests live in its `tests/` package.** An application's tests, such as the
 exported demo's of an add-on module, never sit in the project's root package, which holds
 what the application ships. The check reports every call in the root package of a project in
-`examples/` whose kind ends in `_test` or is a declared test operation ([RG007](#rg007));
+`examples/` whose kind ends in `_test` or is a declared test operation, a macro that declares a Godot test under its
+own name, such as `godot_test` or autoload_gdunit's `gdunit_test`;
 `godot_metadata_sync`'s `update.test` is a consistency check of the project and stays beside
 it.
 
@@ -318,13 +292,17 @@ godot_resources(
 )
 ```
 
-The check resolves inputs from authored label, label-list and
-label-keyed-string attributes, resolved by Bazel to their defining target or source file
-across the workspace's modules. Declarations inside a test scope and test-only targets are
-consumers, not subjects. Missing effective role flags are reported as not checked. Bazel's
-own test-only dependency check covers edges to marked targets; this rule also covers
-unmarked targets and source files by their location. Indirect paths and configured closures
-remain outside this automated subset.
+Bazel's own [test-only dependency check](https://bazel.build/reference/be/common-definitions#common.testonly)
+rejects a production target that depends on a test-only target; test operations and most
+test packages mark their targets test-only
+([test packages](verification-architecture.md#test-only-packages)). The rule covers what that
+check leaves through: source files of a test scope, and targets of a test scope that are not
+marked test-only, such as those of a mixed package. It resolves inputs from authored label,
+label-list and label-keyed-string attributes, resolved by Bazel to their defining target or
+source file across the workspace's modules. Declarations inside a test scope and test-only
+targets are consumers, not subjects; a test-only input is left to Bazel. Missing effective
+role flags are reported as not checked. Indirect paths and configured closures remain
+outside this automated subset.
 
 ## no-internal-links-in-public-documentation
 
@@ -517,7 +495,8 @@ development dependencies are not active.
 
 The check reports, in each add-on module but its registry test modules, every
 `project.godot` and every call of `godot_project`, `godot_test`, `godot_metadata_sync`,
-`godot_runtime_profile` or a macro that declares a Godot test ([RG007](#rg007)).
+`godot_runtime_profile` or a macro that declares a Godot test under its own name, such as
+`gdunit_test`.
 
 ## no-component-names-in-tooling
 
@@ -611,7 +590,10 @@ test without the tag.
 A smoke test starts one and still runs with the fast tests, so it carries no tag; analysis
 tests start none, and `manual` tests run only when named.
 
-The check queries each module's tests that depend on a Godot toolchain type (the editor, the
+`godot_test`, and every test operation built on it, such as `gdunit_test`, adds the tag
+itself unless the test is tagged `smoke`, so the check leaves the tests it declares out and
+judges the others, such as the build tests of applications and the inspection tests of
+built outputs. It queries each module's tests that depend on a Godot toolchain type (the editor, the
 runtime or the target execution toolchain type of `@autoload_rules_godot//godot`) and reports
 such a test without the tag, a test with the tag that depends on none, and a smoke test with
 the tag. Registry test modules are outside it.

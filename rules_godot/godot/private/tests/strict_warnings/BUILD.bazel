@@ -1,5 +1,7 @@
 load("//godot:defs.bzl", "godot_pack", "godot_test")
-load("//godot/private/tests/adapter:fake_adapter.bzl", "fake_adapter_test")
+load("//godot/testing/tests/adapter:fake_adapter.bzl", "fake_adapter_test")
+
+package(default_testonly = True)
 
 # Every GDScript rules_godot stages into a project loads in a project that treats every
 # GDScript warning as an error: building these tests runs the imports, the initialization,
@@ -28,7 +30,6 @@ godot_test(
     name = "source_run_under_strict_warnings_test",
     size = "small",
     project = _FIXTURE,
-    tags = ["godot_process"],
     deps = [_FIXTURE + ":main"],
 )
 
@@ -38,14 +39,13 @@ godot_test(
     size = "small",
     data = [":export_facts"],
     pack = ":pack",
-    tags = ["godot_process"],
 )
 
 # Run test: a test adapter selects its cases with rules_godot's case selection.
 fake_adapter_test(
     name = "adapter_under_strict_warnings_test",
     size = "small",
-    cases = ["//godot/private/tests/adapter/fixtures/cases:passing"],
+    cases = ["//godot/testing/tests/adapter/fixtures/cases:passing"],
     project = _FIXTURE,
     tags = ["godot_process"],
 )

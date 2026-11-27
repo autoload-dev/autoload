@@ -679,6 +679,9 @@ _godot_view = rule(
     toolchains = [EDITOR_TOOLCHAIN],
 )
 
+def _caller_package():
+    return str(native.package_relative_label(":__pkg__"))
+
 def declare_view(name, project, deps, kwargs, **attrs):
     """
     Declare the view of an operation macro as `<name>.view`.
@@ -698,6 +701,7 @@ def declare_view(name, project, deps, kwargs, **attrs):
         project = project,
         named_addons = named_addons_label(native.package_relative_label(project)),
         deps = deps,
-        **(common_kwargs(kwargs) | dict(visibility = ["//visibility:private"]) | attrs)
+        # The caller's package may inspect the staged project, as its analysis tests do.
+        **(common_kwargs(kwargs) | dict(visibility = [_caller_package()]) | attrs)
     )
     return ":" + name + ".view"

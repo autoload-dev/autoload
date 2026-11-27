@@ -10,10 +10,10 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
+
+visibility("private")
 
 _FIXTURES = "//godot/engine/private/tests/fixtures"
 _PLATFORMS = "//godot/engine/private/tests:"

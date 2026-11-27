@@ -104,7 +104,6 @@ py_library(
         "rules/registry_test_module_in_bcr.py",
         "rules/release_archives_without_tests.py",
         "rules/rg002.py",
-        "rules/rg007.py",
         "rules/rg012.py",
         "rules/rg026.py",
         "rules/unique_extension_names.py",
@@ -225,17 +224,6 @@ py_test(
     size = "small",
     srcs = ["rules/documented_targets_exist_test.py"],
     deps = [
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "rg007_test",
-    size = "small",
-    srcs = ["rules/rg007_test.py"],
-    deps = [
-        ":context_lib",
         ":rules_lib",
         ":test_support",
     ],

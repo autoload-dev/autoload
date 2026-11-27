@@ -11,6 +11,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/platforms/private/tests:action_graph.bzl", "reached", "reached_actions", "written_contents")
 load("//godot/platforms/private/tests:backends.bzl", "godot_android_application", "godot_ios_application")
 
+visibility("private")
+
 _FIXTURE = "//godot/platforms/private/tests/export_settings/fixtures/packs_with_and_without_version_options:"
 
 _RELEASE_SETTINGS = {

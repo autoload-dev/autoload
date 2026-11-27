@@ -12,6 +12,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(":action_inputs.bzl", "expect_not_read", "godot_actions", "mnemonics_of", "written_manifests")
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
+visibility("private")
+
 _SHARED = "//godot/private/tests/fixtures/project_with_shared_unit"
 
 def _test_pack_reaches_its_godot_actions(name):

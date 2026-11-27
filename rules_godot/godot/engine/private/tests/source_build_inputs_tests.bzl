@@ -15,6 +15,8 @@ load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 load("//godot/private/tests:pack_forms.bzl", "GODOT_EXPORT")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _FIXTURE = "//godot/engine/private/tests/fixtures/source_built_runtime"
 _MODULE_SOURCE = "godot/engine/private/tests/fixtures/source_build/modules/bazel_probe/register_types.cpp"
 _NATIVE = ["CppCompile", "CppLink"]

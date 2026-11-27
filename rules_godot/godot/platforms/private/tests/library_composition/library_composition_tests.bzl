@@ -15,6 +15,8 @@ load("//godot/platforms/private/tests:android_settings.bzl", "ANDROID", "ANDROID
 load("//godot/private/config:application.bzl", "application_pack", "loadable_pack")
 load("//godot/private/tests:configurations.bzl", "in_platform_slice")
 
+visibility("private")
+
 _ANDROID_APPS = "//godot/platforms/private/tests/library_composition/fixtures/android_apps_with_transitive_platform_libraries:"
 _IOS_APPS = "//godot/platforms/private/tests/library_composition/fixtures/ios_apps_with_transitive_platform_libraries:"
 

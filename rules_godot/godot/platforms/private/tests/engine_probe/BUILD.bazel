@@ -2,6 +2,8 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 load(":beta_engine_test.bzl", "beta_engine_test", "cc_toolchain_files")
 
+package(default_testonly = True)
+
 # Build-output tests of applications built with the prebuilt beta engine and with
 # source-built engines. Tests tagged source_engine build an engine from source; the host
 # set excludes them.

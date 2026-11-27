@@ -11,6 +11,8 @@ load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private/config:settings.bzl", "CPUS", "ENVIRONMENT", "EXPORT_PLATFORM", "OPERATING_SYSTEM", "PLATFORM_SLICES")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 def _runtime_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name + ".runtime")
     ctx.actions.write(executable, "analysis-only engine fixture", is_executable = True)
