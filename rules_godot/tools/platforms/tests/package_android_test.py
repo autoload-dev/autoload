@@ -43,6 +43,26 @@ class PackageAndroidTest(unittest.TestCase):
             )
             self.assertNotIn("jni/x86_64/libgodot_android.so", archive.namelist())
 
+    def test_engine_aar_drops_signatures_and_rejects_unsafe_entries(self) -> None:
+        original = self.root / "original.aar"
+        with zipfile.ZipFile(original, "w") as archive:
+            archive.writestr("META-INF/CERT.RSA", b"signature")
+            archive.writestr("META-INF/CERT.sf", b"signature")
+            archive.writestr("META-INF/MANIFEST.MF", b"manifest")
+            archive.writestr("jni/libgodot_android.so", b"not an ABI's")
+            archive.writestr("assets/", b"")
+        output = self.root / "engine.aar"
+        package_android.package(output, [], original)
+        with zipfile.ZipFile(output) as archive:
+            self.assertEqual(
+                sorted(archive.namelist()),
+                ["META-INF/MANIFEST.MF", "jni/libgodot_android.so"],
+            )
+        with zipfile.ZipFile(original, "w") as archive:
+            archive.writestr("../escape", b"")
+        with self.assertRaisesRegex(ValueError, "^unsafe AAR entry: ../escape$"):
+            package_android.package(output, [], original)
+
     def test_engine_aar_manifest_names_the_source_built_engine(self) -> None:
         manifest = (
             '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
@@ -92,10 +112,21 @@ class PackageAndroidTest(unittest.TestCase):
         package_android.package(output, [{"source": str(library), "abi": "arm64-v8a"}])
         with zipfile.ZipFile(output) as archive:
             self.assertEqual(archive.read("lib/arm64-v8a/libextension.so"), b"extension")
-        with self.assertRaisesRegex(ValueError, "lib\\*\\.so"):
+        for name in ["extension.so", "libextension", "lib/extension.so", "lib\\a.so"]:
+            with (
+                self.subTest(name=name),
+                self.assertRaisesRegex(ValueError, "lib\\*\\.so"),
+            ):
+                package_android.package(
+                    output, [{"source": str(library), "abi": "arm64-v8a", "name": name}]
+                )
+        with self.assertRaisesRegex(ValueError, "^unsupported Android ABI: mips$"):
+            package_android.package(output, [{"source": str(library), "abi": "mips"}])
+        with self.assertRaisesRegex(
+            ValueError, "^duplicate Android library: lib/arm64-v8a/libextension.so$"
+        ):
             package_android.package(
-                output,
-                [{"source": str(library), "abi": "arm64-v8a", "name": "extension.so"}],
+                output, [{"source": str(library), "abi": "arm64-v8a"}] * 2
             )
 
 

@@ -23,42 +23,58 @@ class _UniqueKeys(dict):
         super().__setitem__(key, value)
 
 
+# The elements of the XML property list format.
+_PLIST_ELEMENTS = {
+    "plist",
+    "dict",
+    "array",
+    "key",
+    "string",
+    "integer",
+    "real",
+    "true",
+    "false",
+    "date",
+    "data",
+}
+
+
+def _alternates_keys_and_values(children: list[ElementTree.Element]) -> bool:
+    """Whether a dictionary's children are keys, each followed by its value."""
+    return len(children) % 2 == 0 and all(
+        child.tag == "key" if i % 2 == 0 else child.tag not in {"key", "plist"}
+        for i, child in enumerate(children)
+    )
+
+
+def _element_error(element: ElementTree.Element, root: ElementTree.Element) -> str | None:
+    """Return why the element breaks the structure of a plist, or None."""
+    children = list(element)
+    tags = [child.tag for child in children]
+    if element.tag == "plist":
+        top_level = element is root and tags == ["dict"]
+        return None if top_level else "Expected one top-level plist dictionary"
+    if element.tag == "dict":
+        pairs = _alternates_keys_and_values(children)
+        return None if pairs else "Malformed plist dictionary key/value sequence"
+    if element.tag == "array":
+        return "Malformed plist array" if {"key", "plist"} & set(tags) else None
+    if children:
+        return f"Unexpected child in plist scalar {element.tag}"
+    if element.tag in {"true", "false"} and (element.text or "").strip():
+        return "A plist boolean cannot contain text"
+    return None
+
+
 def _strict_plist(text: str) -> dict[str, Any]:
     root = ElementTree.fromstring(text)
-    allowed = {
-        "plist",
-        "dict",
-        "array",
-        "key",
-        "string",
-        "integer",
-        "real",
-        "true",
-        "false",
-        "date",
-        "data",
-    }
-    unknown = {element.tag for element in root.iter()} - allowed
+    unknown = {element.tag for element in root.iter()} - _PLIST_ELEMENTS
     if unknown:
         raise ValueError(f"Unknown plist XML elements: {sorted(unknown)}")
     for element in root.iter():
-        children = list(element)
-        if element.tag == "plist":
-            if element is not root or len(children) != 1 or children[0].tag != "dict":
-                raise ValueError("Expected one top-level plist dictionary")
-        elif element.tag == "dict":
-            if len(children) % 2 or any(
-                child.tag != "key" if i % 2 == 0 else child.tag in {"key", "plist"}
-                for i, child in enumerate(children)
-            ):
-                raise ValueError("Malformed plist dictionary key/value sequence")
-        elif element.tag == "array":
-            if any(child.tag in {"key", "plist"} for child in children):
-                raise ValueError("Malformed plist array")
-        elif children:
-            raise ValueError(f"Unexpected child in plist scalar {element.tag}")
-        if element.tag in {"true", "false"} and (element.text or "").strip():
-            raise ValueError("A plist boolean cannot contain text")
+        error = _element_error(element, root)
+        if error:
+            raise ValueError(error)
     if root.tag != "plist":
         raise ValueError("Expected a plist root")
     return plistlib.loads(text.encode("utf-8"), dict_type=_UniqueKeys)
@@ -254,40 +270,43 @@ def macos_plist(facts: Facts, values: Mapping[str, Any]) -> str:
     )
 
 
-def privacy_manifest(facts: Facts, values: Mapping[str, Any]) -> str:
-    """The privacy manifest Godot's Apple exporters write from the privacy/* options."""
-    privacy = values["profile"]
+def _flagged(flags: int, choices: list[str]) -> list[str]:
+    """Return the choices whose bits are set in the flags."""
+    return [choice for bit, choice in enumerate(choices) if flags & (1 << bit)]
 
-    def flagged(flags: int, choices: list[str]) -> list[str]:
-        return [choice for bit, choice in enumerate(choices) if flags & (1 << bit)]
 
-    accessed = []
-    for name, category, reasons in (
-        privacy["accessed_apis"] if values["accessed_apis"] else []
-    ):
+def _accessed_api_types(facts: Facts, accessed_apis: list) -> list[str]:
+    """Return the manifest's entries of the required-reason APIs the options declare."""
+    entries = []
+    for name, category, reasons in accessed_apis:
         flags = facts.option(f"privacy/{name}_access_reasons")
         if flags:
-            accessed.append(
+            entries.append(
                 "        <dict>\n"
                 "            <key>NSPrivacyAccessedAPIType</key>\n"
                 f"            <string>NSPrivacyAccessedAPICategory{category}</string>\n"
                 "            <key>NSPrivacyAccessedAPITypeReasons</key>\n"
-                f"            {_plist_strings(flagged(flags, reasons), ' ' * 12)}\n"
+                f"            {_plist_strings(_flagged(flags, reasons), ' ' * 12)}\n"
                 "        </dict>\n"
             )
-    collected = []
+    return entries
+
+
+def _collected_data_types(facts: Facts, privacy: Mapping[str, Any]) -> list[str]:
+    """Return the manifest's entries of the data types the options declare collected."""
+    entries = []
     for name, data_type in privacy["collected_data"]:
         prefix = f"privacy/collected_data/{name}/"
         if not facts.option(prefix + "collected"):
             continue
-        purposes = flagged(
+        purposes = _flagged(
             facts.option(prefix + "collection_purposes"),
             [
                 "NSPrivacyCollectedDataTypePurpose" + purpose
                 for purpose in privacy["purposes"]
             ],
         )
-        collected.append(
+        entries.append(
             "        <dict>\n"
             "            <key>NSPrivacyCollectedDataType</key>\n"
             f"            <string>NSPrivacyCollectedDataType{data_type}</string>\n"
@@ -299,19 +318,26 @@ def privacy_manifest(facts: Facts, values: Mapping[str, Any]) -> str:
             f"            {_plist_bool(facts.option(prefix + 'used_for_tracking'))}\n"
             "        </dict>\n"
         )
+    return entries
+
+
+def _plist_array(entries: list[str]) -> str:
+    return f"<array>\n{''.join(entries)}    </array>" if entries else "<array/>"
+
+
+def privacy_manifest(facts: Facts, values: Mapping[str, Any]) -> str:
+    """The privacy manifest Godot's Apple exporters write from the privacy/* options."""
+    privacy = values["profile"]
+    accessed_apis = privacy["accessed_apis"] if values["accessed_apis"] else []
     return _checked(
         fill(
             "PrivacyInfo.xcprivacy.tpl",
             {
-                "ACCESSED_API_TYPES": (
-                    f"<array>\n{''.join(accessed)}    </array>"
-                    if accessed
-                    else "<array/>"
+                "ACCESSED_API_TYPES": _plist_array(
+                    _accessed_api_types(facts, accessed_apis)
                 ),
-                "COLLECTED_DATA_TYPES": (
-                    f"<array>\n{''.join(collected)}    </array>"
-                    if collected
-                    else "<array/>"
+                "COLLECTED_DATA_TYPES": _plist_array(
+                    _collected_data_types(facts, privacy)
                 ),
                 "TRACKING": _plist_bool(facts.option("privacy/tracking_enabled")),
                 "TRACKING_DOMAINS": _plist_strings(

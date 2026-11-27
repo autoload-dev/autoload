@@ -82,7 +82,10 @@ py_test(
     name = "check_engine_version_test",
     size = "small",
     srcs = ["check_engine_version_test.py"],
-    deps = ["//tools/platforms:check_engine_version_lib"],
+    deps = [
+        "//tools/platforms:check_engine_version_lib",
+        "//tools/platforms:native_fixtures",
+    ],
 )
 
 py_test(
@@ -148,4 +151,11 @@ py_test(
     size = "small",
     srcs = ["launch_entry_test.py"],
     data = ["//tools/platforms/launch"],
+)
+
+py_test(
+    name = "validate_artifacts_test",
+    size = "small",
+    srcs = ["validate_artifacts_test.py"],
+    deps = ["//tools/platforms:validate_artifacts_lib"],
 )

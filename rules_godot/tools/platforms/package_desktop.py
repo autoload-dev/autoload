@@ -1,6 +1,7 @@
 """Assemble a Godot runtime and an existing pack without invoking the editor."""
 
 import argparse
+import dataclasses
 import gzip
 import io
 import json
@@ -44,116 +45,144 @@ def _executable(entry: dict) -> bool:
     )
 
 
+def _write_tar(root: Path, members: list[Path], archive: str | Path) -> None:
+    """Write the members into a gzip-compressed tar archive, keeping only their modes."""
+    with (
+        open(archive, "wb") as raw,
+        gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
+        tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as output,
+    ):
+        for path in members:
+            name = root.name + "/" + path.relative_to(root).as_posix()
+            info = tarfile.TarInfo(name)
+            info.mode = stat.S_IMODE(path.stat().st_mode)
+            info.mtime = info.uid = info.gid = 0
+            if path.is_dir():
+                info.type = tarfile.DIRTYPE
+                output.addfile(info)
+            else:
+                data = path.read_bytes()
+                info.size = len(data)
+                output.addfile(info, io.BytesIO(data))
+
+
 def archive_tree(root: Path, archive: str | Path, operating_system: str) -> None:
     """Normalize timestamps, ownership, order and modes for reproducible archives."""
     members = sorted(root.rglob("*"), key=lambda path: path.relative_to(root).as_posix())
-    if operating_system == "macos":
-        write_zip(
-            archive,
-            {
-                root.name + "/" + path.relative_to(root).as_posix(): path
-                for path in members
-                if not path.is_dir()
-            },
-            mode=None,
-        )
-    else:
-        with (
-            open(archive, "wb") as raw,
-            gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
-            tarfile.open(
-                fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT
-            ) as output,
-        ):
-            for path in members:
-                name = root.name + "/" + path.relative_to(root).as_posix()
-                info = tarfile.TarInfo(name)
-                info.mode = stat.S_IMODE(path.stat().st_mode)
-                info.mtime = info.uid = info.gid = 0
-                if path.is_dir():
-                    info.type = tarfile.DIRTYPE
-                    output.addfile(info)
-                else:
-                    data = path.read_bytes()
-                    info.size = len(data)
-                    output.addfile(info, io.BytesIO(data))
+    if operating_system != "macos":
+        _write_tar(root, members, archive)
+        return
+    write_zip(
+        archive,
+        {
+            root.name + "/" + path.relative_to(root).as_posix(): path
+            for path in members
+            if not path.is_dir()
+        },
+        mode=None,
+    )
 
 
-def package(args: argparse.Namespace) -> None:
-    def install(
+def _thinned(
+    source: str | Path, cpu: str, operating_system: str, context: str | None
+) -> bytes:
+    """
+    Return the code of the selected CPU of a native file.
+
+    A manifest entry's context names the extension in the error of a file without it.
+    """
+    try:
+        return desktop_runtime(Path(source).read_bytes(), cpu, operating_system)
+    except (ValueError, struct.error) as error:
+        if context is None:
+            raise
+        raise ValueError(
+            f"{context}: incompatible native library {source}: {error}; "
+            "supply a binary for the requested CPU and SDK"
+        ) from error
+
+
+@dataclasses.dataclass(frozen=True)
+class _Installer:
+    """
+    Copies files into the bundle, keeping only the selected CPU of native code.
+
+    Native code must contain that CPU for the operating system; other files, such
+    as a launcher script, are copied unchanged. Without a CPU, every file is.
+    """
+
+    cpu: str | None
+    operating_system: str
+
+    def __call__(
+        self,
         source: str | Path,
         destination: Path,
         executable: bool = False,
         context: str | None = None,
     ) -> None:
-        """
-        Copy a file into the bundle, keeping only the selected CPU of native code.
-
-        Native code must contain that CPU for the operating system; other
-        files, such as a launcher script, are copied unchanged.
-        """
-        if args.cpu and native_format(source):
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                data = desktop_runtime(
-                    Path(source).read_bytes(), args.cpu, args.operating_system
-                )
-            except (ValueError, struct.error) as error:
-                if context is None:
-                    raise
-                raise ValueError(
-                    f"{context}: incompatible native library {source}: {error}; "
-                    "supply a binary for the requested CPU and SDK"
-                ) from error
-            destination.write_bytes(data)
-            destination.chmod(0o755 if executable else 0o644)
-        else:
+        if not (self.cpu and native_format(source)):
             copy_file(source, destination, executable)
+            return
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(
+            _thinned(source, self.cpu, self.operating_system, context)
+        )
+        destination.chmod(0o755 if executable else 0o644)
 
+
+def _macos_contents(args: argparse.Namespace, root: Path, install: _Installer) -> Path:
+    """Install the icon, resources and Info.plist of a macOS bundle; return its resources."""
+    resources = root / "Contents" / "Resources"
+    with open(args.infoplist_base, "rb") as source:
+        plist = plistlib.load(source)
+    icon = Path(args.icons) / "icon.icns" if args.icons else None
+    if icon and icon.is_file():
+        plist["CFBundleIconFile"] = "icon.icns"
+        install(icon, resources / "icon.icns")
+    # Localizations and compiled asset catalogs keep their layout.
+    for directory in map(Path, args.resources or []):
+        for path in sorted(directory.rglob("*")):
+            if path.is_file():
+                install(path, resources / path.relative_to(directory))
+    (root / "Contents").mkdir(exist_ok=True)
+    (root / "Contents" / "Info.plist").write_bytes(plistlib.dumps(plist, sort_keys=True))
+    return resources
+
+
+def _install_manifest(manifest: str, root: Path, install: _Installer) -> None:
+    """Install the manifest's entries, such as extension libraries, beside the bundle's files."""
+    occupied = {
+        path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()
+    }
+    for entry in json.loads(Path(manifest).read_text()):
+        destination = relative_path(entry["destination"])
+        destination_key = destination.as_posix()
+        if destination_key in occupied:
+            raise ValueError("duplicate bundle destination: " + destination_key)
+        occupied.add(destination_key)
+        install(
+            entry["source"], root / destination, _executable(entry), entry.get("context")
+        )
+
+
+def package(args: argparse.Namespace) -> None:
+    install = _Installer(args.cpu, args.operating_system)
     root = Path(args.output)
     root.mkdir(parents=True, exist_ok=True)
     name = args.app_name
-    if name in ("", ".", "..") or "/" in name or "\\" in name:
+    if name in ("", ".", "..") or any(separator in name for separator in "/\\"):
         raise ValueError("app_name must be a filename without separators")
     if args.operating_system == "macos":
         executable = root / "Contents" / "MacOS" / name
-        resources = root / "Contents" / "Resources"
-        with open(args.infoplist_base, "rb") as source:
-            plist = plistlib.load(source)
-        icon = Path(args.icons) / "icon.icns" if args.icons else None
-        if icon and icon.is_file():
-            plist["CFBundleIconFile"] = "icon.icns"
-            install(icon, resources / "icon.icns")
-        # Localizations and compiled asset catalogs keep their layout.
-        for directory in map(Path, args.resources or []):
-            for path in sorted(directory.rglob("*")):
-                if path.is_file():
-                    install(path, resources / path.relative_to(directory))
-        (root / "Contents").mkdir(exist_ok=True)
-        (root / "Contents" / "Info.plist").write_bytes(
-            plistlib.dumps(plist, sort_keys=True)
-        )
+        resources = _macos_contents(args, root, install)
     else:
         executable = root / name
         resources = root
     install(args.runtime, executable, executable=True)
     copy_file(args.pack, resources / (name + ".pck"))
-    occupied = {
-        path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()
-    }
     if args.manifest:
-        for entry in json.loads(Path(args.manifest).read_text()):
-            destination = relative_path(entry["destination"])
-            destination_key = destination.as_posix()
-            if destination_key in occupied:
-                raise ValueError("duplicate bundle destination: " + destination_key)
-            occupied.add(destination_key)
-            install(
-                entry["source"],
-                root / destination,
-                _executable(entry),
-                entry.get("context"),
-            )
+        _install_manifest(args.manifest, root, install)
     archive_tree(root, args.archive, args.operating_system)
 
 

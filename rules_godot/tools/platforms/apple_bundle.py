@@ -42,6 +42,13 @@ def bundle_files(
         }
 
 
+def _unsafe(info: zipfile.ZipInfo) -> bool:
+    """Whether an archive member would land outside the work directory or is a link."""
+    member = Path(info.filename)
+    escapes = member.is_absolute() or ".." in member.parts
+    return escapes or stat.S_ISLNK(info.external_attr >> 16)
+
+
 def application_bundle(path: Path, work: Path) -> Path:
     """
     Return a real copy of the application's .app directory in work.
@@ -54,12 +61,7 @@ def application_bundle(path: Path, work: Path) -> Path:
         return Path(shutil.copytree(path, work / "Payload" / path.name))
     with zipfile.ZipFile(path) as archive:
         for info in archive.infolist():
-            member = Path(info.filename)
-            if (
-                member.is_absolute()
-                or ".." in member.parts
-                or stat.S_ISLNK(info.external_attr >> 16)
-            ):
+            if _unsafe(info):
                 raise ValueError("Unsafe IPA archive member: " + info.filename)
         archive.extractall(work)
     apps = list((work / "Payload").glob("*.app"))

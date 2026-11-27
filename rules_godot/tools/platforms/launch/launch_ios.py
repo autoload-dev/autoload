@@ -292,6 +292,65 @@ def create_simulator(
     )
 
 
+def _named_simulator(
+    wanted: str, options: launch_common.Options, bundle: Bundle, simulators: Simulators
+) -> Simulator:
+    """Return the named Simulator that can run the application, a booted one first."""
+    wanted_os = version(options.os_version or "")
+    named = [
+        s
+        for s in simulators.devices
+        if wanted in (s.udid, s.name)
+        and s.runtime >= bundle.minimum_os
+        and s.runtime[: len(wanted_os)] == wanted_os
+    ]
+    if not named:
+        raise LaunchError(
+            f"no Simulator {wanted} with iOS {_text(bundle.minimum_os)} or newer; --list-devices lists them"
+        )
+    return max(named, key=lambda s: (s.booted, s.runtime))
+
+
+def _booted_simulators(
+    options: launch_common.Options, bundle: Bundle, simulators: Simulators
+) -> list[Simulator]:
+    """Return the booted Simulators that suit the application and the options."""
+    restricted = options.os_version or options.simulator_type
+    return [
+        s
+        for s in simulators.devices
+        if s.booted
+        and s.runtime >= bundle.minimum_os
+        and (
+            not restricted
+            or _suits(s.runtime, simulators.type(s.device_type), bundle, options)
+        )
+    ]
+
+
+def _simulator_to_boot(
+    options: launch_common.Options, bundle: Bundle, simulators: Simulators
+) -> Simulator:
+    """Return the best suitable Simulator, or create one."""
+    suitable = [
+        s
+        for s in simulators.devices
+        if _suits(s.runtime, simulators.type(s.device_type), bundle, options)
+    ]
+    if not suitable:
+        return create_simulator(options, bundle, simulators)
+    # The newest runtime, then Simulators named after their device type over those
+    # someone named for a purpose, then the newest device type.
+    return max(
+        suitable,
+        key=lambda s: (
+            s.runtime,
+            s.name == simulators.type(s.device_type).get("name"),
+            simulators.newness(s.device_type),
+        ),
+    )
+
+
 def select_simulator(
     options: launch_common.Options, bundle: Bundle, simulators: Simulators
 ) -> Simulator:
@@ -303,30 +362,9 @@ def select_simulator(
     """
     wanted = options.device or os.environ.get("BAZEL_APPLE_DEVICE_UDID")
     if wanted:
-        wanted_os = version(options.os_version or "")
-        named = [
-            s
-            for s in simulators.devices
-            if wanted in (s.udid, s.name)
-            and s.runtime >= bundle.minimum_os
-            and s.runtime[: len(wanted_os)] == wanted_os
-        ]
-        if not named:
-            raise LaunchError(
-                f"no Simulator {wanted} with iOS {_text(bundle.minimum_os)} or newer; --list-devices lists them"
-            )
-        return max(named, key=lambda s: (s.booted, s.runtime))
+        return _named_simulator(wanted, options, bundle, simulators)
     booted = launch_common.single(
-        [
-            s
-            for s in simulators.devices
-            if s.booted
-            and s.runtime >= bundle.minimum_os
-            and (
-                not (options.os_version or options.simulator_type)
-                or _suits(s.runtime, simulators.type(s.device_type), bundle, options)
-            )
-        ],
+        _booted_simulators(options, bundle, simulators),
         "Simulators",
         lambda s: f"{s.name} ({s.udid})",
         "BAZEL_APPLE_DEVICE_UDID",
@@ -335,23 +373,7 @@ def select_simulator(
         return booted
     if not options.start_device:
         raise LaunchError("no Simulator runs")
-    suitable = [
-        s
-        for s in simulators.devices
-        if _suits(s.runtime, simulators.type(s.device_type), bundle, options)
-    ]
-    if suitable:
-        # The newest runtime, then Simulators named after their device type over those
-        # someone named for a purpose, then the newest device type.
-        return max(
-            suitable,
-            key=lambda s: (
-                s.runtime,
-                s.name == simulators.type(s.device_type).get("name"),
-                simulators.newness(s.device_type),
-            ),
-        )
-    return create_simulator(options, bundle, simulators)
+    return _simulator_to_boot(options, bundle, simulators)
 
 
 def _show(simulator: Simulator) -> None:
@@ -387,6 +409,32 @@ def boot(simulator: Simulator, options: launch_common.Options) -> None:
         _show(simulator)
 
 
+def _named_device(wanted: str, found: Sequence[Device]) -> Device:
+    """Return the connected device of that identifier, UDID or name."""
+    device = next((d for d in found if wanted in (d.identifier, d.udid, d.name)), None)
+    if not device:
+        raise LaunchError(f"no iOS device {wanted}; --list-devices lists them")
+    if not device.connected:
+        raise LaunchError(f"{device.name} is not connected; connect and unlock it")
+    return device
+
+
+def _connected_device(found: Sequence[Device]) -> Device:
+    """Return the only connected device."""
+    device = launch_common.single(
+        [d for d in found if d.connected],
+        "iOS devices",
+        lambda d: f"{d.name} ({d.udid})",
+        "BAZEL_APPLE_DEVICE_UDID",
+    )
+    if not device:
+        raise LaunchError(
+            "no iOS device is connected; connect and unlock one, or build for the Simulator "
+            "with --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64"
+        )
+    return device
+
+
 def select_device(options: launch_common.Options, found: Sequence[Device]) -> Device:
     """
     Choose the device and check that it can run a development build.
@@ -395,26 +443,7 @@ def select_device(options: launch_common.Options, found: Sequence[Device]) -> De
         LaunchError: The choice is ambiguous, nothing matches, or the device is not ready.
     """
     wanted = options.device or os.environ.get("BAZEL_APPLE_DEVICE_UDID")
-    if wanted:
-        device = next(
-            (d for d in found if wanted in (d.identifier, d.udid, d.name)), None
-        )
-        if not device:
-            raise LaunchError(f"no iOS device {wanted}; --list-devices lists them")
-        if not device.connected:
-            raise LaunchError(f"{device.name} is not connected; connect and unlock it")
-    else:
-        device = launch_common.single(
-            [d for d in found if d.connected],
-            "iOS devices",
-            lambda d: f"{d.name} ({d.udid})",
-            "BAZEL_APPLE_DEVICE_UDID",
-        )
-        if not device:
-            raise LaunchError(
-                "no iOS device is connected; connect and unlock one, or build for the Simulator "
-                "with --platforms=@autoload_rules_godot//godot/platforms:ios_sim_arm64"
-            )
+    device = _named_device(wanted, found) if wanted else _connected_device(found)
     if not device.paired:
         raise LaunchError(
             f"{device.name} is not paired with this Mac; connect it and trust this computer on the device"
@@ -430,14 +459,13 @@ def select_device(options: launch_common.Options, found: Sequence[Device]) -> De
 # ==== Simulator launch ========================================================
 
 
+_STORAGE_FAILURES = ("insufficient", "enough space", "out of space")
+
+
 def _conflict(output: str) -> str | None:
     """Why an install failure is one an installed copy causes, or None."""
     lowered = output.lower()
-    if (
-        "insufficient" in lowered
-        or "enough space" in lowered
-        or "out of space" in lowered
-    ):
+    if any(failure in lowered for failure in _STORAGE_FAILURES):
         return "the device has too little free storage"
     if "mismatchedapplicationidentifierentitlement" in lowered or "upgrade" in lowered:
         return "it is signed by another team or with other entitlements"
@@ -473,8 +501,8 @@ def install_on_simulator(
             ).returncode
             == 0
         ),
-        # A Simulator checks no signature or version; a failing install over an
-        # installed copy is the copy's.
+        # A Simulator checks neither signature nor version, so an install that
+        # fails over an installed copy fails because of that copy.
         conflict=_conflict,
     )
 
@@ -639,24 +667,27 @@ def launch_on_device(
 # ==== Command line ============================================================
 
 
-# Entry point.
+def _list_simulators() -> None:
+    simulators = Simulators.load()
+    print("Simulators:")
+    for s in sorted(simulators.devices, key=lambda s: (not s.booted, s.name, s.runtime)):
+        print(f"  {s.udid}  {s.state:<8}  {s.name}, iOS {_text(s.runtime)}")
 
 
-def list_devices(simulator: bool) -> None:
-    if simulator:
-        simulators = Simulators.load()
-        print("Simulators:")
-        for s in sorted(
-            simulators.devices, key=lambda s: (not s.booted, s.name, s.runtime)
-        ):
-            print(f"  {s.udid}  {s.state:<8}  {s.name}, iOS {_text(s.runtime)}")
-        return
+def _list_physical_devices() -> None:
     print("Devices:")
     for d in devices():
         state = "connected" if d.connected else "not connected"
         print(
             f"  {d.udid or d.identifier}  {state}  {d.name}, Developer Mode {d.developer_mode}"
         )
+
+
+def list_devices(simulator: bool) -> None:
+    if simulator:
+        _list_simulators()
+    else:
+        _list_physical_devices()
 
 
 def launch(
