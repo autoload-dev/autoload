@@ -59,7 +59,8 @@ python_config = use_extension("@rules_python//python/extensions:config.bzl", "co
 python_config.explicit_init_py(default = True)
 
 # The linters' Python packages (tools/lint/requirements.txt), and uv, which locks them: the
-# file lint (tools/lint/files.py) runs gdlint and gdformat from them in this module alone.
+# file lint (tools/lint/files.py) runs gdlint and //tools/format clang-format from them, in
+# this module alone.
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_dependency = True)
 pip.parse(
     hub_name = "lint_pypi",

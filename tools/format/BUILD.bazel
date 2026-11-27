@@ -1,5 +1,6 @@
 load("@aspect_rules_lint//format:defs.bzl", "format_multirun")
-load("@rules_multirun//:defs.bzl", "multirun")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
+load("//tools/lint:files.bzl", "FILE_TOOLS", "FILE_TOOL_PATHS")
 
 # Every module's Python, Starlark, C and C++ and shell scripts, through `aspect format`.
 # Buildifier lints Starlark as it formats, with the warnings .buildifier.json selects; a warning
@@ -26,8 +27,19 @@ multirun(
     name = "format",
     commands = [
         ":languages",
-        "//tools/lint:fix",
+        ":fix",
     ],
     jobs = 0,
     tags = ["manual"],
+)
+
+# The file lint's formatters. This package, which only the root module loads, holds the
+# command: the root module uses rules_multirun as a development dependency, and the lint check
+# of the other modules loads //tools/lint.
+command(
+    name = "fix",
+    arguments = ["--fix"],
+    command = "//tools/lint:files",
+    data = FILE_TOOLS.values(),
+    environment = FILE_TOOL_PATHS,
 )

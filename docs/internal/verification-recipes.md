@@ -131,11 +131,12 @@ left out too: its `--aosp` style fits most of the 17 Java files, but it would ne
 artifact, a `java_binary` with the JVM's `--add-exports` flags and a JDK in every formatter
 run, and the engine's own Android files, which keep Godot's tabs, excluded.
 
-To add a linter, add its executable to `//tools/lint:files` with the variable that names its
-runfiles path, and a `Tool` to `TOOLS` in `files.py` with the files it takes and its
-arguments. Any program that takes paths, prints findings as above and exits 1 on them fits; a
-new convention rule that judges each file on its own needs no change here, only its
-registration in [per_file.py](../../tools/conventions/per_file.py).
+To add a linter, add its executable under a variable to `FILE_TOOLS` in
+[files.bzl](../../tools/lint/files.bzl), and a `Tool` with that variable to `TOOLS` in
+`files.py` with the files it takes and its arguments. Any program that takes paths, prints
+findings as above and exits 1 on them fits; a new convention rule that judges each file on its
+own needs no change here, only its registration in
+[per_file.py](../../tools/conventions/per_file.py).
 
 The tools are millisecond scans of a few hundred files: the whole tree takes about six
 seconds, so Bazel's per-package caching would buy little. It did cost a Gazelle language,

@@ -16,6 +16,7 @@ from tools.lint.files import (
     TOOLS,
     Tool,
     changed_files,
+    given_files,
     listed_files,
     run,
 )
@@ -117,6 +118,23 @@ class FilesTest(unittest.TestCase):
         self.assertEqual(
             ["committed.md", "edited.md", "untracked.md"],
             changed_files(self.root, "main"),
+        )
+
+    def test_without_a_merge_base_the_changed_files_are_every_file(self) -> None:
+        self.write("a.md")
+        self.git("init", "-q", "-b", "main")
+        self.git("add", ".")
+        self.git("commit", "-q", "-m", "base")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            files = changed_files(self.root, "origin/main")
+        self.assertEqual(["a.md"], files)
+        self.assertIn("origin/main", output.getvalue())
+
+    def test_given_files_are_relative_to_the_directory_the_run_started_in(self) -> None:
+        self.assertEqual(
+            ["tools/a.sh", "b.md"],
+            given_files(["a.sh", "../b.md"], self.root, self.root / "tools"),
         )
 
     def test_runs_each_tool_once_on_its_files_and_passes_when_all_pass(self) -> None:

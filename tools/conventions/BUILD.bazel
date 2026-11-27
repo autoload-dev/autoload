@@ -20,7 +20,10 @@ py_library(
 py_binary(
     name = "files",
     srcs = ["files.py"],
-    visibility = ["//tools/lint:__pkg__"],
+    visibility = [
+        "//tools/format:__pkg__",
+        "//tools/lint:__pkg__",
+    ],
     deps = [
         ":context_lib",
         ":framework_lib",

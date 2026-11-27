@@ -1,8 +1,9 @@
 """
 The file lint: the linters and formatters of files that have no Bazel targets of their own,
 run on files as `aspect format` formats them. It checks the files changed since the merge base
-with origin/main, every file Git lists with `--scope=all`, or the files given; `--fix` runs
-the formatters instead, which //tools/format runs beside rules_lint's.
+with origin/main, every file Git lists with `--scope=all`, or the files given, relative to the
+directory it started in. `--fix` runs the formatters instead, on the files given or else on
+every file, as //tools/format runs them beside rules_lint's.
 `bazel run //tools/lint:files -- [--scope=changed|all] [--fix] [<file>...]`
 
 A tool is a program that takes file paths after its arguments. A linter prints each finding on
@@ -126,11 +127,26 @@ def listed_files(root: Path) -> list[str]:
 
 
 def changed_files(root: Path, base: str) -> list[str]:
-    """The files changed since the merge base with `base`, the working tree's included."""
-    merge_base = _git(root, "merge-base", "HEAD", base)[0].strip()
+    """
+    The files changed since the merge base with `base`, the working tree's included; every
+    file without a merge base, as `aspect format` falls back to the whole tree.
+    """
+    try:
+        merge_base = _git(root, "merge-base", "HEAD", base)[0].strip()
+    except subprocess.CalledProcessError:
+        print(f"No merge base with {base}: checking every file.")
+        return listed_files(root)
     changed = _git(root, "diff", "-z", "--name-only", "--diff-filter=d", merge_base)
     untracked = _git(root, "ls-files", "-z", "--others", "--exclude-standard")
     return sorted(set(changed) | set(untracked))
+
+
+def given_files(files: Sequence[str], root: Path, directory: Path) -> list[str]:
+    """Files given relative to the directory a run started in, relative to the root."""
+    return [
+        os.path.relpath(os.path.normpath(directory.resolve() / path), root.resolve())
+        for path in files
+    ]
 
 
 # ==== Runs ====================================================================
@@ -187,7 +203,7 @@ class _Run(NamedTuple):
             return 0
         found = result.code == 1 and not fix
         if found:
-            print(f"{self.tool.name} found problems in {len(self.files)} files:")
+            print(f"{self.tool.name} found problems:")
         else:
             print(f"{self.tool.name} exited with {result.code}:")
         print(result.output.rstrip())
@@ -256,12 +272,18 @@ def _executables(tools: Sequence[Tool]) -> dict[Tool, str]:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scope", choices=("changed", "all"), default="changed")
-    parser.add_argument("--fix", action="store_true", help="Run the formatters")
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Run the formatters; without files on every file, as rules_lint's formatters do",
+    )
     parser.add_argument("files", nargs="*")
     args = parser.parse_args(argv)
     root = Path(os.environ.get("BUILD_WORKSPACE_DIRECTORY", "."))
     if args.files:
-        files = args.files
+        files = given_files(
+            args.files, root, Path(os.environ.get("BUILD_WORKING_DIRECTORY", root))
+        )
     elif args.scope == "all" or args.fix:
         files = listed_files(root)
     else:
