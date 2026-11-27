@@ -70,8 +70,7 @@ needs Linux's Android toolchains is tagged `android`, one that needs macOS's iOS
 `ios`; a mobile release build is such a test through its `<name>.build_test`
 ([examples/releases.bzl](../../examples/releases.bzl)). Tests without either run on both
 hosts, compatibility permitting, such as the `<app>_build_test` of each example's desktop
-`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)). The engine pins' check,
-tagged `engine_pins`, gives the same result on every host, so only the Linux job runs it.
+`godot_app` ([examples/AGENTS.md](../../examples/AGENTS.md)).
 The root module and the
 ruleset each run one `bazel test`, one after the other, the root module's over its add-on
 modules too: two servers that fetch the same repository at once can fail to move it into the
@@ -120,9 +119,14 @@ and shell scripts, are linted by the [file lint](verification-recipes.md#the-fil
 The source-engine tests are the most expensive and the least likely to change with a
 commit, so CI has no host job for them. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them,
-`source-engine:full`, on main on its schedule, and on manual dispatch for any
-branch: a pull request that changes source-built engines dispatches it on its own branch
-before it merges, or carries the label `source-engine`, which runs it on each push. Stale
+`source-engine:full`, on main on its schedule, on manual dispatch for any branch, and on
+each push of a pull request whose changes reach them or that carries the label
+`source-engine`. A change reaches them when it touches the engine recipes, repositories or
+their tools, the engines of the examples or of the patched-engine scenario, or a package
+with a test tagged `source_engine`
+([source_engine_changes.py](../../tools/ci/source_engine_changes.py) holds the list and reads
+the tagged packages from their BUILD files). Its job is skipped, not failed, on other pull
+requests; it is no required check. Stale
 recipe pins need no dispatch to show: `//examples/engines/simulation:pinned_test`, a fast
 test that the pre-push hook runs too, fails on a pin whose inputs changed, such as
 rules_godot's graph capture.

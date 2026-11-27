@@ -95,9 +95,8 @@ test:all --test_tag_filters=-source_engine
 # CI's host jobs (`aspect ci <host>`, .aspect/develop.axl): every test of a module but those
 # that build an engine from source, which the Source engine workflow runs, and those of the
 # other host's mobile operating system. A test tagged `android` runs in the Linux job, one tagged `ios`
-# in the macOS job; tests without either run in both, on each host's desktop system. The
-# engine pins' check, tagged engine_pins, is the same on every host and runs on Linux only.
+# in the macOS job; tests without either run in both, on each host's desktop system.
 test:ci-linux --build_tests_only
 test:ci-linux --test_tag_filters=-source_engine,-ios
 test:ci-macos --build_tests_only
-test:ci-macos --test_tag_filters=-source_engine,-android,-engine_pins
+test:ci-macos --test_tag_filters=-source_engine,-android
