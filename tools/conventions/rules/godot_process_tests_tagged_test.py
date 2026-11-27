@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.conventions.rules.rg026 import TAG, GodotProcessTests
+from tools.conventions.rules.godot_process_tests_tagged import TAG, GodotProcessTests
 from tools.conventions.test_support import Record, RepositoryTest
 
 GODOT = "//tests:exports_test"

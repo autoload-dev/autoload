@@ -175,15 +175,17 @@ code.
 
 ## Test size
 
-A test's `size` means what [Bazel's test encyclopedia](https://bazel.build/reference/test-encyclopedia#role-of-the-test-runner)
+A test's `size` means what
+[Bazel's test encyclopedia](https://bazel.build/reference/test-encyclopedia#role-of-the-test-runner)
 says: the timeout and resources of running it (`small` 60 s, `medium` 300 s, `large` 900 s,
 `enormous` 3,600 s), not the cost of building it and not what kind of test it is. Choose the
 smallest size whose timeout the test keeps safely on a loaded machine, such as one that runs
 several builds or a CI virtual machine at once; a test near a boundary takes the larger size.
-The kind of test is expressed by tags instead: `godot_process` ([RG026](conventions.md#rg026)),
-`source_engine`, `android` and `ios`, which the configurations in `shared.bazelrc` select.
-No configuration selects tests by size. A Starlark unit test or analysis test runs no
-action, so the smallest size fits it.
+The kind of test is expressed by tags instead: `godot_process`
+([godot-process-tests-tagged](conventions.md#godot-process-tests-tagged)), `source_engine`,
+`android` and `ios`, which the configurations in `shared.bazelrc` select. No configuration
+selects tests by size. A Starlark unit test or analysis test runs no action, so the smallest
+size fits it.
 
 To check sizes against run times, run the tests in question with
 `--test_verbose_timeout_warnings`, which names each test whose run time would fit a shorter
@@ -195,15 +197,15 @@ bundletool in `android_bundle_test` and the App Bundle checks of the platform te
 seconds locally but passed the 60 s of `small` on CI's macOS runner, which shares its virtual
 machine with other jobs; such a test is `medium`.
 
-Size says nothing about the cost of a test's build, so it does not select the fast tests.
-A test whose build or run starts a Godot process carries the `godot_process` tag, which
+Size says nothing about the cost of a test's build, so it does not select the fast tests. A
+test whose build or run starts a Godot process carries the `godot_process` tag, which
 `godot_test` and the test operations built on it add themselves
-([RG026](conventions.md#rg026)); the fast tests, `bazel test --config=fast //...` in the
-root module and the ruleset, which `aspect check` and the pre-push hook run, are every other
-test. The `smoke` tag marks the few
-integration tests that run with them anyway, as Bazel's encyclopedia defines it: run before
-committing code changes. A smoke test carries no `godot_process` tag. Keep it to an
-end-to-end path whose failure the other fast tests would miss.
+([godot-process-tests-tagged](conventions.md#godot-process-tests-tagged)); the fast tests,
+`bazel test --config=fast //...` in the root module and the ruleset, which `aspect check` and
+the pre-push hook run, are every other test. The `smoke` tag marks the few integration tests
+that run with them anyway, as Bazel's encyclopedia defines it: run before committing code
+changes. A smoke test carries no `godot_process` tag. Keep it to an end-to-end path whose
+failure the other fast tests would miss.
 
 ## Ruleset and consumer modules
 
@@ -298,7 +300,8 @@ package, which declares a `godot_project` together with the add-ons it names, si
 is never test-only and its add-ons may not be either; and a fixture package whose targets the
 arranged targets of such a mixed package consume. `godot/private/tests` itself is one, because
 its analysis tests arrange projects in the package. The
-[rule on production isolation](conventions.md#rg012) covers what these packages leave open.
+[production-independent-of-tests](conventions.md#production-independent-of-tests) covers what
+these packages leave open.
 
 ## Artifact test rules
 
