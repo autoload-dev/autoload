@@ -1,0 +1,46 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_testonly = True)
+
+py_test(
+    name = "text_test",
+    size = "small",
+    srcs = ["text_test.py"],
+    deps = ["//tools/resources:text_lib"],
+)
+
+py_test(
+    name = "files_test",
+    size = "small",
+    srcs = ["files_test.py"],
+    deps = ["//tools/resources:files_lib"],
+)
+
+py_test(
+    name = "node_ids_test",
+    size = "small",
+    srcs = ["node_ids_test.py"],
+    deps = ["//tools/resources:node_ids_lib"],
+)
+
+py_test(
+    name = "uids_test",
+    size = "small",
+    srcs = ["uids_test.py"],
+    deps = ["//tools/resources:uids_lib"],
+)
+
+py_test(
+    name = "class_fragment_test",
+    size = "small",
+    srcs = ["class_fragment_test.py"],
+    data = ["//godot/private/tests/validation:class_headers"],
+    deps = ["//tools/resources:class_fragment_lib"],
+)
+
+py_test(
+    name = "index_test",
+    size = "small",
+    srcs = ["index_test.py"],
+    deps = ["//tools/resources:index_lib"],
+)

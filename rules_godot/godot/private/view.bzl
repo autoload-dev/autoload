@@ -107,7 +107,7 @@ def _metadata_index(ctx, files):
         files: The view's files, as _collect_files collects them.
 
     Returns:
-        The JSON File tools/metadata_index.py writes, or None.
+        The JSON File tools/resources/index.py writes, or None.
     """
     if not metadata_kinds(ctx, ["assign", "sync", "require"]):
         return None
@@ -152,7 +152,7 @@ def _metadata_list(ctx, files, initialized, index):
         index: The project's metadata index, or None.
 
     Returns:
-        The JSON File the action writes; tools/godot_metadata_sync.py reads it.
+        The JSON File the action writes; tools/checkout/metadata_sync.py reads it.
     """
     out = ctx.actions.declare_file(ctx.label.name + ".metadata.json")
     checkout = {path: file for path, file in files.combined.items() if _in_checkout(file)}
@@ -651,27 +651,27 @@ _godot_view = rule(
             """,
         ),
         "_project_config": attr.label(
-            default = Label("//tools:project_config"),
+            default = Label("//tools/project:project_config"),
             executable = True,
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_actions"),
+            default = Label("//tools/editor_action:project_actions"),
             executable = True,
             cfg = "exec",
         ),
         "_metadata_sync": attr.label(
-            default = Label("//tools:godot_metadata_sync"),
+            default = Label("//tools/checkout:metadata_sync"),
             executable = True,
             cfg = "exec",
         ),
         "_metadata_index": attr.label(
-            default = Label("//tools:metadata_index"),
+            default = Label("//tools/resources:metadata_index"),
             executable = True,
             cfg = "exec",
         ),
         "_resource_graph": attr.label(
-            default = Label("//tools:resource_graph"),
+            default = Label("//tools/resource_graph"),
             executable = True,
             cfg = "exec",
         ),

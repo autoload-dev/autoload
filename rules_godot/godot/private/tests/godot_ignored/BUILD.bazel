@@ -29,7 +29,7 @@ py_test(
     ],
     main = "ignored_files_test.py",
     tags = ["godot_process"],
-    deps = ["//tools:pck_lib"],
+    deps = ["//tools/pack:pck_lib"],
 )
 
 # Run test: a source run reads the ignored template through FileAccess, and Godot

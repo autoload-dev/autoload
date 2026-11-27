@@ -3,7 +3,7 @@
 import sys
 import unittest
 
-from tools.pck import pck_file_contents
+from tools.pack.pck import pck_file_contents
 
 
 class GltfPackTest(unittest.TestCase):

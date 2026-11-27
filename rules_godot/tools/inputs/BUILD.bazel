@@ -1,0 +1,36 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+# How a build tool reaches its declared inputs: the action manifest with the paths path
+# mapping stages, where the bytes of each file come from, and the runfiles of a program
+# that bazel run or bazel test starts with the files a project generated among them.
+package(default_visibility = ["//tools:__subpackages__"])
+
+# Output paths that manifests name as path mapping stages them.
+py_library(
+    name = "mapped_paths_lib",
+    srcs = ["mapped_paths.py"],
+)
+
+py_library(
+    name = "manifest_lib",
+    srcs = ["manifest.py"],
+    deps = [":mapped_paths_lib"],
+)
+
+py_library(
+    name = "originals_lib",
+    srcs = ["originals.py"],
+    visibility = [
+        "//godot/private/tests/editor_view:__pkg__",
+        "//tools:__subpackages__",
+    ],
+)
+
+py_library(
+    name = "runfiles_lib",
+    srcs = ["runfiles.py"],
+    deps = [
+        ":originals_lib",
+        "@rules_python//python/runfiles",
+    ],
+)

@@ -5,7 +5,7 @@ extends RefCounted
 # with it, whether the code runs before or after the result is recorded. Each kind of code
 # that could run calls it.
 
-# The rules_godot action's parameters, which name the record (tools/godot_staging.py).
+# The rules_godot action's parameters, which name the record (tools/editor_action/action.py).
 const ACTION = "res://addons/rules_godot_action/action.json"
 
 

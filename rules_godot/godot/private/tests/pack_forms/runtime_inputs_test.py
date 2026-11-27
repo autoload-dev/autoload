@@ -5,7 +5,7 @@ import re
 import unittest
 from pathlib import Path
 
-from tools.pck import pck_file_contents, pck_file_member
+from tools.pack.pck import pck_file_contents, pck_file_member
 
 ROOT = (
     Path(os.environ["TEST_SRCDIR"])

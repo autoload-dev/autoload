@@ -141,7 +141,7 @@ or replace the same `{NAME}` placeholders in a build-time tool. Short optional/r
 may be produced in code; a placeholder alone on its line stands for such a block.
 
 When changing exporters, obtain export options, defaults and project settings from Godot's
-shell probe (`rules_godot/tools/action/shell.gd`), not copies in Starlark or Python. Keep
+shell probe (`rules_godot/tools/editor_action/plugin/shell.gd`), not copies in Starlark or Python. Keep
 remaining per-minor tables and constants in `rules_godot/godot/private/engine/profiles.bzl`
 and pass them to build tools as data.
 

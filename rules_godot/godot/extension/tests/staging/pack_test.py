@@ -4,7 +4,7 @@ import os
 import unittest
 from pathlib import Path
 
-from tools.pck import pck_file_contents, pck_file_member
+from tools.pack.pck import pck_file_contents, pck_file_member
 
 FIXTURE = "godot/extension/tests/staging/fixtures/extension_load_probe"
 ROOT = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"] / FIXTURE

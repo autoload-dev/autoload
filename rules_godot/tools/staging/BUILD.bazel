@@ -1,0 +1,29 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+# The staged project of an operation: the files it stages and the project directory a Godot
+# process runs on.
+package(default_visibility = ["//tools:__subpackages__"])
+
+py_library(
+    name = "files_lib",
+    srcs = ["files.py"],
+    deps = [
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:node_ids_lib",
+        "//tools/resources:text_lib",
+        "//tools/resources:uids_lib",
+    ],
+)
+
+py_library(
+    name = "project_lib",
+    srcs = ["project.py"],
+    deps = [
+        ":files_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/project:config_lib",
+    ],
+)

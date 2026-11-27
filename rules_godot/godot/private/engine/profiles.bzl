@@ -149,7 +149,7 @@ _GODOT_4_7 = {
         "version_options": ["application/short_version", "application/version"],
         # The CPUs of the exporter's architectures/* options. A Simulator
         # export of another CPU lacks its feature tag, so the rules add it
-        # for the export and remove it from the packed settings (tools/pck.py).
+        # for the export and remove it from the packed settings (tools/pack/pck.py).
         # Temporary exception: drop both once Godot's iOS exporter registers every
         # Simulator CPU.
         "cpus": ["arm64"],

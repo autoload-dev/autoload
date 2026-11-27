@@ -18,7 +18,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from tools.pck import pck_member, project_features, project_setting_keys
+from tools.pack.pck import pck_member, project_features, project_setting_keys
 from tools.platforms.apple_bundle import bundle_files
 from tools.platforms.native_symbols import require_slices
 

@@ -107,7 +107,7 @@ _godot_editor = rule(
             default = True,
         ),
         "_runner": attr.label(
-            default = Label("//tools:godot_editor"),
+            default = Label("//tools/checkout:editor_view"),
             executable = True,
             cfg = config.exec("run"),
         ),
@@ -199,7 +199,7 @@ def _metadata_sync_impl(ctx, test):
 
 _METADATA_SYNC = sync_rules(
     implementation = _metadata_sync_impl,
-    runner = Label("//tools:godot_metadata_sync"),
+    runner = Label("//tools/checkout:metadata_sync"),
     # The godot_metadata_sync macro documents these attributes.
     attrs = {"view": attr.label(mandatory = True, providers = [GodotViewInfo])} | METADATA_ATTRS | ENGINE_ATTRS,
     docs = (

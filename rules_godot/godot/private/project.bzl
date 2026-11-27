@@ -59,7 +59,7 @@ def configuration_file(
         settings: section/property keys to Godot literal values.
         autoloads: Autoload names to res:// paths.
         main_scene: res:// path of the main scene, or empty.
-        purpose: "runtime", "import", "export" or "editor"; see project_config.py.
+        purpose: "runtime", "import", "export" or "editor"; see tools/project/config.py.
         editor_plugins: plugin.cfg res:// paths the purpose enables.
         features: JSON File of the feature tags of the editor of import actions, or None.
         kinds: The setting kinds and sections of the editor's version, from
@@ -68,7 +68,7 @@ def configuration_file(
         left_out: JSON File of the authored settings the view leaves out, from
             left_out_entries, or None.
         context_only: Whether to carry no setting that names a file of the game; see
-            project_config.py.
+            tools/project/config.py.
 
     Returns:
         The constructed File.
@@ -506,12 +506,12 @@ _godot_project = rule(
             cfg = reset_transition,
         ),
         "_project_config": attr.label(
-            default = Label("//tools:project_config"),
+            default = Label("//tools/project:project_config"),
             executable = True,
             cfg = "exec",
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_actions"),
+            default = Label("//tools/editor_action:project_actions"),
             executable = True,
             cfg = "exec",
         ),

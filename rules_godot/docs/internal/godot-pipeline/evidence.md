@@ -133,28 +133,32 @@ Whole-project memberships here are implementation facts, not desired minimum dep
 
 ### R02
 
-[Per-purpose configuration](../../../tools/project_config.py) (`compose_project`):
+[Per-purpose configuration](../../../tools/project/config.py) (`compose_project`):
 drops import autoload/editor-plugin section, main scene, resource-reference-valued settings
 and inactive feature overrides, then reconstructs per-purpose plugin lists.
-[Godot staging](../../../tools/godot_staging.py): staging/extensions 194–258; child environment
-272–294. [Godot project actions](../../../tools/godot_actions.py): scan/conversion/output
-capture 31–106; importer/feature probes 109–176. [Godot exports](../../../tools/godot_export.py):
-generated presets 231–279; export lock/workspace 332–357; pack staging/rescan/export/report 393–433.
+[Staged files](../../../tools/staging/files.py) and the
+[staged project](../../../tools/staging/project.py): staging/extensions;
+[child environment](../../../tools/editor_action/process.py).
+[Godot project actions](../../../tools/editor_action/project.py): scan/conversion/output capture
+(region Import); importer/feature probes (region Importers).
+[Godot exports](../../../tools/editor_action/export.py): generated presets (region Export presets);
+export lock/workspace (region Export lock); pack staging/rescan/export/report (region Pack
+assembly).
 Per-import-unit output retention is .godot/imported changes + own sidecars; initialization captures
 changed staged-project files. Custom output paths/alternative project-data layout need review.
 
 ### R03
 
 [Editor and sidecar rules](../../../godot/private/editor.bzl),
-[editor tool](../../../tools/godot_editor.py) and
-[sidecar extraction/write/check](../../../tools/godot_metadata_sync.py).
+[editor tool](../../../tools/checkout/editor.py) and
+[sidecar extraction/write/check](../../../tools/checkout/metadata_sync.py).
 Editor uses checkout links/copies and inherited environment; generated/source files have
 different writeback ownership. Missing-sidecar writer does not overwrite existing files.
 
 ### R04
 
 [Run rules and launcher](../../../godot/private/run.bzl) 21–148 and
-[runner](../../../tools/godot_run.py) 245–365:
+[runner](../../../tools/source_run/run.py):
 source full project imports/init/runfiles, main-pack-only extension library staging, extra PCK
 delivery, explicit env plus test variables, report publishing.
 [Test adapter](../../../godot/testing/adapter.bzl),
@@ -182,11 +186,11 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 
 [Graph declaration](../../../godot/private/graph.bzl),
 [graph inspection rule](../../../godot/private/analysis.bzl),
-[format classes](../../../tools/resource_text.py) (analyzed, opaque and leaf),
-[scanner](../../../tools/resource_graph.py): runtime/import input validation and unknown
-dynamic refs, [selector](../../../tools/pack_selection.py). Static scanning does not
+[format classes](../../../tools/resources/text.py) (analyzed, opaque and leaf),
+[scanner](../../../tools/resource_graph/graph.py): runtime/import input validation and unknown
+dynamic refs, [selector](../../../tools/resource_graph/selection.py). Static scanning does not
 dynamically declare new Bazel inputs.
-[Pack format inspection](../../../tools/pck.py) validates the PCK structure.
+[Pack format inspection](../../../tools/pack/pck.py) validates the PCK structure.
 
 ### R07
 
@@ -200,10 +204,10 @@ generator source/stamp and native compilation/link inputs feed actual executable
 ### R08
 
 [Shell assets](../../../godot/private/shell_assets.bzl),
-[probe export script](../../../tools/action/shell.gd),
-[action plugin](../../../tools/action/plugin.gd),
+[probe export script](../../../tools/editor_action/plugin/shell.gd),
+[action plugin](../../../tools/editor_action/plugin/plugin.gd),
 [engine profiles](../../../godot/private/engine/profiles.bzl) and
-[export shell mode](../../../tools/godot_export.py#L120).
+export shell mode (`shell_assets` in [the export tool](../../../tools/editor_action/export.py)).
 Probe reports actual defaults/settings/feature tags; engine profiles supply remaining versioned
 tables.
 The shell-assets action does not parse the already generated main PCK as its input.

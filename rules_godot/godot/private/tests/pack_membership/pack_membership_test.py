@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from tools.pck import pck_file_contents, pck_file_member
+from tools.pack.pck import pck_file_contents, pck_file_member
 
 FIXTURE = "godot/private/tests/pack_membership/fixtures/project_with_pack_variants"
 ROOT = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"] / FIXTURE

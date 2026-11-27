@@ -42,7 +42,7 @@ The configured 4.8-beta1 comparison below records the observed minor-version dif
 
 `EditorExportPreset.get_property_list()` applies exporter visibility predicates. Advanced
 mode and the union of an actual preset and `create_preset()` still omit conditionally hidden
-options. The [probe](../../tools/action/shell.gd) therefore also asks by name for the
+options. The [probe](../../tools/editor_action/plugin/shell.gd) therefore also asks by name for the
 hidden options the engine profile lists (`hidden_export_options`) and for every option name
 a pack authors.
 
@@ -126,7 +126,7 @@ resource membership is still required. The consumer IDs:
 | --- | --- |
 | `android-host` | [shell_android.py](../../tools/platforms/shell_android.py) and the finite profile: manifest, command line, theme, version and permission generation. `splash_screen/*` behavior additionally needs the AndroidX splash screen dependency of the shared Maven installation. |
 | `apple-host` | [shell_apple.py](../../tools/platforms/shell_apple.py) and the finite profile: plist, localization and privacy metadata and launch background. Includes all exact observed privacy members matched to that profile. |
-| `host-assets` | [shell_assets.bzl](../../godot/private/shell_assets.bzl) and the [probe](../../tools/action/shell.gd): declared image selection and rendering. iOS dark and tinted icons have consumers; all 51 observed iOS icon keys are included. |
+| `host-assets` | [shell_assets.bzl](../../godot/private/shell_assets.bzl) and the [probe](../../tools/editor_action/plugin/shell.gd): declared image selection and rendering. iOS dark and tinted icons have consumers; all 51 observed iOS icon keys are included. |
 | `icon-composer` | [desktop backend](../../godot/platforms/private/desktop.bzl): the conditional native Icon Composer route, with its host and tool requirements. |
 | `godot-pck` | The PC exporter's `get_preset_features()` maps the two texture-format controls to import and export features used for the PCK (`delegated`). |
 

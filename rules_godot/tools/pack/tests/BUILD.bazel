@@ -1,0 +1,54 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_testonly = True)
+
+# Writes empty Godot PCKs for the tests of the tools that write and read packs.
+py_library(
+    name = "empty_pck",
+    testonly = True,
+    srcs = ["empty_pck.py"],
+    visibility = ["//tools:__subpackages__"],
+)
+
+py_test(
+    name = "pck_test",
+    size = "small",
+    srcs = ["pck_test.py"],
+    deps = [
+        ":empty_pck",
+        "//tools/pack:pck_lib",
+    ],
+)
+
+py_test(
+    name = "pck_features_test",
+    size = "small",
+    srcs = ["pck_features_test.py"],
+    deps = ["//tools/pack:pck_lib"],
+)
+
+py_test(
+    name = "contents_test",
+    size = "small",
+    srcs = ["contents_test.py"],
+    deps = ["//tools/pack:contents_lib"],
+)
+
+py_test(
+    name = "writer_test",
+    size = "small",
+    srcs = ["writer_test.py"],
+    deps = [
+        "//tools/pack:pck_lib",
+        "//tools/pack:writer_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:uids_lib",
+    ],
+)
+
+py_test(
+    name = "common_content_test",
+    size = "small",
+    srcs = ["common_content_test.py"],
+    deps = ["//tools/pack:common_content_lib"],
+)

@@ -100,6 +100,24 @@ watches configuration scripts, patches and custom-module trees. Consequently
 this configure phase is host-sensitive; it is not a claim of fully hermetic SDK
 provisioning. Generated compile actions use Bazel's C++/Apple toolchains.
 
+## Build tools
+
+The Python build tools in `tools/` are layered packages; each builds only on those below
+it, which [`tools/layers.ini`](../../tools/layers.ini) states for the file lint's
+import-linter:
+
+| Package | Responsibility |
+|---|---|
+| `checkout`, `source_run`, `validation` | Programs `bazel run` starts on the checkout (editor view, metadata sync, runtime profile), the runner of source runs and tests, the content validation of units |
+| `editor_action` | Godot processes on a staged project: imports, initialization, probes and exports, the action plugin whose record decides each one, and the isolated process environment |
+| `pack` | PCKs without Godot: the format, a pack's contents, the writer and the merge of extension descriptors |
+| `staging`, `resource_graph` | The files an operation stages and its project directory; the static reference graph, its queries and pack selection |
+| `project`, `resources` | Godot's configuration files; the text of resources and the metadata Godot derives for files (sidecars, UIDs, node IDs, the class cache) |
+| `inputs` | How a tool reaches its files: action manifests, originals and the runfiles of a program |
+
+`engine`, `extension` and `platforms` hold the tools of engine builds, GDExtension bindings
+and application packaging beside them.
+
 ## Tests
 
 White-box tests beside the implementation packages cover build contracts and

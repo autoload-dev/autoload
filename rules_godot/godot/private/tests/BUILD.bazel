@@ -42,7 +42,7 @@ write_file(
 )
 
 # The setting value cases with setting_values.bzl's decision for each, which project_config_test
-# compares with project_config.py's.
+# compares with tools/project/config.py's.
 write_file(
     name = "setting_value_cases",
     out = "setting_value_cases.json",
@@ -50,7 +50,7 @@ write_file(
 )
 
 # The feature override cases with setting_values.bzl's decision for each, which project_config_test
-# compares with project_config.py's.
+# compares with tools/project/config.py's.
 write_file(
     name = "override_cases",
     out = "override_cases.json",
@@ -67,9 +67,9 @@ py_test(
         ":setting_value_cases",
     ],
     deps = [
-        "//tools:project_config_command_lib",
-        "//tools:project_config_lib",
-        "//tools:project_statements_lib",
+        "//tools/project:config_command_lib",
+        "//tools/project:config_lib",
+        "//tools/project:statements_lib",
     ],
 )
 
@@ -78,8 +78,8 @@ py_test(
     size = "small",
     srcs = ["pinned_settings_test.py"],
     deps = [
-        "//tools:project_config_lib",
-        "//tools:project_statements_lib",
+        "//tools/project:config_lib",
+        "//tools/project:statements_lib",
     ],
 )
 

@@ -33,7 +33,7 @@ py_test(
     # godot_editor and godot_metadata_sync are bazel run tools built for this host, so
     # the test runs only where they can.
     target_compatible_with = HOST_CONSTRAINTS,
-    deps = ["//tools:godot_staging_lib"],
+    deps = ["//tools/inputs:originals_lib"],
 )
 
 # Every sidecar of the project is declared, so the generated metadata.test passes.

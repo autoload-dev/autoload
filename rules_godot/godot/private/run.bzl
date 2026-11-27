@@ -23,7 +23,7 @@ def _short_path(file):
 
 def import_results(ctx, project, imports = None):
     """
-    List a project's import results for a runner, which tools/godot_run.py reads.
+    List a project's import results for a runner, which tools/source_run/run.py reads.
 
     Args:
         ctx: Analysis context of an executable rule.
@@ -325,7 +325,7 @@ _PACK_DEPS = {"pack_deps": attr.label_list()}
 def _runner(group = None):
     """The runner, built for the execution platform of the group, or of the rule."""
     return {"_runner": attr.label(
-        default = Label("//tools:godot_run"),
+        default = Label("//tools/source_run"),
         executable = True,
         cfg = config.exec(group),
     )}

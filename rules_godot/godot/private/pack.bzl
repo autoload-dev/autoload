@@ -611,7 +611,11 @@ _pack_export = rule(
         ),
         "output_name": attr.string(mandatory = True),
         "pack_label": attr.string(mandatory = True),
-        "_common_content": attr.label(default = Label("//tools:common_content"), executable = True, cfg = "exec"),
+        "_common_content": attr.label(
+            default = Label("//tools/pack:common_content"),
+            executable = True,
+            cfg = "exec",
+        ),
         "preset_settings": attr.string_dict(
             doc = "Supported preset fields as Godot literals: script_export_mode is 0, 1 or 2. Omitted fields retain Godot defaults. Custom features come from godot_project.custom_features. See [Godot configuration](../../configuration.md).",
         ),
@@ -637,22 +641,22 @@ _pack_export = rule(
             """,
         ),
         "_actions": attr.label(
-            default = Label("//tools:godot_export"),
+            default = Label("//tools/editor_action:godot_export"),
             executable = True,
             cfg = "exec",
         ),
         "_pack_writer": attr.label(
-            default = Label("//tools:pack_writer"),
+            default = Label("//tools/pack:pack_writer"),
             executable = True,
             cfg = "exec",
         ),
         "_project_config": attr.label(
-            default = Label("//tools:project_config"),
+            default = Label("//tools/project:project_config"),
             executable = True,
             cfg = "exec",
         ),
         "_metadata_index": attr.label(
-            default = Label("//tools:metadata_index"),
+            default = Label("//tools/resources:metadata_index"),
             executable = True,
             cfg = "exec",
         ),
@@ -684,12 +688,12 @@ _pack_export = rule(
             providers = [GodotPackInfo],
         ),
         "_pack_selection": attr.label(
-            default = Label("//tools:pack_selection"),
+            default = Label("//tools/resource_graph:pack_selection"),
             executable = True,
             cfg = "exec",
         ),
         "_resource_graph": attr.label(
-            default = Label("//tools:resource_graph"),
+            default = Label("//tools/resource_graph"),
             executable = True,
             cfg = "exec",
         ),

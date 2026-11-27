@@ -129,7 +129,7 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
   use it, and depends only on Gazelle's packages and on the ruleset's scanner through its public label. Published, it becomes a module of its own
   beside the ruleset, as `rules_python_gazelle_plugin` and `bazel_skylib_gazelle_plugin` sit
   beside theirs: a `MODULE.bazel` with `gazelle`, `rules_go`, `rules_python` and
-  `autoload_rules_godot`, whose `//tools:resource_graph_lib` stays public, a registry test module in
+  `autoload_rules_godot`, whose `//tools/resource_graph:graph_lib` stays public, a registry test module in
   `bcr/`, a release workflow and its tests run from the root module. A user then adds it to
   their `gazelle_binary`'s `languages`. The loads it writes follow the apparent names of
   `autoload_rules_godot` and `autoload_gdunit` in the user's module.
@@ -154,7 +154,7 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
 
 ## Tests
 
-The ruleset's `//tools/tests:file_references_test` tests `file_references`,
+The ruleset's `//tools/resource_graph/tests:file_references_test` tests `file_references`,
 [scanner_test.py](../../tools/gazelle/godot/scanner_test.py) the scanner program, and
 `//tools/gazelle/godot:generation_test` runs Gazelle over each tree in
 [testdata](../../tools/gazelle/godot/testdata) and compares the BUILD files it writes with

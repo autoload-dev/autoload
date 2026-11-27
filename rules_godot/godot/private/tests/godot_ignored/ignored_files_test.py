@@ -8,7 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tools.pck import pck_file_contents, pck_file_member
+from tools.pack.pck import pck_file_contents, pck_file_member
 
 PACK, GRAPH, SELECTION, UNACKNOWLEDGED = (Path(path) for path in sys.argv[1:5])
 sys.argv = sys.argv[:1]

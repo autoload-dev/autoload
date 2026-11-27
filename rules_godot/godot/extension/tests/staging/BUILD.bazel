@@ -31,5 +31,5 @@ py_test(
     ],
     main = "pack_test.py",
     tags = ["godot_process"],
-    deps = ["//tools:pck_lib"],
+    deps = ["//tools/pack:pck_lib"],
 )

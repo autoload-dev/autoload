@@ -1,0 +1,83 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# Editor actions: the Godot processes that import, initialize, probe and export a staged
+# project, the action plugin whose record decides each one, and the isolated process
+# environment that source runs share. Project actions and exports are separate tools, so a
+# change to one does not rerun the other's actions.
+package(default_visibility = ["//tools:__subpackages__"])
+
+py_library(
+    name = "process_lib",
+    srcs = ["process.py"],
+)
+
+# The action plugin that records each editor action's result: data of the tools that run
+# editor actions only, so editing it reruns only those.
+py_library(
+    name = "action_lib",
+    srcs = ["action.py"],
+    data = glob(["plugin/*"]),
+    deps = [
+        ":process_lib",
+        "//tools/staging:project_lib",
+    ],
+)
+
+py_library(
+    name = "project_lib",
+    srcs = ["project.py"],
+    deps = [
+        ":action_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/project:config_lib",
+        "//tools/resources:files_lib",
+        "//tools/staging:project_lib",
+    ],
+)
+
+# The rules of godot/private run the project actions; the ruleset's reproducibility tests
+# run them again.
+py_binary(
+    name = "project_actions",
+    srcs = ["project.py"],
+    main = "project.py",
+    visibility = [
+        "//godot/private:__pkg__",
+        "//godot/private/tests:__pkg__",
+    ],
+    deps = [":project_lib"],
+)
+
+py_library(
+    name = "export_lib",
+    srcs = ["export.py"],
+    data = [
+        "adaptive_icon.xml.tpl",
+        "export_presets.cfg.tpl",
+    ],
+    deps = [
+        ":action_lib",
+        "//tools:template_lib",
+        "//tools/inputs:manifest_lib",
+        "//tools/inputs:originals_lib",
+        "//tools/pack:contents_lib",
+        "//tools/pack:pck_lib",
+        "//tools/project:config_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+        "//tools/staging:files_lib",
+        "//tools/staging:project_lib",
+    ],
+)
+
+py_binary(
+    name = "godot_export",
+    srcs = ["export.py"],
+    main = "export.py",
+    visibility = [
+        "//godot/private:__pkg__",
+        "//godot/private/tests:__pkg__",
+    ],
+    deps = [":export_lib"],
+)

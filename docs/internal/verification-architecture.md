@@ -284,16 +284,17 @@ The ruleset declares its boundaries in Bazel, so that a mistake fails the build:
   and a file that no `exports_files` names stays private to its package
   (`--incompatible_no_implicit_file_export`). Repository rules and module extensions read
   files by label without a target, so the files only they read are not exported.
-- The build tools in `tools/` are visible to the ruleset's own packages, the package group
-  `//tools:ruleset`, by default. A rule's private attribute is checked against the package
-  that defines the rule, so neither consumers nor generated repositories need to see a tool.
+- The build tools in `tools/` serve the ruleset's own packages. A tool package's libraries
+  are visible to the other tool packages, and each binary to the rule packages that run it:
+  a rule's private attribute is checked against the package that defines the rule, so
+  neither consumers nor generated repositories need to see a tool.
 - A target that a consumer's targets reach through the ruleset's macros, a generated
   repository or the root module's tooling must reach is visible to every package, but no
   API: its visibility is `NOT_ACTUALLY_PUBLIC` (`godot/private:visibility.bzl`), as in
   rules_python, and a comment names who needs it. A visibility cannot name the root module
   instead: it is only a development dependency of the ruleset, so the label would not resolve
   for consumers. The root module's tooling may depend on such targets, such as the Gazelle
-  extension on `//tools:resource_graph_lib`; it loads no `private` module (B3).
+  extension on `//tools/resource_graph:graph_lib`; it loads no `private` module (B3).
 
 <a id="test-only-packages"></a>
 
@@ -316,7 +317,7 @@ and the examples load them; the ruleset's white-box tests load them through its 
 dependency on the root module, `@autoload_dev`. They carry their own inspectors: the module
 boundary keeps the ruleset's `tools/platforms`, visible to the ruleset only, out of them.
 
-White-box tests depend on tool libraries such as `//tools:pck_lib` directly; those stay
+White-box tests depend on tool libraries such as `//tools/pack:pck_lib` directly; those stay
 private to the ruleset under B2.
 
 ## Coverage
@@ -370,7 +371,7 @@ A name states what its test proves or what its fixture reproduces, in the
 | Test target | The claim it proves: the subject, then the expected behavior, ending in `_test`. A variant of the same claim adds its configuration as a qualifier. The tests of a rules_testing suite take their function's name instead, `test_<claim>`. | `release_pack_excludes_gdunit_test`, `ios_app_links_extension_test` |
 | rules_testing test | A private function `_test_<claim>`. The targets it arranges take the test's name as a prefix and the tag `manual`. | `_test_pack_reads_declared_imports` |
 | Starlark test file and suite | `<subject>_tests.bzl`, which exports `<subject>_test_suite`. The package's BUILD file instantiates the suite under that name. | `pack_tests.bzl`, `pack_test_suite` |
-| Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `godot_actions_test.py`, `test_rejects_missing_preset` |
+| Python test | `<module>_test.py` for the module it tests, with methods `test_<claim>` | `uids_test.py`, `test_ids_and_their_uid_texts_round_trip` |
 | `tests` subpackage | `<impl>/tests/`. The tests of one rule may get their own subpackage, named after the rule's glossary term. | `godot/private/tests/pack/` |
 | Fixture | What it reproduces, not the test that uses it | `project_with_disabled_extension` |
 | Consumer scenario | The package names what the user does. The smoke paths are `e2e/rules_godot/smoke/<operating_system>`. | `e2e/rules_godot/smoke/android`, `e2e/rules_godot/script_run` |

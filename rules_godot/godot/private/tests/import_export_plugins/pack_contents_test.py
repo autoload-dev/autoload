@@ -4,7 +4,7 @@ import os
 import unittest
 from pathlib import Path
 
-from tools.pck import pck_file_contents
+from tools.pack.pck import pck_file_contents
 
 FIXTURE = "godot/private/tests/import_export_plugins/fixtures/project_with_import_and_export_plugins"
 ROOT = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"] / FIXTURE

@@ -1,0 +1,71 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+# A project's resource graph: the scanner and reference detection, queries over the graph and
+# the command line over both. Pack selection reads the graph and its queries.
+package(default_visibility = ["//tools:__subpackages__"])
+
+# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports the
+# resource scanner.
+py_library(
+    name = "graph_lib",
+    srcs = ["graph.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
+    deps = [
+        "//tools/project:statements_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+# Queries over a graph, for maintainers (query.py); no build action reads them.
+py_library(
+    name = "query_lib",
+    srcs = ["query.py"],
+    deps = [
+        ":graph_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+# Scans, checks and queries graphs: the command line over the graph's libraries, so the
+# scanner and reference detection stay a library that other tools import without it.
+py_library(
+    name = "command_lib",
+    srcs = ["command.py"],
+    deps = [
+        ":graph_lib",
+        ":query_lib",
+    ],
+)
+
+# The rules of godot/private run it through their private _resource_graph attributes;
+# maintainers run its queries with bazel run.
+py_binary(
+    name = "resource_graph",
+    srcs = ["command.py"],
+    main = "command.py",
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":command_lib"],
+)
+
+# Selects a pack's resources from the graph and checks that what they reference is
+# available: a tool of its own, so a change to it reruns only selections, and a change to it
+# alone no graph scans.
+py_library(
+    name = "selection_lib",
+    srcs = ["selection.py"],
+    deps = [
+        ":graph_lib",
+        ":query_lib",
+        "//tools/resources:files_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_binary(
+    name = "pack_selection",
+    srcs = ["selection.py"],
+    main = "selection.py",
+    visibility = ["//godot/private:__pkg__"],
+    deps = [":selection_lib"],
+)
