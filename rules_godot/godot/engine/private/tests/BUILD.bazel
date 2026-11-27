@@ -204,6 +204,23 @@ repository_test(
     target_compatible_with = ["@platforms//os:macos"],
 )
 
+# The binding library of godot_cpp_bindings links its generated headers through CcInfo.
+repository_test(
+    name = "test_godot_cpp_links_generated_bindings",
+    size = "small",
+    cc = True,
+    generated_bindings = True,
+    target = "@godot_cpp",
+)
+
+# An export templates archive whose platform ships its templates in a nested archive.
+repository_test(
+    name = "test_split_templates_provide_a_runtime",
+    size = "small",
+    runtime = True,
+    target = "@godot_split_templates//:macos_arm64_release",
+)
+
 filegroup(
     name = "starlark_files",
     testonly = True,

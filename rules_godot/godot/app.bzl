@@ -494,36 +494,6 @@ godot_app = macro(
     variant; register the components with register_toolchains or --extra_toolchains.
     See [platform setup](../../platforms.md) and the
     [Godot configuration catalogue](../../configuration.md) for config-only capabilities.
-
-    ### Default outputs
-    - executable (many): build bundle/archive; bazel run launches the selected signed or unsigned bundle on this host; bundle is in runfiles
-      - availability: desktop
-    - executable (many): build rules_android's default APK outputs, including signed/unsigned APKs and deployment metadata; use ApkInfo.signed_apk for the selected distributable; bazel run installs the signed APK on a device or emulator and launches it
-      - availability: apk
-    - executable (one): build selected checked AAB; no intermediate APK is exposed; bazel run installs its universal APK on a device or emulator and launches it
-      - availability: aab
-    - executable (one): build the `.app` directory for Simulator and non-`opt` builds, else the `.ipa` archive; bazel run installs it on a Simulator or device and launches it
-      - availability: ios
-    - executable (one): build nothing but the start pack's project inputs; bazel run runs the project from sources with Godot's editor binary on this host
-      - availability: editor
-
-    ### Output groups
-    - `bundle`: Selected unpacked application bundle
-      - availability: desktop
-      - prerequisites: matching desktop runtime component; selected macOS signer if enabled
-    - `archive`: Selected desktop distribution archive
-      - availability: desktop
-      - prerequisites: matching desktop runtime component; selected macOS signer if enabled
-    - `debug_symbols`: Desktop debug symbols
-      - availability: desktop
-      - prerequisites: matching C++ toolchain
-
-    ### Generated targets
-    - `{name}.debug_symbols` (alias): Analyze the unsigned symbol producer without signer identities or entitlements; requesting an app output group still analyzes its signer
-      - purpose: analysis_boundary
-      - visibility: caller
-      - testonly: inherit
-      - prerequisites: the selected operating system's SDK and debug symbol inputs; iOS requires --apple_generate_dsym
     """,
     implementation = _app_impl,
     # Common inheritance gives testonly Bazel's package default; other common

@@ -75,12 +75,11 @@ the critical path and action timings. Keep these files only for the investigatio
 
 ## API documentation
 
-For API source changes, run the ruleset's documentation tests in `rules_godot/`:
-`bazel test //godot/tests/api/... //godot/tests/api_contracts/...` checks the inventory, the
-docstrings and the contracts the registry's documentation relies on. They belong to the fast
-tests, which the pre-push hook runs. A contract test whose cases need the Android SDK or
-macOS is skipped on a host without them, and runs in CI's host jobs. See
-[API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata and its checks.
+For API source changes, build the registry's documentation metadata in `rules_godot/`:
+`bazel build //:bcr_docs`, which the fast test `//godot/tests:bcr_docs_test` also builds.
+Buildifier's docstring warnings in the lint check cover module and function docstrings; the
+documentation of rules, attributes and provider fields needs review. See
+[API documentation maintenance](../../rules_godot/docs/internal/api-reference.md) for the metadata.
 
 ## Generated BUILD declarations
 

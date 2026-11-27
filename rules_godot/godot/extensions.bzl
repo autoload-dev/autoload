@@ -242,42 +242,6 @@ godot_engines = module_extension(
     A module completes only the engines it registers. A root request owns its name;
     identical dependency requests share repositories and conflicting ones fail. See
     [engines](../../engine.md).
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described above
-
-    ### Generated targets
-    - `@{repository}//toolchains:editor_{platform}_{cpu}` (files): the editor component of one editor slot; register the package with :all
-      - prerequisites: editor archive for the editor platform, or the engine's sources
-    - `@{repository}//toolchains:runtime_linux_{cpu}_{variant}` (files): the Linux runtime component of one runtime slot
-      - prerequisites: template archive contains the slot, or the engine's sources
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_macos_{cpu}_{variant}` (files): the macOS runtime component of one runtime slot
-      - prerequisites: template archive contains the slot, or the engine's sources
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}` (files): the iOS runtime component of one device or simulator slot
-      - prerequisites: template archive contains the slot, or the engine's sources
-      - availability: ios
-    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}` (files): the Android runtime component of one slot
-      - prerequisites: Android shell AAR pinned, or the engine's sources
-      - availability: android_shell
-    - `@{repository}//android:{variant}` (files): the Android runtime of one template variant the components use
-      - prerequisites: Android shell library pinned, or the engine's sources
-      - availability: android_shell
-    - `@{repository}//toolchains:editor_{platform}_{cpu}.toolchain` (metadata): register one editor slot alone, ahead of or instead of the whole set
-      - purpose: analysis_boundary
-    - `@{repository}//toolchains:runtime_linux_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set
-      - purpose: analysis_boundary
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_macos_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set
-      - purpose: analysis_boundary
-      - availability: desktop
-    - `@{repository}//toolchains:runtime_ios_{cpu}_{environment}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set
-      - purpose: analysis_boundary
-      - availability: ios
-    - `@{repository}//toolchains:runtime_android_{cpu}_{variant}.toolchain` (metadata): register one runtime slot alone, ahead of or instead of the whole set
-      - purpose: analysis_boundary
-      - availability: android_shell
     """,
     implementation = _engines_impl,
     tag_classes = {
@@ -381,24 +345,6 @@ godot_android_toolchains = module_extension(
 
     The root module's tag applies; without one, the dependencies' tags must agree. See
     [remote execution of Android builds](../../platforms.md#remote-execution-of-android-builds).
-
-    ### Default outputs
-    - repository (none): repository creation; generated entrypoints described below
-
-    ### Generated targets
-    - `@android_toolchains//:ndk_{target_system}` (metadata): the C++ toolchain of this host's NDK for one Android CPU, on this host's operating system; register the package with :all
-      - purpose: analysis_boundary
-      - prerequisites: ANDROID_NDK_HOME
-    - `@android_toolchains//:ndk_linux_x86_64_{target_system}` (metadata): the C++ toolchain of the Linux NDK for one Android CPU, on linux/x86_64 execution platforms; this host's NDK on a Linux host
-      - purpose: analysis_boundary
-    - `@android_toolchains//:sdk_linux_x86_64` (metadata): the Linux SDK of the selected API level, on linux/x86_64 execution platforms; this host's SDK on a Linux host
-      - purpose: analysis_boundary
-    - `@android_toolchains//:android_linux_x86_64` (metadata): rules_android's Android toolchain with the Linux aapt2, on linux/x86_64 execution platforms; rules_android's default on a Linux host
-      - purpose: analysis_boundary
-    - `@android_toolchains//:aapt` (executable): aapt of the configured platform's SDK, the Linux SDK's for linux/x86_64 and this host's otherwise, for the data of a test that inspects an application on its execution platform
-      - prerequisites: ANDROID_HOME
-    - `@android_toolchains//:aapt2` (executable): aapt2 of the configured platform's SDK, as :aapt
-      - prerequisites: ANDROID_HOME
     """,
     implementation = _android_toolchains_impl,
     tag_classes = {

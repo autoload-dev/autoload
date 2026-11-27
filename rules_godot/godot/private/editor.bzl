@@ -159,9 +159,6 @@ def godot_editor(name, project, deps = [], env = {}, write_sidecars = True, engi
 
     `bazel run :edit` opens the editor on `.godot-editor/<package>/edit`.
 
-    ### Default outputs
-    - executable (one): run an editable staged project in Godot; editor and project are runfiles
-
     Args:
         name: Name of the executable target.
         project: The godot_project whose configuration the editor view uses.
@@ -249,16 +246,6 @@ def godot_metadata_sync(name, project, deps = [], size = None, timeout = None, e
         deps = [":game"],
     )
     ```
-
-    ### Default outputs
-    - executable (one): run writes missing metadata to the checkout; editor/project runfiles
-
-    ### Generated targets
-    - `{name}.test` (test): Execute missing-metadata validation as a Bazel test; an output group cannot execute tests
-      - purpose: test
-      - visibility: caller
-      - testonly: true
-      - prerequisites: project imports and execution-platform editor
 
     Args:
         name: Name of the writer; the test is `<name>.test`.

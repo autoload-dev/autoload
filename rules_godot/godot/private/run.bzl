@@ -411,9 +411,6 @@ def godot_run(
     `bazel run :game` opens the game's window. See
     [execution and tests](../../development.md#execution-and-tests).
 
-    ### Default outputs
-    - executable (one): run Godot with project or PCK; project and editor data are runfiles
-
     Args:
         name: Name of the executable target.
         deps: godot_resources and godot_extension targets the run contains, such as
@@ -499,9 +496,6 @@ def godot_test(
 
     Watch it with `bazel test :smoke_test --@autoload_rules_godot//godot:headless=false`.
     See [execution and tests](../../development.md#execution-and-tests).
-
-    ### Default outputs
-    - test (one): execute Godot under bazel test; failure follows the exit status and engine_errors; project/editor are runfiles
 
     Args:
         name: Name of the test target.

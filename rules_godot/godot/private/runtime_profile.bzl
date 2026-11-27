@@ -167,16 +167,6 @@ def godot_runtime_profile(
 
     `bazel run :update_profile` writes `release.gdbuild`.
 
-    ### Default outputs
-    - executable (one): run writes the derived profile to the checkout; the derivation is built, not run
-
-    ### Generated targets
-    - `{name}.test` (test): Execute the comparison of the checked-in profile with the derivation as a Bazel test; an output group cannot execute tests
-      - purpose: test
-      - visibility: caller
-      - testonly: true
-      - prerequisites: the derived profile, which needs the execution-platform editor and the project's imports
-
     Args:
         name: Name of the writer; the test is `<name>.test`.
         project: The godot_project whose configuration the project is derived under.

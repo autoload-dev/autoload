@@ -761,9 +761,6 @@ godot_extension = macro(
         entry_symbol = "gdextension_init",
     )
     ```
-
-    ### Default outputs
-    - files (many): build the descriptor fragment, the extension library and its runtime dependencies; no run behavior
     """,
     inherit_attrs = _extension,
     attrs = {
@@ -829,9 +826,6 @@ def godot_cc_extension(
         )
 
     See [a complete C++ extension](../../gdextension.md).
-
-    ### Default outputs
-    - files (many): build the descriptor fragment, the extension library and its runtime dependencies; no run behavior
 
     Args:
         name: Public extension target.

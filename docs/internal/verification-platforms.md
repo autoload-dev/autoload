@@ -17,9 +17,9 @@ Godot features are covered from one passing cell.
 | Linux desktop: ruleset behavior and desktop app | Linux CI; local Linux for focused feedback | CI runner CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
 | macOS desktop: ruleset behavior and desktop app | macOS CI; local macOS for focused feedback | Host CPU, pinned prebuilt engine; default build configuration | Selected desktop tests, example checks/suites and exported-app assertions |
 | Source-built engines | Source engine workflow: macOS ARM64 CI with Xcode and the Android SDK/NDK; local Mac for focused feedback | The stable and next-minor preview engines `patched` and `patched_beta`, with the patch/module fixture; the ruleset's tests tagged `source_engine` | Build and headless execution of the consumer's patched-engine apps; build-output tests of apps with source-built Android and iOS engines |
-| Android packaging | The ruleset's tests in the Linux and macOS host jobs, with SDK/NDK and Java 21; the consumer's tests tagged `android` in the Linux job | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle; the Android API contract cases in the ruleset's tests |
+| Android packaging | The ruleset's tests in the Linux and macOS host jobs, with SDK/NDK and Java 21; the consumer's tests tagged `android` in the Linux job | Stable and preview prebuilt engines; ARM64 baseline; dedicated ARM64+x86_64 bundle case, each selected by its test's transition | APK/AAB build-output tests and platform library contracts in the ruleset; the consumer's Android smoke bundle |
 | Android release symbols | The host jobs, with Android packaging | Optimized native compilation, debug information and stripping, selected by the test's transition | Match retained symbols/Build IDs/DWARF to delivered libraries |
-| iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS job; the consumer's tests tagged `ios` in the macOS job | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the Source engine workflow | Build-output tests of configured products; the consumer's iOS smoke app; the iOS API contract cases in the ruleset's macOS tests; a device link is not a provisioned device IPA |
+| iOS packaging | macOS CI with Xcode, local Mac for focused feedback: the ruleset's tests in the macOS job; the consumer's tests tagged `ios` in the macOS job | Stable prebuilt x86_64 Simulator and prebuilt unsigned ARM64 device link in the ruleset; source-built ARM64 Simulator in the Source engine workflow | Build-output tests of configured products; the consumer's iOS smoke app; a device link is not a provisioned device IPA |
 | iOS release symbols | The macOS job, with iOS packaging | Optimized build, stripping and dSYM, selected by the test's transition | Match executable/dSYM UUIDs and expected native libraries |
 | Mobile operating-system behavior | Matching Android device/emulator or iOS device/simulator | One representative environment for the changed operating-system behavior | Focused runtime acceptance only if that behavior or explicit feature acceptance requires it |
 | Signing/distribution | Appropriate identity, provisioning and environment | Configuration explicitly selected for the task | Only the signing/distribution operation in scope; never infer Store acceptance |
@@ -34,9 +34,7 @@ runs only with that config too. CI runs them only in the
 runs `--config=source-engine-main`, which leaves out the tests also tagged
 `source_engine_extended`.
 The tests tagged `android` and `ios` are the scenarios' mobile smoke tests and the mobile
-release builds. The API contract cases are tests of the ruleset
-([API documentation](verification-recipes.md#api-documentation)): the host jobs run those
-that need the Android SDK or macOS.
+release builds.
 
 The matrix separates **host**, **operating system of the application**, **CPU/ABI**,
 **engine origin and version**, **build mode/optimization/symbols**, **execution venue** and

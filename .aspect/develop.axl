@@ -137,7 +137,7 @@ def _check_impl(ctx: TaskContext):
 
 check = task(
     implementation = _check_impl,
-    summary = "Run every check and the fast tests: formatting, lint, generated files, conventions, API documentation, Code Health.",
+    summary = "Run every check and the fast tests: formatting, lint, generated files, conventions, Code Health.",
     args = {
         "all": args.boolean(default = False, description = "Format the whole tree, as CI does, not only what changed since origin/main"),
         "keep_going": KEEP_GOING,

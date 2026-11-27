@@ -291,11 +291,3 @@ class Bazel:
                         "Bazel did not resolve labels: " + ", ".join(sorted(unresolved))
                     )
         return MappingProxyType({label: cache[label] for label in labels})
-
-    def query(self, module: Module, expression: str) -> ET.Element:
-        """
-        Run a loading query in the module's workspace, naming its labels as the module does;
-        the API documentation's checks extend the tool with their own queries (tools/docs).
-        """
-        scope = self._group(module)[module]
-        return scope.localize_element(self._xml(scope.workspace, expression))

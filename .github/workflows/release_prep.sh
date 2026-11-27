@@ -21,10 +21,10 @@ git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT
 # The ruleset's API documentation and the setup its release notes show.
 SETUP=""
 if [ "$NAME" = autoload_rules_godot ]; then
-    # The API documentation the registry renders: the curated Stardoc metadata of the public
-    # entrypoints (rules_godot/docs/internal/api-reference.md), not every starlark_doc_extract output.
+    # The API documentation the registry renders: the Stardoc metadata of the public
+    # entrypoints (rules_godot/BUILD.bazel).
     # See https://github.com/bazelbuild/bazel-central-registry/blob/main/docs/stardoc.md
-    DOCS_TARGET=//godot/tests/api:bcr_docs
+    DOCS_TARGET=//:bcr_docs
     # The ruleset's own module builds it; the release files stay at the root.
     OUTPUT="$PWD"
     pushd "$(dirname "$0")/../../rules_godot" > /dev/null

@@ -1,13 +1,11 @@
-# Sections: Python, Documentation, Consumer dependencies, Android and Godot, Supporting
+# Sections: Python, Consumer dependencies, Android and Godot, Supporting
 # repositories, Tooling.
 
 """
 The repository's own tooling: formatting, linting, conventions, the named CI work, add-on
 scaffolding and setup checks across every component. It is never published; the components
 live in their own modules, such as rules_godot/ and addons/<module>/, which this module
-ignores (.bazelignore). The other modules load its linters as a development dependency;
-it holds the checks of the ruleset's API documentation (tools/docs), whose tests the ruleset
-runs in its own module.
+ignores (.bazelignore). The other modules load its linters as a development dependency.
 """
 
 module(name = "autoload_dev")
@@ -73,14 +71,6 @@ use_repo(pip, "lint_pypi")
 
 uv = use_extension("@rules_python//python/uv:uv.bzl", "uv", dev_dependency = True)
 uv.configure(version = "0.13.5")
-
-# ==== Documentation ===========================================================
-
-# Stardoc's output schema, with which the API documentation's checks (tools/docs) read the
-# ruleset's extracted Starlark modules. Regular dependencies, so that the ruleset's tests
-# reach them through this module, which never is published.
-bazel_dep(name = "stardoc", version = "0.8.1")
-bazel_dep(name = "protobuf", version = "36.2")
 
 # ==== Consumer dependencies ===================================================
 
@@ -349,7 +339,6 @@ godot_engines.runtime_profile(
 godot_engines.runtime_profile(profile = "//examples/lichtpost:runtime.gdbuild")
 use_repo(
     godot_engines,
-    # The API contract cases of the godot_engines extension check this hub's entrypoints.
     "godot",
     "patched_beta_macos_arm64_template_release",
     "patched_macos_arm64_editor",

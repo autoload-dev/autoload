@@ -14,27 +14,25 @@ projects demonstrate practices; they do not prescribe one universal CI policy.
 | [rules_python docs BUILD](https://github.com/bazel-contrib/rules_python/blob/main/docs/BUILD.bazel) | Sphinx/Stardoc API source inventory and a docs `build_test` | Build the reference in CI; preserve setup and conceptual guides separately |
 | [bazel-skylib docs BUILD](https://github.com/bazelbuild/bazel-skylib/blob/main/docs/BUILD) and [its private helper](https://github.com/bazelbuild/bazel-skylib/blob/main/docs/private/stardoc_with_diff_test.bzl) | Generate committed Markdown, compare with `diff_test`, provide an updater | Not followed: the registry renders the documentation, so the repository commits none |
 | [rules-template release script](https://github.com/bazel-contrib/rules-template/blob/main/.github/workflows/release_prep.sh) and [bazel-lib's](https://github.com/bazel-contrib/bazel-lib/blob/main/.github/workflows/release_prep.sh) | No committed reference; the release attaches `starlark_doc_extract` metadata that `docs_url` names and the registry renders | Publish the API documentation only through the registry |
-| [Buildifier warnings](https://github.com/bazelbuild/buildtools/blob/main/WARNINGS.md#function-docstring) | Documentation lint; public functions below five statements can escape mandatory-docstring checks | Add coverage for short public functions and their parameters |
-| [Bazel 9.3.0 starlark_doc_extract](https://bazel.build/versions/9.3.0/reference/be/general#starlark_doc_extract) | Evaluated metadata, binary/text Protobuf outputs, public exports/namespaces; generated output may vary by Bazel version | Inspect evaluated metadata using Stardoc's schema; pin Bazel for golden diffs |
+| [Buildifier warnings](https://github.com/bazelbuild/buildtools/blob/main/WARNINGS.md#function-docstring) | Documentation lint; public functions below five statements can escape mandatory-docstring checks | Document short public functions and their parameters too |
+| [Bazel 9.3.0 starlark_doc_extract](https://bazel.build/versions/9.3.0/reference/be/general#starlark_doc_extract) | Evaluated metadata, binary/text Protobuf outputs, public exports/namespaces; generated output may vary by Bazel version | Extract the registry's metadata from the public entrypoints |
 
 The following are deliberate **rules_godot requirements**, rather than claims
 about universal upstream enforcement:
 
-- Complete public-module discovery independent of the handwritten inventory.
-- Unfiltered export inventories for coverage; explicit primary symbol selection
-  only for the registry's metadata, checked against the complete evaluated surface.
-- Exactly one public load path and contract per evaluated symbol identity.
-  Generated-repository helpers are implementation details excluded from the
-  BCR metadata, even though they need public load
-  visibility. Other private implementation modules restrict load visibility.
+- Exactly one public load path per symbol. Generated-repository helpers are
+  implementation details excluded from the BCR metadata, even though they need
+  public load visibility. Other private implementation modules restrict load
+  visibility.
 - Update all repository consumers directly when moving an unpublished API;
   do not retain previous entrypoints.
-- Curated public primary metadata for the BCR docs archive;
-  implementation helpers and duplicate re-exports are excluded from that artifact.
+- Public entrypoints that export only their public symbols, so the BCR docs
+  archive documents each of them completely; implementation helpers and
+  duplicate re-exports stay out of it.
 - Descriptions for every public API, parameter, attribute, provider field and
   extension tag; include short functions and shared/overridden attributes.
-- Review semantic correctness and examples separately from automated presence
-  checks.
+- Review the presence of documentation that Buildifier does not check, semantic
+  correctness and examples.
 
 The registry's rendering of the release's metadata is the ruleset's API documentation;
 the repository commits no reference pages, so nothing generated can go stale.

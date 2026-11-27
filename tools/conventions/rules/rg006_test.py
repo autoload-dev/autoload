@@ -33,12 +33,12 @@ RECORDS: list[Record] = [
 class CommandLabelsTest(RepositoryTest):
     def test_selects_commands_not_source_or_application_arguments(self) -> None:
         self.assertEqual(
-            [(3, "//projects/demo:run"), (4, "//:consumer_snippet"), (5, "//tools/docs")],
+            [(3, "//projects/demo:run"), (4, "//:consumer_snippet"), (5, "//tools/ci")],
             command_labels("""
 load("@autoload_rules_godot//godot:defs.bzl", "godot_run")
 `bazel run //projects/demo:run -- //application:argument`
 bazel build //path/to:target //docs/... //:consumer_snippet
-`bazel run //tools/docs`
+`bazel run //tools/ci`
 """),
         )
 

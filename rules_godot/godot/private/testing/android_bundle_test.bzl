@@ -89,9 +89,6 @@ android_bundle_test = rule(
 
     `@bundletool//file` is an `http_file` of the checksum-pinned `bundletool-all` JAR
     in the caller's `MODULE.bazel`.
-
-    ### Default outputs
-    - test (one): inspect the bundle under bazel test on the execution platform; bundle.json is an undeclared test output
     """,
     implementation = _android_bundle_test_impl,
     attrs = {

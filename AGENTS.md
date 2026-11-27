@@ -5,12 +5,10 @@ component lives in its own directory with its own Bazel module and releases:
 `rules_godot/` holds the Bazel rules for Godot projects, extensions and application packaging,
 and `addons/` the Godot add-on modules. The root module, which is never published, holds the
 repository's own tooling in `tools/`: the named CI work, add-on scaffolding, setup checks,
-formatting, linting, the conventions check and the checks of the ruleset's API documentation,
-which the ruleset's tests run. It also holds
-the consumers of the components, which it reaches through `local_path_override`: the Godot
-applications of `examples/` and the ruleset's consumer scenarios in `e2e/rules_godot/`. A
-component's builds never load files from the root module; the components reach its linters
-only through a development dependency.
+formatting, linting and the conventions check. It also holds the consumers of the components,
+which it reaches through `local_path_override`: the Godot applications of `examples/` and the
+ruleset's consumer scenarios in `e2e/rules_godot/`. A component's builds never load files from
+the root module; the components reach its linters only through a development dependency.
 
 In `rules_godot/`, `godot/` owns the rules and `tools/` the build tools, each with white-box
 tests in `tests/` subpackages. `examples/` and `e2e/rules_godot/` build as consumers do, through
@@ -56,7 +54,7 @@ bazel build --config=lint -- //...        # lint Python, Markdown and GDScript, 
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
 aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
 bazel run //tools/gazelle:update          # regenerate the BUILD declarations Gazelle maintains
-(cd rules_godot && bazel test //godot/tests/api/... //godot/tests/api_contracts/...)  # after changing the ruleset's public API
+(cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets
 RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy
@@ -110,7 +108,7 @@ shared evidence tools and the checker remain independent of individual rules. Us
 selection, diagnostics and references to specific rules; use descriptive names in navigation
 and general task descriptions.
 
-For public Bazel API or documentation-checker changes, use the
+For public Bazel API changes, use the
 [bazel-api-docs skill](.agents/skills/bazel-api-docs/SKILL.md).
 
 # Issues, pull requests and CI changes

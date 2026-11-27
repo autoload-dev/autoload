@@ -245,9 +245,9 @@ stay out of them with a small scope.
 
 | Rule | Statement | Enforcement | Exceptions |
 |---|---|---|---|
-| B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](../../rules_godot/docs/internal/api-reference.md) documents and its inventory lists. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
+| B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](../../rules_godot/docs/internal/api-reference.md) documents. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
-| B3 | Consumer scenarios load no private module but the artifact test rules, which are classified as cross-repository modules. | The API inventory check | None |
+| B3 | Consumer scenarios load no private module but the artifact test rules, which keep public load visibility for them. | Review, until a Bazel visibility check covers the modules that keep public load visibility | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
 | L1 | Each test has exactly one owning module and runs wherever its tags select it. Ruleset tests run in the ruleset's `bazel test`, repository-tooling tests in the root module's. A consumer scenario that needs a mobile operating system's toolchains carries the tag `android` or `ios`. A host job does not select another host's mobile tests. | Review, and the tag filters of the configs in `shared.bazelrc`. [Host jobs and execution](verification-platforms.md#host-jobs-and-execution) describes the selection. | None |
 
@@ -261,9 +261,8 @@ them. A mobile test carries its tag where its package declares it, and no `test_
 built App Bundle or iOS application. They are not supported API: as in rules_apple and
 rules_android, inspection rules serve the ruleset's own tests. White-box tests and the
 smoke scenarios `e2e/rules_godot/smoke/android` and `e2e/rules_godot/smoke/ios` load them; the root
-module loads them across repositories, so they keep public load visibility and are classified as
-cross-repository modules. They carry their own inspectors instead of loading
-`tools/platforms`.
+module loads them across repositories, so they keep public load visibility. They carry their
+own inspectors instead of loading `tools/platforms`.
 
 White-box tests depend on tool libraries such as `//tools:pck_lib` directly; those stay
 private to the ruleset under B2.
@@ -285,10 +284,6 @@ coverage.
 | Platform | Consumer scenario | One smoke path: build, inspect with public helpers, run where the host allows |
 | Public test helper | Consumer scenario | That a user can load and use it |
 | Repository tool | Repository-tooling test | Each check or rule, with adjacent regression cases as the [rule framework](conventions.md#rule-framework) requires |
-
-The API contract cases in `godot/tests/api_contracts` give each public API a representative
-configuration that the contract check runs against its documentation. They are the
-mechanical floor of public-rule coverage, not a substitute for the analysis tests above.
 
 ## Altitude
 

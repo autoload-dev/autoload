@@ -23,7 +23,7 @@ decide. No list names the modules. Pushing a tag runs
    `<module>-X.Y.Z.tar.gz` with `git archive` of the module's directory and, for the
    ruleset, the API documentation archive `autoload_rules_godot-X.Y.Z.docs.tar.gz`, attests
    them and opens a draft GitHub release with the archives and the `bazel_dep` snippet. The
-   documentation archive holds the curated Stardoc metadata of `//godot/tests/api:bcr_docs`,
+   documentation archive holds the Stardoc metadata of `//:bcr_docs`,
    which the ruleset's own module builds ([API documentation
    maintenance](../../rules_godot/docs/internal/api-reference.md#metadata-for-the-bcr-documentation-archive));
    the registry renders it from the `docs_url` of the registry entry.
