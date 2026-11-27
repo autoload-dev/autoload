@@ -84,11 +84,12 @@ a reference resolves to a target of the referencing project, or to one outside e
 such as an add-on, never to another project's. A built-in class resolves to nothing.
 
 When several targets provide a reference, such as a class that two builds of one extension
-register, the target keeps the one its `deps` already name; without that choice it gets none,
-and a message asks for it. A format can need a target that no file names, such as the
+register, the target keeps the one its `deps` or `runtime_deps` already name; without that
+choice it gets none, and a message asks for it. A format can need a target that no file names, such as the
 extension of a script language: `# gazelle:godot_format_dep .dart //path/to:extension` adds
 it to every unit that holds a file of the format, and resolves a reference to a file of the
-format that no target provides, such as a script the extension compiles, to it.
+format that no target provides, such as a script the extension compiles, to it. A
+directory's directives for a suffix replace those it inherits for that suffix.
 
 ## A person's choices
 
