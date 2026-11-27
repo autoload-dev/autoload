@@ -3,15 +3,14 @@
 The Bazel tool that runs the loading queries is tools/conventions/bazel.py; this module
 decodes their output.
 
-Sections: Workspace, Starlark syntax, Bazel evidence, Source labels, Context.
+Sections: Starlark syntax, Workspace, Bazel evidence, Source labels, Context.
 """
 
+import ast
 import functools
-import io
 import json
 import os
 import subprocess
-import tokenize
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
@@ -85,6 +84,115 @@ def run_tool(
         raise EvidenceError(f"cannot run {command[0]}: {error}") from error
 
 
+# ==== Starlark syntax =========================================================
+
+
+def parse_starlark(name: str, text: str) -> ast.Module:
+    """
+    Parse Starlark source with Python's parser, whose syntax covers Starlark's, without
+    evaluating it.
+    """
+    try:
+        return ast.parse(text, name)
+    except SyntaxError as error:
+        raise EvidenceError(f"{name}: cannot parse as Starlark: {error.msg}") from error
+
+
+def string_literals(tree: ast.Module) -> frozenset[str]:
+    """The values of the string literals of parsed Starlark source."""
+    return frozenset(
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    )
+
+
+@dataclass(frozen=True)
+class Call:
+    location: Location
+    kind: str
+    attrs: frozenset[str]
+    literal_name: str | None = None
+
+
+def has_literal_name(source: str) -> bool:
+    """
+    Whether Buildozer's formatted call passes ``name`` as one string literal: for a computed
+    name, such as one inside a comprehension, Buildozer prints another name.
+    """
+    try:
+        expression = ast.parse(source.strip(), mode="eval").body
+    except SyntaxError as error:
+        raise EvidenceError(
+            f"cannot parse a call Buildozer printed: {error.msg}"
+        ) from error
+    if not isinstance(expression, ast.Call):
+        return False
+    return any(
+        keyword.arg == "name"
+        and isinstance(keyword.value, ast.Constant)
+        and isinstance(keyword.value.value, str)
+        for keyword in expression.keywords
+    )
+
+
+class Buildozer:
+    def __init__(self, root: Path, executable: Path) -> None:
+        self.root = root
+        self.executable = executable
+        self._calls: dict[Module, tuple[Call, ...]] = {}
+        self._names: dict[Module, str] = {}
+
+    def module_name(self, module: Module) -> str:
+        """The name the module declares in its MODULE.bazel."""
+        if module not in self._names:
+            output = run_tool(
+                [
+                    str(self.executable),
+                    "-output_json",
+                    "print name",
+                    str(self.root / module.path / "MODULE.bazel") + ":%module",
+                ],
+                self.root,
+            )
+            records = json.loads(output).get("records", [])
+            if len(records) != 1:
+                raise EvidenceError(f"{module.path}/MODULE.bazel: expected one module()")
+            self._names[module] = records[0]["fields"][0]["text"]
+        return self._names[module]
+
+    def calls(self, module: Module) -> tuple[Call, ...]:
+        """Read the calls through the pinned parser, which evaluates no Starlark."""
+        if module in self._calls:
+            return self._calls[module]
+        output = run_tool(
+            [
+                str(self.executable),
+                "-output_json",
+                "-respect_bazelignore=false",
+                "print kind attrs path startline name rule",
+                *[str(self.root / build.parent) + ":*" for build in module.builds],
+            ],
+            self.root,
+        )
+        calls = []
+        for record in json.loads(output).get("records", []):
+            kind, attrs, path, line, name, source = record["fields"]
+            calls.append(
+                Call(
+                    Location(
+                        Path(path["text"]).relative_to(self.root).as_posix(),
+                        line["number"],
+                    ),
+                    kind["text"],
+                    frozenset(attrs.get("list", {}).get("strings", [])),
+                    name.get("text", "") if has_literal_name(source["text"]) else None,
+                )
+            )
+        self._calls[module] = tuple(calls)
+        return self._calls[module]
+
+
 # ==== Workspace ===============================================================
 
 
@@ -92,36 +200,6 @@ def nearest(path: Path, roots: Iterable[Path]) -> Path | None:
     """The deepest root that contains path: a nested root owns its files, not the outer one."""
     candidates = frozenset(roots)
     return next((p for p in (path, *path.parents) if p in candidates), None)
-
-
-@dataclass(frozen=True)
-class StringLiteral:
-    location: Location
-    # Contents between the quotes; escapes stay undecoded.
-    value: str
-
-
-def string_literals(name: str, text: str) -> tuple[StringLiteral, ...]:
-    """
-    List string literals in Starlark source without evaluating it.
-
-    Comments are skipped by the tokenizer. Contents keep their escapes undecoded,
-    so Python's string semantics are never substituted for Starlark's.
-    """
-    try:
-        tokens = tuple(tokenize.generate_tokens(io.StringIO(text).readline))
-    except tokenize.TokenError as error:
-        raise EvidenceError(f"{name}: cannot tokenize: {error}") from error
-    literals = []
-    for token in tokens:
-        if token.type != tokenize.STRING:
-            continue
-        body = token.string.lstrip("rRbBuU")
-        quotes = 3 if body[:3] in {'"""', "'''"} else 1
-        literals.append(
-            StringLiteral(Location(name, token.start[0]), body[quotes:-quotes])
-        )
-    return tuple(literals)
 
 
 class Workspace:
@@ -144,7 +222,7 @@ class Workspace:
             sorted(n for n in set(files) if os.path.lexists(self.path(n)))
         )
         self._texts: dict[str, str] = {}
-        self._strings: dict[str, tuple[StringLiteral, ...]] = {}
+        self._syntax: dict[str, ast.Module] = {}
 
     def path(self, name: str) -> Path:
         """Where a listed file lies."""
@@ -234,7 +312,7 @@ class Workspace:
     def loaded_modules(self) -> tuple[Module, ...]:
         """
         The modules whose Bazel evidence the check loads: every module but the registry test
-        modules, which build only from a release archive (RG020).
+        modules, which build only from a release archive (registry-test-module-in-bcr).
         """
         return tuple(m for m in self.modules if not is_registry_test_module(m.path))
 
@@ -261,125 +339,15 @@ class Workspace:
                 raise EvidenceError(f"{name}: cannot read: {error}") from error
         return self._texts[name]
 
-    def strings(self, name: str) -> tuple[StringLiteral, ...]:
-        """String literals of a Starlark file (BUILD, MODULE.bazel or .bzl)."""
-        if name not in self._strings:
-            self._strings[name] = string_literals(name, self.text(name))
-        return self._strings[name]
+    def syntax(self, name: str) -> ast.Module:
+        """The parsed source of a Starlark file (BUILD, MODULE.bazel or .bzl)."""
+        if name not in self._syntax:
+            self._syntax[name] = parse_starlark(name, self.text(name))
+        return self._syntax[name]
 
-
-# ==== Starlark syntax =========================================================
-
-
-@dataclass(frozen=True)
-class Call:
-    location: Location
-    kind: str
-    attrs: frozenset[str]
-    literal_name: str | None = None
-
-
-# How a delimiter changes the nesting depth.
-NESTING = {"(": 1, "[": 1, "{": 1, ")": -1, "]": -1, "}": -1}
-
-
-def _is_name_argument(tokens: list[tokenize.TokenInfo], index: int) -> bool:
-    """Whether the token at index starts a ``name = value`` argument with a value."""
-    if index == 0 or tokens[index].string != "name":
-        return False
-    if tokens[index - 1].string not in {"(", ","}:
-        return False
-    return index + 3 < len(tokens) and tokens[index + 1].string == "="
-
-
-def has_literal_name(source: str) -> bool:
-    """
-    Recognize one literal argument in Buildozer's already-parsed, formatted call.
-
-    This only tokenizes delimiters and strings; it does not parse or evaluate
-    Starlark. Buildozer supplies the decoded value, so Python's string semantics
-    are never substituted for Starlark's.
-    """
-    try:
-        tokens = [
-            token
-            for token in tokenize.generate_tokens(io.StringIO(source).readline)
-            if token.type
-            not in {
-                tokenize.COMMENT,
-                tokenize.NL,
-                tokenize.NEWLINE,
-                tokenize.ENDMARKER,
-                tokenize.INDENT,
-                tokenize.DEDENT,
-            }
-        ]
-    except tokenize.TokenError as error:
-        raise EvidenceError(f"cannot tokenize parsed call: {error}") from error
-    depth = 0
-    for index, token in enumerate(tokens):
-        if depth == 1 and _is_name_argument(tokens, index):
-            value, end = tokens[index + 2], tokens[index + 3]
-            return value.type == tokenize.STRING and end.string in {",", ")"}
-        depth += NESTING.get(token.string, 0)
-    return False
-
-
-class Buildozer:
-    def __init__(self, root: Path, executable: Path) -> None:
-        self.root = root
-        self.executable = executable
-        self._calls: dict[Module, tuple[Call, ...]] = {}
-        self._names: dict[Module, str] = {}
-
-    def module_name(self, module: Module) -> str:
-        """The name the module declares in its MODULE.bazel."""
-        if module not in self._names:
-            output = run_tool(
-                [
-                    str(self.executable),
-                    "-output_json",
-                    "print name",
-                    str(self.root / module.path / "MODULE.bazel") + ":%module",
-                ],
-                self.root,
-            )
-            records = json.loads(output).get("records", [])
-            if len(records) != 1:
-                raise EvidenceError(f"{module.path}/MODULE.bazel: expected one module()")
-            self._names[module] = records[0]["fields"][0]["text"]
-        return self._names[module]
-
-    def calls(self, module: Module) -> tuple[Call, ...]:
-        """Read syntax through the pinned parser; never evaluate Starlark with Python."""
-        if module in self._calls:
-            return self._calls[module]
-        output = run_tool(
-            [
-                str(self.executable),
-                "-output_json",
-                "-respect_bazelignore=false",
-                "print kind attrs path startline name rule",
-                *[str(self.root / build.parent) + ":*" for build in module.builds],
-            ],
-            self.root,
-        )
-        calls = []
-        for record in json.loads(output).get("records", []):
-            kind, attrs, path, line, name, source = record["fields"]
-            calls.append(
-                Call(
-                    Location(
-                        Path(path["text"]).relative_to(self.root).as_posix(),
-                        line["number"],
-                    ),
-                    kind["text"],
-                    frozenset(attrs.get("list", {}).get("strings", [])),
-                    name.get("text", "") if has_literal_name(source["text"]) else None,
-                )
-            )
-        self._calls[module] = tuple(calls)
-        return self._calls[module]
+    def strings(self, name: str) -> frozenset[str]:
+        """The values of the string literals of a Starlark file."""
+        return string_literals(self.syntax(name))
 
 
 # ==== Bazel evidence ==========================================================

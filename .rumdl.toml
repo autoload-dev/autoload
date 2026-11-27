@@ -1,2 +1,14 @@
 [global]
-enable = ["MD001", "MD041"]
+enable = ["MD001", "MD041", "MD051", "MD057"]
+
+# A link's fragment names a heading or an HTML `id` or `name` of the page, as GitHub renders
+# it, in its exact case. A line of a file shown as source, as in `?plain=1#L5`, is no heading.
+[MD051]
+anchor-style = "github"
+ignore-case = false
+ignored-pattern = "^L[0-9]+(-L[0-9]+)?$"
+
+# A link names a file or directory in its exact case; a root-relative one, `/docs/...`,
+# starts at the repository's root.
+[MD057]
+absolute-links = "relative_to_roots"

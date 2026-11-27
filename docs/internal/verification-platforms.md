@@ -110,8 +110,9 @@ Python's lint is a Bazel check: `--config=check` adds the aspect `python` of
 [tools/lint/check.bzl](../../tools/lint/check.bzl) to a build or test, which runs Ruff and
 ty on each Python target the build reaches through `deps` and fails it with their reports.
 `bazel build --config=lint` builds only the check's stamps, in the root module with its
-add-on modules ([RG027](conventions.md#rg027)) and in the ruleset, whose targets need the
-Android NDK to be analysed. Files without targets of their own, such as Markdown, GDScript
+add-on modules and in the ruleset, whose targets need the Android NDK to be analysed. An add-on
+module's Python target needs the tag `lint-genfiles`, without which rules_lint would skip its
+sources from the root module; the check fails on one without it. Files without targets of their own, such as Markdown, GDScript
 and shell scripts, are linted by the [file lint](verification-recipes.md#the-file-lint).
 
 ### Source engine workflow

@@ -26,10 +26,11 @@ score)) and the lowest scores. It is no gate; use it to choose what to improve, 
 before working in an area. Refactor in small structural steps and review the files again with
 `aspect code-health -- --only <path>...` until the targeted findings are gone.
 
-`aspect code-health --history` reports how often the change's files changed, by default in
-the last six months: per file its commits, the files it changed with most often, and which of
-its [regions](conventions.md#region-headers) changed together. It needs Git alone and follows renames;
-`-- --only <path>...` reports given files and `-- --since all` the whole history.
+`aspect code-health --history` reports how often the change's files changed, by default in the
+last six months: per file its commits, the files it changed with most often, and which of its
+[regions](conventions.md#region-headers-named-in-head) changed together. It needs Git alone and
+follows renames; `-- --only <path>...` reports given files and `-- --since all` the whole
+history.
 
 Starlark and GDScript are scored as translated Python: documentation strings and `doc` values
 do not count, and Bazel macros are exempt from the argument count, since their parameters
@@ -49,17 +50,21 @@ organized, so that a reader finds a topic quickly, is reviewed by the
 [`code-health` skill](#the-code-health-skill) and partly checked by linters and convention
 rules. Long files are fine; a file is split by its dependencies, never by its length alone.
 
-1. **A head with an overview.** A Python, Starlark or Markdown file starts with its purpose;
-   if it has regions, its head names them after `Sections:` (ruff D100, buildifier
-   `module-docstring`, rumdl MD041, [region-headers](conventions.md#region-headers)). Tests need no docstring.
+1. **A head with an overview.** A Python, Starlark or Markdown file starts with its purpose; if
+   it has regions, its head names them after `Sections:` (ruff D100, buildifier
+   `module-docstring`, rumdl MD041,
+   [region-headers-named-in-head](conventions.md#region-headers-named-in-head)). Tests need no
+   docstring.
 2. **Named regions.** A file with several topics divides into regions, each starting with a
-   region header and declaring at least two names ([region-headers](conventions.md#region-headers)); a file
-   with one topic has none.
+   region header and declaring at least two names
+   ([region-headers-named-in-head](conventions.md#region-headers-named-in-head)); a file with
+   one topic has none.
 3. **Grouped by topic, not by kind.** What the whole file needs stands above the first region;
    what one region needs stands in it. There is no block of all constants or all helpers.
 4. **One reading direction, short distances.** A definition stands before its first caller and
-   close to it, so a region ends with its entry point ([reading-order](conventions.md#reading-order) for
-   Python; Starlark requires it on its top level).
+   close to it, so a region ends with its entry point
+   ([definitions-before-callers](conventions.md#definitions-before-callers) for Python;
+   Starlark requires it on its top level).
 5. **Files of one kind share one layout.** BUILD files: `load`, `package()`, `exports_files`,
    the main target, its parts, tests last. `MODULE.bazel`: `module()`, `bazel_dep`s,
    extensions by ecosystem, development dependencies and overrides last. GDScript follows the

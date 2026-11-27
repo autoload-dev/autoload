@@ -40,8 +40,10 @@ class Tool:
     A linter or formatter and the files it takes: those whose name or path matches one of
     `patterns`, with `shebang` also shell scripts without a suffix, but none of `excluded`.
     `check` and `fix` are its arguments before the files in each mode; None leaves it out of
-    that mode. `variable` names the environment variable that holds the runfiles path of its
-    executable (BUILD.bazel).
+    that mode. A `whole_tree` tool checks every file Git lists that it takes, whichever files
+    the run got, since its checks read other files than those they report on, as rumdl's
+    links do; it fixes only the given files. `variable` names the environment variable that
+    holds the runfiles path of its executable (BUILD.bazel).
     """
 
     name: str
@@ -50,6 +52,7 @@ class Tool:
     fix: tuple[str, ...] | None = None
     excluded: tuple[str, ...] = ()
     shebang: bool = False
+    whole_tree: bool = False
     variable: str = ""
 
     def _matches(self, path: str, patterns: tuple[str, ...]) -> bool:
@@ -75,7 +78,8 @@ class Tool:
         ]
 
 
-# The rumdl configuration and its output of one finding per line.
+# The rumdl configuration and its output of one finding per line. Its link rules, MD051 and
+# MD057, read the pages a link names, so it checks every Markdown file.
 _RUMDL = ("--config", ".rumdl.toml", "--no-cache")
 
 # The repository's tools.
@@ -94,6 +98,7 @@ TOOLS = (
         ("*.md",),
         check=("check", *_RUMDL, "--output-format", "concise"),
         fix=("fmt", *_RUMDL, "--quiet"),
+        whole_tree=True,
         variable="RUMDL",
     ),
     Tool(
@@ -213,6 +218,10 @@ class _Run(NamedTuple):
         return 1 if found else 2
 
 
+def _existing(files: Sequence[str], root: Path) -> list[str]:
+    return [path for path in files if (root / path).is_file()]
+
+
 def _runs(
     tools: Mapping[Tool, str], files: list[str], root: Path, fix: bool
 ) -> list[_Run]:
@@ -222,7 +231,9 @@ def _runs(
         arguments = tool.fix if fix else tool.check
         if arguments is None:
             continue
-        if selected := tool.selected(files, root):
+        whole = tool.whole_tree and not fix
+        candidates = _existing(listed_files(root), root) if whole else files
+        if selected := tool.selected(candidates, root):
             runs.append(_Run(tool, executable, arguments, selected))
     return runs
 
@@ -237,8 +248,7 @@ def run(
     Returns 0 when every tool passed, 1 when a linter found something, 2 when a tool could not
     check or fix.
     """
-    existing = [path for path in files if (root / path).is_file()]
-    runs = _runs(tools, existing, root, fix)
+    runs = _runs(tools, _existing(files, root), root, fix)
     with ThreadPoolExecutor(max_workers=max(len(runs), 1)) as pool:
         results = list(pool.map(lambda pending: pending.execute(root), runs))
     return max(
