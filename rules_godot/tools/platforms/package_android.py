@@ -81,7 +81,7 @@ def _library_name(library: dict[str, str]) -> str:
 
 
 def _source_built_version(manifest: list[dict[str, str]]) -> str | None:
-    """Return the version the source-built engine libraries name, which must be one."""
+    """Return the one version that the source-built engine libraries name, if any."""
     versions = {version for library in manifest if (version := library_version(library))}
     if len(versions) > 1:
         raise ValueError(

@@ -211,8 +211,8 @@ def command_line(facts: Facts, values: Mapping[str, Any]) -> list[str]:
     args = [arg for arg in facts.text("command_line/extra_args").split(" ") if arg]
     args += flags["xr_off"]
     args += [flag for option, flag in flags["flags"] if facts.option(option)]
-    # As Godot's Gradle export, whose themes this shell writes: with transparency the
-    # system bars' fallback color is transparent too.
+    # With transparency, the system bars' fallback color is transparent too, as in
+    # Godot's Gradle export, whose themes this shell writes.
     background = (
         "#00000000"
         if _transparent(facts)
@@ -288,9 +288,9 @@ def themes(
         splash["android:windowSplashScreenBrandingImage"] = (
             "@drawable/splash_branding_image"
         )
-    # Custom attributes extend the main theme, or with a [splash] prefix the splash
-    # theme. As in Godot's export they keep the main theme's attributes, may replace
-    # the splash screen's and never its link to the main theme or its translucency.
+    # Custom attributes extend the main theme, or the splash theme with a [splash]
+    # prefix. As in Godot's export, they keep the main theme's attributes. They may
+    # replace the splash screen's, but not its main theme link or translucency.
     for key, value in facts.option("gradle_build/custom_theme_attributes").items():
         if key.startswith("[splash]"):
             splash[key.removeprefix("[splash]")] = str(value)

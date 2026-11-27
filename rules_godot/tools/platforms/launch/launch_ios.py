@@ -501,8 +501,8 @@ def install_on_simulator(
             ).returncode
             == 0
         ),
-        # A Simulator checks no signature or version; a failing install over an
-        # installed copy is the copy's.
+        # A Simulator checks neither signature nor version, so an install that
+        # fails over an installed copy fails because of that copy.
         conflict=_conflict,
     )
 

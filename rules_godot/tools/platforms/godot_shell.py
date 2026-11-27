@@ -92,7 +92,7 @@ def _ios_plist(
 def _write_localizations(
     args: argparse.Namespace, facts: Facts, values: dict, yielded: set[str]
 ) -> None:
-    """Write the Info.plist's localized values but those the application sets."""
+    """Write the Info.plist's localized values, except those the application sets."""
     tables = {
         locale: {key: value for key, value in table.items() if key not in yielded}
         for locale, table in shell_apple.localizations(
