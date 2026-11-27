@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from tools.inputs.manifest import add_manifest_arguments, load_manifest
-from tools.inputs.originals import open_original, read_original
+from tools.inputs.originals import Original, open_original, read_original
 from tools.pack.contents import content_selection, write_report
 from tools.pack.pck import Content, engine_version, pck_files, write_pck
 from tools.resources.class_fragment import CACHE as CLASS_CACHE
@@ -57,6 +57,113 @@ def raw_path(setting: str, uids: Mapping[str, str]) -> str:
     return setting.removeprefix("res://")
 
 
+class _Staged:
+    """The staged files by resource path, with the texts read from them so far."""
+
+    def __init__(self, files: dict[str, Original]) -> None:
+        self.files = files
+        self.texts: dict[str, str] = {}
+
+    def __contains__(self, path: str) -> bool:
+        return path in self.files
+
+    def text(self, path: str) -> str:
+        if path not in self.texts:
+            self.texts[path] = read_original(self.files[path]).decode("utf-8")
+        return self.texts[path]
+
+    def content(self, path: str) -> Content:
+        source = self.files[path]
+        return (
+            source
+            if isinstance(source, bytes)
+            else functools.partial(open_original, source)
+        )
+
+
+def _member_files(
+    manifest: dict, staged: _Staged, selected: set[str]
+) -> dict[str, Content]:
+    """The selected files the pack holds, with the UID sidecars that staging gave them."""
+    ignored = set(manifest.get("ignored_paths", []))
+    declared = selected | ignored
+    left_out = {path for path in ignored if hidden_by(path, declared)}
+    files = {
+        path: staged.content(path)
+        for path in selected
+        if path in staged and path not in left_out and not path.endswith(IMPORT)
+    }
+    # Godot packs the UID sidecars that staging gave files without an authored one.
+    for path in list(files):
+        sidecar = path + UID
+        if not is_sidecar_named(path) and sidecar in staged:
+            files.setdefault(sidecar, staged.content(sidecar))
+    return files
+
+
+def _import_files(path: str, staged: _Staged, features: set[str]) -> dict[str, Content]:
+    """The .import file that Godot's export packs for a file, with the imported files it names."""
+    try:
+        exported, imported = exported_import(staged.text(path + IMPORT), features)
+    except ValueError as error:
+        raise ValueError(f"res://{path}{IMPORT}: {error}") from error
+    files: dict[str, Content] = {path + IMPORT: exported.encode("utf-8")}
+    for target in imported:
+        if target not in staged:
+            raise ValueError(
+                f"res://{path}{IMPORT} names res://{target}, which its import did not produce"
+            )
+        files[target] = staged.content(target)
+    return files
+
+
+def _replace_imported(
+    files: dict[str, Content], staged: _Staged, features: set[str]
+) -> set[str]:
+    """Replace each imported file by what its import packs; return the imported files."""
+    owners = set()
+    for path in sorted(files):
+        if is_sidecar_named(path) or path + IMPORT not in staged:
+            continue
+        importer = IMPORTER.search(staged.text(path + IMPORT))
+        kind = importer[1] if importer else ""
+        # Godot packs the file of a keep importer as it is, and nothing of a skip importer.
+        if kind == "keep":
+            continue
+        del files[path]
+        if kind != "skip":
+            owners.add(path)
+            files.update(_import_files(path, staged, features))
+    return owners
+
+
+def _packed_uids(
+    files: dict[str, Content], staged: _Staged, owners: set[str]
+) -> dict[str, str]:
+    """The UIDs of the packed files and of the imported files, by path."""
+    return known_uids(
+        {
+            path: staged.text(path)
+            for path in staged.files
+            if declares_uids(path)
+            and (path in files or path.removesuffix(IMPORT) in owners)
+        },
+        {path for path in files if not is_sidecar_named(path)} | owners,
+    )
+
+
+def _add_raw_images(
+    files: dict[str, Content], staged: _Staged, facts: dict, uids: dict[str, str]
+) -> None:
+    """Add the icon and the boot splash that the configuration's settings name."""
+    for setting in (facts.get("icon", ""), facts.get("boot_splash", "")):
+        # The runtime reads the icon and the boot splash as image files, not as
+        # imported textures (editor_export_platform.cpp:1246-1257).
+        path = raw_path(setting, uids)
+        if path in staged:
+            files.setdefault(path, staged.content(path))
+
+
 def pack_files(
     manifest: dict, execroot: Path, facts: dict, selected: set[str]
 ) -> dict[str, Content]:
@@ -69,78 +176,14 @@ def pack_files(
         facts: The configuration export's facts.
         selected: The paths the pack's content selects.
     """
-    staged = staged_files(manifest, execroot)
-    ignored = set(manifest.get("ignored_paths", []))
-    declared = selected | ignored
-    left_out = {path for path in ignored if hidden_by(path, declared)}
-    texts: dict[str, str] = {}
-
-    def text(path: str) -> str:
-        if path not in texts:
-            texts[path] = read_original(staged[path]).decode("utf-8")
-        return texts[path]
-
-    def original(path: str) -> Content:
-        source = staged[path]
-        return (
-            source
-            if isinstance(source, bytes)
-            else functools.partial(open_original, source)
-        )
-
-    files = {
-        path: original(path)
-        for path in selected
-        if path in staged and path not in left_out and not path.endswith(IMPORT)
-    }
-    # The UIDs staging gave files without an authored .uid sidecar, which Godot packs.
-    for path in list(files):
-        sidecar = path + UID
-        if not is_sidecar_named(path) and sidecar in staged:
-            files.setdefault(sidecar, original(sidecar))
-    features = set(facts["features"])
-    owners = set()
-    for path in sorted(files):
-        if is_sidecar_named(path) or path + IMPORT not in staged:
-            continue
-        import_text = text(path + IMPORT)
-        importer = IMPORTER.search(import_text)
-        kind = importer[1] if importer else ""
-        if kind == "keep":
-            continue
-        del files[path]
-        if kind == "skip":
-            continue
-        owners.add(path)
-        try:
-            exported, imported = exported_import(import_text, features)
-        except ValueError as error:
-            raise ValueError(f"res://{path}{IMPORT}: {error}") from error
-        files[path + IMPORT] = exported.encode("utf-8")
-        for target in imported:
-            if target not in staged:
-                raise ValueError(
-                    f"res://{path}{IMPORT} names res://{target}, which its import did not produce"
-                )
-            files[target] = original(target)
-    uids = known_uids(
-        {
-            path: text(path)
-            for path in staged
-            if declares_uids(path)
-            and (path in files or path.removesuffix(IMPORT) in owners)
-        },
-        {path for path in files if not is_sidecar_named(path)} | owners,
-    )
-    for setting in (facts.get("icon", ""), facts.get("boot_splash", "")):
-        # The runtime reads the icon and the boot splash as image files, not as
-        # imported textures (editor_export_platform.cpp:1246-1257).
-        path = raw_path(setting, uids)
-        if path in staged:
-            files.setdefault(path, original(path))
-    scripts = {path: text(path) for path in files if path.endswith(".gd")}
-    # The files read for the caches go in from memory rather than being read again.
-    for path, read in texts.items():
+    staged = _Staged(staged_files(manifest, execroot))
+    files = _member_files(manifest, staged, selected)
+    owners = _replace_imported(files, staged, set(facts["features"]))
+    uids = _packed_uids(files, staged, owners)
+    _add_raw_images(files, staged, facts, uids)
+    scripts = {path: staged.text(path) for path in files if path.endswith(".gd")}
+    # The files read for the caches go in from memory, so they are not read again.
+    for path, read in staged.texts.items():
         if path in files and not isinstance(files[path], bytes):
             files[path] = read.encode("utf-8")
     files[CLASS_CACHE] = class_cache([fragment(scripts)]).encode("utf-8")

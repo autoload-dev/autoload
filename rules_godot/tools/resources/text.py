@@ -2,9 +2,9 @@
 The text of Godot resources that build tools read: formats, resource paths, the lexer,
 section headings and authored identities.
 
-The graph (resource_graph/graph.py) scans references on top of this; the tools that stage,
-validate, index and pack files need only this part, so a change to the graph reruns none
-of their actions.
+The graph's scanner (resource_graph/scan.py) finds references on top of this. The tools
+that stage, validate, index and pack files need only this part, so changing the graph
+reruns none of their actions.
 
 Sections: Formats and paths, Lexer, Text resources, Identities.
 """

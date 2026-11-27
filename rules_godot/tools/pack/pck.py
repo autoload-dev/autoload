@@ -52,39 +52,47 @@ def _read(source: IO[bytes], fmt: str) -> tuple[Any, ...]:
     return struct.unpack(fmt, _exact(source, struct.calcsize(fmt)))
 
 
+# The header flags of an encrypted directory (1) and of sparse storage (4), which this
+# module cannot read.
+_ENCRYPTED_OR_SPARSE = 1 | 4
+
+
+def _is_supported(header: tuple[int, ...]) -> bool:
+    """Whether a header's six words name a Godot 4.7.2+ PCK v4 that this module reads."""
+    magic, version, major, minor, patch, flags = header
+    if (magic, version, major) != (_MAGIC, 4, 4) or (minor, patch) < (7, 2):
+        return False
+    return not flags & _ENCRYPTED_OR_SPARSE
+
+
+def _entry(source: IO[bytes], file_size: int, file_base: int) -> _Entry:
+    """Read the directory entry at the source's position."""
+    (length,) = _read(source, "<I")
+    if length > file_size:
+        raise ValueError("PCK path exceeds artifact length")
+    path = _exact(source, length).rstrip(b"\0").decode("utf-8")
+    offset, size = _read(source, "<QQ")
+    md5 = _exact(source, 16)  # Per-file MD5, used by Godot at runtime.
+    (flags,) = _read(source, "<I")
+    if flags & 1:
+        raise ValueError("encrypted PCK files are unsupported by this inspector")
+    if file_base + offset + size > file_size:
+        raise ValueError("PCK file exceeds artifact length: " + path)
+    return _Entry(path, file_base + offset, size, md5, flags)
+
+
 def _directory(source: IO[bytes], file_size: int) -> tuple[bytes, list[_Entry]]:
     """Return a PCK's header up to its directory offset and its directory entries."""
-    magic, version, major, minor, patch, flags = _read(source, "<6I")
-    if (
-        magic != _MAGIC
-        or version != 4
-        or major != 4
-        or (major, minor, patch) < (4, 7, 2)
-        or flags & 5
-    ):
+    header = _read(source, "<6I")
+    if not _is_supported(header):
         raise ValueError(
             "expected an unencrypted standalone Godot 4.7.2+ PCK v4 without sparse storage"
         )
-    (file_base,) = _read(source, "<Q")
-    (directory,) = _read(source, "<Q")
-    header = struct.pack("<6I", magic, version, major, minor, patch, flags)
+    file_base, directory = _read(source, "<QQ")
     source.seek(directory)
     (count,) = _read(source, "<I")
-    entries = []
-    for _ in range(count):
-        (length,) = _read(source, "<I")
-        if length > file_size:
-            raise ValueError("PCK path exceeds artifact length")
-        path = _exact(source, length).rstrip(b"\0").decode("utf-8")
-        offset, size = _read(source, "<QQ")
-        md5 = _exact(source, 16)  # Per-file MD5, used by Godot at runtime.
-        (file_flags,) = _read(source, "<I")
-        if file_flags & 1:
-            raise ValueError("encrypted PCK files are unsupported by this inspector")
-        if file_base + offset + size > file_size:
-            raise ValueError("PCK file exceeds artifact length: " + path)
-        entries.append(_Entry(path, file_base + offset, size, md5, file_flags))
-    return header, entries
+    entries = [_entry(source, file_size, file_base) for _ in range(count)]
+    return struct.pack("<6I", *header), entries
 
 
 def _pck_contents(
@@ -162,6 +170,40 @@ Content = bytes | Callable[[], AbstractContextManager[IO[bytes]]]
 _CHUNK = 1 << 20
 
 
+def _copy(out: IO[bytes], original: IO[bytes], entry: _Entry) -> tuple[int, bytes, int]:
+    """Copy an entry's bytes from the original PCK; return its size, MD5 and flags."""
+    original.seek(entry.offset)
+    remaining = entry.size
+    while remaining:
+        chunk = _exact(original, min(remaining, _CHUNK))
+        out.write(chunk)
+        remaining -= len(chunk)
+    return entry.size, entry.md5, entry.flags
+
+
+def _write_content(out: IO[bytes], content: Content) -> tuple[int, bytes, int]:
+    """Write a file's content; return its size, MD5 and flags."""
+    if isinstance(content, bytes):
+        content = functools.partial(io.BytesIO, content)
+    digest = hashlib.md5()
+    size = 0
+    with content() as data:
+        while chunk := data.read(_CHUNK):
+            out.write(chunk)
+            digest.update(chunk)
+            size += len(chunk)
+    return size, digest.digest(), 0
+
+
+def _write_directory(out: IO[bytes], directory: list[tuple]) -> None:
+    """Write a directory of each file's path, offset, size, MD5 and flags."""
+    out.write(struct.pack("<I", len(directory)))
+    for name, offset, size, md5, flags in directory:
+        padded = name + bytes(-len(name) % 4)
+        out.write(struct.pack("<I", len(padded)) + padded)
+        out.write(struct.pack("<QQ", offset, size) + md5 + struct.pack("<I", flags))
+
+
 def _write(
     out: IO[bytes],
     header: bytes,
@@ -178,34 +220,15 @@ def _write(
     for path in sorted(files, key=lambda path: path.encode("utf-8")):
         item = files[path]
         offset = out.tell() - file_base
-        if isinstance(item, bytes):
-            item = functools.partial(io.BytesIO, item)
         if isinstance(item, _Entry):
             assert original is not None
-            original.seek(item.offset)
-            remaining = item.size
-            while remaining:
-                chunk = _exact(original, min(remaining, _CHUNK))
-                out.write(chunk)
-                remaining -= len(chunk)
-            size, md5, flags = item.size, item.md5, item.flags
+            size, md5, flags = _copy(out, original, item)
         else:
-            digest = hashlib.md5()
-            size = 0
-            with item() as data:
-                while chunk := data.read(_CHUNK):
-                    out.write(chunk)
-                    digest.update(chunk)
-                    size += len(chunk)
-            md5, flags = digest.digest(), 0
+            size, md5, flags = _write_content(out, item)
         _pad(out)
         directory.append((path.encode("utf-8"), offset, size, md5, flags))
     directory_offset = out.tell()
-    out.write(struct.pack("<I", len(directory)))
-    for name, offset, size, md5, flags in directory:
-        padded = name + bytes(-len(name) % 4)
-        out.write(struct.pack("<I", len(padded)) + padded)
-        out.write(struct.pack("<QQ", offset, size) + md5 + struct.pack("<I", flags))
+    _write_directory(out, directory)
     out.seek(offsets)
     out.write(struct.pack("<QQ", file_base, directory_offset))
 
@@ -268,6 +291,14 @@ def pck_files(source: str | os.PathLike[str]) -> dict[str, bytes]:
 # ==== Project settings ========================================================
 
 
+def _ecfg_field(source: IO[bytes], end: int, name: str) -> bytes:
+    """Read a record's field, its size first; name says which field in the error."""
+    (size,) = _read(source, "<I")
+    if size > end - source.tell():
+        raise ValueError(f"ECFG {name} exceeds record bounds")
+    return _exact(source, size)
+
+
 def _ecfg_records(data: bytes) -> Iterator[tuple[str, bytes, bytes]]:
     """Yield each ECFG record's key, encoded Variant value and whole record bytes."""
     source = io.BytesIO(data)
@@ -278,17 +309,27 @@ def _ecfg_records(data: bytes) -> Iterator[tuple[str, bytes, bytes]]:
         raise ValueError("ECFG record count exceeds its length")
     for _ in range(count):
         start = source.tell()
-        (key_size,) = _read(source, "<I")
-        if key_size > len(data) - source.tell():
-            raise ValueError("ECFG key exceeds record bounds")
-        key = _exact(source, key_size).decode("utf-8")
-        (value_size,) = _read(source, "<I")
-        if value_size > len(data) - source.tell():
-            raise ValueError("ECFG value exceeds record bounds")
-        value = _exact(source, value_size)
+        key = _ecfg_field(source, len(data), "key").decode("utf-8")
+        value = _ecfg_field(source, len(data), "value")
         yield key, value, data[start : source.tell()]
     if source.tell() != len(data):
         raise ValueError("Trailing ECFG records")
+
+
+# The Variant type of a String.
+_STRING = 4
+
+
+def _feature_string(value: bytes) -> list[str]:
+    """The features of an encoded _custom_features value, a Variant String."""
+    if len(value) < 8:
+        raise ValueError("Truncated ECFG feature string")
+    variant_type, length = struct.unpack_from("<II", value)
+    if variant_type != _STRING or len(value) != 8 + length + (-length % 4):
+        raise ValueError("Unsupported ECFG feature string encoding")
+    if any(value[8 + length :]):
+        raise ValueError("Invalid ECFG feature string padding")
+    return value[8 : 8 + length].decode("utf-8").split(",")
 
 
 def _custom_features(data: bytes) -> tuple[list[str], list[bytes], int] | None:
@@ -303,18 +344,11 @@ def _custom_features(data: bytes) -> tuple[list[str], list[bytes], int] | None:
     for key, value, record in _ecfg_records(data):
         if key != "_custom_features":
             records.append(record)
-            continue
-        if features is not None:
+        elif features is not None:
             raise ValueError("Duplicate ECFG _custom_features record")
-        if len(value) < 8:
-            raise ValueError("Truncated ECFG feature string")
-        variant_type, length = struct.unpack_from("<II", value)
-        if variant_type != 4 or len(value) != 8 + length + (-length % 4):
-            raise ValueError("Unsupported ECFG feature string encoding")
-        if any(value[8 + length :]):
-            raise ValueError("Invalid ECFG feature string padding")
-        features = value[8 : 8 + length].decode("utf-8").split(",")
-        position = len(records)
+        else:
+            features = _feature_string(value)
+            position = len(records)
     return None if features is None else (features, records, position)
 
 
@@ -329,6 +363,28 @@ def project_features(data: bytes) -> set[str]:
     return set(found[0]) if found else set()
 
 
+def _without_synthesized(features: list[str], synthesized: set[str]) -> list[str]:
+    """The features without one occurrence of each synthesized CPU tag."""
+    missing = synthesized - set(features)
+    if missing:
+        raise ValueError(
+            "Synthesized CPU tags absent from ECFG: " + ", ".join(sorted(missing))
+        )
+    # Godot 4.7 and 4.8 append the plugins' features after the preset's and keep
+    # duplicates in ECFG. Only the preset's occurrence goes, so that a plugin's
+    # later occurrence still reaches the structural-conflict validation.
+    remaining = list(features)
+    for tag in synthesized:
+        remaining.remove(tag)
+    return remaining
+
+
+def _string_record(key: bytes, text: bytes) -> bytes:
+    """An ECFG record whose value is a Variant String."""
+    value = struct.pack("<II", _STRING, len(text)) + text + bytes(-len(text) % 4)
+    return struct.pack("<I", len(key)) + key + struct.pack("<I", len(value)) + value
+
+
 def normalize_project_features(data: bytes, synthesized: set[str]) -> bytes:
     """Remove synthesized CPU tags from ECFG while keeping other Variant records opaque."""
     if not synthesized:
@@ -339,26 +395,7 @@ def normalize_project_features(data: bytes, synthesized: set[str]) -> bytes:
     if found is None:
         raise ValueError("Missing ECFG custom features")
     features, records, position = found
-    missing = synthesized - set(features)
-    if missing:
-        raise ValueError(
-            "Synthesized CPU tags absent from ECFG: " + ", ".join(sorted(missing))
-        )
-    # Godot 4.7/4.8 appends plugin features after preset features and preserves
-    # duplicate occurrences in ECFG. Consume only our one preset occurrence;
-    # a later plugin occurrence must reach structural-conflict validation.
-    remaining = list(features)
-    for tag in synthesized:
-        remaining.remove(tag)
-    kept = ",".join(remaining).encode("utf-8")
+    kept = ",".join(_without_synthesized(features, synthesized)).encode("utf-8")
     if kept:
-        replacement = struct.pack("<II", 4, len(kept)) + kept + bytes(-len(kept) % 4)
-        key = b"_custom_features"
-        records.insert(
-            position,
-            struct.pack("<I", len(key))
-            + key
-            + struct.pack("<I", len(replacement))
-            + replacement,
-        )
+        records.insert(position, _string_record(b"_custom_features", kept))
     return b"ECFG" + struct.pack("<I", len(records)) + b"".join(records)

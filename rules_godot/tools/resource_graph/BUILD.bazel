@@ -1,18 +1,35 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
-# A project's resource graph: the scanner and reference detection, queries over the graph and
-# the command line over both. Pack selection reads the graph and its queries.
+# A project's resource graph: the scanner, the graph it builds, queries over the graph and
+# their command line. Pack selection reads the graph and its queries.
 package(default_visibility = ["//tools:__subpackages__"])
+
+# The errors and warnings that the graph and pack selection report.
+py_library(
+    name = "diagnostics_lib",
+    srcs = ["diagnostics.py"],
+)
 
 # The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports the
 # resource scanner.
 py_library(
-    name = "graph_lib",
-    srcs = ["graph.py"],
+    name = "scan_lib",
+    srcs = ["scan.py"],
     visibility = NOT_ACTUALLY_PUBLIC,
     deps = [
+        ":diagnostics_lib",
         "//tools/project:statements_lib",
+        "//tools/resources:text_lib",
+    ],
+)
+
+py_library(
+    name = "graph_lib",
+    srcs = ["graph.py"],
+    deps = [
+        ":diagnostics_lib",
+        ":scan_lib",
         "//tools/resources:text_lib",
     ],
 )
@@ -27,12 +44,13 @@ py_library(
     ],
 )
 
-# Scans, checks and queries graphs: the command line over the graph's libraries, so the
-# scanner and reference detection stay a library that other tools import without it.
+# The command line that scans, checks and queries graphs. It is a library of its own, so
+# other tools import the graph without it.
 py_library(
     name = "command_lib",
     srcs = ["command.py"],
     deps = [
+        ":diagnostics_lib",
         ":graph_lib",
         ":query_lib",
     ],
@@ -48,13 +66,13 @@ py_binary(
     deps = [":command_lib"],
 )
 
-# Selects a pack's resources from the graph and checks that what they reference is
-# available: a tool of its own, so a change to it reruns only selections, and a change to it
-# alone no graph scans.
+# Selects a pack's resources from the graph and checks that their references exist. It is a
+# tool of its own, so changing it reruns pack selections but no graph scans.
 py_library(
     name = "selection_lib",
     srcs = ["selection.py"],
     deps = [
+        ":diagnostics_lib",
         ":graph_lib",
         ":query_lib",
         "//tools/resources:files_lib",
