@@ -1,7 +1,8 @@
 """
 The Git hooks' tasks, which `aspect bootstrap` installs: `aspect pre-commit` keeps a commit
-formatted, its lock files current, its files linted and its Code Health from declining; `aspect pre-push` checks
-the pushed checkout as CI's Linux job would, without its whole-tree formatter and its slower tests.
+formatted, its lock files current, its files linted and its Code Health from declining;
+`aspect pre-push` checks the pushed checkout as CI's Linux job would, without its whole-tree
+formatter and its slower tests.
 """
 
 load("./develop.axl", "KEEP_GOING", "file_lint", "run_checks", "steps")

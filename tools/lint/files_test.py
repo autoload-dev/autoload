@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import textwrap
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from tools.lint.files import (
@@ -18,6 +19,9 @@ from tools.lint.files import (
     listed_files,
     run,
 )
+
+# A tool's script that records its arguments beside itself.
+RECORDING = 'echo "$@" >> "$0.log"\n'
 
 GIT = ("git", "-c", "user.name=Test", "-c", "user.email=test@example.com")
 
@@ -39,12 +43,18 @@ class FilesTest(unittest.TestCase):
         (self.root / path).write_text(text)
         return path
 
-    def program(self, name: str, script: str) -> str:
-        """A tool's executable: a shell script that records its arguments beside itself."""
+    def tool(
+        self,
+        name: str,
+        script: str = RECORDING,
+        check: tuple[str, ...] | None = None,
+        fix: tuple[str, ...] | None = None,
+    ) -> Tool:
+        """A tool of Markdown whose executable is a shell script, which may record its arguments."""
         path = self.bin / name
         path.write_text("#!/bin/sh\n" + textwrap.dedent(script))
         path.chmod(0o755)
-        return str(path)
+        return Tool(name, ("*.md",), check=check, fix=fix)
 
     def recorded(self, name: str) -> list[str]:
         log = self.bin / (name + ".log")
@@ -53,12 +63,13 @@ class FilesTest(unittest.TestCase):
     def lint(
         self, tools: tuple[Tool, ...], files: list[str], fix: bool = False
     ) -> tuple[int, str]:
+        executables = {tool: str(self.bin / tool.name) for tool in tools}
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            code = run(tools, files, self.root, fix=fix)
+            code = run(executables, files, self.root, fix=fix)
         return code, output.getvalue()
 
-    def test_every_file_git_lists_but_ignored_and_deleted_ones(self) -> None:
+    def test_every_file_git_lists_but_ignored_ones(self) -> None:
         self.write(".gitignore", "ignored.md\n")
         self.write("kept.md")
         self.write("gone.md")
@@ -69,7 +80,8 @@ class FilesTest(unittest.TestCase):
         self.write("ignored.md")
         self.write("new/untracked.md")
         self.assertEqual(
-            [".gitignore", "kept.md", "new/untracked.md"], listed_files(self.root)
+            [".gitignore", "gone.md", "kept.md", "new/untracked.md"],
+            listed_files(self.root),
         )
 
     def test_changed_files_since_the_merge_base_with_the_working_tree(self) -> None:
@@ -108,16 +120,10 @@ class FilesTest(unittest.TestCase):
         )
 
     def test_runs_each_tool_once_on_its_files_and_passes_when_all_pass(self) -> None:
-        recording = 'echo "$@" >> "$0.log"\n'
         tools = (
-            Tool(
-                "md",
-                ("*.md",),
-                check=("check",),
-                executable=self.program("md", recording),
-            ),
-            Tool("gd", ("*.gd",), check=(), executable=self.program("gd", recording)),
-            Tool("py", ("*.py",), check=(), executable=self.program("py", recording)),
+            self.tool("md", check=("check",)),
+            replace(self.tool("gd", check=()), patterns=("*.gd",)),
+            replace(self.tool("py", check=()), patterns=("*.py",)),
         )
         self.write("a.md")
         self.write("b/c.md")
@@ -129,18 +135,8 @@ class FilesTest(unittest.TestCase):
 
     def test_fails_with_the_findings_of_each_tool_that_found_some(self) -> None:
         tools = (
-            Tool(
-                "bad",
-                ("*.md",),
-                check=(),
-                executable=self.program("bad", 'echo "$1:1: wrong"; exit 1\n'),
-            ),
-            Tool(
-                "good",
-                ("*.md",),
-                check=(),
-                executable=self.program("good", "echo fine\n"),
-            ),
+            self.tool("bad", 'echo "$1:1: wrong"; exit 1\n', check=()),
+            self.tool("good", "echo fine\n", check=()),
         )
         self.write("a.md")
         code, output = self.lint(tools, ["a.md"])
@@ -150,35 +146,13 @@ class FilesTest(unittest.TestCase):
         self.assertNotIn("fine", output)
 
     def test_fails_when_a_tool_cannot_check(self) -> None:
-        tools = (
-            Tool(
-                "broken",
-                ("*.md",),
-                check=(),
-                executable=self.program("broken", "exit 2\n"),
-            ),
-        )
         self.write("a.md")
-        code, output = self.lint(tools, ["a.md"])
+        code, output = self.lint((self.tool("broken", "exit 2\n", check=()),), ["a.md"])
         self.assertEqual(2, code)
         self.assertIn("broken exited with 2", output)
 
     def test_fix_runs_the_tools_that_fix_and_only_those(self) -> None:
-        recording = 'echo "$@" >> "$0.log"\n'
-        tools = (
-            Tool(
-                "linter",
-                ("*.md",),
-                check=(),
-                executable=self.program("linter", recording),
-            ),
-            Tool(
-                "formatter",
-                ("*.md",),
-                fix=("fmt",),
-                executable=self.program("formatter", recording),
-            ),
-        )
+        tools = (self.tool("linter", check=()), self.tool("formatter", fix=("fmt",)))
         self.write("a.md")
         self.assertEqual(0, self.lint(tools, ["a.md"], fix=True)[0])
         self.assertEqual(["fmt", "a.md"], self.recorded("formatter"))
@@ -188,16 +162,10 @@ class FilesTest(unittest.TestCase):
         self.assertEqual(["fmt", "a.md"], self.recorded("formatter"))
 
     def test_leaves_out_files_that_do_not_exist(self) -> None:
-        tools = (
-            Tool(
-                "md",
-                ("*.md",),
-                check=(),
-                executable=self.program("md", 'echo "$@" >> "$0.log"\n'),
-            ),
-        )
         self.write("a.md")
-        self.assertEqual(0, self.lint(tools, ["a.md", "gone.md"])[0])
+        self.assertEqual(
+            0, self.lint((self.tool("md", check=()),), ["a.md", "gone.md"])[0]
+        )
         self.assertEqual(["a.md"], self.recorded("md"))
 
     def test_the_repository_s_tools_each_check_or_fix(self) -> None:

@@ -19,10 +19,11 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 from python.runfiles import runfiles
 
@@ -38,8 +39,8 @@ class Tool:
     A linter or formatter and the files it takes: those whose name or path matches one of
     `patterns`, with `shebang` also shell scripts without a suffix, but none of `excluded`.
     `check` and `fix` are its arguments before the files in each mode; None leaves it out of
-    that mode. `executable` is its path; the repository's tools name the environment variable
-    that holds their runfiles path instead (BUILD.bazel).
+    that mode. `variable` names the environment variable that holds the runfiles path of its
+    executable (BUILD.bazel).
     """
 
     name: str
@@ -48,7 +49,7 @@ class Tool:
     fix: tuple[str, ...] | None = None
     excluded: tuple[str, ...] = ()
     shebang: bool = False
-    executable: str = ""
+    variable: str = ""
 
     def _matches(self, path: str, patterns: tuple[str, ...]) -> bool:
         name = path.rsplit("/", 1)[-1]
@@ -76,50 +77,34 @@ class Tool:
 # The rumdl configuration and its output of one finding per line.
 _RUMDL = ("--config", ".rumdl.toml", "--no-cache")
 
-# The repository's tools, each with the variable of its executable's runfiles path.
+# The repository's tools.
 TOOLS = (
     # GDScript's declaration order (gdscript.py, .gdlintrc).
-    Tool("gdlint", ("*.gd",), check=(".gdlintrc",), executable="GDLINT"),
+    Tool("gdlint", ("*.gd",), check=(".gdlintrc",), variable="GDLINT"),
     # Objective-C, which rules_lint's formatter leaves out; //tools/format formats C and C++.
     Tool(
         "clang-format",
         ("*.m", "*.mm"),
         fix=("-i", "--style=file", "--fallback-style=none"),
-        executable="CLANG_FORMAT",
+        variable="CLANG_FORMAT",
     ),
     Tool(
         "rumdl",
         ("*.md",),
         check=("check", *_RUMDL, "--output-format", "concise"),
         fix=("fmt", *_RUMDL, "--quiet"),
-        executable="RUMDL",
+        variable="RUMDL",
     ),
     Tool(
         "shellcheck",
         ("*.sh",),
         check=("--format=gcc",),
         shebang=True,
-        executable="SHELLCHECK",
+        variable="SHELLCHECK",
     ),
     # The convention rules that judge each file on its own (tools/conventions/files.py); each
-    # picks its files from these.
-    Tool(
-        "conventions",
-        (
-            "*.md",
-            "*.py",
-            "*.bzl",
-            "BUILD",
-            "BUILD.bazel",
-            "MODULE.bazel",
-            "*.gd",
-            "*.cc",
-            "*.cpp",
-            "*.h",
-        ),
-        check=("--",),
-        executable="CONVENTIONS",
-    ),
+    # picks its own files.
+    Tool("conventions", ("*",), check=("--",), variable="CONVENTIONS"),
 )
 
 
@@ -134,10 +119,10 @@ def _git(root: Path, *arguments: str) -> list[str]:
 
 
 def listed_files(root: Path) -> list[str]:
-    """Every file Git lists, tracked or untracked and not ignored, but deleted ones."""
-    deleted = set(_git(root, "ls-files", "-z", "--deleted"))
-    files = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-    return sorted(set(files) - deleted)
+    """Every file Git lists, tracked or untracked and not ignored; deleted ones included."""
+    return sorted(
+        set(_git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"))
+    )
 
 
 def changed_files(root: Path, base: str) -> list[str]:
@@ -166,23 +151,26 @@ def _batches(files: list[str]) -> list[list[str]]:
     return batches
 
 
-@dataclass(frozen=True)
-class _Run:
-    """A tool's run in one mode: its arguments, its files and, once it ran, its result."""
+class _Result(NamedTuple):
+    code: int
+    output: str
+
+
+class _Run(NamedTuple):
+    """A tool's run in one mode: its executable, its arguments and its files."""
 
     tool: Tool
+    executable: str
     arguments: tuple[str, ...]
     files: list[str]
-    code: int = 0
-    output: str = ""
 
-    def __call__(self, root: Path) -> _Run:
-        """Run the tool over its files in batches; keep its worst exit code and its output."""
+    def execute(self, root: Path) -> _Result:
+        """Run the tool over its files in batches: its worst exit code and its output."""
         code = 0
         output = []
         for batch in _batches(self.files):
             result = subprocess.run(
-                [self.tool.executable, *self.arguments, *batch],
+                [self.executable, *self.arguments, *batch],
                 cwd=root,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -191,38 +179,41 @@ class _Run:
             )
             code = max(code, result.returncode)
             output.append(result.stdout)
-        return replace(self, code=code, output="".join(output))
+        return _Result(code, "".join(output))
 
-    def report(self, fix: bool) -> int:
+    def report(self, result: _Result, fix: bool) -> int:
         """Print what the tool printed unless it passed; 1 for findings, 2 for a failure."""
-        if self.code == 0:
+        if result.code == 0:
             return 0
-        found = self.code == 1 and not fix
+        found = result.code == 1 and not fix
         if found:
             print(f"{self.tool.name} found problems in {len(self.files)} files:")
         else:
-            print(f"{self.tool.name} exited with {self.code}:")
-        print(self.output.rstrip())
+            print(f"{self.tool.name} exited with {result.code}:")
+        print(result.output.rstrip())
         return 1 if found else 2
 
 
-def _runs(tools: Sequence[Tool], files: list[str], root: Path, fix: bool) -> list[_Run]:
+def _runs(
+    tools: Mapping[Tool, str], files: list[str], root: Path, fix: bool
+) -> list[_Run]:
     """The runs of the tools of the mode that take any of the files."""
     runs = []
-    for tool in tools:
+    for tool, executable in tools.items():
         arguments = tool.fix if fix else tool.check
         if arguments is None:
             continue
         if selected := tool.selected(files, root):
-            runs.append(_Run(tool, arguments, selected))
+            runs.append(_Run(tool, executable, arguments, selected))
     return runs
 
 
 def run(
-    tools: Sequence[Tool], files: Sequence[str], root: Path, fix: bool = False
+    tools: Mapping[Tool, str], files: Sequence[str], root: Path, fix: bool = False
 ) -> int:
     """
-    Run each tool of the mode on its files at once and print what those that failed printed.
+    Run each tool of the mode, given with its executable's path, on its files at once and print
+    what those that failed printed.
 
     Returns 0 when every tool passed, 1 when a linter found something, 2 when a tool could not
     check or fix.
@@ -230,40 +221,52 @@ def run(
     existing = [path for path in files if (root / path).is_file()]
     runs = _runs(tools, existing, root, fix)
     with ThreadPoolExecutor(max_workers=max(len(runs), 1)) as pool:
-        done = list(pool.map(lambda pending: pending(root), runs))
-    return max([finished.report(fix) for finished in done], default=0)
+        results = list(pool.map(lambda pending: pending.execute(root), runs))
+    return max(
+        [
+            pending.report(result, fix)
+            for pending, result in zip(runs, results, strict=True)
+        ],
+        default=0,
+    )
 
 
 # ==== Command line ============================================================
 
 
-def _executables(tools: Sequence[Tool]) -> tuple[Tool, ...]:
-    """The tools with the paths of their executables, from the runfiles their variables name."""
+# The base whose merge base with HEAD the changed files differ from, as `aspect format`'s.
+_BASE = "origin/main"
+
+
+def _executables(tools: Sequence[Tool]) -> dict[Tool, str]:
+    """Each tool with its executable's path, from the runfiles path its variable holds."""
     files = runfiles.Create()
     if files is None:
         raise RuntimeError("the file lint runs with `bazel run //tools/lint:files`")
-    return tuple(
-        replace(tool, executable=files.Rlocation(os.environ[tool.executable]) or "")
-        for tool in tools
-    )
+    paths = {}
+    for tool in tools:
+        path = files.Rlocation(os.environ[tool.variable])
+        # A runfiles directory resolves every path, whether or not the file exists.
+        if not path or not Path(path).exists():
+            raise RuntimeError(f"the file lint's runfiles lack {tool.name}")
+        paths[tool] = path
+    return paths
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scope", choices=("changed", "all"), default="changed")
-    parser.add_argument("--base-ref", default="origin/main")
     parser.add_argument("--fix", action="store_true", help="Run the formatters")
     parser.add_argument("files", nargs="*")
     args = parser.parse_args(argv)
-    tools = _executables(TOOLS)
     root = Path(os.environ.get("BUILD_WORKSPACE_DIRECTORY", "."))
     if args.files:
         files = args.files
     elif args.scope == "all" or args.fix:
         files = listed_files(root)
     else:
-        files = changed_files(root, args.base_ref)
-    return run(tools, files, root, fix=args.fix)
+        files = changed_files(root, _BASE)
+    return run(_executables(TOOLS), files, root, fix=args.fix)
 
 
 if __name__ == "__main__":
