@@ -18,8 +18,9 @@ from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
 from tools.checkout.metadata_sync import place_metadata
+from tools.checkout.sync import report
 from tools.inputs.originals import Original, executable, open_original, same_content
-from tools.inputs.runfiles import generated_files, report, runfile_locator
+from tools.inputs.runfiles import generated_files, runfile_locator
 from tools.project.config import write_back
 from tools.resources.files import (
     DIRECTORY_MARKERS,

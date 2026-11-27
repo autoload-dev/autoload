@@ -1,12 +1,22 @@
-"""The runner of a checkout writer: `bazel run` writes files into the checkout, its test checks them."""
+"""
+The runner of a checkout writer: `bazel run` writes files into the checkout, its test checks
+them; and the messages of the programs that work on the checkout.
+"""
 
 import argparse
 import json
 import os
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from tools.inputs.runfiles import report, runfile_locator
+from tools.inputs.runfiles import runfile_locator
+
+
+def report(message: str) -> None:
+    """Tell the user something, with main-repository labels as they write them."""
+    print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
+
 
 # Resolves a Bazel short path of the runfiles to the file.
 Runfile = Callable[[str], Path]

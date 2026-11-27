@@ -1,6 +1,8 @@
 """
 Editor actions: the action plugin joined to a staged project, and the editor run whose
 record decides the action.
+
+Sections: Plugin, Run.
 """
 
 import json
@@ -14,18 +16,17 @@ from pathlib import Path
 from tools.editor_action.process import NEW_SESSION, child_environment, stop_process_group
 from tools.staging.project import configure
 
-# rules_godot's action plugin, staged into every view an editor action runs on.
-_ACTION = Path(__file__).parent / "plugin"
-
 ACTION_DIRECTORY = "addons/rules_godot_action"
 
 # Godot's own result of an action, written by the action plugin.
 _RECORD = "record.json"
 
-# An editor action's bound, and how long Godot may take to exit after its record.
-_ACTION_TIMEOUT_SECONDS = 300
 
-_RECORD_GRACE_SECONDS = 20
+# ==== Plugin ==================================================================
+
+
+# rules_godot's action plugin, staged into every view an editor action runs on.
+_ACTION = Path(__file__).parent / "plugin"
 
 
 def _stage_plugin(root: Path, directory: str, source: Path) -> str:
@@ -83,6 +84,15 @@ def join_action(
         encoding="utf-8",
     )
     configure(root, enabled, {})
+
+
+# ==== Run =====================================================================
+
+
+# An editor action's bound, and how long Godot may take to exit after its record.
+_ACTION_TIMEOUT_SECONDS = 300
+
+_RECORD_GRACE_SECONDS = 20
 
 
 def _status(returncode: int) -> str:

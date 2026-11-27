@@ -1,7 +1,8 @@
 """
 Run a declared project or PCK with isolated writable state; report its exit code.
 
-Sections: Execution, Project staging, Pack staging, Error logger, Run, Command line.
+Sections: Execution, Project staging, Pack staging, Error logger, Reports, Run, Command
+line.
 """
 
 import argparse
@@ -140,11 +141,6 @@ def godot_environment(work: Path, env: dict[str, str]) -> dict[str, str]:
     )
     environment.update(env)
     return environment
-
-
-def _exit_status(code: int) -> int:
-    """Godot's exit code; a signal ending Godot maps to the shell's exit status."""
-    return code if code >= 0 else 128 - code
 
 
 # ==== Project staging =========================================================
@@ -353,6 +349,11 @@ def recorded_errors(errors: Path) -> list[dict]:
     ]
 
 
+def _exit_status(code: int) -> int:
+    """Godot's exit code; a signal ending Godot maps to the shell's exit status."""
+    return code if code >= 0 else 128 - code
+
+
 def _status_without_logger(code: int, log: Path, engine_errors: str) -> int:
     """
     The run's status when the logger never started.
@@ -384,6 +385,26 @@ def _status_with_errors(code: int, recorded: list[dict], engine_errors: str) -> 
     if engine_errors == "fail":
         return code if code > 0 else 1
     return _exit_status(code)
+
+
+# ==== Reports =================================================================
+
+
+def _write_runner_report(reports: Path, failure: str | None, started: float) -> None:
+    (reports / "runner.json").write_text(
+        json.dumps(
+            {"error": failure, "duration_seconds": time.monotonic() - started},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def publish_reports(reports: Path) -> None:
+    destination = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
+    if destination:
+        shutil.copytree(reports, Path(destination) / "godot", dirs_exist_ok=True)
 
 
 # ==== Run =====================================================================
@@ -447,23 +468,6 @@ def _run_in(work: Path, manifest: dict, extra: list[str], env: dict[str, str]) -
     if not errors.exists():
         return _status_without_logger(code, log, engine_errors)
     return _status_with_errors(code, recorded_errors(errors), engine_errors)
-
-
-def _write_runner_report(reports: Path, failure: str | None, started: float) -> None:
-    (reports / "runner.json").write_text(
-        json.dumps(
-            {"error": failure, "duration_seconds": time.monotonic() - started},
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-
-def publish_reports(reports: Path) -> None:
-    destination = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
-    if destination:
-        shutil.copytree(reports, Path(destination) / "godot", dirs_exist_ok=True)
 
 
 def run(

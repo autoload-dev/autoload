@@ -1,6 +1,6 @@
 """
 The runfiles of a program that `bazel run` or `bazel test` starts, the files a project's
-imports and initialization generated among them, and the program's messages to the user.
+imports and initialization generated among them.
 
 Sections: Runfiles, Generated files.
 """
@@ -14,12 +14,6 @@ from pathlib import Path
 from python.runfiles import runfiles as bazel_runfiles
 
 from tools.inputs.originals import Original, tree_entries
-
-
-def report(message: str) -> None:
-    """Tell the user something, with main-repository labels as they write them."""
-    print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
-
 
 # ==== Runfiles ================================================================
 

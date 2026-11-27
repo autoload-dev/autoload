@@ -37,6 +37,7 @@ py_library(
     data = ["editor_view.gitignore.tpl"],
     deps = [
         ":metadata_sync_lib",
+        ":sync_lib",
         "//tools/inputs:originals_lib",
         "//tools/inputs:runfiles_lib",
         "//tools/project:config_lib",
