@@ -1,67 +1,66 @@
 """
 Build an application under an export platform and build settings of its own, instead of a
-`--config`.
-
-`godot_configured_app` names the configuration of a `godot_app`, such as a multi-ABI release
-App Bundle or an iOS Simulator build, in a BUILD file. The repository builds and tests such
-applications in the same invocation as the desktop targets, without a Bazel configuration or
-server of their own: the examples' releases (`releases.bzl`) and the mobile smoke scenarios
-of `e2e/rules_godot/smoke/`. It uses only public labels and providers of the ruleset. The
-ruleset's platform tests keep a copy of the transition and its attributes
-(`rules_godot/godot/platforms/private/tests/configured_app.bzl`); change both together.
+`--config`: the implementation of `godot_configured_app`, `ANDROID_RELEASE` and
+`APPLE_RELEASE`, which `godot:app.bzl` exports. The platform tests extend the same
+transition (`configured_settings`).
 """
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo", "ApkInfo")
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
+load("//godot/private:macros.bzl", "VOLATILE_API")
+load("//godot/private/config:native.bzl", "PLATFORMS", "STRIP")
+load("//godot/private/config:settings.bzl", "VARIANT")
 
-_PLATFORMS = "//command_line_option:platforms"
-_STRIP = "//command_line_option:strip"
-_VARIANT = str(Label("@autoload_rules_godot//godot:variant"))
+visibility([
+    "//godot",
+    "//godot/platforms/private/tests/...",
+])
+
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
 _COPT = "//command_line_option:copt"
 _DSYM = "//command_line_option:apple_generate_dsym"
 _OBJCSTRIP = "//command_line_option:objc_enable_binary_stripping"
-_ANDROID_FORMAT = str(Label("@autoload_rules_godot//godot:android_format"))
-_MACOS_SIGNING = str(Label("@autoload_rules_godot//godot:macos_signing"))
+_ANDROID_FORMAT = str(Label("//godot:android_format"))
+_MACOS_SIGNING = str(Label("//godot:macos_signing"))
 
 # The settings the transition reads and writes.
-_CONFIGURED_SETTINGS = [
-    _PLATFORMS,
+CONFIGURED_SETTINGS = [
+    PLATFORMS,
     _COMPILATION_MODE,
-    _STRIP,
+    STRIP,
     _COPT,
     _DSYM,
     _OBJCSTRIP,
     _ANDROID_FORMAT,
     _MACOS_SIGNING,
-    _VARIANT,
+    VARIANT,
 ]
 
 # The attributes that replace a setting when they are set, by attribute name.
 _REPLACED = {
     "compilation_mode": _COMPILATION_MODE,
-    "strip": _STRIP,
+    "strip": STRIP,
     "apple_generate_dsym": _DSYM,
     "objc_enable_binary_stripping": _OBJCSTRIP,
     "android_format": _ANDROID_FORMAT,
     "macos_signing": _MACOS_SIGNING,
-    "variant": _VARIANT,
+    "variant": VARIANT,
 }
 
-def _configured_settings(settings, attr):
+def configured_settings(settings, attr):
     """
-    The settings of _CONFIGURED_SETTINGS under the attributes of _CONFIGURED_ATTRS.
+    The settings of CONFIGURED_SETTINGS under the attributes of CONFIGURED_ATTRS.
 
     Args:
-        settings: the incoming settings, at least those of _CONFIGURED_SETTINGS.
+        settings: the incoming settings, at least those of CONFIGURED_SETTINGS.
         attr: the attributes of the rule whose transition this is.
 
     Returns:
-        The outgoing value of each setting of _CONFIGURED_SETTINGS.
+        The outgoing value of each setting of CONFIGURED_SETTINGS.
     """
-    result = {setting: settings[setting] for setting in _CONFIGURED_SETTINGS}
+    result = {setting: settings[setting] for setting in CONFIGURED_SETTINGS}
     if attr.platform:
-        result[_PLATFORMS] = [str(attr.platform)]
+        result[PLATFORMS] = [str(attr.platform)]
     if attr.copts:
         result[_COPT] = list(settings[_COPT]) + attr.copts
     for name, setting in _REPLACED.items():
@@ -71,7 +70,7 @@ def _configured_settings(settings, attr):
     return result
 
 # The attributes of the configuration; an unset one keeps the build's own setting.
-_CONFIGURED_ATTRS = {
+CONFIGURED_ATTRS = {
     "platform": attr.label(
         doc = """
         The export platform or platform slice, such as `//examples:android_distribution`; the
@@ -112,8 +111,7 @@ _CONFIGURED_ATTRS = {
     ),
 }
 
-# The native settings of a release build whose debug symbols ship apart, as the
-# configurations android-release and ios-release of the repository's .bazelrc set them.
+# The native settings of a release build whose debug symbols ship apart.
 ANDROID_RELEASE = {
     "compilation_mode": "opt",
     # Do not encode a changing sandbox directory in DWARF.
@@ -134,7 +132,7 @@ APPLE_RELEASE = {
 # Providers of applications that inspection rules, such as android_bundle_test, read.
 _FORWARDED = [AndroidBundleInfo, ApkInfo, AppleBundleInfo, OutputGroupInfo]
 
-def _forwarded_providers(target):
+def forwarded_providers(target):
     """
     The application providers of a target, which inspection rules read.
 
@@ -146,7 +144,7 @@ def _forwarded_providers(target):
     """
     return [target[provider] for provider in _FORWARDED if provider in target]
 
-def _configured_providers(ctx):
+def configured_providers(ctx):
     """
     The default outputs and application providers of the target a rule's `target` carries.
 
@@ -159,18 +157,18 @@ def _configured_providers(ctx):
     target = ctx.attr.target[0]
     files = target[DefaultInfo].files
     providers = [DefaultInfo(files = files, runfiles = ctx.runfiles(transitive_files = files))]
-    return providers + _forwarded_providers(target)
+    return providers + forwarded_providers(target)
 
 _configured = transition(
-    implementation = _configured_settings,
-    inputs = _CONFIGURED_SETTINGS,
-    outputs = _CONFIGURED_SETTINGS,
+    implementation = configured_settings,
+    inputs = CONFIGURED_SETTINGS,
+    outputs = CONFIGURED_SETTINGS,
 )
 
 _configured_target = rule(
     doc = "The default outputs and application providers of a target built under an export platform and build settings of its own.",
-    implementation = _configured_providers,
-    attrs = _CONFIGURED_ATTRS | {
+    implementation = configured_providers,
+    attrs = CONFIGURED_ATTRS | {
         "target": attr.label(doc = "The target to build.", mandatory = True, cfg = _configured),
     },
 )
@@ -186,20 +184,45 @@ def _configured_app_impl(name, visibility, app, debug_symbols, **kwargs):
 
 godot_configured_app = macro(
     doc = """
-    Build a `godot_app` and its debug symbols under an export platform and build settings.
+    Build a godot_app and its debug symbols under an export platform and build settings of
+    their own, instead of a `--config`.
 
-    The macro declares `<name>`, the application, and `<name>.debug_symbols`, its debug
-    symbols, both under the same configuration. The caller names the application's
-    `<app>.debug_symbols` itself: a symbolic macro may only use the labels its caller gives
-    it of targets that are not visible to the macro's own package.
-    """,
+    A configured application lets one `bazel build` or `bazel test` invocation build a
+    mobile or release application beside the desktop targets. The macro declares `<name>`,
+    the application, and `<name>.debug_symbols`, its debug symbols, both under the same
+    configuration. They carry the application's default outputs and its providers, such as
+    rules_android's AndroidBundleInfo and ApkInfo and rules_apple's AppleBundleInfo. An
+    attribute that is unset keeps the build's own setting. ANDROID_RELEASE and
+    APPLE_RELEASE, from the same module, hold the native settings of a release whose debug
+    symbols ship apart; pass them with `**`. See
+    [release builds](../../platforms.md#release-builds-in-one-invocation).
+
+    Example:
+    ```starlark
+    load("@autoload_rules_godot//godot:app.bzl", "ANDROID_RELEASE", "godot_configured_app")
+
+    godot_configured_app(
+        name = "android_release",
+        app = ":app",
+        debug_symbols = ":app.debug_symbols",
+        platform = "@autoload_rules_godot//godot/platforms:android_arm64",
+        android_format = "aab",
+        tags = ["manual"],
+        **ANDROID_RELEASE
+    )
+    ```
+    """ + VOLATILE_API,
     implementation = _configured_app_impl,
     inherit_attrs = _configured_target,
     attrs = {
         "target": None,
         "app": attr.label(doc = "The godot_app to build.", mandatory = True),
         "debug_symbols": attr.label(
-            doc = "The godot_app's debug symbols, `<app>.debug_symbols`.",
+            doc = """
+            The godot_app's debug symbols, `<app>.debug_symbols`. The caller names it: a
+            macro may only use the labels its caller passes of targets that godot_app exports
+            to its caller's package alone.
+            """,
             mandatory = True,
         ),
     },

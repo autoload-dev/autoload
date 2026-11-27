@@ -4,18 +4,18 @@ Build a fixture under the configuration a platform test needs, instead of a `--c
 `configured_outputs` builds its target under an export platform and optional settings, so a
 build-output test names its configuration itself and runs in one `bazel test` invocation
 with every other variant. It extends the transition of `godot_configured_app`
-(`configured_app.bzl`) with the development engines and the toolchains of
+(`//godot/private:configured_app.bzl`) with the development engines and the toolchains of
 the ruleset's tests.
 """
 
-load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 load(
-    ":configured_app.bzl",
+    "//godot/private:configured_app.bzl",
     "CONFIGURED_ATTRS",
     "CONFIGURED_SETTINGS",
     "configured_settings",
     "forwarded_providers",
 )
+load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "ENGINE", "development_engine")
 
 visibility([
     "//godot/engine/private/tests/...",
