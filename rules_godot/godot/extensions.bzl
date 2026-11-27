@@ -127,8 +127,8 @@ _BUILD_ATTRS = {
     ),
     "patches": attr.label_list(
         doc = """
-        Patch files applied in order, once, to the engine tree whose sources every recipe and
-        the Android shell library share.
+        Patch files applied in order to every recipe's and the Android shell library's own
+        copies of the files they touch; the engine tree stays the archive's.
         """,
         allow_files = [".patch", ".diff"],
     ),

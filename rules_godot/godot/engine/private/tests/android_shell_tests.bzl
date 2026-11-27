@@ -23,12 +23,16 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
         attr = {
             "name": "godot_android_shell",
             "tree": _TREE,
+            "patches": ["@@//engines:java.patch"],
+            "patch_strip": 1,
             "_build_template": "android_shell.BUILD.tpl",
             "_kotlin_android": "@@rules_kotlin+//kotlin:android.bzl",
             "_kotlin_core": "@@rules_kotlin+//kotlin:core.bzl",
             "_python": _PYTHON,
             "_tree": "tools/engine/tree.py",
             "_tree_link": "tools/engine/tree_link.py",
+            "_class_db": "tools/engine/class_db.py",
+            "_patches": "tools/engine/patches.py",
         } | overrides,
         files = {
             str(_TREE): json.encode({
@@ -36,8 +40,6 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
                 "sha256": "0" * 64,
                 "strip_prefix": "godot-%s" % version,
                 "version": version,
-                "patches": ["@@//engines:java.patch"],
-                "patch_strip": 1,
             }),
             _MANIFEST_PATH: manifest,
         },
@@ -51,8 +53,8 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
 def _files(ctx):
     return {call.path: call.content for call in mocks.calls(ctx, "file")}
 
-# The shell links the library's files of its engine tree, patched already, and extracts
-# nothing itself.
+# The shell links the library's files of its engine tree, patches its own copies of the
+# files the engine's patches touch, and extracts nothing itself.
 def _test_shell_links_the_library_of_its_engine_tree(env):
     ctx, errors = _shell()
     env.expect.that_collection(errors).contains_exactly([])
@@ -66,6 +68,10 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
         ".",
         "--path",
         "platform/android/java/lib",
+        "--patch-strip",
+        "1",
+        "--patch",
+        "@@//engines:java.patch",
     ]).in_order()
 
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(

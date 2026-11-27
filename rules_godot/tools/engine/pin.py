@@ -2,15 +2,14 @@
 Pin source engine recipes: configure one recipe into its pin, or merge pins into a lock file.
 
 `recipe` runs in a build action on an execution platform whose host Godot accepts for the
-recipe, such as a remote Linux executor for a Linux recipe. It extracts and patches the
-source archive as the recipe repository does, adds the repository's custom modules, and
+recipe, such as a remote Linux executor for a Linux recipe. It extracts the source archive
+and applies the recipe's patches as the recipe repository does, adds the repository's custom modules, and
 configures the result. `merge` and `update` write the lock file an engine's `lock_file`
 names, as lock.py does.
 """
 
 import argparse
 import shutil
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -20,11 +19,13 @@ from pathlib import Path
 try:
     from . import configure
     from .lock import merge, update
+    from .patches import apply_patches
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import configure  # type: ignore[no-redef]
     from lock import merge, update  # type: ignore[no-redef]
+    from patches import apply_patches  # type: ignore[no-redef]
 
 
 def copy_tree(root: Path, files: list[str], destination: Path) -> None:
@@ -58,16 +59,6 @@ def extract(archive: Path, strip_prefix: str, destination: Path) -> None:
                     member.linkname = member.linkname.removeprefix(prefix)
                 members.append(member)
         source.extractall(destination, members=members, filter="data")
-
-
-def apply_patches(source: Path, patches: list[str], strip: int) -> None:
-    """Apply each patch strictly, with fuzz disabled, as the recipe repository does."""
-    for patch in patches:
-        subprocess.run(
-            ["patch", f"-p{strip}", "-F0", "-t", "-N", "-i", str(Path(patch).resolve())],
-            cwd=source,
-            check=True,
-        )
 
 
 def recipe(arguments: argparse.Namespace, configure_arguments: list[str]) -> None:

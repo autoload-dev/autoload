@@ -1,9 +1,9 @@
 """
 The implementations of the source repository rules in godot/engine/private:repositories.bzl.
 
-A recipe and the Android shell link the files of their engine's tree
-(tree_repository.bzl) instead of extracting the sources: their repositories hold what
-they generate.
+A recipe and the Android shell link the files of their source's engine tree
+(tree_repository.bzl) instead of extracting the sources, and patch copies of their own of
+the files their patches touch: their repositories hold what they generate and change.
 
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.
@@ -70,8 +70,13 @@ def _read_tree(ctx):
     return json.decode(ctx.read(ctx.path(ctx.attr.tree)))
 
 def _link_tree(ctx, path = ""):
-    """Link the engine tree's files below path, or all of them, into this repository; an error or None."""
-    result = ctx.execute([
+    """
+    Link the engine tree's files below path, or all of them, into this repository; an error or None.
+
+    The repository owns copies of the files its patches touch, which it patches, and of
+    class_db.h, which it scopes: the tree stays the source archive's.
+    """
+    command = [
         str(ctx.path(ctx.attr._python)),
         str(ctx.path(ctx.attr._tree_link)),
         "--tree",
@@ -80,10 +85,24 @@ def _link_tree(ctx, path = ""):
         ".",
         "--path",
         path,
-    ])
+        "--patch-strip",
+        str(ctx.attr.patch_strip),
+    ]
+    for patch in ctx.attr.patches:
+        patch_file = ctx.path(patch)
+        ctx.watch(patch_file)
+        command.extend(["--patch", str(patch_file)])
+    result = ctx.execute(command)
     if result.return_code:
         return "%s: linking the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr)
     return None
+
+def _watch_link_tools(ctx):
+    """Link the tree again when the code that links, patches and scopes it changes."""
+    ctx.watch(ctx.path(ctx.attr._tree))
+    ctx.watch(ctx.path(ctx.attr._tree_link))
+    ctx.watch(ctx.path(ctx.attr._class_db))
+    ctx.watch(ctx.path(ctx.attr._patches))
 
 # ==== Engine build ============================================================
 
@@ -255,7 +274,7 @@ godot_recipe_pin(
         name,
         tree["archive"],
         tree["strip_prefix"],
-        tree["patches"],
+        [str(patch) for patch in ctx.attr.patches],
         _pin_sources(ctx),
         arguments,
         constraints,
@@ -280,8 +299,7 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._variants))
     ctx.watch(ctx.path(ctx.attr._generators))
     ctx.watch(ctx.path(ctx.attr._build_file))
-    ctx.watch(ctx.path(ctx.attr._tree))
-    ctx.watch(ctx.path(ctx.attr._tree_link))
+    _watch_link_tools(ctx)
 
 def _recipe_error(ctx):
     """Why a recipe's attributes cannot configure it, or None."""
@@ -324,7 +342,7 @@ def _recipe_arguments(ctx, tree):
         "--source-sha256",
         tree["sha256"],
         "--patch-strip",
-        str(tree["patch_strip"]),
+        str(ctx.attr.patch_strip),
     ]
     arguments.extend(_selection_arguments(ctx))
     for option in sorted(ctx.attr.build_options):
@@ -380,11 +398,11 @@ def _lock_arguments(ctx):
         str(ctx.attr._pin_bzl),
     ]
 
-def _patch_arguments(ctx, tree):
-    """The tree's patches, whose contents the recipe's pin digest covers."""
+def _patch_arguments(ctx):
+    """The recipe's patches, whose contents its pin digest covers."""
     arguments = []
-    for patch in tree["patches"]:
-        arguments.extend(["--patch", str(ctx.path(Label(patch)))])
+    for patch in ctx.attr.patches:
+        arguments.extend(["--patch", str(ctx.path(patch))])
     return arguments
 
 def _finish(ctx, tree, arguments, variants):
@@ -399,7 +417,7 @@ def _finish(ctx, tree, arguments, variants):
 
 def engine_build_impl(ctx, *, _fail = fail):
     """
-    Link one source recipe to its engine tree and render its build graph.
+    Link one source recipe to its engine tree, patch it and render its build graph.
 
     Without a lock file the recipe is configured here, with SCons; with one, the graph comes
     from the recipe's pin, and nothing is configured on this host.
@@ -429,7 +447,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     if error:
         _fail(error)
         return None
-    command.extend(_patch_arguments(ctx, tree))
+    command.extend(_patch_arguments(ctx))
     variants = _variant_profiles(ctx, tree["version"])
     command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
     result = ctx.execute(command, timeout = _CONFIGURE_TIMEOUT, quiet = True)
@@ -464,7 +482,7 @@ public final class BuildConfig {{
 
 def android_shell_impl(ctx, *, _fail = fail):
     """
-    Link the Android shell library of the engine tree and prepare it.
+    Link the Android shell library of the engine tree, patch it and prepare it.
 
     Args:
         ctx: Repository rule context of godot_android_shell.
@@ -474,8 +492,7 @@ def android_shell_impl(ctx, *, _fail = fail):
         The repository's metadata: reproducible.
     """
     tree = _read_tree(ctx)
-    ctx.watch(ctx.path(ctx.attr._tree))
-    ctx.watch(ctx.path(ctx.attr._tree_link))
+    _watch_link_tools(ctx)
     shell = engine_profile(tree["version"].partition("-")[0])["android_shell"]
     library = shell["library"]
     error = _link_tree(ctx, library)

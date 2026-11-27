@@ -174,8 +174,8 @@ godot_engine_source(
     version = "4.7.3-rc",
 )
 
-# The engine trees of the recipes below: each extracts and patches its sources once, and
-# its recipes link their files.
+# The engine trees of the recipes below: each extracts its source archive once, and its
+# recipes link its files and patch copies of their own.
 godot_engine_tree = use_repo_rule(
     "//godot/engine/private:repositories.bzl",
     "godot_engine_tree",
@@ -190,7 +190,6 @@ godot_engine_tree(
 godot_engine_tree(
     name = "godot_tree_beta",
     dev_dependency = True,
-    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     source = "@godot_sources_beta//:source.json",
 )
 
@@ -264,6 +263,7 @@ godot_engine_build(
         "freetype",
         "bazel_probe",
     ],
+    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platform = "android",
     tree = "@godot_tree_beta//:tree.json",
 )
@@ -271,6 +271,7 @@ godot_engine_build(
 godot_android_shell(
     name = "beta_probe_android_shell",
     dev_dependency = True,
+    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     tree = "@godot_tree_beta//:tree.json",
 )
 
@@ -292,6 +293,7 @@ godot_engine_build(
         "bazel_probe",
     ],
     environment = "simulator",
+    patches = ["//godot/engine/private/tests/fixtures/source_build/patches:engine-name.patch"],
     platform = "ios",
     tree = "@godot_tree_beta//:tree.json",
 )

@@ -5,10 +5,10 @@ register classes.
 Godot's build profile disables classes through core/disabled_classes.gen.h, which
 core/object/class_db.h includes, so nearly every source would depend on it, and changing
 the profile would recompile them all. Only class registration evaluates it, through
-GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. An engine's tree therefore lets
-class_db.h include the profile only where GODOT_DECLARES_BUILD_PROFILE is defined
-(tree.py), and rendering defines it for the sources that can reach a registration. Elsewhere GD_IS_CLASS_ENABLED names an
-undeclared identifier, so a source the scan misses fails to compile instead of
+GD_IS_CLASS_ENABLED and the GDREGISTER_* macros. A recipe's class_db.h therefore
+includes the profile only where GODOT_DECLARES_BUILD_PROFILE is defined (class_db.py),
+and rendering defines it for the sources that can reach a registration. Elsewhere
+GD_IS_CLASS_ENABLED names an undeclared identifier, so a source the scan misses fails to compile instead of
 registering a disabled class.
 
 Sections: Profile files, Scoping.
@@ -21,13 +21,13 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from .class_db import CLASS_DB as _CLASS_DB
+    from .class_db import HEADER
     from .include_graph import Generated, components
-    from .tree import CLASS_DB as _CLASS_DB
-    from .tree import HEADER
 except ImportError:
+    from class_db import CLASS_DB as _CLASS_DB
+    from class_db import HEADER
     from include_graph import Generated, components
-    from tree import CLASS_DB as _CLASS_DB
-    from tree import HEADER
 
 # ==== Profile files ===========================================================
 

@@ -18,6 +18,16 @@ py_test(
 )
 
 py_test(
+    name = "class_db_test",
+    size = "small",
+    srcs = ["class_db_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
     name = "compile_options_test",
     size = "small",
     srcs = ["compile_options_test.py"],
@@ -60,6 +70,16 @@ py_test(
     size = "small",
     srcs = ["module_graph_test.py"],
     deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "patches_test",
+    size = "small",
+    srcs = ["patches_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
 )
 
 py_test(
@@ -115,6 +135,16 @@ py_test(
     name = "tree_test",
     size = "small",
     srcs = ["tree_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
+)
+
+py_test(
+    name = "tree_link_test",
+    size = "small",
+    srcs = ["tree_link_test.py"],
     deps = [
         ":source_files",
         "//tools/engine:support",
