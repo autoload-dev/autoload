@@ -2,7 +2,8 @@
 
 import unittest
 
-from godot.private.project_config import compose_project, setting_key, statement_groups
+from tools.project_config import compose_project
+from tools.project_statements import setting_key, statement_groups
 
 
 class PinnedSettingsTest(unittest.TestCase):

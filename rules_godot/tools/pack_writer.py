@@ -28,7 +28,7 @@ from tools.godot_staging import (
 )
 from tools.pack_contents import content_selection, write_report
 from tools.pck import EXTENSION_LIST, Content, engine_version, pck_files, write_pck
-from tools.resource_graph import IMPORTER, REMAP_PATH, remap_section
+from tools.resource_text import IMPORTER, REMAP_PATH, remap_section
 from tools.resource_uids import declares_uids, known_uids, uid_cache
 
 UID_CACHE = ".godot/uid_cache.bin"

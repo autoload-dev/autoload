@@ -16,7 +16,7 @@ desktop_package_test_suite(name = "desktop_package_test_suite")
 # the macOS bundle's shell files come from Godot's export of the project.
 py_test(
     name = "desktop_bundles_run_and_carry_export_facts_test",
-    size = "medium",
+    size = "small",
     srcs = ["desktop_bundles_test.py"],
     args = [
         "$(rootpaths %slinux_app)" % _RUNTIMES,
@@ -40,7 +40,7 @@ adhoc_signed(
 # Build-output test: the application signed in adhoc mode verifies with codesign.
 py_test(
     name = "adhoc_signed_bundle_verifies_test",
-    size = "medium",
+    size = "small",
     srcs = ["adhoc_signing_test.py"],
     args = ["$(rootpaths :adhoc_signed_bundle_verifies_test_app)"],
     data = [":adhoc_signed_bundle_verifies_test_app"],
@@ -53,7 +53,7 @@ py_test(
 # catalog of the bundle, whose Info.plist names the icon.
 py_test(
     name = "macos_bundle_carries_liquid_glass_icon_test",
-    size = "medium",
+    size = "small",
     srcs = ["liquid_glass_icon_test.py"],
     args = ["$(rootpaths %sapp)" % _ICON],
     data = [_ICON + "app"],
@@ -66,7 +66,7 @@ py_test(
 # the stripped library the application packages.
 py_test(
     name = "extension_dsym_matches_packaged_library_test",
-    size = "medium",
+    size = "small",
     srcs = ["dsym_test.py"],
     args = [
         "$(rootpaths %sprebuilt_runtime_app)" % _DSYMS,

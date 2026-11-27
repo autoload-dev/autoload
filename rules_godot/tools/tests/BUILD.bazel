@@ -62,11 +62,25 @@ py_test(
     ],
 )
 
+# Pack selection over graphs that the scanner builds from small files.
 py_test(
     name = "resource_graph_test",
     size = "small",
     srcs = ["resource_graph_test.py"],
-    deps = ["//tools:resource_graph_lib"],
+    deps = [
+        "//tools:pack_selection_lib",
+        "//tools:resource_graph_command_lib",
+        "//tools:resource_graph_lib",
+        "//tools:resource_graph_query_lib",
+        "//tools:resource_text_lib",
+    ],
+)
+
+py_test(
+    name = "resource_text_test",
+    size = "small",
+    srcs = ["resource_text_test.py"],
+    deps = ["//tools:resource_text_lib"],
 )
 
 py_test(

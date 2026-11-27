@@ -24,10 +24,10 @@ NO_BUILD_PROFILE = str(Label("//godot/private:no_build_profile"))
 
 # Its label as a string, empty without one, which selects a runtime variant and keeps
 # prebuilt runtimes out; see //godot/private:build_profile_label.
-BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
+_BUILD_PROFILE_LABEL = str(Label("//godot/private:build_profile_label"))
 
 # The settings profile_settings returns, for the transitions that set them.
-PROFILE_SETTINGS = [BUILD_PROFILE, BUILD_PROFILE_LABEL]
+PROFILE_SETTINGS = [BUILD_PROFILE, _BUILD_PROFILE_LABEL]
 
 def profile_settings(profile):
     """
@@ -37,11 +37,11 @@ def profile_settings(profile):
         profile: The label string of the build profile, or NO_BUILD_PROFILE.
 
     Returns:
-        BUILD_PROFILE and BUILD_PROFILE_LABEL.
+        BUILD_PROFILE and _BUILD_PROFILE_LABEL.
     """
     return {
         BUILD_PROFILE: profile,
-        BUILD_PROFILE_LABEL: "" if profile == NO_BUILD_PROFILE else profile,
+        _BUILD_PROFILE_LABEL: "" if profile == NO_BUILD_PROFILE else profile,
     }
 
 # The compiler options of Godot's optimize levels, as its SConstruct sets them, and of

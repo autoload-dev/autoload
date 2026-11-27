@@ -3,6 +3,7 @@ load("//godot:app.bzl", "godot_app")
 load("//godot:defs.bzl", "godot_pack", "godot_project")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/platforms:defs.bzl", "godot_export_platform")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load(":app_tests.bzl", "app_test_suite", "runtime_fixture")
 load(":bundle_format_tests.bzl", "bundle_format_test_suite")
 load(":configuration_tests.bzl", "capture", "configuration_test_suite", "context_fixture")
@@ -178,11 +179,9 @@ runtime_fixture(
     visibility = ["//godot/private/config/tests:__subpackages__"],
 )
 
-genrule(
+fixture_file(
     name = "demanding_library",
-    outs = ["demanding_library/libdemanding.dylib"],
-    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
-    tags = ["manual"],
+    out = "demanding_library/libdemanding.dylib",
 )
 
 godot_extension(
@@ -234,11 +233,9 @@ cc_library(
 )
 
 # Development builds keep the bundle a directory; optimized device builds archive it.
-genrule(
+fixture_file(
     name = "provisioning_profile",
-    outs = ["fixture.mobileprovision"],
-    cmd = "echo 'Analysis-only stand-in' > $@",
-    tags = ["manual"],
+    out = "fixture.mobileprovision",
 )
 
 # Its device and simulator runtimes come from the platform_slice_engines registration set.
@@ -315,11 +312,10 @@ godot_export_platform(
     parents = [":competing_base"],
 )
 
-genrule(
+fixture_file(
     name = "signing_entitlements",
-    outs = ["generated.entitlements"],
-    cmd = "echo '<plist version=\"1.0\"><dict/></plist>' > $@",
-    tags = ["manual"],
+    out = "generated.entitlements",
+    content = '<plist version="1.0"><dict/></plist>',
 )
 
 godot_app(
@@ -337,10 +333,9 @@ cc_library(
     visibility = ["//visibility:private"],
 )
 
-genrule(
+fixture_file(
     name = "composition_private_resource",
-    outs = ["composition-resource.txt"],
-    cmd = "echo resource > $@",
-    tags = ["manual"],
+    out = "composition-resource.txt",
+    content = "resource",
     visibility = ["//visibility:private"],
 )

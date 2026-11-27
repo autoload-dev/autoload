@@ -268,7 +268,7 @@ def resolve_export_options(authored, context, profile, version):
         Fresh pack_options, preset_options, preset_prelude and rejected_options maps.
     """
     rows, rejected = _validate_policy(profile, context.operating_system, version)
-    validate_supported_options(authored, rejected, profile["option_owners"])
+    _validate_supported_options(authored, rejected, profile["option_owners"])
     option_sets = {"pack": dict(authored), "preset": {}, "prelude": {}}
     for row in rows:
         if not _active(row["when"], context.application_context):
@@ -318,7 +318,7 @@ def string_option(options, name):
         literal = literal.replace(character, escape)
     return json.decode(literal)
 
-def validate_supported_options(options, rejected, owners):
+def _validate_supported_options(options, rejected, owners):
     """
     Reject unsupported or Bazel-owned authored options before executing Godot.
 

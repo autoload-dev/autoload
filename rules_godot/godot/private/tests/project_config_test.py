@@ -13,8 +13,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from godot.private import project_config
-from godot.private.project_config import (
+from tools import project_config, project_config_command
+from tools.project_config import (
     authored_autoloads,
     enable_plugins,
     left_out,
@@ -23,10 +23,10 @@ from godot.private.project_config import (
     override_tags,
     setting_kind,
     shadowed,
-    statement_groups,
     validate_literal,
     write_back,
 )
+from tools.project_statements import statement_groups
 
 # ==== Compose project =========================================================
 
@@ -62,7 +62,7 @@ def _run(
     return subprocess.run(
         [
             sys.executable,
-            project_config.__file__,
+            project_config_command.__file__,
             command,
             "--manifest",
             str(manifest),
@@ -72,6 +72,8 @@ def _run(
         capture_output=True,
         text=True,
         check=False,
+        # The command line imports its library from the test's import path.
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path)),
     )
 
 

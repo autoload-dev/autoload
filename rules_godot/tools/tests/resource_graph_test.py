@@ -10,16 +10,12 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from tools.resource_graph import (
-    SelectionError,
-    build_graph,
-    lex,
-    main,
-    query_graph,
-    require_declared,
-    select_pack,
-    validate_identities,
-)
+from tools import pack_selection
+from tools.pack_selection import SelectionError, select_pack
+from tools.resource_graph import build_graph, require_declared
+from tools.resource_graph_command import main
+from tools.resource_graph_query import query_graph
+from tools.resource_text import validate_identities
 
 
 def runtime(source: str, target: str) -> dict:
@@ -867,13 +863,6 @@ func run():
         self.assertEqual("", stderr.getvalue())
         self.assertEqual(graph, json.loads(checked.read_text(encoding="utf-8")))
 
-    def test_the_lexer_decodes_escapes_but_keeps_raw_strings_verbatim(self) -> None:
-        text = "'a\\nb\\u00e9\\q' r'x\\ny' \"open"
-        self.assertEqual(
-            [("string", "a\nbé\\q"), ("string", "x\\ny"), ("invalid", "open")],
-            [(token.category, token.value) for token in lex(text)],
-        )
-
     def test_script_forms_name_resources_by_what_they_do(self) -> None:
         self.source("icon.png")
         self.source("base.gd", "class_name Base\n")
@@ -1318,9 +1307,8 @@ class PackSelectionTest(GraphFixture):
                 json.dumps(manifest), encoding="utf-8"
             )
             with contextlib.redirect_stderr(io.StringIO()) as stderr:
-                result = main(
+                result = pack_selection.main(
                     [
-                        "select",
                         "--manifest",
                         str(self.root / "manifest.json"),
                         "--graph",

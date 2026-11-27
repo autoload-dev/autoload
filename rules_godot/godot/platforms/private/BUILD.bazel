@@ -5,10 +5,11 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # who loads its modules.
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The repository's Android requirements check reads the pins of the Linux toolchains
-# (tools/android at the repository's root).
+# The archives and versions of the Linux Android toolchains, which godot_android_toolchains'
+# repositories and the repository's Android requirements check (tools/android at the
+# repository's root) read.
 exports_files(
-    ["android_toolchains.bzl"],
+    ["android_linux_toolchains.json"],
     visibility = ["//visibility:public"],
 )
 

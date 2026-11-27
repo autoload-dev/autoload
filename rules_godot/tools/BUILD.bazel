@@ -11,22 +11,97 @@ package_group(
     ],
 )
 
+# The statements of Godot's configuration files, which the graph and several tools read
+# without the composition of settings on top of them.
+py_library(
+    name = "project_statements_lib",
+    srcs = ["project_statements.py"],
+)
+
+# Godot settings composed per purpose without evaluating expressions, which most tools read.
+py_library(
+    name = "project_config_lib",
+    srcs = ["project_config.py"],
+    deps = [":project_statements_lib"],
+)
+
+# Composes a purpose's project.godot and checks a project's settings: the command line over
+# the library, so a change to it reruns only its own actions.
+py_library(
+    name = "project_config_command_lib",
+    srcs = ["project_config_command.py"],
+    deps = [":project_config_lib"],
+)
+
+py_binary(
+    name = "project_config",
+    srcs = ["project_config_command.py"],
+    main = "project_config_command.py",
+    deps = [":project_config_command_lib"],
+)
+
+# What the build tools read from Godot's text resources. The graph builds on it in a module
+# of its own, so a change to the graph reruns none of the actions of the tools that stage,
+# validate, index or pack files.
+py_library(
+    name = "resource_text_lib",
+    srcs = ["resource_text.py"],
+)
+
 py_library(
     name = "resource_graph_lib",
     srcs = ["resource_graph.py"],
     deps = [
-        ":godot_files_lib",
-        "//godot/private:project_config_lib",
+        ":project_statements_lib",
+        ":resource_text_lib",
+    ],
+)
+
+# Queries over a graph, for maintainers (resource_graph_query.py); no build action reads them.
+py_library(
+    name = "resource_graph_query_lib",
+    srcs = ["resource_graph_query.py"],
+    deps = [
+        ":resource_graph_lib",
+        ":resource_text_lib",
+    ],
+)
+
+# Scans, checks and queries graphs: the command line over the graph's libraries, so the
+# scanner and reference detection stay a library that other tools import without it.
+py_library(
+    name = "resource_graph_command_lib",
+    srcs = ["resource_graph_command.py"],
+    deps = [
+        ":resource_graph_lib",
+        ":resource_graph_query_lib",
     ],
 )
 
 py_binary(
     name = "resource_graph",
-    srcs = ["resource_graph.py"],
+    srcs = ["resource_graph_command.py"],
+    main = "resource_graph_command.py",
+    deps = [":resource_graph_command_lib"],
+)
+
+# Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
+# only selections, and a change to it alone no graph scans.
+py_library(
+    name = "pack_selection_lib",
+    srcs = ["pack_selection.py"],
     deps = [
         ":godot_files_lib",
-        "//godot/private:project_config_lib",
+        ":resource_graph_lib",
+        ":resource_graph_query_lib",
+        ":resource_text_lib",
     ],
+)
+
+py_binary(
+    name = "pack_selection",
+    srcs = ["pack_selection.py"],
+    deps = [":pack_selection_lib"],
 )
 
 py_library(
@@ -34,7 +109,7 @@ py_library(
     srcs = ["godot_build_files.py"],
     deps = [
         ":godot_files_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -43,7 +118,7 @@ py_binary(
     srcs = ["godot_build_files.py"],
     deps = [
         ":godot_files_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -87,9 +162,9 @@ py_library(
         ":mapped_paths_lib",
         ":node_ids_lib",
         ":pck_lib",
-        ":resource_graph_lib",
+        ":project_config_lib",
+        ":resource_text_lib",
         ":resource_uids_lib",
-        "//godot/private:project_config_lib",
     ],
 )
 
@@ -102,7 +177,7 @@ py_library(
     deps = [
         ":godot_files_lib",
         ":godot_staging_lib",
-        "//godot/private:project_config_lib",
+        ":project_config_lib",
     ],
 )
 
@@ -140,7 +215,7 @@ py_library(
     visibility = ["//tools:ruleset"],
     deps = [
         ":mapped_paths_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -149,7 +224,7 @@ py_binary(
     srcs = ["class_fragment.py"],
     deps = [
         ":mapped_paths_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -164,7 +239,7 @@ py_library(
         ":godot_files_lib",
         ":godot_staging_lib",
         ":mapped_paths_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -183,8 +258,9 @@ py_library(
     deps = [
         ":class_fragment_lib",
         ":godot_staging_lib",
+        ":project_config_lib",
+        ":resource_text_lib",
         ":resource_uids_lib",
-        "//godot/private:project_config_lib",
     ],
 )
 
@@ -214,8 +290,8 @@ py_library(
         ":godot_staging_lib",
         ":pack_contents_lib",
         ":pck_lib",
+        ":project_config_lib",
         ":template_lib",
-        "//godot/private:project_config_lib",
     ],
 )
 
@@ -236,7 +312,7 @@ py_library(
         ":godot_staging_lib",
         ":pack_contents_lib",
         ":pck_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
         ":resource_uids_lib",
     ],
 )
@@ -253,7 +329,8 @@ py_library(
     deps = [
         ":godot_staging_lib",
         ":pck_lib",
-        "//godot/private:project_config_lib",
+        ":project_config_lib",
+        ":project_statements_lib",
         "@rules_python//python/runfiles",
     ],
 )
@@ -281,7 +358,7 @@ py_library(
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
-        "//godot/private:project_config_lib",
+        ":project_config_lib",
     ],
 )
 
@@ -294,7 +371,7 @@ py_binary(
         ":godot_metadata_sync_lib",
         ":godot_run_lib",
         ":godot_staging_lib",
-        "//godot/private:project_config_lib",
+        ":project_config_lib",
     ],
 )
 
@@ -321,7 +398,7 @@ py_library(
 py_library(
     name = "node_ids_lib",
     srcs = ["node_ids.py"],
-    deps = [":resource_graph_lib"],
+    deps = [":resource_text_lib"],
 )
 
 py_library(
@@ -346,7 +423,7 @@ py_library(
     srcs = ["resource_uids.py"],
     deps = [
         ":godot_files_lib",
-        ":resource_graph_lib",
+        ":resource_text_lib",
     ],
 )
 
@@ -367,11 +444,11 @@ py_binary(
 py_library(
     name = "common_content_lib",
     srcs = ["common_content.py"],
-    deps = ["//godot/private:project_config_lib"],
+    deps = [":project_statements_lib"],
 )
 
 py_binary(
     name = "common_content",
     srcs = ["common_content.py"],
-    deps = ["//godot/private:project_config_lib"],
+    deps = [":project_statements_lib"],
 )

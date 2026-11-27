@@ -11,7 +11,7 @@ _FIXTURE = "//godot/private/tests/godot_ignored/fixtures/project_with_ignored_di
 # read of an ignored file unless its reader acknowledges it.
 py_test(
     name = "ignored_files_stay_out_of_packs_test",
-    size = "medium",
+    size = "small",
     srcs = ["ignored_files_test.py"],
     args = [
         "$(rootpath %s:pack)" % _FIXTURE,
@@ -34,7 +34,7 @@ py_test(
 # registers no class of the ignored directory.
 godot_test(
     name = "source_run_reads_ignored_files_test",
-    size = "medium",
+    size = "small",
     main = "main/reader.gd",
     project = _FIXTURE,
     tags = ["godot_process"],
