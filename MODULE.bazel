@@ -383,6 +383,28 @@ godot_cpp_bindings(
 # configuration for the Dart add-on (autoload_dart).
 bazel_dep(name = "rules_dart", version = "0.10.0", dev_dependency = True)
 
+# The SBOM rules the consumer scenarios check package metadata with. Their registry release,
+# 0.0.1, predates the sbom rule, so both modules come from one commit of their repository;
+# replace the overrides with registry versions once one has the rule.
+bazel_dep(name = "package_metadata", version = "0.0.15", dev_dependency = True)
+bazel_dep(name = "supply_chain_tools", version = "0.0.1", dev_dependency = True)
+bazel_dep(name = "supply-chain-go", version = "0.0.10", dev_dependency = True)
+
+_SUPPLY_CHAIN = "b096bfe928df459d8a413fb970fd6b0787235eeb"
+
+[
+    archive_override(
+        module_name = module,
+        integrity = "sha256-MNYaXQJW9SJSWWru+YhERS3ZnIZBvjjLDxmb53OsRrk=",
+        strip_prefix = "supply-chain-%s/%s" % (_SUPPLY_CHAIN, path),
+        urls = ["https://github.com/bazel-contrib/supply-chain/archive/%s.tar.gz" % _SUPPLY_CHAIN],
+    )
+    for module, path in {
+        "supply-chain-go": "lib/supplychain-go",
+        "supply_chain_tools": "tools",
+    }.items()
+]
+
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 # Inspects App Bundles: the all-in-one release carries aapt2 for macOS and Linux.

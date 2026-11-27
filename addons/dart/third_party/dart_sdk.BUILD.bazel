@@ -5,6 +5,9 @@
 #
 # The runtime runs AOT snapshots that `dart compile aot-snapshot` of the same SDK release
 # writes: product mode, no compressed pointers, as the released SDK's gen_snapshot.
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
@@ -29,7 +32,32 @@ load("//:runtime/vm/heap/heap_sources.bzl", "heap_sources")
 load("//:runtime/vm/regexp/regexp_sources.bzl", "regexp_sources")
 load("//:runtime/vm/vm_sources.bzl", "vm_sources")
 
-package(default_visibility = ["//visibility:private"])
+package(
+    default_package_metadata = [":package_metadata"],
+    default_visibility = ["//visibility:private"],
+)
+
+# The archive's identity and license, for the SBOM and license tools that read package
+# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = (
+        purl.builder()
+            .type("github")
+            .namespace("dart-lang")
+            .name("sdk")
+            .version("3.14.1")
+            .build()
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:BSD-3-Clause",
+    text = "LICENSE",
+)
 
 LIB_SOURCES = (
     async_runtime_cc_files +

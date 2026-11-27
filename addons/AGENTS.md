@@ -30,6 +30,12 @@ The conventions check enforces it (the add-on module rules of
   `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
+- Package metadata, which SBOM and license tools read from an application's build: the
+  shared `REPO.bazel` gives every target of the module the `package_metadata` of its shared
+  root `BUILD.bazel`, the module's PURL and license. The build file of a third-party archive in
+  `third_party/` declares the archive's own: a PURL built with `purl.builder()`, whose version
+  follows the archive's URL, and the license with its text from the archive.
+  `e2e/addons/sqlite/sbom/` checks that an SBOM names them.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. They are shared files: change them in the template.

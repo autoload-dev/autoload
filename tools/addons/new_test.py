@@ -110,6 +110,9 @@ class SharedFilesTest(RepositoryTestCase):
         generate("widget", root=self.root)
         shared = shared_files("widget", self.root)
         self.assertIn(Path("addons/widget/.gitattributes"), shared)
+        # Every module declares its package metadata the same way.
+        self.assertIn(Path("addons/widget/BUILD.bazel"), shared)
+        self.assertIn(Path("addons/widget/REPO.bazel"), shared)
         self.assertIn(Path(".bcr/addons/widget/metadata.template.json"), shared)
         self.assertNotIn(Path("addons/widget/MODULE.bazel"), shared)
         for path, text in shared.items():
