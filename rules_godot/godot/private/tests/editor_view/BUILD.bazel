@@ -12,7 +12,7 @@ _EDITED = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view
 # godot_metadata_sync reports the sidecars the view wrote.
 py_test(
     name = "editor_view_writes_edits_back_test",
-    size = "medium",
+    size = "small",
     srcs = ["godot_editor_test.py"],
     data = [
         _EDITED + "checkout",
@@ -37,7 +37,7 @@ py_test(
 # Every sidecar of the project is declared, so the generated metadata.test passes.
 godot_metadata_sync(
     name = "declared_sidecars_metadata",
-    size = "medium",
+    size = "small",
     project = "//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:project",
     tags = ["godot_process"],
     deps = ["//godot/private/tests/editor_view/fixtures/project_with_declared_sidecars:declared"],

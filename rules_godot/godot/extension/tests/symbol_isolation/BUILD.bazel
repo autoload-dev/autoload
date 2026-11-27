@@ -40,7 +40,7 @@ godot_resources(
 
 godot_test(
     name = "refs_stay_in_their_extension_test",
-    size = "medium",
+    size = "small",
     main = "main/refs_stay_native.gd",
     tags = ["godot_process"],
     deps = [
