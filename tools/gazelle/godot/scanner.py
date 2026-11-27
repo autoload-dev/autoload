@@ -17,7 +17,8 @@ from collections.abc import Iterable
 from pathlib import Path, PurePosixPath
 from typing import IO
 
-from tools.resource_graph import ANALYZED_FORMATS, file_references
+from tools.resource_graph import file_references
+from tools.resource_text import ANALYZED_FORMATS
 
 # The kinds of the graph's references that a file's importer reads and that code reads at
 # runtime; every other kind with a target loads it with the file.

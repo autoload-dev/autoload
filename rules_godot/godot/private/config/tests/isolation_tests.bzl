@@ -8,6 +8,7 @@ load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot:app.bzl", "godot_app")
 load("//godot:providers.bzl", "GodotDesktopAppInfo")
 load("//godot/extension:defs.bzl", "godot_extension")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
 _MODE = str(Label("//godot:macos_signing"))
@@ -141,11 +142,9 @@ def _raw_pck_is_no_start_pack(env, target):
 
 def _test_extension_delegates_caller_private_labels(name):
     """Typed labels delegate the caller's private extension and platform libraries."""
-    native.genrule(
+    fixture_file(
         name = name + "_library",
-        outs = [name + "/libprivate.so"],
-        cmd = "touch $@",
-        tags = ["manual"],
+        out = name + "/libprivate.so",
         visibility = ["//visibility:private"],
     )
     cc_library(

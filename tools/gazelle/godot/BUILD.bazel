@@ -35,7 +35,10 @@ go_library(
 py_library(
     name = "scanner_lib",
     srcs = ["scanner.py"],
-    deps = ["@autoload_rules_godot//tools:resource_graph_lib"],
+    deps = [
+        "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools:resource_text_lib",
+    ],
 )
 
 # Both name the ruleset's scanner too: ty's lint aspect searches the repositories of a
@@ -46,6 +49,7 @@ py_binary(
     deps = [
         ":scanner_lib",
         "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools:resource_text_lib",
     ],
 )
 
@@ -56,6 +60,7 @@ py_test(
     deps = [
         ":scanner_lib",
         "@autoload_rules_godot//tools:resource_graph_lib",
+        "@autoload_rules_godot//tools:resource_text_lib",
     ],
 )
 

@@ -45,7 +45,7 @@ visibility(["//godot/..."])
 
 # ==== godot_source_defines ====================================================
 
-GodotSourceDefinesInfo = provider(
+_GodotSourceDefinesInfo = provider(
     doc = "A source's wrapper and the command line that preprocesses it.",
     fields = {
         "definitions": "str: the source's #define and #undef lines.",
@@ -202,7 +202,7 @@ def _source_defines_impl(ctx):
     command, env, requirements = None, {}, {}
     if toolchain.compiler not in _CL_COMPILERS and not ctx.attr._per_file_copt_set[BuildSettingInfo].value:
         command, env, requirements = _command(ctx, toolchain, features, wrapper, context)
-    return [GodotSourceDefinesInfo(
+    return [_GodotSourceDefinesInfo(
         definitions = definitions,
         wrapper = wrapper,
         command = command,
@@ -361,7 +361,7 @@ def _analyze(ctx, analyzed):
     )
 
 def _define_analysis_impl(ctx):
-    infos = [source[GodotSourceDefinesInfo] for source in ctx.attr.sources]
+    infos = [source[_GodotSourceDefinesInfo] for source in ctx.attr.sources]
     if len(infos) != len(ctx.outputs.outs):
         fail("Every source needs one header in outs.")
     analyzed = []
@@ -379,7 +379,7 @@ godot_define_analysis = rule(
     implementation = _define_analysis_impl,
     attrs = {
         "sources": attr.label_list(
-            providers = [GodotSourceDefinesInfo],
+            providers = [_GodotSourceDefinesInfo],
             doc = "The sources' godot_source_defines targets.",
         ),
         "outs": attr.output_list(doc = "Each source's header, in the order of sources."),

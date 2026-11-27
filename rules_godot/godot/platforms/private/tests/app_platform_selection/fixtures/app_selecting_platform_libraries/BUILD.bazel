@@ -1,6 +1,6 @@
+load("@bazel_skylib//rules:run_binary.bzl", "run_binary")
 load("@rules_android//rules:rules.bzl", "aar_import", "android_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
-load("@rules_python//python:defs.bzl", "py_binary")
 load("@rules_swift//swift:swift_library.bzl", "swift_library")
 load("//godot:app.bzl", "godot_app")
 load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project")
@@ -44,23 +44,20 @@ android_library(
     tags = ["manual"],
 )
 
-py_binary(
-    name = "make_aar",
-    srcs = ["android/make_aar.py"],
-    main = "android/make_aar.py",
-    tags = ["manual"],
-)
-
-genrule(
+run_binary(
     name = "android_plugin_aar",
     srcs = [
         "android/plugin/AndroidManifest.xml",
         ":libandroid_plugin_classes.jar",
     ],
     outs = ["android_plugin.aar"],
-    cmd = "$(execpath :make_aar) $(execpath android/plugin/AndroidManifest.xml) $(execpath :libandroid_plugin_classes.jar) $@",
+    args = [
+        "$(execpath android/plugin/AndroidManifest.xml)",
+        "$(execpath :libandroid_plugin_classes.jar)",
+        "$(execpath android_plugin.aar)",
+    ],
     tags = ["manual"],
-    tools = [":make_aar"],
+    tool = "//godot/platforms/private/tests:make_aar",
 )
 
 aar_import(

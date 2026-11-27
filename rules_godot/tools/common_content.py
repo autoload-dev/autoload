@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from godot.private.project_config import statement_groups
+from tools.project_statements import statement_groups
 
 
 def merge_descriptors(descriptors: list[tuple[str, str]]) -> str:

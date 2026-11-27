@@ -7,7 +7,7 @@ through the outputs of other actions, so this aspect collects every action and t
 platforms it configures.
 """
 
-ReachedActionsInfo = provider(
+_ReachedActionsInfo = provider(
     doc = "Actions a target reaches through its dependencies, and the target platforms of those dependencies.",
     fields = {
         "actions": "depset of struct(owner, action, platform), platform being the target platform label string of the owner's configuration",
@@ -27,12 +27,12 @@ def _reached_actions_impl(target, ctx):
     platforms = []
     for attribute in dir(ctx.rule.attr):
         for dependency in _dependencies(getattr(ctx.rule.attr, attribute)):
-            if type(dependency) == "Target" and ReachedActionsInfo in dependency:
-                transitive.append(dependency[ReachedActionsInfo].actions)
-                platforms.append(dependency[ReachedActionsInfo].platforms)
+            if type(dependency) == "Target" and _ReachedActionsInfo in dependency:
+                transitive.append(dependency[_ReachedActionsInfo].actions)
+                platforms.append(dependency[_ReachedActionsInfo].platforms)
     platform = str(ctx.fragments.platform.platform)
     own = [struct(owner = str(target.label), action = action, platform = platform) for action in target.actions]
-    return [ReachedActionsInfo(
+    return [_ReachedActionsInfo(
         actions = depset(own, transitive = transitive),
         platforms = depset([platform], transitive = platforms),
     )]
@@ -46,13 +46,13 @@ reached_actions = aspect(
 
 def reached(target):
     """Return every struct(owner, action, platform) the target reaches."""
-    return target[ReachedActionsInfo].actions.to_list()
+    return target[_ReachedActionsInfo].actions.to_list()
 
 def platform_slice_cpus(target):
     """Return the CPUs of the platform slices whose configurations the target reaches."""
     return sorted({
         cpu: None
-        for platform in target[ReachedActionsInfo].platforms.to_list()
+        for platform in target[_ReachedActionsInfo].platforms.to_list()
         for cpu in ["arm64", "x86_64"]
         if platform.endswith(".platform_slice_" + cpu)
     })
@@ -160,7 +160,7 @@ def _without_configuration(text):
 _DISCOVERS_INPUTS = ["CppCompile", "ObjcCompile"]
 _HEADER_EXTENSIONS = ["h", "hh", "hpp", "hxx", "inc", "inl", "ipp", "tcc"]
 
-def action_keys(target, selected):
+def _action_keys(target, selected):
     """
     Return what decides whether each selected action reruns, by owner, mnemonic and outputs.
 
@@ -213,8 +213,8 @@ def expect_same_actions(env, first, second, selected):
         selected: A function of struct(owner, action) that says whether to compare the
             action.
     """
-    expected = action_keys(first, selected)
-    actual = action_keys(second, selected)
+    expected = _action_keys(first, selected)
+    actual = _action_keys(second, selected)
     env.expect.that_int(len(expected), expr = "compared actions").is_greater_than(0)
     env.expect.that_collection(sorted(actual.keys()), expr = "actions").contains_exactly(sorted(expected.keys()))
     for name, facts in expected.items():

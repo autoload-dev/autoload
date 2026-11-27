@@ -108,6 +108,9 @@ TOOLS = (
         shebang=True,
         variable="SHELLCHECK",
     ),
+    # The layering contracts of a module's Python packages (imports.py), each checked whole
+    # when it or a Python file it covers changed.
+    Tool("import-linter", ("*.py", "layers.ini"), check=(), variable="IMPORT_LINTER"),
     # The convention rules that judge each file on its own (tools/conventions/files.py); each
     # picks its own files.
     Tool("conventions", ("*",), check=("--",), variable="CONVENTIONS"),
