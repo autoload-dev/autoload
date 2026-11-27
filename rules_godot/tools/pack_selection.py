@@ -18,15 +18,14 @@ from pathlib import Path, PurePosixPath
 from tools.godot_files import DIRECTORY_MARKERS, hidden_by
 from tools.resource_graph import (
     Findings,
-    chain,
     edge_targets,
-    file_pairs,
     format_diagnostic,
     is_inferred_runtime,
     read_json,
     read_manifest,
     sorted_diagnostics,
 )
+from tools.resource_graph_query import chain, file_pairs
 from tools.resource_text import PROJECT_FILE, res_path
 
 # ==== Selection ===============================================================

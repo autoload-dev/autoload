@@ -69,7 +69,9 @@ py_test(
     srcs = ["resource_graph_test.py"],
     deps = [
         "//tools:pack_selection_lib",
+        "//tools:resource_graph_command_lib",
         "//tools:resource_graph_lib",
+        "//tools:resource_graph_query_lib",
         "//tools:resource_text_lib",
     ],
 )

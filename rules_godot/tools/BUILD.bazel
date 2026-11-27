@@ -29,10 +29,32 @@ py_library(
     ],
 )
 
+# Queries over a graph, for maintainers (resource_graph_query.py); no build action reads them.
+py_library(
+    name = "resource_graph_query_lib",
+    srcs = ["resource_graph_query.py"],
+    deps = [
+        ":resource_graph_lib",
+        ":resource_text_lib",
+    ],
+)
+
+# Scans, checks and queries graphs: the command line over the graph's libraries, so the
+# scanner and reference detection stay a library that other tools import without it.
+py_library(
+    name = "resource_graph_command_lib",
+    srcs = ["resource_graph_command.py"],
+    deps = [
+        ":resource_graph_lib",
+        ":resource_graph_query_lib",
+    ],
+)
+
 py_binary(
     name = "resource_graph",
-    srcs = ["resource_graph.py"],
-    deps = [":resource_graph_lib"],
+    srcs = ["resource_graph_command.py"],
+    main = "resource_graph_command.py",
+    deps = [":resource_graph_command_lib"],
 )
 
 # Selects a pack's resources from the graph: a tool of its own, so a change to it reruns
@@ -43,6 +65,7 @@ py_library(
     deps = [
         ":godot_files_lib",
         ":resource_graph_lib",
+        ":resource_graph_query_lib",
         ":resource_text_lib",
     ],
 )

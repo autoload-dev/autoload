@@ -12,7 +12,9 @@ from typing import Any
 
 from tools import pack_selection
 from tools.pack_selection import SelectionError, select_pack
-from tools.resource_graph import build_graph, main, query_graph, require_declared
+from tools.resource_graph import build_graph, require_declared
+from tools.resource_graph_command import main
+from tools.resource_graph_query import query_graph
 from tools.resource_text import validate_identities
 
 
