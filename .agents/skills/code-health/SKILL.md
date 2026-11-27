@@ -50,7 +50,7 @@ concrete proposal, the reason, and whether a hook or check would fail without it
 | Structure | Rules 1 to 3 of [readable files](../../../docs/internal/code-health.md#readable-files): heads, regions, grouping by topic. Where the current order mixes topics, propose moving declarations into the region of their topic, as long as each helper stays above its first caller; do not cut regions around a poor order. | medium |
 | Order and layout | Rules 4 and 5: helpers close above their first caller, the layout of the file's kind, GDScript's method order, which gdlint does not check. | medium |
 | Boundaries | Rule 6 with the history: regions that change apart, files that always change together, a region that hides a split that is due. | high |
-| Comments | Rule 7 and [comments](../../../docs/internal/code-health.md#comments): heads, docstrings, `doc` strings and comments in scope, BUILD files included. For each one that is hard to follow, says what the code already says, or no longer matches the code, a rewritten text about as long as the original, or its removal. | medium |
+| Comments | Rule 7 and [comments](../../../docs/internal/code-health.md#comments): the wording of heads, docstrings, `doc` strings and comments in scope, BUILD files included. For each comment that is hard to follow, repeats the code or no longer matches it, propose a rewritten text in no more words than it needs, or its removal. | medium |
 | CodeScene | Each new finding of a declined file, and the findings of files in scope: a refactoring that removes it; its directive only with a reason. | high |
 
 Without subagents, as in an agent that cannot start them, run the five reviews yourself, one
@@ -63,12 +63,16 @@ after the other.
    region-headers-named-in-head, definitions-before-callers), then by the file's commits, most
    first.
 3. Resolve conflicts. When regions and a split are both proposed for one file, take the
-   smaller change unless the history shows the parts change apart.
+   smaller change unless the history shows the parts change apart. For a file's head, the
+   Structure findings own its region list after `Sections:` and the Comments findings its
+   wording; apply both.
 4. Select. Leave out what changes behavior, undoes a cleanup of `/simplify`, or restructures
    much of a rarely changed file the change barely touches. Take a rewritten comment only
    when it keeps the meaning and is not longer than needed.
 5. Apply the selected findings. Then run the tests of the changed files,
-   `bazel run //tools/conventions` and `aspect code-health`.
+   `bazel run //tools/conventions` and `aspect code-health`. A rewritten `doc` string of a
+   public entrypoint also follows the [bazel-api-docs skill](../bazel-api-docs/SKILL.md) and
+   its check, `bazel build //:bcr_docs` in `rules_godot/`.
 
 ## 4. Report
 

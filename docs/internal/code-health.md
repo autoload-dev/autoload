@@ -83,8 +83,11 @@ predicts defects poorly while low cohesion and co-change predict them well.
 
 A comment earns its place when it tells the reader something the code does not: why the code
 does this, what a value means, what breaks without it, or where a rule comes from. A file's
-head says what the file is for. A docstring or `doc` says what a function, rule or attribute
-does for its caller, not how it works inside.
+head says what the file is for. A docstring or `doc` first says what a function, rule or
+attribute does for its caller; how it works inside follows only where the caller needs it.
+For the `doc` strings of public API, the
+[bazel-api-docs skill](../../.agents/skills/bazel-api-docs/SKILL.md) says what they must
+contain; these rules govern how they read.
 
 Write a comment the way you would explain the code to a colleague:
 
@@ -99,13 +102,13 @@ Write a comment the way you would explain the code to a colleague:
 
 When code changes, read the comments around it again. A comment that is still correct but hard
 to follow needs rewriting too: write it anew so it reads naturally, rather than adding words
-until it fits. Keep it about as long as before. A comment moves with the code it explains and
-goes when that code goes.
+until it fits. A rewrite says the same in no more words than it needs. A comment moves with
+the code it explains and goes when that code goes.
 
 | Hard to follow | Plain |
 |---|---|
-| `# Selects a pack's resources from the graph and checks that what they reference is available: a tool of its own, so a change to it reruns only selections, and a change to it alone no graph scans.` | `# Selects a pack's resources from the graph and checks that their references exist. It is a tool of its own, so changing it reruns pack selections but no graph scans.` |
-| `# The runner of runs and tests, which the rules of godot/private start. The run logger is its data only.` | `# Runs projects and packs for godot_run and godot_test. Only this binary carries the run logger, not its library.` |
+| `# Selects a pack's resources from the graph: a tool of its own, so a change to it reruns only selections, and a change to it alone no graph scans.` | `# Selects a pack's resources from the graph. It is a tool of its own, so changing it reruns pack selections but no graph scans.` |
+| `# The run logger is data of the runner of runs and tests only, not of the editor view and metadata sync that share godot_run_lib.` | `# Only the runner of runs and tests carries the run logger. The editor view and the metadata sync share its library but never run the logger.` |
 
 These rules draw on Ousterhout's advice to comment what is not obvious to a first-time reader
 ([Writing Comments](https://web.stanford.edu/~ouster/cgi-bin/cs190-winter18/lecture.php?topic=comments)),
@@ -125,5 +128,4 @@ the files it is given. Like `/simplify`, it lets subagents produce findings and 
 itself: it deduplicates and sorts them, applies those it selects and names the reasons for the
 rest. Its subagents review the structure (rules 1 to 3), the order and layout (rules 4 and 5),
 the boundaries with the change history (rule 6), the comments (rule 7), and CodeScene's
-findings. It runs before every
-pull request, between `/simplify` and `/code-review`.
+findings. It runs before every pull request, between `/simplify` and `/code-review`.

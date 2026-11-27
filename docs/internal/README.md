@@ -16,5 +16,5 @@ Use the [public guides](../../rules_godot/docs/public/README.md) for supported c
 | [Repository conventions](conventions.md) | The convention rules: their names, applicability, automated coverage and limits | Convention meanings or checker behavior changes |
 | [Releasing](releasing.md) | Tagging a release, the release archive and publishing to the Bazel Central Registry | Release or registry automation changes |
 | [Gazelle for Godot](gazelle.md) | What the Godot language of Gazelle declares, the attributes it owns, its directives and design | A Godot project's BUILD declarations or the language change |
-| [Code Health](code-health.md) | How the hooks score maintainability, accept findings and find refactoring targets | A Code Health hook fails or before refactoring an area |
+| [Code Health](code-health.md) | How the hooks score maintainability, accept findings and find refactoring targets; how readable files and their comments are written | A Code Health hook fails, before refactoring an area, or when writing or changing comments |
 | [Agent setup](agent-setup.md) | What Claude Code and Codex load, their hooks and worktrees, and Entire | Agent configuration, hooks or worktrees change |
