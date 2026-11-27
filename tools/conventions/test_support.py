@@ -1,5 +1,6 @@
 """Reusable repository and tool fixtures for convention regressions."""
 
+import os
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -8,7 +9,10 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import NotRequired, TypedDict
 
+from tools.addons.modules import ROOT
+from tools.addons.new import generate
 from tools.conventions.context import (
+    Buildozer,
     Call,
     Context,
     EvidenceError,
@@ -20,6 +24,7 @@ from tools.conventions.context import (
     Workspace,
     query_targets,
 )
+from tools.conventions.framework import Rule
 
 
 class StaticTools:
@@ -150,6 +155,14 @@ class RepositoryTest(unittest.TestCase):
     def workspace(self, files: tuple[str, ...] | None = None) -> Workspace:
         return Workspace(self.root, tuple(sorted(self.files)) if files is None else files)
 
+    def file_context(self, files: tuple[str, ...]) -> Context:
+        """
+        A context over some files, as the file lint gives a rule the changed ones: without
+        Bazel evidence and without the modules of the other files.
+        """
+        self.tools = StaticTools(self.root, (), ())
+        return Context(self.workspace(files), self.tools, self.tools)
+
     def context(
         self,
         calls: tuple[Call, ...] = (),
@@ -180,3 +193,40 @@ class RepositoryTest(unittest.TestCase):
         )
         self.tools.facts.update({label: GeneratedFile(label) for label in generated})
         return Context(workspace, self.tools, self.tools)
+
+
+class AddonModuleTest(RepositoryTest):
+    """
+    A repository with what the add-on generator starts from, whose modules are written as the
+    generator writes them. A rule's findings read the BUILD files with the real Buildozer
+    when the test has one: its path in the variable BUILDOZER (BUILD.bazel).
+    """
+
+    rule: Rule
+
+    def setUp(self) -> None:
+        super().setUp()
+        for name in (".bazelversion", ".bcr/rules_godot/metadata.template.json"):
+            self.write(name, (ROOT / name).read_text())
+
+    def module(self, directory: str, addon: str | None = None) -> None:
+        """A module as the generator writes it, in the workspace inventory."""
+        for path in generate(directory, addon, root=self.root):
+            self.files.add(path.relative_to(self.root).as_posix())
+
+    def findings(self, rule: Rule | None = None) -> list[tuple[str, str]]:
+        """The findings of the rule, the test's own unless given, by status and message."""
+        static = self.context()
+        buildozer = os.environ.get("BUILDOZER")
+        starlark = (
+            Buildozer(self.root, Path(buildozer).resolve())
+            if buildozer
+            else static.starlark
+        )
+        context = Context(static.workspace, starlark, static.bazel)
+        return [
+            (item.status, item.message) for item in (rule or self.rule).evaluate(context)
+        ]
+
+    def messages(self, rule: Rule | None = None) -> list[str]:
+        return [message for _, message in self.findings(rule)]

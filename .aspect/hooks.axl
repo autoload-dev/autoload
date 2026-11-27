@@ -32,16 +32,13 @@ def _format_staged(ctx: TaskContext, aspect: str, staged) -> int:
     return run(ctx, "git", ["add", "--"] + whole) if whole else 0
 
 def _generate_staged(ctx: TaskContext, staged) -> int:
-    """Regenerate the lock files the staged files shape, and stage them."""
-    before = _lines(output(ctx, "git", ["diff", "--name-only"]))
+    """Regenerate what the staged files shape, such as lock files and shared files, and stage it."""
+    changed = ["ls-files", "--modified", "--others", "--exclude-standard"]
+    before = _lines(output(ctx, "git", changed))
     if python(ctx, ["-m", "tools.generate.generate"] + staged) != 0:
         return 1
-    locks = [
-        path
-        for path in _lines(output(ctx, "git", ["diff", "--name-only"]))
-        if path not in before and path.endswith("MODULE.bazel.lock")
-    ]
-    return run(ctx, "git", ["add", "--"] + locks) if locks else 0
+    generated = [path for path in _lines(output(ctx, "git", changed)) if path not in before]
+    return run(ctx, "git", ["add", "--"] + generated) if generated else 0
 
 def _pre_commit_impl(ctx: TaskContext):
     staged = _lines(output(ctx, "git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]))
@@ -57,7 +54,7 @@ def _pre_commit_impl(ctx: TaskContext):
 
 pre_commit = task(
     implementation = _pre_commit_impl,
-    summary = "Before a commit: format and stage the staged files, regenerate their lock files, lint them, review their Code Health.",
+    summary = "Before a commit: format and stage the staged files, regenerate what they shape, lint them, review their Code Health.",
     args = {
         "keep_going": KEEP_GOING,
     },

@@ -54,7 +54,7 @@ aspect format                             # format changed files (Python, Starla
 bazel build --config=lint -- //...        # lint Python, in the root module (with @autoload_<module>//... for the add-ons) and in rules_godot/
 bazel run //tools/lint:files              # lint the changed files without targets: GDScript, Markdown, shell, per-file conventions (-- --scope=all for every file)
 aspect lint --fix                         # apply Ruff's fixes in the current module, an add-on module's in its directory
-aspect generate                           # regenerate MODULE.bazel.lock and the add-on declarations
+aspect generate                           # regenerate MODULE.bazel.lock, the add-on declarations and shared module files
 bazel run //tools/gazelle:update          # regenerate the ruleset's bzl_library targets
 (cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main
@@ -104,11 +104,12 @@ When a convention check reports a finding or incomplete coverage, consult the na
 Computed macro names need a recorded decision in the owning rule, not an assumption that a
 passing run checked them.
 
-For convention-checker changes, read [the rule framework](docs/internal/conventions.md#rule-framework).
-Rules own their metadata, applicability, predicates, exceptions and adjacent regression tests;
-shared evidence tools and the checker remain independent of individual rules. Use rule IDs for
-selection, diagnostics and references to specific rules; use descriptive names in navigation
-and general task descriptions.
+For convention-checker changes, read
+[the rule framework](docs/internal/conventions.md#rule-framework). Rules own their metadata,
+applicability, predicates, exceptions and adjacent regression tests; shared evidence tools and
+the checker remain independent of individual rules. A rule is identified by its name, such as
+`no-claude-md`, which states its claim in the glossary's terms; use it for selection,
+diagnostics and references to the rule.
 
 For public Bazel API changes, use the
 [bazel-api-docs skill](.agents/skills/bazel-api-docs/SKILL.md).

@@ -125,7 +125,7 @@ def _generate_impl(ctx: TaskContext) -> int:
 
 generate = task(
     implementation = _generate_impl,
-    summary = "Regenerate the add-on modules' declarations and MODULE.bazel.lock; with files, the MODULE.bazel.lock files that depend on them.",
+    summary = "Regenerate the add-on modules' declarations and shared files and MODULE.bazel.lock; with files, the MODULE.bazel.lock files that depend on them.",
     args = {
         "files": args.positional(minimum = 0, maximum = 512, default = []),
     },

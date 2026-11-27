@@ -1,6 +1,9 @@
 """Tests of what the generators regenerate for a change."""
 
+import contextlib
+import io
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from tools.generate import generate
@@ -14,6 +17,7 @@ class GenerateTest(unittest.TestCase):
         with (
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
             mock.patch.object(generate.declarations, "write"),
+            mock.patch.object(generate.new, "stale_shared_files", return_value={}),
         ):
             getattr(generate, call)(*args)
         return [tuple(c.args) for c in bazel.call_args_list]
@@ -43,13 +47,40 @@ class GenerateTest(unittest.TestCase):
             self.runs("regenerate", ["rules_godot/godot/defs.bzl"]),
         )
 
-    def test_the_add_on_declarations_are_written(self) -> None:
+    def shared(
+        self, paths: list[str], stale: dict[Path, str], unstaged: list[str]
+    ) -> tuple[int, list[dict[Path, str]]]:
+        """Regenerate for the paths: its status and the files written, by path."""
         with (
             mock.patch.object(generate, "bazel", return_value=0),
             mock.patch.object(generate.declarations, "write") as write,
+            mock.patch.object(generate.new, "stale_shared_files", return_value=stale),
+            mock.patch.object(generate.new, "write_files") as written,
+            mock.patch.object(generate, "unstaged_files", return_value=unstaged),
         ):
-            generate.regenerate(["tools/ci/work.py"])
+            status = generate.regenerate(paths)
         write.assert_called_once_with(generate.ROOT)
+        return status, [c.args[1] for c in written.call_args_list]
+
+    def test_the_add_on_declarations_and_stale_shared_files_are_written(self) -> None:
+        stale = {Path("addons/x/.bazelrc"): "import\n"}
+        self.assertEqual(
+            (0, [stale]), self.shared(["tools/addons/template/x.tmpl"], stale, [])
+        )
+
+    def test_a_shared_file_with_edits_is_not_overwritten(self) -> None:
+        stale = {Path("addons/x/.bazelrc"): "import\n"}
+        for staged, unstaged in (
+            (["addons/x/.bazelrc"], []),
+            (["a.md"], ["addons/x/.bazelrc"]),
+        ):
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual((1, []), self.shared(staged, stale, unstaged))
+            self.assertIn("addons/x/.bazelrc", output.getvalue())
+
+    def test_without_paths_every_stale_shared_file_is_written(self) -> None:
+        stale = {Path("addons/x/.bazelrc"): "import\n"}
+        self.assertEqual((0, [stale]), self.shared([], stale, ["addons/x/.bazelrc"]))
 
 
 if __name__ == "__main__":
