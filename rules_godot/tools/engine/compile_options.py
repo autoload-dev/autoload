@@ -97,7 +97,8 @@ _DEPLOYMENT_FLAGS = (
 
 
 def deployment_target(options: Iterable[object]) -> str:
-    """The deployment target Godot's SCons platform sets, or empty where it sets none.
+    """
+    The deployment target Godot's SCons platform sets, or empty where it sets none.
 
     Bazel's Apple toolchains pass their own target version, so the flag is never
     replayed; the recipe records the value so macOS engines compile for Godot's floor

@@ -63,6 +63,7 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
         _PYTHON,
+        "-P",
         "-m",
         "tools.engine.tree_link",
         "--tree",

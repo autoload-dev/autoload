@@ -110,7 +110,7 @@ def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, 
 
 def _configure(ctx):
     """The configure call."""
-    calls = [call for call in mocks.calls(ctx, "execute") if call.args[1:3] == ["-m", "tools.engine.configure"]]
+    calls = [call for call in mocks.calls(ctx, "execute") if call.args[1:4] == ["-P", "-m", "tools.engine.configure"]]
     return calls[0] if calls else None
 
 def _options(arguments):
@@ -119,6 +119,7 @@ def _options(arguments):
 # The configure command of the recipe _test_configure_command_carries_the_recipe declares.
 _CONFIGURE_COMMAND = [
     _PYTHON,
+    "-P",
     "-m",
     "tools.engine.configure",
     "--source",
@@ -186,6 +187,7 @@ def _test_configure_command_carries_the_recipe(env):
     # covers the patches.
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
         _PYTHON,
+        "-P",
         "-m",
         "tools.engine.tree_link",
         "--tree",
@@ -216,7 +218,7 @@ def _test_a_recipe_links_its_engine_tree(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "-m", "tools.engine.tree_link", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", "", "--patch-strip", "1"],
+        [_PYTHON, "-P", "-m", "tools.engine.tree_link", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", "", "--patch-strip", "1"],
     ).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
         "rules_godot/tools/engine/tree.py",
@@ -225,7 +227,7 @@ def _test_a_recipe_links_its_engine_tree(env):
     ])
 
 def _test_a_failed_link_fails(env):
-    ctx, errors = _build(execute = {_PYTHON + " -m tools.engine.tree_link": {"return_code": 1, "stderr": "denied"}})
+    ctx, errors = _build(execute = {_PYTHON + " -P -m tools.engine.tree_link": {"return_code": 1, "stderr": "denied"}})
     env.expect.that_collection(errors).contains_exactly([
         "godot_linux_x86_64_template_release: linking the engine tree failed:\n\ndenied",
     ])
@@ -303,10 +305,10 @@ def _test_custom_modules_configure_by_structure(env):
     ctx, errors = _build(
         custom_modules = {_RIVE: "rive"},
         path = _module_paths(listings),
-        execute = {_PYTHON + " -m tools.engine.custom_modules": {"stdout": _PREPARED}},
+        execute = {_PYTHON + " -P -m tools.engine.custom_modules": {"stdout": _PREPARED}},
     )
     env.expect.that_collection(errors).contains_exactly([])
-    prepare = [call for call in mocks.calls(ctx, "execute") if call.args[2] == "tools.engine.custom_modules"][0]
+    prepare = [call for call in mocks.calls(ctx, "execute") if call.args[3] == "tools.engine.custom_modules"][0]
     env.expect.that_str(prepare.args[-1]).equals("@@//third_party/rive:rive")
     env.expect.that_str(prepare.args[-3]).equals("rive")
 
@@ -376,7 +378,7 @@ def _test_a_fixed_timeout_bounds_configure(env):
     })
 
 def _test_failed_configure_fails(env):
-    ctx, errors = _build(execute = {_PYTHON + " -m tools.engine.configure": {"return_code": 1, "stdout": "out", "stderr": "err"}})
+    ctx, errors = _build(execute = {_PYTHON + " -P -m tools.engine.configure": {"return_code": 1, "stdout": "out", "stderr": "err"}})
     env.expect.that_collection(errors).contains_exactly(["Godot graph configuration failed:\nout\nerr"])
     env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
 

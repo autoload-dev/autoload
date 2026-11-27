@@ -53,7 +53,7 @@ def _test_the_tree_is_the_archive_with_scons(env):
     env.expect.that_str(extract.stripPrefix).equals("godot-4.7.2-stable")
     env.expect.that_str(mocks.calls(ctx, "download_and_extract")[0].output).equals("_scons")
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "-m", "tools.engine.tree", "--root", "."],
+        [_PYTHON, "-P", "-m", "tools.engine.tree", "--root", "."],
     ).in_order()
 
     # The tool runs as a module of the ruleset, whose root holds tools/.
