@@ -25,7 +25,7 @@ filegroup(
 
 py_test(
     name = "registered_prebuilt_runtime_boots_test",
-    size = "medium",
+    size = "small",
     srcs = ["prebuilt_runtime_test.py"],
     args = [
         "$(rlocationpath :registered_prebuilt_runtime_boots_test_bundle)",

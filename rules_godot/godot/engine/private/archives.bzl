@@ -17,7 +17,7 @@ _VERSION_ATTR = attr.string(
 
 # ==== Editor archive ==========================================================
 
-EDITOR_ARCHIVE_ATTRS = {
+_EDITOR_ARCHIVE_ATTRS = {
     "urls": attr.string_list(
         doc = "Ordered mirror URLs of the same ZIP archive.",
         mandatory = True,
@@ -68,7 +68,7 @@ def editor_archive_impl(ctx, *, _fail = fail):
     # cache, local or remote, may reuse them.
     return ctx.repo_metadata(reproducible = True)
 
-EDITOR_ARCHIVE_RULE_ATTRS = EDITOR_ARCHIVE_ATTRS | {
+_EDITOR_ARCHIVE_RULE_ATTRS = _EDITOR_ARCHIVE_ATTRS | {
     "_prebuilt_bzl": attr.label(default = Label("//godot/engine/private:prebuilt.bzl")),
     "_build_template": attr.label(default = Label("//godot/engine/private:editor_archive.BUILD.tpl")),
 }
@@ -326,7 +326,7 @@ def templates_archive_impl(ctx, *, _fail = fail):
     # cache, local or remote, may reuse them.
     return ctx.repo_metadata(reproducible = True)
 
-TEMPLATES_ARCHIVE_ATTRS = {
+_TEMPLATES_ARCHIVE_ATTRS = {
     "archive": attr.label(
         doc = "The export-template archive, a TPZ or ZIP file, such as another repository's download.",
         mandatory = True,
@@ -350,7 +350,7 @@ TEMPLATES_ARCHIVE_ATTRS = {
     ),
 }
 
-TEMPLATES_ARCHIVE_RULE_ATTRS = TEMPLATES_ARCHIVE_ATTRS | {
+_TEMPLATES_ARCHIVE_RULE_ATTRS = _TEMPLATES_ARCHIVE_ATTRS | {
     "_prebuilt_bzl": attr.label(default = Label("//godot/engine/private:prebuilt.bzl")),
     "_build_template": attr.label(default = Label("//godot/engine/private:export_templates.BUILD.tpl")),
     "_runtime_template": attr.label(default = Label("//godot/engine/private:prebuilt_runtime.BUILD.tpl")),
@@ -377,7 +377,7 @@ godot_editor_archive = repository_rule(
     declared version is checked for ruleset support; it is not read from the archive.
     """,
     implementation = editor_archive_impl,
-    attrs = EDITOR_ARCHIVE_RULE_ATTRS,
+    attrs = _EDITOR_ARCHIVE_RULE_ATTRS,
 )
 
 godot_export_templates_archive = repository_rule(
@@ -396,5 +396,5 @@ godot_export_templates_archive = repository_rule(
     downloading the archive, happen only when a payload is requested.
     """,
     implementation = templates_archive_impl,
-    attrs = TEMPLATES_ARCHIVE_RULE_ATTRS,
+    attrs = _TEMPLATES_ARCHIVE_RULE_ATTRS,
 )

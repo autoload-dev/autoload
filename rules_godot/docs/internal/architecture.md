@@ -24,7 +24,7 @@ runtime and editor parts, roles, extensions, platform libraries on a resetting
 `<name>.platform_libraries` helper, and its contributions.
 `godot_project` is a configuration context and holds no resources. Each operation
 macro (pack, source run, test, check, editor view, metadata sync, resource graph)
-declares an internal `godot_view` over its `deps` whose transition sets the
+declares an internal `_godot_view` over its `deps` whose transition sets the
 `//godot/private:project` context (`godot/private/context.bzl`). Every resources
 target reached in that context imports its own importable files under the project's
 import configuration, once per project and target platform; the view collects the

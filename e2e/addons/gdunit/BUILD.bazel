@@ -40,7 +40,7 @@ py_library(
 # fail the way Bazel's test encyclopedia requires.
 py_test(
     name = "gdunit_test_follows_test_encyclopedia_test",
-    size = "small",
+    size = "medium",
     srcs = ["gdunit_launcher_test.py"],
     args = [
         "$(rootpath :sharded_gdunit_suites_pass_test)",

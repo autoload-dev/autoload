@@ -39,14 +39,6 @@ pack_actions = aspect(
     doc = "Collect a pack's own actions and those of its export, but not the project's.",
 )
 
-def godot_mnemonics(target):
-    """Return the sorted Godot mnemonics of a target analyzed with pack_actions."""
-    return sorted([
-        action.mnemonic
-        for action in target[PackActionsInfo].actions
-        if action.mnemonic.startswith("Godot")
-    ])
-
 def pack_manifest(target):
     """
     Return the decoded manifest of the action that makes a pack's PCK.

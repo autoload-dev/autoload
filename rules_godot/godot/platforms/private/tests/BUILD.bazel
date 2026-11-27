@@ -1,3 +1,4 @@
+load("@rules_python//python:defs.bzl", "py_binary")
 load(":android_plugin_api_tests.bzl", "android_plugin_api_test_suite")
 load(":android_runtime_tests.bzl", "android_runtime_test_suite")
 load(":android_toolchains_tests.bzl", "android_toolchains_test_suite")
@@ -53,4 +54,15 @@ alias(
         "//conditions:default": "@platforms//:incompatible",
     }),
     visibility = ["//godot:__subpackages__"],
+)
+
+# Assembles an AAR from a manifest and a class jar, as Gradle publishes one: the Android
+# plugin fixtures stand in for a downloaded plugin with it.
+py_binary(
+    name = "make_aar",
+    # The mixed fixture packages, which are not test-only, build their plugin AARs with it.
+    testonly = False,
+    srcs = ["make_aar.py"],
+    tags = ["manual"],
+    visibility = [":__subpackages__"],
 )

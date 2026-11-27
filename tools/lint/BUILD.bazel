@@ -61,6 +61,22 @@ py_test(
     deps = [":files"],
 )
 
+# The layering contracts of a module's Python packages through import-linter (imports.py), which
+# the file lint runs when one of their files changed.
+py_binary(
+    name = "imports",
+    srcs = ["imports.py"],
+    visibility = ["//tools/format:__pkg__"],
+    deps = ["@lint_pypi//import_linter"],
+)
+
+py_test(
+    name = "imports_test",
+    size = "small",
+    srcs = ["imports_test.py"],
+    deps = [":imports"],
+)
+
 py_test(
     name = "gdscript_test",
     size = "small",

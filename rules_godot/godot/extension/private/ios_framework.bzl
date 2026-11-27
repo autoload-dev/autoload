@@ -35,7 +35,7 @@ def framework_name(name):
     """
     return _sanitize(name, "_", "_")
 
-def default_bundle_id(package, name):
+def _default_bundle_id(package, name):
     """
     Return the CFBundleIdentifier of extension name in package.
 
@@ -127,7 +127,7 @@ def _ios_framework_files_impl(ctx):
     }))
     return [DefaultInfo(files = depset([binary, plist]))]
 
-ios_framework_files = rule(
+_ios_framework_files = rule(
     doc = """
     Lay out a dynamic library as <framework_name>.framework with its Info.plist, for an
     apple_dynamic_framework_import with bundle_only to hand to iOS applications.
@@ -169,11 +169,11 @@ def ios_framework(name, shared, bundle_id, generated):
         The name of the framework import that iOS applications embed.
     """
     files = name + ".ios_framework_files"
-    ios_framework_files(
+    _ios_framework_files(
         name = files,
         binary = ":" + shared,
         framework_name = framework_name(name),
-        bundle_id = bundle_id or default_bundle_id(native.package_name(), name),
+        bundle_id = bundle_id or _default_bundle_id(native.package_name(), name),
         **generated
     )
     framework = name + ".ios_framework"

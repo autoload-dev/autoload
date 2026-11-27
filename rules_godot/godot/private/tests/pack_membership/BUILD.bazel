@@ -9,7 +9,7 @@ _FIXTURE = "//godot/private/tests/pack_membership/fixtures/project_with_pack_var
 # declared raw files, extension descriptors and the base and DLC content in the right packs.
 py_test(
     name = "pack_membership_test",
-    size = "medium",
+    size = "small",
     srcs = ["pack_membership_test.py"],
     data = [
         _FIXTURE + ":base_pack",
@@ -30,7 +30,7 @@ py_test(
 # and the raw data it reads through literal paths.
 godot_test(
     name = "blue_pack_runs_with_blue_brand_test",
-    size = "medium",
+    size = "small",
     args = [
         "--",
         "blue",
@@ -41,7 +41,7 @@ godot_test(
 
 godot_test(
     name = "red_pack_runs_with_red_brand_test",
-    size = "medium",
+    size = "small",
     args = [
         "--",
         "red",
@@ -62,7 +62,7 @@ godot_resources(
 
 godot_test(
     name = "shared_script_runs_in_composed_project_test",
-    size = "medium",
+    size = "small",
     main = "tests/math_test.gd",
     tags = ["godot_process"],
     deps = [":shared_script_runs_in_composed_project_test_script"],

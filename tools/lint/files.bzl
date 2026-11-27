@@ -8,6 +8,7 @@ FILE_TOOLS = {
     "CLANG_FORMAT": "//tools/lint:clang_format",
     "CONVENTIONS": "//tools/conventions:files",
     "GDLINT": "//tools/lint:gdscript",
+    "IMPORT_LINTER": "//tools/lint:imports",
     "RUMDL": "@multitool//tools/rumdl",
     "SHELLCHECK": "@multitool//tools/shellcheck",
 }

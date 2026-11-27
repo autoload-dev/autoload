@@ -13,7 +13,7 @@ exports.
 import hashlib
 from collections.abc import Iterator
 
-from tools.resource_graph import headings
+from tools.resource_text import headings
 
 # Godot writes these attributes before unique_id, in this order.
 _LEADING = ("name", "type", "parent", "index")

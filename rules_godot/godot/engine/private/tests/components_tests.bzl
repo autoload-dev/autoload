@@ -8,6 +8,7 @@ load("//godot/engine:defs.bzl", "godot_editor_component", "godot_runtime_compone
 load("//godot/engine/private:components.bzl", "runtime_slot_error")
 load("//godot/engine/private:resolution.bzl", "engine_toolchain")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
 visibility("private")
@@ -242,12 +243,7 @@ def _test_contradicting_slot_fails_impl(env, target):
 # A slot's payload must be what its role needs: an executable editor, or a payload or
 # forwarded component of the same role.
 def _payload(name):
-    native.genrule(
-        name = name,
-        outs = [name + ".bin"],
-        cmd = "echo 'Analysis-only stand-in' > $@",
-        tags = ["manual"],
-    )
+    fixture_file(name = name, out = name + ".bin")
     return ":" + name
 
 def _editor(name, editor, **kwargs):

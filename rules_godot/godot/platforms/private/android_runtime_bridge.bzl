@@ -81,7 +81,7 @@ _FORWARDED = [
     ManifestGraphInfo,
 ]
 
-def android_runtime_providers(target):
+def _android_runtime_providers(target):
     """
     Return the supported rules_android providers of an aspect-enriched Android runtime payload.
 
@@ -102,7 +102,7 @@ def android_runtime_providers(target):
 def _bridge_impl(ctx):
     godot = engine_toolchain(ctx, "runtime", "this Android platform slice and variant")
     require_tunable_runtime(ctx.label, ctx.attr, godot.provenance)
-    return android_runtime_providers(godot.payload) + [godot.provenance]
+    return _android_runtime_providers(godot.payload) + [godot.provenance]
 
 # The kind must not start with android_ and the rule must have no Android constraints, so
 # rules_android's neverlink aspect keeps the replayed provider; the rule is therefore
@@ -121,7 +121,7 @@ def _plugin_api_impl(ctx):
     payload = engine_toolchain(ctx, "runtime", "this Android platform slice and variant").payload
     if AndroidShellClassesInfo in payload:
         payload = payload[AndroidShellClassesInfo].target
-    return android_runtime_providers(payload)
+    return _android_runtime_providers(payload)
 
 # Named like runtime_bridge_android, for the same reasons. No transition: a plugin compiles
 # against the runtime of the configuration it is built in, its pack's.

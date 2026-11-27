@@ -1,6 +1,7 @@
 # Sections: Run tests, Export features, Desktop apps, Android apps, iOS simulator apps,
 # Debug symbols.
 
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
@@ -52,7 +53,7 @@ app_outputs_test_suite(name = "app_outputs_test_suite")
 # Run test: the start pack runs its main scene, which checks the project and the CPU.
 godot_test(
     name = "start_pack_runs_main_scene_test",
-    size = "medium",
+    size = "small",
     pack = _DESKTOP + "start_pack",
     tags = ["godot_process"],
 )
@@ -61,7 +62,7 @@ godot_test(
 # puts this end-to-end path among the tests the pre-push hook runs.
 py_test(
     name = "host_app_runs_start_pack_test",
-    size = "medium",
+    size = "small",
     srcs = ["host_app_test.py"],
     args = ["$(rootpath %sbundle)" % _DESKTOP],
     data = [_DESKTOP + "bundle"],
@@ -83,7 +84,7 @@ configured_outputs(
 
 py_test(
     name = "editor_app_runs_project_from_sources_test",
-    size = "medium",
+    size = "small",
     srcs = ["editor_app_test.py"],
     args = ["$(rootpaths :editor_app)"],
     data = [":editor_app"],
@@ -105,11 +106,10 @@ py_test(
             tags = ["manual"],
             deps = [_DESKTOP + "start_pack"],
         ),
-        genrule(
+        copy_file(
             name = "ios_start_pack_" + export_platform,
-            srcs = [":ios_start_pack_%s_export" % export_platform],
-            outs = ["ios_start_pack_%s.pck" % export_platform],
-            cmd = "cp $< $@",
+            src = ":ios_start_pack_%s_export" % export_platform,
+            out = "ios_start_pack_%s.pck" % export_platform,
             tags = ["manual"],
         ),
     ]
@@ -121,7 +121,7 @@ py_test(
 
 py_test(
     name = "ios_simulator_feature_follows_environment_test",
-    size = "medium",
+    size = "small",
     srcs = ["ios_environment_test.py"],
     args = [
         "$(rootpath :ios_start_pack_ios_arm64)",
@@ -213,7 +213,7 @@ _DESKTOP_APPS = [
 [
     py_test(
         name = "%s_contains_selected_platform_libraries_test" % name,
-        size = "medium",
+        size = "small",
         srcs = ["selected_app_test.py"],
         args = [
             "--operating-system=android",
@@ -338,7 +338,7 @@ configured_outputs(
 
 android_bundle_test(
     name = "android_dual_abi_bundle_declares_sdk_versions_test",
-    size = "medium",
+    size = "small",
     application_id = "org.example.contract",
     bundle = ":android_dual_abi_bundle_sdk_app",
     bundletool = "@bundletool//file",
@@ -375,7 +375,7 @@ android_bundle_test(
 
 ios_app_test(
     name = "ios_release_dsym_matches_executable_test",
-    size = "medium",
+    size = "small",
     app = ":ios_release_symbols_app",
     debug_symbols = ":ios_release_symbols_app_debug_symbols",
     tags = ["godot_process"],

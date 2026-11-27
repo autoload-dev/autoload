@@ -506,7 +506,7 @@ _godot_project = rule(
             cfg = reset_transition,
         ),
         "_project_config": attr.label(
-            default = Label("//godot/private:project_config"),
+            default = Label("//tools:project_config"),
             executable = True,
             cfg = "exec",
         ),

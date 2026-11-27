@@ -19,7 +19,7 @@ SDK = "android_sdk_repository_extension.configure"
 # The SDK packages the repository provisions: API levels, build tools and NDK.
 PINS = "tools/android/sdk.json"
 # Pins the Linux SDK and NDK of godot_android_toolchains for remote Linux executors.
-LINUX_TOOLCHAINS = f"{RULESET}/godot/platforms/private/android_toolchains.bzl"
+LINUX_TOOLCHAINS = f"{RULESET}/godot/platforms/private/android_linux_toolchains.json"
 
 
 def sdk_requirements(source: str) -> dict[str, str | int]:
@@ -40,28 +40,15 @@ def api_level(root: Path) -> str:
 
 def linux_pins(source: str) -> tuple[str, str, list[str]]:
     """The build tools and NDK versions and the API levels the Linux toolchains pin."""
-    values = {
-        target.id: node.value
-        for node in ast.parse(source).body
-        if isinstance(node, ast.Assign)
-        for target in node.targets
-        if isinstance(target, ast.Name)
-    }
-
-    def version(name: str) -> str:
-        match values.get(name):
-            case ast.Call(keywords=keywords):
-                versions = [k.value for k in keywords if k.arg == "version"]
-                if len(versions) == 1:
-                    return ast.literal_eval(versions[0])
-        raise ValueError(f"Expected {name} = struct(version = ...)")
-
-    match values.get("_PLATFORMS"):
-        case ast.Dict(keys=keys):
-            levels = [ast.literal_eval(key) for key in keys if key is not None]
-        case _:
-            raise ValueError("Expected _PLATFORMS = {...}")
-    return version("_LINUX_BUILD_TOOLS"), version("_LINUX_NDK"), levels
+    pins = json.loads(source)
+    try:
+        return (
+            pins["build_tools"]["version"],
+            pins["ndk"]["version"],
+            list(pins["platforms"]),
+        )
+    except (KeyError, TypeError) as error:
+        raise ValueError(f"Expected build_tools, ndk and platforms: {error}") from error
 
 
 def application_modules(root: Path) -> list[str]:
@@ -110,7 +97,7 @@ def configuration_errors(root: Path) -> list[str]:
         linux_build_tools, linux_ndk, linux_apis = linux_pins(
             (root / LINUX_TOOLCHAINS).read_text()
         )
-    except (SyntaxError, ValueError) as error:
+    except ValueError as error:
         errors.append(f"{LINUX_TOOLCHAINS}: {error}")
     else:
         check(LINUX_TOOLCHAINS, "build_tools_version", linux_build_tools)
