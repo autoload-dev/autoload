@@ -210,7 +210,7 @@ def _android_backends(
         platform_deps: The application's platform libraries.
         platform_resources: The application's resource files.
         common: Attributes of every backend, the private targets' among them, and the
-            application's engine_settings.
+            application's engine settings.
     """
     hidden = _hidden_of(common)
     _application_id(name = name + ".application_id", application_id = application_id, **hidden)
@@ -432,7 +432,7 @@ def _app_impl(
         debug_key = android_debug_key,
         platform_deps = platform_deps,
         platform_resources = platform_resources,
-        common = common | {"engine_settings": engine_settings},
+        common = common | engine_settings,
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -449,7 +449,7 @@ def _app_impl(
         infoplists = ios_infoplists,
         app_icons = ios_app_icons,
         launch_storyboard = ios_launch_storyboard,
-        **(common | {"engine_settings": engine_settings})
+        **(common | engine_settings)
     )
     _editor_backend(name = name, common = common, engine = engine)
     _public_targets(

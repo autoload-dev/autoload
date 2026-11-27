@@ -88,6 +88,7 @@ godot_configured_app(
         "-g",
         "-fdebug-compilation-dir=.",
     ],
+    debug_symbols = _ANDROID_APPS + "app.debug_symbols",
     platform = "//godot/platforms:android_arm64",
     strip = "always",
     tags = ["manual"],

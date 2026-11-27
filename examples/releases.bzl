@@ -34,6 +34,7 @@ def android_release(name, app = ":app", **kwargs):
     godot_configured_app(
         name = name,
         app = app,
+        debug_symbols = app + ".debug_symbols",
         android_format = "aab",
         platform = Label("//examples:android_distribution"),
         tags = ["manual"] + kwargs.pop("tags", []),
@@ -54,6 +55,7 @@ def ios_release(name, app = ":app", **kwargs):
     godot_configured_app(
         name = name,
         app = app,
+        debug_symbols = app + ".debug_symbols",
         platform = Label("@autoload_rules_godot//godot/platforms:ios_sim_x86_64"),
         tags = ["manual"] + kwargs.pop("tags", []),
         **(APPLE_RELEASE | kwargs)

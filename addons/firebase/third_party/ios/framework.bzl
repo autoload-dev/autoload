@@ -140,40 +140,22 @@ _compilation_only = rule(
     provides = [CcInfo],
 )
 
-def firebase_framework(
+def _firebase_framework_impl(
         name,
+        visibility,
         framework_name,
         libraries,
         version,
-        frameworks = [],
-        header_libraries = [],
-        sdk_frameworks = [],
-        sdk_dylibs = [],
-        xcframeworks = ["@firebase_ios//:xcframework_files"],
-        visibility = None):
-    """
-    Declare the dynamic framework framework_name of a Firebase product.
-
-    Creates `<name>`, the framework import that native code links and compiles against.
-    iOS applications embed and sign the framework and those it links, once however many
-    extensions link it.
-
-    Args:
-        name: Name of the framework import.
-        framework_name: Name of the framework and its binary, such as FirebaseCore.
-        libraries: The static XCFramework imports the framework holds, entirely.
-        version: The Firebase version.
-        frameworks: Names of the firebase_framework targets this one links.
-        header_libraries: Libraries among libraries whose headers the framework's headers
-            include, such as FirebaseFirestoreInternal: code that compiles against the
-            framework finds them in their XCFramework, but links only the framework.
-        sdk_frameworks: System frameworks the libraries need.
-        sdk_dylibs: System libraries the libraries need, without the lib prefix.
-        xcframeworks: The files of the XCFrameworks' iOS slices.
-        visibility: Visibility of the imports.
-    """
+        frameworks,
+        header_libraries,
+        sdk_frameworks,
+        sdk_dylibs,
+        xcframeworks):
     compatible = ["@platforms//os:ios"]
-    binary = "lib%s.dylib" % framework_name
+
+    # A cc_binary names its output after the target; the part after the slash keeps the
+    # library's name, while the target stays in the macro's namespace.
+    binary = "%s.binary/lib%s.dylib" % (name, framework_name)
     cc_binary(
         name = binary,
         # Static XCFramework imports are alwayslink: every object, Objective-C
@@ -219,3 +201,52 @@ def firebase_framework(
         target_compatible_with = compatible,
         visibility = visibility,
     )
+
+firebase_framework = macro(
+    doc = """
+    Declare the dynamic framework framework_name of a Firebase product.
+
+    Creates `<name>`, the framework import that native code links and compiles against.
+    iOS applications embed and sign the framework and those it links, once however many
+    extensions link it.
+    """,
+    implementation = _firebase_framework_impl,
+    attrs = {
+        "framework_name": attr.string(
+            doc = "Name of the framework and its binary, such as FirebaseCore.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "libraries": attr.label_list(
+            doc = "The static XCFramework imports the framework holds, entirely.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "version": attr.string(doc = "The Firebase version.", mandatory = True, configurable = False),
+        "frameworks": attr.label_list(
+            doc = "The firebase_framework targets this one links.",
+            configurable = False,
+        ),
+        "header_libraries": attr.label_list(
+            doc = """
+            Libraries among libraries whose headers the framework's headers include, such
+            as FirebaseFirestoreInternal: code that compiles against the framework finds
+            them in their XCFramework, but links only the framework.
+            """,
+            configurable = False,
+        ),
+        "sdk_frameworks": attr.string_list(
+            doc = "System frameworks the libraries need.",
+            configurable = False,
+        ),
+        "sdk_dylibs": attr.string_list(
+            doc = "System libraries the libraries need, without the lib prefix.",
+            configurable = False,
+        ),
+        "xcframeworks": attr.label_list(
+            doc = "The files of the XCFrameworks' iOS slices.",
+            default = ["@firebase_ios//:xcframework_files"],
+            configurable = False,
+        ),
+    },
+)

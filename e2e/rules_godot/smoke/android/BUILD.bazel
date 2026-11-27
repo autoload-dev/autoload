@@ -62,6 +62,7 @@ godot_configured_app(
     name = "bundle",
     android_format = "aab",
     app = ":app",
+    debug_symbols = ":app.debug_symbols",
     platform = "@autoload_rules_godot//godot/platforms:android_arm64",
     tags = ["manual"],
 )

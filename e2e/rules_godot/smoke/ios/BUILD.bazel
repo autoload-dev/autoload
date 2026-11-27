@@ -106,6 +106,7 @@ godot_app(
     godot_configured_app(
         name = "simulator_" + app,
         app = ":" + app,
+        debug_symbols = ":" + app + ".debug_symbols",
         platform = "@autoload_rules_godot//godot/platforms:ios_sim_x86_64",
         tags = ["manual"],
     )

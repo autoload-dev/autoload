@@ -67,7 +67,7 @@ def computed_roots(declaration: Declaration) -> tuple[str, ...]:
 
 
 def _in_namespace(root: str, name: str) -> bool:
-    return name == root or name.startswith((root + ".", "lib" + root))
+    return name == root or name.startswith(root + ".")
 
 
 def _in_dotted_namespace(root: str, name: str) -> bool:
