@@ -8,16 +8,10 @@ pin in the lock's variants table, by recipe and runtime profile.
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-try:
-    from . import configure
-except ImportError:
-    # Run as a binary, the tool imports its sibling modules from its own directory.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import configure
+from tools.engine import configure
 
 
 def _write(

@@ -25,10 +25,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
-try:
-    from .source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
-except ImportError:
-    from source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
+from tools.engine.source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 
 DIRECTORY = "_custom_modules"
 MANIFEST = "_custom_modules.json"

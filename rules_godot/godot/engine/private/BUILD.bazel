@@ -177,6 +177,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "engine_tools",
+    srcs = ["engine_tools.bzl"],
+)
+
+bzl_library(
     name = "resolution",
     srcs = ["resolution.bzl"],
 )
@@ -189,4 +194,5 @@ bzl_library(
 bzl_library(
     name = "tree_repository",
     srcs = ["tree_repository.bzl"],
+    deps = [":engine_tools"],
 )

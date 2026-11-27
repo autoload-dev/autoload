@@ -14,10 +14,7 @@ Sections: Merging, Unpinned variants.
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-try:
-    from .build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
-except ImportError:
-    from build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
+from tools.engine.build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
 
 # ==== Merging =================================================================
 

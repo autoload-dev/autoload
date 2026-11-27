@@ -30,10 +30,10 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
             "_kotlin_android": "@@rules_kotlin+//kotlin:android.bzl",
             "_kotlin_core": "@@rules_kotlin+//kotlin:core.bzl",
             "_python": _PYTHON,
-            "_tree": "tools/engine/tree.py",
-            "_tree_link": "tools/engine/tree_link.py",
-            "_class_db": "tools/engine/class_db.py",
-            "_patches": "tools/engine/patches.py",
+            "_tree": "rules_godot/tools/engine/tree.py",
+            "_tree_link": "rules_godot/tools/engine/tree_link.py",
+            "_class_db": "rules_godot/tools/engine/class_db.py",
+            "_patches": "rules_godot/tools/engine/patches.py",
         } | overrides,
         files = {
             str(_TREE): json.encode({
@@ -63,7 +63,8 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
         _PYTHON,
-        "tools/engine/tree_link.py",
+        "-m",
+        "tools.engine.tree_link",
         "--tree",
         str(_TREE).rpartition("/")[0],
         "--recipe",
@@ -77,7 +78,7 @@ def _test_shell_links_the_library_of_its_engine_tree(env):
     ]).in_order()
 
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains(
-        "tools/engine/tree_link.py",
+        "rules_godot/tools/engine/tree_link.py",
     )
 
 def _test_a_failed_link_stops_the_shell(env):

@@ -10,23 +10,14 @@ repository's custom modules with placeholders of their code, and configures the 
 
 import argparse
 import shutil
-import sys
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
 
-try:
-    from . import configure, custom_modules
-    from .lock import merge, update
-    from .patches import apply_patches
-except ImportError:
-    # Run as a binary, the tool imports its sibling modules from its own directory.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import configure
-    import custom_modules
-    from lock import merge, update
-    from patches import apply_patches
+from tools.engine import configure, custom_modules
+from tools.engine.lock import merge, update
+from tools.engine.patches import apply_patches
 
 
 def copy_tree(root: Path, files: list[str], destination: Path) -> None:

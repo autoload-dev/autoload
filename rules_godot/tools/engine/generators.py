@@ -10,14 +10,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-try:
-    from .build_file import Rule
-    from .include_graph import Generated
-    from .source_tree import SOURCE_SUFFIXES, digest_of
-except ImportError:
-    from build_file import Rule
-    from include_graph import Generated
-    from source_tree import SOURCE_SUFFIXES, digest_of
+from tools.engine.build_file import Rule
+from tools.engine.include_graph import Generated
+from tools.engine.source_tree import SOURCE_SUFFIXES, digest_of
 
 
 def spec_path(spec: Mapping[str, Any]) -> str:

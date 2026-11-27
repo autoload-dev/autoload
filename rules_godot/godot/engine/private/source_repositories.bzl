@@ -15,6 +15,7 @@ load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata"
 load("//godot/private:versions.bzl", "require_supported_source_version")
 load("//godot/private/config:settings.bzl", "OPERATING_SYSTEM_CONSTRAINTS")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
+load(":engine_tools.bzl", "engine_tool")
 
 visibility(["//godot/..."])
 
@@ -85,9 +86,8 @@ def _link_tree(ctx, path = ""):
     The repository owns copies of the files its patches touch, which it patches, and of
     class_db.h, which it scopes: the tree stays the source archive's.
     """
-    command = [
-        str(ctx.path(ctx.attr._python)),
-        str(ctx.path(ctx.attr._tree_link)),
+    tool = engine_tool(ctx, ctx.attr._tree_link)
+    command = tool.command + [
         "--tree",
         str(ctx.path(ctx.attr.tree).dirname),
         "--recipe",
@@ -101,7 +101,7 @@ def _link_tree(ctx, path = ""):
         patch_file = ctx.path(patch)
         ctx.watch(patch_file)
         command.extend(["--patch", str(patch_file)])
-    result = ctx.execute(command)
+    result = ctx.execute(command, environment = tool.environment)
     if result.return_code:
         return "%s: linking the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr)
     return None
@@ -244,6 +244,7 @@ def _configure_variants(ctx, command, variants):
     ctx.file(_VARIANT_PINS + "/configure.sh", "\n".join(lines + ["wait", ""]))
     ctx.execute(
         ["/bin/sh", _VARIANT_PINS + "/configure.sh"],
+        environment = engine_tool(ctx, ctx.attr._configure).environment,
         timeout = _CONFIGURE_TIMEOUT,
         quiet = True,
     )
@@ -359,11 +360,9 @@ def _recipe_arguments(ctx, tree):
         arguments.extend(["--option", option + "=" + ctx.attr.build_options[option]])
     return arguments
 
-def _host_command(ctx, python, arguments):
-    """The configure command on this host: the tools' paths, then the recipe's arguments."""
-    return [
-        str(python),
-        str(ctx.path(ctx.attr._configure)),
+def _host_command(ctx, arguments):
+    """The configure command on this host: the tool's module, its paths, then the recipe's arguments."""
+    return engine_tool(ctx, ctx.attr._configure).command + [
         "--source",
         str(ctx.path(".")),
         "--scons",
@@ -408,12 +407,11 @@ def _add_custom_modules(ctx, command, arguments):
         declarations.extend(["--module", name, str(config.dirname), str(target)])
         for names in [command, arguments]:
             names.extend(["--custom-module-name", name])
-    result = ctx.execute([
-        str(ctx.path(ctx.attr._python)),
-        str(ctx.path(ctx.attr._custom_modules)),
-        "--recipe",
-        ".",
-    ] + declarations)
+    tool = engine_tool(ctx, ctx.attr._custom_modules)
+    result = ctx.execute(
+        tool.command + ["--recipe", "."] + declarations,
+        environment = tool.environment,
+    )
     if result.return_code:
         return "%s: preparing the custom modules failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr), []
     prepared = json.decode(result.stdout)
@@ -480,9 +478,8 @@ def engine_build_impl(ctx, *, _fail = fail):
     if error:
         _fail(error)
         return None
-    python = ctx.path(ctx.attr._python)
     arguments = _recipe_arguments(ctx, tree)
-    command = _host_command(ctx, python, arguments)
+    command = _host_command(ctx, arguments)
     error, placeholders = _add_custom_modules(ctx, command, arguments)
     if error:
         _fail(error)
@@ -490,7 +487,12 @@ def engine_build_impl(ctx, *, _fail = fail):
     command.extend(_patch_arguments(ctx))
     variants = _variant_profiles(ctx, tree["version"])
     command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
-    result = ctx.execute(command, timeout = _CONFIGURE_TIMEOUT, quiet = True)
+    result = ctx.execute(
+        command,
+        environment = engine_tool(ctx, ctx.attr._configure).environment,
+        timeout = _CONFIGURE_TIMEOUT,
+        quiet = True,
+    )
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None

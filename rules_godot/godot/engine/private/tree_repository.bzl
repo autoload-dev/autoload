@@ -11,6 +11,8 @@ Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx 
 them; an implementation returns after an error.
 """
 
+load(":engine_tools.bzl", "engine_tool")
+
 visibility(["//godot/..."])
 
 _SCONS_URL = "https://files.pythonhosted.org/packages/7d/c9/2f430bb39e4eccba32ce8008df4a3206df651276422204e177a09e12b30b/scons-4.10.1.tar.gz"
@@ -40,7 +42,8 @@ def engine_tree_impl(ctx, *, _fail = fail):
         stripPrefix = "scons-4.10.1",
         output = "_scons",
     )
-    result = ctx.execute([str(ctx.path(ctx.attr._python)), str(tool), "--root", "."])
+    command = engine_tool(ctx, ctx.attr._tree)
+    result = ctx.execute(command.command + ["--root", "."], environment = command.environment)
     if result.return_code:
         _fail("%s: preparing the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr))
         return None

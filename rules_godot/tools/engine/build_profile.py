@@ -20,18 +20,11 @@ from collections.abc import Collection, Iterable, Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-try:
-    from .class_db import CLASS_DB as _CLASS_DB
-    from .class_db import HEADER
-    from .custom_modules import DIRECTORY
-    from .include_graph import ANY_HEADER, Generated, reaching
-    from .source_tree import SOURCE_SUFFIXES
-except ImportError:
-    from class_db import CLASS_DB as _CLASS_DB
-    from class_db import HEADER
-    from custom_modules import DIRECTORY
-    from include_graph import ANY_HEADER, Generated, reaching
-    from source_tree import SOURCE_SUFFIXES
+from tools.engine.class_db import CLASS_DB as _CLASS_DB
+from tools.engine.class_db import HEADER
+from tools.engine.custom_modules import DIRECTORY
+from tools.engine.include_graph import ANY_HEADER, Generated, reaching
+from tools.engine.source_tree import SOURCE_SUFFIXES
 
 # ==== Profile files ===========================================================
 

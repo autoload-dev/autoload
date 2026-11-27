@@ -33,18 +33,11 @@ from pathlib import Path
 from types import FunctionType
 from typing import Any, TypeGuard, cast
 
-try:
-    from . import build_profile
-    from .custom_modules import shapes_graph
-    from .module_graph import module_closure, module_dependencies
-    from .render import Variant, render, render_unpinned
-    from .source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
-except ImportError:
-    import build_profile
-    from custom_modules import shapes_graph
-    from module_graph import module_closure, module_dependencies
-    from render import Variant, render, render_unpinned
-    from source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
+from tools.engine import build_profile
+from tools.engine.custom_modules import shapes_graph
+from tools.engine.module_graph import module_closure, module_dependencies
+from tools.engine.render import Variant, render, render_unpinned
+from tools.engine.source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
 
 
 def file_digest(path: Path) -> str:
