@@ -8,7 +8,10 @@ load("//godot/engine/private/tests:engines.bzl", "godot_source_binary")
 # A macOS app whose runtime is built from engine sources with the bazel_probe module, in the
 # shape a generated source-build repository declares it, while the registered prebuilt editor
 # imports and exports. The native graph is analyzed, never built.
-package(default_visibility = ["//godot/engine/private/tests:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/engine/private/tests:__pkg__"],
+)
 
 _MODULE = "//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe"
 

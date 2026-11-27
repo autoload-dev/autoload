@@ -20,6 +20,8 @@ load("//godot/platforms/private/tests:action_graph.bzl", "reached", "reached_act
 load("//godot/platforms/private/tests:backends.bzl", "godot_android_application", "godot_ios_application")
 load("//godot/private/tests:configurations.bzl", "in_platform_slice")
 
+visibility("private")
+
 _ADDONS = "//godot/platforms/private/tests/platform_libraries/fixtures/addons_with_platform_libraries:"
 _UNMATCHED = "//godot/platforms/private/tests/platform_libraries/fixtures/extensions_without_matching_libraries:"
 _DECLARATIONS = "//godot/platforms/private/tests/platform_libraries/fixtures/extension_library_declarations:"

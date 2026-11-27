@@ -5,7 +5,10 @@ load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # Extensions without a library for an application's operating system, and projects that
 # disable extensions for the runtime, deliver none to the application.
-package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
+)
 
 fixture_file(
     name = "extension_library",

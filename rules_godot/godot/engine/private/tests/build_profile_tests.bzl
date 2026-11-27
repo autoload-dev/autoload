@@ -15,6 +15,8 @@ load("//godot/engine/private:optimization.bzl", "tuned_engine_settings")
 load("//godot/private:providers.bzl", "GodotComponentInfo")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _BUILD_PROFILE = str(Label("//godot/private:build_profile"))
 _NO_BUILD_PROFILE = Label("//godot/private:no_build_profile")
 _PROFILE = Label("//godot/engine/private/tests:profile.gdbuild")

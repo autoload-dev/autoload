@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_addon", "godot_project", "godot_resources")
 
 # Resources whose add-on carries settings and an autoload into the operations over them,
 # directly, through a resource with an import input and under their project's overrides.
-package(default_visibility = ["//godot/private/tests/import_context_runs:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/import_context_runs:__pkg__"],
+)
 
 godot_resources(
     name = "configured_resources",

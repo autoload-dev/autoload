@@ -5,7 +5,10 @@ load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # A utility add-on, and an add-on using it and two extensions, whose Android and Apple
 # libraries and Info.plist fragment reach a project's applications.
-package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
+)
 
 # Stand-ins for an add-on's Android and Apple libraries: any target with JavaInfo or CcInfo
 # is one.

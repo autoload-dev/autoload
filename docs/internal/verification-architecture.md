@@ -254,6 +254,36 @@ B1 and B2 need no convention rule. Bazel rejects a load or a dependency outside 
 visibility, as rules_cc, rules_apple and rules_java use it. Tags select tests; packages own
 them. A mobile test carries its tag where its package declares it, and no `test_suite` lists them.
 
+### Visibility inside the ruleset
+
+The ruleset declares its boundaries in Bazel, so that a mistake fails the build:
+
+- Every `.bzl` file of an implementation package declares a load visibility, as narrow as its
+  users allow; those of a `tests` package name their own package (`visibility("private")`) or
+  their test subtree. Files that a generated repository loads keep public load visibility.
+- The `.bzl` files that an implementation package exports as files, for the module's own
+  repository rules and documentation, are visible inside the module only.
+- The build tools in `tools/` are visible to the ruleset's own packages, the package group
+  `//tools:ruleset`, by default. A rule's private attribute is checked against the package
+  that defines the rule, so neither consumers nor generated repositories need to see a tool.
+- A target that a consumer's targets reach through the ruleset's macros, a generated
+  repository or the root module's tooling must reach is visible to every package, but no
+  API: its visibility is `NOT_ACTUALLY_PUBLIC` (`godot/private:visibility.bzl`), as in
+  rules_python, and a comment names who needs it. A visibility cannot name the root module
+  instead: it is only a development dependency of the ruleset, so the label would not resolve
+  for consumers. The root module's tooling may depend on such targets, such as the Gazelle
+  extension on `//tools:resource_graph_lib`; it loads no `private` module (B3).
+
+<a id="test-only-packages"></a>
+
+A test package sets `package(default_testonly = True)`, so that Bazel's test-only check keeps
+its targets out of every production target. Two kinds of packages stay unmarked: a mixed
+package, which declares a `godot_project` together with the add-ons it names, since a project
+is never test-only and its add-ons may not be either; and a fixture package whose targets the
+arranged targets of such a mixed package consume. `godot/private/tests` itself is one, because
+its analysis tests arrange projects in the package. The
+[rule on production isolation](conventions.md#rg012) covers what these packages leave open.
+
 ## Artifact test rules
 
 `godot/private/testing` holds `android_bundle_test` and `ios_app_test`, which inspect a

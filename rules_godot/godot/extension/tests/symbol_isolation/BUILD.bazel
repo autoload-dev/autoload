@@ -2,6 +2,8 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_resources", "godot_test")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 
+package(default_testonly = True)
+
 # Two godot-cpp extensions in one process, each passing a Ref of its own class back into its
 # native code. Each extension runs only its own godot-cpp copy. The run fails without
 # isolation on macOS, whose loader binds exported weak symbols across libraries; elsewhere

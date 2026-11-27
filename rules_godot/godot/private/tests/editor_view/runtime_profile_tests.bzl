@@ -8,6 +8,8 @@ load("//godot:defs.bzl", "godot_runtime_profile")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load("//godot/private/tests:manifests.bzl", "manifest_content")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view"
 _PACKAGE = "godot/private/tests/editor_view"
 _CHECKED_IN = "runtime_profile/checked_in"

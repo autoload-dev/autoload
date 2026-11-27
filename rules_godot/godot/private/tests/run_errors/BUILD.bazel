@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/run_errors/fixtures/project_reporting_an_error"
 
 # Run test: a test that only reports the error passes with Godot's exit status.

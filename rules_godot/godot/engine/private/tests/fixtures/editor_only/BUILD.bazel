@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_editor_component")
 
+package(default_testonly = True)
+
 # An editor-only registration set: the runtime still comes from the registered hub.
 godot_editor_component(
     name = "editor_linux_arm64",

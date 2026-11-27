@@ -1,6 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:private"],
+)
 
 py_test(
     name = "inspect_android_bundle_test",

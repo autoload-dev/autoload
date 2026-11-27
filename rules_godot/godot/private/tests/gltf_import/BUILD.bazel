@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/gltf_import/fixtures/gltf_with_external_buffer:"
 
 # Run test: a glTF scene imported with its external buffer as an import input instantiates

@@ -9,7 +9,10 @@ load("//godot/platforms:defs.bzl", "godot_export_platform")
 # One mobile application for Android and iOS: its pack selects each operating system's
 # add-on with a platform library, the application adds a platform library, a platform resource and, on
 # Android, a manifest placeholder value; the pack ships a native extension.
-package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests:__subpackages__"],
+)
 
 # The native extension the pack ships; the library name libhello_native.so follows the
 # target name.

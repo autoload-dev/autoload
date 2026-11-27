@@ -22,6 +22,8 @@ load(
 )
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
+visibility("private")
+
 _ASSETS = "//godot/private/tests/fixtures/project_with_imported_assets"
 _MEMBERSHIP = "//godot/private/tests/fixtures/project_with_pack_membership"
 

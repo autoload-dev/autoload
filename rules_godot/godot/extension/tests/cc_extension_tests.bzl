@@ -25,6 +25,8 @@ load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 load(":descriptor_tests.bzl", "descriptor_contents")
 load(":library_fixtures.bzl", "dynamic_xcframework_fixture")
 
+visibility("private")
+
 _SMALL = {"size": "small"}
 _MACOS_ONLY = _SMALL | {"target_compatible_with": ["@platforms//os:macos"]}
 _IOS_SIMULATOR = {"//command_line_option:platforms": str(Label("//godot/platforms:ios_sim_arm64"))}

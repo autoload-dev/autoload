@@ -3,6 +3,8 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(":mocks.bzl", "mocks")
 
+visibility("private")
+
 def _test_repository_ctx_records_side_effects(env):
     ctx = mocks.repository_ctx(
         attr = {"patches": []},

@@ -1,12 +1,10 @@
 """godot_engine_build links one recipe to its engine tree and passes it to the configure-only capture."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:source_repositories.bzl", "engine_build_impl", "profile_options")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _TREE = Label("//godot/engine/private/tests:tree.json")
 _TREE_DIRECTORY = str(_TREE).rpartition("/")[0]

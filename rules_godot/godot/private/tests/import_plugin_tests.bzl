@@ -18,6 +18,8 @@ load(":action_inputs.bzl", "expect_not_read", "expect_reads", "godot_actions", "
 load(":expected_failures.bzl", "failure_test")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_importer"
 _PLUGIN = "res://addons/md_importer/plugin.cfg"
 _IMPORTER = "md_importer/importer.gd"

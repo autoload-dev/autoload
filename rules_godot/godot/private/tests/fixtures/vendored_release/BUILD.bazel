@@ -1,7 +1,10 @@
 load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
 load("//godot/extension:defs.bzl", "godot_extension")
 
-package(default_visibility = ["//godot/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests:__subpackages__"],
+)
 
 # The release directory as upstream ships it: scripts, its own descriptor and prebuilt
 # libraries. rules_godot writes the descriptor from the extension, so the shipped one stays

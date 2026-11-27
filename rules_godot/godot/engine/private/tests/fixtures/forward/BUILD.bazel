@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # Reuses a component of another registration set; its payload and provenance are forwarded.
 godot_runtime_component(
     name = "runtime_linux_x86_64_release",

@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_resources", "godot_test")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/pack_membership/fixtures/project_with_pack_variants"
 
 # Build-output test: each pack's members match its export report, and the reports place

@@ -6,6 +6,8 @@ load("//godot:defs.bzl", "godot_test")
 load("//godot/private:providers.bzl", "GodotResourcesInfo")
 load(":action_inputs.bzl", "GodotActionsInfo", "godot_actions", "source_inputs")
 
+visibility("private")
+
 _CONTEXT = "//godot/private/tests/fixtures/import_context"
 _SHARED = "//godot/private/tests/fixtures/project_with_shared_unit"
 _FIXTURES = "godot/private/tests/fixtures/"

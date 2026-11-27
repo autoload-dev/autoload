@@ -3,6 +3,8 @@
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:truth.bzl", "matching")
 
+visibility("private")
+
 def _fails_with_message_impl(env, targets):
     for target in targets:
         env.expect.that_target(target).failures().contains_predicate(matching.contains(env.ctx.attr.message))

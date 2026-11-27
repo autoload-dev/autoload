@@ -12,6 +12,8 @@ load(":expected_failures.bzl", "failure_test")
 load(":manifests.bzl", "manifest_content")
 load(":mocks.bzl", "mocks")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _PROJECT = _FIXTURE
 
