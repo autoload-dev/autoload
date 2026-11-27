@@ -299,8 +299,8 @@ godot_engine_build(
 # CPU.
 register_toolchains("//godot/private/config:all")
 
-# Optional native C++ example. Mobile example modules reuse its extension target;
-# the repository is fetched only when that target is referenced.
+# The godot-cpp bindings the ruleset's tests compile their extensions against; consumers
+# declare their own.
 godot_cpp_bindings = use_repo_rule(
     "//godot/extension:repositories.bzl",
     "godot_cpp_bindings",
@@ -308,6 +308,7 @@ godot_cpp_bindings = use_repo_rule(
 
 godot_cpp_bindings(
     name = "godot_cpp",
+    dev_dependency = True,
     enabled_classes = ["Node"],
 )
 

@@ -14,8 +14,6 @@ package(default_visibility = ["//visibility:public"])
 # The application ID is also the redirect scheme AppAuth's Android redirect activity claims.
 _APPLICATION_ID = "org.example.appauth"
 
-exports_files(["project.godot"])
-
 godot_project(
     name = "app_auth",
     main_scene = "main/login_demo.tscn",

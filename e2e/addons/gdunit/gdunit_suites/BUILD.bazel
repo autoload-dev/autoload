@@ -8,8 +8,6 @@ package(
     default_visibility = ["//e2e/addons/gdunit:__subpackages__"],
 )
 
-exports_files(["project.godot"])
-
 godot_project(
     name = "gdunit_suites",
     project_file = "project.godot",

@@ -25,7 +25,6 @@ ATTRIBUTES = {
     "bazel_dep": ("version",),
     "http_archive": ARCHIVE,
     "http_file": ARCHIVE,
-    "godot_cpp_bindings": ("api_path",),
     "android_sdk_repository_extension.configure": ("api_level", "build_tools_version"),
     "godot_android_toolchains.configure": ("ndk_api_level",),
     "godot_engines.engine": ("version",),

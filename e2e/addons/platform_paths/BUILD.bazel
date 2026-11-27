@@ -2,14 +2,6 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_editor", "godot_metadata_sy
 
 package(default_testonly = True)
 
-exports_files(
-    ["project.godot"],
-    visibility = [
-        "//e2e/addons/platform_paths/locations:__pkg__",
-        "//e2e/addons/platform_paths/results:__pkg__",
-    ],
-)
-
 godot_project(
     name = "platform_paths",
     project_file = "project.godot",

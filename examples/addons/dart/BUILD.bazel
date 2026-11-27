@@ -10,8 +10,6 @@ load(
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["project.godot"])
-
 # The Dart language, with the demo's scripts compiled in.
 godot_dart_extension(
     name = "dart_extension",

@@ -11,8 +11,6 @@ load("//examples:releases.bzl", "android_release", "ios_release")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["project.godot"])
-
 godot_project(
     name = "sqlite",
     main_scene = "main/database_demo.tscn",

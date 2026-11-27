@@ -34,8 +34,6 @@ MODULE = textwrap.dedent("""
     http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(name = "gdunit4", sha256 = "def", urls = ["https://example.com/gdunit.tar.gz"])
 
-    godot_cpp_bindings(name = "godot_cpp", api_path = "gdextension/extension_api-4-7.json")
-
     maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
     maven.install(
         name = "maven",
@@ -181,7 +179,6 @@ class PinsTest(unittest.TestCase):
                 "godot_engines.source:godot.version": "4.7.2",
                 "http_archive:gdunit4.sha256": "def",
                 "http_archive:gdunit4.urls": ["https://example.com/gdunit.tar.gz"],
-                "godot_cpp_bindings:godot_cpp.api_path": "gdextension/extension_api-4-7.json",
                 "maven.install:maven:androidx.fragment:fragment": "1.8.6",
                 "maven.install:maven:org.example:only": "1.0",
             },

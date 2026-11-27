@@ -364,11 +364,10 @@ godot_cpp_bindings = use_repo_rule(
     "godot_cpp_bindings",
 )
 
-# Keep the API independent of the engine pin to exercise forward compatibility; the scenarios'
-# extension needs Node only.
+# The default API, 4.7, stays independent of the engine pin to exercise forward
+# compatibility; the scenarios' extension needs Node only.
 godot_cpp_bindings(
     name = "godot_cpp",
-    api_path = "gdextension/extension_api-4-7.json",
     dev_dependency = True,
     enabled_classes = ["Node"],
 )
