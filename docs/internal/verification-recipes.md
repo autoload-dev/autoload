@@ -177,15 +177,15 @@ Xcode compiles, local, so Apple-heavy work gains less.
 When unsure, try it and compare: Bazel's summary line shows how many actions ran `remote`
 and the critical path, and the invocation page shows where the time went.
 
-To use Bazel flags for one task, set `RULES_GODOT_BAZEL_FLAGS` to whitespace-separated
+To use Bazel flags for one task, set `AUTOLOAD_BAZEL_FLAGS` to whitespace-separated
 flags. [tools/bazel](../../tools/bazel), which Bazelisk runs in place of Bazel in every
 module, adds them to every command that reads build options, including those of `aspect`
 tasks and of the build tools under `tools/`; the command's own flags win. A Bazel binary
 started without Bazelisk ignores the variable.
 
 ```sh
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect tests --tier=all
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
+AUTOLOAD_BAZEL_FLAGS=--config=buildbuddy aspect tests --tier=all
+AUTOLOAD_BAZEL_FLAGS=--config=buildbuddy-linux aspect exec -- bazel test //...
 ```
 
 Some work needs this host as execution platform even under a remote config, such as the

@@ -57,7 +57,7 @@ bazel run //tools/gazelle:update          # regenerate the BUILD declarations Ga
 (cd rules_godot && bazel build //:bcr_docs)  # after changing the ruleset's public API: the registry's documentation metadata
 aspect code-health                        # Code Health of the change since origin/main
 aspect code-health --survey               # Code Health of the whole checkout, to find refactoring targets
-RULES_GODOT_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy
+AUTOLOAD_BAZEL_FLAGS=--config=buildbuddy aspect work <name>  # offload a large task to BuildBuddy
 ```
 
 `aspect help` lists the tasks. Use `aspect exec --` before direct commands that need the
