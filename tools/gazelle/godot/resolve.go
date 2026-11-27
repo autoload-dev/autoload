@@ -71,23 +71,36 @@ func (l *godotLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 
 func (im *importer) resources(r *rule.Rule) {
 	prefix, strip := r.AttrString("prefix"), r.AttrString("strip_prefix")
-	for _, src := range sourceFiles(r) {
-		im.resourceFile(src, "res://"+path.Join(prefix, pathtools.TrimPrefix(src, strip)))
+	srcs := sourceFiles(r)
+	resPaths := make([]string, len(srcs))
+	for i, src := range srcs {
+		resPaths[i] = "res://" + path.Join(prefix, pathtools.TrimPrefix(src, strip))
 	}
+	for i, s := range im.scan(srcs, resPaths) {
+		im.resourceFile(srcs[i], resPaths[i], s)
+	}
+}
+
+// scan returns what the scanner finds in files of the target's package.
+func (im *importer) scan(srcs, resPaths []string) []scanned {
+	rels := make([]string, len(srcs))
+	for i, src := range srcs {
+		rels[i] = path.Join(im.pkg, src)
+	}
+	return im.lang.scanFiles(im.c, rels, resPaths)
 }
 
 // resourceFile records what a file of a godot_resources target provides: the UID it or its
 // sidecar declares, and a file's res:// path and global classes.
-func (im *importer) resourceFile(src, resPath string) {
-	s := im.lang.scanFile(im.c, path.Join(im.pkg, src), resPath)
-	if s.uid != "" {
-		im.add(s.uid, false)
+func (im *importer) resourceFile(src, resPath string, s scanned) {
+	for _, uid := range s.UIDs {
+		im.add(uid, false)
 	}
 	if sidecarSource(src) != "" {
 		return
 	}
 	im.add(resPath, true)
-	for _, class := range s.classes {
+	for _, class := range s.Classes {
 		im.add(class, true)
 	}
 }
@@ -104,8 +117,13 @@ func (im *importer) extension(r *rule.Rule) {
 	if resourcePath := r.AttrString("resource_path"); resourcePath != "" {
 		im.add("res://"+resourcePath, true)
 	}
-	for _, src := range sourceFiles(r) {
-		for _, class := range im.lang.scanFile(im.c, path.Join(im.pkg, src), "res://"+src).classes {
+	srcs := sourceFiles(r)
+	resPaths := make([]string, len(srcs))
+	for i, src := range srcs {
+		resPaths[i] = "res://" + src
+	}
+	for _, s := range im.scan(srcs, resPaths) {
+		for _, class := range s.Classes {
 			im.add(class, true)
 		}
 	}
@@ -145,7 +163,7 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 	deps := rv.all(ui.refs, nil)
 	runtime := make([]reference, 0, len(ui.literals))
 	for _, literal := range ui.literals {
-		runtime = append(runtime, reference{kindRes, literal})
+		runtime = append(runtime, reference{Kind: kindRes, Value: literal})
 	}
 	setLabels(r, "deps", deps)
 	setLabels(r, "runtime_deps", rv.all(runtime, deps))
@@ -195,8 +213,8 @@ func (rv resolver) lookup(ref reference) (label.Label, bool) {
 // override returns the target a resolve directive names for the reference: one for its
 // kind, such as `class`, or one for the language.
 func (rv resolver) override(ref reference) (label.Label, bool) {
-	for _, lang := range []string{ref.kind.String(), languageName} {
-		if dep, ok := resolve.FindRuleWithOverride(rv.c, importSpec(ref.value), lang); ok {
+	for _, lang := range []string{string(ref.Kind), languageName} {
+		if dep, ok := resolve.FindRuleWithOverride(rv.c, importSpec(ref.Value), lang); ok {
 			return dep, true
 		}
 	}
@@ -211,7 +229,7 @@ func (rv resolver) choose(ref reference, results []resolve.FindResult) (label.La
 		return label.NoLabel, false
 	}
 	if len(results) > 1 {
-		log.Printf("%s: %s %s is provided by several targets, %s and %s; add a resolve directive", rv.from, ref.kind, ref.value, results[0].Label, results[1].Label)
+		log.Printf("%s: %s %s is provided by several targets, %s and %s; add a resolve directive", rv.from, ref.Kind, ref.Value, results[0].Label, results[1].Label)
 		return label.NoLabel, false
 	}
 	return results[0].Label, true
@@ -220,11 +238,11 @@ func (rv resolver) choose(ref reference, results []resolve.FindResult) (label.La
 // candidates returns the index keys that may provide a reference, the most specific first: a
 // res:// path itself, then each directory above it.
 func candidates(ref reference) []string {
-	values := []string{ref.value}
-	if ref.kind != kindRes {
+	values := []string{ref.Value}
+	if ref.Kind != kindRes {
 		return values
 	}
-	for dir := path.Dir(strings.TrimPrefix(ref.value, "res://")); dir != "."; dir = path.Dir(dir) {
+	for dir := path.Dir(strings.TrimPrefix(ref.Value, "res://")); dir != "."; dir = path.Dir(dir) {
 		values = append(values, "res://"+dir+"/")
 	}
 	return values

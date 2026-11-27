@@ -3,9 +3,7 @@
 package godot
 
 import (
-	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"unicode"
@@ -85,23 +83,6 @@ func isSourceOfGodot(c *config.Config, name string) bool {
 	return !strings.HasPrefix(name, ".") && name != projectFile && !slices.Contains(c.ValidBuildFileNames, name)
 }
 
-// scanFile returns what scan finds in a file of the repository, which it reads once, and
-// only when scan reads its format.
-func (l *godotLang) scanFile(c *config.Config, rel, resPath string) scanned {
-	if !scannable(rel) {
-		return scanned{}
-	}
-	name := filepath.Join(c.RepoRoot, filepath.FromSlash(rel))
-	if s, ok := l.scans[name]; ok {
-		return s
-	}
-	// A file that cannot be read references nothing.
-	content, _ := os.ReadFile(name)
-	s := scan(resPath, content)
-	l.scans[name] = s
-	return s
-}
-
 // A package's files and what scan found in each.
 type packageFiles struct {
 	args    language.GenerateArgs
@@ -119,8 +100,12 @@ func (l *godotLang) newPackageFiles(args language.GenerateArgs, p *project, file
 		prefix:  pathtools.TrimPrefix(args.Rel, p.rel),
 		scans:   map[string]scanned{},
 	}
-	for _, name := range files {
-		pf.scans[name] = l.scanFile(args.Config, path.Join(args.Rel, name), pf.resPath(name))
+	rels, resPaths := make([]string, len(files)), make([]string, len(files))
+	for i, name := range files {
+		rels[i], resPaths[i] = path.Join(args.Rel, name), pf.resPath(name)
+	}
+	for i, s := range l.scanFiles(args.Config, rels, resPaths) {
+		pf.scans[files[i]] = s
 	}
 	return pf
 }
@@ -170,7 +155,7 @@ func (p *packageFiles) isAsset(name string) bool {
 }
 
 func (p *packageFiles) isSuite(name string) bool {
-	return p.scans[name].extends == suiteBaseClass
+	return p.scans[name].Extends == suiteBaseClass
 }
 
 // members returns the package's resources: the files of resource formats, those with a
@@ -195,10 +180,10 @@ func (p *packageFiles) isResource(name string, named map[string]bool) bool {
 func (p *packageFiles) namedPaths() map[string]bool {
 	named := map[string]bool{}
 	for _, s := range p.scans {
-		for _, ref := range s.refs {
-			named[ref.value] = true
+		for _, ref := range s.Refs {
+			named[ref.Value] = true
 		}
-		for _, literal := range s.literals {
+		for _, literal := range s.Runtime {
 			named[literal] = true
 		}
 	}

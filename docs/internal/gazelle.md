@@ -64,13 +64,17 @@ target whose files are all gone.
 `deps` lists the targets that provide what a unit's files reference when Godot loads them:
 
 - a `.tscn` or `.tres` file's external resources, by `path` and by `uid`;
-- a script's `extends "res://…"`, its literal `load()` and `preload()` paths and UIDs, and the
-  global classes it names, from `extends` to type hints and calls;
+- a script's `extends "res://…"`, its literal `load()` and `preload()` paths and UIDs, its
+  `@icon`, and every name that may be a global class, from `extends` to type hints and calls;
 - a shader's `#include` paths.
 
-`runtime_deps` lists the targets that provide the other `res://` paths that the unit's literals
-name, which a script may load at runtime, such as a fixture it reads with `FileAccess`. Paths a
-script builds at runtime stay undetected and are declared by hand.
+`runtime_deps` lists the targets that provide the files a script reads with `FileAccess` from
+a literal `res://` path. Paths a script builds at runtime, such as a `load()` of a variable,
+stay undetected and are declared by hand.
+
+The ruleset's resource graph scanner reads these references, the same scanner whose graph
+checks the declarations at build time
+([detected references](../../rules_godot/docs/public/resources.md#detected-references)).
 
 A target provides the `res://` paths and UIDs of its files and the global classes their
 `class_name` declares. An extension provides its `resource_path` and the classes its C++
@@ -112,18 +116,25 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
 ## Design
 
 - **Placement.** The language is a package of the root module beside the Gazelle runs that
-  use it, and depends on Gazelle's packages only. Published, it becomes a module of its own
+  use it, and depends only on Gazelle's packages and on the ruleset's scanner through its public label. Published, it becomes a module of its own
   beside the ruleset, as `rules_python_gazelle_plugin` and `bazel_skylib_gazelle_plugin` sit
-  beside theirs: a `MODULE.bazel` with `gazelle` and `rules_go`, a registry test module in
+  beside theirs: a `MODULE.bazel` with `gazelle`, `rules_go`, `rules_python` and
+  `autoload_rules_godot`, whose `//tools:resource_graph_lib` stays public, a registry test module in
   `bcr/`, a release workflow and its tests run from the root module. A user then adds it to
   their `gazelle_binary`'s `languages`. The loads it writes follow the apparent names of
   `autoload_rules_godot` and `autoload_gdunit` in the user's module.
-- **Reference scanning.** The language reads references with a scanner of its own in Go
-  ([scan.go](../../tools/gazelle/godot/scan.go)) instead of calling the ruleset's Python
-  resource graph: Gazelle languages are Go libraries, a Python process per run would add an
-  interpreter to every Gazelle run, and dependency generation needs a small subset of the
-  graph's formats. The build-time resource graph stays the judge of what a target lacks; the
-  language only proposes `deps`.
+- **Reference scanning.** The knowledge of Godot's formats lives in one place, the ruleset's
+  resource graph scanner in Python, which the ruleset's build tools import. The language's Go
+  code knows no format: [scanner.py](../../tools/gazelle/godot/scanner.py) calls the
+  scanner's `file_references` and adds only the classes an extension's C++ sources register.
+  As in the Gazelle plugin of rules_python, the language starts the scanner once per run,
+  on its first scan, sends it one JSON line per package on stdin and reads one line back;
+  it stops it after resolving the dependencies, and a scanner that cannot start or answer
+  ends the run. Unlike rules_python, which embeds its helper and runs it with the host's
+  `python3`, the scanner is a `py_binary` that the language finds in its runfiles, with the
+  hermetic interpreter the ruleset needs; `GAZELLE_GODOT_SCANNER` names another program.
+  A run over `examples/` and `e2e/` (341 files) takes about half a second, of which the
+  scanner's start is about 0.3 s.
 - **Gazelle version.** It is written against Gazelle 0.51.3, the version of the root module.
   There the packages `rule` and `label` are already aliases of the `v2` module, while
   `language`, `config` and `resolve` have no `v2` form yet. Gazelle 2.0, in beta, moves load
@@ -133,11 +144,12 @@ A directive takes precedence over the index. Gazelle's `map_kind` applies to the
 
 ## Tests
 
-[scan_test.go](../../tools/gazelle/godot/scan_test.go) tests the scanner, and
+The ruleset's `//tools/tests:resource_graph_test` tests `file_references`,
+[scanner_test.py](../../tools/gazelle/godot/scanner_test.py) the scanner program, and
 `//tools/gazelle/godot:generation_test` runs Gazelle over each tree in
 [testdata](../../tools/gazelle/godot/testdata) and compares the BUILD files it writes with
 the trees' `BUILD.out` files: a new tree of two projects and a tree whose BUILD files a person
 edited. `second_run_test` runs Gazelle over the first tree with its `BUILD.out` files as
-input, which a second run must leave unchanged. After an
-intended change of the output, `UPDATE_SNAPSHOTS=true bazel run
+input, which a second run must leave unchanged. After an intended change of the output,
+`UPDATE_SNAPSHOTS=true bazel run
 //tools/gazelle/godot:generation_test` rewrites the expected files.

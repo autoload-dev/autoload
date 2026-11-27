@@ -1,5 +1,6 @@
 load("@gazelle//:def.bzl", "gazelle_binary", "gazelle_generation_test")
-load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 # The Gazelle language that declares Godot projects, resources and GdUnit tests
 # (docs/internal/gazelle.md).
@@ -7,15 +8,16 @@ go_library(
     name = "godot",
     srcs = [
         "files.go",
-        "gdscript.go",
         "generate.go",
         "language.go",
         "resolve.go",
-        "scan.go",
+        "scanner.go",
         "units.go",
     ],
+    data = [":scanner"],
     importpath = "github.com/autoload-dev/autoload/tools/gazelle/godot",
     visibility = ["//tools/gazelle:__pkg__"],
+    x_defs = {"scannerRlocation": "$(rlocationpath :scanner)"},
     deps = [
         "@gazelle//config",
         "@gazelle//label",
@@ -24,14 +26,29 @@ go_library(
         "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
+        "@rules_go//go/runfiles",
     ],
 )
 
-go_test(
-    name = "godot_test",
+# The scanner the language starts once per run: the ruleset's resource graph scanner reads
+# the references of Godot files (scanner.py).
+py_library(
+    name = "scanner_lib",
+    srcs = ["scanner.py"],
+    deps = ["@autoload_rules_godot//tools:resource_graph_lib"],
+)
+
+py_binary(
+    name = "scanner",
+    srcs = ["scanner.py"],
+    deps = [":scanner_lib"],
+)
+
+py_test(
+    name = "scanner_test",
     size = "small",
-    srcs = ["scan_test.go"],
-    embed = [":godot"],
+    srcs = ["scanner_test.py"],
+    deps = [":scanner_lib"],
 )
 
 # Gazelle with this language alone, which the golden tests run.

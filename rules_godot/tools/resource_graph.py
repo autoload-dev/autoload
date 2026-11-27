@@ -5,7 +5,8 @@ Graph paths are res:// identities, not execroot paths. The scanner deliberately
 does not execute Godot, scripts, importers, or addon code. Unknown dynamic loads
 remain diagnostics and must be covered by explicit declarations.
 
-Sections: Lexer, Text resources, Scan, Reference scanning, Graph, Graph queries, Pack
+Sections: Lexer, Text resources, Scan, Reference scanning, Graph, Single files, Graph
+queries, Pack
 selection, Command line.
 """
 
@@ -942,10 +943,15 @@ def _extends_clause(scan: _Scan, path: str, script: list, i: int) -> bool:
     return True
 
 
+def _may_name_class(script: list, i: int) -> bool:
+    """Whether the identifier at script[i] stands where it may name a global class."""
+    return _at(script, i - 1)[1] not in {"class_name", "."}
+
+
 def _class_use(scan: _Scan, path: str, script: list, i: int) -> bool:
     """Whether script[i] names a global class; if so, record a reference to its scripts."""
     _, name, line = script[i]
-    if name not in scan.classes or _at(script, i - 1)[1] in {"class_name", "."}:
+    if name not in scan.classes or not _may_name_class(script, i):
         return False
     # Conservative symbol index: shadowed identifiers can add edges. Full
     # GDScript name/type resolution belongs to Godot.
@@ -1503,6 +1509,68 @@ def build_graph(manifest: dict, execroot: Path | None = None) -> dict:
     _diagnose_undeclared_addon_uses(manifest, scan, edges)
     graph = _graph_document(manifest, scan, edges)
     return require_declared(graph) if manifest.get("require_declared") else graph
+
+
+# ==== Single files ============================================================
+
+
+class _AnySource:
+    """Every path, as the source a sidecar may author an identity for."""
+
+    def __contains__(self, item: object) -> bool:
+        return True
+
+
+def _extended_class(script: list) -> str | None:
+    """The global class a script extends by name, if it does."""
+    for keyword, name in pairwise(script):
+        if keyword[1] == "extends" and name[0] == "identifier":
+            return name[1]
+    return None
+
+
+def _file_reference(edge: dict) -> dict | None:
+    """An edge with its path normalized as the graph resolves it; None for an unknown one."""
+    if edge["reference"] is None:
+        return None
+    try:
+        path = _candidate_path(edge)
+    except ValueError:
+        path = None
+    return {"kind": edge["kind"], "path": path, "uid": _uid_of(edge)}
+
+
+def file_references(path: str, text: str) -> dict:
+    """
+    What one file at a res:// path declares and references on its own, without its project.
+
+    The result holds the UIDs the file authors, a sidecar's for its file; the global classes
+    a script declares, the one it extends by name and every name it may use as a global
+    class; and the references the graph records, each with its kind, its normalized path and
+    its UID. Gazelle's Godot language derives dependencies from it.
+    """
+    scan = _Scan(Path.cwd())
+    scan.nodes[path] = {"path": path}
+    scan.texts[path] = text
+    _scan_declarations(scan)
+    _scan_references(scan)
+    script = scan.scripts.get(path, [])
+    names = {
+        name
+        for i, (category, name, _) in enumerate(script)
+        if category == "identifier" and _may_name_class(script, i)
+    }
+    references = (_file_reference(edge) for edge in scan.edges)
+    return {
+        "uids": [uid for _, uid, _ in file_identities(path, text, _AnySource())],
+        "classes": sorted(scan.classes),
+        "extends": _extended_class(script),
+        "names": sorted(names - set(scan.classes)),
+        "references": sorted(
+            (item for item in references if item),
+            key=lambda item: (item["kind"], item["path"] or "", item["uid"] or ""),
+        ),
+    }
 
 
 # ==== Graph queries ===========================================================

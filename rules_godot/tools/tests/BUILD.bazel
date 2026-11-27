@@ -70,6 +70,13 @@ py_test(
 )
 
 py_test(
+    name = "file_references_test",
+    size = "small",
+    srcs = ["file_references_test.py"],
+    deps = ["//tools:resource_graph_lib"],
+)
+
+py_test(
     name = "godot_files_test",
     size = "small",
     srcs = ["godot_files_test.py"],

@@ -101,8 +101,8 @@ func (p *packageFiles) resourcesRule(name string, u *unit) (*rule.Rule, unitImpo
 	for _, file := range u.files {
 		srcs = append(srcs, file)
 		srcs = append(srcs, p.sidecars(file)...)
-		imports.refs = append(imports.refs, p.scans[file].refs...)
-		imports.literals = append(imports.literals, p.scans[file].literals...)
+		imports.refs = append(imports.refs, p.scans[file].Refs...)
+		imports.literals = append(imports.literals, p.scans[file].Runtime...)
 	}
 	slices.Sort(srcs)
 	imports.refs = sortedReferences(imports.refs)

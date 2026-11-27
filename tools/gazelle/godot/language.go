@@ -48,8 +48,10 @@ type godotLang struct {
 	// subdirectories that are none either, relative to it; the nearest package above lists
 	// them. Gazelle generates subdirectories first.
 	pending map[string][]string
-	// What scan found in each file, by its absolute path.
-	scans map[string]scanned
+	language.BaseLifecycleManager
+	// What the scanner found in each file, by its absolute path, and the scanner process.
+	scans   map[string]scanned
+	scanner *scanner
 }
 
 // NewLanguage is the entry point gazelle_binary calls.

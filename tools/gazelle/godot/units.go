@@ -108,7 +108,7 @@ func (g *grouping) addGLTFs(members []string) {
 func (g *grouping) addGLTF(name string) {
 	unitName := g.assetName(name)
 	g.add(unitName, name)
-	for _, member := range g.p.scans[name].members {
+	for _, member := range g.p.scans[name].Members {
 		if file, ok := g.p.fileOf(member); ok && !g.claimed[file] {
 			g.add(unitName, file)
 		}
