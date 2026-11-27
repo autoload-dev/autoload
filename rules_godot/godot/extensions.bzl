@@ -122,13 +122,18 @@ _BUILD_ATTRS = {
         doc = "Also enable every module Godot enables by default for the platform, as its official builds do.",
     ),
     "custom_modules": attr.label_keyed_string_dict(
-        doc = "Each custom module's config.py label mapped to its module name.",
-        allow_files = [".py"],
+        doc = """
+        Each custom module's files mapped to its module name: a target, such as a filegroup of
+        `glob(["**"])`, in the package of the module's config.py. Editing the module's code
+        compiles it again without preparing the recipes again; its build scripts, shader
+        sources and file paths configure them.
+        """,
+        allow_files = True,
     ),
     "patches": attr.label_list(
         doc = """
-        Patch files applied in order, once, to the engine tree whose sources every recipe and
-        the Android shell library share.
+        Patch files applied in order to every recipe's and the Android shell library's own
+        copies of the files they touch; the engine tree stays the archive's.
         """,
         allow_files = [".patch", ".diff"],
     ),
@@ -239,7 +244,7 @@ godot_engines = module_extension(
     )
     godot_engines.build(
         engine = "simulation",
-        custom_modules = {"//engines/simulation/modules/reaction_diffusion:config.py": "reaction_diffusion"},
+        custom_modules = {"//engines/simulation/modules/reaction_diffusion": "reaction_diffusion"},
         enabled_modules = ["gdscript", "text_server_fb", "reaction_diffusion"],
     )
     ```

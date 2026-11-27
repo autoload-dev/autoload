@@ -19,6 +19,7 @@ from tools.engine.render import (
     source_build_facts,
     target_constraints,
 )
+from tools.engine.tests.source_files import write_tree
 
 
 def recipe_args(
@@ -321,6 +322,56 @@ def _graph(groups: list[object]) -> dict[str, object]:
         "minimum_os": "",
         "modules": [],
     }
+
+
+def _rule(build: str, name: str) -> str:
+    """The text of the rule of a BUILD file with the given name."""
+    start = build.index(f"(name = '{name}'")
+    return build[build.rindex("\n", 0, start) : build.index("\n", start)]
+
+
+class CustomModuleRenderTest(unittest.TestCase):
+    def test_a_custom_modules_code_comes_by_label(self) -> None:
+        # The recipe holds the module's graph files and empty placeholders of its code,
+        # whose contents a build takes from the module's target.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_tree(
+                root,
+                {
+                    "core/a.cpp": '#include "core/a.h"\n',
+                    "core/a.h": "",
+                    "core/core_builders.py": "",
+                    "_custom_modules/probe/SCsub": "",
+                    "_custom_modules/probe/probe.cpp": "",
+                    "_custom_modules/probe/probe.h": "",
+                    "_custom_modules.json": json.dumps(
+                        {
+                            "probe": {
+                                "label": "@@//modules/probe:probe",
+                                "files": ["probe.cpp", "probe.h"],
+                            }
+                        }
+                    ),
+                },
+            )
+            sources = ["core/a.cpp", "_custom_modules/probe/probe.cpp"]
+            graph = _graph([["cc", [], ["."], sources]])
+            render(_variant_args(runtime_profiles=[]), graph, root)
+            build = (root / "BUILD.bazel").read_text()
+        self.assertIn(
+            "godot_custom_module(name = '_custom_modules/probe', "
+            "visibility = ['//visibility:private'], module = '@@//modules/probe:probe', paths = ['probe.cpp', 'probe.h'], "
+            "outs = ['_custom_modules/probe/probe.cpp', '_custom_modules/probe/probe.h']",
+            build,
+        )
+        # The code's compile action declares every header, since the repository never
+        # reads its includes; the engine's sources keep theirs.
+        probe = _rule(build, "_objects___custom_modules__probe__probe.cpp")
+        self.assertIn("':_includes/_custom_modules/_any_header'", probe)
+        self.assertNotIn("_any_header", _rule(build, "_objects__core__a.cpp"))
+        # The engine's version hash follows the code's contents.
+        self.assertIn("inputs = [':_custom_modules/probe']", _rule(build, "revision"))
 
 
 class RuntimeVariantRenderTest(unittest.TestCase):

@@ -327,8 +327,8 @@ def _policy(engine, build):
     """
     The build policy of an engine: its build tag's, or the official policy.
 
-    It holds the godot_engine_build attributes of the engine's recipes and the patches of
-    its engine tree.
+    It holds the godot_engine_build attributes of the engine's recipes, its patches among
+    them.
     """
     policy = dict(_OFFICIAL_POLICY)
     if build:
@@ -409,6 +409,22 @@ def _recipe_policies(declarations, build, editor_policy):
         if not build and attrs["platform"] in _OFFICIAL_RENDERERS:
             attrs["renderers"] = _OFFICIAL_RENDERERS[attrs["platform"]]
 
+def _source_repositories(source):
+    """
+    Return the names of a source archive's repository and of its engine tree.
+
+    The archive's digest names them, so engines of one source share both: the tree is the
+    archive's, and each recipe applies its engine's patches to copies of its own.
+
+    Args:
+        source: The godot_engine_source attributes of an engine's sources.
+
+    Returns:
+        A tuple of the godot_engine_source and the godot_engine_tree repository names.
+    """
+    digest = source["sha256"][:12]
+    return "godot_source_" + digest, "godot_tree_" + digest
+
 def _source_recipes(parts, source, covered, profiles = {}):
     """
     Return the source declarations, slots and Android runtimes of an engine's source recipes.
@@ -426,7 +442,8 @@ def _source_recipes(parts, source, covered, profiles = {}):
             options, as runtime_profiles returns them.
 
     Returns:
-        A struct of `declarations`, the source archive, engine tree and recipe repositories, `slots`,
+        A struct of `declarations`, the source archive, engine tree and recipe repositories,
+        of which engines of one source share the first two, `slots`,
         the source-built hub slots, `android`, their Android runtimes by name, `tuned`,
         the binary slots a build whose runtime needs tuning leaves to them, and `pinning`,
         the hub attributes of its lock file.
@@ -435,12 +452,8 @@ def _source_recipes(parts, source, covered, profiles = {}):
     build = parts.get("build")
     rows = [row for row in ROWS if not (row.build_target == "editor" and slot_name(row) in covered)]
     rows_plan = plan_rows(engine.name, rows, version = source["version"])
-    archive = engine.name + "_source"
-    tree = engine.name + "_tree"
+    archive, tree = _source_repositories(source)
     policy = _policy(engine, build)
-
-    # The policy's patches apply once, to the engine tree all recipes share.
-    patches = {attribute: policy.pop(attribute) for attribute in ["patches", "patch_strip"]}
     lock_file = engine.lock_file
     declarations = recipe_declarations(
         engine.name,
@@ -455,12 +468,7 @@ def _source_recipes(parts, source, covered, profiles = {}):
     return struct(
         declarations = [
             _declaration("godot_engine_source", name = archive, **source),
-            _declaration(
-                "godot_engine_tree",
-                name = tree,
-                source = "@%s//:source.json" % archive,
-                **patches
-            ),
+            _declaration("godot_engine_tree", name = tree, source = "@%s//:source.json" % archive),
         ] + declarations,
         slots = source_slots,
         android = android,
@@ -678,6 +686,46 @@ def _profile_error(modules, selections):
     errors = [error for error in errors if error]
     return errors[0] if errors else None
 
+# The repositories engines of one source archive share.
+_SHARED_RULES = ["godot_engine_source", "godot_engine_tree"]
+
+def _same_archive(first, other):
+    """
+    Whether two declarations of a shared repository describe the same archive.
+
+    Mirror URLs are no identity: the first declaration takes the other's as well.
+    """
+    if first.rule != other.rule:
+        return False
+    if first.rule == "godot_engine_source":
+        if {key: value for key, value in first.attrs.items() if key != "urls"} != {key: value for key, value in other.attrs.items() if key != "urls"}:
+            return False
+        first.attrs["urls"] = first.attrs["urls"] + [url for url in other.attrs["urls"] if url not in first.attrs["urls"]]
+        return True
+    return first == other
+
+def _shared_once(declarations, _fail):
+    """
+    Declare each shared repository once, for every engine of its archive; None after an error.
+
+    Engines that describe one archive's digest otherwise, such as by another strip prefix
+    or version, fail.
+    """
+    seen = {}
+    result = []
+    for declaration in declarations:
+        name = declaration.attrs["name"]
+        if declaration.rule in _SHARED_RULES and name in seen:
+            if not _same_archive(seen[name], declaration):
+                return _fail((
+                    "Godot engines declare the source archive of %s with different " +
+                    "strip_prefix or version; declare it alike in every engine"
+                ) % name)
+            continue
+        seen[name] = declaration
+        result.append(declaration)
+    return result
+
 def _collision_error(declarations):
     """The error of two declarations of the same repository name, the first by name; None without."""
     owners = {}
@@ -733,6 +781,9 @@ def plan_engines(modules, *, tag_attributes, read = None, _fail = fail):
     # The toolchains of every engine, which rules_godot's module registers, so a module
     # that registers an engine needs no registration of its own.
     declarations.append(_declaration("engine_toolchains", name = TOOLCHAINS_REPOSITORY, engines = json.encode(engines)))
+    declarations = _shared_once(declarations, _fail)
+    if declarations == None:
+        return None
     error = _collision_error(declarations)
     if error:
         return _fail(error)

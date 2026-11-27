@@ -1,9 +1,9 @@
 """
 The implementations of the source repository rules in godot/engine/private:repositories.bzl.
 
-A recipe and the Android shell link the files of their engine's tree
-(tree_repository.bzl) instead of extracting the sources: their repositories hold what
-they generate.
+A recipe and the Android shell link the files of their source's engine tree
+(tree_repository.bzl) instead of extracting the sources, and patch copies of their own of
+the files their patches touch: their repositories hold what they generate and change.
 
 Errors go through `_fail`, so a Starlark unit test with a mocked repository_ctx collects
 them; an implementation returns after an error.
@@ -70,8 +70,13 @@ def _read_tree(ctx):
     return json.decode(ctx.read(ctx.path(ctx.attr.tree)))
 
 def _link_tree(ctx, path = ""):
-    """Link the engine tree's files below path, or all of them, into this repository; an error or None."""
-    result = ctx.execute([
+    """
+    Link the engine tree's files below path, or all of them, into this repository; an error or None.
+
+    The repository owns copies of the files its patches touch, which it patches, and of
+    class_db.h, which it scopes: the tree stays the source archive's.
+    """
+    command = [
         str(ctx.path(ctx.attr._python)),
         str(ctx.path(ctx.attr._tree_link)),
         "--tree",
@@ -80,10 +85,24 @@ def _link_tree(ctx, path = ""):
         ".",
         "--path",
         path,
-    ])
+        "--patch-strip",
+        str(ctx.attr.patch_strip),
+    ]
+    for patch in ctx.attr.patches:
+        patch_file = ctx.path(patch)
+        ctx.watch(patch_file)
+        command.extend(["--patch", str(patch_file)])
+    result = ctx.execute(command)
     if result.return_code:
         return "%s: linking the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr)
     return None
+
+def _watch_link_tools(ctx):
+    """Link the tree again when the code that links, patches and scopes it changes."""
+    ctx.watch(ctx.path(ctx.attr._tree))
+    ctx.watch(ctx.path(ctx.attr._tree_link))
+    ctx.watch(ctx.path(ctx.attr._class_db))
+    ctx.watch(ctx.path(ctx.attr._patches))
 
 # ==== Engine build ============================================================
 
@@ -120,7 +139,7 @@ def _unpinned_message(ctx):
 
 def _pin_sources(ctx):
     """The globs of the recipe repository's files a pin action copies into its source tree."""
-    sources = ["_custom_modules/**", "_scons/**"]
+    sources = ["_custom_modules/**", "_custom_modules.json", "_scons/**"]
     if ctx.attr.runtime_profiles:
         sources.append("_variant_*.gdbuild")
     return sources
@@ -255,7 +274,7 @@ godot_recipe_pin(
         name,
         tree["archive"],
         tree["strip_prefix"],
-        tree["patches"],
+        [str(patch) for patch in ctx.attr.patches],
         _pin_sources(ctx),
         arguments,
         constraints,
@@ -280,8 +299,8 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._variants))
     ctx.watch(ctx.path(ctx.attr._generators))
     ctx.watch(ctx.path(ctx.attr._build_file))
-    ctx.watch(ctx.path(ctx.attr._tree))
-    ctx.watch(ctx.path(ctx.attr._tree_link))
+    ctx.watch(ctx.path(ctx.attr._custom_modules))
+    _watch_link_tools(ctx)
 
 def _recipe_error(ctx):
     """Why a recipe's attributes cannot configure it, or None."""
@@ -324,7 +343,7 @@ def _recipe_arguments(ctx, tree):
         "--source-sha256",
         tree["sha256"],
         "--patch-strip",
-        str(tree["patch_strip"]),
+        str(ctx.attr.patch_strip),
     ]
     arguments.extend(_selection_arguments(ctx))
     for option in sorted(ctx.attr.build_options):
@@ -352,16 +371,46 @@ def _host_command(ctx, python, arguments):
         _repository(ctx.attr._swift_library),
     ] + arguments
 
+def _watch_custom_module(ctx, target, directory, watched):
+    """Prepare the recipe again when a module's directory listings or graph files change."""
+    for path in watched["directories"]:
+        listed = directory if path == "." else ctx.path(target.same_package_label(path))
+        listed.readdir(watch = "yes")
+    for path in watched["files"]:
+        ctx.watch(target.same_package_label(path))
+
 def _add_custom_modules(ctx, command, arguments):
-    """Add the custom modules to the command and the pin's arguments; return an error or None."""
-    for module, name in ctx.attr.custom_modules.items():
-        marker = ctx.path(module)
-        if marker.basename != "config.py":
-            return "custom_modules keys must name each module's config.py: %s" % module
-        ctx.watch_tree(marker.dirname)
-        command.extend(["--custom-module-source", name + "=" + str(marker.dirname)])
-        arguments.extend(["--custom-module-name", name])
-    return None
+    """
+    Give the recipe its custom modules' structure and name them in both argument lists.
+
+    The repository holds the files that shape the graph, watched, and placeholders of the
+    code, which a build takes from each module's target (custom_modules.py). Returns an
+    error or None, and the placeholders, which the repository deletes after configuring.
+    """
+    if not ctx.attr.custom_modules:
+        return None, []
+    declarations = []
+    modules = []
+    for target, name in ctx.attr.custom_modules.items():
+        config = ctx.path(target.same_package_label("config.py"))
+        if not config.exists:
+            return "custom module %s: the package of its target must hold the module's config.py" % target, []
+        modules.append((target, name, config.dirname))
+        declarations.extend(["--module", name, str(config.dirname), str(target)])
+        for names in [command, arguments]:
+            names.extend(["--custom-module-name", name])
+    result = ctx.execute([
+        str(ctx.path(ctx.attr._python)),
+        str(ctx.path(ctx.attr._custom_modules)),
+        "--recipe",
+        ".",
+    ] + declarations)
+    if result.return_code:
+        return "%s: preparing the custom modules failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr), []
+    prepared = json.decode(result.stdout)
+    for target, name, directory in modules:
+        _watch_custom_module(ctx, target, directory, prepared["modules"][name])
+    return None, prepared["placeholders"]
 
 def _lock_arguments(ctx):
     """The configure arguments that render a pinned recipe from its lock file; none without."""
@@ -380,11 +429,11 @@ def _lock_arguments(ctx):
         str(ctx.attr._pin_bzl),
     ]
 
-def _patch_arguments(ctx, tree):
-    """The tree's patches, whose contents the recipe's pin digest covers."""
+def _patch_arguments(ctx):
+    """The recipe's patches, whose contents its pin digest covers."""
     arguments = []
-    for patch in tree["patches"]:
-        arguments.extend(["--patch", str(ctx.path(Label(patch)))])
+    for patch in ctx.attr.patches:
+        arguments.extend(["--patch", str(ctx.path(patch))])
     return arguments
 
 def _finish(ctx, tree, arguments, variants):
@@ -399,7 +448,7 @@ def _finish(ctx, tree, arguments, variants):
 
 def engine_build_impl(ctx, *, _fail = fail):
     """
-    Link one source recipe to its engine tree and render its build graph.
+    Link one source recipe to its engine tree, patch it and render its build graph.
 
     Without a lock file the recipe is configured here, with SCons; with one, the graph comes
     from the recipe's pin, and nothing is configured on this host.
@@ -425,17 +474,19 @@ def engine_build_impl(ctx, *, _fail = fail):
     python = ctx.path(ctx.attr._python)
     arguments = _recipe_arguments(ctx, tree)
     command = _host_command(ctx, python, arguments)
-    error = _add_custom_modules(ctx, command, arguments)
+    error, placeholders = _add_custom_modules(ctx, command, arguments)
     if error:
         _fail(error)
         return None
-    command.extend(_patch_arguments(ctx, tree))
+    command.extend(_patch_arguments(ctx))
     variants = _variant_profiles(ctx, tree["version"])
     command = command + _variant_arguments(ctx, command, variants) + _lock_arguments(ctx)
     result = ctx.execute(command, timeout = _CONFIGURE_TIMEOUT, quiet = True)
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None
+    for placeholder in placeholders:
+        ctx.delete(placeholder)
     _finish(ctx, tree, arguments, variants)
 
     # A pinned recipe depends only on the recipe, the sources and the lock file, and Android
@@ -464,7 +515,7 @@ public final class BuildConfig {{
 
 def android_shell_impl(ctx, *, _fail = fail):
     """
-    Link the Android shell library of the engine tree and prepare it.
+    Link the Android shell library of the engine tree, patch it and prepare it.
 
     Args:
         ctx: Repository rule context of godot_android_shell.
@@ -474,8 +525,7 @@ def android_shell_impl(ctx, *, _fail = fail):
         The repository's metadata: reproducible.
     """
     tree = _read_tree(ctx)
-    ctx.watch(ctx.path(ctx.attr._tree))
-    ctx.watch(ctx.path(ctx.attr._tree_link))
+    _watch_link_tools(ctx)
     shell = engine_profile(tree["version"].partition("-")[0])["android_shell"]
     library = shell["library"]
     error = _link_tree(ctx, library)

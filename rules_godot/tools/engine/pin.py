@@ -2,15 +2,14 @@
 Pin source engine recipes: configure one recipe into its pin, or merge pins into a lock file.
 
 `recipe` runs in a build action on an execution platform whose host Godot accepts for the
-recipe, such as a remote Linux executor for a Linux recipe. It extracts and patches the
-source archive as the recipe repository does, adds the repository's custom modules, and
-configures the result. `merge` and `update` write the lock file an engine's `lock_file`
-names, as lock.py does.
+recipe, such as a remote Linux executor for a Linux recipe. It extracts the source archive
+and applies the recipe's patches as the recipe repository does, adds the structure of the
+repository's custom modules with placeholders of their code, and configures the result.
+`merge` and `update` write the lock file an engine's `lock_file` names, as lock.py does.
 """
 
 import argparse
 import shutil
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -18,13 +17,16 @@ import zipfile
 from pathlib import Path
 
 try:
-    from . import configure
+    from . import configure, custom_modules
     from .lock import merge, update
+    from .patches import apply_patches
 except ImportError:
     # Run as a binary, the tool imports its sibling modules from its own directory.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import configure  # type: ignore[no-redef]
+    import custom_modules  # type: ignore[no-redef]
     from lock import merge, update  # type: ignore[no-redef]
+    from patches import apply_patches  # type: ignore[no-redef]
 
 
 def copy_tree(root: Path, files: list[str], destination: Path) -> None:
@@ -60,16 +62,6 @@ def extract(archive: Path, strip_prefix: str, destination: Path) -> None:
         source.extractall(destination, members=members, filter="data")
 
 
-def apply_patches(source: Path, patches: list[str], strip: int) -> None:
-    """Apply each patch strictly, with fuzz disabled, as the recipe repository does."""
-    for patch in patches:
-        subprocess.run(
-            ["patch", f"-p{strip}", "-F0", "-t", "-N", "-i", str(Path(patch).resolve())],
-            cwd=source,
-            check=True,
-        )
-
-
 def recipe(arguments: argparse.Namespace, configure_arguments: list[str]) -> None:
     root = Path(arguments.root)
     files = Path(arguments.files).read_text().splitlines()
@@ -80,6 +72,8 @@ def recipe(arguments: argparse.Namespace, configure_arguments: list[str]) -> Non
         apply_patches(source, arguments.patch, arguments.patch_strip)
         scons = [name for name in files if name.startswith(f"{root}/_scons/")]
         copy_tree(root, [name for name in files if name not in scons], source)
+        # The custom modules' code comes by label; their structure is what configures.
+        custom_modules.write_placeholders(source)
         copy_tree(root / "_scons", scons, work / "scons")
         configure.main(
             [

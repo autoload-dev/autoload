@@ -3,7 +3,13 @@ import unittest
 from pathlib import Path
 
 from tools.engine import build_profile
-from tools.engine.include_graph import CompileGroup, Generated, include_graph
+from tools.engine.include_graph import (
+    ANY_HEADER,
+    CompileGroup,
+    Generated,
+    TreeCache,
+    include_graph,
+)
 from tools.engine.tests.source_files import write_tree
 
 
@@ -68,6 +74,34 @@ class BuildProfileTest(unittest.TestCase):
         self.assertNotIn(build_profile.HEADER, graph["core/object/class_db.h"])
         self.assertNotIn(build_profile.HEADER, graph["scene/node.cpp"])
         self.assertIn(build_profile.HEADER, graph["modules/x/register.cpp"])
+
+    def test_a_custom_modules_code_sources_see_the_profile(self) -> None:
+        # Their text comes by label at build time, so they may register classes; the
+        # module's headers declare, so an engine source that includes one does not.
+        source = "_custom_modules/probe/register_types.cpp"
+        header = "_custom_modules/probe/register_types.h"
+        engine = "modules/register_module_types.gen.cpp"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_tree(
+                root,
+                {
+                    source: "",
+                    header: "",
+                    engine: f'#include "{header}"\n',
+                    "core/object/class_db.h": self.UPSTREAM_CLASS_DB,
+                    # The every header a source reaching the module declares registers
+                    # nothing of the source's own.
+                    "modules/xr/xr.h": "GDREGISTER_CLASS(XR);\n",
+                },
+            )
+            code = {source, header}
+            group = CompileGroup([source, engine], [], [])
+            graph = include_graph(TreeCache(root, code), [group], {})
+            graph, users = build_profile.declare(root, graph, {}, [source, engine])
+        self.assertEqual(users, {source})
+        self.assertIn(build_profile.HEADER, graph[source])
+        self.assertNotIn(build_profile.HEADER, graph[ANY_HEADER])
 
 
 if __name__ == "__main__":

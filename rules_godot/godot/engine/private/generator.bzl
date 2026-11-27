@@ -138,6 +138,10 @@ def godot_source_generator(name, spec, inputs, outs, class_profile = False, regi
     """
     Declare one upstream source generator as a hermetic Bazel action.
 
+    A legacy macro: its outputs keep the upstream paths sources include them by, such as
+    core/version_generated.gen.h, and Bazel builds no output of a symbolic macro that does
+    not start with the macro's name ("violates macro naming rules and cannot be built").
+
     This low-level macro is used by generated engine repositories. It creates
     the named target with DefaultInfo containing exactly outs; it does not run
     SCons. See [source-built engines](../../engine.md) for the repository-level API.
@@ -231,6 +235,10 @@ def _revision_impl(ctx):
         # what links the engine run again.
         args.add("--status", ctx.info_file)
         inputs.append(ctx.info_file)
+    else:
+        # The custom modules' code, whose contents the inputs hash cannot cover.
+        args.add_all(ctx.files.inputs, before_each = "--code")
+        inputs.extend(ctx.files.inputs)
     ctx.actions.run(
         executable = ctx.executable._revision,
         arguments = [args],
@@ -247,8 +255,8 @@ godot_source_revision = rule(
     A build with --stamp names the commit its workspace status reports as
     STABLE_GIT_COMMIT, with the build name's suffix -git, and the commit time
     STABLE_GIT_COMMIT_TIMESTAMP reports; otherwise, or without the commit, the
-    hash of the engine's declared inputs, with the suffix -bazel, and no time
-    stamp.
+    hash of the engine's declared inputs, its custom modules' code among them, with
+    the suffix -bazel, and no time stamp.
     """,
     implementation = _revision_impl,
     attrs = {
@@ -257,8 +265,12 @@ godot_source_revision = rule(
             mandatory = True,
         ),
         "inputs_hash": attr.string(
-            doc = "Hash of the engine's declared inputs.",
+            doc = "Hash of the engine's declared inputs, its custom modules' code by path.",
             mandatory = True,
+        ),
+        "inputs": attr.label_list(
+            doc = "The custom modules' code, whose contents an unstamped hash adds.",
+            allow_files = True,
         ),
         "build": attr.output(
             doc = "File with the build name and its suffix, such as custom-git.",
@@ -280,6 +292,52 @@ godot_source_revision = rule(
         "_stamp": attr.label(
             default = Label("//godot/private:stamp"),
             providers = [BuildSettingInfo],
+        ),
+    },
+)
+
+def _custom_module_impl(ctx):
+    label = ctx.attr.module.label
+    directory = "/".join([part for part in [label.workspace_root, label.package] if part])
+    prefix = directory + "/" if directory else ""
+    files = {
+        file.path.removeprefix(prefix): file
+        for file in ctx.files.module
+        if file.is_source and file.path.startswith(prefix)
+    }
+    for path, output in zip(ctx.attr.paths, ctx.outputs.outs):
+        if path not in files:
+            fail((
+                "The custom module %s lacks %s: its target must provide every file of the " +
+                "module's directory, such as a filegroup of glob([\"**\"]) and the files of " +
+                "the module's nested Bazel packages"
+            ) % (label, path))
+        ctx.actions.symlink(output = output, target_file = files[path])
+    return [DefaultInfo(files = depset(ctx.outputs.outs))]
+
+godot_custom_module = rule(
+    doc = """
+    Place a custom module's code from the workspace at its paths in a recipe.
+
+    A recipe configures its custom modules from their structure: Godot's build scripts,
+    shader sources and the paths of their other files. Their code, such as C++ sources
+    and headers, comes from the module's target at build time, so editing it compiles
+    the sources it changes without configuring the recipe again.
+    """,
+    implementation = _custom_module_impl,
+    attrs = {
+        "module": attr.label(
+            doc = "The module's files: a target in the package of its config.py.",
+            mandatory = True,
+            allow_files = True,
+        ),
+        "paths": attr.string_list(
+            doc = "The code's paths below the module's directory, one per output.",
+            mandatory = True,
+        ),
+        "outs": attr.output_list(
+            doc = "The code's paths in the recipe, below _custom_modules/<module>.",
+            mandatory = True,
         ),
     },
 )

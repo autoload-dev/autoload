@@ -17,7 +17,6 @@ import json
 import os
 import re
 import shlex
-import shutil
 import sys
 import tempfile
 import textwrap
@@ -36,11 +35,13 @@ from typing import Any, TypeGuard, cast
 
 try:
     from . import build_profile
+    from .custom_modules import shapes_graph
     from .module_graph import module_closure, module_dependencies
     from .render import Variant, render, render_unpinned
     from .source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
 except ImportError:
     import build_profile
+    from custom_modules import shapes_graph
     from module_graph import module_closure, module_dependencies
     from render import Variant, render, render_unpinned
     from source_tree import SOURCE_SUFFIXES, digest_of, relative, write_json
@@ -368,34 +369,6 @@ def customizations(args: argparse.Namespace) -> dict[str, list[str]]:
     if args.renderers:
         requested["renderers"] = list(args.renderers)
     return requested
-
-
-def _is_module_name(name: str) -> bool:
-    return name.replace("_", "").isalnum() and not name[0].isdigit()
-
-
-def prepare_custom_modules(root: Path, declarations: Iterable[str]) -> list[str]:
-    """
-    Copy each `name=directory` custom module below _custom_modules and return the names.
-
-    The copy leaves out Bazel's BUILD files, so the module is no package of its own in
-    the recipe repository, and Python caches.
-    """
-    names = []
-    for declaration in declarations:
-        name, separator, directory = declaration.partition("=")
-        if not separator or not _is_module_name(name):
-            raise ValueError(f"Invalid custom module declaration: {declaration}")
-        destination = root / "_custom_modules" / name
-        if destination.exists():
-            shutil.rmtree(destination)
-        shutil.copytree(
-            directory,
-            destination,
-            ignore=shutil.ignore_patterns(".git", "__pycache__", "BUILD", "BUILD.bazel"),
-        )
-        names.append(name)
-    return names
 
 
 # ==== Renderers ===============================================================
@@ -1544,25 +1517,11 @@ _PIN_TOOLS = (
     Path(inspect.getfile(module_closure)).resolve(),
     Path(inspect.getfile(relative)).resolve(),
     Path(inspect.getfile(build_profile)).resolve(),
+    Path(inspect.getfile(shapes_graph)).resolve(),
 )
 
 # The version of a recipe pin's layout.
 PIN_FORMAT = 1
-
-# Custom module files whose contents can change the configured graph: Godot's build scripts
-# and the shader sources whose includes a generator follows. Other files count by path.
-_GRAPH_FILE_SUFFIXES = {".py", ".glsl", ".glslinc"}
-
-
-def shapes_graph(path: Path) -> bool:
-    """
-    Whether a custom module file's contents can change the configured graph.
-
-    SCsub and config.py decide which files compile and how, so their contents count, as do
-    those of shader sources; a source or header counts only by its path, so editing a
-    module's code keeps its pin.
-    """
-    return path.name == "SCsub" or path.suffix in _GRAPH_FILE_SUFFIXES
 
 
 def pin_inputs(args: argparse.Namespace, scons: Path) -> dict[str, Any]:
@@ -1737,9 +1696,11 @@ def _argument_parser() -> argparse.ArgumentParser:
     # Comma-separated rendering methods; empty keeps Godot's drivers and build_options'.
     parser.add_argument("--renderers", default="")
     parser.add_argument("--custom-modules", action="append", default=[])
-    parser.add_argument("--custom-module-source", action="append", default=[])
-    # A custom module already below _custom_modules, as in a pin action's source tree.
-    parser.add_argument("--custom-module-name", action="append", default=[])
+    # A custom module below _custom_modules, where the recipe or its pin action prepared
+    # it (custom_modules.py).
+    parser.add_argument(
+        "--custom-module-name", dest="custom_module_names", action="append", default=[]
+    )
     parser.add_argument("--option", dest="options", action="append", default=[])
     parser.add_argument("--build-name", default="custom")
     parser.add_argument("--source-sha256", default="")
@@ -1793,11 +1754,7 @@ def _parse_arguments(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def _add_custom_modules(args: argparse.Namespace, root: Path) -> None:
-    """Copy the custom modules into the source tree and name them in the arguments."""
-    args.custom_module_names = [
-        *prepare_custom_modules(root, args.custom_module_source),
-        *args.custom_module_name,
-    ]
+    """Name the directory of the custom modules below _custom_modules in the arguments."""
     args.custom_modules_root = (
         root / "_custom_modules" if args.custom_module_names else None
     )
