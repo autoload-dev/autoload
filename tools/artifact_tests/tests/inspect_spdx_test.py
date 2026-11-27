@@ -40,8 +40,10 @@ class InspectSpdxTest(unittest.TestCase):
         self.assertEqual([], problems(found, {"pkg:bazel/sqlite3": "blessing"}))
         self.assertEqual(
             [
-                "pkg:bazel/autoload_sqlite is missing; the document names "
-                "['pkg:bazel/sqlite3', 'pkg:generic/godot']",
+                (
+                    "pkg:bazel/autoload_sqlite is missing; the document names "
+                    "['pkg:bazel/sqlite3', 'pkg:generic/godot']"
+                ),
                 "pkg:bazel/sqlite3 declares ['blessing'], not MIT",
                 "pkg:generic/godot declares ['MIT', 'NOASSERTION'], not MIT",
             ],
