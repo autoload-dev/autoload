@@ -9,6 +9,6 @@ godot_cc_extension(
     visibility = ["//visibility:public"],
     deps = [
         "@godot_cpp",
-        "@sqlite",
+        "@sqlite3",
     ],
 )
