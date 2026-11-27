@@ -17,6 +17,8 @@ import (
 // labels and generated files, which it keeps. An existing target that keeps nothing is empty.
 type unit struct {
 	files, other []string
+	// Which attributes that Resolve sets the existing target keeps.
+	kept map[string]bool
 }
 
 // A grouping assigns the package's resources to import units by their names. The names of
@@ -66,7 +68,9 @@ func (g *grouping) claimExisting() bool {
 		case r.ShouldKeep() || len(srcs) == 0:
 			g.claim(srcs...)
 		default:
-			g.units[r.Name()] = g.existingUnit(srcs)
+			u := g.existingUnit(srcs)
+			u.kept = keptResolveAttrs(r)
+			g.units[r.Name()] = u
 			continue
 		}
 		g.reserved[r.Name()] = true

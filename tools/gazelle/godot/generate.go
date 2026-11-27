@@ -15,11 +15,14 @@ import (
 
 // ==== Generation ==============================================================
 
-// What Resolve receives for a godot_resources target: the references of its files, and the
-// res:// paths their other literals name.
+// What Resolve receives for a godot_resources target: the references of its files, the
+// res:// paths their other literals name, and which of its attributes that Resolve sets the
+// existing target keeps. Gazelle resolves the generated target before it merges it into the
+// existing one, so only generation sees a `# keep`.
 type unitImports struct {
 	refs     []reference
 	literals []string
+	kept     map[string]bool
 }
 
 // generates reports whether the language declares anything in the directory.
@@ -107,6 +110,7 @@ func (p *packageFiles) resourcesRule(name string, u *unit) (*rule.Rule, unitImpo
 		imports.literals = append(imports.literals, p.scans[file].Runtime...)
 	}
 	slices.Sort(srcs)
+	imports.kept = u.kept
 	imports.refs = sortedReferences(imports.refs)
 	imports.literals = sortedUnique(imports.literals)
 	r := rule.NewRule(resourcesKind, name)
