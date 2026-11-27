@@ -15,17 +15,22 @@ visibility(["//godot/extension/..."])
 GODOT_CPP_COMMIT = "507ed9d840c01a3c5b2a39af8bb4000bfac30bf5"
 GODOT_CPP_SHA256 = "30da4ac295997061a6af81ae531510efd4e6a86e506eb4466edc0898ef3fe048"
 
+def _starts_word(name, i):
+    # A capital starts a word after a lowercase letter or a digit. In an acronym, the last
+    # capital starts the next word, as the R of HTTPRequest does.
+    if not i or not name[i].isupper():
+        return False
+    previous = name[i - 1]
+    if previous.islower() or previous.isdigit():
+        return True
+    return i + 1 < len(name) and name[i + 1].islower()
+
 def _snake(name):
     result = ""
     for i in range(len(name)):
-        char = name[i]
-        if i and char.isupper() and (
-            name[i - 1].islower() or
-            name[i - 1].isdigit() or
-            (i + 1 < len(name) and name[i + 1].islower())
-        ):
+        if _starts_word(name, i):
             result += "_"
-        result += char
+        result += name[i]
     return result.replace("2_D", "2D").replace("3_D", "3D").lower()
 
 _BUILTIN_IMPLEMENTED = [
@@ -63,67 +68,91 @@ _BUILTIN_IMPLEMENTED = [
     "ObjectID",
 ]
 
+# The files the generator writes for every API selection.
+_FIXED_HEADERS = [
+    "core/gdextension_interface_loader.hpp",
+    "core/ext_wrappers.gen.inc",
+    "core/gdvirtual.gen.inc",
+    "variant/builtin_types.hpp",
+    "variant/builtin_binds.hpp",
+    "variant/utility_functions.hpp",
+    "variant/variant_size.hpp",
+    "variant/builtin_vararg_methods.hpp",
+    "classes/global_constants.hpp",
+    "classes/global_constants_binds.hpp",
+    "core/version.hpp",
+]
+_FIXED_SOURCES = ["gdextension_interface_loader.cpp", "variant/utility_functions.cpp"]
+
 def _outputs(api, enabled):
-    headers = [
-        "core/gdextension_interface_loader.hpp",
-        "core/ext_wrappers.gen.inc",
-        "core/gdvirtual.gen.inc",
-        "variant/builtin_types.hpp",
-        "variant/builtin_binds.hpp",
-        "variant/utility_functions.hpp",
-        "variant/variant_size.hpp",
-        "variant/builtin_vararg_methods.hpp",
-        "classes/global_constants.hpp",
-        "classes/global_constants_binds.hpp",
-        "core/version.hpp",
+    builtins = [
+        _snake(builtin["name"])
+        for builtin in api["builtin_classes"]
+        if builtin["name"] not in _BUILTIN_IMPLEMENTED
     ]
-    sources = ["gdextension_interface_loader.cpp", "variant/utility_functions.cpp"]
-    for builtin in api["builtin_classes"]:
-        if builtin["name"] not in _BUILTIN_IMPLEMENTED:
-            name = _snake(builtin["name"])
-            headers.append("variant/" + name + ".hpp")
-            sources.append("variant/" + name + ".cpp")
-    for cls in api["classes"]:
-        if enabled and cls["name"] not in enabled:
-            continue
-        name = _snake("ClassDBSingleton" if cls["name"] == "ClassDB" else cls["name"])
-        headers.append("classes/" + name + ".hpp")
-        sources.append("classes/" + name + ".cpp")
-    for native in api["native_structures"]:
-        if native["name"] != "ObjectID":
-            headers.append("classes/" + _snake(native["name"]) + ".hpp")
+
+    # godot-cpp binds ClassDB as ClassDBSingleton.
+    classes = [
+        _snake("ClassDBSingleton" if cls["name"] == "ClassDB" else cls["name"])
+        for cls in api["classes"]
+        if not enabled or cls["name"] in enabled
+    ]
+    natives = [_snake(native["name"]) for native in api["native_structures"] if native["name"] != "ObjectID"]
+    headers = (
+        _FIXED_HEADERS +
+        ["variant/" + name + ".hpp" for name in builtins] +
+        ["classes/" + name + ".hpp" for name in classes + natives]
+    )
+    sources = (
+        _FIXED_SOURCES +
+        ["variant/" + name + ".cpp" for name in builtins] +
+        ["classes/" + name + ".cpp" for name in classes]
+    )
     return (
         ["gen/include/gdextension_interface.h"] +
         ["gen/include/godot_cpp/" + h for h in headers] +
         ["gen/src/" + s for s in sources]
     )
 
+# The classes upstream's build profile always keeps.
+_MANDATORY_CLASSES = [
+    "WorkerThreadPool",
+    "ClassDB",
+    "ClassDBSingleton",
+    "FileAccess",
+    "Image",
+    "XMLParser",
+    "OS",
+]
+
+def _lineage(name, parents):
+    """The class and its ancestors."""
+    lineage = []
+    current = name
+
+    # Starlark has no while loop; no chain of ancestors is longer than the API's classes.
+    for _ in range(len(parents) + 1):
+        if not current:
+            break
+        lineage.append(current)
+        current = parents.get(current, "")
+    return lineage
+
 def _included_classes(api, selected, _fail):
     if not selected:
         return []
     parents = {cls["name"]: cls.get("inherits", "") for cls in api["classes"]}
-    for name in selected:
-        if name not in parents:
-            _fail("unknown enabled godot-cpp class: " + name)
-            return None
-    included = {}
+    unknown = [name for name in selected if name not in parents]
+    if unknown:
+        _fail("unknown enabled godot-cpp class: " + unknown[0])
+        return None
 
-    # Match upstream build-profile mandatory classes and ancestor closure.
-    for name in selected + [
-        "WorkerThreadPool",
-        "ClassDB",
-        "ClassDBSingleton",
-        "FileAccess",
-        "Image",
-        "XMLParser",
-        "OS",
-    ]:
-        current = name
-        for _ in range(len(parents) + 1):
-            if not current or current in included:
-                break
-            included[current] = True
-            current = parents.get(current, "")
+    # As upstream's build profile does, keep the mandatory classes and every ancestor.
+    included = {
+        ancestor: True
+        for name in selected + _MANDATORY_CLASSES
+        for ancestor in _lineage(name, parents)
+    }
     return included.keys()
 
 def godot_cpp_bindings_impl(ctx, *, _fail = fail):
