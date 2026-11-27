@@ -5,7 +5,7 @@ load("//godot:providers.bzl", "GodotDesktopAppInfo")
 load(":desktop.bzl", "desktop_result")
 load(":launch.bzl", "LAUNCH_ATTRS")
 
-visibility(["//godot", "//godot/platforms/private/tests"])
+visibility(["//godot/platforms/private/tests", "//godot/private"])
 
 _MAC_TOOLS = "@rules_apple//apple/internal:mac_tools_toolchain_type"
 
