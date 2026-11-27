@@ -68,9 +68,9 @@ which registers the official engine itself; the add-on modules register none for
 
 An add-on module's registry templates in `.bcr/addons/<module>/` are written once with the
 module by `bazel run //tools/addons:new --` and checked by the conventions
-(addon-module-layout), so a module is ready to publish from its first commit; it is published
-when its tag is pushed. `.bcr/config.yml` lists only the ruleset: every release names its
-module root itself (`publish.yaml`).
+(addon-modules-own-template-files), so a module is ready to publish from its first commit; it
+is published when its tag is pushed. `.bcr/config.yml` lists only the ruleset: every release
+names its module root itself (`publish.yaml`).
 
 The registry runs the test module on Linux and macOS with Bazel 9
 ([presubmit.yml](../../.bcr/rules_godot/presubmit.yml)). A first submission and any later change to

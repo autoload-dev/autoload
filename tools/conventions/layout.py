@@ -25,6 +25,8 @@ REGRESSION_ROOT = Path("e2e/rules_godot")
 # The directory of custom engines, shared by the applications beside it and no project.
 ENGINES = "engines"
 CONSUMER_ROOTS = (EXAMPLES_ROOT, REGRESSION_ROOT)
+# The directory of tests, at any depth of a module.
+TESTS = "tests"
 SMOKE_ROOT = "smoke"
 
 
