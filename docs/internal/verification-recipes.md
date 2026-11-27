@@ -233,7 +233,7 @@ Android builds of `examples/` and `tests/` run their actions on BuildBuddy's
 executors: the root module registers the toolchains of
 [`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
-[android_toolchains.bzl](../../rules_godot/godot/platforms/private/android_toolchains.bzl) follow the
+[android_linux_toolchains.json](../../rules_godot/godot/platforms/private/android_linux_toolchains.json) follow the
 Android versions of [sdk.json](../../tools/android/sdk.json), which `//tools/android:requirements_test` checks.
 
 For settings on every invocation, such as `common --config=buildbuddy`, create
