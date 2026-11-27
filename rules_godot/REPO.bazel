@@ -1,0 +1,2 @@
+# Every target of the module carries its package metadata (docs/public/platforms.md).
+repo(default_package_metadata = ["//:package_metadata"])

@@ -74,7 +74,7 @@ class FilesTest(unittest.TestCase):
             {
                 "snake-case-package-paths",
                 "no-claude-md",
-                "no-fixtures-in-public-documentation",
+                "no-end-to-end-tests-in-public-documentation",
                 "no-internal-links-in-public-documentation",
                 "region-headers-named-in-head",
                 "definitions-before-callers",

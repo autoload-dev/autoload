@@ -30,6 +30,13 @@ The conventions check enforces it (the add-on module rules of
   `.bazelversion`.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
+- Package metadata, which SBOM and license tools read from an application's build: the
+  shared `REPO.bazel` gives every target of the module the `package_metadata` of its shared
+  root `BUILD.bazel`, the module's PURL and license. The build file of a third-party archive in
+  `third_party/` declares the archive's own: a PURL built with `purl.builder()`, whose version
+  follows the archive's URL, and the license of the project with its text from the archive,
+  not the licenses of the components a release bundles. `e2e/addons/sqlite/sbom/` checks that
+  an SBOM of a pack names a module and the registry module it builds in.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. They are shared files: change them in the template.
@@ -93,6 +100,18 @@ bazel test --config=all -- @autoload_<module>//... //examples/addons/<module>/..
 bazel test --test_tag_filters=android //examples/addons/<module>/...   # the Android release builds
 bazel test --test_tag_filters=ios //examples/addons/<module>/...       # the iOS Simulator release builds
 ```
+
+Where `e2e/addons/<module>/` is a project itself, as for every module but gdunit, its
+`edit` opens it in the editor and its `update` writes its UIDs and node IDs into the
+checkout:
+
+```sh
+bazel run //e2e/addons/<module>:edit
+bazel run //e2e/addons/<module>:update
+```
+
+The module's README names only the example's commands
+(no-end-to-end-tests-in-public-documentation, [conventions.md](../docs/internal/conventions.md)).
 
 Each example project with an `app` declares its release builds, `android_release`
 and `ios_release` ([examples/releases.bzl](../examples/releases.bzl)), which carry their

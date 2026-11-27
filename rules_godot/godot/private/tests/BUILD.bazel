@@ -26,6 +26,7 @@ load(":resource_composition_tests.bzl", "resource_composition_test_suite")
 load(":setting_values.bzl", "override_cases", "setting_value_cases")
 load(":sidecar_tests.bzl", "sidecar_test_suite")
 load(":source_run_tests.bzl", "source_run_test_suite")
+load(":supply_chain_tests.bzl", "supply_chain_test_suite")
 load(":validation_tests.bzl", "validation_test_suite")
 load(":versions_tests.bzl", "versions_test_suite")
 load(":view_tests.bzl", "view_test_suite")
@@ -85,6 +86,8 @@ py_test(
 mocks_test_suite(name = "mocks_test_suite")
 
 patches_test_suite(name = "patches_test_suite")
+
+supply_chain_test_suite(name = "supply_chain_test_suite")
 
 file_roles_test_suite(name = "file_roles_test_suite")
 

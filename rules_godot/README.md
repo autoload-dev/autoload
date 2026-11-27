@@ -25,6 +25,9 @@ tests and every application package.
   [`autoload_gdunit`](../addons/gdunit/README.md).
 - **Hermetic:** Bazel downloads the editor and export templates; no globally installed Godot
   is needed.
+- **Bill of materials:** the ruleset, its engines and godot-cpp declare package metadata, so
+  SBOM and license tools list them for an application
+  ([platforms](docs/public/platforms.md#bill-of-materials-and-licenses)).
 
 ## Requirements
 

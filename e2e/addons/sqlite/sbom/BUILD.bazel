@@ -1,0 +1,46 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@supply_chain_tools//sbom:sbom.bzl", "sbom")
+load("@supply_chain_tools//sbom:spdx.bzl", "spdx")
+load("//tools/artifact_tests:spdx_packages_test.bzl", "spdx_packages_test")
+
+package(
+    default_package_metadata = [":package_metadata"],
+    default_testonly = True,
+)
+
+# The application that the SBOM describes, as a consumer declares its own.
+package_metadata(
+    name = "package_metadata",
+    purl = "pkg:generic/sqlite_e2e",
+    # The targets that rules_godot's symbolic macros declare reach it too.
+    visibility = ["//visibility:public"],
+)
+
+godot_pack(
+    name = "pack",
+    project = "//e2e/addons/sqlite",
+    deps = ["@autoload_sqlite//sqlite"],
+)
+
+sbom(
+    name = "sbom",
+    target = ":pack",
+)
+
+spdx(
+    name = "spdx",
+    sbom = ":sbom",
+)
+
+# Build-output test: the SBOM of a pack names the add-on module and the SQLite library it
+# links, each with its license.
+spdx_packages_test(
+    name = "sqlite_pack_sbom_names_licensed_packages_test",
+    size = "small",
+    packages = {
+        "pkg:bazel/autoload_sqlite": "MPL-2.0",
+        "pkg:bazel/sqlite3": "blessing",
+    },
+    spdx = ":spdx",
+)
