@@ -11,11 +11,17 @@ sys.argv = sys.argv[:1]
 
 def packages() -> dict[str, dict]:
     """The document's packages by the name part of their package URL, without the version."""
-    found = {}
-    for package in json.loads(DOCUMENT.read_text())["packages"]:
-        for reference in package.get("externalRefs", []):
-            if reference["referenceType"] == "purl":
-                found[reference["referenceLocator"].partition("@")[0]] = package
+    named = [
+        (reference["referenceLocator"].partition("@")[0], package)
+        for package in json.loads(DOCUMENT.read_text())["packages"]
+        for reference in package.get("externalRefs", [])
+        if reference["referenceType"] == "purl"
+    ]
+    found = dict(named)
+    if len(found) != len(named):
+        raise ValueError(
+            f"{DOCUMENT} names a package twice: {sorted(name for name, _ in named)}"
+        )
     return found
 
 
