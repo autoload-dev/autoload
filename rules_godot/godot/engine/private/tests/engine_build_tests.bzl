@@ -40,6 +40,10 @@ _ATTRS = {
     "build_options": {},
     "build_name": "custom",
     "_configure": "rules_godot/tools/engine/configure.py",
+    "_compile_options": "rules_godot/tools/engine/compile_options.py",
+    "_generator_inputs": "rules_godot/tools/engine/generator_inputs.py",
+    "_lock": "rules_godot/tools/engine/lock.py",
+    "_recipe_options": "rules_godot/tools/engine/recipe_options.py",
     "_python": _PYTHON,
     "_module_graph": "rules_godot/tools/engine/module_graph.py",
     "_include_graph": "rules_godot/tools/engine/include_graph.py",
@@ -67,6 +71,13 @@ _ATTRS = {
     "repin": "",
     "runtime_profiles": {},
 }
+
+# A recipe first watches every engine tool it names, so a new tool also needs a watch.
+_TOOL_WATCHES = ["watch"] * len([
+    path
+    for path in _ATTRS.values()
+    if type(path) == "string" and path.endswith(".py")
+])
 
 def _tree_json():
     return json.encode({
@@ -158,7 +169,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        _TOOL_WATCHES + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "watch",
             "execute",
             "execute",
@@ -336,7 +347,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15,
+        _TOOL_WATCHES,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -345,7 +356,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15,
+        _TOOL_WATCHES,
     )
 
 # Configuration runs rules_python's interpreter, whatever Python the host's PATH has.

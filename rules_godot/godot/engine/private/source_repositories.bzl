@@ -300,6 +300,10 @@ def _pin_targets(ctx, tree, arguments, variants):
 def _watch_tools(ctx):
     """Configure again when the code that captures or renders a recipe's graph changes."""
     ctx.watch(ctx.path(ctx.attr._configure))
+    ctx.watch(ctx.path(ctx.attr._compile_options))
+    ctx.watch(ctx.path(ctx.attr._generator_inputs))
+    ctx.watch(ctx.path(ctx.attr._lock))
+    ctx.watch(ctx.path(ctx.attr._recipe_options))
     ctx.watch(ctx.path(ctx.attr._module_graph))
     ctx.watch(ctx.path(ctx.attr._source_tree))
     ctx.watch(ctx.path(ctx.attr._render))

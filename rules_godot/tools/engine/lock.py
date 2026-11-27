@@ -1,17 +1,54 @@
 """
-Write the lock file of an engine's recipe pins: all of them, or some merged into it.
+Read and write the lock file that holds an engine's recipe pins.
 
 Recipes of one build target share their generators whatever the platform or CPU, so the
 lock stores each distinct generator list once, by its digest. A recipe's runtime variants
-pin in the lock's variants table, by recipe and runtime profile.
+pin in the lock's variants table, by recipe and runtime profile. The writer writes all of an
+engine's pins, or merges some into an existing lock file.
+
+Sections: Reading, Writing.
 """
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from tools.engine import configure
+from tools.engine.source_tree import digest_of, write_json
+
+# ==== Reading =================================================================
+
+
+def read_lock(lock: Path) -> dict[str, Any]:
+    """Return a lock file's pins; none for a missing or empty file."""
+    text = lock.read_text().strip() if lock.is_file() else ""
+    return json.loads(text) if text else {}
+
+
+def pinned_graph(
+    pins: Mapping[str, Any], recipe: str, digest: str, profile: str = ""
+) -> tuple[str, dict[str, Any] | None]:
+    """
+    Return a recipe's status in a lock file's pins, missing, stale or pinned, and its graph.
+
+    With a runtime profile, the status and graph of the recipe's variant for it.
+    """
+    if profile:
+        entry = pins.get("variants", {}).get(recipe, {}).get(profile)
+    else:
+        entry = pins.get("recipes", {}).get(recipe)
+    if entry is None:
+        return "missing", None
+    if entry.get("digest") != digest:
+        return "stale", None
+    graph = dict(entry["graph"])
+    # The lock stores generator lists that recipes share once, by digest.
+    graph["generators"] = pins["generators"][graph["generators"]]
+    return "pinned", graph
+
+
+# ==== Writing =================================================================
 
 
 def _write(
@@ -42,7 +79,7 @@ def _write(
             key: dict(sorted(pins.items())) for key, pins in sorted(variants.items())
         }
     # Only the tables are sorted; one space per level keeps the lock small.
-    configure.write_json(path, lock, indent=1)
+    write_json(path, lock, indent=1)
 
 
 def merge(arguments: argparse.Namespace) -> None:
@@ -52,7 +89,7 @@ def merge(arguments: argparse.Namespace) -> None:
     def stored(path: str) -> dict[str, Any]:
         pin = json.loads(Path(path).read_text())
         shared = pin["graph"]["generators"]
-        reference = "sha256:" + configure.digest_of(shared)
+        reference = "sha256:" + digest_of(shared)
         generators[reference] = shared
         pin["graph"]["generators"] = reference
         return pin
@@ -73,7 +110,7 @@ def update(lock: Path, partial: Path) -> None:
 
     Without a lock file, the partial lock becomes it.
     """
-    result = configure.read_lock(lock)
+    result = read_lock(lock)
     new = json.loads(partial.read_text())
     variants = dict(result.get("variants", {}))
     for key, pins in new.get("variants", {}).items():

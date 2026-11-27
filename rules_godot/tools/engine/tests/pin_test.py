@@ -10,13 +10,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tools.engine.configure import (
-    pin_digest,
-    pinned_graph,
-    read_lock,
-    stand_in_host,
-)
-from tools.engine.lock import merge, update
+from tools.engine.configure import pin_digest, stand_in_host
+from tools.engine.lock import merge, pinned_graph, read_lock, update
 from tools.engine.pin import copy_tree, extract
 from tools.engine.render import render_unpinned
 
@@ -172,6 +167,9 @@ class PinTest(unittest.TestCase):
             {Path(call.args[0]).name for call in digest.call_args_list},
             {
                 "configure.py",
+                "compile_options.py",
+                "generator_inputs.py",
+                "recipe_options.py",
                 "module_graph.py",
                 "source_tree.py",
                 # The build profile's helpers leave a pinned graph's class list out.
