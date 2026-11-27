@@ -9,6 +9,7 @@ its signing entitlements.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot:app.bzl", "godot_app")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load(":action_graph.bzl", "reached", "reached_actions", "reads")
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK")
 
@@ -23,12 +24,7 @@ _MACOS_HOST = {"size": "small", "target_compatible_with": ["@platforms//os:macos
 
 def _signing_input(name, extension):
     """Declare an analysis-only stand-in for a signing file and return its short path."""
-    native.genrule(
-        name = name,
-        outs = [name + extension],
-        cmd = "echo 'Analysis-only stand-in' > $@",
-        tags = ["manual"],
-    )
+    fixture_file(name = name, out = name + extension)
     return _PACKAGE + name + extension
 
 def _expect_read_by(env, target, mnemonic, path):

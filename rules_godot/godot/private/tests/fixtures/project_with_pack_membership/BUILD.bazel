@@ -1,4 +1,5 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources", "godot_test")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # A project whose brand file is chosen per pack, with a shared script, a glob of
 # level files, a generated resource, a dependent pack with its own entry point and a
@@ -11,11 +12,10 @@ godot_resources(
     tags = ["manual"],
 )
 
-genrule(
+fixture_file(
     name = "version",
-    outs = ["version.json"],
-    cmd = "echo '{\"version\": 1}' > $@",
-    tags = ["manual"],
+    out = "version.json",
+    content = '{"version": 1}',
 )
 
 godot_resources(

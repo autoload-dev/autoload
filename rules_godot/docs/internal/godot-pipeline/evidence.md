@@ -133,7 +133,7 @@ Whole-project memberships here are implementation facts, not desired minimum dep
 
 ### R02
 
-[Per-purpose configuration](../../../godot/private/project_config.py#L179), especially 227–250:
+[Per-purpose configuration](../../../tools/project_config.py) (`compose_project`):
 drops import autoload/editor-plugin section, main scene, resource-reference-valued settings
 and inactive feature overrides, then reconstructs per-purpose plugin lists.
 [Godot staging](../../../tools/godot_staging.py): staging/extensions 194–258; child environment
@@ -181,9 +181,10 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 
 [Graph declaration](../../../godot/private/graph.bzl),
 [graph inspection rule](../../../godot/private/analysis.bzl),
-[scanner/selector](../../../tools/resource_graph.py):
-analyzed/opaque/leaf classes 1–75, runtime/import input validation and unknown dynamic refs,
-selection 1091 onward. Static scanning does not dynamically declare new Bazel inputs.
+[format classes](../../../tools/resource_text.py) (analyzed, opaque and leaf),
+[scanner](../../../tools/resource_graph.py): runtime/import input validation and unknown
+dynamic refs, [selector](../../../tools/pack_selection.py). Static scanning does not
+dynamically declare new Bazel inputs.
 [Pack format inspection](../../../tools/pck.py) validates the PCK structure.
 
 ### R07

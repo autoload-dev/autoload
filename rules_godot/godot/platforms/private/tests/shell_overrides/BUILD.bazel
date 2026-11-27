@@ -30,7 +30,7 @@ _ANDROID_APPS = {
 # the shell's.
 py_test(
     name = "android_overrides_replace_shell_defaults_test",
-    size = "medium",
+    size = "small",
     srcs = ["android_overrides_test.py"],
     args = ["--aapt=$(rootpath @android_toolchains//:aapt)"] + [
         "--%s $(rootpaths :android_overrides_replace_shell_defaults_test_%s)" % (role, role)
@@ -67,7 +67,7 @@ _IOS_APPS = {
 # application without overrides keeps the shell's.
 py_test(
     name = "ios_overrides_replace_shell_defaults_test",
-    size = "medium",
+    size = "small",
     srcs = ["ios_overrides_test.py"],
     args = [
         "--%s $(rootpaths :ios_overrides_replace_shell_defaults_test_%s)" % (role, role)

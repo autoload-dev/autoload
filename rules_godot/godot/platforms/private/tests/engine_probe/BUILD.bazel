@@ -142,7 +142,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "official_beta_android_app_packages_selected_engine_test",
-    size = "medium",
+    size = "small",
     aapt = "@android_toolchains//:aapt",
     apksigner = "@androidsdk//:apksigner",
     app = ":official_beta_android_app_packages_selected_engine_test_app",
@@ -200,7 +200,7 @@ configured_outputs(
 
 beta_engine_test(
     name = "official_beta_ios_link_links_selected_engine_test",
-    size = "medium",
+    size = "small",
     app = ":official_beta_ios_link_links_selected_engine_test_link",
     inspector = ":validate_ios_beta",
     kind = "official",

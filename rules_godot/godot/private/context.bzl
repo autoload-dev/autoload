@@ -19,13 +19,13 @@ load("//godot/private/config:settings.bzl", "APPLICATION_CONTEXT")
 
 visibility(["//godot/..."])
 
-PROJECT_SETTING = str(Label("//godot/private:project_setting"))
-NO_PROJECT = str(Label("//godot/private:no_project"))
+_PROJECT_SETTING = str(Label("//godot/private:project_setting"))
+_NO_PROJECT = str(Label("//godot/private:no_project"))
 
 def _context_impl(settings, attr):
     project = getattr(attr, "project", None)
     return {
-        PROJECT_SETTING: str(project) if project else NO_PROJECT,
+        _PROJECT_SETTING: str(project) if project else _NO_PROJECT,
         # The operation's engine, so a view built by itself, as `bazel build //...` builds
         # it, imports with the same engine as under its operation.
         ENGINE: getattr(attr, "engine", "") or settings[ENGINE],
@@ -36,16 +36,16 @@ def _context_impl(settings, attr):
 context_transition = transition(
     implementation = _context_impl,
     inputs = [ENGINE] + APPLICATION_SCOPED_OPTIONS,
-    outputs = [PROJECT_SETTING, APPLICATION_CONTEXT, ENGINE] + APPLICATION_SCOPED_OPTIONS,
+    outputs = [_PROJECT_SETTING, APPLICATION_CONTEXT, ENGINE] + APPLICATION_SCOPED_OPTIONS,
 )
 
 def _reset_impl(_settings, _attr):
-    return {PROJECT_SETTING: NO_PROJECT}
+    return {_PROJECT_SETTING: _NO_PROJECT}
 
 reset_transition = transition(
     implementation = _reset_impl,
     inputs = [],
-    outputs = [PROJECT_SETTING],
+    outputs = [_PROJECT_SETTING],
 )
 
 def _no_project_impl(ctx):

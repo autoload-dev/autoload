@@ -12,7 +12,7 @@ from collections.abc import Container, Iterator, Mapping
 from pathlib import Path
 
 from tools.godot_files import is_sidecar_named
-from tools.resource_graph import file_identities, headings, res_path
+from tools.resource_text import file_identities, headings, res_path
 
 TEXT_RESOURCES = (".tscn", ".tres")
 

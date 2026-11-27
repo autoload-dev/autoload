@@ -23,7 +23,6 @@ from typing import TextIO
 
 from python.runfiles import runfiles as bazel_runfiles
 
-from godot.private.project_config import compose_project, statement_groups
 from tools.godot_staging import (
     NEW_SESSION,
     Original,
@@ -38,6 +37,8 @@ from tools.godot_staging import (
     tree_files,
 )
 from tools.pck import add_pck_files, pck_file_contents
+from tools.project_config import compose_project
+from tools.project_statements import statement_groups
 
 
 class ExecutionError(RuntimeError):

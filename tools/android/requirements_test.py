@@ -78,6 +78,14 @@ class RequirementsTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn(f"{LINUX_TOOLCHAINS}: Linux api levels ['35', '36']", errors[0])
 
+    def test_detects_a_linux_ndk_that_differs_from_the_provisioned_one(self) -> None:
+        self.replace(
+            LINUX_TOOLCHAINS, '"version": "29.0.14206865"', '"version": "30.0.1"'
+        )
+        errors = configuration_errors(self.root)
+        self.assertEqual(len(errors), 1)
+        self.assertIn(f"{LINUX_TOOLCHAINS}: Linux NDK '30.0.1'", errors[0])
+
     def test_detects_an_unprovisioned_config_override(self) -> None:
         with (self.root / ".bazelrc").open("a") as bazelrc:
             bazelrc.write("build:x --@androidsdk//:api_level=999\n")

@@ -175,21 +175,20 @@ code.
 
 ## Test size
 
-A test's `size` follows [Bazel's meaning](https://bazel.build/reference/test-encyclopedia):
-the resources and default timeout of running it, with unit tests `small`, integration tests
-`medium` and end-to-end tests `large` or `enormous`. It does not count the cost of building
-the test's dependencies. For the kinds above:
-
-| Kind | Size |
-|---|---|
-| Starlark unit test, analysis test | No effect: they run no action. They start no Godot process, so they are fast tests |
-| Build-tool unit test, repository-tooling test | `small` |
-| Build-output test, run test | `medium`: it builds or runs Godot |
-| Consumer scenario, example test | `medium` or `large`, as their run time needs |
+A test's `size` means what [Bazel's test encyclopedia](https://bazel.build/reference/test-encyclopedia#role-of-the-test-runner)
+says: the timeout and resources of running it (`small` 60 s, `medium` 300 s, `large` 900 s,
+`enormous` 3,600 s), not the cost of building it and not what kind of test it is. Choose the
+smallest size whose timeout the test keeps safely on a loaded machine, such as one that runs
+several builds or a CI virtual machine at once; a test near a boundary takes the larger size.
+The kind of test is expressed by tags instead: `godot_process` ([RG026](conventions.md#rg026)),
+`source_engine`, `android` and `ios`, which the configurations in `shared.bazelrc` select.
+No configuration selects tests by size. A Starlark unit test or analysis test runs no
+action, so the smallest size fits it.
 
 To check sizes against run times, run the tests in question with
-`--test_verbose_timeout_warnings`; it is not on by default, because it would flag every
-analysis test.
+`--test_verbose_timeout_warnings`, which names each test whose run time would fit a shorter
+timeout, and look at more than one run of a test near a boundary. It is not on by default,
+because it flags every analysis test that keeps the default size.
 
 Size says nothing about the cost of a test's build, so it does not select the fast tests.
 A test whose build or run starts a Godot process carries the `godot_process` tag

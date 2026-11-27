@@ -48,14 +48,14 @@ pack_form(
 # Run tests: the main scene checks the translation, the texture and the global class.
 godot_test(
     name = "godot_pack_runtime_inputs_test",
-    size = "medium",
+    size = "small",
     pack = ":godot_pack",
     tags = ["godot_process"],
 )
 
 godot_test(
     name = "none_pack_runtime_inputs_test",
-    size = "medium",
+    size = "small",
     pack = ":none_pack",
     tags = ["godot_process"],
 )
@@ -63,7 +63,7 @@ godot_test(
 # Build-output test: what both forms pack for the runtime besides the files.
 py_test(
     name = "packs_carry_runtime_inputs_test",
-    size = "medium",
+    size = "small",
     srcs = ["runtime_inputs_test.py"],
     data = [
         ":android_godot_pack",

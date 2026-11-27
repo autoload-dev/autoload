@@ -32,7 +32,7 @@ import_results(
 
 py_test(
     name = "each_file_is_imported_by_one_unit_test",
-    size = "medium",
+    size = "small",
     srcs = ["import_results_test.py"],
     data = [":run_imports"],
     main = "import_results_test.py",
@@ -43,7 +43,7 @@ py_test(
 # plugin one of them registers did not run (FR-015, FR-019, SC-005, D29).
 py_test(
     name = "pack_holds_no_editor_part_test",
-    size = "medium",
+    size = "small",
     srcs = ["pack_contents_test.py"],
     data = [_FIXTURE + ":pack"],
     main = "pack_contents_test.py",
@@ -58,7 +58,7 @@ py_test(
 # release values it sees with its argument after Godot's -- separator.
 godot_test(
     name = "pack_runs_with_project_configuration_test",
-    size = "medium",
+    size = "small",
     args = [
         "--",
         "'/0 store'",
@@ -69,7 +69,7 @@ godot_test(
 
 godot_test(
     name = "pack_runs_with_release_settings_test",
-    size = "medium",
+    size = "small",
     args = [
         "--",
         "'2.3.4/57 integration'",
@@ -82,7 +82,7 @@ godot_test(
 # override applies as in the release pack, and with its build number from a flag.
 godot_test(
     name = "source_run_has_custom_features_test",
-    size = "medium",
+    size = "small",
     args = [
         "--",
         "'/57 integration'",
@@ -143,7 +143,7 @@ shell_images(
 
 py_test(
     name = "export_shells_render_icons_and_splash_test",
-    size = "medium",
+    size = "small",
     srcs = ["shell_images_test.py"],
     data = [
         ":android_debug_images",

@@ -35,7 +35,6 @@ import sys
 from collections.abc import Container, Iterable, Iterator, Sequence
 from pathlib import Path
 
-from godot.private.project_config import compose_project
 from tools.class_fragment import CACHE, class_cache
 from tools.godot_staging import (
     ACTION_DIRECTORY,
@@ -46,7 +45,8 @@ from tools.godot_staging import (
     run_action,
     staged_project,
 )
-from tools.resource_graph import Heading, Token, headings, lex, res_path
+from tools.project_config import compose_project
+from tools.resource_text import Heading, Token, headings, lex, res_path
 from tools.resource_uids import known_uids, uid_sources
 
 
@@ -253,7 +253,7 @@ def _tool_spans(source: str) -> Iterator[tuple[int, int]]:
     included.
 
     Only annotation tokens count, so the words in strings and comments stay; the lexer of
-    tools/resource_graph.py is no GDScript parser, so a source it misreads, such as one
+    tools/resource_text.py is no GDScript parser, so a source it misreads, such as one
     with an unterminated string, may keep an annotation or lose an unrelated `@tool`.
     """
     script = [token for token in lex(source) if token.category != "newline"]

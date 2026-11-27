@@ -1,6 +1,7 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/platforms/private/tests/platform_libraries:library_fixtures.bzl", "cc_fixture")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
 # Extensions without a library for an application's operating system, and projects that
 # disable extensions for the runtime, deliver none to the application.
@@ -9,11 +10,9 @@ package(
     default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
 )
 
-genrule(
+fixture_file(
     name = "extension_library",
-    outs = ["extension_library/libandroid_library_fixture.so"],
-    cmd = "echo 'Metadata-only library fixture; never loaded.' > $@",
-    tags = ["manual"],
+    out = "extension_library/libandroid_library_fixture.so",
 )
 
 cc_fixture(

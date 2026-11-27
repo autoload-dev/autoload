@@ -15,6 +15,26 @@ visibility("private")
 
 _LINUX_CLANG = "toolchains/llvm/prebuilt/linux-x86_64"
 
+# The pins the repository rules read from android_linux_toolchains.json.
+_PINS = json.encode({
+    "build_tools": {
+        "version": "35.0.0",
+        "archive": "build-tools_r35_linux.zip",
+        "integrity": "sha256-build-tools",
+        "strip_prefix": "android-15",
+    },
+    "ndk": {
+        "version": "29.0.14206865",
+        "archive": "android-ndk-r29-linux.zip",
+        "integrity": "sha256-ndk",
+        "strip_prefix": "android-ndk-r29",
+    },
+    "platforms": {
+        "35": {"archive": "platform-35_r02.zip", "integrity": "sha256-35"},
+        "36": {"archive": "platform-36_r02.zip", "integrity": "sha256-36"},
+    },
+})
+
 def _module(name, *levels, is_root = False):
     return mocks.module(
         name,
@@ -58,9 +78,12 @@ def _test_disagreeing_dependencies_fail(env):
 
 def _ndk(*, tree = [_LINUX_CLANG + "/lib/clang/21/include/stddef.h"], revision = "29.0.14206865"):
     ctx = mocks.repository_ctx(
-        attr = {"api_level": 26},
+        attr = {"api_level": 26, "_pins": "pins.json"},
         name = "android_ndk_linux_x86_64",
-        files = {"source.properties": "Pkg.Desc = Android NDK\nPkg.Revision = %s\n" % revision},
+        files = {
+            "pins.json": _PINS,
+            "source.properties": "Pkg.Desc = Android NDK\nPkg.Revision = %s\n" % revision,
+        },
         tree = tree,
     )
     errors, fail_ = mocks.errors()
@@ -122,8 +145,10 @@ def _hub(os_name):
             "_build_template": "hub.tpl",
             "_ndk_template": "ndk.tpl",
             "_api_level_template": "level.tpl",
+            "_pins": "pins.json",
         },
         files = {
+            "pins.json": _PINS,
             "hub.tpl": "{HOST_NDK_TOOLCHAINS}|{LINUX_NDK_TOOLCHAINS}|{SDK}|{LINUX_SDK}|{API_LEVEL_SETTINGS}\n",
             "ndk.tpl": "{NAME} {CLANG} {CONSTRAINTS}\n",
             "level.tpl": "level {LEVEL}\n",
