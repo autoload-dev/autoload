@@ -4,6 +4,11 @@
 # their GitHub URLs, as Bazel's own repository does; the registry's hashes verify them.
 common --module_mirrors=https://bcr.cloudflaremirrors.com
 
+# Collect unused entries of the repo contents cache after two days instead of 14. It holds
+# extracted repositories, among them a full Godot source tree per engine recipe, and grew
+# to about 1 TiB with the default.
+common --repo_contents_cache_gc_max_age=2d
+
 # Path mapping gives actions that do not depend on the target configuration one cache key
 # in every configuration: the dexing and desugaring of Android libraries, the Godot actions
 # rules_godot opts in, such as the imports and validations of a project's units, which a
