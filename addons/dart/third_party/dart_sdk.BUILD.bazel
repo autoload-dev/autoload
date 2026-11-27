@@ -5,11 +5,11 @@
 #
 # The runtime runs AOT snapshots that `dart compile aot-snapshot` of the same SDK release
 # writes: product mode, no compressed pointers, as the released SDK's gen_snapshot.
+
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@package_metadata//licenses/rules:license.bzl", "license")
 load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
-
-load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
