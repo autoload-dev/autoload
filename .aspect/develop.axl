@@ -88,18 +88,6 @@ def tool_checks(ctx: TaskContext) -> int:
     children = [spawn(ctx, "bazel", ["run", target]) for target in TOOL_CHECKS]
     return _first_failure([child.wait().code for child in children])
 
-def file_lint(ctx: TaskContext, arguments) -> int:
-    """Run the file lint (tools/lint/files.py): the linters of files without targets.
-
-    Args:
-        ctx: the running task's context.
-        arguments: its arguments: the scope, such as `--scope=all`, or the files.
-
-    Returns:
-        Its exit code.
-    """
-    return run(ctx, "bazel", ["run", "//tools/lint:files", "--"] + list(arguments))
-
 def steps(ctx: TaskContext, steps):
     """Run named steps in order; stop at the first failure unless asked to keep going.
 
@@ -120,6 +108,18 @@ def steps(ctx: TaskContext, steps):
     if failed:
         return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
     return 0
+
+def file_lint(ctx: TaskContext, arguments) -> int:
+    """Run the file lint (tools/lint/files.py): the linters of files without targets.
+
+    Args:
+        ctx: the running task's context.
+        arguments: its arguments: the scope, such as `--scope=all`, or the files.
+
+    Returns:
+        Its exit code.
+    """
+    return run(ctx, "bazel", ["run", "//tools/lint:files", "--"] + list(arguments))
 
 def run_checks(ctx: TaskContext, every: bool):
     """Run every check and the fast tests.

@@ -69,6 +69,22 @@ class FilesTest(unittest.TestCase):
             code = run(executables, files, self.root, fix=fix)
         return code, output.getvalue()
 
+    def test_a_tool_takes_its_files_by_name_suffix_or_shell_shebang(self) -> None:
+        shell = Tool("shell", ("*.sh",), check=(), shebang=True)
+        self.write("tools/bazel", "#!/usr/bin/env bash\n")
+        self.write("tools/data", "plain\n")
+        self.write("tools/run.sh")
+        self.write("tools/run.py", "#!/usr/bin/env bash\n")
+        files = ["tools/bazel", "tools/data", "tools/run.sh", "tools/run.py"]
+        self.assertEqual(
+            ["tools/bazel", "tools/run.sh"], shell.selected(files, self.root)
+        )
+        named = Tool("named", ("BUILD.bazel", "*.bzl"), check=(), excluded=("x/*",))
+        self.assertEqual(
+            ["a/BUILD.bazel", "b.bzl"],
+            named.selected(["a/BUILD.bazel", "b.bzl", "x/c.bzl", "BUILD.txt"], self.root),
+        )
+
     def test_every_file_git_lists_but_ignored_ones(self) -> None:
         self.write(".gitignore", "ignored.md\n")
         self.write("kept.md")
@@ -101,22 +117,6 @@ class FilesTest(unittest.TestCase):
         self.assertEqual(
             ["committed.md", "edited.md", "untracked.md"],
             changed_files(self.root, "main"),
-        )
-
-    def test_a_tool_takes_its_files_by_name_suffix_or_shell_shebang(self) -> None:
-        shell = Tool("shell", ("*.sh",), check=(), shebang=True)
-        self.write("tools/bazel", "#!/usr/bin/env bash\n")
-        self.write("tools/data", "plain\n")
-        self.write("tools/run.sh")
-        self.write("tools/run.py", "#!/usr/bin/env bash\n")
-        files = ["tools/bazel", "tools/data", "tools/run.sh", "tools/run.py"]
-        self.assertEqual(
-            ["tools/bazel", "tools/run.sh"], shell.selected(files, self.root)
-        )
-        named = Tool("named", ("BUILD.bazel", "*.bzl"), check=(), excluded=("x/*",))
-        self.assertEqual(
-            ["a/BUILD.bazel", "b.bzl"],
-            named.selected(["a/BUILD.bazel", "b.bzl", "x/c.bzl", "BUILD.txt"], self.root),
         )
 
     def test_runs_each_tool_once_on_its_files_and_passes_when_all_pass(self) -> None:
