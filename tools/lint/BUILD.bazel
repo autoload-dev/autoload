@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 load("@rules_python//python/uv:lock.bzl", "lock")
+load(":files.bzl", "FILE_TOOLS", "FILE_TOOL_PATHS")
 
 # The gate of the lint check (check.bzl): it fails with the reports of the linters that found
 # something in a target.
@@ -19,16 +21,44 @@ lock(
     ],
 )
 
-# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py), which the aspect
-# `gdlint` runs (linters.bzl).
+# GDScript's declaration order through gdlint and //:.gdlintrc (gdscript.py), which the file
+# lint runs (files.py).
 py_binary(
     name = "gdscript",
     srcs = ["gdscript.py"],
+    visibility = ["//tools/format:__pkg__"],
     deps = [
         "@lint_pypi//gdtoolkit",
         "@lint_pypi//lark",
         "@lint_pypi//pyyaml",
     ],
+)
+
+# clang-format from its PyPI package, which //tools/format runs on C and C++ and the file lint
+# on Objective-C, with //:.clang-format.
+py_console_script_binary(
+    name = "clang_format",
+    pkg = "@lint_pypi//clang_format",
+    script = "clang-format",
+    visibility = ["//tools/format:__pkg__"],
+)
+
+# The file lint (files.py): the linters of files without targets of their own, which find
+# their executables through the variables of files.bzl.
+py_binary(
+    name = "files",
+    srcs = ["files.py"],
+    data = FILE_TOOLS.values(),
+    env = FILE_TOOL_PATHS,
+    visibility = ["//tools/format:__pkg__"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_test(
+    name = "files_test",
+    size = "small",
+    srcs = ["files_test.py"],
+    deps = [":files"],
 )
 
 py_test(
@@ -64,7 +94,8 @@ py_test(
 )
 
 # The GitHub workflows and actions, through jactionlint; rules_lint has no aspect for them.
-# Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format.
+# Python is linted by the lint check (check.bzl, `--config=check`), Starlark by //tools/format,
+# the files without targets by the file lint.
 py_test(
     name = "workflows_test",
     size = "small",
@@ -74,30 +105,4 @@ py_test(
         "//:workflows",
         "@multitool//tools/jactionlint",
     ],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "check_test.py",
-        "gdscript.py",
-        "gdscript_test.py",
-        "linters_test.py",
-        "workflows_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "check.bzl",
-        "linters.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
 )

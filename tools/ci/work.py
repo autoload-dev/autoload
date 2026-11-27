@@ -4,8 +4,8 @@ The repository's named work: the pieces that are no single Bazel command, where 
 Each piece of work is a few shell commands, each run in a module directory. `aspect work
 <name>...` runs pieces with Bazel's Python (.aspect/work.axl). CI's host jobs
 (`aspect ci <host>`, .aspect/develop.axl) select their tests in Bazel and run from here
-the checks that are no Bazel targets, the Android SDK's setup and the add-on generator's
-self-test; `aspect ci source-engine` runs `source-engine:full`.
+the Android SDK's setup and the add-on generator's self-test; `aspect ci source-engine`
+runs `source-engine:full`.
 
 Sections: Source engines, Work table, Execution, Command line.
 """
@@ -90,16 +90,9 @@ SOURCE_ENGINE = "source-engine"
 # ==== Work table ==============================================================
 
 
-# The named work. CI's Linux job runs the checks; both host jobs the Android SDK's setup and
-# the self-test (.aspect/develop.axl).
+# The named work. Both CI host jobs run the Android SDK's setup and the self-test
+# (.aspect/develop.axl); the checks are tasks of their own.
 WORK = (
-    # Formatting and Starlark's lint of the whole tree, as the Git hooks run them.
-    Work("format", ".", ("aspect format --scope=all --severity=fail",)),
-    # The checks that are no Bazel targets: they read the whole source tree.
-    Work("conventions", ".", ("bazel run //tools/conventions",)),
-    # The BUILD declarations that Gazelle generates (tools/gazelle) in every module: the
-    # ruleset's bzl_library targets and the lint check's filegroups.
-    Work("gazelle", ".", ("bazel run //tools/gazelle:check",)),
     # The add-on generator's self-test: a fresh module from the template, whose tests this
     # host's CI config selects (tools/addons/selftest.py). Its declaration changes the root's
     # module graph, which would discard the analysis of the server it runs in.

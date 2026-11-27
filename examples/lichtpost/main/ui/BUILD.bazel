@@ -58,25 +58,3 @@ godot_resources(
         "//examples/lichtpost/main/shared/ui",
     ],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "hud/hud.gd",
-        "interface/interface.gd",
-        "options_dialog/options_dialog.gd",
-        "result_dialog/result_dialog.gd",
-        "title_dialog/title_dialog.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -1,5 +1,5 @@
 """
-RG024: a region starts with a region header, which fills its line to column 80, and the
+region-headers: a region starts with a region header, which fills its line to column 80, and the
 file's head names the regions in their order.
 """
 
@@ -112,7 +112,9 @@ def python_declarations(
 
 
 class RegionHeaders:
-    info = RuleInfo("RG024", "Regions start with a region header the file's head names")
+    info = RuleInfo(
+        "region-headers", "Regions start with a region header the file's head names"
+    )
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace

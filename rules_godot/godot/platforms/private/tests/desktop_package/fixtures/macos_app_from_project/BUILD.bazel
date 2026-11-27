@@ -43,11 +43,3 @@ godot_macos_sign(
     tags = ["manual"],
     target_compatible_with = ["@platforms//os:macos"],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -7,11 +7,3 @@ build_test(
     size = "small",
     targets = ["//:bcr_docs"],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

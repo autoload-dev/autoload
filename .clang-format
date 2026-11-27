@@ -1,0 +1,8 @@
+# The C, C++ and Objective-C style of the repository (//tools/format): LLVM's, without a column
+# limit, as most native sources are written. The Dart extension follows Godot's style instead,
+# through the .clang-format of its directory; Godot's engine modules are left out
+# (.gitattributes).
+BasedOnStyle: LLVM
+ColumnLimit: 0
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true

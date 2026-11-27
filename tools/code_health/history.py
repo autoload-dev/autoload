@@ -26,7 +26,7 @@ from pathlib import Path
 from tools.code_health import change
 from tools.code_health.scan import git, run_git
 
-# A region header, as RG024 requires it (tools/conventions/rules/rg024.py).
+# A region header, as region-headers requires it (tools/conventions/rules/region_headers.py).
 REGION = re.compile(r"(?:#|//) ==== (?P<name>[^=\s](?:[^=]*[^=\s])?) =+$")
 # A hunk header of a unified diff with no context: the changed lines of the new version.
 HUNK = re.compile(

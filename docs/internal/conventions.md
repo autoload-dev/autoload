@@ -15,13 +15,13 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [RG001](#rg001) | Package segments use lower snake case | Required | All inventoried owned BUILD paths, relative to the nearest module | Error |
 | [RG002](#rg002) | Authored names use lower snake case; owned helpers use dotted roles | Required | Bazel-evaluated owned expansions and explicit roots; computed roots require review | Error; incomplete required ownership fails |
 | [RG003](#rg003) | Target declarations pass `name` explicitly | Required | BUILD calls associated with at least one evaluated rule | Error |
-| [RG004](#rg004) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
+| [fixture-references](#fixture-references) | Public documentation does not reference test fixtures | Required | Concrete paths into the regression module in public guides and READMEs | Error |
 | [RG006](#rg006) | Documented commands name existing targets | Required | Labels of `bazel build`, `run` and `test` commands in documentation | Error |
 | [RG007](#rg007) | Godot test operations and their helpers are test-only | Required | Effective flags on recognized Godot test macro expansions | Error; missing evidence is reported as not checked |
 | [RG008](#rg008) | Application content lives under `main/`, its tests under `tests/` | Required | Production-eligible resource inputs physically owned by a project of a consumer, and the test calls of every application project's root package | Error; unresolved membership is reported as not checked |
 | [RG009](#rg009) | Projects lie at the fixed places of their consumers | Required | Projects and authored Godot configurations of every consumer | Error |
 | [RG012](#rg012) | Production targets are independent of test scopes | Required | Direct authored workspace inputs of every production-eligible declaration outside a test scope, resolved by Bazel | Error; missing role flags are reported as not checked |
-| [RG013](#rg013) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
+| [public-documentation-links](#public-documentation-links) | Public documentation does not link to internal documentation | Required | Local Markdown and HTML link destinations in public guides and READMEs | Error |
 | [RG014](#rg014) | Engine modules, patches and lock files live under `engines/<name>/` | Required | Files of every consumer module, and the Godot project roots among them | Error |
 | [RG015](#rg015) | Add-on modules share one layout | Required | Every module `addons/<module>/` of this repository, and every `backends/` directory | Error |
 | [RG016](#rg016) | Local links resolve | Required | Local Markdown and HTML link destinations and their fragments in documentation, READMEs, `AGENTS.md` and `SKILL.md` files | Error |
@@ -32,8 +32,8 @@ modules ([RG020](#rg020)), which the check does not load (see the [rule framewor
 | [RG021](#rg021) | Add-on modules run no Godot | Required | Godot configurations and Godot project and test calls of every add-on module | Error |
 | [RG022](#rg022) | The Python tooling names no add-on module or application | Required | String literals of every Python file in `tools/` but tests and test support | Error |
 | [RG023](#rg023) | Release archives leave out tests, and nothing else needs them | Required | `.gitattributes` and the Starlark files of every released module | Error |
-| [RG024](#rg024) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
-| [RG025](#rg025) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
+| [region-headers](#region-headers) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
+| [reading-order](#reading-order) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [RG026](#rg026) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules, by its loading graph | Error |
 | [RG027](#rg027) | The add-on modules' Python targets carry `lint-genfiles` | Required | Every `py_binary`, `py_library` and `py_test` of every add-on module | Error |
 
@@ -140,7 +140,7 @@ and generated targets are outside this authored-BUILD check. Calls producing no 
 rules are outside its coverage. Ambiguous or missing source evidence and failed parsing or
 loading stop the audit with an error rather than silently passing.
 
-## RG004
+## fixture-references
 
 **Public documentation does not reference test fixtures.** Public guides and READMEs show
 runnable examples, which users can copy, instead of named consumer scenarios.
@@ -315,7 +315,7 @@ own test-only dependency check covers edges to marked targets; this rule also co
 unmarked targets and source files by their location. Indirect paths and configured closures
 remain outside this automated subset.
 
-## RG013
+## public-documentation-links
 
 **Public documentation does not link to internal documentation.** Consumer guides and
 READMEs must stand on their own. Link to public setup and usage guides instead of requiring
@@ -429,7 +429,7 @@ fragments as on GitHub: the rendered text in lower case, without punctuation, sp
 hyphens and a number appended to repeats. Ignored local files, such as `user.bazelrc`, are
 no link targets.
 
-The check reads link destinations as [RG013](#rg013) does, and ignores links in code and
+The check reads link destinations as [public-documentation-links](#public-documentation-links) does, and ignores links in code and
 comments the same way. External URLs, fragments into files other than Markdown and fragments
 after a query, such as `?plain=1#L5`, are outside automated coverage.
 
@@ -528,7 +528,7 @@ visibility, and the arguments of dev dependencies in `MODULE.bazel`, which only 
 own builds evaluate. Modules that are never released, such as the root module, are outside
 it.
 
-## RG024
+## region-headers
 
 **Regions start with a region header the file's head names.** A file with several topics is
 divided into regions, so that a reader who scans it finds a topic and skips the rest. A region
@@ -553,7 +553,7 @@ A Python region declares at least two names. Whether a file
 needs regions at all is a matter of review: a file with one topic has none. The repository's
 `.vscode/settings.json` shows region headers in VS Code's minimap.
 
-## RG025
+## reading-order
 
 **Python definitions stand before their first caller.** A module reads from its helpers up to
 what uses them, in the order Starlark requires on its top level; the head and the region
@@ -582,7 +582,7 @@ the tag. Registry test modules are outside it.
 ## RG027
 
 **The add-on modules' Python targets carry `lint-genfiles`.** The root module lints the add-on
-modules' Python with its own, in the work `lint` over their repositories
+modules' Python with its own, in `bazel build --config=lint` over their repositories
 (`tools/lint/check.bzl`), so the add-on modules need no Bazel server of their own for it.
 rules_lint lints only the main repository's sources, unless a target carries the tag
 `lint-genfiles`; without it, an add-on module's Python would pass the lint unseen.
@@ -609,19 +609,18 @@ bazel run //tools/conventions
 The command runs every registered convention rule that judges more than one file at a time
 across all owned modules. Violations include the stable rule ID, file, line and a link to this
 catalogue. The checker reports unreviewed computed macro names separately. Exit status `1`
-indicates convention findings; `2` indicates an incomplete audit. The work `conventions`,
-which the Linux job runs, runs this command, and `aspect check`, the pre-push hook's, runs that work.
+indicates convention findings; `2` indicates an incomplete audit. `aspect check`, the
+pre-push hook's, and the Linux job run this command.
 
-The rules that judge each file on its own, [RG004](#rg004), [RG013](#rg013),
-[RG024](#rg024) and [RG025](#rg025), run in the lint check instead (`--config=check`,
-[check.bzl](../../tools/lint/check.bzl)), on the filegroups that Gazelle declares for each
-package's Markdown, Python, Starlark, GDScript and C++ ([lint.go](../../tools/gazelle/lint/lint.go)).
-Bazel caches their findings per package, so a change rechecks only its own packages.
-[files.py](../../tools/conventions/files.py) names each file by its path in the repository,
-from the module its main repository's `MODULE.bazel` names or the add-on module whose
-repository holds it. `bazel run //tools/conventions -- --rule RG024` still runs one of them
-over the whole checkout, as `/code-health` does. Files outside every package, such as those
-of the registry test modules, are outside the lint check.
+The rules that judge each file on its own, [fixture-references](#fixture-references),
+[public-documentation-links](#public-documentation-links), [region-headers](#region-headers)
+and [reading-order](#reading-order), run in the
+[file lint](verification-recipes.md#the-file-lint) instead, on the Markdown, Python,
+Starlark, GDScript and C++ files it selects: the changed files in `aspect check` and the
+pre-commit hook, every file Git lists in the Linux job.
+[files.py](../../tools/conventions/files.py) takes the files by their paths in the
+repository; each rule picks its own among them. `bazel run //tools/conventions -- --rule
+region-headers` still runs one of them over the whole checkout, as `/code-health` does.
 
 The Bazel tool caches each loading query's output in `~/.cache/autoload/conventions` (or below
 `XDG_CACHE_HOME`), under a key of the query and of everything Bazel's loading can read: the
@@ -663,7 +662,7 @@ against one context and attaches their metadata to findings. It sorts diagnostic
 stable output. A rule reports each finding once; a repeated finding is a rule defect and
 aborts the run rather than being merged. The rules that judge each file on its own are
 registered in [per_file.py](../../tools/conventions/per_file.py), whose library needs no
-Bazel: the lint check runs them per package, and the CLI only when they are named.
+Bazel: the file lint runs them, and the CLI only when they are named.
 `Finding.status` distinguishes `violation` from
 `not_checked` for every rule. The [registry](../../tools/conventions/registry.py) lists
 the rules explicitly and selects them by ID, and the [CLI](../../tools/conventions/check.py)

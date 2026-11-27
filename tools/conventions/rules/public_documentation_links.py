@@ -1,4 +1,4 @@
-"""RG013: public documentation does not link to internal documentation."""
+"""public-documentation-links: public documentation does not link to internal documentation."""
 
 from collections.abc import Iterable
 
@@ -9,7 +9,7 @@ from tools.conventions.framework import Finding, RuleInfo
 
 class PublicDocumentationLinks:
     info = RuleInfo(
-        "RG013",
+        "public-documentation-links",
         "Public documentation does not link to internal documentation",
     )
 

@@ -62,7 +62,7 @@ class WorkTest(unittest.TestCase):
 
     def test_android_work_provisions_the_sdk_first_and_unknown_work_fails(self) -> None:
         with self.assertRaisesRegex(ValueError, "No such work: nothing"):
-            run(["format", "nothing"], ROOT)
+            run(["release:archives", "nothing"], ROOT)
         with (
             mock.patch.dict(os.environ, {"ANDROID_SDK_ROOT": ""}),
             self.assertRaisesRegex(ValueError, "needs the Android environment"),
@@ -87,7 +87,7 @@ class CallersTest(unittest.TestCase):
             text = task.read_text()
             for call in re.findall(r"run_work\(ctx, ([^)]*)\)", text):
                 names.update(re.findall(r'"([^"]+)"', call))
-        self.assertLessEqual({"format", "android:setup", "addon-template"}, names)
+        self.assertLessEqual({"android:setup", "addon-template"}, names)
         self.assertLessEqual(names, set(KNOWN))
 
     def test_the_source_engine_workflow_runs_the_root_s_tests_tagged_source_engine(

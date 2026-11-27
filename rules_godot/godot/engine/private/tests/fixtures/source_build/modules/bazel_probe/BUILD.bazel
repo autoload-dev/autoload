@@ -6,30 +6,3 @@ exports_files([
     "register_types.cpp",
     "register_types.h",
 ])
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "register_types.cpp",
-        "register_types.h",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["config.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

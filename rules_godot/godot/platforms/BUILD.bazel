@@ -147,14 +147,3 @@ bzl_library(
     srcs = ["defs.bzl"],
     deps = ["//godot/private/config:settings"],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "defs.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

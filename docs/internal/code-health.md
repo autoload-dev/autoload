@@ -28,7 +28,7 @@ before working in an area. Refactor in small structural steps and review the fil
 
 `aspect code-health --history` reports how often the change's files changed, by default in
 the last six months: per file its commits, the files it changed with most often, and which of
-its [regions](conventions.md#rg024) changed together. It needs Git alone and follows renames;
+its [regions](conventions.md#region-headers) changed together. It needs Git alone and follows renames;
 `-- --only <path>...` reports given files and `-- --since all` the whole history.
 
 Starlark and GDScript are scored as translated Python: documentation strings and `doc` values
@@ -51,14 +51,14 @@ rules. Long files are fine; a file is split by its dependencies, never by its le
 
 1. **A head with an overview.** A Python, Starlark or Markdown file starts with its purpose;
    if it has regions, its head names them after `Sections:` (ruff D100, buildifier
-   `module-docstring`, rumdl MD041, [RG024](conventions.md#rg024)). Tests need no docstring.
+   `module-docstring`, rumdl MD041, [region-headers](conventions.md#region-headers)). Tests need no docstring.
 2. **Named regions.** A file with several topics divides into regions, each starting with a
-   region header and declaring at least two names ([RG024](conventions.md#rg024)); a file
+   region header and declaring at least two names ([region-headers](conventions.md#region-headers)); a file
    with one topic has none.
 3. **Grouped by topic, not by kind.** What the whole file needs stands above the first region;
    what one region needs stands in it. There is no block of all constants or all helpers.
 4. **One reading direction, short distances.** A definition stands before its first caller and
-   close to it, so a region ends with its entry point ([RG025](conventions.md#rg025) for
+   close to it, so a region ends with its entry point ([reading-order](conventions.md#reading-order) for
    Python; Starlark requires it on its top level).
 5. **Files of one kind share one layout.** BUILD files: `load`, `package()`, `exports_files`,
    the main target, its parts, tests last. `MODULE.bazel`: `module()`, `bazel_dep`s,

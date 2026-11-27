@@ -23,22 +23,3 @@ test_suite(
         ":validation_test",
     ],
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "id_token_test.cc",
-        "validation_test.cc",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

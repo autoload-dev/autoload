@@ -18,25 +18,3 @@ godot_export_platform(
     operating_system = "android",
     visibility = ["//visibility:public"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = [
-        "AGENTS.md",
-        "README.md",
-    ],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "releases.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

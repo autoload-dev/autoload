@@ -25,11 +25,3 @@ godot_metadata_sync(
         "//e2e/addons/sqlite/database:suites",
     ],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

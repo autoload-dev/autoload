@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.conventions.rules.rg013 import PublicDocumentationLinks
+from tools.conventions.rules.public_documentation_links import PublicDocumentationLinks
 from tools.conventions.test_support import RepositoryTest
 
 

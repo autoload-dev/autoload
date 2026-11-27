@@ -10,19 +10,3 @@ cc_library(
     deps = ["//app_auth/native:backend_api"],
     alwayslink = True,
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = ["unsupported_backend.cc"],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

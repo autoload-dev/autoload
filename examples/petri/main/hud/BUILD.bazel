@@ -13,19 +13,3 @@ godot_resources(
     prefix = "main/hud",
     deps = ["//examples/petri/main/hud/fonts"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["hud.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

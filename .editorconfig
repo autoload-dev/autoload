@@ -1,0 +1,7 @@
+# The shell scripts' style, which shfmt applies (//tools/format) and editors read.
+root = true
+
+[{*.sh,bazel}]
+indent_style = space
+indent_size = 4
+switch_case_indent = true

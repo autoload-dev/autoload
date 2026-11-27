@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.conventions.rules.rg024 import RegionHeaders, header
+from tools.conventions.rules.region_headers import RegionHeaders, header
 from tools.conventions.test_support import RepositoryTest
 
 LEXER = header("#", "Lexer")

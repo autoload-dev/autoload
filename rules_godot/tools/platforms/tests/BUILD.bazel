@@ -147,39 +147,3 @@ py_test(
     srcs = ["launch_entry_test.py"],
     data = ["//tools/platforms/launch"],
 )
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "app_metadata_test.py",
-        "apple_bundle_test.py",
-        "artifact_validation_test.py",
-        "check_engine_version_test.py",
-        "check_maven_minimums_test.py",
-        "compile_icon_test.py",
-        "godot_shell_test.py",
-        "launch_android_test.py",
-        "launch_common_test.py",
-        "launch_desktop_test.py",
-        "launch_editor_test.py",
-        "launch_entry_test.py",
-        "launch_ios_test.py",
-        "native_symbols_test.py",
-        "package_android_test.py",
-        "package_desktop_test.py",
-        "package_symbols_test.py",
-        "shell_overrides_test.py",
-        "sign_macos_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

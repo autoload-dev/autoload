@@ -177,37 +177,3 @@ py_library(
     srcs = ["check_maven_minimums.py"],
     visibility = ["//tools:ruleset"],
 )
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "apple_bundle.py",
-        "check_engine_version.py",
-        "check_maven_minimums.py",
-        "compile_icon.py",
-        "godot_shell.py",
-        "native_fixtures.py",
-        "native_symbols.py",
-        "package_android.py",
-        "package_desktop.py",
-        "package_symbols.py",
-        "shell_android.py",
-        "shell_apple.py",
-        "shell_common.py",
-        "shell_overrides.py",
-        "sign_macos.py",
-        "validate_artifacts.py",
-        "zip_archive.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

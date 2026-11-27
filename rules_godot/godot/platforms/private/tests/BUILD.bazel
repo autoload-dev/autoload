@@ -52,35 +52,3 @@ alias(
     }),
     visibility = ["//godot:__subpackages__"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "action_graph.bzl",
-        "android_plugin_api_tests.bzl",
-        "android_runtime_tests.bzl",
-        "android_settings.bzl",
-        "android_toolchains_tests.bzl",
-        "backends.bzl",
-        "configuration_invariance_tests.bzl",
-        "ios_link.bzl",
-        "maven_minimums_tests.bzl",
-        "resolution_tests.bzl",
-        "shell_inputs_tests.bzl",
-        "shell_overrides_tests.bzl",
-        "signing_inputs_tests.bzl",
-        "transitions.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

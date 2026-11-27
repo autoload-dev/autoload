@@ -8,11 +8,3 @@ exports_files([
     "maven_install.json",
     "rules_android_maven_install.json",
 ])
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

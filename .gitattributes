@@ -1,0 +1,5 @@
+# Godot's engine modules keep Godot's style and are left out of the formatters (//tools/format):
+# an engine's lock file pins every file of its modules, so formatting one, or adding a style
+# file beside it, needs a repin.
+**/engines/*/modules/** rules-lint-ignored
+rules_godot/godot/engine/private/tests/fixtures/source_build/modules/** rules-lint-ignored

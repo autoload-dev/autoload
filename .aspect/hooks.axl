@@ -1,10 +1,11 @@
 """
 The Git hooks' tasks, which `aspect bootstrap` installs: `aspect pre-commit` keeps a commit
-formatted, its lock files current and its Code Health from declining; `aspect pre-push` checks
-the pushed checkout as CI's Linux job would, without its whole-tree formatter and its slower tests.
+formatted, its lock files current, its files linted and its Code Health from declining;
+`aspect pre-push` checks the pushed checkout as CI's Linux job would, without its whole-tree
+formatter and its slower tests.
 """
 
-load("./develop.axl", "KEEP_GOING", "run_checks", "steps")
+load("./develop.axl", "KEEP_GOING", "file_lint", "run_checks", "steps")
 load("./work.axl", "output", "python", "run")
 
 def _lines(text: str) -> list:
@@ -50,12 +51,13 @@ def _pre_commit_impl(ctx: TaskContext):
     return steps(ctx, [
         ("format", lambda: _format_staged(ctx, aspect, staged)),
         ("generate", lambda: _generate_staged(ctx, staged)),
+        ("lint", lambda: file_lint(ctx, staged)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--staged", "--if-available"])),
     ])
 
 pre_commit = task(
     implementation = _pre_commit_impl,
-    summary = "Before a commit: format and stage the staged files, regenerate their lock files, review their Code Health.",
+    summary = "Before a commit: format and stage the staged files, regenerate their lock files, lint them, review their Code Health.",
     args = {
         "keep_going": KEEP_GOING,
     },

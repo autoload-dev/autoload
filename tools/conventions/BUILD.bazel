@@ -15,17 +15,19 @@ py_library(
     deps = ["//tools/setup:modules_lib"],
 )
 
-# The rules that judge each file on its own, on given files, which the lint check's aspects run
-# per package (tools/lint/linters.bzl).
+# The rules that judge each file on its own, on given files, which the file lint runs
+# (tools/lint/files.py).
 py_binary(
     name = "files",
     srcs = ["files.py"],
-    visibility = ["//tools/lint:__pkg__"],
+    visibility = [
+        "//tools/format:__pkg__",
+        "//tools/lint:__pkg__",
+    ],
     deps = [
         ":context_lib",
         ":framework_lib",
         ":per_file_lib",
-        "//tools/setup:modules_lib",
     ],
 )
 
@@ -51,10 +53,10 @@ py_library(
     name = "per_file_rules_lib",
     srcs = [
         "documents.py",
-        "rules/rg004.py",
-        "rules/rg013.py",
-        "rules/rg024.py",
-        "rules/rg025.py",
+        "rules/fixture_references.py",
+        "rules/public_documentation_links.py",
+        "rules/reading_order.py",
+        "rules/region_headers.py",
     ],
     deps = [
         ":context_lib",
@@ -210,9 +212,9 @@ py_test(
 )
 
 py_test(
-    name = "rg004_test",
+    name = "fixture_references_test",
     size = "small",
-    srcs = ["rules/rg004_test.py"],
+    srcs = ["rules/fixture_references_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -273,9 +275,9 @@ py_test(
 )
 
 py_test(
-    name = "rg013_test",
+    name = "public_documentation_links_test",
     size = "small",
-    srcs = ["rules/rg013_test.py"],
+    srcs = ["rules/public_documentation_links_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -384,9 +386,9 @@ py_test(
 )
 
 py_test(
-    name = "rg024_test",
+    name = "region_headers_test",
     size = "small",
-    srcs = ["rules/rg024_test.py"],
+    srcs = ["rules/region_headers_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -394,9 +396,9 @@ py_test(
 )
 
 py_test(
-    name = "rg025_test",
+    name = "reading_order_test",
     size = "small",
-    srcs = ["rules/rg025_test.py"],
+    srcs = ["rules/reading_order_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -421,89 +423,4 @@ py_test(
         ":rules_lib",
         ":test_support",
     ],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "bazel.py",
-        "bazel_test.py",
-        "cache.py",
-        "cache_test.py",
-        "check.py",
-        "context.py",
-        "context_test.py",
-        "documents.py",
-        "environment.py",
-        "files.py",
-        "files_test.py",
-        "framework.py",
-        "framework_test.py",
-        "layout.py",
-        "naming.py",
-        "operations.py",
-        "per_file.py",
-        "python_modules.py",
-        "registry.py",
-        "rules/rg001.py",
-        "rules/rg001_test.py",
-        "rules/rg002.py",
-        "rules/rg002_test.py",
-        "rules/rg003.py",
-        "rules/rg003_test.py",
-        "rules/rg004.py",
-        "rules/rg004_test.py",
-        "rules/rg006.py",
-        "rules/rg006_test.py",
-        "rules/rg007.py",
-        "rules/rg007_test.py",
-        "rules/rg008.py",
-        "rules/rg008_test.py",
-        "rules/rg009.py",
-        "rules/rg009_test.py",
-        "rules/rg012.py",
-        "rules/rg012_test.py",
-        "rules/rg013.py",
-        "rules/rg013_test.py",
-        "rules/rg014.py",
-        "rules/rg014_test.py",
-        "rules/rg015.py",
-        "rules/rg015_test.py",
-        "rules/rg016.py",
-        "rules/rg016_test.py",
-        "rules/rg017.py",
-        "rules/rg017_test.py",
-        "rules/rg018.py",
-        "rules/rg018_test.py",
-        "rules/rg019.py",
-        "rules/rg019_test.py",
-        "rules/rg020.py",
-        "rules/rg020_test.py",
-        "rules/rg021.py",
-        "rules/rg021_test.py",
-        "rules/rg022.py",
-        "rules/rg022_test.py",
-        "rules/rg023.py",
-        "rules/rg023_test.py",
-        "rules/rg024.py",
-        "rules/rg024_test.py",
-        "rules/rg025.py",
-        "rules/rg025_test.py",
-        "rules/rg026.py",
-        "rules/rg026_test.py",
-        "rules/rg027.py",
-        "rules/rg027_test.py",
-        "test_support.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
 )

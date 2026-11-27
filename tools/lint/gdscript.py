@@ -1,5 +1,5 @@
 """
-The GDScript lint, which the aspect `gdlint` runs (linters.bzl): gdlint's checks with the rules
+The GDScript lint, which the file lint runs as gdlint (files.py): gdlint's checks with the rules
 that a .gdlintrc keeps, on the given scripts; it prints each problem and exits 1 on any.
 `gdscript.py <.gdlintrc> <script>...`
 """
@@ -14,9 +14,9 @@ import yaml
 from gdtoolkit.linter import DEFAULT_CONFIG, lint_code
 from gdtoolkit.parser import parser
 
-# gdtoolkit caches its compiled grammars below the user's home, which a Bazel action neither
-# declares nor may write: Linux's sandbox mounts it read-only. It always writes the cache, even
-# with disable_grammar_caching(), so the cache goes to the action's own temporary directory.
+# gdtoolkit caches its compiled grammars below the user's home, which a Bazel test's sandbox
+# mounts read-only on Linux. It always writes the cache, even with disable_grammar_caching(), so
+# the cache goes to a temporary directory of its own.
 parser._cache_dirpath = tempfile.mkdtemp(prefix="gdtoolkit")
 
 # Scripts that are not checked, by their path in the ruleset's module, each with its reason.

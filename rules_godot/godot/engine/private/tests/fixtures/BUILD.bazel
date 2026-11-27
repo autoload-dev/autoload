@@ -81,19 +81,3 @@ godot_runtime_component(
     variant = "release",
     version = "4.7.2",
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

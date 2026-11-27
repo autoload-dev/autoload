@@ -150,25 +150,3 @@ godot_addon(
     tags = ["manual"],
     deps = [":inventory_native"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "inventory/inventory.gd",
-        "main/main.gd",
-        "main/other.gd",
-        "tool/plugin.gd",
-        "utility/utility.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -64,22 +64,3 @@ godot_test(
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//e2e/rules_godot/patched_engine:main"],
 )
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "app_build_profile_test.py",
-        "app_runs_patched_engine_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

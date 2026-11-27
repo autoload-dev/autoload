@@ -1,8 +1,8 @@
-"""RG004 regressions for which documentation must avoid regression fixtures."""
+"""fixture-references regressions for which documentation must avoid regression fixtures."""
 
 import unittest
 
-from tools.conventions.rules.rg004 import FixtureReferences
+from tools.conventions.rules.fixture_references import FixtureReferences
 from tools.conventions.test_support import RepositoryTest
 
 

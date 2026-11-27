@@ -164,17 +164,3 @@ bzl_library(
         ":settings",
     ],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "application.bzl",
-        "native.bzl",
-        "settings.bzl",
-        "transitions.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

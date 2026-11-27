@@ -48,32 +48,3 @@ editor_view_test_suite(name = "editor_view_test_suite")
 metadata_sync_test_suite(name = "metadata_sync_test_suite")
 
 runtime_profile_test_suite(name = "runtime_profile_test_suite")
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["godot_editor_test.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "editor_view_tests.bzl",
-        "metadata_sync_tests.bzl",
-        "runtime_profile_tests.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

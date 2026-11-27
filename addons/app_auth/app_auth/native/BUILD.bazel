@@ -43,32 +43,3 @@ filegroup(
     name = "registration",
     srcs = ["register_types.cc"],
 )
-
-filegroup(
-    name = "cc_files",
-    testonly = True,
-    srcs = [
-        "app_auth.cc",
-        "app_auth.h",
-        "app_auth_login.cc",
-        "app_auth_login.h",
-        "app_auth_result.cc",
-        "app_auth_result.h",
-        "backend.h",
-        "id_token.cc",
-        "id_token.h",
-        "register_types.cc",
-        "validation.cc",
-        "validation.h",
-    ],
-    tags = ["cc"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

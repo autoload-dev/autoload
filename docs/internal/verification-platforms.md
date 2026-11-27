@@ -61,7 +61,8 @@ CI runs both host jobs on every run: pull requests, the merge queue and a manual
 Bazel's caches keep unchanged work cheap. [CI](../../.github/workflows/ci.yml) has one job
 per host, each `aspect ci <host>`: `linux` and `macos`. Each starts with the Android SDK's
 setup; `linux` then runs the formatter, the checks that are no Bazel tests (Gazelle's
-and the conventions tool's) and `bazel build --config=lint` over every target. Bazel selects
+and the conventions tool's), `bazel build --config=lint` over every target and the
+[file lint](verification-recipes.md#the-file-lint) over every file. Bazel selects
 each host's tests by tag: the configs `ci-linux` and `ci-macos` of
 [shared.bazelrc](../../shared.bazelrc) run every test with `--build_tests_only` but those
 tagged `source_engine` and those of the other host's mobile operating system. A test that
@@ -75,7 +76,7 @@ The root module and the
 ruleset each run one `bazel test`, one after the other, the root module's over its add-on
 modules too: two servers that fetch the same repository at once can fail to move it into the
 shared repository contents cache. On Linux the formatter, the checks that are no Bazel
-targets and the lint check of every target run first; the add-on generator's self-test
+targets, the lint check of every target and the file lint run first; the add-on generator's self-test
 follows in a server of its own: it tests a fresh module with `--config=ci-<host>` and, on
 Linux, its `bcr/smoke` module. Last, the macOS job runs every registry test
 module in place with the rules of the checkout (`python3 -m tools.ci.release_archive
@@ -110,8 +111,8 @@ Python's lint is a Bazel check: `--config=check` adds the aspect `python` of
 ty on each Python target the build reaches through `deps` and fails it with their reports.
 `bazel build --config=lint` builds only the check's stamps, in the root module with its
 add-on modules ([RG027](conventions.md#rg027)) and in the ruleset, whose targets need the
-Android NDK to be analysed. `--config=check --config=sources` builds the lint of the
-Markdown, GDScript and per-file convention filegroups only.
+Android NDK to be analysed. Files without targets of their own, such as Markdown, GDScript
+and shell scripts, are linted by the [file lint](verification-recipes.md#the-file-lint).
 
 ### Source engine workflow
 

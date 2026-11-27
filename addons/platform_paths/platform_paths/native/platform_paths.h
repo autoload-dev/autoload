@@ -9,7 +9,11 @@ protected:
   static void _bind_methods();
 
 public:
-  enum Category { TEMPORARY = 0, APPLICATION_SUPPORT, APPLICATION_CACHE, DOCUMENTS, DOWNLOADS };
+  enum Category { TEMPORARY = 0,
+                  APPLICATION_SUPPORT,
+                  APPLICATION_CACHE,
+                  DOCUMENTS,
+                  DOWNLOADS };
   godot::Ref<PlatformPathResult> resolve(int64_t category) const;
 };
 

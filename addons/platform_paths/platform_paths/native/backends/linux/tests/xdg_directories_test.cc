@@ -3,7 +3,10 @@
 #include <iostream>
 using namespace platform_paths;
 static void require(bool ok, const char *message) {
-  if (!ok) { std::cerr << message << "\n"; std::exit(1); }
+  if (!ok) {
+    std::cerr << message << "\n";
+    std::exit(1);
+  }
 }
 int main() {
   require(xdg_base("/custom", "/home/me", ".cache").path == "/custom", "absolute override");

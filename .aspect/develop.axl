@@ -109,6 +109,18 @@ def steps(ctx: TaskContext, steps):
         return TaskConclusion(exit_code = 1, text = "Failed: " + ", ".join(failed))
     return 0
 
+def file_lint(ctx: TaskContext, arguments) -> int:
+    """Run the file lint (tools/lint/files.py): the linters of files without targets.
+
+    Args:
+        ctx: the running task's context.
+        arguments: its arguments: the scope, such as `--scope=all`, or the files.
+
+    Returns:
+        Its exit code.
+    """
+    return run(ctx, "bazel", ["run", "//tools/lint:files", "--"] + list(arguments))
+
 def run_checks(ctx: TaskContext, every: bool):
     """Run every check and the fast tests.
 
@@ -124,9 +136,7 @@ def run_checks(ctx: TaskContext, every: bool):
     scope = ["--scope=all"] if every else []
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=fail"] + scope)),
-        # The lint check of the filegroups that Gazelle declares per package, which are no
-        # tests (tools/lint/check.bzl): Markdown, GDScript and the per-file convention rules.
-        ("lint", lambda: bazel(ctx, "build", ["--config=check", "--config=sources"])),
+        ("lint", lambda: file_lint(ctx, scope)),
         ("bazel", lambda: bazel_tests(ctx, ["--config=check", "--config=fast"])),
         ("tools", lambda: tool_checks(ctx)),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--if-available"])),
@@ -160,9 +170,10 @@ def _ci_steps(ctx: TaskContext, host: str):
     android = {"ANDROID_HOME": ctx.std.env.var("ANDROID_SDK_ROOT") or ""}
     checks = [
         # The formatter on the whole tree, then the checks that are no Bazel tests.
-        ("format", lambda: run_work(ctx, "format")),
+        ("format", lambda: run(ctx, ctx.std.env.current_exe(), ["format", "--scope=all", "--severity=fail"])),
         ("tools", lambda: tool_checks(ctx)),
         ("lint", lambda: bazel(ctx, "build", ["--config=lint"], env = android, parallel = False)),
+        ("file-lint", lambda: file_lint(ctx, ["--scope=all"])),
     ]
     return steps(ctx, [("android-setup", lambda: run_work(ctx, "android:setup"))] + (checks if linux else []) + [
         ("tests", lambda: bazel(ctx, "test", ["--config=ci-" + host], env = android, parallel = False)),
@@ -209,7 +220,7 @@ def _fix_impl(ctx: TaskContext):
     aspect = ctx.std.env.current_exe()
     return steps(ctx, [
         ("format", lambda: run(ctx, aspect, ["format", "--severity=info"])),
-        # The BUILD declarations Gazelle generates, such as the lint check's filegroups, which
+        # The BUILD declarations Gazelle generates, the ruleset's bzl_library targets, which
         # a deleted or renamed file leaves stale.
         ("gazelle", lambda: run(ctx, "bazel", ["run", "//tools/gazelle:update"])),
         ("generate", lambda: run(ctx, aspect, ["generate"])),

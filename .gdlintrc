@@ -1,4 +1,4 @@
-# gdlint (//tools/lint:gdscript) checks GDScript's declaration order of Godot's style guide,
+# gdlint (//tools/lint:gdscript, run by the file lint) checks GDScript's declaration order of Godot's style guide,
 # class-definitions-order, with its default order; the repository adopts no other rule.
 disable:
   - class-load-variable-name

@@ -81,36 +81,3 @@ py_test(
     target_compatible_with = ["@platforms//os:macos"],
     deps = ["//tools/platforms:native_symbols_lib"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = [
-        "adhoc_signing_test.py",
-        "desktop_bundles_test.py",
-        "dsym_test.py",
-        "liquid_glass_icon_test.py",
-    ],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "desktop_package_tests.bzl",
-        "signing.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

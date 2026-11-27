@@ -57,7 +57,7 @@ def config(ctx: ConfigContext):
         ctx: the configuration's context, which the Aspect CLI passes.
     """
 
-    # The root module's linters, which the other modules reach as @autoload_dev too. The lint
+    # The root module's Python linters, which the other modules reach as @autoload_dev too. The lint
     # check (`--config=check`, tools/lint/check.bzl) runs them in Bazel's builds; `aspect lint
     # --fix` is the path that applies their fixes, an add-on module's in its own directory.
     # AXL cannot load the aspects' Starlark, so this list repeats the check's, and
@@ -66,9 +66,6 @@ def config(ctx: ConfigContext):
     ctx.tasks["lint"].args.aspects = [
         "@autoload_dev//tools/lint:linters.bzl%ruff",
         "@autoload_dev//tools/lint:linters.bzl%ty",
-        "@autoload_dev//tools/lint:linters.bzl%gdlint",
-        "@autoload_dev//tools/lint:linters.bzl%rumdl",
-        "@autoload_dev//tools/lint:linters.bzl%conventions",
     ]
     ctx.tasks["lint"].args.strategy = "hard"
 

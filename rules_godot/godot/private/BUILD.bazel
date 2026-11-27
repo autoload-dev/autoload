@@ -490,68 +490,6 @@ bzl_library(
     ],
 )
 
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["test_cases.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "python_files",
-    testonly = True,
-    srcs = ["project_config.py"],
-    tags = ["python_files"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "actions.bzl",
-        "adapter.bzl",
-        "addon.bzl",
-        "analysis.bzl",
-        "configuration.bzl",
-        "configured_app.bzl",
-        "context.bzl",
-        "editor.bzl",
-        "execution.bzl",
-        "export_options.bzl",
-        "graph.bzl",
-        "import_units.bzl",
-        "macros.bzl",
-        "metadata.bzl",
-        "minimum_os.bzl",
-        "operation_addons.bzl",
-        "pack.bzl",
-        "pack_conversion.bzl",
-        "pack_project.bzl",
-        "patches.bzl",
-        "paths.bzl",
-        "project.bzl",
-        "providers.bzl",
-        "release.bzl",
-        "repository_templates.bzl",
-        "resources.bzl",
-        "run.bzl",
-        "runtime_profile.bzl",
-        "setting_values.bzl",
-        "shell_assets.bzl",
-        "symbols.bzl",
-        "sync.bzl",
-        "values.bzl",
-        "variant.bzl",
-        "versions.bzl",
-        "view.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
-
 bzl_library(
     name = "values",
     srcs = ["values.bzl"],

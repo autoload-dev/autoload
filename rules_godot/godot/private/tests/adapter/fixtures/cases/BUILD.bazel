@@ -42,11 +42,3 @@ godot_resources(
     srcs = ["notes.txt"],
     tags = ["manual"],
 )
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

@@ -1,15 +1,10 @@
 """
-The lint checks, which `--config=check` (shared.bazelrc) adds to a build or test in the root
+The lint check, which `--config=check` (shared.bazelrc) adds to a build or test in the root
 module and the ruleset: the aspect `python`, which runs Ruff and ty (linters.bzl) and fails the
-build with their reports through check.sh, and the aspect `sources`, which does the same with
-gdlint and rumdl for the filegroups that Gazelle declares for GDScript and Markdown.
-
-Sections: Python, Sources without targets.
+build with their reports through check.sh.
 """
 
-load(":linters.bzl", "conventions", "gdlint", "ruff", "rumdl", "ty")
-
-# ==== Python ==================================================================
+load(":linters.bzl", "ruff", "ty")
 
 _LintChecksInfo = provider(
     doc = "The stamps of the lint checks of a target and of what it depends on.",
@@ -20,13 +15,13 @@ def _skips(target, ctx):
     """Whether rules_lint skips the target: one outside the main repository, not opted in."""
     return target.label.workspace_name and "lint-genfiles" not in ctx.rule.attr.tags
 
-def _reports(target, ctx, external = False):
+def _reports(target, ctx):
     """Pairs of exit code file and report of the linters that ran on the target.
 
     None for a target outside the main repository whose sources rules_lint skips, such as a
-    PyPI package, unless `external` lints them.
+    PyPI package.
     """
-    if not external and _skips(target, ctx):
+    if _skips(target, ctx):
         return []
     groups = target[OutputGroupInfo] if OutputGroupInfo in target else None
     if not hasattr(groups, "rules_lint_human"):
@@ -75,34 +70,6 @@ python = aspect(
     implementation = _python_impl,
     attr_aspects = ["deps"],
     requires = [ruff, ty],
-    attrs = {
-        "_check": attr.label(
-            default = Label(":check.sh"),
-            allow_single_file = True,
-            executable = True,
-            cfg = "exec",
-        ),
-    },
-)
-
-# ==== Sources without targets =================================================
-
-def _sources_impl(target, ctx):
-    # Gazelle declares these filegroups in each module, the add-on modules' included.
-    reports = _reports(target, ctx, external = True)
-    if not reports:
-        return []
-    checks = depset([_check(target, ctx, reports)])
-    return [OutputGroupInfo(_validation = checks, lint_checks = checks)]
-
-sources = aspect(
-    doc = """
-    The lint check of sources without targets of their own: gdlint and rumdl on the GDScript
-    and Markdown of each filegroup that Gazelle declares for them (tools/gazelle/lint) and the
-    build names, which fails the build with their reports when one of them finds something.
-    """,
-    implementation = _sources_impl,
-    requires = [gdlint, rumdl, conventions],
     attrs = {
         "_check": attr.label(
             default = Label(":check.sh"),

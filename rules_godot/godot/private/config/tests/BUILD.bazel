@@ -344,29 +344,3 @@ genrule(
     tags = ["manual"],
     visibility = ["//visibility:private"],
 )
-
-filegroup(
-    name = "markdown_files",
-    testonly = True,
-    srcs = ["fixtures/README.md"],
-    tags = ["markdown"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "app_tests.bzl",
-        "bundle_format_tests.bzl",
-        "configuration_tests.bzl",
-        "export_platform_tests.bzl",
-        "inheritance_tests.bzl",
-        "isolation_tests.bzl",
-        "signing_tests.bzl",
-        "transition_tests.bzl",
-    ],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

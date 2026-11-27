@@ -105,28 +105,3 @@ godot_resources(
     ],
     prefix = "main/components",
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = [
-        "courier/courier.gd",
-        "effects/effects.gd",
-        "greenhouse/greenhouse.gd",
-        "light/light.gd",
-        "parallax/parallax.gd",
-        "pipe/pipe.gd",
-        "platform/platform.gd",
-        "sound/sound.gd",
-    ],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

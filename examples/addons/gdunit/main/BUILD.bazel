@@ -6,19 +6,3 @@ godot_resources(
     srcs = ["scoreboard.gd"],
     visibility = ["//examples/addons/gdunit:__subpackages__"],
 )
-
-filegroup(
-    name = "gdscript_files",
-    testonly = True,
-    srcs = ["scoreboard.gd"],
-    tags = ["gdscript"],
-    visibility = ["//visibility:private"],
-)
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)

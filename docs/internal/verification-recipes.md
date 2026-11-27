@@ -83,32 +83,68 @@ documentation of rules, attributes and provider fields needs review. See
 
 ## Generated BUILD declarations
 
-[Gazelle](../../tools/gazelle/BUILD.bazel) generates two kinds of BUILD declarations:
-
-- the ruleset's `bzl_library` targets, one per Starlark module outside its `tests` packages,
-  named after the file. Their directives, including where an external load's library lives,
-  are in the ruleset's root [BUILD file](../../rules_godot/BUILD.bazel);
-- in every package of the root module, the ruleset and the add-on modules, the test-only
-  filegroups `markdown_files`, `gdscript_files`, `python_files`, `starlark_files` and
-  `cc_files` of the files Git lists, those of subdirectories that are no packages included
-  ([lint.go](../../tools/gazelle/lint/lint.go)). The lint check's aspect `sources` runs
-  rumdl (`.rumdl.toml`), gdlint (`.gdlintrc`) and the convention rules that judge each file
-  on its own on them in every build with `--config=check` that names them, such as the
-  `lint` work's or one with `--config=sources`, which `aspect check` runs.
-
-After adding, moving or removing a file of one of those kinds, regenerate them from the
-repository root:
+[Gazelle](../../tools/gazelle/BUILD.bazel) generates the ruleset's `bzl_library` targets,
+one per Starlark module outside its `tests` packages, named after the file. Their
+directives, including where an external load's library lives, are in the ruleset's root
+[BUILD file](../../rules_godot/BUILD.bazel). After adding, moving or removing a Starlark
+module of the ruleset, regenerate them from the repository root:
 
 ```sh
 bazel run //tools/gazelle:update
 ```
 
 `bazel run //tools/gazelle:check` prints the difference and fails where a BUILD file is
-stale; `//tools/gazelle:rules_godot`, `root` and `addons.<directory>`, each with `_check`,
-do the same for one module; each module's check runs at once. Gazelle reads every
-directory, so the check is no Bazel test: `aspect check`, which the pre-push hook runs, and
-the Linux job run it beside the conventions tool. Markdown and scripts outside every package, such as
-in `addons/` itself or in the registry test modules, are outside the lint check.
+stale. Gazelle reads every directory, so the check is no Bazel test: `aspect check`, which
+the pre-push hook runs, and the Linux job run it beside the conventions tool.
+
+## The file lint
+
+The file lint ([tools/lint/files.py](../../tools/lint/files.py)) runs the linters of files
+that have no Bazel targets of their own: gdlint on GDScript (`.gdlintrc`), rumdl on Markdown
+(`.rumdl.toml`), shellcheck on shell scripts and the
+[convention rules that judge each file on its own](conventions.md#run-and-maintain-the-checks).
+It selects their files by name from `git ls-files`, in the whole repository, the add-on and
+registry test modules included, and runs each tool once over its files, all at the same
+time:
+
+```sh
+bazel run //tools/lint:files                      # the files changed since the merge base with origin/main
+bazel run //tools/lint:files -- --scope=all       # every file Git lists, as the Linux job runs it
+bazel run //tools/lint:files -- path/to/file.md   # the files given, as the pre-commit hook runs it
+```
+
+`aspect check`, and with it the pre-push hook, lints the changed files. A finding fails the
+run with the tool's own diagnostics, one per line as `<path>:<line>: <message>`; a tool that
+cannot check exits with another code than 1, which fails the run too. With `--fix` it runs
+the formatters that rules_lint's `format_multirun` has no place for instead: `rumdl fmt` on
+Markdown and clang-format on Objective-C. `aspect format` runs them through
+[tools/format](../../tools/format/BUILD.bazel), beside Ruff, Buildifier, clang-format on C
+and C++ ([.clang-format](../../.clang-format), with Godot's style for the Dart extension;
+[.gitattributes](../../.gitattributes) leaves Godot's engine modules out, whose lock files pin
+their files) and shfmt on shell scripts
+([.editorconfig](../../.editorconfig)).
+
+gdformat, GDScript's formatter, is left out: it rewrites the repository's scripts in a style
+of its own, such as `class Name:` with `extends` on the next line and method chains broken
+into `. method(` lines, so a third of them would change for the worse. google-java-format is
+left out too: its `--aosp` style fits most of the 17 Java files, but it would need a Maven
+artifact, a `java_binary` with the JVM's `--add-exports` flags and a JDK in every formatter
+run, and the engine's own Android files, which keep Godot's tabs, excluded.
+
+To add a linter, add its executable under a variable to `FILE_TOOLS` in
+[files.bzl](../../tools/lint/files.bzl), and a `Tool` with that variable to `TOOLS` in
+`files.py` with the files it takes and its arguments. Any program that takes paths, prints
+findings as above and exits 1 on them fits; a new convention rule that judges each file on its
+own needs no change here, only its registration in
+[per_file.py](../../tools/conventions/per_file.py).
+
+The tools are millisecond scans of a few hundred files: the whole tree takes about six
+seconds, so Bazel's per-package caching would buy little. It did cost a Gazelle language,
+a generated filegroup per package and kind, and aspects built on rules_lint's private
+helpers. [alint](https://alint.org) was tried as the host instead (0.23): its `command`
+rule starts one process per file, one file after the other, and took 497 seconds for the
+same tools over the whole tree, folding each file's findings into a single line. Its native
+rules, which start no process, suit checks of the repository's shape.
 
 ## Profiles
 

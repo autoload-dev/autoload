@@ -1,11 +1,16 @@
 load("@aspect_rules_lint//format:defs.bzl", "format_multirun")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
+load("//tools/lint:files.bzl", "FILE_TOOLS", "FILE_TOOL_PATHS")
 
-# Every module's Python and Starlark, through `aspect format`. Buildifier lints Starlark as it
-# formats, with the warnings .buildifier.json selects; a warning fails the check and the fix
-# alike. No lint aspect sees BUILD and MODULE.bazel files.
+# Every module's Python, Starlark, C and C++ and shell scripts, through `aspect format`.
+# Buildifier lints Starlark as it formats, with the warnings .buildifier.json selects; a warning
+# fails the check and the fix alike. clang-format reads //:.clang-format and the files beside
+# the sources it formats, shfmt //:.editorconfig.
 format_multirun(
-    name = "format",
+    name = "languages",
+    cc = "//tools/lint:clang_format",
     python = "@aspect_rules_lint//format:ruff",
+    shell = "@multitool//tools/shfmt",
     starlark = "@buildifier_prebuilt//:buildifier",
     starlark_check_args = ["-mode=check"],
     starlark_fix_args = [
@@ -15,10 +20,26 @@ format_multirun(
     tags = ["manual"],
 )
 
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
+# `aspect format` runs this target with the files to format, or none for every file: rules_lint's
+# formatters, and the file lint's for the languages format_multirun has none for, such as
+# Markdown and Objective-C (tools/lint/files.py).
+multirun(
+    name = "format",
+    commands = [
+        ":languages",
+        ":fix",
+    ],
+    jobs = 0,
+    tags = ["manual"],
+)
+
+# The file lint's formatters. This package, which only the root module loads, holds the
+# command: the root module uses rules_multirun as a development dependency, and the lint check
+# of the other modules loads //tools/lint.
+command(
+    name = "fix",
+    arguments = ["--fix"],
+    command = "//tools/lint:files",
+    data = FILE_TOOLS.values(),
+    environment = FILE_TOOL_PATHS,
 )

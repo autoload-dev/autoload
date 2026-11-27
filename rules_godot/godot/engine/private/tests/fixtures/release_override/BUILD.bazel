@@ -16,11 +16,3 @@ load("//godot/engine:defs.bzl", "godot_runtime_component")
     ("macos", "arm64", "macos_release.bin"),
     ("macos", "x86_64", "macos_release.bin"),
 ]]
-
-filegroup(
-    name = "starlark_files",
-    testonly = True,
-    srcs = ["BUILD.bazel"],
-    tags = ["starlark"],
-    visibility = ["//visibility:private"],
-)
