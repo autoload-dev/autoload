@@ -231,7 +231,7 @@ and [target placement](#target-ownership-and-project-context).
 Behavior suites, assertion helpers and fixtures stay in test packages and remain test-only;
 production code under test and shared runtime resources remain production-eligible. Do not
 mark an entire mixed package test-only; a `godot_project` is never test-only. Godot test
-operations own their generated helpers and make them test-only by default. A production
+operations own their generated helpers and make them test-only; they reject `testonly = False`. A production
 target never consumes a target or file of a test package. A useful direct test executable
 needs no wrapper suite.
 

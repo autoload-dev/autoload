@@ -22,5 +22,4 @@ gdunit_test(
     size = "small",
     project = "//e2e/addons/sqlite",
     suites = [":suites"],
-    tags = ["godot_process"],
 )

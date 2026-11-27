@@ -83,7 +83,6 @@ py_library(
         "rules/rg002.py",
         "rules/rg003.py",
         "rules/rg006.py",
-        "rules/rg007.py",
         "rules/rg008.py",
         "rules/rg009.py",
         "rules/rg012.py",
@@ -226,17 +225,6 @@ py_test(
     size = "small",
     srcs = ["rules/rg006_test.py"],
     deps = [
-        ":rules_lib",
-        ":test_support",
-    ],
-)
-
-py_test(
-    name = "rg007_test",
-    size = "small",
-    srcs = ["rules/rg007_test.py"],
-    deps = [
-        ":context_lib",
         ":rules_lib",
         ":test_support",
     ],

@@ -36,7 +36,6 @@ godot_test(
         "blue",
     ],
     pack = _FIXTURE + ":blue_pack",
-    tags = ["godot_process"],
 )
 
 godot_test(
@@ -47,7 +46,6 @@ godot_test(
         "red",
     ],
     pack = _FIXTURE + ":red_pack",
-    tags = ["godot_process"],
 )
 
 # The shared script also runs in a small test project composed from deps, like a py_test.
@@ -64,6 +62,5 @@ godot_test(
     name = "shared_script_runs_in_composed_project_test",
     size = "medium",
     main = "tests/math_test.gd",
-    tags = ["godot_process"],
     deps = [":shared_script_runs_in_composed_project_test_script"],
 )

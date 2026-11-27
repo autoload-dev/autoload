@@ -8,7 +8,7 @@ from tools.conventions.operations import godot_test_operations
 from tools.setup.modules import is_addon_module
 
 # The calls that make a Godot project or run Godot, besides the macros that declare a
-# Godot test (RG007).
+# Godot test (tools/conventions/operations.py).
 GODOT_RUNS = frozenset(
     {"godot_project", "godot_test", "godot_metadata_sync", "godot_runtime_profile"}
 )

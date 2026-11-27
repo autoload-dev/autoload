@@ -192,7 +192,8 @@ To check sizes against run times, run the tests in question with
 analysis test.
 
 Size says nothing about the cost of a test's build, so it does not select the fast tests.
-A test whose build or run starts a Godot process carries the `godot_process` tag
+A test whose build or run starts a Godot process carries the `godot_process` tag, which
+`godot_test` and the test operations built on it add themselves
 ([RG026](conventions.md#rg026)); the fast tests, `bazel test --config=fast //...` in the
 root module and the ruleset, which `aspect check` and the pre-push hook run, are every other
 test. The `smoke` tag marks the few

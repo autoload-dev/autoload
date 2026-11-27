@@ -6,7 +6,6 @@ from tools.conventions.rules.rg001 import PackageNames
 from tools.conventions.rules.rg002 import TargetNames
 from tools.conventions.rules.rg003 import ExplicitNames
 from tools.conventions.rules.rg006 import CommandLabels
-from tools.conventions.rules.rg007 import TestOnlyOperations
 from tools.conventions.rules.rg008 import ApplicationContent
 from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
@@ -29,7 +28,6 @@ RULES: tuple[Rule, ...] = (
     TargetNames(),
     ExplicitNames(),
     CommandLabels(),
-    TestOnlyOperations(),
     ApplicationContent(),
     ProjectPlaces(),
     ProductionIsolation(),

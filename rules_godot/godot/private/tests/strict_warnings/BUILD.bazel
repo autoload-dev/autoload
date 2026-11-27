@@ -30,7 +30,6 @@ godot_test(
     name = "source_run_under_strict_warnings_test",
     size = "medium",
     project = _FIXTURE,
-    tags = ["godot_process"],
     deps = [_FIXTURE + ":main"],
 )
 
@@ -40,7 +39,6 @@ godot_test(
     size = "medium",
     data = [":export_facts"],
     pack = ":pack",
-    tags = ["godot_process"],
 )
 
 # Run test: a test adapter selects its cases with rules_godot's case selection.

@@ -18,7 +18,6 @@ godot_test(
     ],
     main = "main/loaded.gd",
     pack = _FIXTURE + ":enabled_pack",
-    tags = ["godot_process"],
 )
 
 # Build-output test: which extension descriptors and extension lists the packs carry.

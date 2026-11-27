@@ -1,6 +1,6 @@
 """
 The Godot test operations: godot_test and the macros that declare a Godot test under their own
-name, which RG007, RG008 and RG021 recognize by Bazel's evidence rather than by a list.
+name, which RG008 and RG021 recognize by Bazel's evidence rather than by a list.
 """
 
 from tools.conventions.context import Context, Target

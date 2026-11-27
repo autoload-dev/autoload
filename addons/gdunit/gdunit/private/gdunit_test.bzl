@@ -4,8 +4,21 @@ load("@autoload_rules_godot//godot/testing:adapter.bzl", "adapter_test")
 
 visibility("//...")
 
-def gdunit_test(name, suites, **kwargs):
-    """
+def _gdunit_test_impl(name, visibility, suites, args, **kwargs):
+    adapter_test(
+        name = name,
+        visibility = visibility,
+        deps = suites,
+        adapter = Label("//gdunit/private:run.gd"),
+        main = "addons/autoload_gdunit/run.gd",
+        cases = "addons/autoload_gdunit/suites.txt",
+        # Bazel appends --test_arg values, which then follow the separator too.
+        args = args if "--" in args else args + ["--"],
+        **kwargs
+    )
+
+gdunit_test = macro(
+    doc = """
     Run GdUnit4 test suites as a Bazel test.
 
     A rules_godot `godot_test` whose main script is this module's GdUnit test adapter. A
@@ -19,7 +32,8 @@ def gdunit_test(name, suites, **kwargs):
     runs or when the suites targets hold no suite; a shard or `--test_filter` that leaves no
     suite passes. Orphan nodes fail no test, as GdUnit's command line judges them; the log
     names the tests that left them. GdUnit's assertions provoke engine errors deliberately,
-    so only the exit code decides.
+    so only the exit code decides. Like every godot_test, the test is test-only and carries
+    the tag `godot_process` unless it is tagged `smoke`.
 
     Arguments after Godot's `--` in args, and those from `--test_arg`, are GdUnit options,
     as pytest receives a py_pytest_test's arguments.
@@ -45,23 +59,29 @@ def gdunit_test(name, suites, **kwargs):
     ```
 
     Run one suite with `bazel test :unit_tests --test_filter=inventory_test`.
-
-    Args:
-        name: Name of the test target.
-        suites: godot_resources targets whose own files are the suites. Their deps bring
-            what the suites use, including the GdUnit add-on, helpers and fixtures; those
-            files are not suites.
-        **kwargs: godot_test arguments, such as args, project, size and shard_count.
-    """
-    if not suites:
-        fail("%s: gdunit_test requires at least one suites target" % name)
-    args = kwargs.pop("args", [])
-    adapter_test(
-        name = name,
-        deps = suites,
-        adapter = Label("//gdunit/private:run.gd"),
-        main = "addons/autoload_gdunit/run.gd",
-        cases = "addons/autoload_gdunit/suites.txt",
-        # Bazel appends --test_arg values, which then follow the separator too.
-        kwargs = dict(kwargs, args = args if "--" in args else args + ["--"]),
-    )
+    """,
+    implementation = _gdunit_test_impl,
+    inherit_attrs = adapter_test,
+    attrs = {
+        "deps": None,
+        "adapter": None,
+        "main": None,
+        "cases": None,
+        "suites": attr.label_list(
+            doc = """
+            godot_resources targets whose own files are the suites. Their deps bring what
+            the suites use, including the GdUnit add-on, helpers and fixtures; those files
+            are not suites.
+            """,
+            mandatory = True,
+            allow_empty = False,
+        ),
+        "args": attr.string_list(
+            doc = """
+            Godot's command line; arguments after Godot's `--` separator are GdUnit
+            options. The test adds the separator when args lacks it.
+            """,
+            configurable = False,
+        ),
+    },
+)
