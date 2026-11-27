@@ -1,5 +1,6 @@
 # The Bazel Central Registry's checks of a release of autoload_gdunit: bcr/smoke, a consumer
-# of the module's add-ons that registers the prebuilt engine (RG020).
+# of the module's add-ons that registers the prebuilt engine
+# (registry-test-module-in-bcr).
 bcr_test_module:
   module_path: "bcr/smoke"
   matrix:

@@ -3,9 +3,9 @@ Test a module's release archive the way the Bazel Central Registry does.
 
 `python3 -m tools.ci.release_archive [<module directory>...]` builds each module's archive
 from HEAD with the `git archive` arguments of .github/workflows/release_prep.sh, extracts it
-and runs the registry test module its presubmit.yml names (RG020) with `bazel test //...`
-inside the extracted archive. Without directories, it tests the ruleset and every add-on
-module. It is also how to run a registry test module in this repository.
+and runs the registry test module its presubmit.yml names (registry-test-module-in-bcr) with
+`bazel test //...` inside the extracted archive. Without directories, it tests the ruleset and
+every add-on module. It is also how to run a registry test module in this repository.
 
 `--in-place`, as CI's macOS job passes it, runs each registry test module where it is in the
 checkout instead, with the rules beside it, and leaves its Bazel server up for the next run:

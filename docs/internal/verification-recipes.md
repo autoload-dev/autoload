@@ -113,7 +113,9 @@ bazel run //tools/lint:files -- --scope=all       # every file Git lists, as the
 bazel run //tools/lint:files -- path/to/file.md   # the files given, as the pre-commit hook runs it
 ```
 
-`aspect check`, and with it the pre-push hook, lints the changed files. A finding fails the
+`aspect check`, and with it the pre-push hook, lints the changed files, but rumdl checks every
+Markdown file in each run: its rules MD057 and MD051 resolve the local links and their
+fragments, which a change of another file can break. A finding fails the
 run with the tool's own diagnostics, one per line as `<path>:<line>: <message>`; a tool that
 cannot check exits with another code than 1, which fails the run too. With `--fix` it runs
 the formatters that rules_lint's `format_multirun` has no place for instead: `rumdl fmt` on

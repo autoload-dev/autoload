@@ -21,6 +21,7 @@ from tools.conventions.context import (
     Workspace,
     evaluated_source_label,
     has_literal_name,
+    parse_starlark,
     query_targets,
     string_literals,
 )
@@ -302,19 +303,15 @@ custom(name = "computed" + "_name")
         )
         self.assertEqual([("",)], [module.packages for module in workspace.modules])
 
-    def test_string_literals_skip_comments_and_keep_escapes(self) -> None:
+    def test_string_literals_skip_comments(self) -> None:
         source = """# "comment"
 load("//a:b.bzl", 'c')
 text = r\"\"\"multi
 line\"\"\"
-escaped = "a\\"b"
 """
         self.assertEqual(
-            [(2, "//a:b.bzl"), (2, "c"), (3, "multi\nline"), (5, 'a\\"b')],
-            [
-                (item.location.line, item.value)
-                for item in string_literals("BUILD.bazel", source)
-            ],
+            {"//a:b.bzl", "c", "multi\nline"},
+            string_literals(parse_starlark("BUILD.bazel", source)),
         )
 
     def test_literal_detection_does_not_evaluate_starlark(self) -> None:

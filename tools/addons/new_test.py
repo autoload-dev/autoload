@@ -1,7 +1,18 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
+from pathlib import Path
+
 from tools.addons.declarations import SEGMENT
-from tools.addons.new import TOKEN, Names, generate
+from tools.addons.new import (
+    SHARED_MODULE_FILES,
+    TOKEN,
+    Names,
+    generate,
+    shared_files,
+    stale_shared_files,
+    template_files,
+    write_files,
+)
 from tools.addons.test_support import RepositoryTestCase
 from tools.addons.uids import is_uid
 from tools.setup.modules import SELFTEST, addon_modules
@@ -92,6 +103,40 @@ class GenerateTest(RepositoryTestCase):
         for module, addon in (("Widget", None), ("widget", "core-api"), ("_w", None)):
             with self.subTest(module=module, addon=addon), self.assertRaises(ValueError):
                 generate(module, addon, root=self.root)
+
+
+class SharedFilesTest(RepositoryTestCase):
+    def test_the_shared_files_are_what_the_generator_writes(self) -> None:
+        generate("widget", root=self.root)
+        shared = shared_files("widget", self.root)
+        self.assertIn(Path("addons/widget/.gitattributes"), shared)
+        self.assertIn(Path(".bcr/addons/widget/metadata.template.json"), shared)
+        self.assertNotIn(Path("addons/widget/MODULE.bazel"), shared)
+        for path, text in shared.items():
+            self.assertEqual(text, (self.root / path).read_text(), path)
+
+    def test_every_shared_file_is_one_of_the_template(self) -> None:
+        template = {relative for _, relative in template_files("module")}
+        self.assertLessEqual(SHARED_MODULE_FILES, template)
+
+    def test_the_stale_shared_files_of_every_module_are_written_again(self) -> None:
+        generate("widget", root=self.root)
+        generate("gadget", root=self.root, release=False)
+        bazelrc = self.root / "addons/widget/.bazelrc"
+        expected = bazelrc.read_text()
+        bazelrc.write_text("common --config=x\n")
+        (self.root / "addons/gadget/.bazelversion").write_text("0.0.0\n")
+        written = write_files(self.root, stale_shared_files(self.root))
+        self.assertEqual(expected, bazelrc.read_text())
+        # Only the files that differed are written.
+        self.assertEqual({}, stale_shared_files(self.root))
+        self.assertEqual(
+            (self.root / ".bazelversion").read_text(),
+            (self.root / "addons/gadget/.bazelversion").read_text(),
+        )
+        self.assertIn(bazelrc, written)
+        # A module that is not released keeps having no registry templates.
+        self.assertFalse((self.root / ".bcr/addons/gadget").exists())
 
 
 class DeclarationTest(RepositoryTestCase):
