@@ -20,7 +20,7 @@ bazel_dep(name = "rules_multitool", version = "1.0.0")
 # bazel_skylib's plugin and the Godot declarations of the repository's own language. It runs
 # from this module for every module, so the others' graphs keep their own Gazelle; this one
 # is the version this module's graph already holds.
-bazel_dep(name = "gazelle", version = "0.51.3", dev_dependency = True)
+bazel_dep(name = "gazelle", version = "0.54.0", dev_dependency = True)
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.9.2", dev_dependency = True)
 
 # Runs Gazelle's languages and modules one after another (tools/gazelle).

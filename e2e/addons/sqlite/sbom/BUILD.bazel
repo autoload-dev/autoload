@@ -34,7 +34,8 @@ spdx(
 )
 
 # Build-output test: the SBOM of a pack names the add-on module and the SQLite library it
-# links, each with its license.
+# links, each with its license. The SBOM reads the pack's graph from analysis and builds none
+# of its outputs, so no Godot process starts.
 py_test(
     name = "sqlite_pack_sbom_names_licensed_packages_test",
     size = "small",
@@ -42,4 +43,5 @@ py_test(
     args = ["$(rootpath :spdx)"],
     data = [":spdx"],
     main = "spdx_test.py",
+    tags = ["analysis_only"],
 )
