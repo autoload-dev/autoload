@@ -1,4 +1,4 @@
-"""RG004: public documentation uses runnable examples, not regression fixtures."""
+"""fixture-references: public documentation uses runnable examples, not regression fixtures."""
 
 import re
 from collections.abc import Iterable
@@ -10,7 +10,7 @@ from tools.conventions.framework import Finding, RuleInfo
 
 class FixtureReferences:
     info = RuleInfo(
-        "RG004",
+        "fixture-references",
         "Public documentation does not reference test fixtures",
     )
 

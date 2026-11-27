@@ -1,4 +1,4 @@
-"""RG025: in Python, a module's function or class stands before its first caller."""
+"""reading-order: in Python, a module's function or class stands before its first caller."""
 
 import ast
 from collections.abc import Iterable, Iterator, Mapping
@@ -68,7 +68,7 @@ def late_definitions(module: ast.Module) -> Iterator[tuple[Definition, Definitio
 
 
 class ReadingOrder:
-    info = RuleInfo("RG025", "Python definitions stand before their first caller")
+    info = RuleInfo("reading-order", "Python definitions stand before their first caller")
 
     def evaluate(self, context: Context) -> Iterable[Finding]:
         workspace = context.workspace

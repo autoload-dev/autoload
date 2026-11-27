@@ -51,10 +51,10 @@ py_library(
     name = "per_file_rules_lib",
     srcs = [
         "documents.py",
-        "rules/rg004.py",
-        "rules/rg013.py",
-        "rules/rg024.py",
-        "rules/rg025.py",
+        "rules/fixture_references.py",
+        "rules/public_documentation_links.py",
+        "rules/reading_order.py",
+        "rules/region_headers.py",
     ],
     deps = [
         ":context_lib",
@@ -210,9 +210,9 @@ py_test(
 )
 
 py_test(
-    name = "rg004_test",
+    name = "fixture_references_test",
     size = "small",
-    srcs = ["rules/rg004_test.py"],
+    srcs = ["rules/fixture_references_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -273,9 +273,9 @@ py_test(
 )
 
 py_test(
-    name = "rg013_test",
+    name = "public_documentation_links_test",
     size = "small",
-    srcs = ["rules/rg013_test.py"],
+    srcs = ["rules/public_documentation_links_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -384,9 +384,9 @@ py_test(
 )
 
 py_test(
-    name = "rg024_test",
+    name = "region_headers_test",
     size = "small",
-    srcs = ["rules/rg024_test.py"],
+    srcs = ["rules/region_headers_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -394,9 +394,9 @@ py_test(
 )
 
 py_test(
-    name = "rg025_test",
+    name = "reading_order_test",
     size = "small",
-    srcs = ["rules/rg025_test.py"],
+    srcs = ["rules/reading_order_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -446,14 +446,20 @@ filegroup(
         "per_file.py",
         "python_modules.py",
         "registry.py",
+        "rules/fixture_references.py",
+        "rules/fixture_references_test.py",
+        "rules/public_documentation_links.py",
+        "rules/public_documentation_links_test.py",
+        "rules/reading_order.py",
+        "rules/reading_order_test.py",
+        "rules/region_headers.py",
+        "rules/region_headers_test.py",
         "rules/rg001.py",
         "rules/rg001_test.py",
         "rules/rg002.py",
         "rules/rg002_test.py",
         "rules/rg003.py",
         "rules/rg003_test.py",
-        "rules/rg004.py",
-        "rules/rg004_test.py",
         "rules/rg006.py",
         "rules/rg006_test.py",
         "rules/rg007.py",
@@ -464,8 +470,6 @@ filegroup(
         "rules/rg009_test.py",
         "rules/rg012.py",
         "rules/rg012_test.py",
-        "rules/rg013.py",
-        "rules/rg013_test.py",
         "rules/rg014.py",
         "rules/rg014_test.py",
         "rules/rg015.py",
@@ -486,10 +490,6 @@ filegroup(
         "rules/rg022_test.py",
         "rules/rg023.py",
         "rules/rg023_test.py",
-        "rules/rg024.py",
-        "rules/rg024_test.py",
-        "rules/rg025.py",
-        "rules/rg025_test.py",
         "rules/rg026.py",
         "rules/rg026_test.py",
         "rules/rg027.py",

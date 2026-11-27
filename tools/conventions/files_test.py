@@ -45,9 +45,11 @@ class FilesTest(unittest.TestCase):
     def test_reports_a_finding_at_the_file_s_repository_path(self) -> None:
         script = self.write("tools/a.py", "# ---- Section ----\nx = 1\n")
         module = self.write("MODULE.bazel", 'module(name = "autoload_rules_godot")\n')
-        code, output = self.check("--module-file", module, "--rule", "RG024", script)
+        code, output = self.check(
+            "--module-file", module, "--rule", "region-headers", script
+        )
         self.assertEqual(1, code)
-        self.assertIn("rules_godot/tools/a.py:1: RG024", output)
+        self.assertIn("rules_godot/tools/a.py:1: region-headers", output)
 
     def test_judges_documents_by_their_place(self) -> None:
         guide = self.write("docs/public/guide.md", "See [internals](../internal/a.md).\n")
@@ -56,22 +58,42 @@ class FilesTest(unittest.TestCase):
             "MODULE.bazel", 'module(\n    name = "autoload_rules_godot",\n)\n'
         )
         code, output = self.check(
-            "--module-file", module, "--rule", "RG013", guide, internal
+            "--module-file",
+            module,
+            "--rule",
+            "public-documentation-links",
+            guide,
+            internal,
         )
         self.assertEqual(1, code)
-        self.assertIn("rules_godot/docs/public/guide.md:1: RG013", output)
+        self.assertIn(
+            "rules_godot/docs/public/guide.md:1: public-documentation-links", output
+        )
         self.assertNotIn("docs/internal/a.md:1", output)
 
     def test_passes_clean_files_and_refuses_rules_that_need_more(self) -> None:
         clean = self.write("a.py", "x = 1\n")
-        self.assertEqual((0, ""), self.check("--rule", "RG024", "--rule", "RG025", clean))
+        self.assertEqual(
+            (0, ""),
+            self.check("--rule", "region-headers", "--rule", "reading-order", clean),
+        )
         self.assertEqual(2, self.check("--rule", "RG001", clean)[0])
 
     def test_the_tool_leaves_out_per_file_rules_unless_named(self) -> None:
         per_file = {rule.info.id for rule in RULES}
-        self.assertEqual({"RG004", "RG013", "RG024", "RG025"}, per_file)
+        self.assertEqual(
+            {
+                "fixture-references",
+                "public-documentation-links",
+                "region-headers",
+                "reading-order",
+            },
+            per_file,
+        )
         self.assertFalse(per_file & {rule.info.id for rule in select()})
-        self.assertEqual(["RG024"], [rule.info.id for rule in select(["RG024"])])
+        self.assertEqual(
+            ["region-headers"], [rule.info.id for rule in select(["region-headers"])]
+        )
 
 
 if __name__ == "__main__":

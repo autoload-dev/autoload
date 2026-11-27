@@ -3,7 +3,7 @@
 import unittest
 
 from tools.conventions.context import EvidenceError
-from tools.conventions.rules.rg025 import ReadingOrder
+from tools.conventions.rules.reading_order import ReadingOrder
 from tools.conventions.test_support import RepositoryTest
 
 

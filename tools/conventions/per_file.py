@@ -5,10 +5,10 @@ them only when named. They read files alone, so their library needs no Bazel.
 """
 
 from tools.conventions.framework import Rule
-from tools.conventions.rules.rg004 import FixtureReferences
-from tools.conventions.rules.rg013 import PublicDocumentationLinks
-from tools.conventions.rules.rg024 import RegionHeaders
-from tools.conventions.rules.rg025 import ReadingOrder
+from tools.conventions.rules.fixture_references import FixtureReferences
+from tools.conventions.rules.public_documentation_links import PublicDocumentationLinks
+from tools.conventions.rules.reading_order import ReadingOrder
+from tools.conventions.rules.region_headers import RegionHeaders
 
 RULES: tuple[Rule, ...] = (
     FixtureReferences(),
