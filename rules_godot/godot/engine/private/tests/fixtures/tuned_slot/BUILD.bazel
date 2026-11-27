@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # A slot as an engine hub with binaries and sources registers it: the prebuilt runtime
 # serves the builds whose runtime needs no tuning, the tuned component, registered after it
 # in the order of the names, the others.

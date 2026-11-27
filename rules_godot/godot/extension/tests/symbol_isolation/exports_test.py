@@ -54,7 +54,8 @@ class ExportsTest(unittest.TestCase):
         root = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"] / FIXTURE
         for probe in PROBES:
             with self.subTest(probe=probe):
-                library = root / f"lib{probe.lower()}_native.so"
+                name = probe.lower()
+                library = root / f"{name}.shared" / f"lib{name}_native.so"
                 self.assertEqual({f"{probe}_probe_init"}, exports(library))
 
 

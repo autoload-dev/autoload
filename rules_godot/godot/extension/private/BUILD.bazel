@@ -9,6 +9,7 @@ bzl_library(
     name = "cc_extension",
     srcs = ["cc_extension.bzl"],
     deps = [
+        "//godot/private:macros",
         "@bazel_skylib//rules:write_file",
         "@rules_cc//cc:cc_binary",
         "@rules_cc//cc:cc_library",

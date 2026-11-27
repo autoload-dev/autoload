@@ -1,7 +1,10 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 # A project whose main scene prints the version of the runtime that runs it.
-package(default_visibility = ["//godot/engine/private/tests/prebuilt_boot:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/engine/private/tests/prebuilt_boot:__pkg__"],
+)
 
 godot_resources(
     name = "main",

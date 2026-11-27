@@ -1,14 +1,7 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app", "godot_configured_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-
-# The ruleset's configured applications and artifact test rule, which it does not support
-# as API.
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configured_app")
-
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_test")
+load("//tools/artifact_tests:ios_app_test.bzl", "ios_app_test")
 
 # The iOS smoke path: an iOS application that embeds a godot-cpp extension as a dynamic
 # framework, and one that links it statically and exports its entry symbol, inspected with
@@ -112,6 +105,7 @@ godot_app(
     godot_configured_app(
         name = "simulator_" + app,
         app = ":" + app,
+        debug_symbols = ":" + app + ".debug_symbols",
         platform = "@autoload_rules_godot//godot/platforms:ios_sim_x86_64",
         tags = ["manual"],
     )

@@ -6,7 +6,7 @@ load("//godot/private:context.bzl", "context_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:graph.bzl", "project_graph")
 load("//godot/private:import_units.bzl", "importers_of")
-load("//godot/private:macros.bzl", "common_kwargs")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs")
 load("//godot/private:metadata.bzl", "METADATA_ATTRS", "metadata_kinds")
 load(
     "//godot/private:operation_addons.bzl",
@@ -698,6 +698,7 @@ def declare_view(name, project, deps, kwargs, **attrs):
         project = project,
         named_addons = named_addons_label(native.package_relative_label(project)),
         deps = deps,
-        **(common_kwargs(kwargs) | dict(visibility = ["//visibility:private"]) | attrs)
+        # The caller's package may inspect the staged project, as its analysis tests do.
+        **(common_kwargs(kwargs) | dict(visibility = CALLER_PACKAGE) | attrs)
     )
     return ":" + name + ".view"

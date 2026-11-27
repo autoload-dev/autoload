@@ -11,6 +11,8 @@ load("//godot/private/tests:action_inputs.bzl", "expect_not_read", "godot_action
 load(":action_graph.bzl", "bundle_closure", "reached", "reached_actions", "reads")
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK")
 
+visibility("private")
+
 _FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"
 _PATH = "fixtures/mobile_app_with_platform_libraries/"
 _ANDROID_OVERRIDES = _PATH + "android/overrides/"

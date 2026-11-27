@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 # A project with two imported SVG assets and a script, whose import and export the
 # reproducibility test repeats.
-package(default_visibility = ["//godot:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot:__subpackages__"],
+)
 
 godot_resources(
     name = "icon",

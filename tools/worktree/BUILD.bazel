@@ -1,0 +1,12 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+# Releases the worktree pool's slots whose work is done; Claude Code's WorktreeCreate hook
+# runs it with any Python 3 (tools/claude/worktree.sh), so it stays a plain script.
+py_test(
+    name = "release_done_test",
+    size = "small",
+    srcs = [
+        "release_done.py",
+        "release_done_test.py",
+    ],
+)

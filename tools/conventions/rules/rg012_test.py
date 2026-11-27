@@ -46,16 +46,26 @@ class ProductionIsolationTest(RepositoryTest):
             for item in ProductionIsolation().evaluate(context)
         ]
 
-    def test_application_content_must_not_consume_its_test_suites(self) -> None:
+    def test_application_content_must_not_consume_unmarked_test_suites(self) -> None:
+        main = rule(
+            f"{LABEL}/main:main",
+            f"{APP}/main/BUILD.bazel",
+            deps=[f"{LABEL}/tests:suites"],
+        )
+        suites = rule(f"{LABEL}/tests:suites", f"{APP}/tests/BUILD.bazel")
+        self.assertEqual(
+            [("violation", f"{APP}/main/BUILD.bazel")], self.evaluate([main, suites])
+        )
+
+    def test_test_only_inputs_are_left_to_bazel(self) -> None:
+        # Bazel's test-only dependency check rejects this edge during analysis.
         main = rule(
             f"{LABEL}/main:main",
             f"{APP}/main/BUILD.bazel",
             deps=[f"{LABEL}/tests:suites"],
         )
         suites = rule(f"{LABEL}/tests:suites", f"{APP}/tests/BUILD.bazel", testonly=True)
-        self.assertEqual(
-            [("violation", f"{APP}/main/BUILD.bazel")], self.evaluate([main, suites])
-        )
+        self.assertEqual([], self.evaluate([main, suites]))
 
     def test_test_only_consumers_and_test_scope_declarations_may_use_tests(self) -> None:
         check = rule(

@@ -1,8 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
-package(default_visibility = ["//visibility:public"])
+# The build tools serve the ruleset's own rules only. A rule's private attribute is checked
+# against the package that defines the rule, so no consumer needs to see a tool.
+package(default_visibility = ["//tools:ruleset"])
 
-# The ruleset's own packages. Tool libraries are visible to them only.
+# The ruleset's own packages, the default visibility of every tool package.
 package_group(
     name = "ruleset",
     packages = [
@@ -43,14 +46,19 @@ py_binary(
 # What the build tools read from Godot's text resources. The graph builds on it in a module
 # of its own, so a change to the graph reruns none of the actions of the tools that stage,
 # validate, index or pack files.
+# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports it.
 py_library(
     name = "resource_text_lib",
     srcs = ["resource_text.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
+# The repository's Gazelle extension for Godot (tools/gazelle in the root module) imports the
+# resource scanner.
 py_library(
     name = "resource_graph_lib",
     srcs = ["resource_graph.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
     deps = [
         ":project_statements_lib",
         ":resource_text_lib",
@@ -125,7 +133,6 @@ py_binary(
 py_library(
     name = "godot_files_lib",
     srcs = ["godot_files.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 py_library(
@@ -136,7 +143,6 @@ py_library(
 py_library(
     name = "pck_lib",
     srcs = ["pck.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 py_library(
@@ -148,7 +154,6 @@ py_library(
 py_library(
     name = "mapped_paths_lib",
     srcs = ["mapped_paths.py"],
-    visibility = ["//tools:ruleset"],
 )
 
 # Project actions (imports, initialization, probes) and pack exports are separate
@@ -156,7 +161,6 @@ py_library(
 py_library(
     name = "godot_staging_lib",
     srcs = ["godot_staging.py"],
-    visibility = ["//tools:ruleset"],
     deps = [
         ":godot_files_lib",
         ":mapped_paths_lib",
@@ -212,7 +216,6 @@ py_binary(
 py_library(
     name = "class_fragment_lib",
     srcs = ["class_fragment.py"],
-    visibility = ["//tools:ruleset"],
     deps = [
         ":mapped_paths_lib",
         ":resource_text_lib",
@@ -233,7 +236,6 @@ py_binary(
 py_library(
     name = "unit_interface_lib",
     srcs = ["unit_interface.py"],
-    visibility = ["//tools:ruleset"],
     deps = [
         ":class_fragment_lib",
         ":godot_files_lib",

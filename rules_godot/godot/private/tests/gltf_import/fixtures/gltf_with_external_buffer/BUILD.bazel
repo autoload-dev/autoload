@@ -2,7 +2,10 @@ load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 
 # A glTF scene whose external .bin buffer is an import input, and a pack of the project
 # whose main scene instantiates the imported scene.
-package(default_visibility = ["//godot/private/tests/gltf_import:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/gltf_import:__pkg__"],
+)
 
 godot_resources(
     name = "buffer",

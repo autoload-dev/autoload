@@ -46,5 +46,6 @@ for composition changes, read [target placement](../rules_godot/docs/public/proj
 The public layout guide owns those rules; automated conventions cover mechanical structure.
 
 Show how users test through the example's public targets. Do not write custom drivers around
-internal tools. If the public API lacks a needed capability, report the gap and scope the
+internal tools. An example loads the ruleset's public entrypoints only, never a `private`
+package ([B3](../docs/internal/verification-architecture.md#boundary-rules)). If the public API lacks a needed capability, report the gap and scope the
 ruleset work separately before depending on it in an example migration.

@@ -9,6 +9,8 @@ load("//godot/engine/private/tests:engines.bzl", "prebuilt_runtime")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 
+visibility("private")
+
 _SOURCE_BINARY = "//godot/engine/private/tests/fixtures/source_built_runtime:godot"
 _SOURCE_BINARY_X86_64 = "//godot/engine/private/tests/fixtures/source_built_runtime:godot_x86_64"
 

@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:app.bzl", "godot_app")
 
+package(default_testonly = True)
+
 # Run test: with no engine attribute, the registered prebuilt runtime components supply the
 # application's runtime, which boots and reports the registered version.
 godot_app(

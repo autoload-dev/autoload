@@ -3,7 +3,10 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
 # Android and iOS packs that set no version export options and packs that set them, and
 # packs with and without their own application/config/version setting.
-package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"],
+)
 
 godot_project(
     name = "packs_with_and_without_version_options",

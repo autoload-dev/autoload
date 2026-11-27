@@ -13,6 +13,8 @@ load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load(":action_graph.bzl", "reached", "reached_actions", "reads")
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK")
 
+visibility("private")
+
 _PACK = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:pack"
 _PACKAGE = "godot/platforms/private/tests/"
 

@@ -142,22 +142,19 @@ def place_file(built: Path, target: str, workspace: Path) -> None:
     report(f"wrote {target}; commit it")
 
 
-def check_file(built: Path, checked_in: Path | None, target: str, writer: str) -> int:
+def check_file(built: Path, checked_in: Path, target: str, writer: str) -> int:
     """
-    Name the checked-in file when it is missing or does not match the derivation.
+    Name the checked-in file when it does not match the derivation.
 
     Args:
         built: The derived file.
-        checked_in: The file in the checkout, or None when it is missing.
+        checked_in: The file in the checkout, as the test's runfiles hold it.
         target: Its path in the checkout, relative to the workspace.
         writer: The label whose `bazel run` writes the file.
 
     Returns:
-        1 if the file is missing or stale, else 0.
+        1 if the file is stale, else 0.
     """
-    if checked_in is None:
-        report(f"{target} is missing; write it with bazel run {writer}")
-        return 1
     derived = built.read_text(encoding="utf-8").splitlines(keepends=True)
     checked = checked_in.read_text(encoding="utf-8").splitlines(keepends=True)
     if derived == checked:
@@ -177,15 +174,12 @@ def check_file(built: Path, checked_in: Path | None, target: str, writer: str) -
 def _check(manifest: dict, runfile: Runfile) -> int:
     checked_in = manifest["checked_in"]
     return check_file(
-        runfile(manifest["built"]),
-        runfile(checked_in) if checked_in else None,
-        manifest["target"],
-        manifest["writer"],
+        runfile(manifest["built"]), runfile(checked_in), checked_in, manifest["writer"]
     )
 
 
 def _write(manifest: dict, runfile: Runfile, workspace: Path) -> None:
-    place_file(runfile(manifest["built"]), manifest["target"], workspace)
+    place_file(runfile(manifest["built"]), manifest["checked_in"], workspace)
 
 
 def main() -> None:

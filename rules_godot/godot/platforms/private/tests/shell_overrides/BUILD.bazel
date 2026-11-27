@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
 
+package(default_testonly = True)
+
 # Applications whose own files replace shell defaults, as their platforms build them.
 
 _FIXTURE = "//godot/platforms/private/tests/fixtures/mobile_app_with_platform_libraries:"

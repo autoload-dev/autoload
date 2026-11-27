@@ -10,9 +10,12 @@ load("//godot/extension:defs.bzl", "godot_cc_extension")
 # extension and selects each mobile operating system's add-on: on Android a Java library
 # and an AAR, on iOS a Swift and an Objective-C library with an Info.plist fragment. The
 # export context plugin records what each export saw.
-package(default_visibility = [
-    "//godot/platforms/private/tests/app_platform_selection:__subpackages__",
-])
+package(
+    default_testonly = True,
+    default_visibility = [
+        "//godot/platforms/private/tests/app_platform_selection:__subpackages__",
+    ],
+)
 
 _PROJECT = "//godot/platforms/private/tests/app_platform_selection/fixtures/project_with_desktop_apps:"
 

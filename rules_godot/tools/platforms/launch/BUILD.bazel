@@ -5,7 +5,7 @@ load("@rules_python//python:defs.bzl", "py_library")
 filegroup(
     name = "launch",
     srcs = glob(["launch*.py"]),
-    visibility = ["//visibility:public"],
+    visibility = ["//tools:ruleset"],
 )
 
 py_library(
@@ -17,5 +17,5 @@ py_library(
 
 exports_files(
     ["launch.py"],
-    visibility = ["//visibility:public"],
+    visibility = ["//tools:ruleset"],
 )

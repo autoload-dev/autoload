@@ -1,5 +1,7 @@
 """
-Build one application from a start pack and the runtime of the selected export platform.
+Build applications: `godot_app` packages a start pack and the runtime of the selected export
+platform; `godot_configured_app` builds one under an export platform and build settings of
+its own, with `ANDROID_RELEASE` and `APPLE_RELEASE` as release settings.
 
 Select the export platform with --platforms; use target_compatible_with for consumer
 limits.
@@ -19,6 +21,12 @@ load(
 )
 load("//godot/platforms/private:ios.bzl", _godot_ios_application = "godot_ios_application")
 load("//godot/platforms/private:macos_signing.bzl", _godot_macos_sign = "godot_macos_sign")
+load(
+    "//godot/private:configured_app.bzl",
+    _ANDROID_RELEASE = "ANDROID_RELEASE",
+    _APPLE_RELEASE = "APPLE_RELEASE",
+    _godot_configured_app = "godot_configured_app",
+)
 load("//godot/private:run.bzl", _godot_source_application = "godot_source_application")
 load("//godot/private:versions.bzl", "IOS_MINIMUM_OS", "MACOS_MINIMUM_OS")
 load(
@@ -210,7 +218,7 @@ def _android_backends(
         platform_deps: The application's platform libraries.
         platform_resources: The application's resource files.
         common: Attributes of every backend, the private targets' among them, and the
-            application's engine_settings.
+            application's engine settings.
     """
     hidden = _hidden_of(common)
     _application_id(name = name + ".application_id", application_id = application_id, **hidden)
@@ -432,7 +440,7 @@ def _app_impl(
         debug_key = android_debug_key,
         platform_deps = platform_deps,
         platform_resources = platform_resources,
-        common = common | {"engine_settings": engine_settings},
+        common = common | engine_settings,
     )
     _godot_ios_application(
         name = name + ".ios/" + name,
@@ -449,7 +457,7 @@ def _app_impl(
         infoplists = ios_infoplists,
         app_icons = ios_app_icons,
         launch_storyboard = ios_launch_storyboard,
-        **(common | {"engine_settings": engine_settings})
+        **(common | engine_settings)
     )
     _editor_backend(name = name, common = common, engine = engine)
     _public_targets(
@@ -628,3 +636,13 @@ godot_app = macro(
         ),
     },
 )
+
+godot_configured_app = _godot_configured_app
+
+#: The native settings of an Android release whose debug symbols ship apart: optimized,
+#: with DWARF, stripped in the application. Volatile API, like godot_configured_app.
+ANDROID_RELEASE = _ANDROID_RELEASE
+
+#: The native settings of an Apple release whose debug symbols ship apart: optimized, with
+#: dSYMs, stripped in the application. Volatile API, like godot_configured_app.
+APPLE_RELEASE = _APPLE_RELEASE

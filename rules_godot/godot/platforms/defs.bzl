@@ -10,16 +10,30 @@ variant settings stay independent of it. See the platform guide for engine and S
 
 load("//godot/private/config:settings.bzl", "export_platform_declarations")
 
-def godot_export_platform(
+def _export_platform_impl(
+        name,
+        visibility,
+        operating_system,
+        cpus,
+        environment,
+        parents,
+        constraint_values,
+        exec_properties):
+    for declaration in export_platform_declarations(
         name,
         operating_system,
         cpus,
-        environment = None,
-        parents = [],
-        constraint_values = [],
-        exec_properties = {},
-        visibility = None):
-    """
+        package_relative_label = native.package_relative_label,
+        environment = environment or None,
+        parents = parents,
+        constraint_values = constraint_values,
+        exec_properties = exec_properties,
+        visibility = visibility,
+    ):
+        native.platform(**declaration)
+
+godot_export_platform = macro(
+    doc = """
     Create an export platform and, for mobile, its private platform slices.
 
     A child platform, `platform(parents = [":android_arm64"])` for an export platform
@@ -30,39 +44,60 @@ def godot_export_platform(
     platform or its platform slices, and a desktop export platform is its own platform
     slice. Put properties those actions need on `parents`, `constraint_values` or
     `exec_properties` here. A child that sets another operating system, CPU or iOS
-    environment fails analysis.
+    environment fails analysis. The visibility applies to the export platform; its
+    platform slices remain private.
 
-    Args:
-        name: Public export platform target name, selected through --platforms.
-        operating_system: Operating system: linux, macos, android or ios.
-        cpus: Nonempty unique list of `@platforms//cpu` constraint values Godot can
-            express: `armv7`, `aarch64` (or its alias `arm64`), `x86_32`, `x86_64` and
-            `riscv64`. Desktops take one CPU, an iOS device `aarch64` and the iOS
-            Simulator `aarch64` or `x86_64`. Whether a CPU builds is decided by the
-            registered runtime components: an application for a CPU without one
-            fails analysis.
-        environment: iOS device (default) or simulator; omit for other operating systems.
-        parents: At most one parent platform for custom properties every platform slice
-            shares.
-            The export platform's operating system, CPU, environment and mobile
-            CPU flags replace its own.
-        constraint_values: Additional constraints shared by the export platform and its platform slices.
-            Operating system, CPU and iOS environment constraints are owned by
-            this macro.
-        exec_properties: Execution properties shared by the export platform and every
-            platform slice.
-        visibility: Visibility of the public export platform; generated platform slices
-            remain private.
-    """
-    for declaration in export_platform_declarations(
-        name,
-        operating_system,
-        cpus,
-        package_relative_label = native.package_relative_label,
-        environment = environment,
-        parents = parents,
-        constraint_values = constraint_values,
-        exec_properties = exec_properties,
-        visibility = visibility,
-    ):
-        native.platform(**declaration)
+    Example:
+    ```starlark
+    godot_export_platform(
+        name = "android",
+        operating_system = "android",
+        cpus = ["@platforms//cpu:armv7", "@platforms//cpu:aarch64"],
+    )
+    ```
+    """,
+    implementation = _export_platform_impl,
+    attrs = {
+        "operating_system": attr.string(
+            doc = "Operating system: linux, macos, android or ios.",
+            mandatory = True,
+            values = ["linux", "macos", "android", "ios"],
+            configurable = False,
+        ),
+        "cpus": attr.label_list(
+            doc = """
+            Nonempty unique list of `@platforms//cpu` constraint values Godot can express:
+            `armv7`, `aarch64` (or its alias `arm64`), `x86_32`, `x86_64` and `riscv64`.
+            Desktops take one CPU, an iOS device `aarch64` and the iOS Simulator `aarch64` or
+            `x86_64`. Whether a CPU builds is decided by the registered runtime components:
+            an application for a CPU without one fails analysis.
+            """,
+            mandatory = True,
+            configurable = False,
+        ),
+        "environment": attr.string(
+            doc = "iOS device (default) or simulator; omit for other operating systems.",
+            values = ["", "device", "simulator"],
+            configurable = False,
+        ),
+        "parents": attr.label_list(
+            doc = """
+            At most one parent platform for custom properties every platform slice shares.
+            The export platform's operating system, CPU, environment and mobile CPU flags
+            replace its own.
+            """,
+            configurable = False,
+        ),
+        "constraint_values": attr.label_list(
+            doc = """
+            Additional constraints shared by the export platform and its platform slices.
+            Operating system, CPU and iOS environment constraints are owned by this macro.
+            """,
+            configurable = False,
+        ),
+        "exec_properties": attr.string_dict(
+            doc = "Execution properties shared by the export platform and every platform slice.",
+            configurable = False,
+        ),
+    },
+)

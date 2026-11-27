@@ -11,6 +11,8 @@ load("//godot/private:view.bzl", "GodotViewInfo")
 load(":expected_failures.bzl", "failure_test")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 _PROJECT_FILE = _FIXTURE + ":project.godot"
 _HELPER_UID = _FIXTURE + "/main/shared:helper.gd.uid"

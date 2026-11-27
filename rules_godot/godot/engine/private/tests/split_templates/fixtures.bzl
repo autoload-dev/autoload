@@ -2,6 +2,9 @@
 
 load("//godot/engine/private:archives.bzl", "godot_export_templates_archive")
 
+# The module's MODULE.bazel uses the extension; no file loads it.
+visibility("private")
+
 def _fixtures_impl(ctx):
     godot_export_templates_archive(
         name = "godot_split_templates",

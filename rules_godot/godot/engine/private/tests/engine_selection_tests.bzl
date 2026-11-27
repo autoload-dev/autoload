@@ -1,12 +1,10 @@
 """A pack runs and ships only with the engine whose editor exported it."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:selection.bzl", "require_pack_engine")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 def _pack(engine):
     return struct(editor_component = struct(engine = engine))

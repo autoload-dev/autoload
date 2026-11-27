@@ -2,6 +2,8 @@ load("//godot:defs.bzl", "godot_test")
 load(":engine_upgrade_tests.bzl", "engine_upgrade_test_suite")
 load(":engines.bzl", "engine_test")
 
+package(default_testonly = True)
+
 # A godot-cpp extension built against the 4.7 extension API loads in the stable engine and in
 # the next minor's beta; the beta engine is selected by a test transition.
 

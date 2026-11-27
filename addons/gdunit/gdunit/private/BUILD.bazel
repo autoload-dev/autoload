@@ -1,7 +1,7 @@
 # The GdUnit test adapter gdunit_test runs as its main script; each test declares it as
-# resources of its own, which use GdUnit through the suites' deps. Public because the test
-# target lives in the caller's package.
+# resources of its own, which use GdUnit through the suites' deps. gdunit_test, a symbolic
+# macro of this package, names it, so it needs no wider visibility.
 exports_files(
     ["run.gd"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
 )

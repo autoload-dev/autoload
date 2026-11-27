@@ -4,6 +4,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private/tests:engines.bzl", "ResolvedInfo")
 
+visibility("private")
+
 _PROBE = "//godot/engine/private/tests:probe"
 
 def _test_prebuilt_hub_supplies_editor(name):

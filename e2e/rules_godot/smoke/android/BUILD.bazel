@@ -1,14 +1,7 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app", "godot_configured_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-
-# The ruleset's configured applications and artifact test rule, which it does not support
-# as API.
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configured_app")
-
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private/testing:android_bundle_test.bzl", "android_bundle_test")
+load("//tools/artifact_tests:android_bundle_test.bzl", "android_bundle_test")
 
 # The Android smoke path: an App Bundle whose APK packages the engine, a godot-cpp
 # extension and the pack, inspected with the public artifact test. The test is tagged
@@ -68,13 +61,14 @@ godot_configured_app(
     name = "bundle",
     android_format = "aab",
     app = ":app",
+    debug_symbols = ":app.debug_symbols",
     platform = "@autoload_rules_godot//godot/platforms:android_arm64",
     tags = ["manual"],
 )
 
 android_bundle_test(
     name = "bundle_packages_extension_and_pack_test",
-    size = "small",
+    size = "medium",
     apk_libraries = [
         "lib/arm64-v8a/libgodot_android.so",
         "lib/arm64-v8a/libcounter_native.so",

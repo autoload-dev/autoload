@@ -1,9 +1,10 @@
 load("//godot:defs.bzl", "godot_pack", "godot_project")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:components.bzl", "resolved_runtime")
 
-package(default_visibility = ["//godot/engine/private/tests:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/engine/private/tests:__pkg__"],
+)
 
 # Targets that name their engine themselves, in builds that name no engine: a pack of the
 # development engine "beta", which the module registers, and a runtime of the fixture

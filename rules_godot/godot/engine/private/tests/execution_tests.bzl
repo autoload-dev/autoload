@@ -5,6 +5,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private:execution.bzl", "RUN_EXEC_GROUPS", "TEST_EXEC_GROUPS", "exec_group_editor")
 
+visibility("private")
+
 _Info = provider(doc = "Editors the exec groups resolve.", fields = ["run", "test"])
 
 def _probe_impl(ctx):

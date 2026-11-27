@@ -1,5 +1,7 @@
 """A signed macOS application built in adhoc signing mode, for tests over its outputs."""
 
+visibility("private")
+
 _MODE = str(Label("//godot:macos_signing"))
 
 def _adhoc_transition_impl(_settings, _attr):

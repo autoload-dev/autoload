@@ -1,12 +1,10 @@
 """godot_export_templates_archive declares the runtimes of one platform that its archive's contents and layout provide."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:archives.bzl", "templates_archive_impl")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _INTEGRITY = "sha512-" + "B" * 86 + "=="
 _ARCHIVE = "@godot_templates_archive//file:export_templates.tpz"

@@ -14,11 +14,18 @@ module is implementation, with no registry documentation.
 
 Use `godot:defs.bzl` for projects, resources, exports, runs and tests. Use the
 dedicated extension, platform, engine, toolchain, repository and provider
-entrypoints for those tasks. Application packaging and optional signing use the symbolic
-`godot:app.bzl` entrypoint; engine acquisition keeps dedicated modules. The public providers,
+entrypoints for those tasks. Application packaging, configured applications and optional
+signing use the `godot:app.bzl` entrypoint; engine acquisition keeps dedicated modules. The public providers,
 `GodotPackInfo` and `GodotDesktopAppInfo`, live in `godot:providers.bzl` and name the rules
 that produce them; the providers between the ruleset's own rules live in
-`godot/private:providers.bzl`.
+`godot/private:providers.bzl`. `godot/testing:adapter.bzl` holds `adapter_test`, the test
+adapter that test framework modules such as autoload_gdunit build their tests on.
+
+Public API that may still change incompatibly carries this notice at the end of its
+documentation, as rules_python marks its volatile API: "Volatile API: public, but it may
+still change incompatibly in a release of rules_godot. A module that builds on it pins the
+rules_godot release it works with." `adapter_test` and `godot_configured_app`, with
+`ANDROID_RELEASE` and `APPLE_RELEASE`, are such API.
 
 Core rule implementations live in `godot/private/`; the shared desktop
 implementation lives in `godot/platforms/private/`. Their explicit Starlark
@@ -29,9 +36,9 @@ its sole public entrypoint.
 The binding and source-generation helpers are implementation details. Generated
 repositories can have caller-chosen names, so their source modules explicitly
 retain public load visibility. This technical requirement does not make them
-consumer entrypoints: they have no registry documentation. Test framework modules and the
-repository's consumer scenarios also load a few implementation modules across repositories,
-such as `godot/private:adapter.bzl`; they are no supported API either.
+consumer entrypoints: they have no registry documentation. No other module loads an
+implementation module: the repository's examples, consumer scenarios and add-on modules load
+public entrypoints only ([B3](../../../docs/internal/verification-architecture.md#boundary-rules)).
 Keep implementation notes in source comments and docstrings.
 
 Consumers configure `godot_cpp_bindings` in `MODULE.bazel`, then pass its

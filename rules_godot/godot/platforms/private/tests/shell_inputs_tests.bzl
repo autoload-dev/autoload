@@ -23,6 +23,8 @@ load(
 )
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK", "MOBILE_FIXTURE")
 
+visibility("private")
+
 _EDITOR_PLUGIN_FIXTURE = "//godot/platforms/private/tests/fixtures/apps_with_editor_plugin_and_autoload:"
 _MOBILE_PATH = "fixtures/mobile_app_with_platform_libraries/"
 

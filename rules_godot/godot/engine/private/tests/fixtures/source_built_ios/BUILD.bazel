@@ -2,6 +2,8 @@ load("@rules_swift//swift:swift.bzl", "swift_library")
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 load("//godot/engine/private:generator.bzl", "godot_source_library")
 
+package(default_testonly = True)
+
 # A source-built engine library with Swift code and a bundled resource: the replayed Apple
 # aspects must reach both through the godot_source_library's deps edge.
 swift_library(

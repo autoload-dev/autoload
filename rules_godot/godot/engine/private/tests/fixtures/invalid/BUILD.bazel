@@ -1,7 +1,10 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 load("//godot/engine/private/tests:engines.bzl", "runtime_info_stand_in")
 
-package(default_visibility = ["//godot/engine/private/tests:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/engine/private/tests:__pkg__"],
+)
 
 # Mobile runtimes need their payload provider, JavaInfo or CcInfo; a plain file has neither.
 godot_runtime_component(

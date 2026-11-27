@@ -1,4 +1,4 @@
-# Fixtures of godot/private/tests/adapter
+# Fixtures of godot/testing/tests/adapter
 
 Each section names a fixture and what it reproduces for the tests of this package.
 

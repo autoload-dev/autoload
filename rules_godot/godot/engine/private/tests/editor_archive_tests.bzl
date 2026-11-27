@@ -1,12 +1,10 @@
 """godot_editor_archive downloads a pinned editor archive and names its binary in the BUILD file."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/engine/private:archives.bzl", "editor_archive_impl")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private/tests:mocks.bzl", "mocks")
+
+visibility("private")
 
 _BINARY = "Godot.app/Contents/MacOS/Godot"
 _INTEGRITY = "sha512-" + "A" * 86 + "=="

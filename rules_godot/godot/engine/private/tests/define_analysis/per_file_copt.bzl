@@ -1,5 +1,7 @@
 """A test rule that builds a header in a configuration that sets --per_file_copt."""
 
+visibility("private")
+
 def _per_file_copt_impl(_settings, _attr):
     return {"//command_line_option:per_file_copt": ["godot/engine/private/tests/define_analysis/.*@-DUNRELATED"]}
 

@@ -213,6 +213,8 @@ def _executable_impl(ctx, test, tc = None, foreign = None):
     if not tc:
         tc = exec_group_editor(ctx, "test" if test else "run")
         foreign = _foreign(ctx, test)
+    if getattr(ctx.attr, "pack_deps", None):
+        fail("%s: specify a project and deps, or a pack" % ctx.label.name)
     pack = ctx.attr.pack[GodotPackInfo] if ctx.attr.pack else None
     require_pack_engine(ctx.label, pack, tc.provenance)
 
@@ -245,27 +247,80 @@ def _executable_impl(ctx, test, tc = None, foreign = None):
     executable, manifest = launcher(ctx, data)
     return executable, manifest, _runfiles(ctx, tc, manifest, inputs)
 
-# The godot_run and godot_test macros document these attributes.
-_ATTRS = {
-    # A source run runs the project with the editor, in the editor variant; a pack run keeps
-    # the variant of its pack.
-    "view": attr.label(providers = [GodotViewInfo], cfg = editor_variant_transition),
-    "pack": attr.label(providers = [GodotPackInfo]),
-    "additional_packs": attr.label_keyed_string_dict(providers = [GodotPackInfo]),
-    "main": attr.string(),
-    "data": attr.label_list(allow_files = True),
-    "env": attr.string_dict(),
-    "headless": attr.bool(default = True),
-    "engine_errors": attr.string(default = "fail", values = ["fail", "report"]),
-    "_launcher_template": attr.label(
-        default = Label("//godot/private:run_launcher.sh.tpl"),
-        allow_single_file = True,
-    ),
-    "_host_constraints": attr.label_list(
-        default = [Label(constraint) for constraint in HOST_CONSTRAINTS],
-        providers = [platform_common.ConstraintValueInfo],
-    ),
-} | METADATA_ATTRS
+# What engine_errors means for a run and for a test.
+_ENGINE_ERRORS_DOCS = {
+    "run": """
+    "fail" or "report": what an error Godot reports while the game's tree exists, such as
+    a script error, does to the run. Godot can report one and still exit with 0. "fail" ends
+    the run with 1 instead; "report" keeps Godot's exit status. Either names the number of
+    recorded errors.
+    """,
+    "test": """
+    "fail" or "report": what an error Godot reports while the game's tree exists, such as
+    a script error, does to the test. "fail" fails the test and stops it after the first
+    error, since a script error does not end Godot; "report" keeps Godot's exit status, for
+    a test framework that provokes errors on purpose. Either names the number of recorded
+    errors; the errors are in the test's undeclared outputs under godot/errors.jsonl.
+    """,
+}
+
+def _attrs(operation):
+    """The attributes of a run rule; the godot_run and godot_test macros inherit their docs."""
+    return {
+        # A source run runs the project with the editor, in the editor variant; a pack run
+        # keeps the variant of its pack.
+        "view": attr.label(providers = [GodotViewInfo], cfg = editor_variant_transition),
+        # The macros document pack.
+        "pack": attr.label(providers = [GodotPackInfo]),
+        "additional_packs": attr.label_keyed_string_dict(
+            doc = """
+            Pack -> file name in the working directory, for the running project to load with
+            ProjectSettings.load_resource_pack().
+            """,
+            providers = [GodotPackInfo],
+        ),
+        "main": attr.string(
+            doc = """
+            Resource path, with optional res:// prefix, of what Godot starts: a SceneTree or
+            MainLoop script runs with --script, a .tscn or .scn scene replaces the main scene.
+            Empty starts the project's main scene.
+            """,
+        ),
+        "data": attr.label_list(
+            doc = """
+            Files available at run time through runfiles, outside the Godot project. Godot
+            receives Bazel's runfiles directory/manifest variables when set. Tests also
+            receive TEST_SRCDIR and TEST_WORKSPACE for locating them.
+            """,
+            allow_files = True,
+        ),
+        "env": attr.string_dict(doc = "Environment variables set for Godot."),
+        "headless": attr.bool(
+            doc = """
+            Whether Godot runs without a display: True always, False never, for a %s that
+            must render. Unset follows the --@autoload_rules_godot//godot:headless flag,
+            which is true by default.
+            """ % ("test" if operation == "test" else "target"),
+            default = True,
+        ),
+        "engine_errors": attr.string(
+            doc = _ENGINE_ERRORS_DOCS[operation],
+            default = "fail",
+            values = ["fail", "report"],
+        ),
+        "_launcher_template": attr.label(
+            default = Label("//godot/private:run_launcher.sh.tpl"),
+            allow_single_file = True,
+        ),
+        "_host_constraints": attr.label_list(
+            default = [Label(constraint) for constraint in HOST_CONSTRAINTS],
+            providers = [platform_common.ConstraintValueInfo],
+        ),
+    } | METADATA_ATTRS | ENGINE_ATTRS
+
+# deps given beside a pack, which godot_run and godot_test reject during analysis: a symbolic
+# macro cannot tell a select() from an empty list.
+_PACK_DEPS = {"pack_deps": attr.label_list()}
 
 def _runner(group = None):
     """The runner, built for the execution platform of the group, or of the rule."""
@@ -305,7 +360,7 @@ godot_source_application = rule(
     says, on this host or on a remote executor.
     """,
     implementation = _source_application_impl,
-    attrs = _ATTRS | _runner() | LAUNCH_ATTRS | ENGINE_ATTRS,
+    attrs = _attrs("run") | _runner() | LAUNCH_ATTRS,
     executable = True,
     toolchains = [EDITOR_TOOLCHAIN, Label("//godot/private/config:target_execution_toolchain_type")],
     cfg = engine_transition,
@@ -316,7 +371,7 @@ _godot_run = rule(
     Run a project or PCK in a writable, isolated workspace; the rule behind godot_run.
     """,
     implementation = _run_impl,
-    attrs = _ATTRS | _runner("run") | ENGINE_ATTRS,
+    attrs = _attrs("run") | _PACK_DEPS | _runner("run"),
     executable = True,
     exec_groups = RUN_EXEC_GROUPS,
     cfg = engine_transition,
@@ -327,7 +382,7 @@ _godot_test = rule(
     Run a project or PCK as a Bazel test; the rule behind godot_test.
     """,
     implementation = _test_impl,
-    attrs = _ATTRS | _runner("test") | ENGINE_ATTRS,
+    attrs = _attrs("test") | _PACK_DEPS | _runner("test"),
     test = True,
     exec_groups = TEST_EXEC_GROUPS,
     cfg = engine_transition,
@@ -338,6 +393,11 @@ _godot_test = rule(
 # The project operations use when they name none: a minimal project.godot.
 DEFAULT_PROJECT = Label("//godot/private:default_project")
 
+# The tag of tests whose build or run starts a Godot process, which the fast tests leave out,
+# and the tag of the few that run with them anyway (docs/internal/verification-architecture.md).
+_GODOT_PROCESS = "godot_process"
+_SMOKE = "smoke"
+
 def _headless(headless):
     if headless != None:
         return headless
@@ -346,22 +406,52 @@ def _headless(headless):
         "//conditions:default": True,
     })
 
-def validate_run_sources(name, deps, project, pack, _fail = fail):
+def validate_run_sources(name, project, pack, _fail = fail):
     """
-    Reject deps or a project together with a pack.
+    Reject a project together with a pack; the run rules reject deps beside a pack.
 
     Args:
         name: Name of the godot_run or godot_test, for the failure message.
-        deps: The deps argument.
         project: The project argument.
         pack: The pack argument.
         _fail: Reports the error; tests collect it instead of stopping.
     """
-    if (deps or project) and pack:
+    if project and pack:
         _fail("%s: specify a project and deps, or a pack" % name)
 
-def _executable(name, rule_, deps, project, pack, kwargs, test):
-    validate_run_sources(name, deps, project, pack)
+def require_testonly(name, testonly, _fail = fail):
+    """
+    Reject a godot_test whose caller passes testonly = False.
+
+    Args:
+        name: Name of the test, for the failure message.
+        testonly: The testonly argument.
+        _fail: Reports the error; tests collect it instead of stopping.
+    """
+    if not testonly:
+        _fail("%s: a godot_test is test-only; remove testonly = False" % name)
+
+def godot_process_tags(tags):
+    """
+    The tags of a test that starts a Godot process: tags and godot_process, unless smoke.
+
+    A smoke test runs with the fast tests, so it never carries godot_process.
+
+    Args:
+        tags: The test's own tags, or None.
+
+    Returns:
+        The tags of the test.
+    """
+    tags = list(tags or [])
+    if _SMOKE in tags:
+        return [tag for tag in tags if tag != _GODOT_PROCESS]
+    if _GODOT_PROCESS in tags:
+        return tags
+    return tags + [_GODOT_PROCESS]
+
+def _executable(name, visibility, rule_, deps, project, pack, kwargs, test):
+    validate_run_sources(name, project, pack)
     view = None
     if not pack:
         view = declare_view(
@@ -371,31 +461,64 @@ def _executable(name, rule_, deps, project, pack, kwargs, test):
             kwargs,
             # A source run starts the game itself; a test runs its own main.
             program_entry = "" if test else str(native.package_relative_label(":" + name)),
-            engine = kwargs.get("engine", ""),
+            engine = kwargs.get("engine"),
         )
-    rule_(name = name, view = view, pack = pack, **kwargs)
+    rule_(
+        name = name,
+        visibility = visibility,
+        view = view,
+        pack = pack,
+        pack_deps = deps if pack else None,
+        **(kwargs | {"headless": _headless(kwargs.get("headless"))})
+    )
 
-def godot_run(
-        name,
-        deps = [],
-        main = "",
-        project = None,
-        pack = None,
-        data = [],
-        env = {},
-        headless = None,
-        engine_errors = "fail",
-        additional_packs = {},
-        engine = "",
-        **kwargs):
-    """
+def _macro_attrs(operation):
+    """The attributes of a run macro beside those it inherits from its rule."""
+    return {
+        "view": None,
+        "pack_deps": None,
+        "deps": attr.label_list(
+            doc = _DEPS_DOCS[operation],
+        ),
+        "project": attr.label(
+            doc = """
+            The godot_project whose configuration the %s uses; defaults to a minimal
+            project.
+            """ % operation,
+            configurable = False,
+        ),
+        "pack": attr.label(
+            doc = "An exported godot_pack to %s instead of a project." % operation,
+            providers = [GodotPackInfo],
+            configurable = False,
+        ),
+    }
+
+_DEPS_DOCS = {
+    "run": """
+    godot_resources and godot_extension targets the run contains, such as code, assets and
+    add-ons. The project's autoloads and main scene must be among them.
+    """,
+    "test": """
+    godot_resources and godot_extension targets the test contains: the test scripts and
+    fixtures, the code under test, a test framework and its add-ons. Autoloads and a main
+    scene of the project whose files are not among them are left out.
+    """,
+}
+
+def _run_macro_impl(name, visibility, deps, project, pack, **kwargs):
+    _executable(name, visibility, _godot_run, deps, project, pack, kwargs, test = False)
+
+godot_run = macro(
+    doc = """
     Run a Godot project or exported PCK with `bazel run`, like py_binary.
 
     The run uses the registered editor toolchain in a fresh, writable copy of the
     project, so nothing in the checkout changes. Give it what to run in one of
-    two ways: a project and the resources it runs in deps, or an exported pack. `args` are Godot's command line, which
-    Bazel splits like a shell; arguments for the running script follow Godot's `--`
-    separator.
+    two ways: a project and the resources it runs in deps, or an exported pack. `args`
+    are Godot's command line, which Bazel splits like a shell; arguments for the running
+    script follow Godot's `--` separator. The macro declares `<name>` and `<name>.view`,
+    the project the run stages.
 
     Example:
     ```starlark
@@ -409,70 +532,19 @@ def godot_run(
 
     `bazel run :game` opens the game's window. See
     [execution and tests](../../development.md#execution-and-tests).
+    """,
+    implementation = _run_macro_impl,
+    inherit_attrs = _godot_run,
+    attrs = _macro_attrs("run"),
+)
 
-    Args:
-        name: Name of the executable target.
-        deps: godot_resources and godot_extension targets the run contains, such as
-            code, assets and add-ons. The project's autoloads and main scene must be
-            among them.
-        main: Resource path, with optional res:// prefix, of what Godot starts: a
-            SceneTree or MainLoop script runs with --script, a .tscn or .scn scene
-            replaces the main scene. Empty starts the project's main scene.
-        project: The godot_project whose configuration the run uses; defaults to a
-            minimal project.
-        pack: An exported godot_pack to run instead of a project.
-        data: Files available at run time through runfiles, outside the Godot
-            project. Godot receives Bazel's runfiles directory/manifest variables
-            when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.
-        env: Environment variables set for Godot.
-        headless: Whether Godot runs without a display: True always, False never,
-            for a target that must render. Unset follows the
-            --@autoload_rules_godot//godot:headless flag, which is true by default.
-        engine_errors: "fail" or "report": what an error Godot reports while the
-            game's tree exists, such as a script error, does to the run. Godot can
-            report one and still exit with 0. "fail" ends the run with 1 instead;
-            "report" keeps Godot's exit status. Either names the number of recorded
-            errors.
-        additional_packs: Pack -> file name in the working directory, for the
-            running project to load with ProjectSettings.load_resource_pack().
-        engine: The engine the run uses, by engine name; empty keeps the build's
-            engine, the default one or the one --@autoload_rules_godot//godot:engine
-            names. A pack run must name the engine its pack was exported with.
-        **kwargs: Common attributes such as args and visibility.
-    """
-    _executable(
-        name,
-        _godot_run,
-        deps,
-        project,
-        pack,
-        dict(
-            kwargs,
-            main = main,
-            data = data,
-            env = env,
-            headless = _headless(headless),
-            engine_errors = engine_errors,
-            additional_packs = additional_packs,
-            engine = engine,
-        ),
-        test = False,
-    )
+def _test_macro_impl(name, visibility, deps, project, pack, testonly, tags, **kwargs):
+    require_testonly(name, testonly)
+    kwargs |= {"testonly": True, "tags": godot_process_tags(tags)}
+    _executable(name, visibility, _godot_test, deps, project, pack, kwargs, test = True)
 
-def godot_test(
-        name,
-        deps = [],
-        main = "",
-        project = None,
-        pack = None,
-        data = [],
-        env = {},
-        headless = None,
-        engine_errors = "fail",
-        additional_packs = {},
-        engine = "",
-        **kwargs):
-    """
+godot_test = macro(
+    doc = """
     Run a Godot project or exported PCK as a Bazel test, like py_test.
 
     The test passes when Godot exits with 0, so a script reports a failed check
@@ -481,8 +553,9 @@ def godot_test(
     such as TEST_SHARD_INDEX, TESTBRIDGE_TEST_ONLY and XML_OUTPUT_FILE, so a test
     framework can implement sharding, `--test_filter` and JUnit reports. size, timeout,
     shard_count and flaky work as for any Bazel test. The test and its view of the
-    project are testonly unless testonly = False is passed, so production
-    targets cannot depend on them.
+    project, `<name>.view`, are always testonly, so production targets cannot depend on
+    them. The test carries the tag `godot_process`, which marks a test that starts Godot,
+    unless it is tagged `smoke`.
 
     Example:
     ```starlark
@@ -495,56 +568,14 @@ def godot_test(
 
     Watch it with `bazel test :smoke_test --@autoload_rules_godot//godot:headless=false`.
     See [execution and tests](../../development.md#execution-and-tests).
-
-    Args:
-        name: Name of the test target.
-        deps: godot_resources and godot_extension targets the test contains: the
-            test scripts and fixtures, the code under test, a test framework and
-            its add-ons. Autoloads and a main scene of the project whose files are
-            not among them are left out.
-        main: Resource path, with optional res:// prefix, of what Godot starts: a
-            SceneTree or MainLoop script runs with --script, a .tscn or .scn scene
-            replaces the main scene. Empty starts the project's main scene.
-        project: The godot_project whose configuration the test uses; defaults to a
-            minimal project.
-        pack: An exported godot_pack to test instead of a project.
-        data: Files available at run time through runfiles, outside the Godot
-            project. Godot receives Bazel's runfiles directory/manifest variables
-            when set. Tests also receive TEST_SRCDIR and TEST_WORKSPACE for locating them.
-        env: Environment variables set for Godot.
-        headless: Whether Godot runs without a display: True always, False never,
-            for a test that must render. Unset follows the
-            --@autoload_rules_godot//godot:headless flag, which is true by default.
-        engine_errors: "fail" or "report": what an error Godot reports while the
-            game's tree exists, such as a script error, does to the test. "fail"
-            fails the test and stops it after the first error, since a script error
-            does not end Godot; "report" keeps Godot's exit status, for a test
-            framework that provokes errors on purpose. Either names the number of
-            recorded errors; the errors are in the test's undeclared outputs under
-            godot/errors.jsonl.
-        additional_packs: Pack -> file name in the working directory, for the
-            running project to load with ProjectSettings.load_resource_pack().
-        engine: The engine the run uses, by engine name; empty keeps the build's
-            engine, the default one or the one --@autoload_rules_godot//godot:engine
-            names. A pack run must name the engine its pack was exported with.
-        **kwargs: Common test attributes such as args, size and shard_count.
-    """
-    kwargs.setdefault("testonly", True)
-    _executable(
-        name,
-        _godot_test,
-        deps,
-        project,
-        pack,
-        dict(
-            kwargs,
-            main = main,
-            data = data,
-            env = env,
-            headless = _headless(headless),
-            engine_errors = engine_errors,
-            additional_packs = additional_packs,
-            engine = engine,
+    """,
+    implementation = _test_macro_impl,
+    inherit_attrs = _godot_test,
+    attrs = _macro_attrs("test") | {
+        "testonly": attr.bool(
+            doc = "Always True: a godot_test is test-only, and False is an error.",
+            default = True,
+            configurable = False,
         ),
-        test = True,
-    )
+    },
+)

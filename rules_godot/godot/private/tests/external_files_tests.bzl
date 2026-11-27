@@ -8,6 +8,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotResourcesInfo")
 load(":expected_failures.bzl", "failure_test")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/external_files"
 
 def _test_addon_places_another_repositorys_files(name):

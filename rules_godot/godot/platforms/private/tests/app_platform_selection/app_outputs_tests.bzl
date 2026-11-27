@@ -13,6 +13,8 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/private/tests:toolchains.bzl", "own_toolchains")
 
+visibility("private")
+
 _APP = "//godot/platforms/private/tests/app_platform_selection/fixtures/app_selecting_platform_libraries:app"
 _BOTH_CPUS = "//godot/platforms/private/tests/app_platform_selection/fixtures/export_platforms_with_both_cpus:"
 

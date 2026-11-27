@@ -6,6 +6,8 @@ load("@rules_testing//lib:util.bzl", "TestingAspectInfo")
 load("//godot/private:analysis.bzl", "godot_resource_graph")
 load("//godot/private:view.bzl", "GodotViewInfo")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/import_context"
 
 def _graph_test(name, impl, **kwargs):
