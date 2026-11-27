@@ -41,9 +41,10 @@ worktree list` shows who holds which.
 A session's slot stays leased until it is released, and sessions rarely end in a way that
 runs `WorktreeRemove`. So `WorktreeCreate` first releases the slots whose work is done
 ([tools/worktree/release_done.py](../../tools/worktree/release_done.py)): the branch's pull
-request has merged, or the branch was deleted on origin, and the checkout holds nothing that
-would be lost. A checkout with uncommitted changes, commits origin does not have or an open
-pull request stays leased, as does a slot used within the last hour. The slot is released as
+request has merged with the checkout's HEAD, or the branch was deleted on origin, and the
+checkout holds nothing that would be lost. A checkout with uncommitted changes, commits origin does not have or an open
+pull request stays leased, as does a slot used within the last hour. The sweep spends at most
+about a minute, so the hook still takes its own slot in time. The slot is released as
 its holder would release it, keeping its output bases warm for the next lease; `python3
 tools/worktree/release_done.py --dry-run` shows what the next run would release and why the
 rest stay.
