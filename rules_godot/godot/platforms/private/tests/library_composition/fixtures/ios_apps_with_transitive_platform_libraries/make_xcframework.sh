@@ -16,38 +16,38 @@ root="$2"
 shift 2
 
 case "$kind" in
-  static)
-    archive=""
-    for candidate in "$@"; do
-      case "$candidate" in
-        *.pic.a) ;;
-        *.a) archive="$candidate" ;;
-      esac
-    done
-    library_path="libhello_prebuilt.a"
-    binary_path="$library_path"
-    for slice in "${slices[@]}"; do
-      mkdir -p "$root/$slice"
-      cp "$archive" "$root/$slice/$library_path"
-    done
-    ;;
-  dynamic)
-    name="$1"
-    library="$2"
-    shift 2
-    library_path="$name.framework"
-    binary_path="$name.framework/$name"
-    for slice in "${slices[@]}"; do
-      framework="$root/$slice/$name.framework"
-      mkdir -p "$framework"
-      cp "$library" "$framework/$name"
-      chmod u+w "$framework/$name"
-      xcrun install_name_tool -id "@rpath/$binary_path" "$framework/$name"
-      for dependency in "$@"; do
-        xcrun install_name_tool -change "@rpath/${dependency#*=}" \
-          "@rpath/${dependency%%=*}.framework/${dependency%%=*}" "$framework/$name"
-      done
-      cat > "$framework/Info.plist" <<PLIST
+    static)
+        archive=""
+        for candidate in "$@"; do
+            case "$candidate" in
+                *.pic.a) ;;
+                *.a) archive="$candidate" ;;
+            esac
+        done
+        library_path="libhello_prebuilt.a"
+        binary_path="$library_path"
+        for slice in "${slices[@]}"; do
+            mkdir -p "$root/$slice"
+            cp "$archive" "$root/$slice/$library_path"
+        done
+        ;;
+    dynamic)
+        name="$1"
+        library="$2"
+        shift 2
+        library_path="$name.framework"
+        binary_path="$name.framework/$name"
+        for slice in "${slices[@]}"; do
+            framework="$root/$slice/$name.framework"
+            mkdir -p "$framework"
+            cp "$library" "$framework/$name"
+            chmod u+w "$framework/$name"
+            xcrun install_name_tool -id "@rpath/$binary_path" "$framework/$name"
+            for dependency in "$@"; do
+                xcrun install_name_tool -change "@rpath/${dependency#*=}" \
+                    "@rpath/${dependency%%=*}.framework/${dependency%%=*}" "$framework/$name"
+            done
+            cat >"$framework/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -63,15 +63,15 @@ case "$kind" in
 </dict>
 </plist>
 PLIST
-    done
-    ;;
-  *)
-    echo "unknown XCFramework kind: $kind" >&2
-    exit 1
-    ;;
+        done
+        ;;
+    *)
+        echo "unknown XCFramework kind: $kind" >&2
+        exit 1
+        ;;
 esac
 
-cat > "$root/Info.plist" <<PLIST
+cat >"$root/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

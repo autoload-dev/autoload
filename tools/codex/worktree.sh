@@ -26,8 +26,7 @@ if [[ "$mode" == session-* ]]; then
     cwd="$(sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<<"$input" | head -n 1)"
     worktree="$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null)" || exit 0
     # A main checkout's Git directory is its common one; a linked worktree's is not.
-    [[ "$(git -C "$worktree" rev-parse --absolute-git-dir)" != \
-        "$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir)" ]] || exit 0
+    [[ "$(git -C "$worktree" rev-parse --absolute-git-dir)" != "$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir)" ]] || exit 0
     worktree="$(cd "$worktree" && pwd -P)"
     aspect_pool="$(cd ~/.aspect/worktrees 2>/dev/null && pwd -P || true)"
     [[ -z "$aspect_pool" || "$worktree" != "$aspect_pool"/* ]] || exit 0
@@ -66,7 +65,10 @@ lock() {
         if [[ -n "$(find "$pool/.lock" -maxdepth 0 -mmin +1 2>/dev/null)" ]]; then
             rmdir "$pool/.lock" 2>/dev/null || true
         fi
-        ((tries++ < 300)) || { note "the slot pool stays locked: $pool/.lock"; exit 1; }
+        ((tries++ < 300)) || {
+            note "the slot pool stays locked: $pool/.lock"
+            exit 1
+        }
         sleep 0.1
     done
     trap 'rmdir "$pool/.lock" 2>/dev/null || true' EXIT
@@ -92,9 +94,13 @@ output_user_root() {
 # 32 hexadecimal digits of a text's SHA-256, the length of Bazel's output base names.
 hash32() {
     local sum
-    if command -v sha256sum >/dev/null; then sum="$(printf '%s' "$1" | sha256sum)"
+    if command -v sha256sum >/dev/null; then
+        sum="$(printf '%s' "$1" | sha256sum)"
     else sum="$(printf '%s' "$1" | shasum -a 256)"; fi
-    [[ "$sum" =~ ^[0-9a-f]{64} ]] || { note "cannot hash: no sha256sum or shasum"; exit 1; }
+    [[ "$sum" =~ ^[0-9a-f]{64} ]] || {
+        note "cannot hash: no sha256sum or shasum"
+        exit 1
+    }
     echo "${sum:0:32}"
 }
 
@@ -114,7 +120,10 @@ stop_servers() {
         [[ -f "$pid_file" ]] || continue
         pid="$(<"$pid_file")"
         kill "$pid" 2>/dev/null || continue
-        for _ in {1..100}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+        for _ in {1..100}; do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 0.1
+        done
     done <"$1/bases"
 }
 
@@ -132,7 +141,10 @@ setup() {
     local slot="" candidate
     # The most recently used free slot holds the newest Bazel state.
     while read -r candidate; do
-        [[ -n "$candidate" ]] && free "$candidate" && { slot="$candidate"; break; }
+        [[ -n "$candidate" ]] && free "$candidate" && {
+            slot="$candidate"
+            break
+        }
     done < <(ls -1dt "$pool"/slot-* 2>/dev/null)
     if [[ -z "$slot" ]]; then
         local index=1
@@ -161,7 +173,10 @@ setup() {
 }
 
 cleanup() {
-    [[ -f .bazel-slot ]] || { note "holds no Bazel slot"; return; }
+    [[ -f .bazel-slot ]] || {
+        note "holds no Bazel slot"
+        return
+    }
     local slot
     slot="$(leased_slot)"
     stop_servers "$slot"
@@ -177,5 +192,8 @@ cleanup() {
 case "${1:-}" in
     setup) setup ;;
     cleanup) cleanup ;;
-    *) echo "usage: worktree.sh setup|cleanup" >&2; exit 2 ;;
+    *)
+        echo "usage: worktree.sh setup|cleanup" >&2
+        exit 2
+        ;;
 esac

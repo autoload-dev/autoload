@@ -22,12 +22,18 @@ cd "$(field cwd)"
 # The Aspect CLI on PATH, else the launcher `aspect bootstrap` recorded: an app's hooks may run
 # with a shorter PATH than a shell.
 aspect="$(command -v aspect || git config aspect.launcher || true)"
-[[ -x "$aspect" ]] || { echo "worktree.sh: the Aspect CLI is missing; run ./bootstrap.sh" >&2; exit 1; }
+[[ -x "$aspect" ]] || {
+    echo "worktree.sh: the Aspect CLI is missing; run ./bootstrap.sh" >&2
+    exit 1
+}
 export DO_NOT_TRACK=1
 case "${1:-}" in
     create)
         name="$(field name)"
-        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "worktree.sh: unexpected name '$name'" >&2; exit 1; }
+        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || {
+            echo "worktree.sh: unexpected name '$name'" >&2
+            exit 1
+        }
         session="$(field session_id)"
         # The hook runs in the main checkout, whose HEAD may be anything; origin's default
         # branch is what a new task starts from.
@@ -40,7 +46,10 @@ case "${1:-}" in
         ;;
     remove)
         path="$(field worktree_path)"
-        [[ -n "$path" ]] || { echo "worktree.sh: no worktree_path in the input" >&2; exit 1; }
+        [[ -n "$path" ]] || {
+            echo "worktree.sh: no worktree_path in the input" >&2
+            exit 1
+        }
         # From the main checkout, not from inside the worktree that goes away.
         cd "$(git -C "$path" rev-parse --path-format=absolute --git-common-dir)/.."
         session="$(field session_id)"

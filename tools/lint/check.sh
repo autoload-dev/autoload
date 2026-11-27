@@ -9,13 +9,13 @@ stamp=$1
 shift
 status=0
 while [ $# -gt 0 ]; do
-  if [ "$(cat "$1")" != 0 ]; then
-    cat "$2"
-    status=1
-  fi
-  shift 2
+    if [ "$(cat "$1")" != 0 ]; then
+        cat "$2"
+        status=1
+    fi
+    shift 2
 done
 if [ "$status" = 0 ]; then
-  : >"$stamp"
+    : >"$stamp"
 fi
 exit "$status"

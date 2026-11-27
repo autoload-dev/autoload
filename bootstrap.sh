@@ -39,13 +39,19 @@ arguments=()
 for argument in "$@"; do
     case "$argument" in
         --tools-only) tools_only=true ;;
-        -h | --help) awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
+        -h | --help)
+            awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"
+            exit 0
+            ;;
         *) arguments+=("$argument") ;;
     esac
 done
 
 note() { printf 'bootstrap: %s\n' "$*" >&2; }
-fail() { note "$*"; exit 1; }
+fail() {
+    note "$*"
+    exit 1
+}
 
 sha256() {
     if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
@@ -61,7 +67,10 @@ install() {
     local download
     download="$(mktemp "$BIN_DIR/.$name.XXXXXX")"
     curl -fsSL --retry 3 --connect-timeout 10 --max-time 300 -o "$download" "$url" ||
-        { rm -f "$download"; fail "could not download $url"; }
+        {
+            rm -f "$download"
+            fail "could not download $url"
+        }
     if [[ "$(sha256 "$download")" != "$checksum" ]]; then
         rm -f "$download"
         fail "$url does not match its pinned checksum"

@@ -5,7 +5,7 @@ set -o errexit -o nounset -o pipefail
 
 TAG=$1
 MODULE="$(cd "$(dirname "$0")/../.." && python3 -m tools.ci.release_module "$TAG")"
-field() { sed -n "s/^$1=//p" <<< "$MODULE"; }
+field() { sed -n "s/^$1=//p" <<<"$MODULE"; }
 NAME="$(field name)"
 VERSION="$(field version)"
 ROOT="$(field root)"
@@ -15,8 +15,8 @@ ARCHIVE="${PREFIX}.tar.gz"
 
 # The archive holds the module's directory at its root and the repository's license. The
 # module's .gitattributes keeps development-only directories out of it.
-git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" \
-    | gzip > "$ARCHIVE"
+git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" |
+    gzip >"$ARCHIVE"
 
 # The ruleset's API documentation and the setup its release notes show.
 SETUP=""
@@ -27,14 +27,14 @@ if [ "$NAME" = autoload_rules_godot ]; then
     DOCS_TARGET=//:bcr_docs
     # The ruleset's own module builds it; the release files stay at the root.
     OUTPUT="$PWD"
-    pushd "$(dirname "$0")/../../rules_godot" > /dev/null
+    pushd "$(dirname "$0")/../../rules_godot" >/dev/null
     bazel build "$DOCS_TARGET" >&2
     BAZEL_BIN="$(bazel info bazel-bin 2>/dev/null)"
-    bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null \
-        | sed "s#^bazel-out/[^/]*/bin/##" \
-        | tar --create --gzip --directory "$BAZEL_BIN" --file "${OUTPUT}/${PREFIX}.docs.tar.gz" \
+    bazel cquery --output=files "$DOCS_TARGET" 2>/dev/null |
+        sed "s#^bazel-out/[^/]*/bin/##" |
+        tar --create --gzip --directory "$BAZEL_BIN" --file "${OUTPUT}/${PREFIX}.docs.tar.gz" \
             --files-from -
-    popd > /dev/null
+    popd >/dev/null
     SETUP='
 godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
 godot_engines.engine(name = "godot", default = True, version = "4.7.2")
@@ -52,7 +52,7 @@ archive_override(
 )"
 fi
 
-cat << NOTES
+cat <<NOTES
 ## Bzlmod
 
 Add to your \`MODULE.bazel\` file:
