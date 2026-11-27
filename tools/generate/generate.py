@@ -4,7 +4,7 @@ Regenerate the repository's generated files.
 | Generated files | Regenerated here | Checked |
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | by Bazel itself, which fails to load a stale one (see there) |
-| The add-on modules' shared files, such as their .bazelrc and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files |
+| The add-on modules' shared files, such as their .bazelrc and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files-as-generated |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | by every CI command, whose `--config=ci` sets `--lockfile_mode=error` (shared.bazelrc) |
 | The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | by a `build_test` of the hub's `:pinned` beside each, which fails on a stale pin |
 

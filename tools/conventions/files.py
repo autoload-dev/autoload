@@ -53,19 +53,19 @@ class NoEvidence:
         self._refuse("dependent tests")
 
 
-def selected(ids: list[str] | None) -> tuple[Rule, ...]:
-    """The per-file rules of the IDs, or all of them."""
-    rules = tuple(rule for rule in RULES if ids is None or rule.info.id in ids)
-    if ids and len(rules) != len(set(ids)):
+def selected(names: list[str] | None) -> tuple[Rule, ...]:
+    """The per-file rules of the names, or all of them."""
+    rules = tuple(rule for rule in RULES if names is None or rule.info.name in names)
+    if names and len(rules) != len(set(names)):
         raise EvidenceError("only rules that judge each file on its own run per file")
     return rules
 
 
-def check(ids: list[str] | None, files: list[str]) -> Report:
+def check(names: list[str] | None, files: list[str]) -> Report:
     """The rules' report on the files, by their paths below the current directory."""
     sources = {file: Path(file) for file in files}
     workspace = Workspace(Path.cwd(), tuple(sources), sources)
-    return run(Context(workspace, NoEvidence(), NoEvidence()), selected(ids))
+    return run(Context(workspace, NoEvidence(), NoEvidence()), selected(names))
 
 
 def main(argv: list[str]) -> int:

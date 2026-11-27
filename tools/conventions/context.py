@@ -312,7 +312,7 @@ class Workspace:
     def loaded_modules(self) -> tuple[Module, ...]:
         """
         The modules whose Bazel evidence the check loads: every module but the registry test
-        modules, which build only from a release archive (RG020).
+        modules, which build only from a release archive (registry-test-module-in-bcr).
         """
         return tuple(m for m in self.modules if not is_registry_test_module(m.path))
 

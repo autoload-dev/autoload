@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-# The add-on generator and its template; the conventions check (RG015) tests its rule against
-# generated modules.
+# The add-on generator and its template; the conventions check (addon-module-layout) tests
+# its rule against generated modules.
 py_library(
     name = "new_lib",
     srcs = [

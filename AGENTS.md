@@ -103,11 +103,12 @@ When a convention check reports a finding or incomplete coverage, consult the na
 Computed macro names need a recorded decision in the owning rule, not an assumption that a
 passing run checked them.
 
-For convention-checker changes, read [the rule framework](docs/internal/conventions.md#rule-framework).
-Rules own their metadata, applicability, predicates, exceptions and adjacent regression tests;
-shared evidence tools and the checker remain independent of individual rules. Use rule IDs for
-selection, diagnostics and references to specific rules; use descriptive names in navigation
-and general task descriptions.
+For convention-checker changes, read
+[the rule framework](docs/internal/conventions.md#rule-framework). Rules own their metadata,
+applicability, predicates, exceptions and adjacent regression tests; shared evidence tools and
+the checker remain independent of individual rules. A rule is identified by its name, such as
+`no-claude-md`, which states its claim in the glossary's terms; use it for selection,
+diagnostics and references to the rule.
 
 For public Bazel API changes, use the
 [bazel-api-docs skill](.agents/skills/bazel-api-docs/SKILL.md).

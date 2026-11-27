@@ -25,8 +25,8 @@ ADDONS = "addons"
 EXAMPLES = Path("examples")
 ADDON_EXAMPLES = EXAMPLES / "addons"
 ADDON_E2E = Path("e2e/addons")
-# The directory of a released module's registry test modules, bcr/<name>/ (RG020), which its
-# .bazelignore lists.
+# The directory of a released module's registry test modules, bcr/<name>/
+# (registry-test-module-in-bcr), which its .bazelignore lists.
 BCR = "bcr"
 # The add-on generator's self-test module (tools/addons/selftest.py), addons/selftest/ with
 # examples/addons/selftest/ while it runs: never released, and none of the add-on modules.
@@ -101,7 +101,10 @@ def released_modules(modules: Iterable[Path]) -> tuple[Path, ...]:
 
 
 def is_registry_test_module(module: str | Path) -> bool:
-    """Whether a module is a registry test module, bcr/<name>/ of a released module (RG020)."""
+    """
+    Whether a module is a registry test module, bcr/<name>/ of a released module
+    (registry-test-module-in-bcr).
+    """
     return Path(module).parent.name == BCR and is_released(Path(module).parent.parent)
 
 
@@ -116,7 +119,8 @@ def module_paths(root: Path) -> tuple[str, ...]:
 def registry_test_modules(root: Path) -> tuple[str, ...]:
     """
     The registry test modules of the released modules. Each is a workspace of its own, so
-    module_paths leaves them out; the release archive test runs them (RG020).
+    module_paths leaves them out; the release archive test runs them
+    (registry-test-module-in-bcr).
     """
     return tuple(
         found.parent.relative_to(root).as_posix()
