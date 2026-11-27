@@ -7,7 +7,7 @@ Sections: Derivation, Writer and test.
 load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
-load("//godot/private:macros.bzl", "caller_package", "common_kwargs")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs")
 load("//godot/private:paths.bzl", "exec_paths")
 load("//godot/private:sync.bzl", "TEST_SIZE_ATTRS", "declare_sync", "sync_launcher", "sync_rules")
 load("//godot/private:view.bzl", "GodotViewInfo", "declare_view")
@@ -132,7 +132,7 @@ def _runtime_profile_impl(
         keep_classes = keep_classes,
         engine = engine,
         # The caller's package may inspect the derivation, as its analysis tests do.
-        **(common_kwargs(kwargs) | {"visibility": caller_package()})
+        **(common_kwargs(kwargs) | {"visibility": CALLER_PACKAGE})
     )
     declare_sync(
         _SYNC_RULES,

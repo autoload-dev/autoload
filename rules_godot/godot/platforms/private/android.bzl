@@ -4,7 +4,7 @@ Godot Android applications built by rules_android, without a nested Gradle build
 
 load("@rules_android//rules:rules.bzl", "aar_import", "android_application", "android_binary", "android_library")
 load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS")
-load("//godot/private:macros.bzl", "caller_package", "common_kwargs", "filegroup_kwargs")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs", "filegroup_kwargs")
 load("//godot/private/engine:profiles.bzl", "ANDROID_SHELL_DEPS")
 load(":android_bootstrap.bzl", "godot_android_bootstrap")
 load(":android_jni_libraries.bzl", "godot_android_engine_aar", "godot_android_jni_libraries")
@@ -64,7 +64,7 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
             name = name + ".shell",
             aar = shell,
             deps = _SHELL_DEPS,
-            visibility = caller_package(),
+            visibility = CALLER_PACKAGE,
             **common_kwargs(kwargs)
         )
         godot_android_engine_aar(
@@ -72,7 +72,7 @@ def godot_android_runtime(name, shell, engine_library = None, **kwargs):
             aar = shell,
             engine_library = engine_library,
             shell_classes = ":" + name + ".shell",
-            visibility = caller_package(),
+            visibility = CALLER_PACKAGE,
             **common_kwargs(kwargs)
         )
         aar = ":" + name + ".engine_aar"
@@ -84,7 +84,7 @@ def _application_runtime(name, runtime, common):
         return runtime
 
     # Resolve the runtime component inside each platform slice of the Android split.
-    _runtime_bridge_android(name = name + ".godot_runtime", visibility = caller_package(), **common)
+    _runtime_bridge_android(name = name + ".godot_runtime", visibility = CALLER_PACKAGE, **common)
     return ":" + name + ".godot_runtime"
 
 def _application_libraries(name, pack, runtime, deps, common):
@@ -108,13 +108,13 @@ def _application_libraries(name, pack, runtime, deps, common):
         name = name + ".godot_jni_libraries",
         pack = pack,
         runtime = runtime,
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_platform_libraries(
         name = name + ".godot_platform_libraries",
         deps = [pack],
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_manifest_order(
@@ -122,7 +122,7 @@ def _application_libraries(name, pack, runtime, deps, common):
         leading = _ACTIVITY_DEPS + [runtime],
         pack = pack,
         application_deps = deps,
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
     jni = ":" + name + ".godot_jni_libraries"
@@ -162,7 +162,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
         manifest_values = manifest_values,
         manifest_override = manifest,
         resource_overrides = resource_files,
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
     bootstrap = ":" + name + ".godot_bootstrap"
@@ -171,7 +171,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
             name = name + ".godot_bootstrap." + group,
             srcs = [bootstrap],
             output_group = group,
-            visibility = caller_package(),
+            visibility = CALLER_PACKAGE,
             **filegroup_kwargs(common)
         )
     shell_library = []
@@ -182,7 +182,7 @@ def _application_bootstrap(name, pack, deps, manifest, manifest_values, resource
             manifest = bootstrap + ".shell_manifest",
             exports_manifest = 1,
             custom_package = "com.godot.game.shell",
-            visibility = caller_package(),
+            visibility = CALLER_PACKAGE,
             **common
         )
         shell_library = [bootstrap + ".shell_library"]
@@ -202,7 +202,7 @@ def _application_debug_symbols(name, jni_libraries, runtime, visibility, common)
         jni_libraries = jni_libraries,
         runtime = runtime,
         output_name = name.rsplit("/", 1)[-1] + "_debug_symbols.zip",
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
     godot_android_debug_symbols(
@@ -273,7 +273,7 @@ def _android_application_impl(
         # Native libraries stay uncompressed so the device need not extract
         # them, as android:extractNativeLibs="false" in Godot's export requires.
         nocompress_extensions = ["pck", "so"],
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **kwargs
     )
     (godot_android_app_bundle if bundle else godot_android_apk)(

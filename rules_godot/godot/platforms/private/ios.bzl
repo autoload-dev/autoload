@@ -25,7 +25,7 @@ load(
     "release_values",
     "shell_file",
 )
-load("//godot/private:macros.bzl", "caller_package", "common_kwargs", "filegroup_kwargs")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs", "filegroup_kwargs")
 load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
@@ -302,7 +302,7 @@ def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, commo
         name = data,
         pack = pack,
         minimum_os_version = minimum_os_version,
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **(common | shell)
     )
     for group in ["plist", "app_icons"]:
@@ -310,7 +310,7 @@ def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, commo
             name = "%s.%s" % (data, group),
             srcs = [":" + data],
             output_group = group,
-            visibility = caller_package(),
+            visibility = CALLER_PACKAGE,
             **filegroup_kwargs(common)
         )
     _ios_extension_libraries(
@@ -318,7 +318,7 @@ def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, commo
         deps = [pack],
         minimum_os_version = minimum_os_version,
         runtime = runtime,
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **common
     )
 
@@ -427,7 +427,7 @@ def _bundle_targets(name, inputs, visibility, common, bundle_name, deps, resourc
         resources = [":" + data] + resources,
         infoplists = [":" + data + ".plist"] + infoplists,
         app_icons = [":" + data + ".app_icons"],
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **application
     )
     _ios_bundle(
@@ -453,7 +453,7 @@ def _resolved_runtime(name, engine_settings, common):
     """Resolve the runtime component inside each platform slice of the Apple split."""
     runtime_bridge_ios(
         name = name + ".godot_runtime",
-        visibility = caller_package(),
+        visibility = CALLER_PACKAGE,
         **(common | engine_settings)
     )
     return ":" + name + ".godot_runtime"

@@ -20,6 +20,7 @@ bzl_library(
         "//godot/private:addon",
         "//godot/private:context",
         "//godot/private:execution",
+        "//godot/private:macros",
         "//godot/private:paths",
         "//godot/private:providers",
         "//godot/private:symbols",

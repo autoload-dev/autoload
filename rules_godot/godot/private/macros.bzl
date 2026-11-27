@@ -12,19 +12,10 @@ VOLATILE_API = (
 
 _COMMON = ["tags", "testonly", "target_compatible_with", "exec_compatible_with"]
 
-# It reads native.package_relative_label and declares nothing, so it needs no name.
-# buildifier: disable=unnamed-macro
-def caller_package():
-    """
-    Return the visibility of a macro's internal target that its caller's package may inspect.
-
-    A symbolic macro's targets are private to the macro; the analysis tests of the calling
-    package inspect some of them, such as a run's view.
-
-    Returns:
-        A visibility list of the calling package.
-    """
-    return [str(native.package_relative_label(":__pkg__"))]
+# The visibility of a macro's internal target that its caller's package may inspect, as the
+# analysis tests of the calling package do, such as a run's view. A relative label resolves in
+# the package of the target, which is the caller's, also for a symbolic macro's targets.
+CALLER_PACKAGE = [":__pkg__"]
 
 def common_kwargs(kwargs):
     """
