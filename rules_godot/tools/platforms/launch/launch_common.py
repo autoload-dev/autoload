@@ -147,6 +147,35 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _environment(assignments: Sequence[str]) -> dict[str, str]:
+    """Return the variables of the --env assignments."""
+    env = {}
+    for assignment in assignments:
+        name, separator, value = assignment.partition("=")
+        if not separator or not name:
+            raise LaunchError(f"--env takes NAME=VALUE, not {assignment!r}")
+        env[name] = value
+    return env
+
+
+def _reject_unaccepted_options(
+    options: Options,
+    parser: argparse.ArgumentParser,
+    platform: str,
+    accepted: Collection[str],
+) -> None:
+    """Reject the options a user set that the platform does not accept."""
+    flags = {action.dest: action.option_strings[0] for action in parser._actions}
+    defaults = Options()
+    for field in dataclasses.fields(Options):
+        if field.name in accepted or field.name == "godot_args":
+            continue
+        if getattr(options, field.name) != getattr(defaults, field.name):
+            raise LaunchError(
+                f"{flags[field.name]} does not apply to {platform} applications"
+            )
+
+
 def parse_options(
     argv: Sequence[str], platform: str, accepted: Collection[str]
 ) -> Options:
@@ -168,12 +197,6 @@ def parse_options(
             f"unknown launcher arguments {' '.join(unknown)}; pass Godot arguments "
             f"after a second --, as in: bazel run <app> -- -- {' '.join(unknown)}"
         )
-    env = {}
-    for assignment in values.env:
-        name, separator, value = assignment.partition("=")
-        if not separator or not name:
-            raise LaunchError(f"--env takes NAME=VALUE, not {assignment!r}")
-        env[name] = value
     options = Options(
         device=values.device,
         list_devices=values.list_devices,
@@ -184,7 +207,7 @@ def parse_options(
         install_only=values.install_only,
         no_install=values.no_install,
         detach=values.detach,
-        env=env,
+        env=_environment(values.env),
         emulator_args=tuple(values.emulator_args),
         grant_permissions=values.grant_permissions,
         logcat=values.logcat,
@@ -192,15 +215,7 @@ def parse_options(
         os_version=values.os_version,
         godot_args=tuple(godot_args),
     )
-    flags = {action.dest: action.option_strings[0] for action in parser._actions}
-    defaults = Options()
-    for field in dataclasses.fields(Options):
-        if field.name in accepted or field.name == "godot_args":
-            continue
-        if getattr(options, field.name) != getattr(defaults, field.name):
-            raise LaunchError(
-                f"{flags[field.name]} does not apply to {platform} applications"
-            )
+    _reject_unaccepted_options(options, parser, platform, accepted)
     return options
 
 
