@@ -199,6 +199,30 @@ class WriteTest(unittest.TestCase):
             uid_cache({"a.gd": "uid://c1od550e86gw1"}),
         )
 
+    def test_a_keep_importer_packs_the_file_as_it_is(self) -> None:
+        self.file("import/data.json.import", '[remap]\n\nimporter="keep"\n')
+        files = self.pack({"features": []}, {"data.json": "{}\n"})
+        self.assertEqual(b"{}\n", files["data.json"])
+        self.assertNotIn("data.json.import", files)
+
+    def test_an_import_that_names_a_file_its_import_did_not_produce_fails(self) -> None:
+        self.file(
+            "import/lost.png.import",
+            '[remap]\n\nimporter="texture"\npath="res://.godot/imported/lost.ctex"\n',
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            r"res://lost\.png\.import names res://\.godot/imported/lost\.ctex, which its "
+            "import did not produce",
+        ):
+            self.pack({"features": []}, {"lost.png": b"png"})
+
+    def test_the_boot_splash_is_packed_as_an_image_file(self) -> None:
+        files = self.pack(
+            {"features": [], "boot_splash": "res://sky.png"}, {"sky.png": b"png"}
+        )
+        self.assertEqual(b"png", files["sky.png"])
+
     def test_the_pck_is_deterministic(self) -> None:
         members = {"a.gd": "extends Node\n", "sky.png": b"png"}
         first = self.pack({"features": []}, members)
