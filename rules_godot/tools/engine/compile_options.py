@@ -15,10 +15,9 @@ from typing import Any
 
 from tools.engine.source_tree import relative
 
-# Optimization and debug information follow Bazel's compilation mode, --copt
-# and --per_file_copt, and stripping follows --strip, as for any C++ library:
-# upstream's flags for them are not replayed. -ObjC and other options that only
-# start alike stay.
+# Bazel decides optimization, debug information and stripping, as for any C++ library,
+# so upstream's flags for them are dropped. The pattern matches whole options, so -ObjC
+# stays.
 _BAZEL_OWNED_OPTION = re.compile(
     r"-O(?:\d|s|z|g|fast|size|none|unchecked)?|-g.*|-s|-Wl,-[Sx]"
 )

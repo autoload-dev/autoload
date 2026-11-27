@@ -18,6 +18,7 @@ def _module_configs(
 
 
 def _is_dependency_call(node: ast.AST) -> TypeGuard[ast.Call]:
+    """Whether node calls a module_add_dependencies method, as config.py files do."""
     return (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
@@ -35,6 +36,7 @@ def _is_optional(call: ast.Call, values: list[object]) -> bool:
 
 
 def _module_names(value: object) -> list[str]:
+    """Return the dependencies' names; fail unless they are a list or tuple of strings."""
     if not isinstance(value, (list, tuple)) or not all(
         isinstance(name, str) for name in value
     ):
@@ -47,12 +49,13 @@ def _required_dependencies(call: ast.Call) -> list[str]:
     values = [ast.literal_eval(arg) for arg in call.args]
     if _is_optional(call, values):
         return []
-    # Some upstream modules pass an old name as the first argument, so the module's
-    # name comes from its config.py directory instead.
+    # The first argument is the module's own name, which some upstream modules give in an
+    # old form; the recipe names a module after its config.py directory instead.
     return _module_names(values[1])
 
 
 def _declared_dependencies(config: Path) -> list[str]:
+    """Return the required dependencies that a module's config.py declares."""
     dependencies: list[str] = []
     for node in ast.walk(ast.parse(config.read_text(), filename=str(config))):
         if not _is_dependency_call(node):

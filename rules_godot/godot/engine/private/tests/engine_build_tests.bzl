@@ -72,7 +72,7 @@ _ATTRS = {
     "runtime_profiles": {},
 }
 
-# A recipe first watches every engine tool it names, so a new tool also needs a watch.
+# The recipe watches each of its .py tool attributes once, so the count follows them.
 _TOOL_WATCHES = ["watch"] * len([
     path
     for path in _ATTRS.values()

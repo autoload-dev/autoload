@@ -4,8 +4,8 @@ How the engine's repository rules run the Python tools in //tools/engine.
 A repository rule cannot build a py_binary, so it starts a tool's module with the host's
 Python and puts the ruleset's root on PYTHONPATH, as rules_python does for its own
 repository tools. The tools then import each other as tools.engine modules. Python's -P
-keeps the repository's own directory off the path, so a tools package among the engine's
-sources cannot take the place of the ruleset's.
+keeps the working directory off the module path, so a tools package in the engine's
+sources cannot shadow the ruleset's.
 """
 
 visibility("private")

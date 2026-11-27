@@ -31,8 +31,7 @@ def engine_tree_impl(ctx, *, _fail = fail):
         The repository's metadata: reproducible, since the digest-pinned archive
         determines it.
     """
-    tool = ctx.path(ctx.attr._tree)
-    ctx.watch(tool)
+    ctx.watch(ctx.path(ctx.attr._tree))
     descriptor = json.decode(ctx.read(ctx.path(ctx.attr.source)))
     archive = ctx.attr.source.same_package_label(descriptor["archive"])
     ctx.extract(ctx.path(archive), stripPrefix = descriptor["strip_prefix"])
@@ -42,8 +41,8 @@ def engine_tree_impl(ctx, *, _fail = fail):
         stripPrefix = "scons-4.10.1",
         output = "_scons",
     )
-    command = engine_tool(ctx, ctx.attr._tree)
-    result = ctx.execute(command.command + ["--root", "."], environment = command.environment)
+    tool = engine_tool(ctx, ctx.attr._tree)
+    result = ctx.execute(tool.command + ["--root", "."], environment = tool.environment)
     if result.return_code:
         _fail("%s: preparing the engine tree failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr))
         return None
