@@ -35,24 +35,31 @@ _TraceInfo = provider(
 # and the export's native reach the native path, the export's view names the project.
 _EDGES = ["deps", "export", "native", "view", "project"]
 
+def _edge_traces(ctx):
+    """Return the traces of the dependencies on _EDGES."""
+    traces = []
+    for name in _EDGES:
+        values = getattr(ctx.rule.attr, name, [])
+        dependencies = values if type(values) == "list" else [values] if values else []
+        traces += [dependency[_TraceInfo] for dependency in dependencies if _TraceInfo in dependency]
+    return traces
+
 def _trace_impl(target, ctx):
     projects = [str(target.label)] if GodotProjectInfo in target else []
     defines = target[CcInfo].compilation_context.defines.to_list() if CcInfo in target else []
     platform_slice_contexts = []
     project_contexts = []
-    for name in _EDGES:
-        values = getattr(ctx.rule.attr, name, [])
-        for dep in (values if type(values) == "list" else [values] if values else []):
-            if _TraceInfo in dep:
-                projects.extend(dep[_TraceInfo].projects.to_list())
-                defines.extend(dep[_TraceInfo].cc_defines.to_list())
-                platform_slice_contexts.extend(dep[_TraceInfo].platform_slice_contexts)
-                project_contexts.extend(dep[_TraceInfo].project_contexts)
-                if dep[_TraceInfo].kind == "godot_pack_native":
-                    if ctx.rule.kind == "_pack_export":
-                        platform_slice_contexts.append(dep[_TraceInfo].context_empty)
-                    elif ctx.rule.kind == "_configured_pack":
-                        project_contexts.append(dep[_TraceInfo].context_empty)
+    for trace in _edge_traces(ctx):
+        projects.extend(trace.projects.to_list())
+        defines.extend(trace.cc_defines.to_list())
+        platform_slice_contexts.extend(trace.platform_slice_contexts)
+        project_contexts.extend(trace.project_contexts)
+        if trace.kind != "godot_pack_native":
+            continue
+        if ctx.rule.kind == "_pack_export":
+            platform_slice_contexts.append(trace.context_empty)
+        elif ctx.rule.kind == "_configured_pack":
+            project_contexts.append(trace.context_empty)
     return [_TraceInfo(
         kind = ctx.rule.kind,
         projects = depset(projects),

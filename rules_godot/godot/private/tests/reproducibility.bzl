@@ -37,18 +37,20 @@ def _write_content(entries, file):
         if entry.action.mnemonic == "FileWrite" and entry.action.outputs.to_list()[0] == file
     ][0]
 
-def _import_and_pack_reproducibility_test_impl(ctx):
-    entries = ctx.attr.pack[0][GodotActionsInfo].every.to_list()
+def _pack_action(entries):
     packs = [entry.action for entry in entries if entry.action.mnemonic == "GodotPack"]
     if len(packs) != 1:
         fail("Expected one GodotPack action, found %d" % len(packs))
-    pack = packs[0]
-    manifest_path = pack.argv[pack.argv.index("--manifest") + 1]
-    tc = ctx.toolchains[_TOOLCHAIN].godot
+    return packs[0]
 
-    # Each unit imports in the pack's project context only, under the project's import
-    # configuration of that context; outside it the units write their staging alone.
-    manifests = {unit: _produced(entries, unit + ".import.json", "FileWrite") for unit in ctx.attr.units}
+def _import_manifests(entries, units):
+    """
+    Return the manifests of the units' imports and the import configuration they name.
+
+    Each unit imports in the pack's project context only, under the project's import
+    configuration of that context; outside it the units write their staging alone.
+    """
+    manifests = {unit: _produced(entries, unit + ".import.json", "FileWrite") for unit in units}
     resource_paths = {
         unit: _produced(entries, unit + ".resource_paths.json", "FileWrite", directory = manifest.dirname)
         for unit, manifest in manifests.items()
@@ -66,8 +68,67 @@ def _import_and_pack_reproducibility_test_impl(ctx):
         for output in entry.action.outputs.to_list()
         if mapped_path(output) in configurations
     ]
+    return struct(manifests = manifests, resource_paths = resource_paths, import_configuration = import_configuration)
+
+def _declare_run(ctx, run, shared):
+    """Declare one run's import archives and pack; return its commands, outputs and compared files."""
+    prefix = "%s/%s" % (ctx.label.name, run)
+    archives = {}
+    commands = []
+    for unit in ctx.attr.units:
+        archive = ctx.actions.declare_file("%s/%s/%s" % (prefix, unit, _IMPORT_ARCHIVE))
+        archives[unit] = archive
+        commands.append(" ".join([
+            ctx.executable._import_tool.path,
+            "import",
+            "--manifest",
+            shared.imports.manifests[unit].path,
+            "--output",
+            archive.path,
+            "--resource-path-manifest",
+            shared.imports.resource_paths[unit].path,
+            shared.roots,
+        ]))
+    exported = ctx.actions.declare_file(prefix + "/pack.pck")
+    report = ctx.actions.declare_file(prefix + "/pack.json")
+    commands.append(" ".join([
+        ctx.executable._export_tool.path,
+        "pack",
+        "--manifest",
+        shared.pack_manifest,
+        "--output",
+        exported.path,
+        "--report",
+        report.path,
+        shared.roots,
+    ] + ["--import " + archives[unit].dirname for unit in ctx.attr.units]))
+    return struct(
+        commands = commands,
+        outputs = archives.values() + [exported, report],
+        compared = [archives[unit] for unit in ctx.attr.units] + [exported],
+    )
+
+def _comparison_script(ctx, first_run, second_run):
+    """Return a test script that compares the two runs' files byte for byte."""
+    script = ["#!/usr/bin/env bash", "set -eu", "status=0"]
+    for first, second in zip(first_run, second_run):
+        script.append(
+            "if cmp -s '{a}' '{b}'; then echo 'identical: {name}'; else echo 'differs: {name}'; status=1; fi".format(
+                a = first.short_path,
+                b = second.short_path,
+                name = first.short_path.removeprefix(ctx.label.package + "/" + ctx.label.name + "/first/"),
+            ),
+        )
+    script.append("exit $status")
+    return "\n".join(script) + "\n"
+
+def _import_and_pack_reproducibility_test_impl(ctx):
+    entries = ctx.attr.pack[0][GodotActionsInfo].every.to_list()
+    pack = _pack_action(entries)
+    tc = ctx.toolchains[_TOOLCHAIN].godot
+    imports = _import_manifests(entries, ctx.attr.units)
     inputs = depset(
-        manifests.values() + resource_paths.values() + import_configuration,
+        imports.manifests.values() + imports.resource_paths.values() + imports.import_configuration,
         transitive = [pack.inputs, tc.files],
     )
 
@@ -78,68 +139,22 @@ def _import_and_pack_reproducibility_test_impl(ctx):
         for file in inputs.to_list()
         if not file.is_source
     }))
-
-    commands = ["set -eu"]
-    outputs = []
-    runs = {}
-    for run in ["first", "second"]:
-        prefix = "%s/%s" % (ctx.label.name, run)
-        archives = {}
-        for unit in ctx.attr.units:
-            archive = ctx.actions.declare_file("%s/%s/%s" % (prefix, unit, _IMPORT_ARCHIVE))
-            archives[unit] = archive
-            commands.append(" ".join([
-                ctx.executable._import_tool.path,
-                "import",
-                "--manifest",
-                manifests[unit].path,
-                "--output",
-                archive.path,
-                "--resource-path-manifest",
-                resource_paths[unit].path,
-                roots,
-            ]))
-        exported = ctx.actions.declare_file(prefix + "/pack.pck")
-        report = ctx.actions.declare_file(prefix + "/pack.json")
-        commands.append(" ".join([
-            ctx.executable._export_tool.path,
-            "pack",
-            "--manifest",
-            manifest_path,
-            "--output",
-            exported.path,
-            "--report",
-            report.path,
-            roots,
-        ] + ["--import " + archives[unit].dirname for unit in ctx.attr.units]))
-        outputs += archives.values() + [exported, report]
-        runs[run] = [archives[unit] for unit in ctx.attr.units] + [exported]
-
+    shared = struct(imports = imports, pack_manifest = pack.argv[pack.argv.index("--manifest") + 1], roots = roots)
+    runs = [_declare_run(ctx, run, shared) for run in ["first", "second"]]
     ctx.actions.run_shell(
-        command = "\n".join(commands),
+        command = "\n".join(["set -eu"] + runs[0].commands + runs[1].commands),
         inputs = inputs,
         tools = [ctx.attr._import_tool[DefaultInfo].files_to_run, ctx.attr._export_tool[DefaultInfo].files_to_run, tc.editor],
-        outputs = outputs,
+        outputs = runs[0].outputs + runs[1].outputs,
         mnemonic = "GodotReproducibility",
         progress_message = "Validating %{label}",
         toolchain = _TOOLCHAIN,
     )
-
-    script = ["#!/usr/bin/env bash", "set -eu", "status=0"]
-    for first, second in zip(runs["first"], runs["second"]):
-        script.append(
-            "if cmp -s '{a}' '{b}'; then echo 'identical: {name}'; else echo 'differs: {name}'; status=1; fi".format(
-                a = first.short_path,
-                b = second.short_path,
-                name = first.short_path.removeprefix(ctx.label.package + "/" + ctx.label.name + "/first/"),
-            ),
-        )
-    script.append("exit $status")
     executable = ctx.actions.declare_file(ctx.label.name + ".sh")
-    ctx.actions.write(executable, "\n".join(script) + "\n", is_executable = True)
+    ctx.actions.write(executable, _comparison_script(ctx, runs[0].compared, runs[1].compared), is_executable = True)
     return [DefaultInfo(
         executable = executable,
-        runfiles = ctx.runfiles(files = runs["first"] + runs["second"]),
+        runfiles = ctx.runfiles(files = runs[0].compared + runs[1].compared),
     )]
 
 import_and_pack_reproducibility_test = rule(
