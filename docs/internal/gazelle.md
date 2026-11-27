@@ -99,7 +99,9 @@ format that no target provides, such as a script the extension compiles, to it.
 - **`# keep`.** On a target, Gazelle leaves the whole target alone; on an attribute, that
   attribute; on one entry of `deps`, that entry, such as an umbrella dependency the files do not
   reference. The language resolves nothing for a kept `deps` or `runtime_deps`, so a
-  reference that several targets provide reports nothing there.
+  reference that several targets provide reports nothing there. Gazelle resolves the
+  generated target before it merges it into the existing one, so the language reads the
+  `# keep` of the existing target while it generates.
 - **Renamed projects and tests.** A `godot_project` matches by `project_file`, a `gdunit_test`
   by `suites`, so either may carry another name.
 - **Opaque `srcs`.** A package with a `godot_resources` target whose `srcs` is no list of

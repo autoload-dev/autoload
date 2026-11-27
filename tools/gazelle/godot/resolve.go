@@ -181,8 +181,10 @@ func (l *godotLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.Rem
 // those their formats need.
 func (rv resolver) deps(ui unitImports) map[string]bool {
 	deps := rv.all(ui.refs, nil)
-	for _, dep := range ui.formatDeps {
-		deps[rv.relative(dep)] = true
+	for _, file := range ui.files {
+		for _, dep := range rv.formatDeps[format(file)] {
+			deps[rv.relative(dep)] = true
+		}
 	}
 	return deps
 }
