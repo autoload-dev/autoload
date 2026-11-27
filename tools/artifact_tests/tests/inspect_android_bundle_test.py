@@ -17,8 +17,8 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from godot.private.testing import inspect_android_bundle
-from godot.private.testing.inspect_android_bundle import apk_classes, defined_classes
+from tools.artifact_tests import inspect_android_bundle
+from tools.artifact_tests.inspect_android_bundle import apk_classes, defined_classes
 
 # ==== Class definitions =======================================================
 

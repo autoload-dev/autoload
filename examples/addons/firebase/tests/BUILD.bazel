@@ -1,8 +1,6 @@
 load("@autoload_rules_godot//godot:defs.bzl", "godot_test")
-
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private/testing:ios_app_test.bzl", "ios_app_test")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//tools/artifact_tests:ios_app_test.bzl", "ios_app_test")
 
 package(default_testonly = True)
 

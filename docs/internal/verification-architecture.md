@@ -46,7 +46,7 @@ make. A behavior that no question reaches has no test kind; see
 | Build-tool unit test | Ruleset, `tools/<area>/tests/` | `py_test` | The tool's library and test data |
 | Build-output test | Ruleset, `<impl>/tests/` | Inspection `py_test` or a test rule over built fixture outputs | Private files, fixtures, transitions, tool libraries, an engine |
 | Run test | Ruleset, `<impl>/tests/` | `godot_test`, GdUnit or a launcher over an exported application | As for build-output tests |
-| Consumer scenario | `e2e/rules_godot/` in the root module, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the artifact test rules |
+| Consumer scenario | `e2e/rules_godot/` in the root module, one package per scenario | Public test rules, `build_test`, the artifact test rules | Public API and the root module's own rules, such as the artifact test rules |
 | Example test | `examples/`, owned by the example | The example's own tests | Public API only |
 | Repository-tooling test | Root module `autoload_dev`, beside the tool in `tools/<tool>/` | `py_test` or `unittest` | The tool's library |
 
@@ -139,7 +139,8 @@ code.
 
 - **Location**: `e2e/rules_godot/` in the repository's root module, one package per scenario.
 - **Form**: Public test rules, `build_test` and the [artifact test rules](#artifact-test-rules).
-- **Allowed dependencies**: The public API and the artifact test rules.
+- **Allowed dependencies**: The public API and the root module's own rules, such as the
+  artifact test rules.
 - **May prove**: That a user can build, inspect and run what the scenario declares through
   the public API.
 - **May not claim**: Coverage of variants or error paths. Analysis and build-output tests in
@@ -247,12 +248,21 @@ stay out of them with a small scope.
 |---|---|---|---|
 | B1 | A consumer module loads and depends on public API labels only. Public API is what the [API reference](../../rules_godot/docs/internal/api-reference.md) documents. | Bazel load visibility on private `.bzl` files and package visibility on private targets | None |
 | B2 | A `tests` package of the ruleset is visible only inside the ruleset module. | Bazel visibility: `//godot:__subpackages__`, `//tools:__subpackages__` or load visibility | None |
-| B3 | Consumer scenarios load no private module but the artifact test rules, which keep public load visibility for them. | Review, until a Bazel visibility check covers the modules that keep public load visibility | None |
+| B3 | No module but the ruleset loads one of its `private` modules. | There are no such loads: the only private modules with public load visibility are those generated repositories load. Review keeps it so. | None |
 | C1 | No two consumer scenarios make the same claim. A smoke path exists once per platform. | Review. The claim is semantic, so no checker can compare it. | None |
 | L1 | Each test has exactly one owning module and runs wherever its tags select it. Ruleset tests run in the ruleset's `bazel test`, repository-tooling tests in the root module's. A consumer scenario that needs a mobile operating system's toolchains carries the tag `android` or `ios`. A host job does not select another host's mobile tests. | Review, and the tag filters of the configs in `shared.bazelrc`. [Host jobs and execution](verification-platforms.md#host-jobs-and-execution) describes the selection. | None |
 
 B1 and B2 need no convention rule. Bazel rejects a load or a dependency outside the declared
-visibility, as rules_cc, rules_apple and rules_java use it. Tags select tests; packages own
+visibility, as rules_cc, rules_apple and rules_java use it.
+
+B3 covers what load visibility cannot express: `visibility()` names packages of its own
+repository only, so a module that a generated repository loads, such as the engine recipes'
+`godot/engine/private:generator.bzl`, keeps public load visibility, and Bazel would let any
+module load it. No other module does: what the examples, the consumer scenarios and the
+add-on modules need from the ruleset is public API, and what only they need, such as the
+artifact test rules and `godot_configured_app`, lives in the root module. Buildifier's
+`bzl-visibility` warning is no check of this boundary: it drops the repository of a label and
+compares paths as strings, so it catches a load across modules only by chance. Tags select tests; packages own
 them. A mobile test carries its tag where its package declares it, and no `test_suite` lists them.
 
 ### Visibility inside the ruleset
@@ -287,12 +297,13 @@ its analysis tests arrange projects in the package. The
 
 ## Artifact test rules
 
-`godot/private/testing` holds `android_bundle_test` and `ios_app_test`, which inspect a
-built App Bundle or iOS application. They are not supported API: as in rules_apple and
-rules_android, inspection rules serve the ruleset's own tests. White-box tests and the
-smoke scenarios `e2e/rules_godot/smoke/android` and `e2e/rules_godot/smoke/ios` load them; the root
-module loads them across repositories, so they keep public load visibility. They carry their
-own inspectors instead of loading `tools/platforms`.
+`tools/artifact_tests/` of the root module holds `android_bundle_test` and `ios_app_test`,
+which inspect a built App Bundle or iOS application. They are no API of the ruleset: as
+rules_apple keeps its format-specific checks in its own test tree, they serve the repository's
+tests. The smoke scenarios `e2e/rules_godot/smoke/android` and `e2e/rules_godot/smoke/ios`
+and the examples load them; the ruleset's white-box tests load them through its development
+dependency on the root module, `@autoload_dev`. They carry their own inspectors: the module
+boundary keeps the ruleset's `tools/platforms`, visible to the ruleset only, out of them.
 
 White-box tests depend on tool libraries such as `//tools:pck_lib` directly; those stay
 private to the ruleset under B2.

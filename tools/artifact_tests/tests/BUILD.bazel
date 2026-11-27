@@ -1,15 +1,21 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(
     default_testonly = True,
     default_visibility = ["//visibility:private"],
 )
 
+# Mach-O and ELF files as the toolchains write them, for the inspectors' tests.
+py_library(
+    name = "native_fixtures",
+    srcs = ["native_fixtures.py"],
+)
+
 py_test(
     name = "inspect_android_bundle_test",
     size = "small",
     srcs = ["inspect_android_bundle_test.py"],
-    deps = ["//godot/private/testing:inspect_android_bundle_lib"],
+    deps = ["//tools/artifact_tests:inspect_android_bundle_lib"],
 )
 
 py_test(
@@ -17,8 +23,8 @@ py_test(
     size = "small",
     srcs = ["inspect_ios_app_test.py"],
     deps = [
-        "//godot/private/testing:inspect_ios_app_lib",
-        "//tools/platforms:native_fixtures",
+        ":native_fixtures",
+        "//tools/artifact_tests:inspect_ios_app_lib",
     ],
 )
 
@@ -26,7 +32,7 @@ py_test(
     name = "apple_bundle_test",
     size = "small",
     srcs = ["apple_bundle_test.py"],
-    deps = ["//godot/private/testing:inspect_ios_app_lib"],
+    deps = ["//tools/artifact_tests:inspect_ios_app_lib"],
 )
 
 py_test(
@@ -34,7 +40,7 @@ py_test(
     size = "small",
     srcs = ["native_symbols_test.py"],
     deps = [
-        "//godot/private/testing:native_symbols",
-        "//tools/platforms:native_fixtures",
+        ":native_fixtures",
+        "//tools/artifact_tests:native_symbols",
     ],
 )

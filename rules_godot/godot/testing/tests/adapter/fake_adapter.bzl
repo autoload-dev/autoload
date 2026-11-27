@@ -1,8 +1,11 @@
 """An adapter_test whose adapter is the fake adapter of fixtures/fake_adapter."""
 
-load("//godot/private:adapter.bzl", "adapter_test")
+load("//godot/testing:adapter.bzl", "adapter_test")
 
-visibility("//godot/private/tests/...")
+visibility([
+    "//godot/private/tests/strict_warnings",
+    "//godot/testing/tests/adapter",
+])
 
 def fake_adapter_test(name, cases, project, **kwargs):
     """
@@ -17,7 +20,7 @@ def fake_adapter_test(name, cases, project, **kwargs):
     adapter_test(
         name = name,
         deps = cases,
-        adapter = Label("//godot/private/tests/adapter/fixtures/fake_adapter:run.gd"),
+        adapter = Label("//godot/testing/tests/adapter/fixtures/fake_adapter:run.gd"),
         main = "addons/fake_adapter/run.gd",
         cases = "addons/fake_adapter/cases.txt",
         kwargs = dict(kwargs, project = project),

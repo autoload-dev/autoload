@@ -1,10 +1,12 @@
 """Test what an iOS application contains, without running it."""
 
 load("@rules_apple//apple:providers.bzl", "AppleBundleInfo")
-load("//godot/private:paths.bzl", "runfile_key")
 
-# The repository's consumer scenarios load it; it is not supported API.
-visibility("public")
+def _runfile_key(ctx, short_path):
+    # The path below a runfiles directory; those of external files start with ../.
+    if short_path.startswith("../"):
+        return short_path[3:]
+    return ctx.workspace_name + "/" + short_path
 
 def _ios_app_test_impl(ctx):
     bundle = ctx.attr.app[AppleBundleInfo].archive
@@ -19,7 +21,7 @@ def _ios_app_test_impl(ctx):
     if ctx.attr.debug_symbols:
         arguments.append("  --dsym-required \\")
         arguments += [
-            '  --dsym "$runfiles/%s" \\' % runfile_key(ctx, file.short_path)
+            '  --dsym "$runfiles/%s" \\' % _runfile_key(ctx, file.short_path)
             for file in ctx.files.debug_symbols
         ]
     if not arguments:
@@ -32,8 +34,8 @@ def _ios_app_test_impl(ctx):
         template = ctx.file._launcher_template,
         output = launcher,
         substitutions = {
-            "{INSPECTOR}": runfile_key(ctx, inspector.short_path),
-            "{APP}": runfile_key(ctx, bundle.short_path),
+            "{INSPECTOR}": _runfile_key(ctx, inspector.short_path),
+            "{APP}": _runfile_key(ctx, bundle.short_path),
             "{ARGUMENTS}": "\n".join(arguments),
         },
         is_executable = True,
@@ -91,11 +93,11 @@ ios_app_test = rule(
             """,
         ),
         "_launcher_template": attr.label(
-            default = Label("//godot/private/testing:ios_app_test.sh.tpl"),
+            default = Label("//tools/artifact_tests:ios_app_test.sh.tpl"),
             allow_single_file = True,
         ),
         "_inspector": attr.label(
-            default = Label("//godot/private/testing:inspect_ios_app"),
+            default = Label("//tools/artifact_tests:inspect_ios_app"),
             executable = True,
             cfg = config.exec("test"),
         ),

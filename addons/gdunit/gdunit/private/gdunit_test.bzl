@@ -1,9 +1,6 @@
 """GdUnit4 as a godot_test main script, like a pytest driver over py_test."""
 
-# rules_godot's test adapter macro: loadable across repositories, but no supported API of
-# rules_godot. This module pins a rules_godot that matches it.
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private:adapter.bzl", "adapter_test")
+load("@autoload_rules_godot//godot/testing:adapter.bzl", "adapter_test")
 
 visibility("//...")
 

@@ -1,13 +1,21 @@
-"""A godot_test whose main script is a rules_godot test adapter over listed cases."""
+"""
+Build a test framework's Bazel test on godot_test: `adapter_test` runs the framework's test
+adapter over the cases its deps list.
+
+A test adapter is a main script that runs a test framework under Bazel's test contract. It
+reads the case list, a file of the cases' `res://` paths, and passes the path to rules_godot's
+case selection, `res://addons/rules_godot_test/cases.gd`, which keeps the cases of this shard
+and of `--test_filter`; the adapter then runs them, writes its reports and exits with the
+test's result. autoload_gdunit's `gdunit_test` is a test adapter for GdUnit4.
+
+Volatile API: public, but it may still change incompatibly in a release of rules_godot. A
+module that builds on it pins the rules_godot release it works with.
+"""
 
 load("//godot/private:macros.bzl", "common_kwargs")
 load("//godot/private:providers.bzl", "GodotResourcesInfo")
 load("//godot/private:resources.bzl", "godot_resources", "own_paths")
 load("//godot/private:run.bzl", "godot_test")
-
-# Test framework modules, such as autoload_gdunit, load adapter_test across repositories. It
-# is no supported API: each such module pins a matching rules_godot.
-visibility("public")
 
 def _case_list_impl(ctx):
     cases = sorted({
@@ -34,7 +42,30 @@ _case_list = rule(
 
 def adapter_test(name, deps, adapter, main, cases, kwargs):
     """
-    Declare a godot_test whose main script reads its cases from a project file.
+    Declare a godot_test whose main script, a test adapter, runs the cases its deps list.
+
+    The test contains the deps, the adapter's main script and rules_godot's case selection.
+    The `res://` paths of the deps' own files, in path order, make up the case list at the
+    resource path `cases`; the files of the deps' dependencies, such as the framework and
+    the code under test, are none. The adapter decides which listed files are cases and
+    the test's outcome: engine errors do not fail the test, since a framework provokes them
+    on purpose. The test and its helpers `<name>.case_list`, `<name>.cases` and
+    `<name>.adapter` are test-only.
+
+    Volatile API: public, but it may still change incompatibly in a release of rules_godot.
+    A module that builds on it pins the rules_godot release it works with.
+
+    Example, in a test framework module's macro:
+    ```starlark
+    adapter_test(
+        name = name,
+        deps = suites,
+        adapter = Label("//my_framework:run.gd"),
+        main = "addons/my_framework/run.gd",
+        cases = "addons/my_framework/cases.txt",
+        kwargs = kwargs,
+    )
+    ```
 
     Args:
         name: Name of the test target.
@@ -66,7 +97,7 @@ def adapter_test(name, deps, adapter, main, cases, kwargs):
     godot_resources(
         name = name + ".adapter",
         resource_paths = {adapter: main},
-        deps = deps + [Label("//godot/private:test_cases")],
+        deps = deps + [Label("//godot/testing:test_cases")],
         **common
     )
     godot_test(

@@ -103,9 +103,9 @@ gdunit_test(
 ## rules_godot version
 
 `gdunit_test` builds on rules_godot's test adapter, `adapter_test` in
-`@autoload_rules_godot//godot/private:adapter.bzl`. rules_godot lets other repositories load
-it, but it is no supported API: each release of this module pins the rules_godot release
-it works with. Use a rules_godot at least that new.
+`@autoload_rules_godot//godot/testing:adapter.bzl`, which rules_godot releases after 0.1.1
+provide. It is public API that may still change, so each release of this module pins the
+rules_godot release it works with; use a rules_godot at least that new.
 
 ## Design
 

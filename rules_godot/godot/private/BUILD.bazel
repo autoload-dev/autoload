@@ -2,7 +2,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-load("//godot:defs.bzl", "godot_project", "godot_resources")
+load("//godot:defs.bzl", "godot_project")
 load("//godot/engine/private:optimization.bzl", "LTO_DEFAULT", "OPTIMIZE_DEFAULT", "VFE_DEFAULT")
 load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 load(":context.bzl", "no_project")
@@ -65,14 +65,6 @@ godot_project(
 config_setting(
     name = "display",
     flag_values = {"//godot:headless": "false"},
-    visibility = NOT_ACTUALLY_PUBLIC,
-)
-
-# Bazel's sharding and test filter for the test adapters' cases, which every
-# adapter test contains.
-godot_resources(
-    name = "test_cases",
-    resource_paths = {"test_cases.gd": "addons/rules_godot_test/cases.gd"},
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
@@ -200,17 +192,6 @@ bzl_library(
     name = "actions",
     srcs = ["actions.bzl"],
     deps = [":execution"],
-)
-
-bzl_library(
-    name = "adapter",
-    srcs = ["adapter.bzl"],
-    deps = [
-        ":macros",
-        ":providers",
-        ":resources",
-        ":run",
-    ],
 )
 
 bzl_library(
@@ -481,17 +462,6 @@ bzl_library(
         ":resources",
         ":setting_values",
         "//godot/private/config:settings",
-    ],
-)
-
-bzl_library(
-    name = "configured_app",
-    srcs = ["configured_app.bzl"],
-    deps = [
-        "//godot/private/config:native",
-        "//godot/private/config:settings",
-        "@rules_android//rules:bzl",
-        "@rules_apple//apple:providers",
     ],
 )
 

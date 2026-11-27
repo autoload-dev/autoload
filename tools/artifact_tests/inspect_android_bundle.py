@@ -17,8 +17,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from godot.private.testing.native_symbols import elf_build_id, elf_sections
-from godot.private.testing.pck import pck_contents
+from tools.artifact_tests.native_symbols import elf_build_id, elf_sections
+from tools.artifact_tests.pck import pck_contents
 
 _ACTIVITY = "com.godot.game.GodotApp"
 

@@ -3,7 +3,10 @@ load("//godot:defs.bzl", "godot_project", "godot_resources")
 # The fake adapter's cases in one project.
 package(
     default_testonly = True,
-    default_visibility = ["//godot/private/tests:__subpackages__"],
+    default_visibility = [
+        "//godot/private/tests/strict_warnings:__pkg__",
+        "//godot/testing/tests/adapter:__pkg__",
+    ],
 )
 
 godot_project(

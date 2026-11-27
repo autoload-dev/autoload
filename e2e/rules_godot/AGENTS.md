@@ -36,9 +36,10 @@ evidence.
 ## Artifact test rules
 
 To inspect a built Android App Bundle or iOS application, load `android_bundle_test` or
-`ios_app_test` from `@autoload_rules_godot//godot/private/testing`, with
-`# buildifier: disable=bzl-visibility`. They are the ruleset's own test rules, not
-supported API. The ruleset offers no other test labels: a scenario owns its project files,
+`ios_app_test` from `//tools/artifact_tests`, the root module's artifact test rules, and build
+a mobile application under its own configuration with `godot_configured_app` from
+`//examples:configured_app.bzl`. A scenario loads nothing from a `private` package of the
+ruleset ([B3](../../docs/internal/verification-architecture.md#boundary-rules)). The ruleset offers no other test labels: a scenario owns its project files,
 native fixtures and inspectors.
 
 ## Fixture scope

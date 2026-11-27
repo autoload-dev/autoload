@@ -1,0 +1,32 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//godot:defs.bzl", "godot_resources")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+# The test adapter, the public API that test framework modules such as autoload_gdunit build
+# their tests on, and its case selection.
+
+# The public module as a file, for the registry's documentation and consumers' own.
+exports_files(
+    ["adapter.bzl"],
+    visibility = ["//visibility:public"],
+)
+
+# Bazel's sharding and test filter for the test adapters' cases, which every adapter test
+# contains; adapter_test declares the dependency in its caller's package.
+godot_resources(
+    name = "test_cases",
+    resource_paths = {"test_cases.gd": "addons/rules_godot_test/cases.gd"},
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+bzl_library(
+    name = "adapter",
+    srcs = ["adapter.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//godot/private:macros",
+        "//godot/private:providers",
+        "//godot/private:resources",
+        "//godot/private:run",
+    ],
+)

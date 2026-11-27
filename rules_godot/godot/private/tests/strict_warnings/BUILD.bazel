@@ -1,5 +1,5 @@
 load("//godot:defs.bzl", "godot_pack", "godot_test")
-load("//godot/private/tests/adapter:fake_adapter.bzl", "fake_adapter_test")
+load("//godot/testing/tests/adapter:fake_adapter.bzl", "fake_adapter_test")
 
 package(default_testonly = True)
 
@@ -47,7 +47,7 @@ godot_test(
 fake_adapter_test(
     name = "adapter_under_strict_warnings_test",
     size = "medium",
-    cases = ["//godot/private/tests/adapter/fixtures/cases:passing"],
+    cases = ["//godot/testing/tests/adapter/fixtures/cases:passing"],
     project = _FIXTURE,
     tags = ["godot_process"],
 )

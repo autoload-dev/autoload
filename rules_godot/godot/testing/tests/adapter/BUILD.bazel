@@ -7,7 +7,7 @@ load(":fake_adapter.bzl", "fake_adapter_test")
 
 package(default_testonly = True)
 
-_CASES = "//godot/private/tests/adapter/fixtures/cases"
+_CASES = "//godot/testing/tests/adapter/fixtures/cases"
 
 # The fake adapter's tests, in the order adapter_test_follows_test_encyclopedia_test.py takes them, with their
 # cases target.
