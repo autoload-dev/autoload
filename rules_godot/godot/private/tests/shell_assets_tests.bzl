@@ -37,7 +37,7 @@ def _test_ios_icons_cover_every_size_in_the_default_appearance(env):
         {"filename": "Icon-58.png", "idiom": "universal", "platform": "ios", "scale": "2x", "size": "29x29"},
     )
 
-    # The App Store icon has scale 1x, which its entry leaves out, and must be opaque.
+    # The App Store icon's entry leaves out its scale, 1x. The icon must be opaque.
     env.expect.that_dict(entries[-1]).contains_exactly(
         {"filename": "Icon-1024.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"},
     )
@@ -67,7 +67,8 @@ def _test_ios_dark_icons_follow_the_options_that_set_them(env):
     ).in_order()
     images = {image["name"]: image for image in shell.spec["images"]}
 
-    # Dark and tinted icons fall back to no project or default icon.
+    # Dark and tinted icons fall back only to other options. They never use the project's
+    # icon or Godot's default icon.
     env.expect.that_collection(images["Icon-58_tinted.png"]["sources"]).contains_exactly([
         "option:icons/settings_58x58_tinted",
         "option:icons/icon_1024x1024_tinted",

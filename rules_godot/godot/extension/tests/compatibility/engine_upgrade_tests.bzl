@@ -137,7 +137,11 @@ def _reads_editor(action, engine):
     return any([_is_editor(file, engine) for file in action.inputs.to_list()])
 
 def _from_engine(file, produced):
-    """Whether a Godot action's input is the editor's or the hidden result of an action template."""
+    """
+    Whether a Godot action's input is an editor file or the result of an action template.
+
+    Such a result is a generated directory that no reached action produces.
+    """
     hidden_result = file.is_directory and not file.is_source and file.path not in produced
     return hidden_result or any([_is_editor(file, engine) for engine in DEVELOPMENT_ENGINES])
 
@@ -257,8 +261,8 @@ def _test_engine_upgrade_reruns_the_import_project_file(name):
         extra_target_under_test_aspects = [_reached_actions],
     )
 
-# The import purpose's project.godot reads the feature list that the editor writes, so it
-# reruns although none of its inputs is the editor's.
+# The import purpose's project.godot reads the feature list the editor writes. It reruns
+# when the editor changes, although the editor is not among its inputs.
 def _engine_upgrade_reruns_the_import_project_file(env, targets):
     for engine in DEVELOPMENT_ENGINES:
         target = getattr(targets, engine)

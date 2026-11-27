@@ -262,7 +262,11 @@ def _archive_slices(data: Binary, offset: int, size: int) -> dict[str, str]:
 
 
 def _elf_slice(data: Binary) -> dict[str, tuple[str, int, int]]:
-    """Return the CPU of an ELF file, whose code is the whole file."""
+    """
+    Return the CPU of an ELF file.
+
+    Its code is the whole file, and "elf" stands in for the SDK.
+    """
     if data[4] not in {1, 2} or data[5] not in {1, 2}:
         raise ValueError("Unsupported ELF encoding")
     machine = struct.unpack_from(("<" if data[5] == 1 else ">") + "H", data, 18)[0]

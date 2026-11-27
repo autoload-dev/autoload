@@ -36,8 +36,8 @@ def _ios_values(attr):
         fail("ios_families must be a nonempty unique subset of iphone, ipad")
     return {"ios_minimum_os_version": version, "ios_families": sorted(families)}
 
-# The values the export for each operating system uses. A host build without --platforms
-# carries no operating system, so it gets the macOS values. A Linux pack of such a build
+# The values the export uses for each operating system. A host build without --platforms
+# has no operating system, so it gets the macOS values. A Linux pack of such a build
 # ignores them, as it ignores application_id.
 _EXPORT_VALUES = {
     "android": _android_values,

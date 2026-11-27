@@ -63,7 +63,7 @@ def _targets(value):
     return [value]
 
 def _dependency_inputs(ctx):
-    """Return the inputs that the target's dependencies on _EDGES and its runtime select."""
+    """Return the beta inputs the aspect collected on the target's _EDGES and its runtime."""
     transitive = [
         dependency[_BetaInputsInfo].files
         for name in _EDGES

@@ -38,8 +38,8 @@ def _test_pack_reaches_its_godot_actions(name):
 def _pack_reaches_its_godot_actions(env, target):
     env.expect.that_collection(mnemonics_of(target)).contains("GodotPack")
 
-# A build of a pack needs the import results, which analysis does not show, and so the
-# import configuration actions whose outputs only the imports read.
+# A build of a pack needs the import results, which analysis does not show. It also needs
+# the import configuration actions, whose outputs only the imports read.
 def _test_built_pack_runs_its_import_configuration(name):
     analysis_test(
         name = name,

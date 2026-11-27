@@ -142,7 +142,8 @@ def _ios_icons(ctx, prefix, slots, assets):
         images.append({
             "name": output.basename,
             "output": output.path,
-            # Without an icon, Godot's default application icon.
+            # Only icons of the default appearance fall back to the project icon, then to
+            # Godot's default application icon.
             "sources": slot.sources + ([] if slot.appearance else [
                 _PROJECT_ICON,
                 _file(assets.icon),
@@ -210,7 +211,7 @@ def _macos(ctx, profile, assets):
         _option("application/icon"),
         "setting:application/config/macos_native_icon",
         _PROJECT_ICON,
-        # Without an icon, Godot's default application icon.
+        # Without any other icon, the export uses Godot's default application icon.
         _file(assets.icon),
     ]
 

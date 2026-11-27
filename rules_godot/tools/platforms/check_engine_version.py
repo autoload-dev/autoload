@@ -297,7 +297,8 @@ def _check_ios_platform_slice(args: argparse.Namespace) -> None:
     if not args.ios_platform_slice:
         return
     cpu, sdk = args.ios_platform_slice.split(":")
-    # Report every library: together they show whether any export platform links.
+    # Check every library before failing. Only the findings of all libraries together
+    # show whether any export platform links.
     problems = []
     for path in args.ios_library:
         try:

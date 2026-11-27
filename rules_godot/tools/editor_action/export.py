@@ -284,11 +284,11 @@ def _export_nothing(manifest: dict, root: Path) -> None:
 
 @dataclass(frozen=True)
 class _ShellOutputs:
-    """Where the shell probe puts the images that Godot renders or uses as they are."""
+    """Where the shell probe's images go, rendered by Godot or used as they are."""
 
     execroot: Path
     work: Path
-    # The macOS .icns file, which holds the images without an output of their own.
+    # The macOS .icns file. It holds the images that have no output of their own.
     icns: Path | None
 
     def probe_image(self, image: dict) -> dict[str, Any]:
@@ -305,7 +305,11 @@ class _ShellOutputs:
         } | ({"copy": {"extension": ".icns"}} if self.icns else {})
 
     def copy_destination(self, image: dict) -> Path:
-        """Where the file that Godot uses as an image goes: the copy's output, else the .icns file."""
+        """
+        Where to copy a file that Godot uses as it is.
+
+        That is the image's copy output, else the .icns file.
+        """
         copy = image.get("copy", {}).get("output")
         destination = self.execroot / copy if copy else self.icns
         assert destination is not None
@@ -403,7 +407,8 @@ def shell_assets(manifest: dict, output: Path, execroot: Path) -> None:
         rendered = set(facts.pop("rendered"))
         _copy_used_files(images, facts.pop("copied"), root, outputs)
         _require_rendered(images, rendered)
-        # One .icns file holds the images, while the staging directory exists.
+        # The .icns file packs rendered images from the staging directory, so the
+        # export writes it before that directory goes away.
         _write_icns(icns_output, images, rendered)
     _write_adaptive_icon(spec.get("adaptive_icon"), rendered, execroot)
     output.write_text(

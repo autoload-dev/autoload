@@ -155,7 +155,11 @@ def _import_inputs_by_project(every):
     return import_inputs
 
 def _index_outputs(target):
-    """Index the outputs of the actions the target reaches, so that a build can follow them to their producers."""
+    """
+    Map each output of the target's actions to the action that produces it.
+
+    The index also finds outputs by mapped path and holds each project's import inputs.
+    """
     every = target[GodotActionsInfo].every.to_list()
     producers = {}
     by_path = {}
@@ -257,7 +261,11 @@ def _selected(graph, mnemonic, owner, producing):
     ]
 
 def _godot(graph, mnemonics, readers):
-    """Return the built Godot actions that a check covers: those with one of the mnemonics, or all for none, except the readers'."""
+    """
+    Return the built Godot actions a check covers.
+
+    Without mnemonics, that means all of them. The readers' actions are left out.
+    """
     return [
         entry
         for entry in graph.built
@@ -444,7 +452,11 @@ def _output_paths(action):
     return tuple(sorted([file.short_path for file in action.outputs.to_list()]))
 
 def _cache_key(action, written):
-    """Return what decides an action's cache key as JSON; written holds the content of each file that analysis writes, by path."""
+    """
+    Return the parts of an action that go into its cache key, as JSON.
+
+    `written` maps each path that analysis writes to its content.
+    """
     inputs = action.inputs.to_list()
     return json.encode({
         "argv": [_mapped(argument) for argument in action.argv or []],

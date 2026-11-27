@@ -431,7 +431,8 @@ def start_emulator(
 
 def _running_device(adb: Adb, running: list[Device], wanted: str) -> Device | None:
     """Return the running device of that serial or the emulator of that AVD, if any."""
-    # Serials first: an emulator's AVD name costs a console round trip.
+    # Check serials first. Reading an emulator's AVD name needs a round trip to the
+    # emulator console.
     return next((d for d in running if d.serial == wanted), None) or next(
         (d for d in running if d.emulator and avd_name(adb, d.serial) == wanted), None
     )

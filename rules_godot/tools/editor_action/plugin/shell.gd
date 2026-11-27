@@ -96,8 +96,9 @@ func _render_images(preset: EditorExportPreset) -> Dictionary:
 	return {"rendered": rendered, "copied": copied}
 
 
-# The first of the entry's sources that Godot can use, or "" if none can.
-# loaded keeps the image of each path tried, null if it is copied or does not load.
+# Return the first source of the entry that Godot can use, or "" if none works.
+# `loaded` caches the image of each path tried. It holds null for a path that is copied
+# or does not load.
 func _first_source(preset: EditorExportPreset, entry: Dictionary, loaded: Dictionary) -> String:
 	var candidates: Array = entry["sources"]
 	for candidate: Variant in candidates:

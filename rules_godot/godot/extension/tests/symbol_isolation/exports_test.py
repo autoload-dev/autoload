@@ -36,9 +36,9 @@ def elf_exports(data: bytes) -> set[str]:
     return exports
 
 
-# Bits of a Mach-O symbol's n_type. MACHO_EXTERNAL marks an external symbol, and any bit of
-# MACHO_HIDDEN a private external or a debug entry. A symbol defined in a section sets every
-# bit of MACHO_DEFINED_IN_SECTION.
+# Bits of a Mach-O symbol's n_type. MACHO_EXTERNAL marks an external symbol. Any bit of
+# MACHO_HIDDEN marks a private external or a debug entry. A symbol defined in a section has
+# every bit of MACHO_DEFINED_IN_SECTION set.
 MACHO_EXTERNAL = 0x01
 MACHO_HIDDEN = 0xF0
 MACHO_DEFINED_IN_SECTION = 0x0E

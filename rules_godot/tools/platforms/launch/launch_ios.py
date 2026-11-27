@@ -339,8 +339,8 @@ def _simulator_to_boot(
     ]
     if not suitable:
         return create_simulator(options, bundle, simulators)
-    # The newest runtime, then Simulators named after their device type over those
-    # someone named for a purpose, then the newest device type.
+    # Prefer the newest runtime. Then prefer a Simulator named after its device type over
+    # one with a name of its own. Then prefer the newest device type.
     return max(
         suitable,
         key=lambda s: (
@@ -501,8 +501,8 @@ def install_on_simulator(
             ).returncode
             == 0
         ),
-        # A Simulator checks neither signature nor version, so an install that
-        # fails over an installed copy fails because of that copy.
+        # A Simulator checks neither signature nor version. When an install over an
+        # installed copy fails, that copy is the cause.
         conflict=_conflict,
     )
 

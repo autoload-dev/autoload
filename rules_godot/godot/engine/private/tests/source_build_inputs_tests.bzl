@@ -120,11 +120,10 @@ def _expect_no_pack_reads(env, targets, changed):
 def _engine_module_edit_reruns_engine_build_only(env, targets):
     fixture = Label(_FIXTURE + ":app").package
 
-    # The module source is compiled by the engine's own native build and read by nothing else.
+    # Only the engine's native build reads the module source. The pack reads neither that
+    # source nor the build's outputs.
     _expect_only_the_engine_compiles_the_module(env, targets, fixture)
     changed = [_MODULE_SOURCE] + _engine_build_outputs(env, targets, fixture)
-
-    # The pack reads none of it.
     _expect_no_pack_reads(env, targets, changed)
 
     # GodotImport stages the editor toolchain's executable and files, which hold none of it.

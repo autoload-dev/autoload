@@ -56,7 +56,7 @@ manifest_graph_aspect = aspect(
 )
 
 def _rank_level(level, ranked, nodes):
-    """Rank the libraries of one level that are not ranked yet, and return their dependencies."""
+    """Rank the unranked libraries of this level. Return their dependencies, the next level."""
     following = []
     for library in level:
         if library.label not in ranked:

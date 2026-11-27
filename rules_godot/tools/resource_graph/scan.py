@@ -32,7 +32,7 @@ from tools.resources.text import (
 
 
 def _code_tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
-    """The tokens of lex without its newlines."""
+    """The tokens of the text, newlines removed."""
     return [token for token in tokens(text, shader=shader) if token[0] != "newline"]
 
 
@@ -241,7 +241,11 @@ def _is_member_call(script: list, i: int) -> bool:
 
 
 def _is_other_load(script: list, i: int) -> bool:
-    """Whether a loader's name at script[i] declares a function or is another object's method."""
+    """
+    Whether the loader name at script[i] is no load call.
+
+    It is none when it declares a function or calls another object's method.
+    """
     before = _at(script, i - 1)[1]
     if before == "func":
         return True
@@ -283,8 +287,8 @@ def _class_use(scan: Scan, path: str, script: list, i: int) -> bool:
     _, name, line = script[i]
     if name not in scan.classes or not _may_name_class(script, i):
         return False
-    # Conservative symbol index: shadowed identifiers can add edges. Full
-    # GDScript name/type resolution belongs to Godot.
+    # This index over-reports. A shadowed identifier can add an edge that does not
+    # exist. Only Godot resolves GDScript names and types fully.
     for target in sorted(scan.classes[name]):
         if target != path:
             scan.reference(path, target, "script_class", line)
@@ -472,7 +476,7 @@ def scan_references(scan: Scan) -> None:
 
 
 def uid_of(edge: dict) -> str | None:
-    """The UID an edge's reference names, or else carries beside its path."""
+    """The edge's UID: its reference if that is a UID, else the UID beside its path."""
     reference = edge["reference"]
     return reference if reference.startswith("uid://") else edge["uid"]
 
@@ -492,7 +496,12 @@ def candidate_path(edge: dict) -> str | None:
 
 
 class _AnySource:
-    """Every path, as the source a sidecar may author an identity for."""
+    """
+    A set of declared sources that holds every path.
+
+    A single file has no project that says which sources exist, so every sidecar authors
+    the identity of its source.
+    """
 
     def __contains__(self, item: object) -> bool:
         return True

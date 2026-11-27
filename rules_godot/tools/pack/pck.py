@@ -58,7 +58,10 @@ _ENCRYPTED_OR_SPARSE = 1 | 4
 
 
 def _is_supported(header: tuple[int, ...]) -> bool:
-    """Whether a header's six words name a Godot 4.7.2+ PCK v4 that this module reads."""
+    """
+    Whether the header's six words describe a PCK v4 from Godot 4.7.2 or later that this
+    module can read.
+    """
     magic, version, major, minor, patch, flags = header
     if (magic, version, major) != (_MAGIC, 4, 4) or (minor, patch) < (7, 2):
         return False
@@ -364,7 +367,7 @@ def project_features(data: bytes) -> set[str]:
 
 
 def _without_synthesized(features: list[str], synthesized: set[str]) -> list[str]:
-    """The features without one occurrence of each synthesized CPU tag."""
+    """The features with the first occurrence of each synthesized CPU tag removed."""
     missing = synthesized - set(features)
     if missing:
         raise ValueError(

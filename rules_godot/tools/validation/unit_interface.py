@@ -94,7 +94,11 @@ def _nesting(token: Token) -> int:
 
 
 def _continues(line: list[Token], depth: int) -> bool:
-    """Whether a newline after these tokens continues their line: in brackets or after `\\`."""
+    """
+    Whether a newline after these tokens continues the logical line.
+
+    It does inside brackets and after a backslash.
+    """
     if depth:
         return True
     return bool(line) and line[-1].value == "\\"
@@ -362,7 +366,11 @@ def _without_import_files(assets: dict[str, Path]) -> list[str]:
 
 
 def _asset_files(path: str, interface: AssetInterface) -> dict[str, Original]:
-    """The files that dependents stage for an asset with an interface."""
+    """
+    The files that dependents stage for an asset with an interface.
+
+    They are an empty file at its path, its .import file and the stand-in that file names.
+    """
     return {
         path: b"",
         path + IMPORT: interface.settings.encode("utf-8"),

@@ -182,7 +182,8 @@ def pack_files(
     uids = _packed_uids(files, staged, owners)
     _add_raw_images(files, staged, facts, uids)
     scripts = {path: staged.text(path) for path in files if path.endswith(".gd")}
-    # The files read for the caches go in from memory, so they are not read again.
+    # The writer already read these texts for the caches. The pack takes them from
+    # memory instead of reading the files again.
     for path, read in staged.texts.items():
         if path in files and not isinstance(files[path], bytes):
             files[path] = read.encode("utf-8")
