@@ -1,3 +1,6 @@
 # The engine patches of this project's source-built engines; MODULE.bazel passes them to
-# the recipes.
-exports_files(["engine-name.patch"])
+# the recipes, whose pin targets in generated repositories name them.
+exports_files(
+    ["engine-name.patch"],
+    visibility = ["//visibility:public"],
+)

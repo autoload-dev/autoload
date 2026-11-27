@@ -1,6 +1,4 @@
 package(default_testonly = True)
 
-exports_files([
-    "fixtures.bzl",
-    "split_templates.zip",
-])
+# MODULE.bazel names fixtures.bzl, whose repository rule reads split_templates.zip; module
+# extensions and repository rules need no target of either.

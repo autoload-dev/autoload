@@ -1,22 +1,25 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_setting")
-load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 # The ruleset's packages may depend on this package's implementation libraries, such as
 # the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
 # who loads its modules.
 package(default_visibility = ["//godot:__subpackages__"])
 
+# The program of the define analysis, a private attribute of its rule (define_analysis.bzl),
+# and the data of its parser's test. Bazel checks a private attribute against the package
+# that defines the rule, not the generated engine repository that declares the target.
 exports_files(
     ["define_analysis.awk"],
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//godot/engine/private/tests/define_analysis:__pkg__"],
 )
 
 # Whether the build sets --per_file_copt; the define analysis keeps every definition then.
+# Only the define analysis' private attribute and transition, defined here, name it.
 bool_setting(
     name = "per_file_copt_set",
     build_setting_default = False,
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//visibility:private"],
 )
 
 bzl_library(

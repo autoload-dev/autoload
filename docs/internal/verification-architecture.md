@@ -279,8 +279,11 @@ The ruleset declares its boundaries in Bazel, so that a mistake fails the build:
 - Every `.bzl` file of an implementation package declares a load visibility, as narrow as its
   users allow; those of a `tests` package name their own package (`visibility("private")`) or
   their test subtree. Files that a generated repository loads keep public load visibility.
-- The `.bzl` files that an implementation package exports as files, for the module's own
-  repository rules and documentation, are visible inside the module only.
+- Every `exports_files` states its visibility, since Bazel makes exported files public
+  otherwise ([exported-files-declare-visibility](conventions.md#exported-files-declare-visibility)),
+  and a file that no `exports_files` names stays private to its package
+  (`--incompatible_no_implicit_file_export`). Repository rules and module extensions read
+  files by label without a target, so the files only they read are not exported.
 - The build tools in `tools/` are visible to the ruleset's own packages, the package group
   `//tools:ruleset`, by default. A rule's private attribute is checked against the package
   that defines the rule, so neither consumers nor generated repositories need to see a tool.

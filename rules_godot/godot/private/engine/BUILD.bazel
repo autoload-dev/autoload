@@ -2,12 +2,6 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The modules as files, for the module's own documentation and repository rules.
-exports_files(
-    glob(["*.bzl"]),
-    visibility = ["//:__subpackages__"],
-)
-
 # Godot's default application icon and boot splash of each profile.
 filegroup(
     name = "assets",

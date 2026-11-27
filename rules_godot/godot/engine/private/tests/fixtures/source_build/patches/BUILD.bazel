@@ -1,4 +1,8 @@
 package(default_testonly = True)
 
-# The engine patch of the ruleset's own source-built engines; the recipes apply it.
-exports_files(["engine-name.patch"])
+# The engine patch of the ruleset's own source-built engines; the recipes apply it. The pin
+# targets of the generated recipe repositories name it, and a visibility cannot name them.
+exports_files(
+    ["engine-name.patch"],
+    visibility = ["//visibility:public"],
+)

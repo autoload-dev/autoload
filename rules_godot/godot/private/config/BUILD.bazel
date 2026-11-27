@@ -15,13 +15,6 @@ load(
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-exports_files([
-    "application.bzl",
-    "native.bzl",
-    "settings.bzl",
-    "transitions.bzl",
-])
-
 # `platform(flags = ...)` of an export platform sets these values, also in consuming
 # modules. They remain implementation state, not supported independent CLI choices.
 [

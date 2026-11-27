@@ -93,6 +93,7 @@ py_library(
         "rules/backends_under_native.py",
         "rules/documented_targets_exist.py",
         "rules/engine_files_under_engines.py",
+        "rules/exported_files_declare_visibility.py",
         "rules/godot_process_tests_tagged.py",
         "rules/linked_skills.py",
         "rules/no_component_names_in_tooling.py",
@@ -284,6 +285,16 @@ py_test(
     name = "linked_skills_test",
     size = "small",
     srcs = ["rules/linked_skills_test.py"],
+    deps = [
+        ":rules_lib",
+        ":test_support",
+    ],
+)
+
+py_test(
+    name = "exported_files_declare_visibility_test",
+    size = "small",
+    srcs = ["rules/exported_files_declare_visibility_test.py"],
     deps = [
         ":rules_lib",
         ":test_support",

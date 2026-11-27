@@ -8,7 +8,10 @@ package(
     default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
 )
 
-exports_files(["runtime.sh"])
+exports_files(
+    ["runtime.sh"],
+    visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 fixture_pack(
     name = "pack",

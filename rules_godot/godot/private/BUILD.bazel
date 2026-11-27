@@ -9,14 +9,11 @@ load(":values.bzl", "bool_value")
 
 package(default_visibility = ["//godot:__subpackages__"])
 
-# The modules as files, for the module's own documentation and repository rules.
+# Text templates that private attributes of this package's rules name.
 exports_files(
-    glob(["*.bzl"]),
-    visibility = ["//:__subpackages__"],
+    glob(["*.tpl"]),
+    visibility = ["//visibility:private"],
 )
-
-# Text templates the rules of this package expand.
-exports_files(glob(["*.tpl"]))
 
 # The godot_project whose configuration imports use. Operations set it for the
 # resources they reach; outside an operation it names no project and nothing imports.
@@ -112,19 +109,20 @@ string_flag(
 # compiles outside -c opt or with the default engine optimization. A prebuilt runtime can
 # neither leave classes out nor compile otherwise, so where a hub builds the slot from
 # source too, its prebuilt component requires :untuned, one of these, and the source-built
-# one registered after it serves the other builds.
+# one registered after it serves the other builds. Generated engine hubs name :untuned in
+# their toolchains' target_settings; its members stay private.
 config_setting(
     name = "untuned_fastbuild",
     flag_values = {":build_profile_label": ""},
     values = {"compilation_mode": "fastbuild"},
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "untuned_dbg",
     flag_values = {":build_profile_label": ""},
     values = {"compilation_mode": "dbg"},
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//visibility:private"],
 )
 
 config_setting(
@@ -135,7 +133,7 @@ config_setting(
         "//godot:engine_lto": LTO_DEFAULT,
         "//godot:engine_vfe": str(VFE_DEFAULT),
     },
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//visibility:private"],
 )
 
 selects.config_setting_group(
@@ -148,11 +146,12 @@ selects.config_setting_group(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
-# No build profile: the class generator keeps every class.
+# No build profile: the class generator keeps every class. Only :build_profile, whose
+# default it is, and the transitions that set that flag to it name it.
 filegroup(
     name = "no_build_profile",
     srcs = [],
-    visibility = NOT_ACTUALLY_PUBLIC,
+    visibility = ["//visibility:private"],
 )
 
 config_setting(
@@ -160,15 +159,15 @@ config_setting(
     values = {"stamp": "1"},
 )
 
-# Whether the build stamps, as Bazel's --stamp sets it. Generated engine
-# repositories read it, so it is public.
+# Whether the build stamps, as Bazel's --stamp sets it. The revision rule of generated engine
+# repositories reads it through a private attribute, which Bazel checks against the package
+# that defines the rule (godot/engine/private/generator.bzl).
 bool_value(
     name = "stamp",
     value = select({
         ":stamp_enabled": True,
         "//conditions:default": False,
     }),
-    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bzl_library(

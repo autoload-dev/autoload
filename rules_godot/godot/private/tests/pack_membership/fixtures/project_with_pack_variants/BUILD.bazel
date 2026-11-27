@@ -9,7 +9,10 @@ package(
     default_visibility = ["//godot/private/tests/pack_membership:__subpackages__"],
 )
 
-exports_files(["project.godot"])
+exports_files(
+    ["project.godot"],
+    visibility = ["//godot/private/tests/pack_membership:__subpackages__"],
+)
 
 godot_resources(
     name = "math",

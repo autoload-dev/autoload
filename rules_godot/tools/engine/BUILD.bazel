@@ -1,6 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-package(default_visibility = ["//visibility:public"])
+# Like every tool package, the engine tools serve the ruleset's own rules only: the rules of
+# generated engine repositories name them through private attributes, which Bazel checks
+# against the package that defines the rule.
+package(default_visibility = ["//tools:ruleset"])
 
 py_binary(
     name = "generator",
@@ -68,20 +71,5 @@ py_library(
     ],
 )
 
-exports_files([
-    "build_file.py",
-    "build_profile.py",
-    "class_db.py",
-    "configure.py",
-    "custom_modules.py",
-    "define_analysis.py",
-    "generators.py",
-    "include_graph.py",
-    "module_graph.py",
-    "patches.py",
-    "render.py",
-    "source_tree.py",
-    "tree.py",
-    "tree_link.py",
-    "variants.py",
-])
+# The engine's repository rules (godot/engine/private/repositories.bzl) run this package's
+# scripts by label. A repository rule reads a file without a target, so no exports_files.

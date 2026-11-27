@@ -47,6 +47,7 @@ the check does not load (see the [rule framework](#rule-framework)).
 | [region-headers-named-in-head](#region-headers-named-in-head) | Regions start with a region header the file's head names | Required | Every Python, Starlark, GDScript and C++ file | Error |
 | [definitions-before-callers](#definitions-before-callers) | Python definitions stand before their first caller | Required | Every top-level function and class of every Python module | Error |
 | [godot-process-tests-tagged](#godot-process-tests-tagged) | Tests that start a Godot process carry the `godot_process` tag | Required | Every test of every module but the registry test modules and the tests `godot_test` declares, which tag themselves, by its loading graph | Error |
+| [exported-files-declare-visibility](#exported-files-declare-visibility) | Every `exports_files` call states who may see the files | Required | The `exports_files` calls of every module's BUILD files | Error |
 
 The rule of the public API's boundary is retired: Bazel's load and target visibility enforce it
 (see the [boundary rules](verification-architecture.md#boundary-rules)). The rules that
@@ -597,6 +598,22 @@ built outputs. It queries each module's tests that depend on a Godot toolchain t
 runtime or the target execution toolchain type of `@autoload_rules_godot//godot`) and reports
 such a test without the tag, a test with the tag that depends on none, and a smoke test with
 the tag. Registry test modules are outside it.
+
+## exported-files-declare-visibility
+
+**Every `exports_files` call states who may see the files.** Without `visibility`, Bazel makes
+exported files public, whatever the package's `default_visibility`, so a private package would
+publish them unnoticed. Name the narrowest visibility that carries: a file that only a private
+attribute names is private to the package that defines the rule, since Bazel checks a private
+attribute there. A file that a generated repository's targets name, such as an engine patch or
+lock file, is public, because a visibility cannot name another repository. A file that only a
+repository rule or module extension reads, such as an archive's `build_file`, a patch of
+`http_archive` or a Maven lock file, needs no export: they read a file by its label without a
+target. `--incompatible_no_implicit_file_export` (`shared.bazelrc`) keeps every file that no
+`exports_files` names private to its package, as in rules_python.
+
+The check reads the calls of every module's BUILD files through Buildozer and reports each
+`exports_files` call without a `visibility` argument. Buildifier has no such warning.
 
 ## Run and maintain the checks
 

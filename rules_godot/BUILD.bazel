@@ -20,13 +20,6 @@ package(default_visibility = ["//visibility:public"])
 # gazelle:resolve starlark @rules_java//java/common:java_info.bzl @rules_java//java/common:common
 # gazelle:resolve starlark @rules_java//java/common:proguard_spec_info.bzl @rules_java//java/common:proguard_spec_info_bzl
 
-# MODULE.bazel names the module to the lint check's per-file convention rules
-# (tools/lint/linters.bzl of the root module).
-exports_files([
-    "MODULE.bazel",
-    "README.md",
-])
-
 # The extractions of the public entrypoints, by name: the Stardoc metadata the Bazel Central
 # Registry renders as the API reference, which the release workflow archives
 # (.github/workflows/release_prep.sh). Each entrypoint exports exactly its public symbols, so
