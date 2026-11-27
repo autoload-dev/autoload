@@ -1,18 +1,21 @@
 """Add-on modules share the template's layout, and backends live in native/backends."""
 
+import sys
 import unittest
+from pathlib import Path
 
 from tools.addons.modules import ROOT
 from tools.addons.new import generate
-from tools.conventions.context import Call, Location
+from tools.conventions.context import Buildozer, Context
 from tools.conventions.rules.rg015 import AddonModuleLayout
 from tools.conventions.test_support import RepositoryTest
+
+BUILDOZER = Path(sys.argv.pop(1)).resolve()
 
 
 class AddonModuleLayoutTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
-        self.calls: list[Call] = []
         self.write(".bazelversion", "9.3.0\n")
         self.write(
             ".bcr/rules_godot/metadata.template.json",
@@ -20,21 +23,22 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
 
     def module(self, directory: str, addon: str | None = None) -> None:
-        """
-        A module as the generator writes it, in the workspace inventory, with the call that
-        declares its add-on.
-        """
+        """A module as the generator writes it, in the workspace inventory."""
         for path in generate(directory, addon, root=self.root):
             self.files.add(path.relative_to(self.root).as_posix())
-        name = addon or directory
-        build = f"addons/{directory}/{name}/BUILD.bazel"
-        self.calls.append(
-            Call(Location(build, 1), "godot_addon", frozenset({"name"}), name)
+
+    def findings(self) -> list[tuple[str, str]]:
+        """The rule's findings, with the calls of the BUILD files as buildozer reads them."""
+        workspace = self.workspace()
+        context = Context(
+            workspace, Buildozer(self.root, BUILDOZER), self.context().bazel
         )
+        return [
+            (item.status, item.message) for item in AddonModuleLayout().evaluate(context)
+        ]
 
     def evaluate(self) -> list[str]:
-        context = self.context(calls=tuple(self.calls))
-        return [item.message for item in AddonModuleLayout().evaluate(context)]
+        return [message for _, message in self.findings()]
 
     def test_generated_modules_follow_the_layout(self) -> None:
         self.module("widget")
@@ -42,22 +46,17 @@ class AddonModuleLayoutTest(RepositoryTest):
         self.module("firebase", "analytics")
         self.assertEqual([], self.evaluate())
 
-    def test_missing_files_names_and_shared_settings(self) -> None:
+    def test_missing_files_and_names(self) -> None:
         self.module("widget")
         self.files.discard(".bcr/addons/widget/presubmit.yml")
-        for template in ("source", "metadata"):
-            path = f".bcr/addons/widget/{template}.template.json"
-            self.write(path, (self.root / path).read_text().replace("widget", "gadget"))
+        self.files.discard("addons/widget/REPO.bazel")
         self.write("addons/widget/MODULE.bazel", 'module(name = "widget")\n')
-        self.write("addons/widget/.bazelrc", "common --config=x\n")
         self.assertEqual(
             sorted(self.evaluate()),
             [
                 "add-on module must be named autoload_widget",
                 "add-on module must own .bcr/addons/widget/presubmit.yml",
-                "must be .bcr/rules_godot/metadata.template.json with the module's homepage",
-                "must import the shared settings: import %workspace%/../module.bazelrc",
-                "must release the archive autoload_widget-{VERSION}",
+                "add-on module must own addons/widget/REPO.bazel",
             ],
         )
 
@@ -132,6 +131,35 @@ class AddonModuleLayoutTest(RepositoryTest):
         )
         self.assertEqual(["example project must define :edit"], self.evaluate())
 
+    def test_example_project_targets_are_read_from_calls_not_text(self) -> None:
+        self.module("widget")
+        build = "examples/addons/widget/BUILD.bazel"
+        text = (self.root / build).read_text()
+        # A comment that names the target declares none.
+        self.write(
+            build, text.replace('name = "edit"', 'name = "e"') + '# name = "edit"\n'
+        )
+        self.assertEqual(["example project must define :edit"], self.evaluate())
+        # A target's name may follow its other arguments.
+        self.write(
+            build,
+            text.replace(
+                'godot_editor(\n    name = "edit",',
+                'godot_editor(\n    tags = [],\n    name = "edit",',
+            ),
+        )
+        self.assertEqual([], self.evaluate())
+
+    def test_a_computed_example_target_name_is_not_checked(self) -> None:
+        self.module("widget")
+        build = "examples/addons/widget/BUILD.bazel"
+        text = (self.root / build).read_text()
+        self.write(build, text.replace('name = "edit"', 'name = "e" + "dit"'))
+        self.assertEqual(
+            [("not_checked", "cannot read every target name of examples/addons/widget")],
+            self.findings(),
+        )
+
     def test_example_projects_need_no_app(self) -> None:
         self.module("widget")
         build = "examples/addons/widget/BUILD.bazel"
@@ -150,6 +178,24 @@ class AddonModuleLayoutTest(RepositoryTest):
             .read_text()
             .replace("gadget_extension", "widget_extension"),
         )
+        findings = self.evaluate()
+        self.assertEqual(len(findings), 1)
+        self.assertIn("widget_extension is taken by", findings[0])
+
+    def test_extension_names_are_read_from_calls_not_text(self) -> None:
+        self.module("widget")
+        self.module("gadget")
+        build = "addons/gadget/gadget/BUILD.bazel"
+        text = (self.root / build).read_text()
+        # A comment declares no extension; a name after other arguments still counts.
+        self.write(build, text + '# godot_cc_extension(name = "widget_extension")\n')
+        self.assertEqual([], self.evaluate())
+        moved = text.replace(
+            'godot_cc_extension(\n    name = "gadget_extension",',
+            'godot_cc_extension(\n    tags = [],\n    name = "widget_extension",',
+        )
+        self.assertNotEqual(moved, text)
+        self.write(build, moved)
         findings = self.evaluate()
         self.assertEqual(len(findings), 1)
         self.assertIn("widget_extension is taken by", findings[0])

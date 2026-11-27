@@ -1,6 +1,5 @@
 """RG015: add-on modules share one layout, and every add-on's backends live in native/."""
 
-import re
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,17 +11,14 @@ from tools.addons.modules import (
     module_attributes,
     module_name,
 )
-from tools.addons.new import template_files
-from tools.conventions.context import BUILD_FILES, Context, Location, Workspace
+from tools.addons.new import REGISTRY_FILES, template_files
+from tools.conventions.context import BUILD_FILES, Call, Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.conventions.rules.rg023 import TESTS
 from tools.setup.modules import BCR, declarations, is_addon_module, literals
 
 # The files every module addons/<directory> owns: those of the generator's module template.
 REQUIRED = tuple(relative for _, relative in template_files("module"))
-# The registry templates each module owns in .bcr/addons/<directory>/, which the generator
-# writes once with the module; publish-to-bcr reads them there.
-REGISTRY = (*(relative for _, relative in template_files("bcr")), templates.METADATA)
 # What a module's root holds besides its add-ons and the packages that other packages load
 # by label: the template's files, its lock file and the directories every module may have.
 ROOT_FILES = frozenset(
@@ -32,12 +28,10 @@ ROOT_DIRECTORIES = frozenset({"third_party", "tests", BCR})
 ROOT_ENTRIES = ", ".join(
     ["its files", "its add-ons", *(f"{name}/" for name in sorted(ROOT_DIRECTORIES))]
 )
-# The shared settings each module's .bazelrc imports.
-IMPORT = "import %workspace%/../module.bazelrc"
 # The targets each example project defines.
 PROJECT_TARGETS = ("edit", "pack")
-NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
-EXTENSION = re.compile(r'godot_cc_extension\(\s*name\s*=\s*"([^"]+)"')
+# The rule of an add-on's extension, whose name names its framework on iOS.
+EXTENSION = "godot_cc_extension"
 
 
 def at(path: Path | str) -> Location:
@@ -56,11 +50,23 @@ def module_root_entries(workspace: Workspace, module: Path) -> dict[str, bool]:
     return entries
 
 
-def declared_names(context: Context) -> dict[str, set[str | None]]:
-    """The names of the targets that each BUILD file declares, from its parsed calls."""
+def declared_calls(context: Context) -> frozenset[Call]:
+    """The parsed calls of every BUILD file."""
+    return frozenset(
+        call
+        for module in context.workspace.modules
+        for call in context.starlark.calls(module)
+    )
+
+
+def declared_names(calls: Iterable[Call]) -> dict[str, set[str | None]]:
+    """
+    The names of the targets that each BUILD file declares by name; None stands for a name
+    that is no literal. Calls without a name, such as package(), declare none.
+    """
     names: dict[str, set[str | None]] = defaultdict(set)
-    for module in context.workspace.modules:
-        for call in context.starlark.calls(module):
+    for call in calls:
+        if "name" in call.attrs:
             names[call.location.path].add(call.literal_name)
     return names
 
@@ -91,7 +97,7 @@ def referenced_by_label(workspace: Workspace, module: Path, package: Path) -> bo
         if not is_starlark(name) or Path(name).is_relative_to(package):
             continue
         labels = (local, remote) if workspace.owner(name) == module else (remote,)
-        if any(names_package(s.value, labels) for s in workspace.strings(name)):
+        if any(names_package(value, labels) for value in workspace.strings(name)):
             return True
     return False
 
@@ -134,17 +140,18 @@ def in_modules(name: str, modules: list[Path]) -> bool:
     return any(Path(name).is_relative_to(module) for module in modules)
 
 
-def extension_owners(workspace: Workspace, modules: list[Path]) -> dict[str, list[str]]:
-    """The BUILD files of the modules that declare each extension name, in file order."""
-    owners: dict[str, list[str]] = defaultdict(list)
-    builds = [
-        name
-        for name in workspace.files
-        if Path(name).name in BUILD_FILES and in_modules(name, modules)
-    ]
-    for build in builds:
-        for extension in EXTENSION.findall(workspace.text(build)):
-            owners[extension].append(build)
+def extension_owners(
+    calls: Iterable[Call], modules: list[Path]
+) -> dict[str | None, list[Call]]:
+    """The calls in the modules that declare each extension, by name, in file order."""
+    owners: dict[str | None, list[Call]] = defaultdict(list)
+    extensions = (
+        call
+        for call in calls
+        if call.kind == EXTENSION and in_modules(call.location.path, modules)
+    )
+    for call in sorted(extensions, key=lambda c: (c.location.path, c.location.line)):
+        owners[call.literal_name].append(call)
     return owners
 
 
@@ -179,7 +186,7 @@ def only_tests_load(workspace: Workspace, files: list[str], repository: str) -> 
     uses = [
         Path(name)
         for name in files
-        if any(names_package(s.value, labels) for s in workspace.strings(name))
+        if any(names_package(value, labels) for value in workspace.strings(name))
     ]
     return bool(uses) and all(TESTS in use.parts for use in uses)
 
@@ -201,10 +208,11 @@ class AddonModuleLayout:
         workspace = context.workspace
         yield from self.backends(workspace)
         modules = sorted(filter(is_addon_module, workspace.module_paths))
-        names = declared_names(context)
+        calls = declared_calls(context)
+        names = declared_names(calls)
         for module in modules:
             yield from self.module(workspace, module, names)
-        yield from self.extensions(workspace, modules)
+        yield from self.extensions(calls, modules)
         yield from self.orphaned_templates(workspace, modules)
 
     def module(
@@ -213,9 +221,8 @@ class AddonModuleLayout:
         """The findings of one module."""
         yield from self.files(workspace, module)
         yield from self.registry(workspace, module)
-        yield from self.imports(workspace, module)
         yield from self.root_entries(workspace, module, names)
-        yield from self.projects(workspace, module)
+        yield from self.projects(workspace, module, names)
         for name in tests_only_dependencies(workspace, module):
             yield Finding(
                 at(module / "MODULE.bazel"),
@@ -267,18 +274,17 @@ class AddonModuleLayout:
 
     @staticmethod
     def registry(workspace: Workspace, module: Path) -> Iterable[Finding]:
-        """The module's registry templates exist and describe the module's own releases."""
+        """
+        The module's registry templates exist; the file lint compares their contents
+        (shared-module-files).
+        """
         directory = templates.templates_directory(module.name)
-        for name in REGISTRY:
+        for name in REGISTRY_FILES:
             path = (directory / name).as_posix()
             if path not in workspace.file_set:
                 yield Finding(
                     at(module / "MODULE.bazel"), f"add-on module must own {path}"
                 )
-            elif message := templates.problem(
-                name, workspace.text(path), module.name, workspace.root
-            ):
-                yield Finding(at(path), message)
 
     @staticmethod
     def orphaned_templates(
@@ -291,13 +297,9 @@ class AddonModuleLayout:
             yield Finding(at(path), f"no add-on module owns {path.as_posix()}")
 
     @staticmethod
-    def imports(workspace: Workspace, module: Path) -> Iterable[Finding]:
-        path = (module / ".bazelrc").as_posix()
-        if path in workspace.file_set and IMPORT not in workspace.text(path).splitlines():
-            yield Finding(at(path), f"must import the shared settings: {IMPORT}")
-
-    @staticmethod
-    def projects(workspace: Workspace, module: Path) -> Iterable[Finding]:
+    def projects(
+        workspace: Workspace, module: Path, names: dict[str, set[str | None]]
+    ) -> Iterable[Finding]:
         """
         The module's example projects in the root module: examples/addons/<module>/ itself, or
         each of its subdirectories with a project.
@@ -315,15 +317,29 @@ class AddonModuleLayout:
                 at(module / "MODULE.bazel"), f"needs an example project in {root}"
             )
         for build in builds:
-            text = workspace.text(build.as_posix())
-            for target in sorted(set(PROJECT_TARGETS) - set(NAME.findall(text))):
+            declared = names[build.as_posix()]
+            missing = sorted(set(PROJECT_TARGETS) - declared)
+            if missing and None in declared:
+                yield Finding(
+                    at(build),
+                    f"cannot read every target name of {build.parent.as_posix()}",
+                    "not_checked",
+                )
+                continue
+            for target in missing:
                 yield Finding(at(build), f"example project must define :{target}")
 
     @staticmethod
-    def extensions(workspace: Workspace, modules: list[Path]) -> Iterable[Finding]:
+    def extensions(calls: Iterable[Call], modules: list[Path]) -> Iterable[Finding]:
         """Extension names are unique across modules: on iOS they name the frameworks."""
-        for extension, owning in sorted(extension_owners(workspace, modules).items()):
-            for build in owning[1:]:
+        owners = extension_owners(calls, modules)
+        for call in owners.pop(None, []):
+            yield Finding(
+                call.location, f"cannot read the name of this {EXTENSION}", "not_checked"
+            )
+        for extension, owning in sorted(owners.items()):
+            first = owning[0].location.path
+            for call in owning[1:]:
                 yield Finding(
-                    at(build), f"extension name {extension} is taken by {owning[0]}"
+                    call.location, f"extension name {extension} is taken by {first}"
                 )

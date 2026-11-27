@@ -53,14 +53,20 @@ py_library(
     name = "per_file_rules_lib",
     srcs = [
         "documents.py",
+        "naming.py",
         "rules/fixture_references.py",
         "rules/public_documentation_links.py",
         "rules/reading_order.py",
         "rules/region_headers.py",
+        "rules/rg001.py",
+        "rules/rg017.py",
+        "rules/shared_module_files.py",
     ],
     deps = [
         ":context_lib",
         ":framework_lib",
+        "//tools/addons:new_lib",
+        "//tools/setup:modules_lib",
     ],
 )
 
@@ -76,10 +82,8 @@ py_library(
 py_library(
     name = "rules_lib",
     srcs = [
-        "naming.py",
         "operations.py",
         "registry.py",
-        "rules/rg001.py",
         "rules/rg002.py",
         "rules/rg006.py",
         "rules/rg007.py",
@@ -88,7 +92,6 @@ py_library(
         "rules/rg012.py",
         "rules/rg014.py",
         "rules/rg015.py",
-        "rules/rg017.py",
         "rules/rg018.py",
         "rules/rg019.py",
         "rules/rg020.py",
@@ -284,6 +287,8 @@ py_test(
     name = "rg015_test",
     size = "small",
     srcs = ["rules/rg015_test.py"],
+    args = ["$(rootpath @buildifier_prebuilt//:buildozer)"],
+    data = ["@buildifier_prebuilt//:buildozer"],
     deps = [
         ":rules_lib",
         ":test_support",
@@ -368,6 +373,17 @@ py_test(
     deps = [
         ":rules_lib",
         ":test_support",
+    ],
+)
+
+py_test(
+    name = "shared_module_files_test",
+    size = "small",
+    srcs = ["rules/shared_module_files_test.py"],
+    deps = [
+        ":per_file_rules_lib",
+        ":test_support",
+        "//tools/addons:new_lib",
     ],
 )
 

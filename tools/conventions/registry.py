@@ -2,7 +2,6 @@
 
 from tools.conventions import per_file
 from tools.conventions.framework import Rule
-from tools.conventions.rules.rg001 import PackageNames
 from tools.conventions.rules.rg002 import TargetNames
 from tools.conventions.rules.rg006 import CommandLabels
 from tools.conventions.rules.rg007 import TestOnlyOperations
@@ -11,7 +10,6 @@ from tools.conventions.rules.rg009 import ProjectPlaces
 from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg014 import EngineLayout
 from tools.conventions.rules.rg015 import AddonModuleLayout
-from tools.conventions.rules.rg017 import AgentInstructions
 from tools.conventions.rules.rg018 import SharedSkills
 from tools.conventions.rules.rg019 import ProjectTargetNames
 from tools.conventions.rules.rg020 import RegistryTestModules
@@ -22,7 +20,6 @@ from tools.conventions.rules.rg026 import GodotProcessTests
 
 # The rules that judge more than one file at a time, which the conventions tool runs.
 RULES: tuple[Rule, ...] = (
-    PackageNames(),
     TargetNames(),
     CommandLabels(),
     TestOnlyOperations(),
@@ -31,7 +28,6 @@ RULES: tuple[Rule, ...] = (
     ProductionIsolation(),
     EngineLayout(),
     AddonModuleLayout(),
-    AgentInstructions(),
     SharedSkills(),
     ProjectTargetNames(),
     RegistryTestModules(),

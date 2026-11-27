@@ -55,16 +55,19 @@ class FilesTest(unittest.TestCase):
             (0, ""),
             self.check("--rule", "region-headers", "--rule", "reading-order", clean),
         )
-        self.assertEqual(2, self.check("--rule", "RG001", clean)[0])
+        self.assertEqual(2, self.check("--rule", "RG019", clean)[0])
 
     def test_the_tool_leaves_out_per_file_rules_unless_named(self) -> None:
         per_file = {rule.info.id for rule in RULES}
         self.assertEqual(
             {
+                "RG001",
+                "RG017",
                 "fixture-references",
                 "public-documentation-links",
                 "region-headers",
                 "reading-order",
+                "shared-module-files",
             },
             per_file,
         )

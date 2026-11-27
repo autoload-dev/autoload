@@ -4,7 +4,7 @@ import ast
 from collections.abc import Iterable, Iterator
 from pathlib import Path, PurePosixPath
 
-from tools.conventions.context import Context, EvidenceError, Location, Workspace
+from tools.conventions.context import Context, Location, Workspace
 from tools.conventions.framework import Finding, RuleInfo
 from tools.setup.modules import released_modules
 
@@ -106,12 +106,8 @@ def _loaded_strings(node: ast.AST, dev: frozenset[str]) -> Iterator[ast.Constant
         yield from _loaded_strings(child, dev)
 
 
-def references(name: str, text: str) -> Iterator[tuple[int, str]]:
+def references(tree: ast.Module) -> Iterator[tuple[int, str]]:
     """The lines and values of the strings in Starlark that name something in tests/."""
-    try:
-        tree = ast.parse(text, name)
-    except SyntaxError as error:
-        raise EvidenceError(f"{name}: cannot parse as Starlark: {error.msg}") from error
     dev = _dev_proxies(tree)
     for constant in _loaded_strings(tree, dev):
         value = constant.value
@@ -144,7 +140,7 @@ class ReleasedWithoutTests:
 
     @staticmethod
     def uses(workspace: Workspace, name: str) -> Iterable[Finding]:
-        for line, value in references(name, workspace.text(name)):
+        for line, value in references(workspace.syntax(name)):
             yield Finding(
                 Location(name, line),
                 f"{value} is in a tests/ directory, which the release archive leaves out; "
