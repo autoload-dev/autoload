@@ -7,7 +7,6 @@ line.
 
 import argparse
 import contextlib
-import functools
 import json
 import os
 import shutil
@@ -20,6 +19,8 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TextIO
+
+from python.runfiles import runfiles as bazel_runfiles
 
 from godot.private.project_config import compose_project, statement_groups
 from tools.godot_staging import (
@@ -50,41 +51,13 @@ def report(message: str) -> None:
 # ==== Runfiles ================================================================
 
 
-@functools.cache
-def _runfiles_manifest(path: str) -> dict[str, str]:
-    return dict(line.partition(" ")[::2] for line in Path(path).read_text().splitlines())
-
-
-def _in_runfiles_directory(key: str) -> Path | None:
-    root = os.environ.get("RUNFILES_DIR") or os.environ.get("TEST_SRCDIR")
-    if root and (Path(root) / key).exists():
-        return (Path(root) / key).resolve()
-    return None
-
-
-def _in_runfiles_manifest(key: str) -> Path | None:
-    manifest = os.environ.get("RUNFILES_MANIFEST_FILE")
-    if not manifest:
-        return None
-    entries = _runfiles_manifest(manifest)
-    return Path(entries[key]).resolve() if key in entries else None
-
-
-def _beside_program(key: str) -> Path | None:
-    """A runfile in the .runfiles directory the running program lies in."""
-    for parent in Path(sys.argv[0]).parents:
-        if parent.name.endswith(".runfiles") and (parent / key).exists():
-            return (parent / key).resolve()
-    return None
-
-
 def locate(key: str) -> Path:
-    found = (
-        _in_runfiles_directory(key) or _in_runfiles_manifest(key) or _beside_program(key)
-    )
-    if found is None:
+    """The path of the runfile with a runfiles key, such as `_main/pkg/file`."""
+    runfiles = bazel_runfiles.Create()
+    found = runfiles.Rlocation(key) if runfiles else None
+    if not found or not Path(found).exists():
         raise FileNotFoundError(f"Runfile {key} was not found")
-    return found
+    return Path(found).resolve()
 
 
 def runfile_key(short_path: str, workspace: str) -> str:
