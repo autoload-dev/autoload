@@ -30,10 +30,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # ==== Lock files ==============================================================
 
 RULESET_DIR = RULESET.as_posix()
-# The add-on modules' lock files are left out until all of them regenerate: rules_jvm_external's
-# maven extension fails to evaluate in autoload_gdunit and its examples, whose root modules
-# declare no `maven` of their own to choose between the lock files rules_godot and protobuf
-# give it (rules_jvm_external 7.2).
+# The add-on modules keep no lock file (their .gitignore): the root module, which builds their
+# examples, pins their dependencies.
 LOCKED_MODULES = tuple(
     module for module in map(str, module_paths(ROOT)) if not module.startswith("addons")
 )

@@ -148,7 +148,7 @@ def main() -> None:
     print(
         "\nNext: declare the lint check's filegroups with `bazel run //tools/gazelle:update`, "
         "describe the module in its README and verify it with "
-        f"`aspect work desktop:addon:{args.module}`."
+        f"`bazel test -- @autoload_{args.module}//... //examples/addons/{args.module}/...`."
     )
 
 

@@ -42,9 +42,6 @@ export_credentials.cfg
 xcuserdata/
 .DS_Store
 
-# Diagnostic logs of the last Bazel invocation (shared.bazelrc).
-bazel-remote-grpc.log
-/execution_log.binpb.zst
 # The add-on examples' local iOS provisioning profiles.
 /examples/addons/*/signing/
 

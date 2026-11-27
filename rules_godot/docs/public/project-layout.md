@@ -50,8 +50,8 @@ e2e/
   addons/sqlite/                  # the add-on's Godot test project
     BUILD.bazel                   # project, editor, metadata sync and configuration export
     project.godot
-    unit/
-      BUILD.bazel                 # suites and direct tests executable
+    database/
+      BUILD.bazel                 # suites and the GdUnit test
       DatabaseTest.gd
       DatabaseTest.gd.uid
 ```

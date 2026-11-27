@@ -1,7 +1,7 @@
 """
 iOS runtime toolchain payloads and the runtime bridge that exposes them in the Apple split.
 
-The pinned rules_apple 5.3.1 aspects do not traverse toolchain edges. iOS runtime components
+The aspects of rules_apple (5.4.0) do not traverse toolchain edges. iOS runtime components
 therefore replay the Swift-usage, resource and framework-provider aspects on their payload
 attribute; the bridge forwards the enriched public providers on ios_application's existing
 dependency edge. Linking, bundling and dSYM generation stay with rules_apple; the

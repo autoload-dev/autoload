@@ -195,7 +195,7 @@ def argv(work: Work, command: str, directory: str = ".") -> list[str]:
     variables. Android work runs with the provisioned SDK as ANDROID_HOME, which the Aspect
     CLI's environment (.aspect/config.axl) keeps empty while the SDK lacks the pinned platform.
     Commands in the root module run in the work's profile; the ruleset's keep its default
-    server, which its desktop set and fast tests share.
+    server, which its tests share.
     """
     profile = work.profile if directory == "." else None
     exports = [f"export {PROFILE}={shlex.quote(profile)}"] if profile else []
