@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library")
 
 # How a build tool reaches its declared inputs: the action manifest with the paths path
 # mapping stages, where the bytes of each file come from, and the runfiles of a program
-# that bazel run or bazel test starts.
+# that bazel run or bazel test starts with the files a project generated among them.
 package(default_visibility = ["//tools:__subpackages__"])
 
 # Output paths that manifests name as path mapping stages them.
@@ -29,5 +29,8 @@ py_library(
 py_library(
     name = "runfiles_lib",
     srcs = ["runfiles.py"],
-    deps = ["@rules_python//python/runfiles"],
+    deps = [
+        ":originals_lib",
+        "@rules_python//python/runfiles",
+    ],
 )

@@ -14,10 +14,10 @@ from pathlib import Path
 
 from tools.checkout.sync import Runfile, sync_main
 from tools.inputs.originals import open_original
-from tools.inputs.runfiles import report
+from tools.inputs.runfiles import report, tree_files_by_path
 from tools.resources.files import sidecar_source
 from tools.resources.index import lacking
-from tools.staging.files import COMPLETIONS, tree_files_by_path
+from tools.staging.files import COMPLETIONS
 
 
 def list_sidecars(

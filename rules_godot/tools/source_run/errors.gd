@@ -1,7 +1,7 @@
 extends Node
 
 # rules_godot's run logger, an autoload the runner adds through override.cfg
-# (tools/godot_run.py). It creates the file rules_godot/run/errors names when the
+# (tools/source_run/run.py). It creates the file rules_godot/run/errors names when the
 # game starts and records there every error Godot reports while the game's tree
 # exists; with rules_godot/run/stop_on_error, the first error quits the game
 # with status 1.

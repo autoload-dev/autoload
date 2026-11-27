@@ -19,7 +19,7 @@ from pathlib import Path, PurePosixPath
 
 from tools.checkout.metadata_sync import place_metadata
 from tools.inputs.originals import Original, executable, open_original, same_content
-from tools.inputs.runfiles import report, runfile_locator
+from tools.inputs.runfiles import generated_files, report, runfile_locator
 from tools.project.config import write_back
 from tools.resources.files import (
     DIRECTORY_MARKERS,
@@ -28,7 +28,7 @@ from tools.resources.files import (
     is_sidecar_named,
     sidecar_source,
 )
-from tools.staging.files import extension_list, generated_files, validate_staged_paths
+from tools.staging.files import extension_list, validate_staged_paths
 
 # The runner's own state inside a view, beside Godot's.
 STATE = ".godot/rules_godot"

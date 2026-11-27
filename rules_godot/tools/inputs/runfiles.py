@@ -1,6 +1,8 @@
 """
-The runfiles of a program that `bazel run` or `bazel test` starts, and its messages to the
-user.
+The runfiles of a program that `bazel run` or `bazel test` starts, the files a project's
+imports and initialization generated among them, and the program's messages to the user.
+
+Sections: Runfiles, Generated files.
 """
 
 import functools
@@ -11,10 +13,15 @@ from pathlib import Path
 
 from python.runfiles import runfiles as bazel_runfiles
 
+from tools.inputs.originals import Original, tree_entries
+
 
 def report(message: str) -> None:
     """Tell the user something, with main-repository labels as they write them."""
     print("rules_godot: " + message.replace("@@//", "//"), file=sys.stderr, flush=True)
+
+
+# ==== Runfiles ================================================================
 
 
 @functools.cache
@@ -67,3 +74,58 @@ def runfile_locator(workspace: str) -> Callable[[str], Path]:
         return locate(runfile_key(short_path, workspace))
 
     return runfile
+
+
+# ==== Generated files =========================================================
+
+
+def _present_trees(keys: list[str], runfile: Callable[[str], Path]) -> list[str]:
+    """
+    Import results that exist in the runfiles.
+
+    Bazel omits an empty tree artifact from runfiles; an import unit without
+    importable files has an empty import result.
+    """
+    trees = []
+    for key in keys:
+        try:
+            trees.append(str(runfile(key)))
+        except FileNotFoundError:
+            pass
+    return trees
+
+
+def import_results(
+    project: dict, runfile: Callable[[str], Path]
+) -> tuple[list[str], list[str]]:
+    """
+    A project's import results and its initialization, as present tree paths.
+
+    The initialization carries Godot's global caches; staged after the imports, it
+    replaces what Godot re-derived from them.
+    """
+    imports = [
+        line
+        for line in runfile(project["imports"]).read_text(encoding="utf-8").splitlines()
+        if line
+    ]
+    return (
+        _present_trees(imports, runfile),
+        _present_trees([project["initialized"]], runfile),
+    )
+
+
+def tree_files_by_path(imports: list[str], initialized: list[str]) -> dict[str, Original]:
+    """Import results, then Godot's caches, which replace what they re-derived."""
+    generated: dict[str, Original] = {}
+    for tree in imports:
+        for path, original in tree_entries(Path(tree)):
+            generated.setdefault(path, original)
+    for tree in initialized:
+        generated.update(tree_entries(Path(tree)))
+    return generated
+
+
+def generated_files(project: dict, runfile: Callable[[str], Path]) -> dict[str, Original]:
+    """A project's import results, then Godot's caches, by resource path."""
+    return tree_files_by_path(*import_results(project, runfile))

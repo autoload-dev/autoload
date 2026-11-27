@@ -22,12 +22,11 @@ from typing import TextIO
 from tools.editor_action.process import NEW_SESSION, child_environment, stop_process_group
 from tools.inputs.manifest import resource_path
 from tools.inputs.originals import copy_file, tree_files
-from tools.inputs.runfiles import runfile_locator
+from tools.inputs.runfiles import import_results, runfile_locator
 from tools.pack.pck import add_pck_files, pck_file_contents
 from tools.project.config import compose_project
 from tools.project.statements import statement_groups
 from tools.resources.text import gd_string
-from tools.staging.files import import_results
 from tools.staging.project import apply_metadata, stage
 
 

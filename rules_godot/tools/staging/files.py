@@ -2,7 +2,7 @@
 The files an operation stages for its project: the members and import inputs, overlaid by
 the import results, the extension list and the text files the metadata index completes.
 
-Sections: Staged paths, Import results, Metadata completion, Staged files, Generated files.
+Sections: Staged paths, Import results, Metadata completion, Staged files.
 """
 
 import json
@@ -187,58 +187,3 @@ def staged_files(manifest: dict, execroot: Path) -> dict[str, Original]:
     if "metadata_index" in manifest:
         files.update(_metadata_completions(manifest["metadata_index"], execroot, files))
     return files
-
-
-# ==== Generated files =========================================================
-
-
-def _present_trees(keys: list[str], runfile: Callable[[str], Path]) -> list[str]:
-    """
-    Import results that exist in the runfiles.
-
-    Bazel omits an empty tree artifact from runfiles; an import unit without
-    importable files has an empty import result.
-    """
-    trees = []
-    for key in keys:
-        try:
-            trees.append(str(runfile(key)))
-        except FileNotFoundError:
-            pass
-    return trees
-
-
-def import_results(
-    project: dict, runfile: Callable[[str], Path]
-) -> tuple[list[str], list[str]]:
-    """
-    A project's import results and its initialization, as present tree paths.
-
-    The initialization carries Godot's global caches; staged after the imports, it
-    replaces what Godot re-derived from them.
-    """
-    imports = [
-        line
-        for line in runfile(project["imports"]).read_text(encoding="utf-8").splitlines()
-        if line
-    ]
-    return (
-        _present_trees(imports, runfile),
-        _present_trees([project["initialized"]], runfile),
-    )
-
-
-def tree_files_by_path(imports: list[str], initialized: list[str]) -> dict[str, Original]:
-    """Import results, then Godot's caches, which replace what they re-derived."""
-    generated: dict[str, Original] = {}
-    for tree in imports:
-        for path, original in tree_entries(Path(tree)):
-            generated.setdefault(path, original)
-    for tree in initialized:
-        generated.update(tree_entries(Path(tree)))
-    return generated
-
-
-def generated_files(project: dict, runfile: Callable[[str], Path]) -> dict[str, Original]:
-    """A project's import results, then Godot's caches, by resource path."""
-    return tree_files_by_path(*import_results(project, runfile))

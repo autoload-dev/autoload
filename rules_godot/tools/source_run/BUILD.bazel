@@ -16,7 +16,6 @@ py_library(
         "//tools/project:config_lib",
         "//tools/project:statements_lib",
         "//tools/resources:text_lib",
-        "//tools/staging:files_lib",
         "//tools/staging:project_lib",
     ],
 )
