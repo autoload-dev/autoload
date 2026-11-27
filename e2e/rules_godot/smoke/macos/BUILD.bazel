@@ -97,6 +97,7 @@ py_test(
 godot_configured_app(
     name = "adhoc_app",
     app = ":app",
+    debug_symbols = ":app.debug_symbols",
     macos_signing = "adhoc",
     tags = ["manual"],
     target_compatible_with = _MACOS,

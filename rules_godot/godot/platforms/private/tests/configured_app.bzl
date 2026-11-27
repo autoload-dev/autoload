@@ -155,23 +155,31 @@ _configured_target = rule(
     },
 )
 
-def godot_configured_app(name, app, **kwargs):
-    """
+def _configured_app_impl(name, visibility, app, debug_symbols, **kwargs):
+    _configured_target(name = name, visibility = visibility, target = app, **kwargs)
+    _configured_target(
+        name = name + ".debug_symbols",
+        visibility = visibility,
+        target = debug_symbols,
+        **kwargs
+    )
+
+godot_configured_app = macro(
+    doc = """
     Build a `godot_app` and its debug symbols under an export platform and build settings.
 
     The macro declares `<name>`, the application, and `<name>.debug_symbols`, its debug
-    symbols, both under the same configuration.
-
-    Args:
-        name: the name of the application target.
-        app: the label of a `godot_app`.
-        **kwargs: the attributes of CONFIGURED_ATTRS, and common attributes such as `tags`
-            and `visibility`, of both targets.
-    """
-    label = native.package_relative_label(app)
-    _configured_target(name = name, target = label, **kwargs)
-    _configured_target(
-        name = name + ".debug_symbols",
-        target = label.same_package_label(label.name + ".debug_symbols"),
-        **kwargs
-    )
+    symbols, both under the same configuration. The caller names the application's
+    `<app>.debug_symbols`, which the macro's own package may not see.
+    """,
+    implementation = _configured_app_impl,
+    inherit_attrs = _configured_target,
+    attrs = {
+        "target": None,
+        "app": attr.label(doc = "The godot_app to build.", mandatory = True),
+        "debug_symbols": attr.label(
+            doc = "The godot_app's debug symbols, `<app>.debug_symbols`.",
+            mandatory = True,
+        ),
+    },
+)
