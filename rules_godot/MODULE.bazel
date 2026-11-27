@@ -255,7 +255,7 @@ godot_engine_build(
     build_options = _REDUCED | {"rendering_device": "no"},
     build_target = "template_release",
     cpu = "arm64",
-    custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe:config.py": "bazel_probe"},
+    custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe": "bazel_probe"},
     dev_dependency = True,
     enabled_modules = [
         "gdscript",
@@ -284,7 +284,7 @@ godot_engine_build(
     },
     build_target = "template_release",
     cpu = "arm64",
-    custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe:config.py": "bazel_probe"},
+    custom_modules = {"//godot/engine/private/tests/fixtures/source_build/modules/bazel_probe": "bazel_probe"},
     dev_dependency = True,
     enabled_modules = [
         "gdscript",

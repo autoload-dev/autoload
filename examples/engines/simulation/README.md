@@ -11,5 +11,6 @@ the repository can name it with `engine = "simulation"`.
 | Engine | `godot_engines.engine(name = "simulation")` and its `build` tag in [`MODULE.bazel`](../../../MODULE.bazel) | Every slot built from the release sources, with `gdscript`, `text_server_fb`, `freetype`, `zip` and the module, Compatibility renderer only |
 | Lock file | [`simulation.lock.json`](simulation.lock.json) | The build graph of every recipe; on a Mac, `bazel run @simulation//:pin --config=buildbuddy` rewrites them, configuring the Linux recipes on BuildBuddy's executors and the others on the Mac |
 
-A changed `SCsub` or `config.py`, or an added or removed module file, needs those repins;
-until then the engine's recipes fail with the command.
+A change to the module other than to its C++ code, such as to `SCsub`, `config.py` or its
+documentation, or an added or removed file, needs those repins; until then the engine's
+recipes fail with the command.

@@ -247,7 +247,7 @@ godot_engines.engine(
 godot_engines.build(
     engine = "my_engine",
     enabled_modules = ["gdscript", "text_server_fb", "my_module"],
-    custom_modules = {"//engines/my_engine/modules/my_module:config.py": "my_module"},
+    custom_modules = {"//engines/my_engine/modules/my_module": "my_module"},
     patches = ["//engines/my_engine/patches:fix.patch"],
     renderers = ["gl_compatibility"],
 )
@@ -281,12 +281,30 @@ engine build serves every application; an application's minimum is its bundle's 
 extension libraries', set by [`macos_minimum_os_version`](platforms.md#linux-and-macos) and
 `ios_minimum_os_version`, and may not fall below the recipe's target.
 
-The `my_module` and patch entries are optional; remove them if unused. Export
-`config.py` and the patch from their BUILD packages. A custom module uses
-Godot's normal `config.py`, `SCsub`, `register_types.h` and C++ source layout.
-The recipe watches and copies that directory, then evaluates its upstream
-registration logic. A custom module may override a built-in module of the same
-name. Bazel BUILD files in that directory are excluded from the copy.
+The `my_module` and patch entries are optional; remove them if unused. A custom module
+uses Godot's normal `config.py`, `SCsub`, `register_types.h` and C++ source layout; its
+key names a target in the package of its `config.py` that provides every file of the
+module's directory, and the patch is exported from its package:
+
+```starlark
+# engines/my_engine/modules/my_module/BUILD.bazel
+filegroup(
+    name = "my_module",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+```
+
+The recipe evaluates the module's upstream registration logic from every file but its
+code: it copies `config.py`, `SCsub`, shader sources, documentation, icons and any other
+file, and configures with the paths of the code, C, C++ and Objective-C sources and
+headers (`.cpp`, `.h`, `.inc` and the like). The code's contents come from the target when
+a build compiles them, so the recipe never reads them. The code compiles from the build's output
+tree at the same paths, so it reaches the module's other files, such as a table it
+includes, through an include directory its `SCsub` adds, not beside itself. A module with
+nested Bazel packages lists their files in its target too. A custom module may override a
+built-in module of the same name. Bazel BUILD files in that directory are no part of the
+module.
 
 A recipe's configuration reads no host packages or SDK: Linux recipes configure against
 Godot's bundled libraries, so options such as `builtin_freetype = "no"` fail, and without
@@ -399,8 +417,8 @@ build_test(
 Each pin records the digest of what its graph depends on: the archive, the patches, the
 recipe's platform, CPU, target, modules and options, for a runtime variant its runtime
 profile's build options (not its class list), its build name, the SCons release and
-rules_godot code that capture the graph, and of each custom module its `SCsub`,
-`config.py` and shader sources and the paths of its other files. A recipe whose digest no
+rules_godot code that capture the graph, and of each custom module every file but its
+code and the paths of its code. A recipe whose digest no
 longer matches, after such a change or a rules_godot upgrade that changes that code,
 fails with the pin command instead of reconfiguring silently; editing a custom module's
 C++ code keeps its pin, and so does a rules_godot upgrade that changes only how a graph
@@ -439,6 +457,27 @@ android_library(
     deps = ["@autoload_rules_godot//godot/platforms:android_plugin_api"],
 )
 ```
+
+### What prepares a recipe again
+
+Bazel prepares a recipe's repository again, which configures it without a lock file and
+renders its build graph, only when something it reads changes:
+
+- the source archive, or the rules_godot code that extracts, links, patches, configures
+  or renders it;
+- the recipe's attributes, such as its modules, options, renderers or registered runtime
+  profiles' build options, and the contents of its patches;
+- of a custom module, every file but its code, such as `config.py`, `SCsub`, shader
+  sources, documentation and icons, and the names of its files and directories, such as
+  an added source;
+- the lock file, for a pinned recipe; for an unpinned one, the environment variables
+  Godot's configuration reads.
+
+Editing a custom module's code, a C or C++ source or header, prepares nothing: the build compiles the sources it changes, from the
+module's target. A change to a patch prepares the engine's recipes and Android shell
+library again but extracts nothing: the engine tree, which every engine of the archive
+shares, depends on the archive alone. With Bazel's repo contents cache, a prepared
+recipe, like the tree, is reused across output bases and, with a remote cache, hosts.
 
 ## Choose between prepared recipes
 
@@ -725,7 +764,12 @@ machine, in a new checkout or on CI, where the remote or disk cache, not Bazel's
 local header dependency tracking, decides; a change to a header that almost every
 source includes, such as `core/object/class_db.h`, still recompiles most of the
 engine. Generated files are scanned by the include directives their generator's
-code writes. A source that reaches a header in a way the scan cannot see, such as
+code writes. A custom module's code is not scanned, since its contents come by label at
+build time: the compile actions of the sources that reach it, its own and engine sources
+such as Godot's module registration, declare every header of the engine tree and its
+generators, so they run again when any header changes; 17 of the 839 sources of the
+ruleset's iOS fixture recipe with one custom module do. The module's sources see the
+build profile, since they may register classes. A source that reaches a header in a way the scan cannot see, such as
 an include path that a macro assembles, fails to compile in a sandbox or on a
 remote executor. A GDScript edit does not compile engine objects; an engine edit
 does not re-import unrelated assets.

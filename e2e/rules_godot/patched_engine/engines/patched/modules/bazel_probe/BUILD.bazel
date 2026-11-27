@@ -1,5 +1,8 @@
-# The bazel_probe engine module; MODULE.bazel adds it to the source recipes through this
-# config.py, and the recipe copies the whole directory.
-package(default_visibility = ["//visibility:public"])
-
-exports_files(["config.py"])
+# The bazel_probe engine module, which MODULE.bazel adds to the source recipes by this
+# target. The recipe configures with its config.py and SCsub, and its C++ code compiles
+# from these files.
+filegroup(
+    name = "bazel_probe",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)

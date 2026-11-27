@@ -139,7 +139,7 @@ def _unpinned_message(ctx):
 
 def _pin_sources(ctx):
     """The globs of the recipe repository's files a pin action copies into its source tree."""
-    sources = ["_custom_modules/**", "_scons/**"]
+    sources = ["_custom_modules/**", "_custom_modules.json", "_scons/**"]
     if ctx.attr.runtime_profiles:
         sources.append("_variant_*.gdbuild")
     return sources
@@ -299,6 +299,7 @@ def _watch_tools(ctx):
     ctx.watch(ctx.path(ctx.attr._variants))
     ctx.watch(ctx.path(ctx.attr._generators))
     ctx.watch(ctx.path(ctx.attr._build_file))
+    ctx.watch(ctx.path(ctx.attr._custom_modules))
     _watch_link_tools(ctx)
 
 def _recipe_error(ctx):
@@ -370,16 +371,46 @@ def _host_command(ctx, python, arguments):
         _repository(ctx.attr._swift_library),
     ] + arguments
 
+def _watch_custom_module(ctx, target, directory, watched):
+    """Prepare the recipe again when a module's directory listings or graph files change."""
+    for path in watched["directories"]:
+        listed = directory if path == "." else ctx.path(target.same_package_label(path))
+        listed.readdir(watch = "yes")
+    for path in watched["files"]:
+        ctx.watch(target.same_package_label(path))
+
 def _add_custom_modules(ctx, command, arguments):
-    """Add the custom modules to the command and the pin's arguments; return an error or None."""
-    for module, name in ctx.attr.custom_modules.items():
-        marker = ctx.path(module)
-        if marker.basename != "config.py":
-            return "custom_modules keys must name each module's config.py: %s" % module
-        ctx.watch_tree(marker.dirname)
-        command.extend(["--custom-module-source", name + "=" + str(marker.dirname)])
-        arguments.extend(["--custom-module-name", name])
-    return None
+    """
+    Give the recipe its custom modules' structure and name them in both argument lists.
+
+    The repository holds the files that shape the graph, watched, and placeholders of the
+    code, which a build takes from each module's target (custom_modules.py). Returns an
+    error or None, and the placeholders, which the repository deletes after configuring.
+    """
+    if not ctx.attr.custom_modules:
+        return None, []
+    declarations = []
+    modules = []
+    for target, name in ctx.attr.custom_modules.items():
+        config = ctx.path(target.same_package_label("config.py"))
+        if not config.exists:
+            return "custom module %s: the package of its target must hold the module's config.py" % target, []
+        modules.append((target, name, config.dirname))
+        declarations.extend(["--module", name, str(config.dirname), str(target)])
+        for names in [command, arguments]:
+            names.extend(["--custom-module-name", name])
+    result = ctx.execute([
+        str(ctx.path(ctx.attr._python)),
+        str(ctx.path(ctx.attr._custom_modules)),
+        "--recipe",
+        ".",
+    ] + declarations)
+    if result.return_code:
+        return "%s: preparing the custom modules failed:\n%s\n%s" % (ctx.attr.name, result.stdout, result.stderr), []
+    prepared = json.decode(result.stdout)
+    for target, name, directory in modules:
+        _watch_custom_module(ctx, target, directory, prepared["modules"][name])
+    return None, prepared["placeholders"]
 
 def _lock_arguments(ctx):
     """The configure arguments that render a pinned recipe from its lock file; none without."""
@@ -443,7 +474,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     python = ctx.path(ctx.attr._python)
     arguments = _recipe_arguments(ctx, tree)
     command = _host_command(ctx, python, arguments)
-    error = _add_custom_modules(ctx, command, arguments)
+    error, placeholders = _add_custom_modules(ctx, command, arguments)
     if error:
         _fail(error)
         return None
@@ -454,6 +485,8 @@ def engine_build_impl(ctx, *, _fail = fail):
     if result.return_code:
         _fail("Godot graph configuration failed:\n%s\n%s" % (result.stdout, result.stderr))
         return None
+    for placeholder in placeholders:
+        ctx.delete(placeholder)
     _finish(ctx, tree, arguments, variants)
 
     # A pinned recipe depends only on the recipe, the sources and the lock file, and Android

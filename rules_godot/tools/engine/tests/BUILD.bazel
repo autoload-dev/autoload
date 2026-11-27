@@ -95,7 +95,10 @@ py_test(
     name = "render_test",
     size = "small",
     srcs = ["render_test.py"],
-    deps = ["//tools/engine:support"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
 )
 
 py_test(
@@ -124,6 +127,16 @@ py_test(
     size = "small",
     srcs = ["include_directories_test.py"],
     deps = ["//tools/engine:support"],
+)
+
+py_test(
+    name = "custom_modules_test",
+    size = "small",
+    srcs = ["custom_modules_test.py"],
+    deps = [
+        ":source_files",
+        "//tools/engine:support",
+    ],
 )
 
 py_test(

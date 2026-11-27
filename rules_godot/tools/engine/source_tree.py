@@ -10,6 +10,9 @@ from pathlib import Path
 
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".s", ".S", ".swift"}
 
+# The suffixes of the files sources include as code.
+HEADER_SUFFIXES = (".h", ".hh", ".hpp", ".hxx", ".inc", ".inl", ".ipp")
+
 
 def digest_of(value: object) -> str:
     """Return the SHA-256 of a JSON value in canonical form: sorted keys, no spaces."""
