@@ -5,7 +5,8 @@ load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 # their command line. Pack selection reads the graph and its queries.
 package(default_visibility = ["//tools:__subpackages__"])
 
-# The errors and warnings that the graph and pack selection report.
+# The errors and warnings about a project's resources. The scanner, the graph and pack
+# selection report them. The command line and pack selection print them.
 py_library(
     name = "diagnostics_lib",
     srcs = ["diagnostics.py"],

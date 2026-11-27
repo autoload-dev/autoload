@@ -266,6 +266,9 @@ def require_rendering_method(
         )
 
 
+# ==== Command line ============================================================
+
+
 def _check_rendering_method(args: argparse.Namespace) -> None:
     """Check the project's rendering method where the engine declares its renderers."""
     if not args.facts or args.renderers is None:
@@ -307,9 +310,6 @@ def _check_ios_platform_slice(args: argparse.Namespace) -> None:
             problems.append(str(problem))
     if problems:
         raise SystemExit("\n".join(problems))
-
-
-# ==== Command line ============================================================
 
 
 def _parser() -> argparse.ArgumentParser:

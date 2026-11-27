@@ -6,8 +6,8 @@ rules_apple's own runner copies the bundle with the host's rsync, whose openrsyn
 macOS ignores --chmod=u+w, so its copy stays read-only and `simctl install` fails with
 NSPOSIXErrorDomain 13. This launcher makes its copy writable itself.
 
-Sections: Application bundle, Device listing, Simulator launch, Device launch, Command
-line.
+Sections: Application bundle, Device listing, Device selection, Simulator launch, Device
+launch, Command line.
 """
 
 from __future__ import annotations
@@ -290,6 +290,9 @@ def create_simulator(
         version(runtime["version"]),
         device_type["identifier"],
     )
+
+
+# ==== Device selection ========================================================
 
 
 def _named_simulator(
