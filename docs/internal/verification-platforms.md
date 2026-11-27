@@ -119,14 +119,15 @@ and shell scripts, are linted by the [file lint](verification-recipes.md#the-fil
 The source-engine tests are the most expensive and the least likely to change with a
 commit, so CI has no host job for them. The
 [Source engine](../../.github/workflows/source-engine.yml) workflow runs all of them,
-`source-engine:full`, on main on its schedule, on manual dispatch for any branch, and on
-each push of a pull request whose changes reach them or that carries the label
-`source-engine`. A change reaches them when it touches the engine recipes, repositories or
+`source-engine:full`, on each push of a pull request whose changes reach them or that
+carries the label `source-engine`, and on manual dispatch for any branch. A change reaches them when it touches the engine recipes, repositories or
 their tools, the engines of the examples or of the patched-engine scenario, or a package
 with a test tagged `source_engine`
 ([source_engine_changes.py](../../tools/ci/source_engine_changes.py) holds the list and reads
 the tagged packages from their BUILD files). Its job is skipped, not failed, on other pull
-requests; it is no required check. Stale
+requests; it is no required check. Code that every build shares, such as the ruleset's rules
+or `shared.bazelrc`, does not reach them: a pull request that changes it in a way that may
+break a source-built engine carries the label. Stale
 recipe pins need no dispatch to show: `//examples/engines/simulation:pinned_test`, a fast
 test that the pre-push hook runs too, fails on a pin whose inputs changed, such as
 rules_godot's graph capture.

@@ -13,8 +13,8 @@ permissions:
 # Every run runs every host's job; Bazel's caches keep unchanged work cheap. Each job runs
 # `aspect ci <host>` (.aspect/develop.axl): on Linux every check, then every test of the
 # root module and the ruleset that the host's config `ci-<host>` selects by tag
-# (shared.bazelrc), in one `bazel test` per module. The source engines run on their own schedule
-# (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
+# (shared.bazelrc), in one `bazel test` per module. The source engines run in a workflow of
+# their own (source-engine.yml). The macOS job runs on the self-hosted macos-ci runners, which keep
 # their repository cache and Bazel servers between jobs and share a Bazel cache server with
 # their host.
 # Policy: docs/internal/verification-platforms.md#apple-hosts.

@@ -7,7 +7,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.ci.source_engine_changes import ENGINE_PATHS, reaching, watched
+from tools.ci.source_engine_changes import (
+    ENGINE_PATHS,
+    changes_registrations,
+    reaching,
+    watched,
+)
 
 # A Git that reads no user or system configuration, such as signing or hooks.
 GIT_ENVIRONMENT = {
@@ -65,6 +70,51 @@ class SourceEngineChangesTest(unittest.TestCase):
                 ],
                 watched(self.root),
             ),
+        )
+
+    def test_a_module_file_reaches_them_where_it_registers_engines(self) -> None:
+        def diff(*lines: str) -> str:
+            return "\n".join(
+                (
+                    "diff --git a/MODULE.bazel b/MODULE.bazel",
+                    "--- a/MODULE.bazel",
+                    "+++ b/MODULE.bazel",
+                    *lines,
+                )
+            )
+
+        self.assertFalse(
+            changes_registrations(
+                diff(
+                    "@@ -20 +20 @@ module(",
+                    '-bazel_dep(name = "a", version = "1")',
+                    '+bazel_dep(name = "a", version = "2")',
+                )
+            )
+        )
+        self.assertTrue(
+            changes_registrations(
+                diff(
+                    "@@ -244 +245 @@ godot_engines.build(",
+                    '-    enabled_modules = ["a"],',
+                    '+    enabled_modules = ["b"],',
+                )
+            )
+        )
+        self.assertTrue(
+            changes_registrations(
+                diff("@@ -266 +266 @@ _REDUCED_RUNTIME = {", '-    "vulkan": "no",')
+            )
+        )
+        self.assertTrue(
+            changes_registrations(
+                diff(
+                    "@@ -300,0 +301,3 @@ use_repo(",
+                    "+godot_engine_build(",
+                    '+    name = "probe",',
+                    "+)",
+                )
+            )
         )
 
     def test_a_watched_path_that_no_longer_exists_fails(self) -> None:

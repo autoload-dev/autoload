@@ -1,16 +1,11 @@
 name: Source engine
 
-# The only CI run of the source-engine tests: it builds and runs every source-engine case
-# on main on the schedule below, on any branch on manual dispatch, and on a pull request
-# whose changes reach them (tools/ci/source_engine_changes.py) or that has the label
-# `source-engine`, when it gets the label and on each push. Merges leave them out. Policy:
+# The only CI run of the source-engine tests: it builds and runs every source-engine case on
+# a pull request whose changes reach them (tools/ci/source_engine_changes.py) or that has the
+# label `source-engine`, when it gets the label and on each push, and on any branch on manual
+# dispatch. Merges leave them out. Policy:
 # docs/internal/verification-platforms.md#source-engine-workflow.
 on:
-  schedule:
-    # GitHub starts scheduled runs late under load, worst at the top of the hour: runs meant
-    # for 03:00 in Berlin started between 10:23 and 12:04 UTC, while the daytime CI ran. An
-    # off-hour minute in the night of UTC and Berlin alike keeps the run ahead of the day.
-    - cron: "37 0 * * *"
   pull_request:
     types: [opened, reopened, synchronize, labeled]
   workflow_dispatch:
@@ -34,7 +29,9 @@ jobs:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The merge base of the pull request's commits, without their files' contents.
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
       - name: Find changes that reach the source-engine tests
         id: changes
@@ -51,12 +48,22 @@ jobs:
     timeout-minutes: 60
     runs-on: macos-ci
     if: >-
-      !cancelled() && (github.event_name != 'pull_request'
-      || (github.event.pull_request.head.repo.full_name == github.repository
-      && (github.event.action == 'labeled' && github.event.label.name == 'source-engine'
-      || github.event.action != 'labeled'
-      && (contains(github.event.pull_request.labels.*.name, 'source-engine')
-      || needs.changes.outputs.reaches == 'true'))))
+      !cancelled() && (
+        github.event_name != 'pull_request'
+        || (
+          github.event.pull_request.head.repo.full_name == github.repository
+          && (
+            (github.event.action == 'labeled' && github.event.label.name == 'source-engine')
+            || (
+              github.event.action != 'labeled'
+              && (
+                contains(github.event.pull_request.labels.*.name, 'source-engine')
+                || needs.changes.outputs.reaches == 'true'
+              )
+            )
+          )
+        )
+      )
     # A newer run on the same branch replaces one still building engines. A run whose job is
     # skipped, such as for another label, leaves it alone.
     concurrency:
