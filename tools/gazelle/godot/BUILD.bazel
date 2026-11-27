@@ -38,17 +38,25 @@ py_library(
     deps = ["@autoload_rules_godot//tools:resource_graph_lib"],
 )
 
+# Both name the ruleset's scanner too: ty's lint aspect searches the repositories of a
+# target's direct dependencies only.
 py_binary(
     name = "scanner",
     srcs = ["scanner.py"],
-    deps = [":scanner_lib"],
+    deps = [
+        ":scanner_lib",
+        "@autoload_rules_godot//tools:resource_graph_lib",
+    ],
 )
 
 py_test(
     name = "scanner_test",
     size = "small",
     srcs = ["scanner_test.py"],
-    deps = [":scanner_lib"],
+    deps = [
+        ":scanner_lib",
+        "@autoload_rules_godot//tools:resource_graph_lib",
+    ],
 )
 
 # Gazelle with this language alone, which the golden tests run.
