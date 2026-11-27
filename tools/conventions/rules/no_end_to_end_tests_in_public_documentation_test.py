@@ -20,10 +20,11 @@ class EndToEndTestReferencesTest(RepositoryTest):
             "e2e/addons/<module>/ and e2e/rules_godot/<scenario>/ in e2e/rules_godot/\n"
             "Copy e2e/rules_godot/smoke/linux/main.gd\n"
             "bazel test //e2e/addons/sqlite/database\n"
-            "See godot/private/e2e/fixtures/README.md and examples/addons/sqlite\n",
+            "See godot/private/e2e/fixtures/README.md and examples/addons/sqlite\n"
+            "See [the suites](../../e2e/addons/sqlite/database/DatabaseTest.gd)\n",
         )
         findings = list(EndToEndTestReferences().evaluate(self.context()))
-        self.assertEqual([item.location.line for item in findings], [2, 3])
+        self.assertEqual([item.location.line for item in findings], [2, 3, 5])
 
     def test_reference_fails_only_in_user_documentation(self) -> None:
         public = (

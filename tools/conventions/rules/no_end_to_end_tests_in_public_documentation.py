@@ -9,14 +9,14 @@ from collections.abc import Iterable
 from tools.conventions.context import Context, Location
 from tools.conventions.documents import internal_document
 from tools.conventions.framework import Finding, RuleInfo
-from tools.conventions.layout import REGRESSION_ROOT
-from tools.setup.modules import ADDON_E2E
+from tools.conventions.layout import ADDON_E2E, REGRESSION_ROOT
 
 # A concrete project below an end-to-end root, a consumer scenario such as
 # e2e/rules_godot/smoke or an add-on end-to-end test such as e2e/addons/sqlite; layout
-# schemas with placeholders, such as e2e/addons/<module>/, are not.
+# schemas with placeholders, such as e2e/addons/<module>/, are not. A path counts in a label
+# or a relative link too, such as //e2e/addons/sqlite or ../../e2e/addons/sqlite.
 ROOTS = "|".join(re.escape(root.as_posix()) for root in (REGRESSION_ROOT, ADDON_E2E))
-END_TO_END_TEST = re.compile(rf"(?:(?<=//)|(?<![\w/.-]))(?:{ROOTS})/[A-Za-z0-9_]")
+END_TO_END_TEST = re.compile(rf"(?<![\w.-])(?:{ROOTS})/[A-Za-z0-9_]")
 
 
 def references(text: str) -> Iterable[int]:

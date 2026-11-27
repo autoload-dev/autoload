@@ -92,8 +92,15 @@ provision the Android SDK first. To run one module alone:
 bazel test --config=all -- @autoload_<module>//... //examples/addons/<module>/... //e2e/addons/<module>/...  # leave out e2e/ if the module has none
 bazel test --test_tag_filters=android //examples/addons/<module>/...   # the Android release builds
 bazel test --test_tag_filters=ios //examples/addons/<module>/...       # the iOS Simulator release builds
-bazel run //e2e/addons/<module>:edit      # open the end-to-end test project in the editor
-bazel run //e2e/addons/<module>:update    # write its UIDs and node IDs into the checkout
+```
+
+Where `e2e/addons/<module>/` is a project itself, as for every module but gdunit, its
+`edit` opens it in the editor and its `update` writes its UIDs and node IDs into the
+checkout:
+
+```sh
+bazel run //e2e/addons/<module>:edit
+bazel run //e2e/addons/<module>:update
 ```
 
 The module's README names only the example's commands
