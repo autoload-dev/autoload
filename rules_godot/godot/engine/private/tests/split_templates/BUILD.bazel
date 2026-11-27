@@ -1,4 +1,5 @@
 package(default_testonly = True)
 
 # MODULE.bazel names fixtures.bzl, whose repository rule reads split_templates.zip; module
-# extensions and repository rules need no target of either.
+# extensions and repository rules need no target of either. templates_fixture.py reproduces
+# split_templates.zip.

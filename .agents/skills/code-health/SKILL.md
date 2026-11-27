@@ -27,10 +27,12 @@ and
    and declined files. If CodeScene is unavailable, say so and leave out its subagent.
 3. Run
    `bazel run //tools/conventions -- --rule region-headers-named-in-head --rule definitions-before-callers`
-   and the lint check, which lints Python, GDScript and Markdown:
+   and the lint check of Python:
    `aspect exec -- bazel build --config=lint --target_pattern_file=root.targets` in the root
-   and `aspect exec -- bazel build --config=lint //...` in `rules_godot/`. Their findings are
-   fixed directly; the subagents do not repeat them.
+   and `aspect exec -- bazel build --config=lint //...` in `rules_godot/`, and the file lint
+   of GDScript, Markdown and the other files without targets: `bazel run //tools/lint:files`
+   (`-- <path>...` for given files). Their findings are fixed directly; the subagents do not
+   repeat them.
 4. Choose each file's scope. A file in the busiest quarter of the history, or with five or
    more commits, is reviewed whole; other files only where the change touches them.
 

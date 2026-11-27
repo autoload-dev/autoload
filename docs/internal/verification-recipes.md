@@ -233,7 +233,7 @@ formatters that `bazel run` starts here. Adding `--config=host-execution` from
 [shared.bazelrc](../../shared.bazelrc) after the remote config names this host again; the
 remote cache still applies.
 
-Android builds of `examples/` and `tests/` run their actions on BuildBuddy's
+Android builds of `examples/` and `e2e/` run their actions on BuildBuddy's
 executors: the root module registers the toolchains of
 [`godot_android_toolchains`](../../rules_godot/docs/public/platforms.md#remote-execution-of-android-builds), which
 add the pinned Linux SDK and NDK for Linux executors. Its pins in
@@ -281,24 +281,25 @@ docstring of [toolchains.bzl](../../rules_godot/godot/private/tests/toolchains.b
 ## Regression fixtures
 
 The projects below are controlled inputs for rules_godot regressions, separate from each
-example's own tests. For area responsibilities, see the [test-area map](../../e2e/rules_godot/AGENTS.md).
-They are the consumer scenarios in `e2e/rules_godot/` of the root module: run their labels from the
-repository root, and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
+example's own tests. Most are fixtures of the ruleset's white-box tests; `script_run` and the
+smoke and `patched_engine` scenarios are consumer scenarios in `e2e/rules_godot/` of the root
+module ([test-area map](../../e2e/rules_godot/AGENTS.md)). Run `//e2e/...` labels from the
+repository root and the ruleset's own labels (`//godot/...`, `//tools/...`) from `rules_godot/`.
 
 Use these project cases to find a concrete behavior:
 
 | Case | Behavior and useful test labels |
 |---|---|
-| `editor_view` | Editor writeback, sidecars and disabled extensions, from `rules_godot/`: `//godot/private/tests/editor_view` |
-| `script_run` | Direct script execution, imports and command-line arguments: `//script_run` |
-| `adapter_test` | A fake test adapter's cases, filtering, sharding and exit code, from `rules_godot/`: `//godot/testing/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's end-to-end tests: `bazel test //e2e/addons/gdunit/...` from the repository root |
-| `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache, from `rules_godot/`: `//godot/private/tests/validation` |
+| `editor_view` | Editor writeback, sidecars and disabled extensions: `//godot/private/tests/editor_view` |
+| `script_run` | Direct script execution, imports and command-line arguments: `//e2e/rules_godot/script_run` |
+| `adapter_test` | A fake test adapter's cases, filtering, sharding and exit code: `//godot/testing/tests/adapter`; GdUnit's pass/fail/empty/skipped runs, filtering, sharding and JUnit, including a failed assertion's details, are autoload_gdunit's end-to-end tests: `bazel test //e2e/addons/gdunit/...` from the repository root |
+| `content_validation` | Per-unit validation: parse and type errors, failing base scripts, dependents against their dependencies' interfaces, undeclared global classes, warning settings and the add-on exemption, no project code, autoloads and the class cache: `//godot/private/tests/validation` |
 | `import_context_runs` | Composed settings and autoloads applied at runtime, an import input's own kept private: `//godot/private/tests/import_context_runs`; sidecars, import units, path and collision failures and metadata policies are analysis tests in `//godot/private/tests` |
-| `gltf_external_buffer` | External glTF buffer available during import but absent from the pack, from `rules_godot/`: `//godot/private/tests/gltf_import` |
+| `gltf_external_buffer` | External glTF buffer available during import but absent from the pack: `//godot/private/tests/gltf_import` |
 | `import_export_plugins` | Import plugins, that no export runs an add-on's export plugin, the configuration of each purpose and the icons and splash images Godot's exporters render: `//godot/private/tests/import_export_plugins` |
-| `resource_graph_resolution` | Real graph action over generated source declarations, from `rules_godot/`: `//godot/private/tests/resource_graph` |
+| `resource_graph_resolution` | Real graph action over generated source declarations: `//godot/private/tests/resource_graph` |
 | `extension_staging` | The extensions a pack carries and lists, and actual extension library loading: `//godot/extension/tests/staging` |
-| `export_settings` | Godot's exported Android/iOS facts, bridge files, exporter facts, release settings and shell files, from `rules_godot/`: `//godot/platforms/private/tests/export_settings` and `//tools/platforms/tests:godot_shell_test` |
+| `export_settings` | Godot's exported Android/iOS facts, bridge files, exporter facts, release settings and shell files: `//godot/platforms/private/tests/export_settings` and `//tools/platforms/tests:godot_shell_test` |
 
 The export-settings cases intentionally include incomplete engine inputs to inspect
 generated metadata. They are not runnable game examples. The desktop smoke scenarios
@@ -341,7 +342,7 @@ bazel test //e2e/addons/gdunit/...
 ```
 
 The mobile smoke paths `smoke/android` and `smoke/ios` package their own copy of the add-on.
-From `tests/`, run
+From the repository root, run
 `aspect exec -- bazel test --test_tag_filters=android //e2e/rules_godot/...`, or `ios` for iOS.
 
 ### Source-built engine applications
@@ -350,7 +351,7 @@ From `rules_godot/`, on macOS ARM64 with Xcode selected:
 
 ```sh
 bazel test //tools/engine/tests/...
-cd tests
+cd ..
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/stable:all
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/beta:all
 bazel test //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test //e2e/rules_godot/patched_engine/tests:source_built_editor_test --extra_toolchains=//e2e/rules_godot/patched_engine/engines/source:all

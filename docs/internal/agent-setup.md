@@ -29,16 +29,16 @@ check enforces both ([no-claude-md](conventions.md#no-claude-md) and
 
 ## Worktrees
 
-Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose slots keep their
-path, so a new worktree starts with a warm Bazel server and output base. Claude Code's
-worktrees (`claude --worktree`, subagents with worktree isolation) take a slot through the
-`WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json`
+Worktrees come from the Aspect CLI's pool under `~/.aspect/worktrees`, whose worktree slots
+keep their path, so a new worktree starts with a warm Bazel server and output base. Claude
+Code's worktrees (`claude --worktree`, subagents with worktree isolation) take a worktree
+slot through the `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json`
 ([tools/claude/worktree.sh](../../tools/claude/worktree.sh)), on a branch `claude/<name>` from
 `origin`'s default branch. By hand, `aspect worktree add <branch> --create=origin/main` takes
 a slot, `aspect worktree release <branch>` gives it back with its Bazel state, and `aspect
 worktree list` shows who holds which.
 
-A session's slot stays leased until it is released, and sessions rarely end in a way that
+A session's worktree slot stays leased until it is released, and sessions rarely end in a way that
 runs `WorktreeRemove`. So `WorktreeCreate` first releases the slots whose work is done
 ([tools/worktree/release_done.py](../../tools/worktree/release_done.py)): the branch's pull
 request has merged with the checkout's HEAD, or the branch was deleted on origin, and the

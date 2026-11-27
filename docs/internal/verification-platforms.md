@@ -87,8 +87,8 @@ other, so it frees its runner and the merge queue removes the entry without wait
 slower job; the work it finished stays in Bazel's caches.
 
 The named work lives in [`tools/ci/work.py`](../../tools/ci/work.py): the pieces that are no
-single Bazel command, such as the checks that are no Bazel targets, the Android SDK's setup,
-the add-on generator's self-test and the source-engine cases. Locally, `aspect ci <host>`
+single Bazel command, such as the Android SDK's setup, the add-on generator's self-test and
+the source-engine cases; the checks are `aspect` tasks of their own. Locally, `aspect ci <host>`
 runs a host's job, `aspect work <name>...` single pieces, and `aspect work` lists them. Where
 a piece is one Bazel command, the documentation shows that command instead. The
 [tiers](../../shared.bazelrc) `fast` (no test tagged `godot_process`, `source_engine`,

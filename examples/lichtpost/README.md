@@ -42,8 +42,8 @@ and run from the repository root:
 
 - `bazel build //examples/lichtpost:app --config=android --config=aab`
   produces the unsigned App Bundle. Omit `--config=aab` for a signed APK.
-- `bazel build //examples/lichtpost:app --config=simulator` produces the arm64 simulator app
-  under `bazel-bin/projects/lichtpost/`. For device signing, follow the
+- `bazel build //examples/lichtpost:app --config=simulator` produces the arm64 simulator app;
+  Bazel prints its path. For device signing, follow the
   [iOS signing guide](../../rules_godot/docs/public/platforms.md#ios).
 
 Replace `--config=android` with `--config=multi_abi` to request the Android distribution

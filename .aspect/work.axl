@@ -114,7 +114,7 @@ def _work_impl(ctx: TaskContext) -> int:
 
 work = task(
     implementation = _work_impl,
-    summary = "Run pieces of the named work by name, such as conventions; none lists them.",
+    summary = "Run pieces of the named work by name, such as source-engine; none lists them.",
     args = {
         "names": args.positional(minimum = 0, maximum = 512, default = []),
     },
