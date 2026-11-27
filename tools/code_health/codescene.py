@@ -35,7 +35,7 @@ from pathlib import Path
 
 from tools.code_health import change, survey
 from tools.code_health.batch import Reviewer, cache_directory, cli_identity
-from tools.code_health.change import ChangedPath, FileChange
+from tools.code_health.change import FileChange
 from tools.code_health.scan import (
     DEFAULT_EXCLUDES,
     FileResult,
@@ -50,6 +50,8 @@ from tools.code_health.scan import (
     scan_notes,
     worktree_files,
 )
+from tools.git import changes
+from tools.git.changes import ChangedPath
 
 # ==== Reviews =================================================================
 
@@ -103,7 +105,7 @@ def branch_change(
     paths = (
         only_paths(repo, since, args.only)
         if args.only
-        else selected_paths(args, change.changed_paths(repo, since))
+        else selected_paths(args, changes.changed_paths(repo, since))
     )
     return Comparison(since, None, f"`{args.base}` (merge base {since[:12]})"), paths
 
@@ -113,7 +115,7 @@ def staged_change(
 ) -> tuple[Comparison, list[ChangedPath]]:
     """The index against HEAD: what the next commit changes."""
     head = git(repo, "rev-parse", "HEAD").strip()
-    paths = selected_paths(args, change.staged_paths(repo))
+    paths = selected_paths(args, changes.staged_paths(repo))
     return Comparison(head, "", f"`HEAD` ({head[:12]}), staged changes only"), paths
 
 

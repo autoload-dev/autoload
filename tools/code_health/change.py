@@ -1,8 +1,7 @@
 """The Code Health of a change: the files it touches, before and after, and which got worse.
 
-A change is either the working tree against its merge base with a base ref, untracked
-files included, so that commits which landed on the base after the branch point are not
-part of it (changed_paths), or the index against HEAD (staged_paths).
+A change is either the working tree against its merge base with a base ref or the index
+against HEAD (tools/git/changes.py).
 A file declines when its score falls, or, for a file without a score before, such as a new
 one, when it scores below NEW_FILE_MINIMUM. Deleted files never decline.
 
@@ -12,11 +11,14 @@ Sections: Changed files, Report.
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import asdict, dataclass
 from functools import cached_property
 from pathlib import Path
 
-from tools.code_health.scan import BUILD_FILE, FileResult, git
+from tools.code_health.scan import BUILD_FILE, FileResult
+from tools.git import changes
+from tools.git.changes import ChangedPath
 
 NEW_FILE_MINIMUM = 9.0
 NO_FUNCTION = {"name": "", "start": None, "end": None, "details": ""}
@@ -46,56 +48,12 @@ ACCEPT_HINT = (
 # ==== Changed files ===========================================================
 
 
-@dataclass(frozen=True)
-class ChangedPath:
-    """A file of a change: its path at the merge base and in the working tree."""
-
-    before: str | None  # None for a file the change adds
-    after: str | None  # None for a file the change deletes
-
-    @property
-    def label(self) -> str:
-        """The path, or `old → new` for a renamed file."""
-        return " → ".join(dict.fromkeys(p for p in (self.before, self.after) if p))
-
-
-def parse_name_status(output: str) -> list[ChangedPath]:
-    """The files of `git diff --name-status -z -M` output, renames as one file."""
-    fields = output.split("\0")
-    paths: list[ChangedPath] = []
-    index = 0
-    while index < len(fields) and fields[index]:
-        status = fields[index][0]
-        if status in "RC":
-            old, new = fields[index + 1], fields[index + 2]
-            paths.append(ChangedPath(old if status == "R" else None, new))
-            index += 3
-            continue
-        path = fields[index + 1]
-        paths.append(
-            ChangedPath(None if status == "A" else path, None if status == "D" else path)
-        )
-        index += 2
-    return paths
-
-
 def merge_base(repo: Path, base: str) -> str:
-    return git(repo, "merge-base", base, "HEAD").strip()
-
-
-def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
-    """The files that differ between the commit and the working tree, untracked included."""
-    paths = parse_name_status(git(repo, "diff", "--name-status", "-z", "-M", since))
-    untracked = git(repo, "ls-files", "-z", "--others", "--exclude-standard")
-    paths += [ChangedPath(None, path) for path in untracked.split("\0") if path]
-    return paths
-
-
-def staged_paths(repo: Path) -> list[ChangedPath]:
-    """The files the index changes against HEAD."""
-    return parse_name_status(
-        git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
-    )
+    """The merge base of HEAD with `base`; exit when they have none."""
+    since = changes.merge_base(repo, base)
+    if since is None:
+        sys.exit(f"HEAD has no merge base with {base}.")
+    return since
 
 
 def function_name(function: dict) -> str:

@@ -19,10 +19,14 @@ from tools.lint.files import (
     given_files,
     listed_files,
     run,
+    run_staged,
 )
 
 # A tool's script that records its arguments beside itself.
 RECORDING = 'echo "$@" >> "$0.log"\n'
+
+# A linter that records its files and finds every one that contains `bad`.
+FINDS_BAD = RECORDING + 'grep -H -n bad "$@" && exit 1; exit 0\n'
 
 GIT = ("git", "-c", "user.name=Test", "-c", "user.email=test@example.com")
 
@@ -199,6 +203,46 @@ class FilesTest(unittest.TestCase):
         (self.bin / "links.log").unlink()
         self.assertEqual(0, self.lint(tools, ["a.md"], fix=True)[0])
         self.assertEqual(["a.md"], self.recorded("links"))
+
+    def stage_over_a_commit(self, staged: str, unstaged: str) -> None:
+        """A commit of two files, one of them staged and then changed again."""
+        self.write("kept.md")
+        self.write("edited.md")
+        self.git("init", "-q", "-b", "main")
+        self.git("add", ".")
+        self.git("commit", "-q", "-m", "base")
+        self.write("edited.md", staged)
+        self.write("new.md", staged)
+        self.git("add", "edited.md", "new.md")
+        self.write("edited.md", unstaged)
+        self.write("kept.md", "bad\n")
+        self.write("untracked.md", "bad\n")
+
+    def lint_staged(self, tools: tuple[Tool, ...]) -> tuple[int, str]:
+        executables = {tool: str(self.bin / tool.name) for tool in tools}
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = run_staged(executables, self.root)
+        return code, output.getvalue()
+
+    def test_staged_files_are_checked_as_the_index_has_them(self) -> None:
+        self.stage_over_a_commit(staged="good\n", unstaged="bad\n")
+        tools = (
+            self.tool("md", FINDS_BAD, check=()),
+            replace(self.tool("links", check=()), whole_tree=True),
+        )
+        self.assertEqual((0, ""), self.lint_staged(tools))
+        self.assertEqual(["edited.md", "new.md"], self.recorded("md"))
+        self.assertEqual(["edited.md", "kept.md", "new.md"], self.recorded("links"))
+        self.assertEqual("bad\n", (self.root / "edited.md").read_text())
+
+    def test_a_staged_finding_fails_whatever_the_working_tree_holds(self) -> None:
+        self.stage_over_a_commit(staged="bad\n", unstaged="good\n")
+        code, output = self.lint_staged((self.tool("md", FINDS_BAD, check=()),))
+        self.assertEqual(1, code)
+        self.assertIn("edited.md:1:bad", output)
+        self.assertIn("new.md:1:bad", output)
+        self.assertEqual("good\n", (self.root / "edited.md").read_text())
 
     def test_the_repository_s_tools_each_check_or_fix(self) -> None:
         names = [tool.name for tool in TOOLS]

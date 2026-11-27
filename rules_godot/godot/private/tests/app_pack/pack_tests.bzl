@@ -8,7 +8,7 @@ load("//godot:defs.bzl", "godot_pack")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private/config:application.bzl", "application_id", "application_pack")
-load(":failures.bzl", "failure_test")
+load("//godot/private/tests:expected_failures.bzl", "failure_test")
 
 visibility("private")
 
@@ -192,7 +192,7 @@ def _test_authored_bundle_identifier_conflict_fails(name):
         tags = ["manual"],
         deps = [":" + name + "_pack"],
     )
-    failure_test(name, "conflicts with authoritative godot_app value", [":" + name + "_subject"], config_settings = _MACOS)
+    failure_test(name, ":" + name + "_subject", "conflicts with authoritative godot_app value", config_settings = _MACOS)
 
 _VariablesInfo = provider(doc = "Make variables an application_id target resolves.", fields = ["application_id"])
 
@@ -286,7 +286,7 @@ def _test_pack_names_exporting_editor_component(name):
 # Analysis owns the authored-option and preset checks that need no Godot facts.
 def _pack_failure_test(name, message, **kwargs):
     godot_pack(name = name + "_subject", project = ":empty_project", tags = ["manual"], **kwargs)
-    failure_test(name, message, [":" + name + "_subject"])
+    failure_test(name, ":" + name + "_subject", message)
 
 def _test_bazel_owned_export_option_fails(name):
     _pack_failure_test(

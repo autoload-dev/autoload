@@ -4,12 +4,14 @@ run on files as `aspect format` formats them. It checks the files changed since 
 with origin/main, every file Git lists with `--scope=all`, or the files given, relative to the
 directory it started in. `--fix` runs the formatters instead, on the files given or else on
 every file, as //tools/format runs them beside rules_lint's.
-`bazel run //tools/lint:files -- [--scope=changed|all] [--fix] [<file>...]`
+`bazel run //tools/lint:files -- [--scope=changed|all|staged] [--fix] [<file>...]`
 
 A tool is a program that takes file paths after its arguments. A linter prints each finding on
 a line of its own, `<path>:<line>[:<column>]: <message>`, and exits 1 when it found any, 0
 when it found none; any other exit code means it could not check. The tools run at the
-repository's root, each once over all of its files, at the same time.
+repository's root, each once over all of its files, at the same time. `--scope=staged`, which
+the pre-commit hook runs, checks the staged files as the index holds them instead, in a
+checkout of the index.
 
 Sections: Tools, Files, Runs, Command line.
 """
@@ -20,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -27,6 +30,8 @@ from pathlib import Path
 from typing import NamedTuple
 
 from python.runfiles import runfiles
+
+from tools.git import changes
 
 # ==== Tools ===================================================================
 
@@ -139,14 +144,18 @@ def changed_files(root: Path, base: str) -> list[str]:
     The files changed since the merge base with `base`, the working tree's included; every
     file without a merge base, as `aspect format` falls back to the whole tree.
     """
-    try:
-        merge_base = _git(root, "merge-base", "HEAD", base)[0].strip()
-    except subprocess.CalledProcessError:
+    since = changes.merge_base(root, base)
+    if since is None:
         print(f"No merge base with {base}: checking every file.")
         return listed_files(root)
-    changed = _git(root, "diff", "-z", "--name-only", "--diff-filter=d", merge_base)
-    untracked = _git(root, "ls-files", "-z", "--others", "--exclude-standard")
-    return sorted(set(changed) | set(untracked))
+    return sorted(
+        {path.after for path in changes.changed_paths(root, since) if path.after}
+    )
+
+
+def staged_files(root: Path) -> list[str]:
+    """The files the index adds or changes against HEAD: those the next commit records."""
+    return sorted(path.after for path in changes.staged_paths(root) if path.after)
 
 
 def given_files(files: Sequence[str], root: Path, directory: Path) -> list[str]:
@@ -222,8 +231,26 @@ def _existing(files: Sequence[str], root: Path) -> list[str]:
     return [path for path in files if (root / path).is_file()]
 
 
+@dataclass(frozen=True)
+class _Tree:
+    """
+    The directory the tools run in, and the files a whole-tree tool checks there: `listed`,
+    or else every file Git lists in it.
+    """
+
+    root: Path
+    listed: Sequence[str] | None = None
+
+    def candidates(self, tool: Tool, files: list[str], fix: bool) -> list[str]:
+        """The files the tool may take: the given ones, or the whole tree's to check it."""
+        if not tool.whole_tree or fix:
+            return files
+        listed = listed_files(self.root) if self.listed is None else self.listed
+        return _existing(listed, self.root)
+
+
 def _runs(
-    tools: Mapping[Tool, str], files: list[str], root: Path, fix: bool
+    tools: Mapping[Tool, str], files: list[str], tree: _Tree, fix: bool
 ) -> list[_Run]:
     """The runs of the tools of the mode that take any of the files."""
     runs = []
@@ -231,11 +258,24 @@ def _runs(
         arguments = tool.fix if fix else tool.check
         if arguments is None:
             continue
-        whole = tool.whole_tree and not fix
-        candidates = _existing(listed_files(root), root) if whole else files
-        if selected := tool.selected(candidates, root):
+        if selected := tool.selected(tree.candidates(tool, files, fix), tree.root):
             runs.append(_Run(tool, executable, arguments, selected))
     return runs
+
+
+def _run_in(
+    tools: Mapping[Tool, str], files: Sequence[str], tree: _Tree, fix: bool
+) -> int:
+    runs = _runs(tools, _existing(files, tree.root), tree, fix)
+    with ThreadPoolExecutor(max_workers=max(len(runs), 1)) as pool:
+        results = list(pool.map(lambda pending: pending.execute(tree.root), runs))
+    return max(
+        [
+            pending.report(result, fix)
+            for pending, result in zip(runs, results, strict=True)
+        ],
+        default=0,
+    )
 
 
 def run(
@@ -248,16 +288,23 @@ def run(
     Returns 0 when every tool passed, 1 when a linter found something, 2 when a tool could not
     check or fix.
     """
-    runs = _runs(tools, _existing(files, root), root, fix)
-    with ThreadPoolExecutor(max_workers=max(len(runs), 1)) as pool:
-        results = list(pool.map(lambda pending: pending.execute(root), runs))
-    return max(
-        [
-            pending.report(result, fix)
-            for pending, result in zip(runs, results, strict=True)
-        ],
-        default=0,
-    )
+    return _run_in(tools, files, _Tree(root), fix)
+
+
+def run_staged(tools: Mapping[Tool, str], root: Path) -> int:
+    """
+    Check the staged files as the index holds them, which is what the next commit records, as
+    `run` does. The tools run in a checkout of the whole index in a temporary directory, so
+    that neither unstaged changes nor untracked files hide or cause a finding, and the working
+    tree stays untouched: no stash, which the repository's worktrees share.
+    """
+    files = staged_files(root)
+    if not files:
+        return 0
+    indexed = _git(root, "ls-files", "-z", "--cached")
+    with tempfile.TemporaryDirectory(prefix="file-lint-") as checkout:
+        _git(root, "checkout-index", "--all", f"--prefix={checkout}/")
+        return _run_in(tools, files, _Tree(Path(checkout), indexed), fix=False)
 
 
 # ==== Command line ============================================================
@@ -284,7 +331,9 @@ def _executables(tools: Sequence[Tool]) -> dict[Tool, str]:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scope", choices=("changed", "all"), default="changed")
+    parser.add_argument(
+        "--scope", choices=("changed", "all", "staged"), default="changed"
+    )
     parser.add_argument(
         "--fix",
         action="store_true",
@@ -293,6 +342,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("files", nargs="*")
     args = parser.parse_args(argv)
     root = Path(os.environ.get("BUILD_WORKSPACE_DIRECTORY", "."))
+    if args.scope == "staged":
+        return run_staged(_executables(TOOLS), root)
     if args.files:
         files = given_files(
             args.files, root, Path(os.environ.get("BUILD_WORKING_DIRECTORY", root))

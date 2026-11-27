@@ -6,7 +6,7 @@ load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/private:export_options.bzl", "resolve_export_options")
 load("//godot/private/config:application.bzl", "application_context", "application_pack")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
-load(":failures.bzl", "failure_test")
+load("//godot/private/tests:expected_failures.bzl", "failure_test")
 
 visibility("private")
 
@@ -84,14 +84,14 @@ def _test_android_target_sdk_below_minimum_fails(name):
     for case, minimum, target_sdk in [("sdk_floor", 23, 36), ("sdk_order", 30, 29), ("sdk_fallback_order", 40, 0)]:
         _input_fixture(name = name + "_" + case, application_context = json.encode({"android_min_sdk_version": minimum, "android_target_sdk_version": target_sdk}), tags = ["manual"])
         targets.append(":" + name + "_" + case)
-    failure_test(name, "Android target SDK must be >= minimum SDK", targets)
+    failure_test(name, targets, "Android target SDK must be >= minimum SDK")
 
 def _test_authored_equal_bazel_owned_value_fails(name):
     targets = []
     for case, key, value in [("forbidden_equal_cpu", "architectures/arm64-v8a", "true"), ("forbidden_equal_sdk", "gradle_build/min_sdk", '"24"')]:
         _input_fixture(name = name + "_" + case, authored = json.encode({key: value}), tags = ["manual"])
         targets.append(":" + name + "_" + case)
-    failure_test(name, "is bazel-owned", targets)
+    failure_test(name, targets, "is bazel-owned")
 
 def _test_unequal_ios_mirror_fails(name):
     _input_fixture(
@@ -101,7 +101,7 @@ def _test_unequal_ios_mirror_fails(name):
         application_context = json.encode({"ios_families": ["iphone"], "ios_minimum_os_version": "15.0"}),
         tags = ["manual"],
     )
-    failure_test(name, "conflicts with authoritative godot_app value", [":" + name + "_subject"])
+    failure_test(name, ":" + name + "_subject", "conflicts with authoritative godot_app value")
 
 def _application_input_failure_test(name, operating_system, message, cases):
     """Declare manual application_pack fixtures and a failure test of their transition inputs."""
@@ -110,7 +110,7 @@ def _application_input_failure_test(name, operating_system, message, cases):
         application_pack(name = name + "_" + case, application_id = "org.example.boundary", deps = [":empty_pack"], tags = ["manual"], **attrs)
         _transition_input(name = name + "_" + case + "_input", operating_system = operating_system, tags = ["manual"], **attrs)
         targets.append(":" + name + "_" + case + "_input")
-    failure_test(name, message, targets)
+    failure_test(name, targets, message)
 
 def _test_negative_android_sdk_fails(name):
     _application_input_failure_test(name, "android", "Android SDK values must be zero or positive", {
