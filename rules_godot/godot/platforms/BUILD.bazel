@@ -155,5 +155,7 @@ objc_library(
     name = "ios_entry_support",
     srcs = ["ios_entry_support.mm"],
     sdk_frameworks = ["UIKit"],
+    # Only iOS applications link it; a wildcard build skips it elsewhere.
+    target_compatible_with = ["@platforms//os:ios"],
     visibility = ["//godot:__subpackages__"],
 )
