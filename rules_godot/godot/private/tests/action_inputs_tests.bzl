@@ -9,12 +9,22 @@ closure, `<unit>.import_scripts.json` of its import inputs, and the import confi
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load(":action_inputs.bzl", "expect_not_read", "godot_actions", "mnemonics_of", "written_manifests")
+load(":action_inputs.bzl", "build_graph", "expect_not_read", "godot_actions", "mnemonics_of", "written_manifests")
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
 visibility("private")
 
 _SHARED = "//godot/private/tests/fixtures/project_with_shared_unit"
+
+# The operations of one project whose imports the tests compare.
+_OPERATIONS = {
+    "home_test": _SHARED + ":home_test",
+    "pack": _SHARED + ":pack",
+    "test": _SHARED + ":test",
+}
+
+def _operations(targets):
+    return [(operation, getattr(targets, operation)) for operation in _OPERATIONS]
 
 def _test_pack_reaches_its_godot_actions(name):
     analysis_test(
@@ -27,6 +37,21 @@ def _test_pack_reaches_its_godot_actions(name):
 
 def _pack_reaches_its_godot_actions(env, target):
     env.expect.that_collection(mnemonics_of(target)).contains("GodotPack")
+
+# A build of a pack needs the import results, which analysis does not show, and so the
+# import configuration actions whose outputs only the imports read.
+def _test_built_pack_runs_its_import_configuration(name):
+    analysis_test(
+        name = name,
+        target = "//godot/private/tests/fixtures/minimal_project:pack",
+        impl = _built_pack_runs_its_import_configuration,
+        config_settings = GODOT_EXPORT,
+        extra_target_under_test_aspects = [godot_actions],
+    )
+
+def _built_pack_runs_its_import_configuration(env, target):
+    built = [entry.mnemonic for entry in build_graph(target).built]
+    env.expect.that_collection(built).contains_at_least(["GodotImportFeatures", "GodotImportableSuffixes"])
 
 def _staged_by_imports(target):
     """The resource paths and execution paths of every file an import the target reaches stages."""
@@ -44,37 +69,38 @@ def _staged_by_imports(target):
 def _test_program_entries_and_native_sources_reach_no_import(name):
     analysis_test(
         name = name,
-        targets = {
-            "home_test": _SHARED + ":home_test",
-            "pack": _SHARED + ":pack",
-            "test": _SHARED + ":test",
-        },
+        targets = _OPERATIONS,
         impl = _program_entries_and_native_sources_reach_no_import,
         extra_target_under_test_aspects = [godot_actions],
     )
 
-def _program_entries_and_native_sources_reach_no_import(env, targets):
-    for subject in ["home_test", "pack", "test"]:
-        target = getattr(targets, subject)
-        staged = _staged_by_imports(target)
-        for path in ["main/icon.svg", "main/home.svg", "main/home_buffer.bin"]:
-            env.expect.where(operation = subject, path = path).that_bool(path in staged, expr = "staged by an import").equals(True)
-        for path in ["main/home.gd", "main/state.gd", "main/main.tscn", "native/hello.gdextension"]:
-            env.expect.where(operation = subject, path = path).that_bool(path in staged, expr = "staged by an import").equals(False)
-        for path in staged.values():
+def _expect_staged_only_imported_files(env, subject, target):
+    staged = _staged_by_imports(target)
+    for path in ["main/icon.svg", "main/home.svg", "main/home_buffer.bin"]:
+        env.expect.where(operation = subject, path = path).that_bool(path in staged, expr = "staged by an import").equals(True)
+    for path in ["main/home.gd", "main/state.gd", "main/main.tscn", "native/hello.gdextension"]:
+        env.expect.where(operation = subject, path = path).that_bool(path in staged, expr = "staged by an import").equals(False)
+    for path in staged.values():
+        env.expect.where(operation = subject, path = path).that_bool(
+            "/native/" in path or path.endswith(".cc"),
+            expr = "an extension file staged by an import",
+        ).equals(False)
+
+def _expect_configuration_names_no_entry(env, subject, target):
+    configurations = written_manifests(target, "project_with_shared_unit.import.config.json").values()
+    env.expect.where(operation = subject).that_collection(configurations).has_size(1)
+    for configuration in configurations:
+        env.expect.where(operation = subject).that_dict(configuration["autoloads"]).contains_exactly({})
+        for path in ["main/state.gd", "main/main.tscn"]:
             env.expect.where(operation = subject, path = path).that_bool(
-                "/native/" in path or path.endswith(".cc"),
-                expr = "an extension file staged by an import",
+                path in json.encode(configuration),
+                expr = "named by the import configuration",
             ).equals(False)
-        configurations = written_manifests(target, "project_with_shared_unit.import.config.json").values()
-        env.expect.where(operation = subject).that_collection(configurations).has_size(1)
-        for configuration in configurations:
-            env.expect.where(operation = subject).that_dict(configuration["autoloads"]).contains_exactly({})
-            for path in ["main/state.gd", "main/main.tscn"]:
-                env.expect.where(operation = subject, path = path).that_bool(
-                    path in json.encode(configuration),
-                    expr = "named by the import configuration",
-                ).equals(False)
+
+def _program_entries_and_native_sources_reach_no_import(env, targets):
+    for subject, target in _operations(targets):
+        _expect_staged_only_imported_files(env, subject, target)
+        _expect_configuration_names_no_entry(env, subject, target)
 
 # SC-002's editor-part case (US1 AS3, FR-019, D29): the editor part of an add-on the
 # project names registers an export plugin, which no export runs; no import, initialization,
@@ -84,18 +110,13 @@ _EDITOR_PART = "godot/private/tests/fixtures/project_with_shared_unit/export_mar
 def _test_editor_part_reaches_no_build_process(name):
     analysis_test(
         name = name,
-        targets = {
-            "home_test": _SHARED + ":home_test",
-            "pack": _SHARED + ":pack",
-            "test": _SHARED + ":test",
-        },
+        targets = _OPERATIONS,
         impl = _editor_part_reaches_no_build_process,
         extra_target_under_test_aspects = [godot_actions],
     )
 
 def _editor_part_reaches_no_build_process(env, targets):
-    for subject in ["home_test", "pack", "test"]:
-        target = getattr(targets, subject)
+    for subject, target in _operations(targets):
         staged = _staged_by_imports(target)
         env.expect.where(operation = subject).that_bool(
             [path for path in staged.values() if path.endswith(_EDITOR_PART)] != [],
@@ -107,6 +128,7 @@ def action_inputs_test_suite(name):
     test_suite(
         name = name,
         tests = [
+            _test_built_pack_runs_its_import_configuration,
             _test_editor_part_reaches_no_build_process,
             _test_pack_reaches_its_godot_actions,
             _test_program_entries_and_native_sources_reach_no_import,
