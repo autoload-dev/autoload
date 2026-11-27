@@ -5,9 +5,12 @@ extends EditorPlugin
 # result data: per-file import validity after the first scan, the export
 # platform's messages after the export, or the facts a probe reports.
 
+# Inferred: typed as GDScript, the constant loses the script's static members, whose calls
+# then fail strict projects; a class_name would add a global name to every project.
 @warning_ignore("inferred_declaration")
 const Record = preload("record.gd")
-# The type of the export plugins below; shell.gd extends it.
+# The type of the export plugins below; shell.gd extends it. Inferred like Record, for the
+# same reason.
 @warning_ignore("inferred_declaration")
 const Export = preload("export.gd")
 # The export plugin of each exporting operation, loaded only by that operation.

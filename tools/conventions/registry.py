@@ -20,6 +20,9 @@ from tools.conventions.rules.application_tests_under_tests import (
 from tools.conventions.rules.backends_under_native import BackendsUnderNative
 from tools.conventions.rules.documented_targets_exist import CommandLabels
 from tools.conventions.rules.engine_files_under_engines import EngineLayout
+from tools.conventions.rules.exported_files_declare_visibility import (
+    ExportedFilesDeclareVisibility,
+)
 from tools.conventions.rules.godot_process_tests_tagged import GodotProcessTests
 from tools.conventions.rules.linked_skills import SharedSkills
 from tools.conventions.rules.no_component_names_in_tooling import NoComponentNames
@@ -70,6 +73,7 @@ RULES: tuple[Rule, ...] = (
     NoComponentNames(),
     ReleasedWithoutTests(),
     GodotProcessTests(),
+    ExportedFilesDeclareVisibility(),
 )
 
 

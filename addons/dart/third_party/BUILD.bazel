@@ -1,5 +1,2 @@
-# Build files and patches of third-party archives, which MODULE.bazel names.
-exports_files([
-    "dart_sdk.BUILD.bazel",
-    "dart_sdk.patch",
-])
+# The build files and patches of third-party archives, which MODULE.bazel names. Repository
+# rules read a file by its label without a target, so this package exports none.

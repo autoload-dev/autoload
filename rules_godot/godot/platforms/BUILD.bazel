@@ -6,11 +6,18 @@ load(":defs.bzl", "godot_export_platform")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(glob([
-    "*.bzl",
-    "*.mm",
-    "*.pb.json",
-]))
+# The public modules as files, for the registry's documentation and consumers' own.
+exports_files(
+    glob(["*.bzl"]),
+    visibility = ["//visibility:public"],
+)
+
+# The bundle configuration of Android App Bundles, which the Android application macro
+# (godot/platforms/private/android.bzl) passes to the bundle it declares.
+exports_files(
+    ["android_bundle_config.pb.json"],
+    visibility = ["//godot/platforms/private:__pkg__"],
+)
 
 godot_export_platform(
     name = "linux_x86_64",
