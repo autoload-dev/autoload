@@ -25,12 +25,18 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
+from godot.platforms.private.tests.engine_probe.beta_probe import (
+    BETA_COMMIT,
+    check_cpp_configuration,
+    cpp_descriptor,
+    single_library,
+    source_build_manifest,
+)
 from tools.digest import digest
 from tools.pack.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 from tools.platforms.validate_artifacts import command
 
-BETA_COMMIT = "4d10419cacd6d3009976e8f9fd3abd970fd58018"
 CPP_ENTRY = "_example_library_init"
 ACCESSKIT_ENTRIES = ["_accesskit_node_new", "_accesskit_ios_subclassing_adapter_new"]
 
@@ -42,40 +48,14 @@ def check_mode(kind: str, environment: str, package: bool) -> None:
         )
 
 
-def cpp_descriptor(pack: dict[str, Any]) -> configparser.ConfigParser:
-    path = "native/cpp_example.gdextension"
-    if path not in pack["extension_descriptors"]:
-        raise ValueError("Beta IPA has no godot-cpp extension descriptor")
-    descriptor = configparser.ConfigParser(interpolation=None)
-    descriptor.read_string(pack["extension_descriptors"][path])
-    return descriptor
-
-
-def is_static_library(path: str) -> bool:
-    return path.startswith("res://") and path.endswith(".a")
-
-
-def check_ios_library(descriptor: configparser.ConfigParser) -> None:
-    libraries = [
-        json.loads(value)
-        for tags, value in descriptor["libraries"].items()
-        if {"ios", "arm64"}.issubset(tags.split("."))
-    ]
-    if len(libraries) != 1 or not is_static_library(libraries[0]):
-        raise ValueError(
-            "godot-cpp descriptor must retain one nonempty iOS arm64 static .a path"
-        )
-
-
 def check_cpp_descriptor(descriptor: configparser.ConfigParser) -> None:
-    configuration = descriptor["configuration"]
-    if json.loads(configuration["entry_symbol"]) != CPP_ENTRY.removeprefix("_"):
-        raise ValueError("godot-cpp descriptor names an unexpected entry symbol")
-    if json.loads(configuration["compatibility_minimum"]) != "4.7.2":
-        raise ValueError(
-            "The Beta example must retain its Godot 4.7.2 extension compatibility minimum"
-        )
-    check_ios_library(descriptor)
+    check_cpp_configuration(descriptor, CPP_ENTRY.removeprefix("_"))
+    single_library(
+        descriptor,
+        {"ios", "arm64"},
+        ".a",
+        "godot-cpp descriptor must retain one nonempty iOS arm64 static .a path",
+    )
 
 
 def check_pack(data: bytes) -> dict[str, Any]:
@@ -84,7 +64,7 @@ def check_pack(data: bytes) -> dict[str, Any]:
         raise ValueError(
             "Beta IPA must contain a Godot 4.8.0 PCK, got " + pack["godot_version"]
         )
-    check_cpp_descriptor(cpp_descriptor(pack))
+    check_cpp_descriptor(cpp_descriptor(pack, "IPA"))
     if any(
         path.removeprefix("res://").startswith("native/bin/") for path in pack["paths"]
     ):
@@ -172,28 +152,6 @@ def accesskit_symbols(library: Path, directory: Path) -> tuple[str, list[str]]:
         )
         definitions.append(command(["/usr/bin/xcrun", "nm", "-g", "-U", path]))
     return "\n".join(definitions), members
-
-
-def source_build_manifest(path: Path) -> dict:
-    """Return the source-built engine's manifest after checking what it was built from."""
-    manifest = json.loads(path.read_text())
-    if (
-        manifest.get("version") not in {"4.8.0-beta", "4.8.0-beta1"}
-        or manifest.get("platform") != "ios"
-    ):
-        raise ValueError(
-            "Source-built engine manifest does not describe Godot 4.8 Beta for iOS"
-        )
-    if "bazel_probe" not in manifest.get("selected_modules", []):
-        raise ValueError(
-            "Source-built engine manifest is missing the custom bazel_probe module"
-        )
-    if not manifest.get("build_profile_scoped"):
-        raise ValueError(
-            "Every source of the source-built engine sees the build profile: its "
-            "class_db.h no longer matches tools/engine/build_profile.py"
-        )
-    return manifest
 
 
 def selected_libraries(paths: list[Path]) -> tuple[list[dict[str, Any]], bytes]:
@@ -381,7 +339,9 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
     if accesskit:
         result["accesskit"] = accesskit
     if args.engine_manifest:
-        result["engine_manifest"] = source_build_manifest(args.engine_manifest)
+        result["engine_manifest"] = source_build_manifest(
+            args.engine_manifest, "ios", "iOS"
+        )
     return result
 
 

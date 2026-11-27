@@ -35,7 +35,10 @@ py_library(
     name = "android_apps",
     testonly = True,
     srcs = ["android_apps.py"],
-    deps = ["//tools/platforms:native_symbols_lib"],
+    deps = [
+        "//godot/platforms/private/tests:dex",
+        "//tools/platforms:native_symbols_lib",
+    ],
 )
 
 py_library(

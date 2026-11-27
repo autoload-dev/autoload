@@ -22,10 +22,17 @@ _MACOS = ["@platforms//os:macos"]
 
 # The beta inspectors and their unit tests.
 
+# What the Android and iOS beta checks share.
+py_library(
+    name = "beta_probe",
+    srcs = ["beta_probe.py"],
+)
+
 py_library(
     name = "validate_android_beta_lib",
     srcs = ["validate_android_beta.py"],
     deps = [
+        ":beta_probe",
         "//tools:digest_lib",
         "//tools/pack:pck_lib",
         "//tools/platforms:native_symbols_lib",
@@ -53,6 +60,7 @@ py_library(
     name = "validate_ios_beta_lib",
     srcs = ["validate_ios_beta.py"],
     deps = [
+        ":beta_probe",
         "//tools:digest_lib",
         "//tools/pack:pck_lib",
         "//tools/platforms:apple_bundle_lib",
