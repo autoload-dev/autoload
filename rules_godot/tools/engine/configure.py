@@ -550,6 +550,12 @@ _BAZEL_OWNED_OPTION = re.compile(
 )
 
 
+# The link option that drops the engine's unreached code, per platform that needs one of
+# its own (engine_link_options), and the compile options that give GNU ld something to drop.
+_DEAD_STRIPPING = {"ios": "-Wl,-dead_strip", "linuxbsd": "-Wl,--gc-sections"}
+_LINUX_SECTIONS = ("-ffunction-sections", "-fdata-sections")
+
+
 def bazel_owned(option: str) -> bool:
     """Return whether Bazel's flags decide an upstream compile or link option."""
     return _BAZEL_OWNED_OPTION.fullmatch(option) is not None
@@ -566,6 +572,10 @@ def platform_compile_options(platform: str, options: list[str]) -> list[str]:
     # the compilation directory; apple_support already records ".".
     if platform == "android":
         options.append("-fdebug-compilation-dir=.")
+    # A section per function and datum, which the link drops when nothing reaches it
+    # (engine_link_options).
+    if platform == "linuxbsd":
+        options.extend(_LINUX_SECTIONS)
     # apple_support defines OS_IOS for Objective-C. Godot uses that identifier
     # for its OS_IOS C++ class and uses IOS_ENABLED as its platform macro.
     return [*options, "-UOS_IOS"] if platform == "ios" else options
@@ -574,11 +584,15 @@ def platform_compile_options(platform: str, options: list[str]) -> list[str]:
 def engine_link_options(platform: str, options: list[str]) -> list[str]:
     """Return engine_library's link flags: upstream's, without those Bazel decides."""
     library = [option for option in options if not bazel_owned(option)]
-    # The application links every engine object. Dead stripping removes those
-    # it never reaches, such as SDL's HID backend, whose PLATFORM_hid_*
-    # functions iOS does not build.
-    if platform == "ios" and "-Wl,-dead_strip" not in library:
-        library.append("-Wl,-dead_strip")
+    # The application links every engine object, where SCons links its libraries'
+    # objects only when something reaches them. Dead stripping removes those it
+    # never reaches, such as SDL's HID backend, whose PLATFORM_hid_* functions iOS
+    # does not build, or the font subsetting of HarfBuzz, whose table sources Godot
+    # leaves out. GNU ld then also ignores what only their code references. Upstream
+    # strips on macOS and Android already.
+    stripping = _DEAD_STRIPPING.get(platform)
+    if stripping and stripping not in library:
+        library.append(stripping)
     return library
 
 

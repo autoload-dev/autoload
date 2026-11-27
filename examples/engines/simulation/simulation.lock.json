@@ -14916,7 +14916,7 @@
  },
  "recipes": {
   "android_arm64_template_debug": {
-   "digest": "sha256:467deaf3f21c3afdd3b35ae67ebbc8545155b2ca5643306b9be9f860866b5c29",
+   "digest": "sha256:2c6a8082c5d223bfb723764e050daa90ada19e694062bd7b37e061a5431b52ae",
    "graph": {
     "groups": [
      [
@@ -16608,7 +16608,7 @@
    }
   },
   "android_arm64_template_release": {
-   "digest": "sha256:8240105c3e6888608d8798e44325dbbf3fd6f4fc6043777fc4e7ad6e64bf665c",
+   "digest": "sha256:46820aa4306919a3b4cd09202f0969d1fedec4dc34a6d9b355d67f9a763d2372",
    "graph": {
     "groups": [
      [
@@ -18285,7 +18285,7 @@
    }
   },
   "android_x86_64_template_debug": {
-   "digest": "sha256:9720e8f99907144d25b407ee5b143067689ae748baabf0551c7191bfb9f3d38c",
+   "digest": "sha256:33c49eb98986cd844d1f02c6ce11d8f69c9e34314ea5c87bf28d44265a904c26",
    "graph": {
     "groups": [
      [
@@ -20012,7 +20012,7 @@
    }
   },
   "android_x86_64_template_release": {
-   "digest": "sha256:b219c8c90c8198a2ea205836fad64fcb7e4b73bc1867e20985ec82e2695ab612",
+   "digest": "sha256:736f44c0e2778b6de0b3fce67e6e44cf0226789b65a075f5fbbff7fd584f1c97",
    "graph": {
     "groups": [
      [
@@ -21723,7 +21723,7 @@
    }
   },
   "ios_arm64_device_template_debug": {
-   "digest": "sha256:7c9b4b6f15f15d0878893500310b0d49d97ecd9a235e7cff3e3b5a582aa01af3",
+   "digest": "sha256:53169d4c56c83b3264052027c56a3d9ee060675b217174af0921932f352a1bdb",
    "graph": {
     "groups": [
      [
@@ -24185,7 +24185,7 @@
    }
   },
   "ios_arm64_device_template_release": {
-   "digest": "sha256:8a3d8895454f5e8a8f5de3423bf19e521783afc4a35cea4d8d2a11614768ab33",
+   "digest": "sha256:4885bb261ff8dd3ad4b87d565e7b482442f42abaa6c11b86cbbd6aa3b30939e2",
    "graph": {
     "groups": [
      [
@@ -26626,7 +26626,7 @@
    }
   },
   "ios_arm64_simulator_template_debug": {
-   "digest": "sha256:36463d656fa992334fd1ceb54171b41e8b5d0e6a3aac8eb976a937a1e5a5910b",
+   "digest": "sha256:90996e9ec395024e7ca44c0c31a1c9b6153801d632087bc0b61ee51315c8270d",
    "graph": {
     "groups": [
      [
@@ -28824,7 +28824,7 @@
    }
   },
   "ios_arm64_simulator_template_release": {
-   "digest": "sha256:0ca6b76d08f1307dfa8f50e13fb5f3d5c2c761610d156e8fb48f7ba365b12da1",
+   "digest": "sha256:7e8637db7265657ae552d4cbf0b4778b64bc72949a5e7dc508d022f70b386781",
    "graph": {
     "groups": [
      [
@@ -31003,7 +31003,7 @@
    }
   },
   "ios_x86_64_simulator_template_debug": {
-   "digest": "sha256:96765fa0c41f3190c8bf09fd4035fdb667a095b52bd75c44bcef41b8273e365f",
+   "digest": "sha256:3ea41d66d1aec048891bd296bb1d913446cbf4432d31511714e6f7d4837d04a8",
    "graph": {
     "groups": [
      [
@@ -33263,7 +33263,7 @@
    }
   },
   "ios_x86_64_simulator_template_release": {
-   "digest": "sha256:ef9adfbedabf5a58d02d33c62ac1db69be8469e82fc87d5d6c7b03e58c5ef715",
+   "digest": "sha256:238662c8ac72a4f67e7eb2627f35b0c0d84c7a009e55fbc157108bf1655ddbf4",
    "graph": {
     "groups": [
      [
@@ -35503,7 +35503,7 @@
    }
   },
   "linux_arm64_editor": {
-   "digest": "sha256:f3546538a2809014f8323c9501e19dbc26dc0fb5faab6eb1dc3d9dda72a404f7",
+   "digest": "sha256:2519c1d56a7b386cbd97c96224c2eb0dcea171f99979d9d8642e07c933cd873e",
    "graph": {
     "groups": [
      [
@@ -35547,7 +35547,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -35660,7 +35662,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -35730,7 +35734,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGDSCRIPT_NO_LSP",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -36819,7 +36825,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -36889,7 +36897,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -36954,7 +36964,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -37016,7 +37028,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -37090,7 +37104,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -37155,7 +37171,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGDSCRIPT_NO_LSP",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -37232,7 +37250,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -37297,7 +37317,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -37467,7 +37489,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -37534,7 +37558,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -37615,7 +37641,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -37682,7 +37710,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -37754,7 +37784,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DTHORVG_FILE_IO_SUPPORT"
+       "-DTHORVG_FILE_IO_SUPPORT",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -37862,7 +37894,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DTHORVG_FILE_IO_SUPPORT"
+       "-DTHORVG_FILE_IO_SUPPORT",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/thorvg/inc",
@@ -37933,7 +37967,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=16"
+       "-DPCRE2_CODE_UNIT_WIDTH=16",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -38033,7 +38069,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=32"
+       "-DPCRE2_CODE_UNIT_WIDTH=32",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -38134,7 +38172,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=0"
+       "-DPCRE2_CODE_UNIT_WIDTH=0",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -38202,7 +38242,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DGDSCRIPT_NO_LSP"
+       "-DGDSCRIPT_NO_LSP",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -38291,7 +38333,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -38403,7 +38447,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -38474,7 +38520,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGDSCRIPT_NO_LSP"
+       "-DGDSCRIPT_NO_LSP",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -38513,13 +38561,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "linux_arm64_template_debug": {
-   "digest": "sha256:e77fc77de938b52fd109910b7a4fa3ce34ca79337571d5e105b80f2678366ad4",
+   "digest": "sha256:e8a1e93b50f234029164db513e4583ae7761dada6343eabe8030d4a20684e8f2",
    "graph": {
     "groups": [
      [
@@ -38559,7 +38608,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -38668,7 +38719,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -38733,7 +38786,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -39480,7 +39535,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -39546,7 +39603,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -39607,7 +39666,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -39665,7 +39726,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -39735,7 +39798,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -39795,7 +39860,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -39868,7 +39935,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -39929,7 +39998,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -40095,7 +40166,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -40158,7 +40231,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -40235,7 +40310,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -40298,7 +40375,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -40386,7 +40465,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -40493,7 +40574,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -40556,7 +40639,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -40593,13 +40678,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "linux_arm64_template_release": {
-   "digest": "sha256:82a58eaaefa7876b96c70a57b8ab64a1ac62b713bbe2955fd7fcd3e609e21e83",
+   "digest": "sha256:7373288173b3e2eda2006adf46a90531d4052e7617e7db825c140eee59ebdc45",
    "graph": {
     "groups": [
      [
@@ -40638,7 +40724,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -40746,7 +40834,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -40810,7 +40900,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -41556,7 +41648,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -41621,7 +41715,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -41681,7 +41777,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -41738,7 +41836,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -41807,7 +41907,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -41866,7 +41968,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -41938,7 +42042,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -41998,7 +42104,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -42163,7 +42271,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -42225,7 +42335,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -42301,7 +42413,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -42363,7 +42477,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -42450,7 +42566,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -42556,7 +42674,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -42618,7 +42738,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -42655,13 +42777,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "linux_x86_64_editor": {
-   "digest": "sha256:48975eed2874fd41dbf003af51f16260bc3e22e590cc73816910486708ad508f",
+   "digest": "sha256:49c31c753697f6dcd5992029fcd49cb4a919015bb455891f70b6e3f5761e9b48",
    "graph": {
     "groups": [
      [
@@ -42707,7 +42830,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -42822,7 +42947,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -42878,7 +43005,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -42945,7 +43074,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGDSCRIPT_NO_LSP",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -44036,7 +44167,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -44108,7 +44241,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -44175,7 +44310,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -44239,7 +44376,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -44315,7 +44454,9 @@
        "-DOVERRIDE_PATH_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -44382,7 +44523,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGDSCRIPT_NO_LSP",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -44461,7 +44604,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -44528,7 +44673,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -44700,7 +44847,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -44770,7 +44919,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DPNG_INTEL_SSE"
+       "-DPNG_INTEL_SSE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -44852,7 +45003,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -44921,7 +45074,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -44995,7 +45150,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DTHORVG_FILE_IO_SUPPORT"
+       "-DTHORVG_FILE_IO_SUPPORT",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -45105,7 +45262,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DTHORVG_FILE_IO_SUPPORT"
+       "-DTHORVG_FILE_IO_SUPPORT",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/thorvg/inc",
@@ -45178,7 +45337,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=16"
+       "-DPCRE2_CODE_UNIT_WIDTH=16",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -45280,7 +45441,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=32"
+       "-DPCRE2_CODE_UNIT_WIDTH=32",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -45383,7 +45546,9 @@
        "-DHAVE_CONFIG_H",
        "-DSUPPORT_UNICODE",
        "-DSUPPORT_JIT",
-       "-DPCRE2_CODE_UNIT_WIDTH=0"
+       "-DPCRE2_CODE_UNIT_WIDTH=0",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/pcre2/src",
@@ -45453,7 +45618,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DGDSCRIPT_NO_LSP"
+       "-DGDSCRIPT_NO_LSP",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -45544,7 +45711,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -45658,7 +45827,9 @@
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
        "-DTVG_STATIC",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -45731,7 +45902,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGDSCRIPT_NO_LSP"
+       "-DGDSCRIPT_NO_LSP",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -45770,13 +45943,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "linux_x86_64_template_debug": {
-   "digest": "sha256:7ba8a914db2574a912c06e8a4e9bd32fd0acbc2fd5fb618bd94edde4a39a7522",
+   "digest": "sha256:f03e955e1285e4db26174efe614d876fa01ef59d480b3661a0c93114e156b137",
    "graph": {
     "groups": [
      [
@@ -45818,7 +45992,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -45929,7 +46105,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -45981,7 +46159,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -46043,7 +46223,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -46792,7 +46974,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -46860,7 +47044,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -46923,7 +47109,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -46983,7 +47171,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -47055,7 +47245,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -47117,7 +47309,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -47192,7 +47386,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -47255,7 +47451,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -47423,7 +47621,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -47489,7 +47689,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DPNG_INTEL_SSE"
+       "-DPNG_INTEL_SSE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -47567,7 +47769,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -47632,7 +47836,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -47722,7 +47928,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -47831,7 +48039,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -47896,7 +48106,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -47933,13 +48145,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "linux_x86_64_template_release": {
-   "digest": "sha256:570073a840019172c115aaf308a05988fdff3df48189fb5de92bd12f4b036925",
+   "digest": "sha256:262f45a8179d2e41d158dbbddb32003493bf8f2737644fb0e01fe3f8d562db69",
    "graph": {
     "groups": [
      [
@@ -47980,7 +48193,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -48090,7 +48305,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -48141,7 +48358,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -48202,7 +48421,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -48950,7 +49171,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -49017,7 +49240,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\""
+       "-DMBEDTLS_CONFIG_FILE=\\\"thirdparty/mbedtls/include/godot_core_mbedtls_config.h\\\"",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/mbedtls/include",
@@ -49079,7 +49304,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -49138,7 +49365,9 @@
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
        "-DZSTD_STATIC_LINKING_ONLY",
-       "-DFFX_GCC"
+       "-DFFX_GCC",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/amd-fsr2",
@@ -49209,7 +49438,9 @@
        "-DOVERRIDE_ENABLED",
        "-DTHREADS_ENABLED",
        "-DCLIPPER2_ENABLED",
-       "-DZSTD_STATIC_LINKING_ONLY"
+       "-DZSTD_STATIC_LINKING_ONLY",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/zstd",
@@ -49270,7 +49501,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGLAD_GLX_NO_X11"
+       "-DGLAD_GLX_NO_X11",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -49344,7 +49577,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/glad",
@@ -49406,7 +49641,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -49573,7 +49810,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DSDL_PLATFORM_LINUX"
+       "-DSDL_PLATFORM_LINUX",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/sdl/core/linux",
@@ -49638,7 +49877,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DPNG_INTEL_SSE"
+       "-DPNG_INTEL_SSE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -49715,7 +49956,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -49779,7 +50022,9 @@
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
-       "-DGODOT_MODULE"
+       "-DGODOT_MODULE",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -49868,7 +50113,9 @@
        "-DFT_CONFIG_OPTION_USE_BROTLI",
        "-DFT2_BUILD_LIBRARY",
        "-DFT_CONFIG_OPTION_USE_PNG",
-       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB"
+       "-DFT_CONFIG_OPTION_SYSTEM_ZLIB",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/libpng",
@@ -49976,7 +50223,9 @@
        "-DEGL_ENABLED",
        "-DGLAD_GLES2",
        "-DGODOT_MODULE",
-       "-DFT_CONFIG_OPTION_USE_BROTLI"
+       "-DFT_CONFIG_OPTION_USE_BROTLI",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -50040,7 +50289,9 @@
        "-DZSTD_STATIC_LINKING_ONLY",
        "-DGLAD_ENABLED",
        "-DEGL_ENABLED",
-       "-DGLAD_GLES2"
+       "-DGLAD_GLES2",
+       "-ffunction-sections",
+       "-fdata-sections"
       ],
       [
        "thirdparty/freetype/include",
@@ -50077,13 +50328,14 @@
     ],
     "linkopts": [
      "-lpthread",
-     "-ldl"
+     "-ldl",
+     "-Wl,--gc-sections"
     ],
     "minimum_os": ""
    }
   },
   "macos_arm64_editor": {
-   "digest": "sha256:5283c574463b0362c0b8e628cf3d1f78c628e7bf3e3a345865a3ff5f6543bb43",
+   "digest": "sha256:a1c040abd81744d6d3ecda3910656c7a7b7bf8634a68a324de0fe83a665fabcf",
    "graph": {
     "groups": [
      [
@@ -53121,7 +53373,7 @@
    }
   },
   "macos_arm64_template_debug": {
-   "digest": "sha256:0be3e23b667c1c6f04baafbd8b7396f6178ab828e92c8f9761760d8d2ca03420",
+   "digest": "sha256:7dbf122d26a3ad468533ca31ea0f76961636ebb1430b6e8733ea07e2aaa74916",
    "graph": {
     "groups": [
      [
@@ -55252,7 +55504,7 @@
    }
   },
   "macos_arm64_template_release": {
-   "digest": "sha256:e442d3b32e692edaf1268217b0cc3759d02aa076f8cbe89a4e1c93a5e3e1817b",
+   "digest": "sha256:4140ecd9c344361d5ce6908d4da4a252375dfda68cbce930a4d2cf143d882554",
    "graph": {
     "groups": [
      [
@@ -57363,7 +57615,7 @@
    }
   },
   "macos_x86_64_editor": {
-   "digest": "sha256:4d4b7e99e3761315e9aee146e196d4d41dddb91379419d03437ef1e1337da66e",
+   "digest": "sha256:9eec648176d8e87a4bd75c3bd6824d906c81b2502bf640d63abbb55b24fbc00e",
    "graph": {
     "groups": [
      [
@@ -60257,7 +60509,7 @@
    }
   },
   "macos_x86_64_template_debug": {
-   "digest": "sha256:77dec620cc7da2018887f221938114e06b80cce293b9b3cccf2bd23801b708c9",
+   "digest": "sha256:9409febf34a2ad20bbb1989a5a37d7eb31c103336b5b43c5443f24e3235cef07",
    "graph": {
     "groups": [
      [
@@ -62261,7 +62513,7 @@
    }
   },
   "macos_x86_64_template_release": {
-   "digest": "sha256:6de1c14c8718842fc020dcf324a7836f0926a194cfa36539e324abd48fb6a141",
+   "digest": "sha256:bd65367ac44cf9da1ed5ec633bfdd00cb70cc27b7108c789905482a6416f37d8",
    "graph": {
     "groups": [
      [
