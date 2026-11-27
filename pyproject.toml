@@ -7,9 +7,9 @@ force-exclude = true
 per-file-target-version = { "**/tools/platforms/launch/*.py" = "py39" }
 
 [tool.ruff.lint]
-# Ruff's default rules, required annotations and a docstring on every module and package
-# but tests.
-extend-select = ["ANN", "D100", "D104"]
+# Ruff's default rules, required annotations, sorted imports and a docstring on every module
+# and package but tests.
+extend-select = ["ANN", "D100", "D104", "I"]
 ignore = ["ANN401"]
 
 # A test's name and its cases say what it covers, so test modules and packages need no
