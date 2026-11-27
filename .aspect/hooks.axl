@@ -48,7 +48,7 @@ def _pre_commit_impl(ctx: TaskContext):
     return steps(ctx, [
         ("format", lambda: _format_staged(ctx, aspect, staged)),
         ("generate", lambda: _generate_staged(ctx, staged)),
-        ("lint", lambda: file_lint(ctx, staged)),
+        ("lint", lambda: file_lint(ctx, ["--scope=staged"])),
         ("code-health", lambda: run(ctx, aspect, ["code-health", "--staged", "--if-available"])),
     ])
 

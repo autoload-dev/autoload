@@ -20,6 +20,7 @@ py_library(
         "//tools/ci:__pkg__",
         "//tools/setup:__pkg__",
     ],
+    deps = ["//tools/git:changes"],
 )
 
 # The pinned CodeScene CLI (//:multitool.lock.json), whose archive does not mark it

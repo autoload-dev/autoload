@@ -25,6 +25,7 @@ from pathlib import Path
 
 from tools.code_health import change
 from tools.code_health.scan import git, run_git
+from tools.git import changes
 
 # A region header, as region-headers-named-in-head requires it
 # (tools/conventions/rules/region_headers_named_in_head.py).
@@ -210,7 +211,7 @@ def main() -> None:
         paths = args.only
     else:
         base = change.merge_base(repo, args.base)
-        paths = [c.after for c in change.changed_paths(repo, base) if c.after]
+        paths = [c.after for c in changes.changed_paths(repo, base) if c.after]
     files = touched(repo, since)
     histories = [
         history(repo, path, since, files) for path in paths if (repo / path).is_file()
