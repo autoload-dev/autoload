@@ -44,3 +44,10 @@ py_test(
         "//tools/artifact_tests:native_symbols",
     ],
 )
+
+py_test(
+    name = "inspect_spdx_test",
+    size = "small",
+    srcs = ["inspect_spdx_test.py"],
+    deps = ["//tools/artifact_tests:inspect_spdx_lib"],
+)

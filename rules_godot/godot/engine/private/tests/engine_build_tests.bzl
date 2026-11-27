@@ -77,15 +77,18 @@ def _tree_json():
         "digest": "0" * 64,
     })
 
+# Godot's license text in the engine tree, beside its descriptor.
+_LICENSE = mocks.path(_TREE).dirname + "/LICENSE.txt"
+
 def _paths(path):
     """Bazel's paths: a struct for the tree descriptor, whose directory the recipe links."""
     mapping = path or str
-    return lambda value: mocks.path(value) if str(value) == str(_TREE) else mapping(value)
+    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE) else mapping(value)
 
 def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(
         attr = _ATTRS | overrides,
-        files = {str(_TREE): tree or _tree_json()} | files,
+        files = {str(_TREE): tree or _tree_json(), _LICENSE: "Copyright (c) Godot Engine contributors."} | files,
         execute = execute,
         path = _paths(path),
         environ = environ,
@@ -160,6 +163,9 @@ def _test_configure_command_carries_the_recipe(env):
             "execute",
             "delete",
             "file",
+            "file",
+            "file",
+            "file",
         ],
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
@@ -184,9 +190,12 @@ def _test_configure_command_carries_the_recipe(env):
     env.expect.that_collection(mocks.calls(ctx, "extract")).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "download_and_extract")).contains_exactly([])
     env.expect.that_collection(_configure(ctx).args).contains_exactly(_CONFIGURE_COMMAND).in_order()
-    env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly(
-        ["WORKSPACE.bazel"],
-    )
+    env.expect.that_collection([call.path for call in mocks.calls(ctx, "file")]).contains_exactly([
+        "WORKSPACE.bazel",
+        "REPO.bazel",
+        "_package_metadata/LICENSE",
+        "_package_metadata/BUILD.bazel",
+    ])
 
 # A recipe holds its generated files and links the engine tree's sources hard: no recipe
 # extracts them again.
