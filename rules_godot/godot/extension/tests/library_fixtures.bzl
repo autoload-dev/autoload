@@ -106,7 +106,9 @@ dynamic_xcframework_fixture = macro(
             mandatory = True,
             configurable = False,
         ),
-        "deps": attr.label_list(doc = "The import's deps, such as the frameworks it loads or links."),
+        "deps": attr.label_list(
+            doc = "The import's deps, such as the frameworks it loads or links.",
+        ),
         "linked": attr.bool(
             doc = """
             Whether code that depends on the import links the framework, as native code links

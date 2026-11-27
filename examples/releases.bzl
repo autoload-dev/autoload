@@ -19,25 +19,17 @@ _RELEASE_ATTRS = {
 }
 
 def _release(name, visibility, app, tags, settings, os_tag, test_compatible_with, **kwargs):
-    """
-    Declare a release and the test that builds it and its debug symbols.
-
-    Args:
-        name: the name of the release.
-        visibility: the visibility of the release and its debug symbols.
-        app: the `godot_app`.
-        tags: the caller's tags, which add to `manual`.
-        settings: the release settings. The caller's settings in `kwargs` win over them.
-        os_tag: the mobile operating system the test is tagged with.
-        test_compatible_with: the platforms the test can build on.
-        **kwargs: the caller's other attributes of `godot_configured_app`.
-    """
+    """Declare a release and the test that builds it and its debug symbols."""
     godot_configured_app(
         name = name,
         visibility = visibility,
         app = app,
+        # The macro names the app's debug symbols itself, so they must be visible to
+        # //examples: the example packages make their targets public.
         debug_symbols = app.same_package_label(app.name + ".debug_symbols"),
         tags = ["manual"] + (tags or []),
+        # The macro passes the attributes a caller left unset as None, which must not
+        # replace the release settings.
         **(settings | {key: value for key, value in kwargs.items() if value != None})
     )
 
