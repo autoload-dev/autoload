@@ -57,9 +57,8 @@ def _select(ctx, project, request):
         "required": [file.path for file in request.available.to_list()],
     })
     ctx.actions.run(
-        executable = ctx.executable._resource_graph,
+        executable = ctx.executable._pack_selection,
         arguments = [
-            "select",
             "--manifest",
             manifest.path,
             "--graph",
@@ -683,6 +682,11 @@ _pack_export = rule(
             membership only, not runtime mounting or load order.
             """,
             providers = [GodotPackInfo],
+        ),
+        "_pack_selection": attr.label(
+            default = Label("//tools:pack_selection"),
+            executable = True,
+            cfg = "exec",
         ),
         "_resource_graph": attr.label(
             default = Label("//tools:resource_graph"),

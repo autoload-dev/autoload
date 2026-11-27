@@ -5,111 +5,46 @@ Graph paths are res:// identities, not execroot paths. The scanner deliberately
 does not execute Godot, scripts, importers, or addon code. Unknown dynamic loads
 remain diagnostics and must be covered by explicit declarations.
 
-Sections: Lexer, Text resources, Scan, Reference scanning, Graph, Graph queries, Pack
-selection, Command line.
+The lexer, section headings and identities it builds on are in resource_text.py, and
+pack_selection.py selects a pack's resources from the graph.
+
+Sections: Diagnostics, Script tokens, Scan, Reference scanning, Graph, Graph queries,
+Command line.
 """
 
 import argparse
 import json
-import posixpath
-import re
 import sys
-import unicodedata
 from collections import defaultdict, deque
 from collections.abc import Container, Iterable, Iterator, Sequence
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
-from typing import Any, NamedTuple
+from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from godot.private.project_config import statement_groups
-from tools.godot_files import DIRECTORY_MARKERS, hidden_by
-
-# These are format policies, not a claim that custom loaders cannot attach
-# meaning to raw bytes. Only the supported built-in Godot interpretation is
-# modeled. In particular JSON/CSV/configuration files and binary scene/model
-# formats stay unsupported until a format-specific scanner exists.
-ANALYZED_FORMATS = frozenset(
-    {
-        ".tscn",
-        ".tres",
-        ".gd",
-        ".gdshader",
-        ".gdshaderinc",
-        ".shader",
-        ".shaderinc",
-        ".gltf",
-        ".uid",
-        ".import",
-    }
-)
-
-LEAF_FORMATS = frozenset(
-    {
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".webp",
-        ".bmp",
-        ".tga",
-        ".ktx",
-        ".exr",
-        ".hdr",
-        ".dds",
-        ".wav",
-        ".ogg",
-        ".mp3",
-        ".ogv",
-        ".ttf",
-        ".otf",
-        ".woff",
-        ".woff2",
-        ".translation",
-        ".po",
-        ".mo",
-        ".bin",
-    }
-)
-
-# Files godot_build_files collects without a reference scanner.
-OPAQUE_FORMATS = frozenset(
-    {".res", ".scn", ".svg", ".glb", ".obj", ".fbx", ".csv", ".json", ".gdextension"}
+from tools.resource_text import (
+    ANALYZED_FORMATS,
+    LEAF_FORMATS,
+    PROJECT_FILE,
+    UID,
+    Heading,
+    file_identities,
+    headings,
+    portable_identity,
+    res_path,
+    tokens,
 )
 
 # Built-in loaders of these unanalyzed formats resolve further resources; the
 # graph records that as a reference it cannot determine.
 UNANALYZED_CONTAINERS = frozenset({".res", ".scn"})
 
-# The project configuration, which the graph scans for settings that name resources.
-_PROJECT_FILE = "res://project.godot"
+
+# ==== Diagnostics =============================================================
 
 
-def portable_identity(path: str) -> str:
-    """The spelling that case-insensitive, normalizing filesystems compare."""
-    return unicodedata.normalize("NFC", path).casefold()
-
-
-def _project_relative(value: str, source: str) -> str:
-    """A reference without its res:// prefix; a relative one is joined to its source's directory."""
-    if value.startswith("res://"):
-        return value[6:]
-    if ":" in value or value.startswith("/"):
-        raise ValueError("only resource paths or res:// paths are supported")
-    return posixpath.join(posixpath.dirname(source[6:]), value)
-
-
-def res_path(value: str, source: str = _PROJECT_FILE) -> str:
-    """Normalize a resource reference, rejecting escapes and non-resource URLs."""
-    value = _project_relative(value, source)
-    if any(char in value for char in "\\\0:") or value.startswith("/"):
-        raise ValueError("invalid resource path")
-    value = posixpath.normpath(value)
-    if value in ("", ".", "..") or value.startswith("../"):
-        raise ValueError("resource path escapes the project")
-    return "res://" + value
-
-
-def _read_json(path: Path) -> dict:
+def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -132,14 +67,14 @@ def format_diagnostic(item: dict) -> str:
     return "{path}:{line}: {severity}: {code}: {message}".format(**item)
 
 
-def _sorted_diagnostics(diagnostics: list[dict]) -> list[dict]:
+def sorted_diagnostics(diagnostics: list[dict]) -> list[dict]:
     return sorted(
         diagnostics,
         key=lambda item: (item["path"], item["line"], item["code"], item["message"]),
     )
 
 
-class _Findings:
+class Findings:
     """Collects the findings of a pass over the files of a project."""
 
     def __init__(self) -> None:
@@ -152,134 +87,7 @@ class _Findings:
         self.diagnostics.append(warning(code, path, message, line))
 
 
-# ==== Lexer ===================================================================
-
-
-class Token(NamedTuple):
-    category: str
-    value: str
-    line: int
-    # Offsets in the text where the token starts and ends.
-    start: int
-    end: int
-
-
-_ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "'": "'"}
-
-_UNICODE_ESCAPE = re.compile(r"[0-9a-fA-F]{4}")
-
-
-def _read_escape(text: str, index: int, raw: bool) -> tuple[str, int]:
-    """The text of the escape sequence at text[index], a backslash, and where it ends."""
-    escape = text[index + 1]
-    if raw:
-        return "\\" + escape, index + 2
-    if escape in _ESCAPES:
-        return _ESCAPES[escape], index + 2
-    if escape == "u":
-        digits = text[index + 2 : index + 6]
-        if _UNICODE_ESCAPE.fullmatch(digits):
-            return chr(int(digits, 16)), index + 6
-    return "\\" + escape, index + 2
-
-
-def _starts_string(text: str, index: int) -> bool:
-    return text[index] in "\"'" or text.startswith(('r"', "r'"), index)
-
-
-def _read_string(text: str, start: int) -> tuple[str, bool, int]:
-    """The value of the string starting at text[start], whether it is closed, and where it ends."""
-    raw = text[start] == "r"
-    index = start + 1 if raw else start
-    quote = text[index]
-    delimiter = quote * (3 if text.startswith(quote * 3, index) else 1)
-    index += len(delimiter)
-    value = []
-    while index < len(text):
-        if text.startswith(delimiter, index):
-            return "".join(value), True, index + len(delimiter)
-        if text[index] == "\\" and index + 1 < len(text):
-            decoded, index = _read_escape(text, index, raw)
-            value.append(decoded)
-        else:
-            value.append(text[index])
-            index += 1
-    return "".join(value), False, index
-
-
-_WORD = re.compile(r"\w*")
-
-
-def _identifier_end(text: str, index: int) -> int:
-    # \w* matches the empty string, so a match always exists.
-    match = _WORD.match(text, index + 1)
-    return match.end() if match else index + 1
-
-
-def _starts_line_comment(text: str, index: int, shader: bool) -> bool:
-    """Whether a comment to the end of the line starts at text[index]: // in a shader, # else."""
-    return text.startswith("//", index) if shader else text[index] == "#"
-
-
-def _line_comment_end(text: str, index: int) -> int:
-    """Where the comment at text[index] ends: at its line's newline, which it leaves out."""
-    end = text.find("\n", index)
-    return len(text) if end < 0 else end
-
-
-def _block_comment_end(text: str, index: int) -> int:
-    end = text.find("*/", index + 2)
-    return len(text) if end < 0 else end + 2
-
-
-def _skip_trivia(text: str, index: int, shader: bool) -> int | None:
-    """Where the whitespace or comment at text[index] ends; None where a token starts."""
-    char = text[index]
-    if char != "\n" and char.isspace():
-        return index + 1
-    if _starts_line_comment(text, index, shader):
-        return _line_comment_end(text, index)
-    if shader and text.startswith("/*", index):
-        return _block_comment_end(text, index)
-    return None
-
-
-def _read_token(text: str, index: int) -> tuple[str, str, int]:
-    """The category, value and end of the token starting at text[index]."""
-    char = text[index]
-    if char == "\n":
-        return "newline", char, index + 1
-    if _starts_string(text, index):
-        value, closed, end = _read_string(text, index)
-        return ("string" if closed else "invalid"), value, end
-    if char.isalpha() or char == "_":
-        end = _identifier_end(text, index)
-        return "identifier", text[index:end], end
-    return "punctuation", char, index + 1
-
-
-def lex(text: str, *, shader: bool = False) -> list[Token]:
-    """
-    Lex strings/comments without mistaking examples in comments for loads.
-
-    This small lexer handles GDScript quoted/raw/multiline strings and shader
-    comments. It is intentionally not a GDScript parser or constant evaluator.
-    """
-    result = []
-    index, line = 0, 1
-    while index < len(text):
-        end = _skip_trivia(text, index, shader)
-        if end is None:
-            category, value, end = _read_token(text, index)
-            result.append(Token(category, value, line, index, end))
-        line += text.count("\n", index, end)
-        index = end
-    return result
-
-
-def tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
-    """The tokens of lex as (category, value, line)."""
-    return [token[:3] for token in lex(text, shader=shader)]
+# ==== Script tokens ===========================================================
 
 
 def _code_tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
@@ -303,242 +111,6 @@ def _literal_argument(
         return None
     literal, closer = _at(script, paren + 1), _at(script, paren + 2)
     return literal[1] if literal[0] == "string" and closer[1] in closers else None
-
-
-# ==== Text resources ==========================================================
-
-
-_SECTION = re.compile(r"^[ \t]*\[([a-z_]+)\b", re.MULTILINE)
-
-_KEY = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
-
-_CLOSING = {"(": ")", "[": "]", "{": "}"}
-
-_ASSIGN = re.compile(r"\s*=\s*")
-
-
-class Heading(NamedTuple):
-    """A section heading of a text scene or resource, such as `[node name="Main"]`."""
-
-    section: str
-    # Attribute values, strings decoded.
-    attrs: dict[str, str]
-    # Offsets in the text where each attribute starts and its value ends.
-    starts: dict[str, int]
-    ends: dict[str, int]
-    # Offsets after the section name and of the closing bracket.
-    body: int
-    end: int
-    line: int
-
-
-def _quote_end(text: str, index: int) -> int:
-    """Where a quoted value ends: at its closing quote, or the end of the text."""
-    while index < len(text) and text[index] != '"':
-        index += 2 if text[index] == "\\" else 1
-    return index
-
-
-def _in_value(text: str, index: int, depth: list[str]) -> bool:
-    """Whether text[index] belongs to a heading attribute's value: it ends at a separator."""
-    if index >= len(text):
-        return False
-    return bool(depth) or text[index] not in " \t\n]"
-
-
-def _value_end(text: str, index: int) -> int:
-    """Return where a heading attribute's value starting at index ends."""
-    depth: list[str] = []
-    while _in_value(text, index, depth):
-        char = text[index]
-        if char == '"':
-            index = _quote_end(text, index + 1)
-        elif char in _CLOSING:
-            depth.append(_CLOSING[char])
-        elif depth and char == depth[-1]:
-            depth.pop()
-        index += 1
-    return index
-
-
-def _skip_blanks(text: str, index: int) -> int:
-    """The index of the first character from text[index] on that is no space or tab."""
-    while index < len(text) and text[index] in " \t":
-        index += 1
-    return index
-
-
-def _attribute_start(text: str, index: int) -> tuple[re.Match[str], re.Match[str]] | None:
-    """The key and the equals sign of the heading attribute at text[index], if there is one."""
-    key = _KEY.match(text, index)
-    if key is None:
-        return None
-    equals = _ASSIGN.match(text, key.end())
-    return None if equals is None else (key, equals)
-
-
-def _read_attributes(
-    text: str, index: int
-) -> tuple[dict[str, str], dict[str, int], dict[str, int], int]:
-    """
-    Read the attributes of a heading from text[index].
-
-    Returns their values, the offsets where each key starts and its value ends,
-    and the offset where the attributes stop.
-    """
-    attrs: dict[str, str] = {}
-    starts: dict[str, int] = {}
-    ends: dict[str, int] = {}
-    while True:
-        index = _skip_blanks(text, index)
-        if text[index : index + 1] in ("", "]"):
-            break
-        found = _attribute_start(text, index)
-        if found is None:
-            break
-        key, equals = found
-        value = text[equals.end() : _value_end(text, equals.end())]
-        attrs[key[0]] = tokens(value)[0][1] if value.startswith('"') else value
-        starts[key[0]], ends[key[0]] = key.start(), equals.end() + len(value)
-        index = ends[key[0]]
-    return attrs, starts, ends, index
-
-
-def headings(text: str) -> Iterator[Heading]:
-    """
-    Yield the section headings of a text scene or resource.
-
-    Quoted values may contain brackets and escaped quotes, and unquoted ones
-    nested brackets; a malformed heading is skipped.
-    """
-    line, counted = 1, 0
-    for match in _SECTION.finditer(text):
-        attrs, starts, ends, index = _read_attributes(text, match.end())
-        if text[index : index + 1] != "]":
-            continue
-        line += text.count("\n", counted, match.start())
-        counted = match.start()
-        yield Heading(match[1], attrs, starts, ends, match.end(), index, line)
-
-
-# A remap key naming an imported file: path, or path.<feature> for a feature's variant.
-REMAP_PATH = re.compile(
-    r'^(path(?:\.([A-Za-z0-9_]+))?)="res://([^"]+)"[ \t]*$', re.MULTILINE
-)
-
-IMPORTER = re.compile(r'^importer="([^"]*)"', re.MULTILINE)
-
-
-def remap_section(text: str) -> str | None:
-    """The [remap] section of an .import file, up to the next section; None without one."""
-    starts = [
-        (heading.section, text.rfind("[", 0, heading.body)) for heading in headings(text)
-    ]
-    remap = next((start for section, start in starts if section == "remap"), None)
-    if remap is None:
-        return None
-    end = next((start for _, start in starts if start > remap), len(text))
-    return text[remap:end]
-
-
-_UID = re.compile(r"uid://[a-z0-9]+")
-
-_IMPORT_UID = re.compile(r'^\s*uid\s*=\s*"(uid://[a-z0-9]+)"', re.MULTILINE)
-
-
-def file_identities(
-    path: str, text: str, declared: Container[str]
-) -> list[tuple[str, str, int]]:
-    """
-    Return (owner, uid, line) authored by one file.
-
-    External-resource UIDs are references, not owners. A sidecar authors the
-    identity of its declared source.
-    """
-    lower = path.lower()
-    if lower.endswith((".tscn", ".tres")):
-        # The file descriptor is the first section and alone carries identity.
-        for heading in headings(text):
-            return (
-                [(path, heading.attrs["uid"], heading.line)]
-                if heading.section in {"gd_scene", "gd_resource"}
-                and heading.attrs.get("uid")
-                else []
-            )
-    elif lower.endswith(".uid") and path[:-4] in declared:
-        return [(path[:-4], text.strip(), 0)]
-    elif lower.endswith(".import") and path[:-7] in declared:
-        return [
-            (path[:-7], match[1], text.count("\n", 0, match.start()) + 1)
-            for match in _IMPORT_UID.finditer(text)
-        ]
-    return []
-
-
-def _descriptor(source: Path) -> str:
-    """Read a scene or resource only up to its first section heading."""
-    lines = []
-    with source.open(encoding="utf-8") as stream:
-        for line in stream:
-            lines.append(line)
-            if line.lstrip().startswith("["):
-                break
-    return "".join(lines)
-
-
-def authored_identities(resource_paths: dict[str, Path]) -> dict[str, set[str]]:
-    """Collect authored IDs of declared files, reading only what carries them."""
-    identities = defaultdict(set)
-    normalized = {res_path(path): source for path, source in resource_paths.items()}
-    for path, source in sorted(normalized.items()):
-        lower = path.lower()
-        if lower.endswith((".tscn", ".tres")):
-            text = _descriptor(source)
-        elif lower.endswith((".uid", ".import")):
-            text = source.read_text(encoding="utf-8")
-        else:
-            continue
-        for owner, uid, _ in file_identities(path, text, normalized):
-            identities[uid].add(owner)
-    return identities
-
-
-def _check_authored(uid: str, paths: set[str]) -> None:
-    if not _UID.fullmatch(uid):
-        raise ValueError("Invalid authored resource UID: " + uid)
-    if len(paths) > 1:
-        raise ValueError(
-            "Duplicate authored resource UID " + uid + ": " + ", ".join(sorted(paths))
-        )
-
-
-def _uids_by_resource(
-    identities: Iterable[tuple[str, set[str]]],
-) -> defaultdict[str, set[str]]:
-    by_resource = defaultdict(set)
-    for uid, paths in identities:
-        for path in paths:
-            by_resource[path].add(uid)
-    return by_resource
-
-
-def _check_conflicting(by_resource: dict[str, set[str]]) -> None:
-    for path, values in sorted(by_resource.items()):
-        if len(values) > 1:
-            raise ValueError(
-                "Conflicting authored resource UIDs for "
-                + path
-                + ": "
-                + ", ".join(sorted(values))
-            )
-
-
-def validate_identities(resource_paths: dict[str, Path]) -> None:
-    """Reject invalid/duplicate authored UID ownership for staged action inputs."""
-    identities = sorted(authored_identities(resource_paths).items())
-    for uid, paths in identities:
-        _check_authored(uid, paths)
-    _check_conflicting(_uids_by_resource(identities))
 
 
 # ==== Scan ====================================================================
@@ -584,7 +156,7 @@ def read_manifest(path: Path) -> dict:
     return manifest
 
 
-class _Scan(_Findings):
+class _Scan(Findings):
     """What build_graph collects from the declared files of a project."""
 
     def __init__(self, execroot: Path) -> None:
@@ -637,7 +209,7 @@ def _declared_sources(manifest: dict, scan: _Scan) -> tuple[dict, dict]:
         if sources.get("project.godot", project_file) != project_file:
             scan.error(
                 "path_collision",
-                _PROJECT_FILE,
+                PROJECT_FILE,
                 "project_file conflicts with the declared resource",
             )
         sources["project.godot"] = members["project.godot"] = project_file
@@ -656,7 +228,7 @@ def _analysis(path: str, suffix: str, ignored: bool) -> str:
     if ignored:
         # Godot never scans it; code may read it through FileAccess from the sources.
         return "ignored"
-    if suffix in ANALYZED_FORMATS or path == _PROJECT_FILE:
+    if suffix in ANALYZED_FORMATS or path == PROJECT_FILE:
         return "analyzed"
     return "leaf" if suffix in LEAF_FORMATS else "unsupported"
 
@@ -723,7 +295,7 @@ def _declare_nodes(scan: _Scan, manifest: dict, sources: dict, members: set[str]
 
 
 def _identify(scan: _Scan, path: str, uid: str, line: int) -> None:
-    if _UID.fullmatch(uid):
+    if UID.fullmatch(uid):
         scan.uids[uid].add(path)
     else:
         scan.error("invalid_uid", path, "invalid authored resource UID: " + uid, line)
@@ -818,7 +390,7 @@ def _read_metadata_index(scan: _Scan, manifest: dict) -> dict[str, set[str]]:
     metadata = manifest.get("metadata_index")
     if not metadata:
         return {}
-    index = _read_json(scan.execroot / metadata["path"])
+    index = read_json(scan.execroot / metadata["path"])
     if not index:
         return {}
     _add_generated_uids(scan, index["uids"])
@@ -1126,7 +698,7 @@ def _scan_references(scan: _Scan) -> None:
             _scan_shader(scan, path, text)
         elif lower.endswith(".gltf"):
             _scan_gltf(scan, path, text)
-        elif path == _PROJECT_FILE:
+        elif path == PROJECT_FILE:
             _scan_project(scan, path, text)
 
 
@@ -1160,7 +732,7 @@ def _candidate_path(edge: dict) -> str | None:
         return None
     # GDScript's parser resolves preload/extends against the script;
     # ResourceLoader and the global load() resolve relative to res://.
-    base = _PROJECT_FILE if edge["kind"] == "load" else edge["source"]
+    base = PROJECT_FILE if edge["kind"] == "load" else edge["source"]
     return res_path(reference, base)
 
 
@@ -1181,7 +753,7 @@ def _directories(nodes: Iterable[str]) -> set[str]:
     return directories
 
 
-def _targets(edge: dict) -> list[str]:
+def edge_targets(edge: dict) -> list[str]:
     """The nodes a resolved edge reaches: its file, or every node below its directory."""
     return edge.get("targets", [edge["target"]])
 
@@ -1323,7 +895,7 @@ class _Resolver:
             or not nodes[edge["source"]]["membership"]
         ):
             return False
-        return not any(nodes[path]["membership"] for path in _targets(edge))
+        return not any(nodes[path]["membership"] for path in edge_targets(edge))
 
 
 def _unique_edges(edges: list[dict]) -> list[dict]:
@@ -1353,7 +925,7 @@ def _coverage(nodes: dict[str, dict]) -> dict[str, list[str]]:
 def _graph_document(manifest: dict, scan: _Scan, edges: list[dict]) -> dict:
     """The graph a scan of the manifest's files describes, with its diagnostics and coverage."""
     nodes = scan.nodes
-    diagnostics = _sorted_diagnostics(scan.diagnostics)
+    diagnostics = sorted_diagnostics(scan.diagnostics)
     relationships = sorted(
         manifest.get("relationships", []),
         key=lambda item: (
@@ -1374,7 +946,7 @@ def _graph_document(manifest: dict, scan: _Scan, edges: list[dict]) -> dict:
         "coverage_policy": {
             "analyzed_formats": sorted(ANALYZED_FORMATS),
             "leaf_formats": sorted(LEAF_FORMATS),
-            "project_configuration": _PROJECT_FILE,
+            "project_configuration": PROJECT_FILE,
             "ignored": "files Godot never scans: hidden, or below a directory that holds a .gdignore or a project.godot",
             "custom_loaders_analyzed": False,
         },
@@ -1399,7 +971,7 @@ def _undeclared_addon_use(
     source_owner = nodes[edge["source"]].get("owner", "")
     if not source_owner or source_owner in addon_of:
         return None
-    for target in _targets(edge):
+    for target in edge_targets(edge):
         label = addon_of.get(nodes.get(target, {}).get("owner", ""))
         if label and label not in uses.get(source_owner, set()):
             return warning(
@@ -1438,16 +1010,16 @@ def _diagnose_undeclared_addon_uses(
             scan.diagnostics.append(finding)
 
 
-def _is_inferred_runtime(edge: dict) -> bool:
+def is_inferred_runtime(edge: dict) -> bool:
     """Whether the scanner inferred a runtime reference, rather than the build or a declaration."""
     return edge["origin"] == "inferred" and edge["dependency_kind"] == "runtime"
 
 
 def _is_undeclared(edge: dict) -> bool:
     """Whether a file's inferred runtime reference lacks a runtime_references entry."""
-    if edge["status"] != "resolved" or edge["source"] == _PROJECT_FILE:
+    if edge["status"] != "resolved" or edge["source"] == PROJECT_FILE:
         return False
-    return _is_inferred_runtime(edge) and not edge["declared"]
+    return is_inferred_runtime(edge) and not edge["declared"]
 
 
 def _undeclared_references(edges: Iterable[dict]) -> list[dict]:
@@ -1480,7 +1052,7 @@ def require_declared(graph: dict) -> dict:
     unused_addons = any(item["code"] == "undeclared_addon_use" for item in diagnostics)
     return dict(
         graph,
-        diagnostics=_sorted_diagnostics(diagnostics + undeclared),
+        diagnostics=sorted_diagnostics(diagnostics + undeclared),
         complete=graph["complete"] and not undeclared and not unused_addons,
     )
 
@@ -1555,24 +1127,24 @@ def _root_files(
     return current | old if reverse else current or old
 
 
-def _file_pairs(edges: Iterable[dict]) -> Iterator[tuple[str, str]]:
+def file_pairs(edges: Iterable[dict]) -> Iterator[tuple[str, str]]:
     """The (source, target) files of each resolved edge."""
     for edge in edges:
         if edge["status"] == "resolved":
-            for target in _targets(edge):
+            for target in edge_targets(edge):
                 yield edge["source"], target
 
 
 def _adjacency(edges: Iterable[dict], reverse: bool) -> defaultdict[str, set[str]]:
     """The files each file reaches through its resolved edges, or is reached from if reversed."""
     adjacency = defaultdict(set)
-    for source, target in _file_pairs(edges):
+    for source, target in file_pairs(edges):
         start, end = (target, source) if reverse else (source, target)
         adjacency[start].add(end)
     return adjacency
 
 
-def _chain(parents: dict, path: str | None) -> list[str]:
+def chain(parents: dict, path: str | None) -> list[str]:
     """The path from a root to path, following each file's parent."""
     result = []
     while path is not None:
@@ -1589,11 +1161,11 @@ def _parents(
 ) -> dict[str, str | None]:
     """The file each reached file was first reached from, breadth first; roots have none."""
     parents = {value: None for value in sorted(roots)}
-    if reverse and _PROJECT_FILE in roots:
+    if reverse and PROJECT_FILE in roots:
         # Project settings can influence every import and script. Static source
         # references alone do not describe that configuration dependency.
         parents.update(
-            {value: _PROJECT_FILE for value in sorted(known) if value not in parents}
+            {value: PROJECT_FILE for value in sorted(known) if value not in parents}
         )
     queue = deque(sorted(roots))
     while queue:
@@ -1628,339 +1200,9 @@ def query_graph(
         "direction": "affected" if reverse else "reachable",
         "roots": sorted(resolved),
         "paths": sorted(parents),
-        "chains": {path: _chain(parents, path) for path in sorted(parents)},
+        "chains": {path: chain(parents, path) for path in sorted(parents)},
         "conservative": True,
         "complete": graph["complete"],
-    }
-
-
-# ==== Pack selection ==========================================================
-
-
-# Code can guard these runtime accesses, so an unavailable target is not
-# necessarily an error. Every other reference must resolve wherever it loads.
-SOFT_REFERENCE_KINDS = frozenset({"load", "file_access", "runtime", "runtime_deps"})
-
-
-class SelectionError(ValueError):
-    """A pack whose references are unavailable or not fully declared."""
-
-    def __init__(self, diagnostics: list[dict]) -> None:
-        super().__init__("\n".join(format_diagnostic(item) for item in diagnostics))
-        self.diagnostics = diagnostics
-
-
-def _hiding_cause(hider: str) -> str:
-    """Why the export leaves out a file: its directory holds a marker, or is itself hidden."""
-    cause = (
-        "hides its directory"
-        if PurePosixPath(hider).name in DIRECTORY_MARKERS
-        else "is a hidden directory"
-    )
-    return f"res://{hider} {cause}"
-
-
-def _hidden_files(nodes: dict[str, dict]) -> dict[str, str]:
-    """
-    Why the export leaves out each Godot-ignored file it leaves out.
-
-    Godot still packs a hidden file of a visible directory.
-    """
-    ignored = [path for path, node in nodes.items() if node["analysis"] == "ignored"]
-    paths = {path.removeprefix("res://") for path in nodes} if ignored else set()
-    hiders = {path: hidden_by(path.removeprefix("res://"), paths) for path in ignored}
-    return {path: _hiding_cause(hider) for path, hider in hiders.items() if hider}
-
-
-def _outgoing_edges(edges: Iterable[dict]) -> defaultdict[str, list[dict]]:
-    outgoing = defaultdict(list)
-    for edge in edges:
-        outgoing[edge["source"]].append(edge)
-    return outgoing
-
-
-def _acknowledged_reads(
-    edges: Iterable[dict], hidden: dict[str, str]
-) -> set[tuple[str, str]]:
-    """The (source, target) pairs of declared references to files the export leaves out."""
-    return {(s, t) for s, t in _file_pairs(edges) if t in hidden}
-
-
-def _group_relationships(
-    relationships: Iterable[dict],
-) -> tuple[defaultdict[str, set[str]], defaultdict[str, set[str]]]:
-    """
-    Group the relationships without a source.
-
-    Returns the targets declaring each file, and the members of each target's runtime_deps.
-    """
-    owners, groups = defaultdict(set), defaultdict(set)
-    for relation in relationships:
-        if not relation["source"]:
-            target = res_path(relation["target"])
-            if relation["kind"] == "membership":
-                owners[target].add(relation["owner"])
-            elif relation["kind"] == "runtime":
-                groups[relation["owner"]].add(target)
-    return owners, groups
-
-
-def _required_files(required: Iterable[dict]) -> Iterator[tuple[str, str, str]]:
-    """The (pack, path, source file) of each resource the required packs provide."""
-    for content in required:
-        for path, source in content["resources"].items():
-            yield content["pack"], res_path(path), source
-
-
-class _PackSelection(_Findings):
-    """Selects a pack's resources by following the references of a resource graph from roots."""
-
-    def __init__(
-        self, graph: dict, reachable: bool, excluded: set[str], libraries: set[str]
-    ) -> None:
-        super().__init__()
-        self.reachable = reachable
-        self.excluded = excluded
-        # Application rules deliver the extension libraries.
-        self.libraries = libraries
-        self.graph_diagnostics = graph["diagnostics"]
-        self.nodes = {node["path"]: node for node in graph["nodes"]}
-        self.members = {path for path, node in self.nodes.items() if node["membership"]}
-        # Why the export leaves out each Godot-ignored file it leaves out.
-        self.hidden = _hidden_files(self.nodes)
-        self.outgoing = _outgoing_edges(graph["edges"])
-        declarations = [edge for edge in graph["edges"] if edge["origin"] == "declared"]
-        # The files with a declared reference, and the reads of hidden files among them.
-        self.declared = {edge["source"] for edge in declarations}
-        self.acknowledged = _acknowledged_reads(declarations, self.hidden)
-        self.owners, self.groups = _group_relationships(graph["relationships"])
-        # The required pack that provides each path.
-        self.provided: dict[str, str] = {}
-        self.parents: dict[str, str | None] = {}
-        self.reached_provided: set[str] = set()
-        self.expanded_groups: set[str] = set()
-        self.queue: deque[str] = deque()
-
-    def provide(self, required: Iterable[dict], sources: dict | None) -> None:
-        """
-        Record the content of the required packs.
-
-        A path has one file across this project and its required packs.
-        """
-        origins = {
-            path: ("this project", source) for path, source in (sources or {}).items()
-        }
-        for pack, path, source in _required_files(required):
-            origin, previous = origins.setdefault(path, (pack, source))
-            if previous != source:
-                self.error(
-                    "identity_conflict",
-                    path,
-                    f"{origin} uses {previous}, {pack} provides {source}",
-                )
-            self.provided.setdefault(path, pack)
-
-    def select(self, entry_points: Iterable[str], extensions: Iterable[str]) -> dict:
-        """Reach the files the pack contains; raises SelectionError for any violation."""
-        # The project configuration is a root that the pack never contains.
-        if _PROJECT_FILE in self.nodes:
-            self._reach(_PROJECT_FILE, None, "project")
-        roots = (
-            self._reachable_roots(entry_points, extensions)
-            if self.reachable
-            else self._member_roots()
-        )
-        for path, kind in roots:
-            self._reach(path, None, kind)
-        while self.queue:
-            self._expand(self.queue.popleft())
-        diagnostics = self._diagnostics()
-        if any(item["severity"] == "error" for item in diagnostics):
-            raise SelectionError(diagnostics)
-        return self._report(diagnostics)
-
-    def _member_roots(self) -> Iterator[tuple[str, str]]:
-        """The (path, kind of reference) of every file the pack may contain."""
-        members = sorted(self.members - self.excluded - self.libraries)
-        return ((path, "member") for path in members)
-
-    def _reachable_roots(
-        self, entry_points: Iterable[str], extensions: Iterable[str]
-    ) -> Iterator[tuple[str, str]]:
-        """The (path, kind of reference) of the entry points, extensions and unowned runtime_deps."""
-        for path in entry_points:
-            yield path, "entry_point"
-        for path in extensions:
-            yield path, "extension"
-        # Without files of its own, nothing shows when such a target is used.
-        for owner in sorted(self.groups.keys() - set().union(*self.owners.values())):
-            yield from ((path, "runtime_deps") for path in sorted(self.groups[owner]))
-
-    def _report(self, diagnostics: list[dict]) -> dict:
-        resources = sorted(self.parents.keys() - {_PROJECT_FILE})
-        return {
-            "diagnostics": diagnostics,
-            "mode": "reachable" if self.reachable else "members",
-            "resources": resources,
-            "chains": {path: _chain(self.parents, path) for path in resources}
-            if self.reachable
-            else {},
-            "required": {
-                path: self.provided[path] for path in sorted(self.reached_provided)
-            },
-        }
-
-    def _diagnostics(self) -> list[dict]:
-        """The distinct findings, in order; reachable selection also fails on reached graph errors."""
-        if self.reachable:
-            # What reachable selection packs depends on the graph being sound.
-            self.diagnostics.extend(
-                item
-                for item in self.graph_diagnostics
-                if item["severity"] == "error" and item["path"] in self.parents
-            )
-        unique = {
-            (item["path"], item["line"], item["code"], item["message"]): item
-            for item in self.diagnostics
-        }
-        return _sorted_diagnostics(list(unique.values()))
-
-    def _covered(self, path: str) -> bool:
-        """Whether declarations name what a file uses beyond the scanner's view."""
-        return path in self.declared or any(
-            self.groups[owner] for owner in self.owners[path]
-        )
-
-    def _reach(self, path: str, parent: str | None, kind: str) -> None:
-        if path in self.provided:
-            self.reached_provided.add(path)
-        elif path in self.libraries or path not in self.members:
-            # Runtime uses of import inputs are already graph diagnostics.
-            return
-        elif path in self.excluded:
-            if kind not in SOFT_REFERENCE_KINDS:
-                self.error(
-                    "unavailable_reference",
-                    parent or path,
-                    f"{kind} reference to excluded {path}",
-                )
-        elif path not in self.parents:
-            self.parents[path] = parent
-            self.queue.append(path)
-
-    def _leaves_out(self, edge: dict) -> None:
-        """Report a reference from a packed file to a file Godot's export leaves out."""
-        cause = self.hidden.get(edge["target"])
-        if cause is None or not _is_inferred_runtime(edge):
-            return
-        # Code may read a file only when it runs from the sources.
-        read = edge["kind"] == "file_access"
-        if read and (edge["source"], edge["target"]) in self.acknowledged:
-            return
-        hint = (
-            "; a runtime_references entry from this file acknowledges a read that runs only from the sources"
-            if read
-            else ""
-        )
-        (self.warn if read else self.error)(
-            "ignored_reference",
-            edge["source"],
-            f"{edge['kind']} reference to {edge['target']}, which Godot's export leaves out: {cause}{hint}",
-            edge["line"],
-        )
-
-    def _follow(self, edge: dict, path: str) -> None:
-        if edge["status"] == "resolved":
-            self._leaves_out(edge)
-            for target in _targets(edge):
-                self._reach(target, path, edge["kind"])
-        elif edge["status"] == "unknown" and self._needs_declaration(path):
-            self.error(
-                "undeclared_dynamic_reference",
-                path,
-                f"{edge['kind']} on line {edge['line']} may use unselected files; declare runtime_references from this file or runtime_deps on its target",
-            )
-
-    def _needs_declaration(self, path: str) -> bool:
-        """Whether a file's unknown references must be declared: reachable selection packs only what is reached."""
-        return self.reachable and not self._covered(path)
-
-    def _expand(self, path: str) -> None:
-        for edge in self.outgoing[path]:
-            self._follow(edge, path)
-        for owner in sorted(self.owners[path] - self.expanded_groups):
-            self.expanded_groups.add(owner)
-            for target in sorted(self.groups[owner]):
-                self._reach(target, path, "runtime_deps")
-
-
-def select_pack(
-    graph: dict,
-    *,
-    reachable: bool,
-    entry_points: Iterable[str] = (),
-    extensions: Iterable[str] = (),
-    excluded: Iterable[str] = (),
-    extension_library_paths: Iterable[str] = (),
-    required: Iterable[dict] = (),
-    sources: dict | None = None,
-) -> dict:
-    """
-    Select a pack's own resources and check that what they reference is available.
-
-    Paths are res:// identities; sources maps this project's members to their
-    files. required lists the content of required packs, {"pack", "resources"}
-    with resource paths to files. A path has one file across
-    this project and its required packs. Excluded, extension library and required
-    paths are never packed. A hard reference must end in this pack or a
-    required pack. Reachable selection starts from the project
-    configuration, entry points and extension descriptors, and fails where a
-    reached file may load undeclared files or has graph errors. A reference to a
-    file Godot's export leaves out is an error, a file read a warning unless a
-    declared runtime reference from the reading file names the file. Raises
-    SelectionError listing every violation; the report lists the warnings.
-    """
-    selection = _PackSelection(
-        graph, reachable, set(excluded), set(extension_library_paths)
-    )
-    selection.provide(required, sources)
-    return selection.select(entry_points, extensions)
-
-
-def select_from_manifest(
-    manifest: dict, graph: dict, project: dict, execroot: Path
-) -> tuple[dict, dict]:
-    """
-    Return a pack's selection report and the content it provides to dependent packs.
-
-    graph is the project's resource graph and project the manifest it scanned.
-    """
-
-    def paths(key: str) -> list[str]:
-        return [res_path(path) for path in manifest[key]]
-
-    entry_points = paths("entry_points")
-    sources = {
-        res_path(path): source
-        for path, source in project["member_resource_paths"].items()
-    }
-    required = [_read_json(execroot / content) for content in manifest["required"]]
-    selection = select_pack(
-        graph,
-        reachable=manifest["selection"] == "reachable",
-        entry_points=entry_points,
-        extensions=paths("extensions"),
-        excluded=paths("excluded"),
-        extension_library_paths=paths("extension_library_paths"),
-        required=required,
-        sources=sources,
-    )
-    resources = {
-        path.removeprefix("res://"): sources[path] for path in selection["resources"]
-    }
-    return dict(selection, pack=manifest["pack"], entry_points=entry_points), {
-        "pack": manifest["pack"],
-        "resources": resources,
     }
 
 
@@ -2000,7 +1242,7 @@ def _scan_command(commands: Any) -> None:
 
 
 def _run_check(args: argparse.Namespace) -> int:
-    graph = _read_json(args.graph)
+    graph = read_json(args.graph)
     if args.require_declared:
         graph = require_declared(graph)
     args.output.write_text(_json(graph), encoding="utf-8")
@@ -2027,8 +1269,8 @@ def _check_command(commands: Any) -> None:
 
 
 def _run_query(args: argparse.Namespace) -> int:
-    graph = _read_json(args.graph)
-    previous = _read_json(args.previous_graph) if args.previous_graph else None
+    graph = read_json(args.graph)
+    previous = read_json(args.previous_graph) if args.previous_graph else None
     result = query_graph(
         graph, args.paths, reverse=args.direction == "affected", previous=previous
     )
@@ -2051,56 +1293,10 @@ def _query_command(commands: Any) -> None:
     query.set_defaults(run=_run_query)
 
 
-def _run_select(args: argparse.Namespace) -> int:
-    selection, content = select_from_manifest(
-        _read_json(args.manifest),
-        _read_json(args.graph),
-        read_manifest(args.project_manifest),
-        args.execroot,
-    )
-    args.output.write_text(_json(selection), encoding="utf-8")
-    args.content.write_text(_json(content), encoding="utf-8")
-    for item in selection["diagnostics"]:
-        print(format_diagnostic(item), file=sys.stderr)
-    return 0
-
-
-def _select_command(commands: Any) -> None:
-    select = commands.add_parser(
-        "select", help="select a pack's resources and check their availability"
-    )
-    select.add_argument(
-        "--manifest", type=Path, required=True, help="the pack's selection manifest"
-    )
-    select.add_argument(
-        "--graph", type=Path, required=True, help="the project's resource graph"
-    )
-    select.add_argument(
-        "--project-manifest",
-        type=Path,
-        required=True,
-        help="the manifest the project's graph was scanned from",
-    )
-    select.add_argument(
-        "--output",
-        type=Path,
-        required=True,
-        help="selection report with explanation chains",
-    )
-    select.add_argument(
-        "--content",
-        type=Path,
-        required=True,
-        help="resources this pack provides to dependent packs",
-    )
-    select.add_argument("--execroot", type=Path, default=Path.cwd())
-    select.set_defaults(run=_run_select)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for add_command in (_scan_command, _check_command, _query_command, _select_command):
+    for add_command in (_scan_command, _check_command, _query_command):
         add_command(commands)
     args = parser.parse_args(argv)
     try:
