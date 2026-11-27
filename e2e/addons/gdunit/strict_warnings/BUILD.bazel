@@ -1,7 +1,8 @@
 load("@autoload_rules_godot//godot:defs.bzl", "godot_project", "godot_resources")
 
 # A project that treats every GDScript warning as an error, below res://addons/ too except in
-# GdUnit itself, with a GdUnit suite.
+# GdUnit itself, with a GdUnit suite, which the tests of e2e/addons/gdunit run.
+# gazelle:godot_gdunit_test disabled
 package(
     default_testonly = True,
     default_visibility = ["//e2e/addons/gdunit:__pkg__"],

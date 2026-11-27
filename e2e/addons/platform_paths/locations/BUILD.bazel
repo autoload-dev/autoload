@@ -11,8 +11,8 @@ godot_resources(
     ],
     prefix = "locations",
     visibility = ["//e2e/addons/platform_paths:__pkg__"],
+    runtime_deps = [":fixtures"],
     deps = [
-        ":fixtures",
         "@autoload_gdunit//gdunit",
         "@autoload_platform_paths//platform_paths",
     ],

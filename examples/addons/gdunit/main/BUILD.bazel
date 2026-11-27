@@ -4,5 +4,6 @@ load("@autoload_rules_godot//godot:defs.bzl", "godot_resources")
 godot_resources(
     name = "main",
     srcs = ["scoreboard.gd"],
+    prefix = "main",
     visibility = ["//examples/addons/gdunit:__subpackages__"],
 )

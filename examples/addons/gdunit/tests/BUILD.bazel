@@ -6,6 +6,7 @@ godot_resources(
     name = "suites",
     testonly = True,
     srcs = ["ScoreboardTest.gd"],
+    prefix = "tests",
     visibility = ["//examples/addons/gdunit:__pkg__"],
     deps = [
         "//examples/addons/gdunit/main",

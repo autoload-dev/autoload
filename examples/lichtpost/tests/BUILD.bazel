@@ -11,7 +11,11 @@ godot_resources(
         "GameFixture.gd.uid",
     ],
     prefix = "tests",
-    deps = ["//examples/lichtpost/main"],
+    deps = [
+        "//examples/lichtpost/main",
+        "//examples/lichtpost/main/levels/level_01",
+        "//examples/lichtpost/main/run",
+    ],
 )
 
 godot_resources(
@@ -34,10 +38,18 @@ godot_resources(
     ],
     prefix = "tests",
     visibility = ["//examples/lichtpost:__pkg__"],
+    runtime_deps = [":replays"],
     deps = [
         ":helpers",
-        ":replays",
-        "//examples/lichtpost/main",
+        "//examples/lichtpost/main/components:courier",
+        "//examples/lichtpost/main/components:light",
+        "//examples/lichtpost/main/components:sound",
+        "//examples/lichtpost/main/levels/level_01",
+        "//examples/lichtpost/main/rules:replay",
+        "//examples/lichtpost/main/rules:route",
+        "//examples/lichtpost/main/run:definitions",
+        "//examples/lichtpost/main/run/view",
+        "//examples/lichtpost/main/ui",
         "@autoload_gdunit//gdunit",
     ],
 )

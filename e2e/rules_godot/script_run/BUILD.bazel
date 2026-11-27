@@ -8,6 +8,7 @@ godot_resources(
 godot_resources(
     name = "direct",
     srcs = ["main/direct.gd"],
+    deps = [":icon"],
 )
 
 godot_project(

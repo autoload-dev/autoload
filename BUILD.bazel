@@ -3,11 +3,6 @@
 # add-on modules' extensions register resolve to their targets here: Gazelle runs in this
 # module alone and cannot index the add-on modules.
 #
-# Temporary exception: the language stays disabled until the hand-written BUILD files of
-# examples/ and e2e/ are regenerated, which waits for the changes other branches make to
-# them; remove this directive then.
-# gazelle:godot_extension disabled
-#
 # gazelle:resolve godot class AppAuth @autoload_app_auth//app_auth
 # gazelle:resolve godot class AppAuthLogin @autoload_app_auth//app_auth
 # gazelle:resolve godot class AppAuthResult @autoload_app_auth//app_auth

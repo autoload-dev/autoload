@@ -20,6 +20,8 @@ godot_resources(
     visibility = ["//examples/petri:__pkg__"],
     deps = [
         "//examples/petri/main",
+        "//examples/petri/main/dish",
+        "//examples/petri/main/hud",
         "@autoload_gdunit//gdunit",
     ],
 )
