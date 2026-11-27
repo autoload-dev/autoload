@@ -80,8 +80,6 @@ gazelle_generation_test(
     name = "generation_test",
     size = "small",
     gazelle_binary = ":gazelle",
-    # The scanner's Python process starts in about a third of a second, longer on a busy host.
-    gazelle_timeout_seconds = 30,
     test_data = glob(["testdata/**"]),
 )
 
@@ -91,6 +89,5 @@ gazelle_generation_test(
     size = "small",
     build_in_suffix = ".out",
     gazelle_binary = ":gazelle",
-    gazelle_timeout_seconds = 30,
     test_data = glob(["testdata/project/**"]),
 )

@@ -1,11 +1,39 @@
 # Sentry for Godot's release, addons/sentry/ of its zip: its files and imports, which
 # @autoload_sentry//sentry assembles into the add-on. Every library comes in a debug and a
 # release build.
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@rules_android//rules:rules.bzl", "aar_import")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_xcframework_import")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
 
-package(default_visibility = ["@autoload_sentry//sentry:__pkg__"])
+package(
+    default_package_metadata = [":package_metadata"],
+    default_visibility = ["@autoload_sentry//sentry:__pkg__"],
+)
+
+# The archive's identity and license, for the SBOM and license tools that read package
+# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = (
+        purl.builder()
+            .type("github")
+            .namespace("getsentry")
+            .name("sentry-godot")
+            .version("2.5.1")
+            .build()
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:MIT",
+    text = "LICENSE.md",
+)
 
 # The GDScript user-feedback UI.
 filegroup(

@@ -1,9 +1,37 @@
 # Firebase.zip of the Firebase Apple SDK: one directory per product, holding the static
 # XCFrameworks that product needs, the core's among them. @autoload_firebase//ios links them
 # into one dynamic framework per product.
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@rules_apple//apple:apple.bzl", "apple_static_xcframework_import")
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_package_metadata = [":package_metadata"],
+    default_visibility = ["//visibility:public"],
+)
+
+# The archive's identity and license, for the SBOM and license tools that read package
+# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = (
+        purl.builder()
+            .type("github")
+            .namespace("firebase")
+            .name("firebase-ios-sdk")
+            .version("13.2.0")
+            .build()
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:Apache-2.0",
+    text = "NOTICES",
+)
 
 # The product directories read. BUILD files cannot define functions; target names are the
 # directory names. FirebaseAnalytics/ holds the core's frameworks too; FirebaseFirestore/
