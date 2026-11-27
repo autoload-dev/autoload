@@ -7,7 +7,7 @@ Sections: Configuration files, Named add-ons, godot_project.
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "PINNED_SETTINGS", "validate_autoloads", "validate_custom_feature", "validate_settings")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
+load("//godot/private:context.bzl", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:import_units.bzl", "importer_staging")
@@ -516,7 +516,7 @@ _godot_project = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | TRANSITION_ATTRS,
+    },
     toolchains = [EDITOR_TOOLCHAIN],
 )
 

@@ -4,7 +4,6 @@ load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_export_options", "validate_preset_settings", "validate_settings")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:export_options.bzl", "resolve_export_options")
 load("//godot/private:import_units.bzl", "GAME_ONLY")
@@ -690,7 +689,7 @@ _pack_export = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | METADATA_ATTRS | PACK_CONVERSION_ATTRS | RELEASE_ATTRS | VARIANT_ATTRS | context_attrs() | TRANSITION_ATTRS,
+    } | METADATA_ATTRS | PACK_CONVERSION_ATTRS | RELEASE_ATTRS | VARIANT_ATTRS | context_attrs(),
     toolchains = [EDITOR_TOOLCHAIN],
 )
 
@@ -726,7 +725,7 @@ _configured_pack = rule(
             doc = "The pack's view in the editor variant, where a godot_app runs it from sources instead of exporting it.",
             providers = [GodotViewInfo],
         ),
-    } | context_attrs() | ENGINE_ATTRS | TRANSITION_ATTRS,
+    } | context_attrs() | ENGINE_ATTRS,
     cfg = engine_transition,
 )
 

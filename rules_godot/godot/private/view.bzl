@@ -2,7 +2,7 @@
 
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
 load("//godot/private:configuration.bzl", "merge_configuration")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "context_transition")
+load("//godot/private:context.bzl", "context_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:graph.bzl", "project_graph")
 load("//godot/private:import_units.bzl", "importers_of")
@@ -675,7 +675,7 @@ godot_view = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | METADATA_ATTRS | TRANSITION_ATTRS,
+    } | METADATA_ATTRS,
     toolchains = [EDITOR_TOOLCHAIN],
 )
 

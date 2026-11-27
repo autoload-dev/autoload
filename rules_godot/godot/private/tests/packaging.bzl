@@ -132,6 +132,5 @@ in_export_platform = rule(
     attrs = {
         "deps": attr.label_list(mandatory = True, providers = [GodotPackInfo], cfg = _export_platform_transition),
         "export_platform": attr.label(mandatory = True),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )

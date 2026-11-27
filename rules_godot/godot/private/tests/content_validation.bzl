@@ -7,7 +7,7 @@ validation then records its failures in its output and succeeds, so a test can r
 and build the operations over the same content.
 """
 
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "context_transition")
+load("//godot/private:context.bzl", "context_transition")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotProjectInfo", "GodotResourcesInfo")
 
 visibility(["//godot/private/tests/..."])
@@ -38,7 +38,6 @@ reported_build = rule(
     implementation = _reported_build_impl,
     attrs = {
         "deps": attr.label_list(mandatory = True, cfg = _report_transition),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )
 
@@ -62,5 +61,5 @@ in_context = rule(
         "project": attr.label(mandatory = True, providers = [GodotProjectInfo]),
         "deps": attr.label_list(providers = [[GodotResourcesInfo], [GodotAddonInfo]]),
         "operations": attr.label_list(),
-    } | TRANSITION_ATTRS,
+    },
 )

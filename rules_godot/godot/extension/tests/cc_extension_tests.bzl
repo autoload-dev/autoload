@@ -310,7 +310,6 @@ _framework_slices = rule(
     implementation = _framework_slices_impl,
     attrs = {
         "extension": attr.label(mandatory = True, providers = [GodotExtensionInfo], cfg = platform_slice_transition),
-        "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )
 

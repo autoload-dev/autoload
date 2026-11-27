@@ -15,7 +15,6 @@ load(
 load("@rules_android//rules:android_split_transition.bzl", "android_split_transition")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/platforms/private:launch.bzl", "LAUNCH_ATTRS", "launcher")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS")
 load("//godot/private:symbols.bzl", "SYMBOLS_ZIP_ATTRS", "symbols_zip")
 load("//godot/private/config:settings.bzl", "MERGE_ANDROID_MANIFEST_PERMISSIONS")
 load(
@@ -93,7 +92,7 @@ def _android_app_bundle_impl(ctx):
 godot_android_app_bundle = rule(
     implementation = _android_app_bundle_impl,
     executable = True,
-    attrs = {"app": attr.label(mandatory = True, providers = [AndroidBundleInfo, ApkInfo], cfg = _merge_permissions)} | _LAUNCHER_ATTRS | TRANSITION_ATTRS,
+    attrs = {"app": attr.label(mandatory = True, providers = [AndroidBundleInfo, ApkInfo], cfg = _merge_permissions)} | _LAUNCHER_ATTRS,
     toolchains = [_ANDROID_TOOLCHAIN],
 )
 
@@ -159,7 +158,7 @@ def _android_apk_impl(ctx):
 godot_android_apk = rule(
     implementation = _android_apk_impl,
     executable = True,
-    attrs = {"app": attr.label(mandatory = True, providers = [ApkInfo], cfg = _merge_permissions)} | _LAUNCHER_ATTRS | TRANSITION_ATTRS,
+    attrs = {"app": attr.label(mandatory = True, providers = [ApkInfo], cfg = _merge_permissions)} | _LAUNCHER_ATTRS,
 )
 
 def _android_debug_symbols_zip_impl(ctx):
@@ -180,7 +179,7 @@ def _android_debug_symbols_impl(ctx):
 
 godot_android_debug_symbols = rule(
     implementation = _android_debug_symbols_impl,
-    attrs = {"symbols": attr.label(mandatory = True, allow_single_file = [".zip"], cfg = _merge_permissions)} | TRANSITION_ATTRS,
+    attrs = {"symbols": attr.label(mandatory = True, allow_single_file = [".zip"], cfg = _merge_permissions)},
 )
 
 godot_android_debug_symbols_zip = rule(

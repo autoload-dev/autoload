@@ -9,7 +9,7 @@ load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:actions.bzl", "write_manifest")
 load("//godot/private:configuration.bzl", "validate_autoloads", "validate_settings")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "is_context", "reset_transition")
+load("//godot/private:context.bzl", "is_context", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN")
 load("//godot/private:import_units.bzl", "VALIDATION_ATTRS", "class_fragment", "import_unit", "unit_interface", "validate_unit")
 load("//godot/private:paths.bzl", "directory_prefix", "godot_ignore_markers", "godot_ignored", "mapped_paths", "placed_resource_paths", "sidecar_source", "validate_namespace", "with_extensions_for")
@@ -36,7 +36,7 @@ _addon_platform_libraries = rule(
     cfg = reset_transition,
     attrs = {
         "deps": attr.label_list(providers = [[JavaInfo], [CcInfo]], aspects = [manifest_graph_aspect]),
-    } | TRANSITION_ATTRS,
+    },
 )
 
 # ==== extension_addon =========================================================
@@ -561,7 +561,7 @@ _godot_addon = rule(
             executable = True,
             cfg = "exec",
         ),
-    } | VALIDATION_ATTRS | TRANSITION_ATTRS,
+    } | VALIDATION_ATTRS,
     toolchains = [config_common.toolchain_type(EDITOR_TOOLCHAIN, mandatory = False)],
 )
 

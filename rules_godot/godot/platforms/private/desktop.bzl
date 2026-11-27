@@ -412,7 +412,6 @@ _MACOS_ATTRS = {
         providers = [GodotPackInfo],
         cfg = _macos_minimum,
     ),
-    "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     "bundle_id": attr.string(
         doc = """
         CFBundleIdentifier; empty uses the pack's export option

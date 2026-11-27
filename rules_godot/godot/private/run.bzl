@@ -265,7 +265,6 @@ _ATTRS = {
         default = [Label(constraint) for constraint in HOST_CONSTRAINTS],
         providers = [platform_common.ConstraintValueInfo],
     ),
-    "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
 } | METADATA_ATTRS
 
 def _runner(group = None):

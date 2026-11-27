@@ -12,7 +12,7 @@ load("//godot/extension/private:cc_extension.bzl", "generated_attrs", "native_ar
 load("//godot/extension/private:ios_framework.bzl", "ios_framework")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
 load("//godot/private:addon.bzl", "extension_addon")
-load("//godot/private:context.bzl", "TRANSITION_ATTRS", "reset_transition")
+load("//godot/private:context.bzl", "reset_transition")
 load("//godot/private:execution.bzl", "EDITOR_TOOLCHAIN", "RUN_EXEC_GROUPS")
 load("//godot/private:flags.bzl", "FlagInfo")
 load("//godot/private:paths.bzl", "resource_path")
@@ -668,7 +668,7 @@ _extension = rule(
     godot_project its files' resource paths.
     """,
     implementation = _extension_impl,
-    attrs = _EXTENSION_ATTRS | TRANSITION_ATTRS,
+    attrs = _EXTENSION_ATTRS,
     exec_groups = _EXEC_GROUPS,
     # Native code builds once, whatever the number of project contexts reaching it.
     cfg = reset_transition,
@@ -691,7 +691,7 @@ _source_extension = rule(
             aspects = [framework_provider_aspect],
             cfg = keep_debug_info,
         ),
-    } | TRANSITION_ATTRS,
+    },
     exec_groups = _EXEC_GROUPS,
     cfg = reset_transition,
 )
