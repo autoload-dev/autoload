@@ -35,25 +35,7 @@ _script_registry = rule(
     },
 )
 
-def godot_dart_extension(name, srcs, deps = [], visibility = None, **kwargs):
-    """The Dart script language of a project, with the project's scripts compiled in.
-
-    Declare it in the package of the project's project.godot and list it in the deps of
-    the godot_resources whose scenes use the scripts, so that validating them loads the
-    language. Each script's resource path is its path below this package, so declare the
-    scripts' godot_resources with the prefix of their directory. Each script file declares a top-level `script`, a
-    package:godot `Script`.
-
-    The extension's library loads the scripts' AOT snapshot, libdart_scripts.so, from
-    beside itself. One project has one Dart extension.
-
-    Args:
-        name: The extension, named like an add-on.
-        srcs: The project's Dart script files.
-        deps: dart_library targets the scripts import, besides package:godot.
-        visibility: The extension's visibility.
-        **kwargs: Attributes of the godot_cc_extension.
-    """
+def _dart_extension_impl(name, visibility, srcs, deps, **kwargs):
     _script_registry(
         name = name + "_registry",
         srcs = srcs,
@@ -66,10 +48,13 @@ def godot_dart_extension(name, srcs, deps = [], visibility = None, **kwargs):
         srcs = srcs,
         deps = [Label("//dart/godot")] + deps,
     )
+
+    # The library loads the snapshot by its file name from beside itself; the directory
+    # keeps the file in the macro's namespace.
     copy_file(
         name = name + "_snapshot",
         src = name + "_scripts",
-        out = name + "/libdart_scripts.so",
+        out = name + "_snapshot/libdart_scripts.so",
     )
     godot_cc_extension(
         name = name,
@@ -80,3 +65,31 @@ def godot_dart_extension(name, srcs, deps = [], visibility = None, **kwargs):
         deps = [Label("//dart")],
         **kwargs
     )
+
+godot_dart_extension = macro(
+    doc = """
+    The Dart script language of a project, with the project's scripts compiled in.
+
+    Declare it in the package of the project's project.godot and list it in the deps of
+    the godot_resources whose scenes use the scripts, so that validating them loads the
+    language. Each script's resource path is its path below this package, so declare the
+    scripts' godot_resources with the prefix of their directory. Each script file declares
+    a top-level `script`, a package:godot `Script`.
+
+    The extension's library loads the scripts' AOT snapshot, libdart_scripts.so, from
+    beside itself. One project has one Dart extension. The other attributes are those of
+    godot_cc_extension.
+    """,
+    implementation = _dart_extension_impl,
+    inherit_attrs = godot_cc_extension,
+    attrs = {
+        "srcs": attr.label_list(
+            doc = "The project's Dart script files.",
+            allow_files = [".dart"],
+            mandatory = True,
+        ),
+        "deps": attr.label_list(doc = "dart_library targets the scripts import, besides package:godot."),
+        "entry_symbol": None,
+        "data": None,
+    },
+)

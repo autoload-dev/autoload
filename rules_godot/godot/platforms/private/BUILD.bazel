@@ -1,4 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//godot/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 # The ruleset's packages may depend on this package's implementation libraries, such as
 # the bzl_library targets that Gazelle generates; Starlark load visibility still restricts
@@ -10,7 +11,7 @@ package(default_visibility = ["//godot:__subpackages__"])
 # repository's root) read.
 exports_files(
     ["android_linux_toolchains.json"],
-    visibility = ["//visibility:public"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 # Text templates the rules of this package expand.

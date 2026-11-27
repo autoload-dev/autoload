@@ -3,7 +3,10 @@ load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("//godot/extension:defs.bzl", "godot_cc_extension")
 
 # A macOS application with declared entitlements whose pack ships a native extension.
-package(default_visibility = ["//godot/platforms/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests:__subpackages__"],
+)
 
 # The native extension the pack ships; the library name libhello_native.so follows the
 # target name.

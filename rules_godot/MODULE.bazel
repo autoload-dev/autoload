@@ -30,7 +30,7 @@ bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
 
 # The repository's own tooling at its root, whose linters `--config=check` and `aspect lint`
-# apply here; consumers never see it.
+# apply here, and whose artifact test rules the platform tests load; consumers never see it.
 bazel_dep(name = "autoload_dev", dev_dependency = True)
 local_path_override(
     module_name = "autoload_dev",

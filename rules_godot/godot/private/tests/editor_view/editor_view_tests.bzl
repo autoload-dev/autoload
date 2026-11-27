@@ -7,6 +7,8 @@ load("//godot:defs.bzl", "godot_editor")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load("//godot/private/tests:manifests.bzl", "manifest_content")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view"
 _PROJECT = _FIXTURE
 _DEPS = [_FIXTURE + ":main", _FIXTURE + ":view_check"]

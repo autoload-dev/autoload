@@ -11,8 +11,8 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from godot.private.testing import inspect_ios_app
-from tools.platforms.native_fixtures import macho, universal
+from tools.artifact_tests import inspect_ios_app
+from tools.artifact_tests.tests.native_fixtures import macho, universal
 
 _ARM64 = bytes.fromhex("5ef81f68a5cb3b0c82ffe288702e954d")
 _X86_64 = bytes.fromhex("9ed63934491e3c349862618a9c738b79")

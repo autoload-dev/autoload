@@ -17,6 +17,8 @@ load("//godot/private/config:settings.bzl", "VARIANT")
 load("//godot/private/tests:toolchains.bzl", "DEVELOPMENT_ENGINES", "development_engine")
 load(":android_settings.bzl", "ANDROID", "ANDROID_SDK")
 
+visibility("private")
+
 def _hub_files(engine):
     """A pattern of the files of a development engine's hub, which imports its Android shell."""
     return "*/%s/*" % DEVELOPMENT_ENGINES[engine].hub.repo_name

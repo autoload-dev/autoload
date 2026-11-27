@@ -1,10 +1,16 @@
-"""RG026: a test that starts a Godot process carries the godot_process tag."""
+"""
+RG026: a test that starts a Godot process carries the godot_process tag.
+
+godot_test, and every test operation built on it, adds the tag itself unless the test is a
+smoke test, so the rule judges the other tests: those that build or run Godot's outputs.
+"""
 
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 
 from tools.conventions.context import Context, Target
 from tools.conventions.framework import Finding, RuleInfo
+from tools.conventions.operations import TEST_RULE
 
 # The tag that keeps a test out of the fast tests, `--config=fast`.
 TAG = "godot_process"
@@ -43,6 +49,8 @@ class GodotProcessTests:
             )
         for module, tests in zip(modules, godot, strict=True):
             for target in context.bazel.rules(module):
+                if target.kind == TEST_RULE:
+                    continue
                 message = target.is_test and self.problem(target, target.label in tests)
                 if message:
                     yield Finding(target.origin, f"{target.label} {message}")

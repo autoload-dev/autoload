@@ -10,6 +10,8 @@ load("//godot:defs.bzl", "godot_addon")
 load("//godot/extension:defs.bzl", "godot_extension")
 load("//godot/private:providers.bzl", "GodotAddonInfo", "GodotExtensionInfo")
 
+visibility("private")
+
 def _test_platform_libraries_keep_provider_edge(name):
     analysis_test(
         name = name,

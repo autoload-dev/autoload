@@ -3,7 +3,10 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 
 # Android and iOS packs that set the exporters' export options, and the project's macOS
 # pack, which sets none.
-package(default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/export_settings:__pkg__"],
+)
 
 godot_project(
     name = "packs_with_export_options",

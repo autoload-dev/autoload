@@ -5,13 +5,11 @@ Godot's ignore rule decides which declared files Godot ignores.
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:paths.bzl", "godot_ignored", "resolve_project_path")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:view.bzl", "GodotViewInfo")
 load(":views.bzl", "run_view")
+
+visibility("private")
 
 # Strings stand in for the Files; resolution only looks at resource paths.
 _DECLARED = {

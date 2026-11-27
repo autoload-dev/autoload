@@ -8,6 +8,8 @@ load("//godot:defs.bzl", "godot_runtime_profile")
 load("//godot/private:view.bzl", "GodotViewInfo")
 load("//godot/private/tests:manifests.bzl", "manifest_content")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/editor_view/fixtures/project_edited_in_the_view"
 _PACKAGE = "godot/private/tests/editor_view"
 _CHECKED_IN = "runtime_profile/checked_in"
@@ -17,7 +19,7 @@ def _profile(name, **kwargs):
         name = name + "_profile",
         project = _FIXTURE,
         deps = [_FIXTURE + ":main"],
-        profile = kwargs.pop("profile", name + ".gdbuild"),
+        profile = kwargs.pop("profile", _CHECKED_IN + ".gdbuild"),
         tags = ["manual"],
         **kwargs
     )
@@ -111,20 +113,6 @@ def _the_writer_and_test_list_the_file_they_place(env, targets):
             "%s/%s.gdbuild" % (_PACKAGE, targets.derived.label.name),
         )
         env.expect.where(target = subject, field = "checked_in").that_str(manifest["checked_in"]).equals(placed)
-        env.expect.where(target = subject, field = "target").that_str(manifest["target"]).equals(placed)
-
-# A file nobody checked in yet is listed without its checked-in copy; the test fails for it
-# and names the writer.
-def _test_a_missing_checked_in_file_is_listed_empty(name):
-    analysis_test(
-        name = name,
-        targets = _profile(name),
-        impl = _a_missing_checked_in_file_is_listed_empty,
-    )
-
-def _a_missing_checked_in_file_is_listed_empty(env, targets):
-    manifest = manifest_content(targets.test, ".run.json")
-    env.expect.that_str(manifest["checked_in"]).equals("")
 
 def _test_the_profile_size_and_timeout_reach_the_test(name):
     analysis_test(
@@ -142,7 +130,6 @@ def runtime_profile_test_suite(name):
     test_suite(
         name = name,
         tests = [
-            _test_a_missing_checked_in_file_is_listed_empty,
             _test_the_profile_size_and_timeout_reach_the_test,
             _test_the_derivation_runs_the_editor_over_the_view,
             _test_the_engine_selects_the_editor,

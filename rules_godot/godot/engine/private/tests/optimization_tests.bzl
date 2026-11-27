@@ -4,6 +4,8 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private:optimization.bzl", "editor_debugging", "engine_optimization", "optimization_error")
 load("//godot/private/config:native.bzl", "COMPILATION_MODE", "COPT", "LINKOPT")
 
+visibility("private")
+
 _RELEASE = struct(role = "runtime", variant = "release")
 _DEBUG = struct(role = "runtime", variant = "debug")
 _EDITOR = struct(role = "editor", variant = "")

@@ -3,7 +3,10 @@ load("//godot/platforms/private/tests:backends.bzl", "godot_linux_application")
 load("//godot/private/tests:packaging.bzl", "fixture_pack")
 
 # Prebuilt desktop runtimes over a shell stub and packs without Godot facts.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 exports_files(["runtime.sh"])
 

@@ -1,6 +1,9 @@
 load("//godot:defs.bzl", "godot_addon", "godot_resources")
 
-package(default_visibility = ["//godot/private/tests:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests:__subpackages__"],
+)
 
 # A vendor's add-on from @external_release, placed from this repository: each file relative
 # to the package of the target that lists it, after strip_prefix.

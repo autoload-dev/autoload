@@ -3,7 +3,10 @@ load("//godot/platforms/private/tests:backends.bzl", "godot_macos_application")
 
 # A host test and a macOS application with the stub macOS runtime over the same units of
 # one project, as one build of a game's tests and its macOS application reaches them.
-package(default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/desktop_package:__subpackages__"],
+)
 
 godot_resources(
     name = "base",

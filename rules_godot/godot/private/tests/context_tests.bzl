@@ -15,6 +15,8 @@ load(":action_inputs.bzl", "godot_actions", "import_manifests", "source_inputs")
 load(":manifests.bzl", "manifest_content", "written_file")
 load(":views.bzl", "run_view")
 
+visibility("private")
+
 _FIXTURE = "//godot/private/tests/fixtures/project_with_shared_unit"
 _PROJECT_SETTING = str(Label("//godot/private:project_setting"))
 

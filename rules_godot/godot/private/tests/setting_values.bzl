@@ -7,6 +7,8 @@ project_config_test.py checks both.
 load("//godot/private:setting_values.bzl", "named_paths", "override_applies", "setting_kind")
 load("//godot/private/engine:setting_kinds.bzl", "engine_sections", "setting_kinds")
 
+visibility("private")
+
 # Key, literal and what they name: the kind's binding and the named strings, or None for a
 # setting of Godot that names no file.
 _CASES = [

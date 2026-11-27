@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # Replaces only the desktop release runtime slots; registered ahead of the prebuilt hub, it
 # leaves the editor and every other slot to that hub.
 [godot_runtime_component(

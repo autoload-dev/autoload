@@ -1,10 +1,6 @@
-load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app", "godot_configured_app")
 load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
 load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_cc_extension")
-
-# The ruleset's configured applications, which it does not support as API.
-# buildifier: disable=bzl-visibility
-load("@autoload_rules_godot//godot/private:configured_app.bzl", "godot_configured_app")
 load("@rules_python//python:defs.bzl", "py_test")
 
 # The macOS smoke path: build, inspect and boot a macOS application whose C ABI and
@@ -100,6 +96,7 @@ py_test(
 godot_configured_app(
     name = "adhoc_app",
     app = ":app",
+    debug_symbols = ":app.debug_symbols",
     macos_signing = "adhoc",
     tags = ["manual"],
     target_compatible_with = _MACOS,

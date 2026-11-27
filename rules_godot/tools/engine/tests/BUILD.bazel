@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_testonly = True)
+
 # Writes Godot source files for the tests of the include graph and the build profile.
 py_library(
     name = "source_files",

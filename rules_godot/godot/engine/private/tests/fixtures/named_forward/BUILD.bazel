@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # A runtime of the default engine's fixtures, forwarded into the engine "custom".
 godot_runtime_component(
     name = "runtime_linux_x86_64_release",

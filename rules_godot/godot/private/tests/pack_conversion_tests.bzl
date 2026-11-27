@@ -18,6 +18,8 @@ load(
 )
 load(":pack_forms.bzl", "PACK_CONVERSION")
 
+visibility("private")
+
 _PACK = "//godot/private/tests/fixtures/project_with_imported_assets:pack"
 _COMPILATION_MODE = "//command_line_option:compilation_mode"
 

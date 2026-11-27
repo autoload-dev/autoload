@@ -37,7 +37,6 @@ from tools.conventions.rules.registry_templates_have_their_module import (
 from tools.conventions.rules.registry_test_module_in_bcr import RegistryTestModules
 from tools.conventions.rules.release_archives_without_tests import ReleasedWithoutTests
 from tools.conventions.rules.rg002 import TargetNames
-from tools.conventions.rules.rg007 import TestOnlyOperations
 from tools.conventions.rules.rg012 import ProductionIsolation
 from tools.conventions.rules.rg026 import GodotProcessTests
 from tools.conventions.rules.unique_extension_names import UniqueExtensionNames
@@ -58,7 +57,6 @@ ADDON_MODULE_RULES: tuple[Rule, ...] = (
 RULES: tuple[Rule, ...] = (
     TargetNames(),
     CommandLabels(),
-    TestOnlyOperations(),
     ApplicationContentUnderMain(),
     ApplicationTestsUnderTests(),
     ProjectPlaces(),

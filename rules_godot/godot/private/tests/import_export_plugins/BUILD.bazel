@@ -4,6 +4,8 @@ load("//godot/private/tests:packaging.bzl", "in_export_platform")
 load("//godot/private/tests:views.bzl", "run_view")
 load(":outputs.bzl", "import_results", "shell_images")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/import_export_plugins/fixtures/project_with_import_and_export_plugins"
 
 # Build-output test: of a source run's imports, only the .greeting unit's stages the
@@ -62,7 +64,6 @@ godot_test(
         "'/0 store'",
     ],
     pack = _FIXTURE + ":pack",
-    tags = ["godot_process"],
 )
 
 godot_test(
@@ -73,7 +74,6 @@ godot_test(
         "'2.3.4/57 integration'",
     ],
     pack = _FIXTURE + ":release_pack",
-    tags = ["godot_process"],
 )
 
 # A source run of the release project starts with its custom feature, so the authored
@@ -86,7 +86,6 @@ godot_test(
         "'/57 integration'",
     ],
     project = _FIXTURE + ":release_project",
-    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":authored_hook",
         _FIXTURE + ":export_marker",

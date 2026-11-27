@@ -1,5 +1,7 @@
 load("//godot/engine:defs.bzl", "godot_runtime_component")
 
+package(default_testonly = True)
+
 # Runtimes that declare Godot's deployment targets, for the minimum-version checks of
 # the app fixtures; registered per test with --extra_toolchains.
 godot_runtime_component(

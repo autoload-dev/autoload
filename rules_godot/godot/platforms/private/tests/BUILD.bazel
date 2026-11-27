@@ -9,6 +9,8 @@ load(":shell_inputs_tests.bzl", "shell_inputs_test_suite")
 load(":shell_overrides_tests.bzl", "shell_overrides_test_suite")
 load(":signing_inputs_tests.bzl", "signing_inputs_test_suite")
 
+package(default_testonly = True)
+
 resolution_probe(
     name = "probe",
     tags = ["manual"],
@@ -58,6 +60,8 @@ alias(
 # plugin fixtures stand in for a downloaded plugin with it.
 py_binary(
     name = "make_aar",
+    # The mixed fixture packages, which are not test-only, build their plugin AARs with it.
+    testonly = False,
     srcs = ["make_aar.py"],
     tags = ["manual"],
     visibility = [":__subpackages__"],

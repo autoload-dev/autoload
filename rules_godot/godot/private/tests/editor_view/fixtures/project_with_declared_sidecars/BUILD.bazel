@@ -1,7 +1,10 @@
 load("//godot:defs.bzl", "godot_project", "godot_resources")
 
 # A script whose UID sidecar is declared beside it, on the ruleset's default project file.
-package(default_visibility = ["//godot/private/tests/editor_view:__pkg__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/private/tests/editor_view:__pkg__"],
+)
 
 godot_resources(
     name = "declared",

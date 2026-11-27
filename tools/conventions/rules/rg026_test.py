@@ -53,6 +53,11 @@ class GodotProcessTestsTest(RepositoryTest):
             [f"1: //tests:unit_test starts no Godot process: remove {TAG}"],
         )
 
+    def test_godot_test_tags_its_tests_itself(self) -> None:
+        # godot_test adds the tag unless the test is a smoke test; the rule leaves it out.
+        godot_test = test("exports_test") | {"kind": "_godot_test"}
+        self.assertEqual(self.findings(godot_test, godot=frozenset({GODOT})), [])
+
     def test_targets_a_macro_tags_beside_its_test_are_not_tests(self) -> None:
         view: Record = {
             "name": "//tests:exports_test.view",

@@ -5,7 +5,10 @@ load("//godot/extension/tests:library_fixtures.bzl", "dynamic_xcframework_fixtur
 # Extensions that link dynamic frameworks, as add-ons link a vendor's SDK: the first links
 # FixtureAnalytics, which links FixtureCore; the second links FixtureCore itself; the third,
 # which the application links statically, links FixtureAnalytics too.
-package(default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"])
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/platform_libraries:__subpackages__"],
+)
 
 dynamic_xcframework_fixture(
     name = "core",

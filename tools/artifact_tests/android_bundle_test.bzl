@@ -2,10 +2,12 @@
 
 load("@rules_android//providers:providers.bzl", "AndroidBundleInfo")
 load("@rules_java//java/common:java_common.bzl", "java_common")
-load("//godot/private:paths.bzl", "runfile_key")
 
-# The repository's consumer scenarios load it; it is not supported API.
-visibility("public")
+def _runfile_key(ctx, short_path):
+    # The path below a runfiles directory; those of external files start with ../.
+    if short_path.startswith("../"):
+        return short_path[3:]
+    return ctx.workspace_name + "/" + short_path
 
 def _quote(value):
     # bazel_skylib is only a development dependency of this module.
@@ -27,7 +29,7 @@ def _android_bundle_test_impl(ctx):
         files.append(ctx.file.debug_symbols)
     launcher = ctx.actions.declare_file(ctx.label.name)
     arguments = [
-        '%s "$runfiles/%s"' % (flag, runfile_key(ctx, path))
+        '%s "$runfiles/%s"' % (flag, _runfile_key(ctx, path))
         for flag, path in args
     ] + ["--library " + library for library in ctx.attr.apk_libraries] + [
         "--manifest-entry " + _quote(entry)
@@ -43,7 +45,7 @@ def _android_bundle_test_impl(ctx):
         template = ctx.file._launcher_template,
         output = launcher,
         substitutions = {
-            "{INSPECTOR}": runfile_key(ctx, inspector.short_path),
+            "{INSPECTOR}": _runfile_key(ctx, inspector.short_path),
             "{ARGUMENTS}": "\n".join(["  %s \\" % argument for argument in arguments]),
             "{APPLICATION_ID}": ctx.attr.application_id,
         },
@@ -133,11 +135,11 @@ android_bundle_test = rule(
             doc = "Fully qualified Java classes the universal APK's dex files must define, such as a plugin's entry class; a class only referenced does not count.",
         ),
         "_launcher_template": attr.label(
-            default = Label("//godot/private/testing:android_bundle_test.sh.tpl"),
+            default = Label("//tools/artifact_tests:android_bundle_test.sh.tpl"),
             allow_single_file = True,
         ),
         "_inspector": attr.label(
-            default = Label("//godot/private/testing:inspect_android_bundle"),
+            default = Label("//tools/artifact_tests:inspect_android_bundle"),
             executable = True,
             cfg = config.exec("test"),
         ),

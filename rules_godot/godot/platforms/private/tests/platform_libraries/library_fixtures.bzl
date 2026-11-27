@@ -9,6 +9,8 @@ load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 
+visibility("//godot/platforms/private/tests/platform_libraries/...")
+
 def _java_fixture_impl(ctx):
     jar = ctx.actions.declare_file(ctx.label.name + ".jar")
     ctx.actions.write(jar, "")

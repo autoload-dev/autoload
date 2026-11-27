@@ -10,6 +10,8 @@ load("//godot/private:providers.bzl", "GodotProjectInfo")
 load("//godot/private/config:application.bzl", "application_id", "application_pack")
 load(":failures.bzl", "failure_test")
 
+visibility("private")
+
 _ContextInfo = provider(doc = "Whether this configured node has an empty application context.", fields = ["empty"])
 
 def _context_probe_impl(ctx):

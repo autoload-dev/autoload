@@ -40,6 +40,7 @@ _BCR_DOCS = {
     "bcr_docs_godot_extensions": "//godot:extensions.bzl",
     "bcr_docs_godot_platforms_defs": "//godot/platforms:defs.bzl",
     "bcr_docs_godot_providers": "//godot:providers.bzl",
+    "bcr_docs_godot_testing_adapter": "//godot/testing:adapter.bzl",
 }
 
 [

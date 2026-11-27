@@ -11,10 +11,10 @@ load(
     "AppleExecutableBinaryInfo",
     "IosApplicationBundleInfo",
 )
-load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//godot:providers.bzl", "GodotPackInfo")
+load("//godot/engine/private:optimization.bzl", "ENGINE_SETTINGS_ATTRS")
 load(
     "//godot/platforms/private:shell.bzl",
     "ENGINE_CHECK_ATTRS",
@@ -25,7 +25,7 @@ load(
     "release_values",
     "shell_file",
 )
-load("//godot/private:macros.bzl", "common_kwargs", "filegroup_kwargs")
+load("//godot/private:macros.bzl", "CALLER_PACKAGE", "common_kwargs", "filegroup_kwargs")
 load("//godot/private:minimum_os.bzl", "check_minimum_os")
 load("//godot/private:providers.bzl", "GodotRuntimeInfo")
 load("//godot/private:release.bzl", "RELEASE_ATTRS")
@@ -297,12 +297,12 @@ def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, commo
     Returns:
         The shell target name and the dependencies to link.
     """
-    data = name.replace("/", "_") + ".godot_shell"
+    data = name + ".godot_shell"
     _ios_shell(
         name = data,
         pack = pack,
         minimum_os_version = minimum_os_version,
-        visibility = ["//visibility:private"],
+        visibility = CALLER_PACKAGE,
         **(common | shell)
     )
     for group in ["plist", "app_icons"]:
@@ -310,28 +310,21 @@ def ios_application_inputs(name, pack, runtime, minimum_os_version, shell, commo
             name = "%s.%s" % (data, group),
             srcs = [":" + data],
             output_group = group,
-            visibility = ["//visibility:private"],
+            visibility = CALLER_PACKAGE,
             **filegroup_kwargs(common)
         )
-    objc_library(
-        name = data + ".entry_support",
-        srcs = [Label("//godot/platforms:ios_entry_support.mm")],
-        sdk_frameworks = ["UIKit"],
-        visibility = ["//visibility:private"],
-        **common
-    )
     _ios_extension_libraries(
         name = data + ".extension_libraries",
         deps = [pack],
         minimum_os_version = minimum_os_version,
         runtime = runtime,
-        visibility = ["//visibility:private"],
+        visibility = CALLER_PACKAGE,
         **common
     )
 
     return struct(
         data = data,
-        deps = [runtime, ":" + data + ".entry_support", ":" + data + ".extension_libraries"],
+        deps = [runtime, Label("//godot/platforms:ios_entry_support"), ":" + data + ".extension_libraries"],
     )
 
 _TREE_OUTPUTS = str(Label("@rules_apple//apple/build_settings:use_tree_artifacts_outputs"))
@@ -434,7 +427,7 @@ def _bundle_targets(name, inputs, visibility, common, bundle_name, deps, resourc
         resources = [":" + data] + resources,
         infoplists = [":" + data + ".plist"] + infoplists,
         app_icons = [":" + data + ".app_icons"],
-        visibility = ["//visibility:private"],
+        visibility = CALLER_PACKAGE,
         **application
     )
     _ios_bundle(
@@ -451,22 +444,81 @@ def _bundle_targets(name, inputs, visibility, common, bundle_name, deps, resourc
         **filegroup_kwargs(common)
     )
 
-def godot_ios_application(
+def _bundle_names(name, bundle_name, executable_name):
+    """The application's bundle and executable names: the given ones, else the name."""
+    app_name = bundle_name or name
+    return struct(app = app_name, executable = executable_name or app_name)
+
+def _resolved_runtime(name, engine_settings, common):
+    """Resolve the runtime component inside each platform slice of the Apple split."""
+    runtime_bridge_ios(
+        name = name + ".godot_runtime",
+        visibility = CALLER_PACKAGE,
+        **(common | engine_settings)
+    )
+    return ":" + name + ".godot_runtime"
+
+def _ios_application_impl(
         name,
+        visibility,
         pack,
         bundle_id,
-        runtime = None,
-        minimum_os_version = IOS_MINIMUM_OS,
-        families = ["iphone", "ipad"],
-        deps = [],
-        resources = [],
-        infoplists = [],
-        app_icons = [],
-        launch_storyboard = None,
-        engine_settings = {},
-        visibility = None,
+        runtime,
+        minimum_os_version,
+        families,
+        deps,
+        resources,
+        infoplists,
+        app_icons,
+        launch_storyboard,
+        bundle_name,
+        executable_name,
         **kwargs):
-    """
+    engine_settings = {key: kwargs.pop(key) for key in ENGINE_SETTINGS_ATTRS}
+
+    # Unset common attributes stay unset on rules_apple's legacy macro.
+    kwargs = {key: value for key, value in kwargs.items() if value != None}
+    common = common_kwargs(kwargs)
+    runtime = runtime or _resolved_runtime(name, engine_settings, common)
+    names = _bundle_names(name, bundle_name, executable_name)
+    inputs = ios_application_inputs(
+        name = name,
+        pack = pack,
+        runtime = runtime,
+        minimum_os_version = minimum_os_version,
+        shell = dict(
+            bundle_id = bundle_id,
+            families = families,
+            app_name = names.app,
+            executable_name = names.executable,
+            platform_deps = deps,
+            infoplist_overrides = infoplists,
+            app_icon_overrides = app_icons,
+            launch_storyboard = launch_storyboard,
+            resource_overrides = resources,
+        ),
+        common = common,
+    )
+    _bundle_targets(
+        name = name,
+        inputs = inputs,
+        visibility = visibility,
+        common = common,
+        bundle_name = bundle_name or None,
+        deps = deps,
+        resources = resources,
+        infoplists = infoplists,
+        application = dict(
+            bundle_id = bundle_id,
+            minimum_os_version = minimum_os_version,
+            families = families,
+            launch_storyboard = launch_storyboard,
+            executable_name = names.executable,
+        ) | kwargs,
+    )
+
+godot_ios_application = macro(
+    doc = """
     Build an iOS app using a static Godot XCFramework containing main().
 
     The runtime is the iOS runtime component the runtime toolchain resolves for each
@@ -518,78 +570,45 @@ def godot_ios_application(
     `--apple_generate_dsym`, without which it is empty. rules_apple strips the
     executable with `-c opt --objc_enable_binary_stripping`; Bazel's `--strip`
     applies neither to it nor to the application's other native code.
-
-    Example:
-        godot_ios_application(
-            name = "app",
-            pack = ":pack",
-            bundle_id = "org.example.game",
-        )
-
-    See [signing and iOS setup](../../platforms.md#ios).
-
-    Args:
-        name: iOS application target name; also CFBundleDisplayName when
-            neither bundle_name nor the project's config/name sets one.
-        pack: Godot PCK target with its project extension providers.
-        runtime: Optional fixed runtime target that replaces the resolved runtime
-            component; ruleset fixtures use it to isolate packaging.
-        bundle_id: Apple application bundle identifier.
-        minimum_os_version: Minimum supported iOS version.
-        families: Apple device families supported by the application.
-        deps: Additional platform libraries the project does not bring.
-        resources: Additional application bundle resources; a PrivacyInfo.xcprivacy
-            among them replaces the generated privacy manifest.
-        infoplists: The application's own Info.plist fragments; they set their keys
-            instead of the generated Info.plist and the add-ons' fragments.
-        app_icons: The application's own app icons, which replace those Godot renders.
-        launch_storyboard: The application's own launch storyboard, which replaces the
-            generated launch screen.
-        engine_settings: The application's engine, engine_optimize, engine_lto, engine_vfe and build_profile,
-            for the runtime component it resolves.
-        visibility: Visibility of the application target.
-        **kwargs: Remaining ios_application attributes, including signing options.
-    """
-    common = common_kwargs(kwargs)
-    if not runtime:
-        # Resolve the runtime component inside each platform slice of the Apple split.
-        runtime = ":" + name + ".godot_runtime"
-        runtime_bridge_ios(
-            name = name + ".godot_runtime",
-            visibility = ["//visibility:private"],
-            **(common | engine_settings)
-        )
-    inputs = ios_application_inputs(
-        name = name,
-        pack = pack,
-        runtime = runtime,
-        minimum_os_version = minimum_os_version,
-        shell = dict(
-            bundle_id = bundle_id,
-            families = families,
-            app_name = kwargs.get("bundle_name") or name,
-            executable_name = kwargs.get("executable_name") or kwargs.get("bundle_name") or name,
-            platform_deps = deps,
-            infoplist_overrides = infoplists,
-            app_icon_overrides = app_icons,
-            launch_storyboard = launch_storyboard,
-            resource_overrides = resources,
+    """,
+    implementation = _ios_application_impl,
+    inherit_attrs = "common",
+    attrs = {
+        "pack": attr.label(
+            doc = "Godot PCK target with its project extension providers.",
+            mandatory = True,
+            configurable = False,
         ),
-        common = common,
-    )
-    _bundle_targets(
-        name = name,
-        inputs = inputs,
-        visibility = visibility,
-        common = common,
-        bundle_name = kwargs.pop("bundle_name", None),
-        deps = deps,
-        resources = resources,
-        infoplists = infoplists,
-        application = dict(
-            bundle_id = bundle_id,
-            minimum_os_version = minimum_os_version,
-            families = families,
-            launch_storyboard = launch_storyboard,
-        ) | kwargs,
-    )
+        "bundle_id": attr.string(doc = "The application's bundle identifier.", mandatory = True),
+        "runtime": attr.label(
+            doc = """
+            Optional fixed iOS runtime that replaces the resolved runtime component;
+            ruleset fixtures use it to isolate packaging.
+            """,
+            configurable = False,
+        ),
+        "minimum_os_version": attr.string(
+            doc = "Minimum iOS version of the application.",
+            default = IOS_MINIMUM_OS,
+        ),
+        "families": attr.string_list(
+            doc = "The device families, a nonempty subset of iphone and ipad.",
+            default = ["iphone", "ipad"],
+        ),
+        "deps": attr.label_list(doc = "Platform libraries of the application itself."),
+        "resources": attr.label_list(doc = "Bundle resources of the application itself."),
+        "infoplists": attr.label_list(doc = "Info.plist fragments of the application itself."),
+        "app_icons": attr.label_list(doc = "App icon sets that replace the shell's."),
+        "launch_storyboard": attr.label(doc = "The launch storyboard that replaces the shell's."),
+        "bundle_name": attr.string(
+            doc = "The bundle name; empty takes the last segment of the name.",
+            configurable = False,
+        ),
+        "executable_name": attr.string(
+            doc = "The executable's name; empty takes the bundle name.",
+            configurable = False,
+        ),
+        "provisioning_profile": attr.label(doc = "Optional provisioning profile file."),
+        "entitlements": attr.label(doc = "Optional entitlements file."),
+    } | ENGINE_SETTINGS_ATTRS,
+)

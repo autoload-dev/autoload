@@ -1,5 +1,7 @@
 load("//godot:defs.bzl", "godot_test")
 
+package(default_testonly = True)
+
 _FIXTURE = "//godot/private/tests/import_context_runs/fixtures/composed_configuration"
 
 # Run tests: main/configured_test.gd checks the composed State autoload, the application
@@ -11,7 +13,6 @@ godot_test(
     size = "small",
     main = "main/configured_test.gd",
     project = _FIXTURE,
-    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":configured_resources",
@@ -29,7 +30,6 @@ godot_test(
     ],
     main = "main/configured_test.gd",
     project = _FIXTURE + ":transitive_project",
-    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":transitive_consumer",
@@ -42,7 +42,6 @@ godot_test(
     size = "small",
     main = "main/configured_test.gd",
     project = _FIXTURE + ":overriding_project",
-    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":configured_check",
         _FIXTURE + ":overridden_consumer",

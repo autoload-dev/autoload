@@ -1,10 +1,10 @@
 """Source patches apply strictly with the patch tool, and a rejected patch stops the repository."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-
-# buildifier: disable=bzl-visibility
 load("//godot/private:patches.bzl", "apply_repository_patches")
 load(":mocks.bzl", "mocks")
+
+visibility("private")
 
 _PATCH = "/usr/bin/patch"
 
