@@ -126,6 +126,7 @@ SHARED_MODULE_FILES = frozenset(
         ".bazelversion",
         ".gitattributes",
         ".gitignore",
+        "BUILD.bazel",
         "REPO.bazel",
         "bcr/smoke/.bazelrc",
         "bcr/smoke/.bazelversion",

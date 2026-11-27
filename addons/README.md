@@ -39,6 +39,12 @@ archive_override(
 The add-ons need a rules_godot that matches them: use an override for `autoload_rules_godot`
 at the same commit until a release has what they need.
 
+Every module and the third-party libraries it builds in declare their identity (PURL) and
+license as [package metadata](https://github.com/bazel-contrib/supply-chain). SBOM and
+license tools such as `@supply_chain_tools` read it from an application's build graph, so a
+software bill of materials of a pack or an application lists the add-ons it contains.
+[`e2e/addons/sqlite/sbom`](../e2e/addons/sqlite/sbom/BUILD.bazel) writes one as SPDX.
+
 ## A new add-on
 
 `bazel run //tools/addons:new -- <module>` creates a module with one add-on, and
