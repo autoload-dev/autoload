@@ -1,0 +1,62 @@
+name: Temporary Linux source engine
+
+# Temporary: measures what the source-engine tests cost on the Linux runner. Removed before
+# the pull request merges.
+on:
+  push:
+    branches: [claude/engine-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  linux-source-engine:
+    name: Linux source engine (temporary)
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    timeout-minutes: 120
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository
+        uses: ./.github/actions/setup
+      - name: Check MODULE.bazel.lock
+        run: echo "common --config=ci" > ci.bazelrc
+      - name: Set up the Android SDK
+        run: aspect work android:setup
+      - name: Ruleset source-engine tests
+        if: ${{ !cancelled() }}
+        working-directory: rules_godot
+        run: >-
+          aspect exec -- bazel test --config=source-engine --keep_going
+          --test_tag_filters=source_engine,-ios -- //...
+      - name: Patched engine, stable
+        if: ${{ !cancelled() }}
+        run: >-
+          aspect exec -- bazel test --keep_going
+          //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test
+          //e2e/rules_godot/patched_engine/tests:app_build_profile_test
+          --extra_toolchains=//e2e/rules_godot/patched_engine/engines/stable:all
+      - name: Patched engine, beta
+        if: ${{ !cancelled() }}
+        run: >-
+          aspect exec -- bazel test --keep_going
+          //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test
+          //e2e/rules_godot/patched_engine/tests:app_build_profile_test
+          --extra_toolchains=//e2e/rules_godot/patched_engine/engines/beta:all
+      - name: Patched editor
+        if: ${{ !cancelled() }}
+        run: >-
+          aspect exec -- bazel test --keep_going
+          //e2e/rules_godot/patched_engine/tests:app_runs_patched_engine_test
+          //e2e/rules_godot/patched_engine/tests:source_built_editor_test
+          --extra_toolchains=//e2e/rules_godot/patched_engine/engines/source:all
+      - name: Root module source-engine tests
+        if: ${{ !cancelled() }}
+        run: >-
+          aspect exec -- bazel test --config=source-engine --keep_going
+          --test_tag_filters=source_engine,-ios -- //...
+      - name: Disk use
+        if: ${{ !cancelled() }}
+        run: df -h . ; du -sh ~/.cache/bazel 2>/dev/null || true
