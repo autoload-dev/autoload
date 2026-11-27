@@ -13,6 +13,8 @@ work. Everything else stays leased.
     release_done.py --dry-run   only say which slots are done and why the others stay
 
 It uses only the standard library, so hooks run it with any Python 3, and reports on stderr.
+
+Sections: Decision, Git and GitHub, Sweep, Command line.
 """
 
 from __future__ import annotations
@@ -28,16 +30,11 @@ from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+# ==== Decision ================================================================
+
 # How long a slot must have been unused before it is released: a session that has just merged
 # its pull request may still be looking at its checkout.
 IDLE_GRACE_MS = 60 * 60 * 1000
-
-# What reading a checkout raises when it is gone or Git cannot read it. A tuple of its own, so
-# that the formatter keeps the `except` readable by the older Pythons hooks may run.
-UNREADABLE = (subprocess.CalledProcessError, OSError)
-
-# How long a fetch or a request to GitHub may take, within the hook's own time limit.
-NETWORK_TIMEOUT_S = 30
 
 
 @dataclasses.dataclass(frozen=True)
@@ -127,6 +124,12 @@ def decide(slot: Slot) -> Verdict:
         return Verdict(False, blocker)
     done = _done(slot)
     return Verdict(True, done) if done else Verdict(False, "not merged")
+
+
+# ==== Git and GitHub ==========================================================
+
+# How long a fetch or a request to GitHub may take, within the hook's own time limit.
+NETWORK_TIMEOUT_S = 30
 
 
 def git(directory: Path | str, *arguments: str) -> str:
@@ -229,6 +232,9 @@ def pull_requests_from_gh(
     return pull_requests
 
 
+# ==== Sweep ===================================================================
+
+
 def _leased_here(slot: dict) -> bool:
     if slot.get("state") != "leased" or slot.get("stranded"):
         return False
@@ -239,6 +245,11 @@ def leased_slots(listing: dict) -> Iterable[dict]:
     """The slots of a `aspect worktree list --output=json` document that this clone leases."""
     for pool in listing.get("pools", []):
         yield from filter(_leased_here, pool.get("slots", []))
+
+
+# What reading a checkout raises when it is gone or Git cannot read it. A tuple of its own, so
+# that the formatter keeps the `except` readable by the older Pythons hooks may run.
+UNREADABLE = (subprocess.CalledProcessError, OSError)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -292,6 +303,9 @@ def sweep(listing: dict, actions: Actions, report: Callable[[str], None]) -> int
             report(f"{'release' if ok else 'refused'} {name}: {verdict.reason}{detail}")
             released += ok
     return released
+
+
+# ==== Command line ============================================================
 
 
 def _aspect_env() -> dict[str, str]:
