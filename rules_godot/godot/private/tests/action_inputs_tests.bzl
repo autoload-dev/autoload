@@ -9,7 +9,8 @@ closure, `<unit>.import_scripts.json` of its import inputs, and the import confi
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load(":action_inputs.bzl", "build_graph", "expect_not_read", "godot_actions", "mnemonics_of", "written_manifests")
+load(":action_inputs.bzl", "expect_not_read", "godot_actions", "mnemonics_of", "written_manifests")
+load(":built_graph.bzl", "build_graph")
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
 visibility("private")
