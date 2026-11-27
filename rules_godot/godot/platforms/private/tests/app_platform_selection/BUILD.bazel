@@ -1,12 +1,12 @@
 # Sections: Run tests, Export features, Desktop apps, Android apps, iOS simulator apps,
 # Debug symbols.
 
+load("@autoload_dev//tools/artifact_tests:android_bundle_test.bzl", "android_bundle_test")
+load("@autoload_dev//tools/artifact_tests:ios_app_test.bzl", "ios_app_test")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//godot:defs.bzl", "godot_test")
 load("//godot/platforms/private/tests:transitions.bzl", "configured_outputs")
-load("//godot/private/testing:android_bundle_test.bzl", "android_bundle_test")
-load("//godot/private/testing:ios_app_test.bzl", "ios_app_test")
 load("//godot/private/tests:packaging.bzl", "in_export_platform")
 load(":app_outputs_tests.bzl", "app_outputs_test_suite")
 
@@ -338,7 +338,7 @@ configured_outputs(
 
 android_bundle_test(
     name = "android_dual_abi_bundle_declares_sdk_versions_test",
-    size = "small",
+    size = "medium",
     application_id = "org.example.contract",
     bundle = ":android_dual_abi_bundle_sdk_app",
     bundletool = "@bundletool//file",

@@ -3,5 +3,8 @@ package(default_testonly = True)
 # The fake adapter's main script, which adapter_test declares as resources of each test.
 exports_files(
     ["run.gd"],
-    visibility = ["//godot/private/tests:__subpackages__"],
+    visibility = [
+        "//godot/private/tests/strict_warnings:__pkg__",
+        "//godot/testing/tests/adapter:__pkg__",
+    ],
 )

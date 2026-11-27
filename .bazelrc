@@ -16,7 +16,7 @@ build:editor --@autoload_rules_godot//godot:variant=editor
 build:android --platforms=@autoload_rules_godot//godot/platforms:android_arm64
 build:multi_abi --platforms=//examples:android_distribution
 # The release builds of examples/releases.bzl apply the same settings, ANDROID_RELEASE and
-# APPLE_RELEASE of the ruleset's godot_configured_app; change both together.
+# APPLE_RELEASE of examples/configured_app.bzl; change both together.
 build:android-release --config=android
 build:android-release -c opt
 build:android-release --copt=-g

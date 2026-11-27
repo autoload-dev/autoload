@@ -8,7 +8,8 @@ repository's own tooling in `tools/`: the named CI work, add-on scaffolding, set
 formatting, linting and the conventions check. It also holds the consumers of the components,
 which it reaches through `local_path_override`: the Godot applications of `examples/` and the
 ruleset's consumer scenarios in `e2e/rules_godot/`. A component's builds never load files from
-the root module; the components reach its linters only through a development dependency.
+the root module; the components reach its linters, and the ruleset's tests its artifact test
+rules (`tools/artifact_tests/`), only through a development dependency.
 
 In `rules_godot/`, `godot/` owns the rules and `tools/` the build tools, each with white-box
 tests in `tests/` subpackages. `examples/` and `e2e/rules_godot/` build as consumers do, through

@@ -1,0 +1,55 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+# The artifact test rules, which inspect a built Android App Bundle or iOS application for the
+# consumer scenarios, the examples and, through the ruleset's development dependency on this
+# module, the ruleset's own tests: their rules, launch templates and inspectors. They are
+# repository tooling, no API of the ruleset, and bring their own inspectors.
+package(default_visibility = ["//visibility:private"])
+
+# The launch templates the rules of this package expand.
+exports_files(
+    glob(["*.tpl"]),
+    visibility = ["//visibility:private"],
+)
+
+py_library(
+    name = "native_symbols",
+    srcs = ["native_symbols.py"],
+    visibility = ["//tools/artifact_tests/tests:__pkg__"],
+)
+
+py_library(
+    name = "inspect_android_bundle_lib",
+    srcs = [
+        "inspect_android_bundle.py",
+        "pck.py",
+    ],
+    visibility = ["//tools/artifact_tests/tests:__pkg__"],
+    deps = [":native_symbols"],
+)
+
+py_binary(
+    name = "inspect_android_bundle",
+    srcs = ["inspect_android_bundle.py"],
+    deps = [":inspect_android_bundle_lib"],
+)
+
+py_library(
+    name = "inspect_ios_app_lib",
+    srcs = [
+        "apple_bundle.py",
+        "inspect_ios_app.py",
+    ],
+    visibility = ["//tools/artifact_tests/tests:__pkg__"],
+    deps = [":native_symbols"],
+)
+
+py_binary(
+    name = "inspect_ios_app",
+    srcs = [
+        "apple_bundle.py",
+        "inspect_ios_app.py",
+    ],
+    main = "inspect_ios_app.py",
+    deps = [":native_symbols"],
+)
