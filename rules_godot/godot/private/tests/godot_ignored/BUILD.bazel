@@ -39,7 +39,6 @@ godot_test(
     size = "small",
     main = "main/reader.gd",
     project = _FIXTURE,
-    tags = ["godot_process"],
     deps = [_FIXTURE + ":reader"],
 )
 

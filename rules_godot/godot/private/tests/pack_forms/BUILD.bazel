@@ -50,14 +50,12 @@ godot_test(
     name = "godot_pack_runtime_inputs_test",
     size = "small",
     pack = ":godot_pack",
-    tags = ["godot_process"],
 )
 
 godot_test(
     name = "none_pack_runtime_inputs_test",
     size = "small",
     pack = ":none_pack",
-    tags = ["godot_process"],
 )
 
 # Build-output test: what both forms pack for the runtime besides the files.

@@ -8,7 +8,6 @@ godot_test(
     size = "small",
     headless = True,
     pack = "//examples/addons/sqlite:pack",
-    tags = ["godot_process"],
 )
 
 # `godot_app` tags its targets `manual`: only this test builds the desktop application.

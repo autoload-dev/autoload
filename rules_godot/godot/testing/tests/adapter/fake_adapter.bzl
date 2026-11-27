@@ -23,5 +23,6 @@ def fake_adapter_test(name, cases, project, **kwargs):
         adapter = Label("//godot/testing/tests/adapter/fixtures/fake_adapter:run.gd"),
         main = "addons/fake_adapter/run.gd",
         cases = "addons/fake_adapter/cases.txt",
-        kwargs = dict(kwargs, project = project),
+        project = project,
+        **kwargs
     )

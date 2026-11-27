@@ -55,7 +55,6 @@ godot_test(
     name = "start_pack_runs_main_scene_test",
     size = "small",
     pack = _DESKTOP + "start_pack",
-    tags = ["godot_process"],
 )
 
 # Run test: the host's exported application runs its start pack's main scene. Its smoke tag

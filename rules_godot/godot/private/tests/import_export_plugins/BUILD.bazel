@@ -64,7 +64,6 @@ godot_test(
         "'/0 store'",
     ],
     pack = _FIXTURE + ":pack",
-    tags = ["godot_process"],
 )
 
 godot_test(
@@ -75,7 +74,6 @@ godot_test(
         "'2.3.4/57 integration'",
     ],
     pack = _FIXTURE + ":release_pack",
-    tags = ["godot_process"],
 )
 
 # A source run of the release project starts with its custom feature, so the authored
@@ -88,7 +86,6 @@ godot_test(
         "'/57 integration'",
     ],
     project = _FIXTURE + ":release_project",
-    tags = ["godot_process"],
     deps = [
         _FIXTURE + ":authored_hook",
         _FIXTURE + ":export_marker",
