@@ -9,7 +9,9 @@ from unittest import mock
 
 from tools.git.changes import (
     ChangedPath,
+    GitError,
     changed_paths,
+    git,
     merge_base,
     parse_name_status,
     staged_paths,
@@ -97,6 +99,16 @@ class ChangedPathsTest(unittest.TestCase):
             [ChangedPath("moves.py", "moved.py"), ChangedPath("stays.py", "stays.py")],
             staged_paths(self.repo),
         )
+
+    def test_the_first_commit_stages_against_nothing(self) -> None:
+        (self.repo / "first.py").write_text("x = 1\n")
+        self.git("add", "first.py")
+
+        self.assertEqual([ChangedPath(None, "first.py")], staged_paths(self.repo))
+
+    def test_a_failing_git_reports_what_git_printed(self) -> None:
+        with self.assertRaisesRegex(GitError, "no-such-ref"):
+            git(self.repo, "rev-parse", "--verify", "no-such-ref^{commit}")
 
     def test_unrelated_histories_have_no_merge_base(self) -> None:
         self.commit({"a.py": "x = 1\n"}, "base")

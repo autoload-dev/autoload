@@ -52,7 +52,7 @@ def merge_base(repo: Path, base: str) -> str:
     """The merge base of HEAD with `base`; exit when they have none."""
     since = changes.merge_base(repo, base)
     if since is None:
-        sys.exit(f"HEAD has no merge base with {base}.")
+        sys.exit(f"HEAD has no merge base with {base}, or {base} names no commit.")
     return since
 
 

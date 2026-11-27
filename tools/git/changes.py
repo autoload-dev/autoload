@@ -16,14 +16,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+class GitError(subprocess.CalledProcessError):
+    """A failed Git command, which reports what Git printed."""
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}: {self.stderr.strip()}"
+
+
 def git(repo: Path, *arguments: str) -> str:
-    """Git's output in `repo`; CalledProcessError when it fails."""
-    return subprocess.run(
-        ["git", "-C", str(repo), *arguments],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+    """Git's output in `repo`; GitError when it fails."""
+    result = subprocess.run(
+        ["git", "-C", str(repo), *arguments], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        raise GitError(result.returncode, result.args, result.stdout, result.stderr)
+    return result.stdout
 
 
 @dataclass(frozen=True)
@@ -76,10 +83,8 @@ def changed_paths(repo: Path, since: str) -> list[ChangedPath]:
 
 
 def staged_paths(repo: Path) -> list[ChangedPath]:
-    """The files the index changes against HEAD."""
-    return parse_name_status(
-        git(repo, "diff", "--cached", "--name-status", "-z", "-M", "HEAD")
-    )
+    """The files the index changes against HEAD, or that it adds before a first commit."""
+    return parse_name_status(git(repo, "diff", "--cached", "--name-status", "-z", "-M"))
 
 
 @contextlib.contextmanager
