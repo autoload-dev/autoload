@@ -129,9 +129,29 @@ class ClassFragmentTest(unittest.TestCase):
     def test_godot_reads_on_after_an_unclosed_annotation(self) -> None:
         header = script_header('@icon("res://i.svg"\nclass_name C\n')
         self.assertEqual(("C", "res://i.svg"), (header["class"], header["icon"]))
-        header = script_header("@tool(\nclass_name C extends Node\n")
-        self.assertFalse(header["is_tool"])
-        self.assertEqual({"path": None, "names": ["Node"]}, header["base"])
+        for cut in ["@tool(", "@tool(1, 2", "@warning_ignore(x", "@export("]:
+            with self.subTest(cut):
+                header = script_header(cut + "\nclass_name C extends Node\n")
+                self.assertFalse(header["is_tool"])
+                self.assertEqual("C", header["class"])
+                self.assertEqual({"path": None, "names": ["Node"]}, header["base"])
+
+    def test_member_annotations_end_the_header_before_class_name(self) -> None:
+        # Godot 4.7's editor scan then registers no class.
+        for annotation in [
+            "@export",
+            "@onready",
+            "@rpc",
+            '@export_group("G")',
+            "@export_range(0, 1)",
+        ]:
+            with self.subTest(annotation):
+                header = script_header(annotation + "\nclass_name C extends Node\n")
+                self.assertEqual(("", None), (header["class"], header["base"]))
+        for annotation in ['@warning_ignore("x")', "@static_unload", "@unknown"]:
+            with self.subTest(annotation):
+                header = script_header(annotation + "\nclass_name C extends Node\n")
+                self.assertEqual("C", header["class"])
 
     def test_the_first_icon_counts(self) -> None:
         header = script_header(
@@ -154,6 +174,8 @@ class ClassFragmentTest(unittest.TestCase):
             ("res://../../x.svg", "res://../../x.svg"),
             ("http://h/a/../b.svg", "http://h/b.svg"),
             ("C:/x.svg", "C:/x.svg"),
+            ("C:\\\\x/y.svg", "C:\\x/y.svg"),
+            ("C:\\\\x.svg", "C:/x.svg"),
         ]:
             with self.subTest(icon):
                 script = f'@icon("{icon}")\nclass_name C\n'

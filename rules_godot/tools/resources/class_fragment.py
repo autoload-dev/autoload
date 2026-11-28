@@ -80,13 +80,25 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     return {"path": path, "names": names}, index
 
 
+def _resumes_header(token: tuple) -> bool:
+    """Whether Godot's parser reads the header on at this token: an annotation, class_name or extends."""
+    return (
+        is_punctuation(token, "@")
+        or is_identifier(token, "class_name")
+        or is_identifier(token, "extends")
+    )
+
+
 def _after_cut_arguments(script: list, index: int) -> int:
-    """Where Godot reads on after arguments that the file cuts off: past a string and comma."""
-    if index < len(script) and script[index][0] == "string":
-        index += 1
-    if index < len(script) and is_punctuation(script[index], ","):
+    """Where Godot reads on after arguments that the file cuts off."""
+    while index < len(script) and not _resumes_header(script[index]):
         index += 1
     return index
+
+
+def _annotates_member(name: str) -> bool:
+    """Whether an annotation belongs to a member, as @export, @onready and @rpc do."""
+    return name.startswith("export") or name in ("onready", "rpc")
 
 
 def _annotation(script: list, index: int) -> tuple[str | None, str | None, int]:
@@ -113,7 +125,8 @@ def _class_annotations(script: list, header: dict) -> tuple[int, bool]:
     Read the annotations that open the script into header.
 
     Returns where they end and whether @abstract is among them. Godot skips strings
-    between them, which serve as comments.
+    between them, which serve as comments. A member's annotation ends them; Godot then
+    reads it with the class body and takes no class_name or extends after it.
     """
     abstract = False
     index = 0
@@ -123,7 +136,10 @@ def _class_annotations(script: list, header: dict) -> tuple[int, bool]:
             continue
         if not is_punctuation(script[index], "@"):
             break
-        name, icon, index = _annotation(script, index + 1)
+        name, icon, after = _annotation(script, index + 1)
+        if name is not None and _annotates_member(name):
+            break
+        index = after
         # Godot keeps the first @icon and reports the others as errors.
         if icon is not None and not header["icon"]:
             header["icon"] = icon
@@ -237,8 +253,9 @@ def script_header(text: str) -> dict:
 
 
 # What opens a path that Godot's simplify_path keeps as it is: a scheme such as res://, a
-# network share's `//`, a root, or a Windows drive.
-_DRIVE = re.compile(r"[A-Za-z0-9]+://|//|\\\\|[/\\]|[^/:]*:/")
+# network share's `//`, a root, or a Windows drive. A drive with a backslash counts only
+# before a later slash.
+_DRIVE = re.compile(r"[A-Za-z0-9]+://|//|\\\\|[/\\]|[^/:]*:/|[^/:]*:\\(?=.*/)")
 
 
 def _simplified(path: str) -> str:

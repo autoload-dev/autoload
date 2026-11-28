@@ -73,6 +73,9 @@ class FileReferencesTest(unittest.TestCase):
         self.assertEqual([], file_references("res://b.gd", two)["references"])
         constant = '@icon(ICON)\nextends Node\nconst ICON = "res://i.png"\n'
         self.assertEqual([], file_references("res://c.gd", constant)["references"])
+        self.assertEqual(
+            [], file_references("res://e.gd", "extends Node\n@icon")["references"]
+        )
         # Godot reads on after an icon whose `)` the file leaves out.
         cut = '@icon("res://i.png"\nclass_name C extends Node\n'
         self.assertEqual(

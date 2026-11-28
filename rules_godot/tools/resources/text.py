@@ -260,7 +260,7 @@ def string_argument(script: list, paren: int) -> str | None:
     when the file cuts off the arguments after the string. It does not for two arguments or
     an expression.
     """
-    if not is_punctuation(script[paren], "(") or paren + 1 >= len(script):
+    if paren + 1 >= len(script) or not is_punctuation(script[paren], "("):
         return None
     if script[paren + 1][0] != "string":
         return None
