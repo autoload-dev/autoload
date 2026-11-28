@@ -132,6 +132,9 @@ _FIXED_HEADERS = [
 ]
 _FIXED_SOURCES = ["gdextension_interface_loader.cpp", "variant/utility_functions.cpp"]
 
+def _paths(prefix, names, suffix):
+    return [prefix + name + suffix for name in names]
+
 def binding_outputs(api, enabled):
     """
     The files the generator writes for an API selection, relative to the repository.
@@ -162,16 +165,16 @@ def binding_outputs(api, enabled):
     ]
     headers = (
         _FIXED_HEADERS +
-        ["variant/" + name + ".hpp" for name in builtins] +
-        ["classes/" + name + ".hpp" for name in classes + natives]
+        _paths("variant/", builtins, ".hpp") +
+        _paths("classes/", classes + natives, ".hpp")
     )
     sources = (
         _FIXED_SOURCES +
-        ["variant/" + name + ".cpp" for name in builtins] +
-        ["classes/" + name + ".cpp" for name in classes]
+        _paths("variant/", builtins, ".cpp") +
+        _paths("classes/", classes, ".cpp")
     )
     return (
         ["gen/include/gdextension_interface.h"] +
-        ["gen/include/godot_cpp/" + h for h in headers] +
-        ["gen/src/" + s for s in sources]
+        _paths("gen/include/godot_cpp/", headers, "") +
+        _paths("gen/src/", sources, "")
     )

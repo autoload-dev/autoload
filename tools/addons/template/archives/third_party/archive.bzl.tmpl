@@ -21,8 +21,9 @@ def github_archive(*, owner, repository, version, urls, strip_prefix = "", **att
         owner: The project's owner on GitHub, such as firebase.
         repository: The project's repository, such as firebase-ios-sdk.
         version: The release tag or commit the archive holds.
-        urls: The download URLs. Each must contain `{version}`, which version replaces.
-        strip_prefix: The archive's top-level directory; version replaces `{version}`.
+        urls: The download URLs. Each must contain `{version}`, which the version replaces.
+        strip_prefix: The archive's top-level directory. The version replaces `{version}`
+            in it.
         **attrs: The other attributes of its http_archive, such as build_file, with its
             sha256 or integrity, which pins it.
 
@@ -69,7 +70,7 @@ def archives_extension(archives):
         for name, archive in archives.items():
             http_archive(name = name, **archive.attrs)
 
-        # github_archive requires a digest of every archive.
+        # Every archive is pinned by a digest, so the fetch is reproducible.
         return module_ctx.extension_metadata(reproducible = True)
 
     return module_extension(

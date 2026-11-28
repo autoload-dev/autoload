@@ -11,8 +11,10 @@ tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add
 named like the module unless --addon names it. In these trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. The
 written files belong to the module from then on, but for its shared files: the settings every
-module keeps as the generator writes them, which `aspect generate` writes again for every
-module and the file lint compares (`stale_shared_files`).
+module keeps as the generator writes them, its copy of the repository's LICENSE and, for a
+module with third_party/archives.bzl, the archives' helper and the test of their versions.
+`aspect generate` writes them again for every module and the file lint compares them
+(`stale_shared_files`).
 
 `addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
 (`aspect work addon-template`, tools/addons/selftest.py): it is regenerated from scratch
@@ -137,9 +139,6 @@ SHARED_MODULE_FILES = frozenset(
 # The repository's license. Every module carries a copy at its root, which its package
 # metadata names as the license's text.
 LICENSE = "LICENSE"
-# A module that has this file, which declares its third-party archives, also gets the
-# template tree archives/: the helper the file loads and the test of the versions.
-ARCHIVES = "third_party/archives.bzl"
 
 
 def bazel_version(root: Path) -> str:
@@ -185,6 +184,11 @@ def registry_files(directory: str, root: Path, tokens: dict[str, str]) -> dict[P
 
 # The registry templates of every released module, by their names.
 REGISTRY_FILES = (*(relative for _, relative in template_files("bcr")), registry.METADATA)
+
+
+# A module that has this file, which declares its third-party archives, also gets the
+# template tree archives/: the helper the file loads and the test of the versions.
+ARCHIVES = "third_party/archives.bzl"
 
 
 def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:

@@ -538,18 +538,17 @@ it.
 ## shared-module-files-as-generated
 
 **Add-on modules keep the shared files as the add-on generator writes them.** Some files of
-the generator's module template are settings every module shares: `.bazelignore`, `.bazelrc`,
-`.bazelversion`, `.gitattributes`, `.gitignore`, `REPO.bazel` and the registry test module's
-`.bazelrc` and `.bazelversion`, and the registry templates `presubmit.yml`,
-`source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. So are the
-module's copy of the repository's `LICENSE` and, in a module that declares third-party
-archives in `third_party/archives.bzl`, the helper `third_party/archive.bzl` and the test of
-the archives' versions in `tests/archives/`. They are
-listed in [tools/addons/new.py](../../tools/addons/new.py) and stay as the generator writes
-them, so a change of the template or of the ruleset's metadata reaches every module:
-`aspect generate` writes them again for every add-on module, and the check compares each with
-what the generator writes. A module's own files, such as its `MODULE.bazel` and `README.md`,
-are outside it.
+the generator's module template are settings every module shares: `.bazelignore`,
+`.bazelrc`, `.bazelversion`, `.gitattributes`, `.gitignore`, `REPO.bazel` and the registry
+test module's `.bazelrc` and `.bazelversion`, and the registry templates `presubmit.yml`,
+`source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. A module
+also shares its copy of the repository's `LICENSE` and, if it declares third-party archives
+in `third_party/archives.bzl`, the helper `third_party/archive.bzl` and the test of the
+archives' versions in `tests/archives/`. [tools/addons/new.py](../../tools/addons/new.py)
+names them all, and they stay as the generator writes them, so a change of the template or
+of the ruleset's metadata reaches every module: `aspect generate` writes them again for
+every add-on module, and the check compares each with what the generator writes. A module's
+own files, such as its `MODULE.bazel` and `README.md`, are outside it.
 
 ## region-headers-named-in-head
 

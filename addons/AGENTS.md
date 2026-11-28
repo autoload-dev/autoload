@@ -32,8 +32,9 @@ The conventions check enforces it (the add-on module rules of
   Settings for all modules go in that file.
 - Package metadata, which SBOM and license tools read from an application's build: the
   shared `REPO.bazel` gives every target of the module the `package_metadata` of its shared
-  root `BUILD.bazel`, the module's PURL and its license, whose text is the module's `LICENSE`;
-  `//tools/ci:released_modules_carry_the_license_test` compares it with the repository's.
+  root `BUILD.bazel`, the module's PURL and its license, whose text is the module's
+  `LICENSE`. `//tools/ci:released_modules_carry_the_license_test` checks that it equals the
+  repository's.
   The build file of a third-party archive in `third_party/` declares the archive's own: the
   PURL of its declaration, and the license of the project with its text from the archive,
   not the licenses of the components a release bundles. `e2e/addons/sqlite/sbom/` checks that

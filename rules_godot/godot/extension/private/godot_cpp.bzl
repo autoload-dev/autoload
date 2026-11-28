@@ -18,7 +18,7 @@ GODOT_CPP_SHA256 = "30da4ac295997061a6af81ae531510efd4e6a86e506eb4466edc0898ef3f
 
 def _download(ctx, _fail):
     """
-    Download the archive of `version`, which replaces `{version}` in urls and strip_prefix.
+    Download the archive, with `version` in place of `{version}` in urls and strip_prefix.
 
     A URL without `{version}` is an error: the package URL would name another version than
     the one downloaded. Returns False after an error.
