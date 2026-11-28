@@ -25,15 +25,15 @@ godot_extension(
         "//conditions:default": [],
     }),
     entry_symbol = "sentry_gdextension_init",
-    library = select(
-        {
-            "@platforms//os:android": ":android",
-            "@platforms//os:ios": ":ios",
-            "@platforms//os:linux": ":linux",
-            "@platforms//os:macos": ":macos",
-        },
-        no_match_error = "Sentry for Godot is wired for Android, iOS, Linux and macOS",
-    ),
+    # Sentry for Godot ships Android, iOS, Linux and macOS libraries; elsewhere, such as the
+    # web, the extension has none, which the application reports as a missing library.
+    library = select({
+        "@platforms//os:android": ":android",
+        "@platforms//os:ios": ":ios",
+        "@platforms//os:linux": ":linux",
+        "@platforms//os:macos": ":macos",
+        "//conditions:default": None,
+    }),
     platform_deps = select({
         "@platforms//os:android": [":android_plugin"],
         "@platforms//os:ios": ["@sentry_godot//:sentry_cocoa_ios"],
