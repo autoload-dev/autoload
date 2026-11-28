@@ -134,16 +134,25 @@ SHARED_MODULE_FILES = frozenset(
 )
 
 
-# The repository's license, which every module carries at its root for its release archive
-# and the text of its package metadata's license.
+# The repository's license: every module carries a copy at its root, which its release
+# archive holds and its package metadata's license names as its text.
 LICENSE = "LICENSE"
-# A module that brings third-party archives declares them in this file; the template tree
-# archives/, the helper it loads beside it and the test of its versions, is shared.
+# The file in which a module declares its third-party archives. A module that has it shares
+# the template tree archives/: the helper this file loads, and the test of the versions.
 ARCHIVES = "third_party/archives.bzl"
 
 
 def bazel_version(root: Path) -> str:
     return (root / ".bazelversion").read_text().strip()
+
+
+def stale(root: Path, files: dict[Path, str]) -> dict[Path, str]:
+    """Those of the files, by path relative to root, that are missing or differ."""
+    return {
+        path: text
+        for path, text in files.items()
+        if not (root / path).is_file() or (root / path).read_text() != text
+    }
 
 
 def write_files(root: Path, files: dict[Path, str]) -> list[Path]:
@@ -152,12 +161,11 @@ def write_files(root: Path, files: dict[Path, str]) -> list[Path]:
     their modification times, which Git and Bazel read.
     """
     written = []
-    for path, text in files.items():
+    for path, text in stale(root, files).items():
         target = root / path
-        if not target.is_file() or target.read_text() != text:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text)
-            written.append(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+        written.append(target)
     return written
 
 
@@ -183,8 +191,8 @@ def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
     """
     What the generator writes to the shared files of the module addons/<directory>, by path
     relative to root: the repository's license, the helper of third-party archives and its
-    test only for a module that declares some, and the registry templates only for a module that is
-    released, which has them.
+    test only for a module that declares some, and the registry templates only for a module
+    that is released, which has them.
     """
     tokens = Names(directory).tokens(bazel_version(root))
     module = module_path(directory)
@@ -209,13 +217,10 @@ def stale_shared_files(root: Path = ROOT) -> dict[Path, str]:
     The shared files of every add-on module that differ from what the generator writes, by
     path relative to root, with what it writes.
     """
-    stale = {}
+    files = {}
     for module in addon_modules(root):
-        for path, text in shared_files(Path(module).name, root).items():
-            target = root / path
-            if not target.is_file() or target.read_text() != text:
-                stale[path] = text
-    return stale
+        files.update(shared_files(Path(module).name, root))
+    return stale(root, files)
 
 
 # ==== Generator ===============================================================
@@ -237,9 +242,8 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
-        written += write_files(
-            root, {module_path(directory) / LICENSE: (root / LICENSE).read_text()}
-        )
+        # The shared files the template tree has not written, such as the license.
+        written += write_files(root, shared_files(directory, root))
         written += copy_tree("examples", root / examples_path(directory), tokens)
         written += declarations.write(root)
         if release:

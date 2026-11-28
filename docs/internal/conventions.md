@@ -388,9 +388,10 @@ names each by the module name its `MODULE.bazel` declares. The check reads that 
 **Add-on modules own the files of the generator's template.** Each module owns the files of
 the generator's module template, such as `MODULE.bazel`, `README.md`, `REPO.bazel`,
 `BUILD.bazel`, `.bazelrc`, `.bazelignore` and its registry test module `bcr/smoke`, its copy
-of the repository's `LICENSE`, and its registry templates in `.bcr/addons/<module>/`: `metadata.template.json`, `presubmit.yml` and
-`source.template.json`. The contents of those that every module shares are what the
-generator writes ([shared-module-files-as-generated](#shared-module-files-as-generated)).
+of the repository's `LICENSE`, and its registry templates in `.bcr/addons/<module>/`:
+`metadata.template.json`, `presubmit.yml` and `source.template.json`. The contents of those
+that every module shares are what the generator writes
+([shared-module-files-as-generated](#shared-module-files-as-generated)).
 
 ## registry-templates-have-their-module
 

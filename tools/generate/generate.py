@@ -95,21 +95,15 @@ def stale_ruleset_license(root: Path) -> dict[Path, str]:
     The ruleset's copy of the repository's license if it differs, by path relative to root:
     its release archive and package metadata carry it, as the add-on modules' do theirs.
     """
-    text = (root / new.LICENSE).read_text()
-    copy = RULESET / new.LICENSE
-    return (
-        {}
-        if (root / copy).is_file() and (root / copy).read_text() == text
-        else {copy: text}
-    )
+    return new.stale(root, {RULESET / new.LICENSE: (root / new.LICENSE).read_text()})
 
 
 def shared_files(paths: list[str]) -> int:
     """
     Write the add-on modules' shared files that differ from what the generator writes, and
-    the ruleset's license. With
-    paths, as the pre-commit hook passes the staged files, a shared file that holds edits,
-    staged among the paths or unstaged, is not overwritten: the run fails instead.
+    the ruleset's license. With paths, as the pre-commit hook passes the staged files, a
+    shared file that holds edits, staged among the paths or unstaged, is not overwritten:
+    the run fails instead.
     """
     stale = new.stale_shared_files(ROOT) | stale_ruleset_license(ROOT)
     edited = set(paths) | set(unstaged_files()) if paths else set()

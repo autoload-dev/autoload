@@ -27,7 +27,7 @@ The conventions check enforces it (the add-on module rules of
 [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`,
-  `.bazelversion` and `LICENSE`, the repository's, a shared file.
+  `.bazelversion` and `LICENSE`, a shared copy of the repository's.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
 - Package metadata, which SBOM and license tools read from an application's build: the
