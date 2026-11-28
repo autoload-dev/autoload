@@ -1,9 +1,67 @@
 """
 The API selection of godot_cpp_bindings: which classes upstream's build profile keeps and
 which files its generator writes for them.
+
+Sections: Class selection, Output files.
 """
 
 visibility(["//godot/extension/private/..."])
+
+# ==== Class selection =========================================================
+
+# The classes upstream's build profile always keeps.
+_MANDATORY_CLASSES = [
+    "WorkerThreadPool",
+    "ClassDB",
+    "ClassDBSingleton",
+    "FileAccess",
+    "Image",
+    "XMLParser",
+    "OS",
+]
+
+def _lineage(name, parents):
+    """The class and its ancestors."""
+    lineage = []
+    current = name
+
+    # Starlark has no while loop; no chain of ancestors is longer than the API's classes.
+    for _ in range(len(parents) + 1):
+        if not current:
+            break
+        lineage.append(current)
+        current = parents.get(current, "")
+    return lineage
+
+def included_classes(api, selected, _fail):
+    """
+    The classes a selection keeps: the selected and mandatory ones and their ancestors.
+
+    Args:
+        api: The decoded extension API JSON.
+        selected: The enabled_classes of godot_cpp_bindings; empty for every class.
+        _fail: Called with the message of an unknown class.
+
+    Returns:
+        The class names, empty for every class, or None after an error.
+    """
+    if not selected:
+        return []
+    parents = {cls["name"]: cls.get("inherits", "") for cls in api["classes"]}
+    unknown = [name for name in selected if name not in parents]
+    if unknown:
+        _fail("unknown enabled godot-cpp class: " + unknown[0])
+        return None
+
+    # As upstream's build profile does, keep the mandatory classes and every ancestor.
+    included = {
+        ancestor: True
+        for name in selected + _MANDATORY_CLASSES
+        for ancestor in _lineage(name, parents)
+    }
+    return included.keys()
+
+# ==== Output files ============================================================
 
 def _starts_word(name, i):
     # A capital starts a word after a lowercase letter or a digit. In an acronym, the last
@@ -97,7 +155,11 @@ def binding_outputs(api, enabled):
         for cls in api["classes"]
         if not enabled or cls["name"] in enabled
     ]
-    natives = [_snake(native["name"]) for native in api["native_structures"] if native["name"] != "ObjectID"]
+    natives = [
+        _snake(native["name"])
+        for native in api["native_structures"]
+        if native["name"] != "ObjectID"
+    ]
     headers = (
         _FIXED_HEADERS +
         ["variant/" + name + ".hpp" for name in builtins] +
@@ -113,55 +175,3 @@ def binding_outputs(api, enabled):
         ["gen/include/godot_cpp/" + h for h in headers] +
         ["gen/src/" + s for s in sources]
     )
-
-# The classes upstream's build profile always keeps.
-_MANDATORY_CLASSES = [
-    "WorkerThreadPool",
-    "ClassDB",
-    "ClassDBSingleton",
-    "FileAccess",
-    "Image",
-    "XMLParser",
-    "OS",
-]
-
-def _lineage(name, parents):
-    """The class and its ancestors."""
-    lineage = []
-    current = name
-
-    # Starlark has no while loop; no chain of ancestors is longer than the API's classes.
-    for _ in range(len(parents) + 1):
-        if not current:
-            break
-        lineage.append(current)
-        current = parents.get(current, "")
-    return lineage
-
-def included_classes(api, selected, _fail):
-    """
-    The classes a selection keeps: the selected ones, the mandatory ones and their ancestors.
-
-    Args:
-        api: The decoded extension API JSON.
-        selected: The enabled_classes of godot_cpp_bindings; empty for every class.
-        _fail: Called with the message of an unknown class.
-
-    Returns:
-        The class names, empty for every class, or None after an error.
-    """
-    if not selected:
-        return []
-    parents = {cls["name"]: cls.get("inherits", "") for cls in api["classes"]}
-    unknown = [name for name in selected if name not in parents]
-    if unknown:
-        _fail("unknown enabled godot-cpp class: " + unknown[0])
-        return None
-
-    # As upstream's build profile does, keep the mandatory classes and every ancestor.
-    included = {
-        ancestor: True
-        for name in selected + _MANDATORY_CLASSES
-        for ancestor in _lineage(name, parents)
-    }
-    return included.keys()

@@ -21,18 +21,6 @@ py_library(
     ],
 )
 
-# Every released module carries the repository's license at its root, where its release
-# archive holds it, as the text of its package metadata's license.
-license_texts_test(
-    name = "released_modules_carry_the_license_test",
-    size = "small",
-    expected = "//:LICENSE",
-    package_licenses = ["@autoload_rules_godot//:license"] + [
-        repository + "//:license"
-        for repository in ADDON_REPOSITORIES
-    ],
-)
-
 py_test(
     name = "release_archive_test",
     size = "small",
@@ -48,6 +36,18 @@ py_test(
         "release_module_test.py",
     ],
     deps = ["//tools/addons:new_lib"],
+)
+
+# Every released module carries the repository's license at its root, where its release
+# archive holds it, as the text of its package metadata's license.
+license_texts_test(
+    name = "released_modules_carry_the_license_test",
+    size = "small",
+    expected = "//:LICENSE",
+    package_licenses = ["@autoload_rules_godot//:license"] + [
+        repository + "//:license"
+        for repository in ADDON_REPOSITORIES
+    ],
 )
 
 py_test(
