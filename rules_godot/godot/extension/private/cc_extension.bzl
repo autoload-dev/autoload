@@ -4,17 +4,10 @@ cc_library of the extension's code, its godot_extension_library and its godot_ex
 """
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//godot/private:macros.bzl", "CALLER_PACKAGE")
 load(":extension.bzl", "source_extension", "tool_view_of")
-load(":extension_library.bzl", "godot_extension_library")
+load(":extension_library.bzl", "RULE_ATTRS", "godot_extension_library", "private_target_attrs")
 
 visibility(["//godot/extension"])
-
-# Attributes every rule has, which godot_cc_extension passes to its library too.
-_RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
-
-# Attributes of the link alone; the cc_library has its own linkstatic.
-_LINK_ATTRS = ["linkstatic"]
 
 def _cc_extension_impl(
         name,
@@ -33,15 +26,12 @@ def _cc_extension_impl(
         infoplists,
         ios_linkage,
         ios_bundle_id,
+        linkstatic,
         **kwargs):
     # Unset attributes stay unset on the declared targets.
     kwargs = {key: value for key, value in kwargs.items() if value != None}
     tags = tags or []
-    generated = {key: kwargs[key] for key in ["testonly", "target_compatible_with"] if key in kwargs} | {
-        "visibility": CALLER_PACKAGE,
-        # The extension builds them in its own configuration, without --strip.
-        "tags": tags + ["manual"],
-    }
+    generated = private_target_attrs(kwargs, tags)
     code = name + ".native"
 
     # Every link takes the code whole, as it would take a library of godot-cpp's own build.
@@ -52,7 +42,7 @@ def _cc_extension_impl(
         deps = deps,
         alwayslink = True,
         linkstatic = True,
-        **(generated | {key: value for key, value in kwargs.items() if key not in _LINK_ATTRS + generated.keys()})
+        **(kwargs | generated)
     )
     library = name + ".library"
     godot_extension_library(
@@ -62,7 +52,9 @@ def _cc_extension_impl(
         library_name = name,
         ios_linkage = ios_linkage,
         ios_bundle_id = ios_bundle_id,
-        **(generated | {key: kwargs[key] for key in _LINK_ATTRS + _RULE_ATTRS if key in kwargs})
+        # The cc_library links statically anyway; linkstatic is the shared library's.
+        linkstatic = linkstatic,
+        **(generated | {key: kwargs[key] for key in RULE_ATTRS if key in kwargs})
     )
     source_extension(
         name = name,

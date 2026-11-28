@@ -48,6 +48,10 @@ def _extension(name, **kwargs):
         **kwargs
     )
 
+def _shared(name):
+    """The shared library target of the test's extension."""
+    return "%s_extension.library.shared/lib%s_extension.so" % (name, name)
+
 def _links(target):
     """The input paths of a target's one CppLink action."""
     links = [action for action in target[TestingAspectInfo].actions if action.mnemonic == "CppLink"]
@@ -71,7 +75,7 @@ def _test_tool_branch_of_deps_builds_the_tool_library(name):
     ]:
         analysis_test(
             name = name + "_" + configuration,
-            target = "%s_extension.library.shared/lib%s_extension.so" % (name, name),
+            target = _shared(name),
             impl = _tool_branch_of_deps_builds_the_tool_library,
             attrs = {"linked": attr.string(), "unlinked": attr.string()},
             attr_values = _SMALL | {"linked": linked, "unlinked": unlinked},
@@ -108,7 +112,7 @@ def _test_shared_library_finds_its_dependencies_beside_it(name):
     _extension(name + "_extension")
     analysis_test(
         name = name,
-        target = "%s_extension.library.shared/lib%s_extension.so" % (name, name),
+        target = _shared(name),
         impl = _shared_library_finds_its_dependencies_beside_it,
         attr_values = _SMALL,
     )
@@ -124,13 +128,13 @@ def _test_shared_library_exports_only_the_entry_symbol(name):
     _extension(name + "_extension")
     analysis_test(
         name = name + "_host",
-        target = "%s_extension.library.shared/lib%s_extension.so" % (name, name),
+        target = _shared(name),
         impl = _shared_library_exports_only_the_entry_symbol,
         attr_values = _SMALL,
     )
     analysis_test(
         name = name + "_android",
-        target = "%s_extension.library.shared/lib%s_extension.so" % (name, name),
+        target = _shared(name),
         impl = _shared_library_exports_only_the_entry_symbol,
         attr_values = _SMALL | _ANDROID_SDK,
         config_settings = _ANDROID,
@@ -158,7 +162,7 @@ def _test_hdrs_reach_the_archive_the_shared_library_links(name):
         targets = {
             "code": name + "_extension.native",
             "archive": name + "_extension.library.archive",
-            "shared": "%s_extension.library.shared/lib%s_extension.so" % (name, name),
+            "shared": _shared(name),
         },
         impl = _hdrs_reach_the_archive_the_shared_library_links,
         attrs = {"header": attr.string()},

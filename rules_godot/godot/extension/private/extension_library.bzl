@@ -19,8 +19,25 @@ GodotExtensionLibraryInfo = provider(
     },
 )
 
-# Attributes every rule has, which reach each target the macro declares.
-_RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
+# Attributes every rule has, which the extension macros pass to the targets they declare.
+RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
+
+def private_target_attrs(kwargs, tags):
+    """
+    Return the attributes of an extension macro's private targets.
+
+    Args:
+        kwargs: The macro's set attributes.
+        tags: The macro's tags.
+
+    Returns:
+        testonly and target_compatible_with where set, the caller's package as visibility
+        and the tags with manual: the extension builds them in its own configuration.
+    """
+    return {key: kwargs[key] for key in ["testonly", "target_compatible_with"] if key in kwargs} | {
+        "visibility": CALLER_PACKAGE,
+        "tags": tags + ["manual"],
+    }
 
 def _extension_library_rule_impl(ctx):
     library = ctx.attr.library
@@ -38,8 +55,13 @@ _extension_library = rule(
     },
 )
 
+def _is_c_identifier(text):
+    """Whether text is a C identifier: letters, digits and _, not starting with a digit."""
+    letters = text.replace("_", "a")
+    return letters.isalnum() and not letters[0].isdigit()
+
 def _require_c_identifier(entry_symbol):
-    if not entry_symbol or entry_symbol[0].isdigit() or not entry_symbol.replace("_", "a").isalnum():
+    if not _is_c_identifier(entry_symbol):
         fail("entry_symbol must be a C identifier; got %r" % entry_symbol)
 
 def _keep_entry_source(name, entry_symbol, generated):
@@ -63,7 +85,7 @@ def _keep_entry_source(name, entry_symbol, generated):
     )
     return keep
 
-def _shared_library(name, archive, library_name, entry_symbol, generated, link_attrs):
+def _shared_library(name, archive, library_name, entry_symbol, attrs):
     """
     Declare the shared library linked from archive, which exports only the entry symbol.
 
@@ -78,12 +100,13 @@ def _shared_library(name, archive, library_name, entry_symbol, generated, link_a
     # The library exports only its entry symbol, as godot-cpp's own build does. Each
     # extension links its own godot-cpp, and an exported copy would be shared with the
     # other extensions in the process: dyld binds weak definitions across images.
+    private = {key: attrs[key] for key in ["testonly", "target_compatible_with", "visibility", "tags"] if key in attrs}
     exports = name + ".exports"
     write_file(
         name = exports,
         out = exports + ".lds",
         content = ["{ global: %s; local: *; };" % entry_symbol],
-        **generated
+        **private
     )
 
     # Not cc_shared_library: it links only the static libraries its aspect reaches through
@@ -116,7 +139,7 @@ def _shared_library(name, archive, library_name, entry_symbol, generated, link_a
                 "-Wl,--version-script,$(execpath :%s)" % exports,
             ],
         }),
-        **(generated | link_attrs)
+        **attrs
     )
     return shared
 
@@ -138,15 +161,13 @@ def _godot_extension_library_impl(
 
     # Unset attributes stay unset on the declared targets.
     kwargs = {key: value for key, value in kwargs.items() if value != None}
-    generated = {key: kwargs[key] for key in ["testonly", "target_compatible_with"] if key in kwargs} | {
-        "visibility": CALLER_PACKAGE,
-        "tags": tags + ["manual"],
-    }
-    rule_attrs = {key: kwargs[key] for key in _RULE_ATTRS if key in kwargs}
+    generated = private_target_attrs(kwargs, tags)
+    rule_attrs = {key: kwargs[key] for key in RULE_ATTRS if key in kwargs}
     keep = _keep_entry_source(name, entry_symbol, generated)
 
-    # The code and the entry symbol's reference, which every link takes whole. On iOS with
-    # static linkage it is the archive the application links.
+    # The entry symbol's reference, linked whole, and the code. On iOS with static linkage
+    # it is the archive the application links; the classification of the extension needs
+    # an archive of the library's own there.
     archive = name + ".archive"
     cc_library(
         name = archive,
@@ -157,7 +178,7 @@ def _godot_extension_library_impl(
         linkstatic = True,
         **(generated | rule_attrs)
     )
-    shared = _shared_library(name, archive, library_name, entry_symbol, generated, rule_attrs | {"linkstatic": linkstatic})
+    shared = _shared_library(name, archive, library_name, entry_symbol, generated | rule_attrs | {"linkstatic": linkstatic})
     ios_library = ios_framework(name, shared, library_name, ios_bundle_id, generated) if ios_linkage == "framework" else archive
     _extension_library(
         name = name,
@@ -168,7 +189,7 @@ def _godot_extension_library_impl(
         entry_symbol = entry_symbol,
         visibility = visibility,
         tags = tags,
-        **{key: kwargs[key] for key in ["testonly", "target_compatible_with"] + _RULE_ATTRS if key in kwargs}
+        **({key: value for key, value in generated.items() if key not in ["visibility", "tags"]} | rule_attrs)
     )
 
 godot_extension_library = macro(
@@ -186,8 +207,9 @@ godot_extension_library = macro(
     | macOS | a dynamic library, `lib<library_name>.so` |
     | iOS | a dynamic framework, `<library_name>.framework`, or with `ios_linkage = "static"` the archive the application links |
 
-    Every link takes the code whole, so objects that nothing references, such as static
-    registrations, stay in it. Creates the named target, which provides the library of
+    The link keeps the object that defines the entry symbol and what it references; code
+    that nothing references, such as a static registration, stays only when its
+    cc_library sets alwayslink, as godot_cc_extension's does. Creates the named target, which provides the library of
     the configuration, and the private targets `<name>.archive`, the code with a
     reference to the entry symbol, `<name>.shared/lib<library_name>.so`, the shared
     library, and on iOS `<name>.ios_framework`, the framework import.

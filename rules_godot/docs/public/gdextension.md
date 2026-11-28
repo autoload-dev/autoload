@@ -102,8 +102,10 @@ godot_extension(
 ```
 
 `godot_extension_library` links what its `deps` provide into the one file the target
-platform loads, takes the code whole, exports only the entry symbol and lets the library find
-its shared dependencies beside it. It passes the entry symbol on, so the extension does not
+platform loads, exports only the entry symbol and lets the library find its shared
+dependencies beside it. The link keeps the entry symbol's object and what it references; code
+that nothing references, such as a static registration, needs `alwayslink = True` on its
+`cc_library`, as `godot_cc_extension` sets for its own. It passes the entry symbol on, so the extension does not
 repeat it; an extension whose `entry_symbol` differs from its library's fails analysis.
 
 | Operating system | What `godot_extension_library` produces |
