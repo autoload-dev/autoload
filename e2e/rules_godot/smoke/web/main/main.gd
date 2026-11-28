@@ -1,7 +1,6 @@
 extends Node
 
-# Quits with code 7 after a few frames: a quit in the first frames can hang the page's audio
-# driver before the page reports the exit.
+# Prints and quits with code 7 after a few frames; early_quit/ covers a quit in the first ones.
 var _frames := 0
 
 

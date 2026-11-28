@@ -44,6 +44,30 @@
 		}
 	});
 
+	// A quit in the first frames closes Godot's audio context while its audio worklet still
+	// loads: constructing the AudioWorkletNode on the closed context then throws, Godot's
+	// worklet close waits for that node forever, and the engine never calls onExit. A node
+	// that does nothing, in place of one on a closed context, lets the close finish, so the
+	// exit arrives with the application's own code. Only the served page has this; the
+	// application's files keep Godot's behavior.
+	const AudioNode = window.AudioWorkletNode;
+	if (typeof AudioNode === 'function') {
+		const closed = function (context) {
+			return !(context instanceof BaseAudioContext) || context.state === 'closed';
+		};
+		const silent = function () {
+			return {
+				connect: function () {},
+				disconnect: function () {},
+				port: { postMessage: function () {}, onmessage: null, close: function () {} },
+			};
+		};
+		window.AudioWorkletNode = function (context, name, options) {
+			return closed(context) ? silent() : new AudioNode(context, name, options);
+		};
+		window.AudioWorkletNode.prototype = AudioNode.prototype;
+	}
+
 	window.__rulesGodot = function (config) {
 		const hooks = {
 			onPrint: function () {

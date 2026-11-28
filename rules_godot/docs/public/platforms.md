@@ -689,7 +689,7 @@ bazel run //path/to:app --platforms=... -- --headless -- -- --level=3
 | --- | --- |
 | `--device=<name or path>` | The browser: the system's default without it, and with `--headless` the first Chromium browser found on this host |
 | `--list-devices` | List the browsers the launcher can start, then exit |
-| `--headless` | A Chromium browser of this host without a window, with software rendering, and Godot's `--headless` |
+| `--headless` | A Chromium browser of this host without a window, with software rendering; the application runs as in a visible browser, audio included |
 | `--port=<number>` | The server's port; 8060 by default, the next free one when it is taken |
 | `--browser-arg=<argument>` | An argument for the browser the launcher starts; repeatable. In a container where Chromium's sandbox cannot start, pass `--browser-arg=--no-sandbox` |
 | `--fresh`, `--detach`, `--env` | Fail: a browser gives the application no environment, and its storage is the browser's |
@@ -701,10 +701,13 @@ browser the launcher starts gets a fresh profile under `/tmp`, which it deletes 
 The browser keeps its sandbox, except inside a Bazel test, where Chromium's sandbox cannot
 start.
 
-An application that quits within its first frames never reports its exit: Godot's audio
-driver is still starting, and the page waits. The log arrives in full. Run it with
-`--headless`, which turns audio off, or quit after the first frames. A project without a
-main scene exits with 0 on the web, where Godot reports an error on the desktop.
+An application that quits within its first frames, while Godot's audio driver is still
+starting, reports its exit and its code under `bazel run`, in a visible and a headless
+browser alike: the script the launcher inserts into the served page lets Godot's audio
+close finish, which otherwise waits forever. The application's files keep Godot's behavior,
+so a deployed application on a real host that quits that early still never calls the page's
+exit callback; the log arrives in full either way. A project without a main scene exits with
+0 on the web, where Godot reports an error on the desktop.
 
 ## Version and build number
 

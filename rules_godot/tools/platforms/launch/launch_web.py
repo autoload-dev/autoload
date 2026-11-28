@@ -372,9 +372,9 @@ def _site(
     runfile: Callable[[str], str],
 ) -> Site:
     directory = Path(runfile(manifest["site"]))
-    args = (["--headless"] if options.headless else []) + list(options.godot_args)
     page = instrumented_page(
-        (directory / manifest["entry_point"]).read_text(encoding="utf-8"), args
+        (directory / manifest["entry_point"]).read_text(encoding="utf-8"),
+        list(options.godot_args),
     )
     if page is None and options.headless:
         raise launch_common.LaunchError(

@@ -23,7 +23,7 @@ import json, sys, urllib.request
 url = sys.argv[-1]
 page = urllib.request.urlopen(url).read().decode()
 assert "window.__rulesGodot(GODOT_CONFIG)" in page, page
-assert '"args": ["--headless", "level=3"]' in page, page
+assert '"args": ["level=3"]' in page, page
 origin = url.rsplit("/", 1)[0]
 assert urllib.request.urlopen(origin + "/__rules_godot/hook.js").read()
 def post(events):
