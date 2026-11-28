@@ -69,7 +69,7 @@ The conventions check enforces it (the add-on module rules of
   module, and `//tools/addons:root_targets_test` target patterns that differ from the list.
 - Every add-on lives in a directory of its own, `<module>/<addon>/`, never in the module's
   root; the root holds only the module's files,
-  [`third_party/`](../docs/internal/glossary.md#modules-and-tests), `tests/`, `bcr/` and
+  [`third_party/`](../docs/internal/glossary.md#repository-and-verification), `tests/`, `bcr/` and
   packages that other packages load by label, such as Firebase's `config/`, which its
   examples load as `@autoload_firebase//config`.
 - Each add-on `<module>/<addon>/` is a `godot_addon` whose `godot_cc_extension` selects one

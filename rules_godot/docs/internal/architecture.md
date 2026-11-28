@@ -118,6 +118,34 @@ import-linter:
 `engine`, `extension` and `platforms` hold the tools of engine builds, GDExtension bindings
 and application packaging beside them.
 
+## Progress messages
+
+An action's `progress_message` is one verb from this table, then `%{label}`: Bazel prints
+it on its status line, and a long label already fills one. The verbs are gerunds, as in
+rules_cc, rules_java, rules_android and rules_apple (`Linking %{output}`, `Building %{output}`,
+`Validating %{label}`, `Bundling %{label}`). The mnemonic names the action's kind in
+`--subcommands`, the execution log and BuildBuddy, so the message neither repeats it nor
+says what the action reads.
+
+| Verb | Actions | Mnemonics, for example |
+|---|---|---|
+| Importing | The editor converts a unit's assets. | `GodotImport` |
+| Initializing | The editor derives a view's script-class and UID caches. | `GodotInitialize` |
+| Exporting | The editor exports, or the writer writes, a pack's PCK or its configuration. | `GodotPack`, `GodotPackConfiguration`, `GodotPackWrite` |
+| Probing | The editor reports facts Godot decides. | `GodotImportableSuffixes`, `GodotShellAssets` |
+| Validating | A check whose product is its pass or fail: scripts and scenes, resource references, metadata, flags, export options, the engine version, Maven minimums. | `GodotValidate`, `GodotResourceGraphCheck` |
+| Generating | A build tool derives files from its inputs: configuration, class fragments, unit interfaces, metadata, the resource graph, pack content and descriptors, shell files, engine sources, bindings, an icon, a `.dSYM`. | `GodotProjectConfig`, `GodotMetadata`, `GodotShellFile` |
+| Bundling | Files are put into an archive or a bundle. | `GodotDesktopPackage`, `GodotDebugSymbols` |
+| Stripping | Native code loses its symbols. | `GodotStrip` |
+| Signing | A bundle is code signed. | `GodotMacosSign` |
+
+An output name in parentheses follows the label where one target runs the same verb for
+outputs that vary with its content or configuration: a unit (`Importing <unit label>`), a
+shell file (`Generating %{label} (Info.plist)`), a configuration purpose, a kind of metadata
+check, a binary's `.dSYM`. Fixed stages of one rule share a verb and a label.
+
+A new action takes a verb of the table, or extends the table with the action's row.
+
 ## Tests
 
 White-box tests beside the implementation packages cover build contracts and

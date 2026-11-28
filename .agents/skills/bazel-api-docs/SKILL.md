@@ -71,7 +71,7 @@ not explain the contract.
 
 For example, describe `runtime_deps` as resource targets whose files must be
 included in the project because scripts load them dynamically, such as through
-`load()`. State that their files become project members, just like `deps`.
+`load()`. State that their files become members of every operation that reaches them, just like `deps`.
 This explains both the attribute's purpose and its effect.
 
 Keep the essential meaning in the entry itself. Readers should not need to
