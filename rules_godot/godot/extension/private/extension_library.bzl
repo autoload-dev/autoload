@@ -100,11 +100,16 @@ def _shared_library(name, archive, library_name, entry_symbol, attrs):
 
     # The web loads a side module, whose file Godot's web export names .wasm.
     side_module = name + ".side_module/lib" + library_name + ".wasm"
+
+    # It too exports only the entry symbol: Emscripten's dynamic linking removes what the
+    # entry does not reach, and nothing of the extension's godot-cpp joins the symbols that
+    # Godot's other side modules see.
     cc_binary(
         name = side_module,
         deps = [":" + archive],
         linkshared = True,
-        **attrs
+        linkopts = ["-sEXPORTED_FUNCTIONS=_" + entry_symbol],
+        **(attrs | {"features": attrs.get("features", []) + ["godot_web_entry_only"]})
     )
 
     # The library exports only its entry symbol, as godot-cpp's own build does. Each

@@ -57,6 +57,8 @@ def _abi_feature(version, threads):
                 "-sSIDE_MODULE=1",
                 "-sSUPPORT_LONGJMP=wasm",
                 "-fno-exceptions",
+                # A side module exports only its entry symbol, which its link names.
+                "-fvisibility=hidden",
                 # clang's resource directory stays relative to the invoked path.
                 "-no-canonical-prefixes",
             ] + threads_flags),
@@ -71,6 +73,12 @@ def _impl(ctx):
         feature(name = "supports_pic", enabled = True),
         feature(name = "supports_dynamic_linker", enabled = True),
         _abi_feature(ctx.attr.version, ctx.attr.threads),
+        # Requested by an extension library's side module, which exports only its entry
+        # symbol: its flag follows the ABI's, so it replaces SIDE_MODULE=1.
+        feature(
+            name = "godot_web_entry_only",
+            flag_sets = [_flags(_SHARED_LINK, ["-sSIDE_MODULE=2"])],
+        ),
         feature(
             name = "emscripten_environment",
             enabled = True,

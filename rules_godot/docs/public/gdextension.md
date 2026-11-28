@@ -279,7 +279,9 @@ x86_64 and ARM64, have one, so remote execution works. Every object of the exten
 godot-cpp's included, compiles with the engine's ABI: as a side module with WebAssembly
 longjmp, 32-bit bindings, and with threads where the [export platform](platforms.md#threads)
 has them. A threaded side module links its start file from the build, not from Emscripten's
-cache, which the SDK archives lack.
+cache, which the SDK archives lack. As on other platforms, the side module exports only its
+entry symbol: web objects compile with hidden visibility, so one extension's godot-cpp stays
+apart from another's.
 
 ```starlark
 godot_cc_extension(
