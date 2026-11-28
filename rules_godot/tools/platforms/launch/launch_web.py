@@ -29,7 +29,7 @@ from typing import Any
 
 import launch_common
 
-OPTIONS = frozenset({"device", "list_devices", "headless", "port"})
+OPTIONS = frozenset({"device", "list_devices", "headless", "port", "browser_args"})
 
 # Godot's port for "Run in browser"; the next free one when it is taken.
 DEFAULT_PORT = 8060
@@ -170,9 +170,6 @@ _COMMON_FLAGS = (
 )
 _HEADLESS_FLAGS = (
     "--headless=new",
-    # Chromium's own sandbox cannot start under a Bazel test's sandbox or in a container,
-    # and the page is the application's own, served from this host.
-    "--no-sandbox",
     "--disable-gpu",
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
@@ -181,14 +178,22 @@ _HEADLESS_FLAGS = (
 )
 
 
+# Chromium's own sandbox cannot start inside a Bazel test's sandbox; a test runs the page of
+# its own application, served from this host. Bazel sets TEST_TMPDIR for every test.
+_IN_TEST_FLAGS = ("--no-sandbox",)
+
+
 def browser_command(
-    browser: Browser, url: str, profile: str, headless: bool
+    browser: Browser, url: str, profile: str, options: launch_common.Options
 ) -> list[str]:
     """Return the command that opens url in a browser the launcher starts."""
+    extra = list(options.browser_args)
     if not browser.chromium:
-        return [browser.path, "--new-instance", "--profile", profile, url]
-    flags = list(_COMMON_FLAGS) + (list(_HEADLESS_FLAGS) if headless else [])
-    return [browser.path, *flags, "--user-data-dir=" + profile, url]
+        return [browser.path, "--new-instance", "--profile", profile, *extra, url]
+    flags = list(_COMMON_FLAGS) + (list(_HEADLESS_FLAGS) if options.headless else [])
+    if "TEST_TMPDIR" in os.environ:
+        flags += _IN_TEST_FLAGS
+    return [browser.path, *flags, *extra, "--user-data-dir=" + profile, url]
 
 
 # ==== Page ====================================================================
@@ -386,7 +391,7 @@ def _site(
 
 
 def _open(
-    browser: Browser | None, url: str, profile: str, headless: bool
+    browser: Browser | None, url: str, profile: str, options: launch_common.Options
 ) -> subprocess.Popen | None:
     """Open url in the system's default browser, or start the browser and return its process."""
     if browser is None:
@@ -398,7 +403,7 @@ def _open(
     try:
         with (Path(profile) / "browser.log").open("w") as log:
             return subprocess.Popen(
-                browser_command(browser, url, profile, headless),
+                browser_command(browser, url, profile, options),
                 stdin=subprocess.DEVNULL,
                 stdout=log,
                 stderr=subprocess.STDOUT,
@@ -433,7 +438,7 @@ def launch(
     )
     process = None
     try:
-        process = _open(browser, url, profile, options.headless)
+        process = _open(browser, url, profile, options)
         if site.page is None:
             threading.Event().wait()
         return _wait(run, process, Path(profile) / "browser.log")

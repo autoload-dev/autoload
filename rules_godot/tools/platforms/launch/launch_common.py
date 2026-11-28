@@ -51,6 +51,7 @@ class Options:
     simulator_type: str | None = None
     os_version: str | None = None
     port: int | None = None
+    browser_args: Sequence[str] = ()
     godot_args: Sequence[str] = ()
 
 
@@ -152,6 +153,14 @@ def _add_platform_options(parser: argparse.ArgumentParser) -> None:
         metavar="NUMBER",
         help="port of the local server on 127.0.0.1 (default: 8060, or the next free one)",
     )
+    web.add_argument(
+        "--browser-arg",
+        dest="browser_args",
+        action="append",
+        default=[],
+        metavar="ARG",
+        help="pass ARG to the browser the launcher starts, such as --no-sandbox in a container; repeatable",
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -234,6 +243,7 @@ def parse_options(
         simulator_type=values.simulator_type,
         os_version=values.os_version,
         port=values.port,
+        browser_args=tuple(values.browser_args),
         godot_args=tuple(godot_args),
     )
     _reject_unaccepted_options(options, parser, platform, accepted)

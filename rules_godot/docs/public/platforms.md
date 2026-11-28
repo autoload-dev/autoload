@@ -691,12 +691,15 @@ bazel run //path/to:app --platforms=... -- --headless -- -- --level=3
 | `--list-devices` | List the browsers the launcher can start, then exit |
 | `--headless` | A Chromium browser of this host without a window, with software rendering, and Godot's `--headless` |
 | `--port=<number>` | The server's port; 8060 by default, the next free one when it is taken |
+| `--browser-arg=<argument>` | An argument for the browser the launcher starts; repeatable. In a container where Chromium's sandbox cannot start, pass `--browser-arg=--no-sandbox` |
 | `--fresh`, `--detach`, `--env` | Fail: a browser gives the application no environment, and its storage is the browser's |
 
 The launcher uses the browsers of this host and downloads none. `--headless` needs a
 Chromium browser: Google Chrome, Chromium, Microsoft Edge or `chrome-headless-shell`. Without
 one the launcher fails and says what it looked for; `--device=<path>` names another. A
 browser the launcher starts gets a fresh profile under `/tmp`, which it deletes afterwards.
+The browser keeps its sandbox, except inside a Bazel test, where Chromium's sandbox cannot
+start.
 
 An application that quits within its first frames never reports its exit: Godot's audio
 driver is still starting, and the page waits. The log arrives in full. Run it with

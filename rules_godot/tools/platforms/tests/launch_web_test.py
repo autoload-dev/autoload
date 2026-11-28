@@ -10,8 +10,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import launch_common
 import launch_web
 from launch_common import LaunchError, parse_options
+
+_HEADLESS = launch_common.Options(headless=True)
 
 # A stand-in for a Chromium browser: it loads the page it is given, checks the launcher's
 # hook, and posts the engine's events out of order, as concurrent requests may arrive.
@@ -66,11 +69,28 @@ class BrowsersTest(unittest.TestCase):
     def test_headless_chromium_renders_in_software(self) -> None:
         chromium = launch_web.Browser("Chromium", "/usr/bin/chromium", True)
         command = launch_web.browser_command(
-            chromium, "http://127.0.0.1:8060/index.html", "/tmp/p", True
+            chromium, "http://127.0.0.1:8060/index.html", "/tmp/p", _HEADLESS
         )
         self.assertIn("--use-angle=swiftshader", command)
         self.assertIn("--user-data-dir=/tmp/p", command)
         self.assertEqual("http://127.0.0.1:8060/index.html", command[-1])
+
+    def test_the_sandbox_stays_on_outside_a_bazel_test(self) -> None:
+        chromium = launch_web.Browser("Chromium", "/usr/bin/chromium", True)
+        url = "http://127.0.0.1:8060/index.html"
+        with mock.patch.dict(os.environ, clear=True):
+            run = launch_web.browser_command(chromium, url, "/tmp/p", _HEADLESS)
+        self.assertNotIn("--no-sandbox", run)
+        with mock.patch.dict(os.environ, {"TEST_TMPDIR": "/tmp/t"}):
+            test = launch_web.browser_command(chromium, url, "/tmp/p", _HEADLESS)
+        self.assertIn("--no-sandbox", test)
+
+    def test_browser_arguments_reach_the_browser(self) -> None:
+        chromium = launch_web.Browser("Chromium", "/usr/bin/chromium", True)
+        options = launch_common.Options(headless=True, browser_args=("--lang=de",))
+        command = launch_web.browser_command(chromium, "http://x/", "/tmp/p", options)
+        self.assertIn("--lang=de", command)
+        self.assertEqual("http://x/", command[-1])
 
 
 class PageTest(unittest.TestCase):
