@@ -70,7 +70,7 @@ def _literal_value(script: list, assign: int) -> str | None:
     if value[0] != "string":
         return None
     # The statement ends after the literal: at the end of its line or at a semicolon.
-    ends = after[2] != value[2] or after == _NO_TOKEN or is_punctuation(after, ";")
+    ends = after[2] != value[2] or is_punctuation(after, ";")
     return value[1] if ends else None
 
 
@@ -309,8 +309,8 @@ def _icon_annotation(scan: Scan, path: str, script: list, i: int) -> bool:
     _, name, line = script[i]
     if name != "icon" or not is_punctuation(_at(script, i - 1), "@"):
         return False
-    icon = _literal_argument(script, i + 1, constants=scan.constants.get(path))
-    # Godot's scan records an icon only for a single argument.
+    # Godot's scan records an icon only for a single string, not for a constant.
+    icon = _literal_argument(script, i + 1)
     if icon is None or not closes_arguments(script, i + 3):
         return False
     scan.reference(path, icon, "script_icon", line)

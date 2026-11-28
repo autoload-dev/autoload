@@ -68,9 +68,11 @@ class FileReferencesTest(unittest.TestCase):
             [{"kind": "script_icon", "path": "res://icon.png", "uid": None}],
             found["references"],
         )
-        # Godot's scan records no icon for two arguments.
+        # Godot's scan records no icon for two arguments or a constant.
         two = '@icon("res://a.png", "res://b.png")\nextends Node\n'
         self.assertEqual([], file_references("res://b.gd", two)["references"])
+        constant = '@icon(ICON)\nextends Node\nconst ICON = "res://i.png"\n'
+        self.assertEqual([], file_references("res://c.gd", constant)["references"])
 
     def test_a_scene_authors_its_uid_and_references_by_path_and_uid(self) -> None:
         scene = (
