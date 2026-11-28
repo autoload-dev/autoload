@@ -38,6 +38,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 		"name_translations": _name_translations(preset),
 		"rendered": images["rendered"],
 		"copied": images["copied"],
+		"unreadable": images["unreadable"],
 	}
 
 
@@ -74,18 +75,23 @@ func _settings(preset: EditorExportPreset) -> Dictionary:
 
 
 # Render the images the action lists into their outputs. The result names the
-# rendered entries and maps each entry that rules_godot copies to its source.
+# rendered entries, maps each entry that rules_godot copies to its source, and maps each
+# entry whose first source names a file Godot cannot load to that file.
 func _render_images(preset: EditorExportPreset) -> Dictionary:
 	var rendered: Array[String] = []
 	var copied: Dictionary = {}
+	var unreadable: Dictionary = {}
 	var loaded: Dictionary = {}
 	var saved: Dictionary = {}
 	var images: Array = action["images"]
 	for entry: Dictionary in images:
 		var source: String = _first_source(preset, entry, loaded)
+		var entry_name: String = entry["name"]
+		var named: String = _resolve(preset, entry["sources"][0])
+		if not named.is_empty() and named != source:
+			unreadable[entry_name] = named
 		if source.is_empty():
 			continue
-		var entry_name: String = entry["name"]
 		if _copies(entry, source):
 			# Godot uses a file of this type as it is; rules_godot copies it.
 			copied[entry_name] = source
@@ -93,7 +99,7 @@ func _render_images(preset: EditorExportPreset) -> Dictionary:
 		var image: Image = loaded[source]
 		if _render(preset, entry, source, image, saved):
 			rendered.append(entry_name)
-	return {"rendered": rendered, "copied": copied}
+	return {"rendered": rendered, "copied": copied, "unreadable": unreadable}
 
 
 # Return the first source of the entry that Godot can use, or "" if none works.

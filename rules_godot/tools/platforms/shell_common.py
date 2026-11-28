@@ -18,6 +18,8 @@ class Facts:
         self.settings: dict[str, Any] = data["settings"]
         self.versions: dict[str, str] = data["versions"]
         self.name_translations: dict[str, str | None] = data["name_translations"]
+        # The image entries whose first source names a file Godot cannot load, with that file.
+        self.unreadable: dict[str, str] = data.get("unreadable", {})
 
     def option(self, name: str) -> Any:
         """Return an export option's value, its default when the pack sets none."""

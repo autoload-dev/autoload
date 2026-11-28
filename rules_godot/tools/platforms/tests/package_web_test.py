@@ -89,6 +89,15 @@ class ProgressiveWebAppTest(unittest.TestCase):
             package_web.manifest(Facts(_PWA_FACTS)),
         )
 
+    def test_an_icon_godot_cannot_load_fails_as_godots_export_does(self) -> None:
+        facts = Facts(_PWA_FACTS | {"unreadable": {"pwa_180.png": "res://icon.txt"}})
+        with self.assertRaisesRegex(
+            SystemExit,
+            'progressive_web_app/icon_180x180: Could not read file: "res://icon.txt".',
+        ):
+            package_web.check_pwa_icons(facts)
+        package_web.check_pwa_icons(Facts(_PWA_FACTS))
+
     def test_cache_version_follows_the_cached_files(self) -> None:
         site = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, site, True)

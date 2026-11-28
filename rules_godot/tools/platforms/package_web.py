@@ -216,8 +216,19 @@ def manifest(facts: Facts) -> str:
     )
 
 
+def check_pwa_icons(facts: Facts) -> None:
+    """Fail, as Godot's export does, where an icon option names a file Godot cannot load."""
+    for size in _ICON_SIZES:
+        path = facts.unreadable.get(f"pwa_{size}.png")
+        if path:
+            raise SystemExit(
+                f'progressive_web_app/icon_{size}x{size}: Could not read file: "{path}".'
+            )
+
+
 def write_pwa(args: argparse.Namespace, facts: Facts, site: Path) -> None:
     """Write the progressive web app's files beside the page."""
+    check_pwa_icons(facts)
     for size in _ICON_SIZES:
         shutil.copyfile(
             args.images / f"pwa_{size}.png", site / f"{NAME}.{size}x{size}.png"
