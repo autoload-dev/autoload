@@ -109,7 +109,7 @@ def _script_class(script: list, header: dict) -> int:
     index = 0
     while index < len(script):
         category, value, _ = script[index]
-        if value == "@" and index + 1 < len(script):
+        if is_punctuation(script[index], "@") and index + 1 < len(script):
             annotation, icon, index = _annotation(script, index + 1)
             if icon is not None:
                 header["icon"] = icon

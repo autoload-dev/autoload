@@ -189,6 +189,9 @@ class ScriptInterfaceTest(unittest.TestCase):
             'func f():\n\tprint($"Root"/await)\n',
             "func f():\n\tprint(%Root/%await)\n",
             "func f():\n\tprint(% await)\n",
+            "func f():\n\treturn %await\n",
+            "func f():\n\tif not %await:\n\t\tpass\n",
+            "func f():\n\tprint(1)\n\t%await.hide()\n",
             # A restored warning would report again in the stubs.
             (
                 '@warning_ignore_start("unused_parameter")\nfunc f(a):\n\tpass\n'
@@ -232,6 +235,10 @@ class ScriptInterfaceTest(unittest.TestCase):
         self.assertEqual(
             'func f() -> float: return await Engine.get_meta(&"")\n',
             _stubs("func f() -> float:\n\treturn x[0] / await g()\n"),
+        )
+        self.assertEqual(
+            'func f(): await Engine.get_meta(&"")\n',
+            _stubs("func f():\n\tprint({1: 2} % await g())\n"),
         )
 
     def test_a_string_restores_no_warning(self) -> None:

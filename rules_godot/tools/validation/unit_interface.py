@@ -166,11 +166,29 @@ def _is_path_name(token: Token) -> bool:
     return token.category in ("identifier", "string")
 
 
-def _starts_path(before: Token | None) -> bool:
-    """Whether a `%` after this token starts a node path; after an operand it is modulo."""
-    if before is None:
+# The keywords after which an expression starts, so that a `%` after them starts a path.
+_EXPRESSION_KEYWORDS = frozenset(
+    ("and", "as", "await", "elif", "else", "if", "in", "is", "match", "not", "or")
+    + ("return", "when", "while")
+)
+
+
+def _ends_operand(token: Token) -> bool:
+    """Whether a `%` after this token is modulo, not the start of a node path."""
+    if token.category == "identifier":
+        return token.value not in _EXPRESSION_KEYWORDS
+    if token.category == "string":
         return True
-    return before.value not in (")", "]") and not before.value.isdigit()
+    return token.value in (")", "]", "}") or token.value.isdigit()
+
+
+def _starts_path(before: Token | None, separator: Token) -> bool:
+    """Whether the `%` after the token before it starts a node path."""
+    # A statement on a new line may start with a path. A `%` after a line break inside
+    # brackets is taken for one too, which keeps the body.
+    if before is None or before.line != separator.line:
+        return True
+    return not _ends_operand(before)
 
 
 def _follows_path_name(body: list[Token], separator: int) -> bool:
@@ -182,6 +200,13 @@ def _follows_path_name(body: list[Token], separator: int) -> bool:
     )
 
 
+def _follows_dollar_name(body: list[Token], separator: int) -> bool:
+    """Whether the separator at body[separator] follows `$` and a name, as in `$Root/`."""
+    if separator < 2:
+        return False
+    return _is_path_name(body[separator - 1]) and is_punctuation(body[separator - 2], "$")
+
+
 def _in_node_path(body: list[Token], separator: int) -> bool:
     """
     Whether the `/` or `%` at body[separator] belongs to a node path, not an operator.
@@ -191,10 +216,9 @@ def _in_node_path(body: list[Token], separator: int) -> bool:
     """
     while _follows_path_name(body, separator):
         separator -= 2
-    before = body[separator - 1] if separator else None
-    if before is None or not _is_path_name(before):
-        return _starts_path(before)
-    return separator > 1 and is_punctuation(body[separator - 2], "$")
+    if _follows_dollar_name(body, separator):
+        return True
+    return _starts_path(body[separator - 1] if separator else None, body[separator])
 
 
 def _names_node_or_member(body: list[Token], position: int) -> bool:

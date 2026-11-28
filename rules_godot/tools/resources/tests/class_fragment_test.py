@@ -62,6 +62,10 @@ class ClassFragmentTest(unittest.TestCase):
         header = script_header("class Inner:\n\textends Node\n")
         self.assertEqual({"Inner": {"path": None, "names": ["Node"]}}, header["inner"])
 
+    def test_a_string_starts_no_annotation(self) -> None:
+        header = script_header('"@"\nicon("res://i.svg")\n')
+        self.assertEqual("", header["icon"])
+
     def test_a_string_names_no_inner_class(self) -> None:
         header = script_header('class_name C\nfunc f(s):\n\tif "class" in s:\n\t\tpass\n')
         self.assertEqual({}, header["inner"])
