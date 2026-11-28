@@ -158,6 +158,11 @@ compress/mode=0
 """
 
 
+def _stubs(source: str) -> str:
+    """The script interface of source without its first line, which ignores the warnings."""
+    return script_interface(source).split("\n", 1)[1]
+
+
 class ScriptInterfaceTest(unittest.TestCase):
     def test_bodies_leave_and_declarations_stay(self) -> None:
         self.assertEqual(EXPECTED, script_interface(BASE))
@@ -196,31 +201,23 @@ class ScriptInterfaceTest(unittest.TestCase):
     def test_a_lambda_default_has_no_say_in_the_return_type(self) -> None:
         self.assertEqual(
             "func f(cb := func() -> int: return 1): pass\n",
-            script_interface(
-                "func f(cb := func() -> int: return 1):\n\tcb.call()\n"
-            ).split("\n", 1)[1],
+            _stubs("func f(cb := func() -> int: return 1):\n\tcb.call()\n"),
         )
         self.assertEqual(
             'func g(cb := func() -> int: return 1) -> int: return Engine.get_meta(&"")\n',
-            script_interface(
-                "func g(cb := func() -> int: return 1) -> int:\n\treturn cb.call()\n"
-            ).split("\n", 1)[1],
+            _stubs("func g(cb := func() -> int: return 1) -> int:\n\treturn cb.call()\n"),
         )
 
     def test_a_backslash_string_continues_no_line(self) -> None:
         self.assertEqual(
             'const SEP = "\\\\"\nfunc f() -> int: return Engine.get_meta(&"")\n',
-            script_interface('const SEP = "\\\\"\nfunc f() -> int:\n\treturn 1\n').split(
-                "\n", 1
-            )[1],
+            _stubs('const SEP = "\\\\"\nfunc f() -> int:\n\treturn 1\n'),
         )
 
     def test_brackets_in_annotation_strings_nest_nothing(self) -> None:
         self.assertEqual(
             '@warning_ignore("(") func f(): pass\n',
-            script_interface('@warning_ignore("(") func f():\n\tprint(1)\n').split(
-                "\n", 1
-            )[1],
+            _stubs('@warning_ignore("(") func f():\n\tprint(1)\n'),
         )
 
     def test_a_script_without_bodies_stays(self) -> None:

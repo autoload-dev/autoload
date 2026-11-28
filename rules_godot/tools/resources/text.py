@@ -231,6 +231,15 @@ def tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
     return [token[:3] for token in lex(text, shader=shader)]
 
 
+def is_punctuation(token: tuple, value: str) -> bool:
+    """
+    Whether a token from lex or tokens is the punctuation value.
+
+    A string token holds its decoded text, so its value alone may look like punctuation.
+    """
+    return token[:2] == ("punctuation", value)
+
+
 # ==== Text resources ==========================================================
 
 

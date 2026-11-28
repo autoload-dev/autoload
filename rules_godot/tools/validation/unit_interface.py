@@ -46,7 +46,14 @@ from tools.inputs.originals import (
 )
 from tools.resources.class_fragment import skip_arguments
 from tools.resources.files import IMPORT, import_base
-from tools.resources.text import IMPORTER, REMAP_PATH, Token, lex, remap_section
+from tools.resources.text import (
+    IMPORTER,
+    REMAP_PATH,
+    Token,
+    is_punctuation,
+    lex,
+    remap_section,
+)
 
 # The class of the resource each of Godot's own importers produces, which a stand-in has: a
 # preloaded resource types its constant by its class. Other importers, such as an add-on's,
@@ -101,7 +108,7 @@ def _continues(line: list[Token], depth: int) -> bool:
     """
     if depth:
         return True
-    return bool(line) and (line[-1].category, line[-1].value) == ("punctuation", "\\")
+    return is_punctuation(line[-1], "\\")
 
 
 def _logical_lines(tokens: list[Token]) -> list[list[Token]]:
@@ -148,7 +155,7 @@ def _block_colon(line: list[Token], index: int) -> int | None:
     depth = 0
     for position in range(index, len(line)):
         token = line[position]
-        if (token.category, token.value) == ("punctuation", ":") and not depth:
+        if is_punctuation(token, ":") and not depth:
             return position
         depth += _nesting(token)
     return None
