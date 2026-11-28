@@ -4,7 +4,7 @@ cc_library of the extension's code, its godot_extension_library and its godot_ex
 """
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load(":extension.bzl", "extension_rule", "tool_view_of")
+load(":extension.bzl", "extension_parts", "extension_rule")
 load(":extension_library.bzl", "godot_extension_library", "private_target_attrs", "rule_attrs")
 
 visibility(["//godot/extension"])
@@ -63,7 +63,7 @@ def _cc_extension_impl(
         infoplists = infoplists,
         visibility = visibility,
         target_compatible_with = kwargs.get("target_compatible_with"),
-        **tool_view_of(name, dict(
+        **extension_parts(name, dict(
             library = ":" + library,
             data = data,
             resource_path = resource_path,
