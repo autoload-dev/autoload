@@ -158,6 +158,11 @@ compress/mode=0
 """
 
 
+def _stubs(source: str) -> str:
+    """The script interface of source without its first line, @warning_ignore_start."""
+    return script_interface(source).split("\n", 1)[1]
+
+
 class ScriptInterfaceTest(unittest.TestCase):
     def test_bodies_leave_and_declarations_stay(self) -> None:
         self.assertEqual(EXPECTED, script_interface(BASE))
@@ -178,8 +183,18 @@ class ScriptInterfaceTest(unittest.TestCase):
 
     def test_undecided_bodies_stay(self) -> None:
         for source in [
-            # An await in a node path names a node.
+            # An await in a node path names a node. Godot allows blanks in the path.
             "func f():\n\tprint($await)\n",
+            "func f():\n\tprint($Root / await)\n",
+            'func f():\n\tprint($"Root"/await)\n',
+            "func f():\n\tprint(%Root/%await)\n",
+            "func f():\n\tprint(% await)\n",
+            "func f():\n\tprint($/root/await)\n",
+            "func f():\n\tprint($/await)\n",
+            "func f():\n\tvar n = $A/\\\n\t\tawait\n",
+            "func f():\n\treturn %await\n",
+            "func f():\n\tif not %await:\n\t\tpass\n",
+            "func f():\n\tprint(1)\n\t%await.hide()\n",
             # A restored warning would report again in the stubs.
             (
                 '@warning_ignore_start("unused_parameter")\nfunc f(a):\n\tpass\n'
@@ -196,15 +211,53 @@ class ScriptInterfaceTest(unittest.TestCase):
     def test_a_lambda_default_has_no_say_in_the_return_type(self) -> None:
         self.assertEqual(
             "func f(cb := func() -> int: return 1): pass\n",
-            script_interface(
-                "func f(cb := func() -> int: return 1):\n\tcb.call()\n"
-            ).split("\n", 1)[1],
+            _stubs("func f(cb := func() -> int: return 1):\n\tcb.call()\n"),
         )
         self.assertEqual(
             'func g(cb := func() -> int: return 1) -> int: return Engine.get_meta(&"")\n',
-            script_interface(
-                "func g(cb := func() -> int: return 1) -> int:\n\treturn cb.call()\n"
-            ).split("\n", 1)[1],
+            _stubs("func g(cb := func() -> int: return 1) -> int:\n\treturn cb.call()\n"),
+        )
+
+    def test_a_string_ending_in_a_backslash_joins_no_line(self) -> None:
+        self.assertEqual(
+            'const SEP = "\\\\"\nfunc f() -> int: return Engine.get_meta(&"")\n',
+            _stubs('const SEP = "\\\\"\nfunc f() -> int:\n\treturn 1\n'),
+        )
+
+    def test_brackets_in_annotation_strings_nest_nothing(self) -> None:
+        self.assertEqual(
+            '@warning_ignore("(") func f(): pass\n',
+            _stubs('@warning_ignore("(") func f():\n\tprint(1)\n'),
+        )
+
+    def test_an_operator_before_await_names_no_node(self) -> None:
+        self.assertEqual(
+            'func f() -> String: return await Engine.get_meta(&"")\n',
+            _stubs('func f() -> String:\n\treturn "%d" % await g()\n'),
+        )
+        self.assertEqual(
+            'func f() -> float: return await Engine.get_meta(&"")\n',
+            _stubs("func f() -> float:\n\treturn x[0] / await g()\n"),
+        )
+        self.assertEqual(
+            'func f() -> float: return await Engine.get_meta(&"")\n',
+            _stubs("func f() -> float:\n\treturn (x\n\t\t/ await g())\n"),
+        )
+        for body in ['"""a\nb""" % await g()', "(x\n\t\t% await g())"]:
+            with self.subTest(body):
+                self.assertEqual(
+                    'func f() -> String: return await Engine.get_meta(&"")\n',
+                    _stubs(f"func f() -> String:\n\treturn {body}\n"),
+                )
+        self.assertEqual(
+            'func f(): await Engine.get_meta(&"")\n',
+            _stubs("func f():\n\tprint({1: 2} % await g())\n"),
+        )
+
+    def test_a_string_restores_no_warning(self) -> None:
+        self.assertEqual(
+            "func f(): pass\n",
+            _stubs('func f():\n\tprint("warning_ignore_restore")\n'),
         )
 
     def test_a_script_without_bodies_stays(self) -> None:

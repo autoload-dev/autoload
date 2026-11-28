@@ -32,7 +32,6 @@ Sections: Script interface, Asset interface.
 import argparse
 import json
 from collections.abc import Iterator
-from itertools import pairwise
 from pathlib import Path
 from typing import NamedTuple
 
@@ -46,7 +45,15 @@ from tools.inputs.originals import (
 )
 from tools.resources.class_fragment import skip_arguments
 from tools.resources.files import IMPORT, import_base
-from tools.resources.text import IMPORTER, REMAP_PATH, Token, lex, remap_section
+from tools.resources.text import (
+    IMPORTER,
+    REMAP_PATH,
+    Token,
+    is_identifier,
+    is_punctuation,
+    lex,
+    remap_section,
+)
 
 # The class of the resource each of Godot's own importers produces, which a stand-in has: a
 # preloaded resource types its constant by its class. Other importers, such as an add-on's,
@@ -79,10 +86,6 @@ _IGNORE_BODY_WARNINGS = (
     + ")\n"
 )
 
-# The tokens after which an identifier is part of a node path or member access, not a
-# keyword.
-_PATH_PUNCTUATION = ("$", "%", "/", ".")
-
 
 def _nesting(token: Token) -> int:
     """How a token changes the depth of brackets: 1 if it opens one, -1 if it closes one."""
@@ -97,11 +100,12 @@ def _continues(line: list[Token], depth: int) -> bool:
     """
     Whether a newline after these tokens continues the logical line.
 
-    It does inside brackets and after a backslash.
+    It does inside brackets and after a backslash. A string whose text ends in a backslash
+    does not count.
     """
     if depth:
         return True
-    return bool(line) and line[-1].value == "\\"
+    return bool(line) and is_punctuation(line[-1], "\\")
 
 
 def _logical_lines(tokens: list[Token]) -> list[list[Token]]:
@@ -131,14 +135,14 @@ def _starts_annotation(line: list[Token], index: int) -> bool:
     """Whether line[index] starts an annotation, `@name`."""
     if index + 1 >= len(line):
         return False
-    return line[index].value == "@" and line[index + 1].category == "identifier"
+    return is_punctuation(line[index], "@") and line[index + 1].category == "identifier"
 
 
 def _skip_annotations(line: list[Token], index: int) -> int:
     """The index after the annotations, with their arguments, starting at line[index]."""
     while _starts_annotation(line, index):
         index += 2
-        if index < len(line) and line[index].value == "(":
+        if index < len(line) and is_punctuation(line[index], "("):
             index = skip_arguments(line, index)
     return index
 
@@ -148,17 +152,96 @@ def _block_colon(line: list[Token], index: int) -> int | None:
     depth = 0
     for position in range(index, len(line)):
         token = line[position]
-        if (token.category, token.value) == ("punctuation", ":") and not depth:
+        if is_punctuation(token, ":") and not depth:
             return position
         depth += _nesting(token)
     return None
 
 
-def _names_await(body: list[Token]) -> bool:
-    """Whether `await` stands in the body as part of a node path or member access."""
+def _is_path_separator(token: Token) -> bool:
+    return is_punctuation(token, "/") or is_punctuation(token, "%")
+
+
+def _is_path_name(token: Token) -> bool:
+    return token.category in ("identifier", "string")
+
+
+# The keywords after which an expression starts, so that a `%` after them starts a path.
+_EXPRESSION_KEYWORDS = frozenset(
+    ("and", "await", "elif", "else", "if", "in", "is", "match", "not", "or", "return")
+    + ("when", "while")
+)
+
+
+def _ends_operand(token: Token) -> bool:
+    """Whether a `%` after this token is modulo, not the start of a node path."""
+    if token.category == "identifier":
+        return token.value not in _EXPRESSION_KEYWORDS
+    if token.category == "string":
+        return True
+    return token.value in (")", "]", "}") or token.value.isdigit()
+
+
+def _starts_path(before: Token | None, separator: Token) -> bool:
+    """
+    Whether the separator after the token before it starts a node path.
+
+    Only a `%` starts one, a unique node's. A `/` there is division.
+    """
+    if not is_punctuation(separator, "%"):
+        return False
+    # A `%` that starts a statement starts a path.
+    return before is None or not _ends_operand(before)
+
+
+def _follows_path_name(body: list[Token], separator: int) -> bool:
+    """Whether the separator at body[separator] follows a name and a separator before it."""
+    return (
+        separator > 1
+        and _is_path_name(body[separator - 1])
+        and _is_path_separator(body[separator - 2])
+    )
+
+
+def _follows_dollar(body: list[Token], separator: int) -> bool:
+    """Whether the separator at body[separator] follows `$` or `$Name`, as in `$/root`."""
+    if separator > 0 and is_punctuation(body[separator - 1], "$"):
+        return True
+    if separator < 2:
+        return False
+    return _is_path_name(body[separator - 1]) and is_punctuation(body[separator - 2], "$")
+
+
+def _in_node_path(body: list[Token], separator: int) -> bool:
+    """
+    Whether the `/` or `%` at body[separator] belongs to a node path, not an operator.
+
+    A node path alternates names and separators back to the `$` or `%` that starts it.
+    Godot allows blanks between them, and a name may be a string.
+    """
+    while _follows_path_name(body, separator):
+        separator -= 2
+    if _follows_dollar(body, separator):
+        return True
+    return _starts_path(body[separator - 1] if separator else None, body[separator])
+
+
+def _names_node_or_member(body: list[Token], position: int) -> bool:
+    """Whether the identifier at body[position] names a node in a path or a member."""
+    before = body[position - 1]
+    if is_punctuation(before, "$") or is_punctuation(before, "."):
+        return True
+    return _is_path_separator(before) and _in_node_path(body, position - 1)
+
+
+def _names_await(statement: list[Token]) -> bool:
+    """Whether `await` stands in a logical line as part of a node path or member access."""
+    # A backslash that continues the line may stand inside a node path.
+    statement = [token for token in statement if not is_punctuation(token, "\\")]
     return any(
-        before.value in _PATH_PUNCTUATION and token.value == "await"
-        for before, token in pairwise(body)
+        is_identifier(statement[position], "await")
+        and _names_node_or_member(statement, position)
+        for position in range(1, len(statement))
     )
 
 
@@ -166,26 +249,48 @@ def _return_type(signature: list[Token]) -> list[str] | None:
     """The values of a signature's return type tokens; None if it declares none."""
     # The return type follows the parameters. Their defaults may hold lambdas with
     # return types of their own.
-    values = [token.value for token in signature]
-    after = skip_arguments(signature, values.index("(")) if "(" in values else len(values)
-    return values[after + 2 : -1] if values[after : after + 2] == ["-", ">"] else None
+    opening = next(
+        (i for i, token in enumerate(signature) if is_punctuation(token, "(")),
+        len(signature),
+    )
+    after = skip_arguments(signature, opening)
+    arrow = [token[:2] for token in signature[after : after + 2]]
+    if arrow != [("punctuation", "-"), ("punctuation", ">")]:
+        return None
+    return [token.value for token in signature[after + 2 : -1]]
 
 
-def _stub(signature: list[Token], body: list[Token]) -> str | None:
+def _awaits(statements: list[list[Token]]) -> bool | None:
     """
-    The statement that replaces a function body, or None to keep the body.
-
-    Args:
-        signature: The tokens from `func` to the colon before the body, both included.
-        body: The tokens of the body.
+    Whether a function body awaits, which makes the function a coroutine; None if that is
+    undecided, so the body stays.
     """
-    identifiers = {token.value for token in body if token.category == "identifier"}
+    identifiers = {
+        token.value
+        for statement in statements
+        for token in statement
+        if token.category == "identifier"
+    }
     awaits = "await" in identifiers
     # An await in a lambda makes the lambda a coroutine, not the function. Telling
     # where the lambda ends would take a parser.
     if awaits and "func" in identifiers:
         return None
-    if _names_await(body):
+    if any(_names_await(statement) for statement in statements):
+        return None
+    return awaits
+
+
+def _stub(signature: list[Token], statements: list[list[Token]]) -> str | None:
+    """
+    The statement that replaces a function body, or None to keep the body.
+
+    Args:
+        signature: The tokens from `func` to the colon before the body, both included.
+        statements: The logical lines of the body.
+    """
+    awaits = _awaits(statements)
+    if awaits is None:
         return None
     returns = _return_type(signature)
     if returns is None or returns == ["void"]:
@@ -215,7 +320,7 @@ def _block_opening(line: list[Token]) -> tuple[int, int] | None:
     that opens its block; None for a member without a block.
     """
     start = _skip_annotations(line, 0)
-    if start < len(line) and line[start].value == "static":
+    if start < len(line) and is_identifier(line[start], "static"):
         start += 1
     if start >= len(line) or line[start].category != "identifier":
         return None
@@ -237,12 +342,12 @@ def _function_body(
     Yields:
         The body's start and end offsets and its stub, or nothing.
     """
-    body = rest + [token for line in block for token in line]
-    if not body:
+    statements = [rest, *block] if rest else block
+    if not statements:
         return
-    statement = _stub(signature, body)
-    if statement is not None:
-        yield signature[-1].end, body[-1].end, statement
+    stub = _stub(signature, statements)
+    if stub is not None:
+        yield signature[-1].end, statements[-1][-1].end, stub
 
 
 def _function_bodies(
@@ -284,7 +389,7 @@ def script_interface(source: str) -> str:
     """
     tokens = lex(source)
     # A restored warning would report again in the stubs below it.
-    if any(token.value == "warning_ignore_restore" for token in tokens):
+    if any(is_identifier(token, "warning_ignore_restore") for token in tokens):
         return source
     spans = list(_function_bodies(source, _logical_lines(tokens)))
     if not spans:

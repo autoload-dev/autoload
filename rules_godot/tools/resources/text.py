@@ -231,6 +231,59 @@ def tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
     return [token[:3] for token in lex(text, shader=shader)]
 
 
+def is_punctuation(token: tuple, value: str) -> bool:
+    """
+    Whether a token from lex or tokens is the punctuation `value`, not a string.
+
+    A string token holds its decoded text, so the string `"("` has the value `(`.
+    """
+    return token[:2] == ("punctuation", value)
+
+
+# The keywords that open a declaration. No expression goes on with them.
+DECLARATION_KEYWORDS = frozenset(
+    ("class", "class_name", "const", "enum", "extends", "func", "signal", "static", "var")
+)
+
+
+def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
+    """Whether a lone argument ends before script[index], at `)` or where the file cuts it off."""
+    if index >= len(script):
+        return True
+    category, value = script[index][:2]
+    if category == "punctuation":
+        # Any other punctuation continues the argument's expression, such as `+` or `.`.
+        return value in (")", "@")
+    # A declaration's keyword ends an argument that the file cuts off. After a comma, it
+    # stands where Godot expects a second argument. Any other name or string goes on with
+    # the expression, such as `if` or `as`.
+    return category == "identifier" and value in DECLARATION_KEYWORDS and not after_comma
+
+
+def string_argument(script: list, paren: int) -> str | None:
+    """
+    The string that the arguments opening at script[paren] consist of, or None.
+
+    Godot takes them for a single string argument with or without a comma after it, also
+    when the file cuts off the arguments after the string. It does not for two arguments or
+    an expression.
+    """
+    if paren + 1 >= len(script) or not is_punctuation(script[paren], "("):
+        return None
+    if script[paren + 1][0] != "string":
+        return None
+    after = paren + 2
+    comma = after < len(script) and is_punctuation(script[after], ",")
+    if comma:
+        after += 1
+    return script[paren + 1][1] if _ends_argument(script, after, comma) else None
+
+
+def is_identifier(token: tuple, value: str) -> bool:
+    """Whether a token from lex or tokens is the identifier or keyword `value`, not a string."""
+    return token[:2] == ("identifier", value)
+
+
 # ==== Text resources ==========================================================
 
 

@@ -43,9 +43,44 @@ class FileReferencesTest(unittest.TestCase):
             'extends "res://base.gd"\n\nclass Helper extends GdUnitTestSuite:\n\tpass\n'
         )
         self.assertEqual(file_references("res://a.gd", script)["extends"], None)
+        inner_next_line = "class Helper:\n\textends Node\n"
+        self.assertEqual(file_references("res://c.gd", inner_next_line)["extends"], None)
         inner_first = "class Helper extends Node:\n\tpass\n\nextends GdUnitTestSuite\n"
         self.assertEqual(
             file_references("res://b.gd", inner_first)["extends"], "GdUnitTestSuite"
+        )
+
+    def test_strings_are_no_keywords(self) -> None:
+        script = 'var kind := "extends"\nfunc f():\n\tpass\n'
+        self.assertIsNone(file_references("res://a.gd", script)["extends"])
+        script = 'var kind := "const"\nPATH = "res://x.tres"\nvar r = load(PATH)\n'
+        self.assertEqual([], file_references("res://b.gd", script)["references"])
+        script = 'func f():\n\tvar s := "."\n\tRouteModel.run()\n\tvar t := "func"\n\tload("x.tres")\n'
+        found = file_references("res://c.gd", script)
+        self.assertIn("RouteModel", found["names"])
+        self.assertEqual(
+            [{"kind": "load", "path": "res://x.tres", "uid": None}], found["references"]
+        )
+
+    def test_an_icon_may_end_in_a_comma(self) -> None:
+        found = file_references("res://a.gd", '@icon("res://icon.png",)\nextends Node\n')
+        self.assertEqual(
+            [{"kind": "script_icon", "path": "res://icon.png", "uid": None}],
+            found["references"],
+        )
+        # Godot's scan records no icon for two arguments or a constant.
+        two = '@icon("res://a.png", "res://b.png")\nextends Node\n'
+        self.assertEqual([], file_references("res://b.gd", two)["references"])
+        constant = '@icon(ICON)\nextends Node\nconst ICON = "res://i.png"\n'
+        self.assertEqual([], file_references("res://c.gd", constant)["references"])
+        self.assertEqual(
+            [], file_references("res://e.gd", "extends Node\n@icon")["references"]
+        )
+        # Godot reads on after an icon whose `)` the file leaves out.
+        cut = '@icon("res://i.png"\nclass_name C extends Node\n'
+        self.assertEqual(
+            [{"kind": "script_icon", "path": "res://i.png", "uid": None}],
+            file_references("res://d.gd", cut)["references"],
         )
 
     def test_a_scene_authors_its_uid_and_references_by_path_and_uid(self) -> None:

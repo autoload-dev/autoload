@@ -22,7 +22,8 @@ parser._cache_dirpath = tempfile.mkdtemp(prefix="gdtoolkit")
 # Scripts that are not checked, by their path in the ruleset's module, each with its reason.
 EXCLUDED = (
     # The validation's fixtures exercise the forms GDScript allows, such as `extends` before
-    # `class_name` and a property beside the variable that backs it.
+    # `class_name`, a doc string before them and a property beside the variable that backs it.
+    "godot/private/tests/validation/fixtures/classes/docfirst.gd",
     "godot/private/tests/validation/fixtures/classes/noext.gd",
     "godot/private/tests/validation/fixtures/interface/base/base.gd",
     # A script the validation must reject because it does not parse.

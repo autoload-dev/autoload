@@ -40,7 +40,7 @@ from tools.inputs.manifest import add_manifest_arguments, load_manifest
 from tools.inputs.originals import Original
 from tools.project.config import compose_project
 from tools.resources.class_fragment import CACHE, class_cache
-from tools.resources.text import Heading, Token, headings, lex, res_path
+from tools.resources.text import Heading, Token, headings, is_punctuation, lex, res_path
 from tools.resources.uids import known_uids, uid_sources
 from tools.staging.project import staged_project
 
@@ -215,24 +215,20 @@ _ESCAPES = {"b": "\b", "t": "\t", "n": "\n", "f": "\f", "r": "\r"}
 _TRAIL_SURROGATE = re.compile(r"\\u([dD][c-fC-F][0-9a-fA-F]{2})")
 
 
-def _is_punctuation(token: Token, value: str) -> bool:
-    return token.category == "punctuation" and token.value == value
-
-
 def _is_parenthesis(token: Token) -> bool:
     return token.category == "punctuation" and token.value in "()"
 
 
 def _annotates_tool(at: Token, name: Token) -> bool:
     """Whether two tokens are an annotation that makes the editor run a script."""
-    if not _is_punctuation(at, "@") or name.category != "identifier":
+    if not is_punctuation(at, "@") or name.category != "identifier":
         return False
     return name.start == at.end and name.value in _TOOL_ANNOTATIONS
 
 
 def _arguments_end(arguments: list[Token], end: int) -> int:
     """Where the parenthesized arguments that follow an annotation end, or else end."""
-    if not arguments or not _is_punctuation(arguments[0], "("):
+    if not arguments or not is_punctuation(arguments[0], "("):
         return end
     depth = 0
     for token in filter(_is_parenthesis, arguments):

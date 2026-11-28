@@ -20,7 +20,9 @@ godot_project(
 # ==== Class cache =============================================================
 
 # Script headers whose global classes Godot's scan records: @abstract, one-line
-# class_name ... extends ..., bases written as script paths and inner classes.
+# class_name ... extends ..., a doc string before them, bases written as script paths,
+# inner classes with their extends on the same or the next line, a nested inner class as
+# a base, and @icon paths with a trailing comma or relative to the script.
 filegroup(
     name = "class_headers",
     srcs = glob(["fixtures/classes/*.gd"]),
