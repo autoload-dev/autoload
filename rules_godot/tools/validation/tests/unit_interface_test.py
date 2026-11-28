@@ -183,8 +183,12 @@ class ScriptInterfaceTest(unittest.TestCase):
 
     def test_undecided_bodies_stay(self) -> None:
         for source in [
-            # An await in a node path names a node.
+            # An await in a node path names a node. Godot allows blanks in the path.
             "func f():\n\tprint($await)\n",
+            "func f():\n\tprint($Root / await)\n",
+            'func f():\n\tprint($"Root"/await)\n',
+            "func f():\n\tprint(%Root/%await)\n",
+            "func f():\n\tprint(% await)\n",
             # A restored warning would report again in the stubs.
             (
                 '@warning_ignore_start("unused_parameter")\nfunc f(a):\n\tpass\n'
@@ -224,6 +228,10 @@ class ScriptInterfaceTest(unittest.TestCase):
         self.assertEqual(
             'func f() -> String: return await Engine.get_meta(&"")\n',
             _stubs('func f() -> String:\n\treturn "%d" % await g()\n'),
+        )
+        self.assertEqual(
+            'func f() -> float: return await Engine.get_meta(&"")\n',
+            _stubs("func f() -> float:\n\treturn x[0] / await g()\n"),
         )
 
     def test_a_string_restores_no_warning(self) -> None:

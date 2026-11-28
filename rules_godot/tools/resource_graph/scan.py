@@ -22,6 +22,7 @@ from tools.resources.text import (
     PROJECT_FILE,
     UID,
     Heading,
+    closes_arguments,
     file_identities,
     headings,
     is_identifier,
@@ -69,7 +70,7 @@ def _literal_value(script: list, assign: int) -> str | None:
     if value[0] != "string":
         return None
     # The statement ends after the literal: at the end of its line or at a semicolon.
-    ends = after[2] != value[2] or after[1] in ("", ";")
+    ends = after[2] != value[2] or after == _NO_TOKEN or is_punctuation(after, ";")
     return value[1] if ends else None
 
 
@@ -78,7 +79,9 @@ def _literal_constant(script: list, i: int) -> tuple[str, str] | None:
     name = _at(script, i + 1)
     if not is_identifier(script[i], "const") or name[0] != "identifier":
         return None
-    assign = next((j for j in range(i + 2, i + 5) if _at(script, j)[1] == "="), None)
+    assign = next(
+        (j for j in range(i + 2, i + 5) if is_punctuation(_at(script, j), "=")), None
+    )
     value = None if assign is None else _literal_value(script, assign)
     return None if value is None else (name[1], value)
 
@@ -238,7 +241,9 @@ _DIRECTORY_LISTINGS = frozenset({"open", "get_files_at", "get_directories_at"})
 
 def _is_member_call(script: list, i: int) -> bool:
     """Whether the identifier at script[i] starts `Name.method(`."""
-    return _at(script, i + 1)[1] == "." and _at(script, i + 3)[1] == "("
+    return is_punctuation(_at(script, i + 1), ".") and is_punctuation(
+        _at(script, i + 3), "("
+    )
 
 
 def _is_other_load(script: list, i: int) -> bool:
@@ -247,16 +252,18 @@ def _is_other_load(script: list, i: int) -> bool:
 
     It is none when it declares a function or calls another object's method.
     """
-    before = _at(script, i - 1)[1]
-    if before == "func":
+    before = _at(script, i - 1)
+    if is_identifier(before, "func"):
         return True
-    return before == "." and _at(script, i - 2)[1] != "ResourceLoader"
+    return is_punctuation(before, ".") and not is_identifier(
+        _at(script, i - 2), "ResourceLoader"
+    )
 
 
 def _load_call(scan: Scan, path: str, script: list, i: int) -> bool:
     """Whether script[i] is a load call; if so, record its reference."""
     _, name, line = script[i]
-    if name not in _LOADERS or _at(script, i + 1)[1] != "(":
+    if name not in _LOADERS or not is_punctuation(_at(script, i + 1), "("):
         return False
     if _is_other_load(script, i):
         return True
@@ -280,7 +287,8 @@ def _extends_clause(scan: Scan, path: str, script: list, i: int) -> bool:
 
 def _may_name_class(script: list, i: int) -> bool:
     """Whether the identifier at script[i] stands where it may name a global class."""
-    return _at(script, i - 1)[1] not in {"class_name", "."}
+    before = _at(script, i - 1)
+    return not (is_identifier(before, "class_name") or is_punctuation(before, "."))
 
 
 def _class_use(scan: Scan, path: str, script: list, i: int) -> bool:
@@ -299,10 +307,11 @@ def _class_use(scan: Scan, path: str, script: list, i: int) -> bool:
 def _icon_annotation(scan: Scan, path: str, script: list, i: int) -> bool:
     """Whether script[i] is `@icon("path")`; if so, record its reference."""
     _, name, line = script[i]
-    if name != "icon" or _at(script, i - 1)[1] != "@":
+    if name != "icon" or not is_punctuation(_at(script, i - 1), "@"):
         return False
     icon = _literal_argument(script, i + 1, constants=scan.constants.get(path))
-    if icon is None:
+    # Godot's scan records an icon only for a single argument.
+    if icon is None or not closes_arguments(script, i + 3):
         return False
     scan.reference(path, icon, "script_icon", line)
     return True
@@ -375,7 +384,7 @@ def _scan_shader(scan: Scan, path: str, text: str) -> None:
     """Record the #include directives of a shader."""
     shader = _code_tokens(text, shader=True)
     for hash_, directive, argument in zip(shader, shader[1:], shader[2:]):
-        if hash_[1] == "#" and directive[1] == "include":
+        if is_punctuation(hash_, "#") and is_identifier(directive, "include"):
             if argument[0] == "string":
                 scan.reference(path, argument[1], "shader_include", hash_[2])
             else:
@@ -418,7 +427,7 @@ def _setting_values(statement: str) -> list[tuple[str, str, int]]:
     """The tokens a project setting assigns."""
     lexed = _code_tokens(statement)
     for i, token in enumerate(lexed):
-        if token[1] == "=":
+        if is_punctuation(token, "="):
             return lexed[i + 1 :]
     return []
 
@@ -506,10 +515,17 @@ class _AnySource:
         return True
 
 
+def _extends_inner_class(script: list, i: int) -> bool:
+    """Whether the extends at script[i] follows `class Name` or `class Name:`."""
+    if is_punctuation(_at(script, i - 1), ":"):
+        i -= 1
+    return is_identifier(_at(script, i - 2), "class")
+
+
 def _extended_class(script: list) -> str | None:
     """The global class the script itself extends by name, not one of its inner classes."""
     for i, token in enumerate(script):
-        if is_identifier(token, "extends") and _at(script, i - 2)[1] != "class":
+        if is_identifier(token, "extends") and not _extends_inner_class(script, i):
             base = _at(script, i + 1)
             return base[1] if base[0] == "identifier" else None
     return None

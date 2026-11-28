@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.resources.text import is_identifier, is_punctuation, tokens
+from tools.resources.text import closes_arguments, is_identifier, is_punctuation, tokens
 
 CACHE = ".godot/global_script_class_cache.cfg"
 
@@ -45,7 +45,7 @@ def _continues_chain(script: list, index: int) -> bool:
     """Whether script[index] starts `.Name`, the next link of a name chain."""
     return (
         index + 1 < len(script)
-        and script[index][1] == "."
+        and is_punctuation(script[index], ".")
         and script[index + 1][0] == "identifier"
     )
 
@@ -76,11 +76,7 @@ def _icon(script: list, index: int) -> str | None:
     """
     if index + 1 >= len(script) or script[index + 1][0] != "string":
         return None
-    end = index + 2
-    if end < len(script) and is_punctuation(script[end], ","):
-        end += 1
-    closed = end < len(script) and is_punctuation(script[end], ")")
-    return script[index + 1][1] if closed else None
+    return script[index + 1][1] if closes_arguments(script, index + 2) else None
 
 
 def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
@@ -138,9 +134,13 @@ def _inner_bases(script: list, index: int) -> dict[str, Base | None]:
             is_identifier(script[position], "class")
             and script[position + 1][0] == "identifier"
         ):
+            # The extends may also stand on the class's next line, after its colon.
+            extends = position + 2
+            if is_punctuation(script[extends], ":"):
+                extends += 1
             base = None
-            if is_identifier(script[position + 2], "extends"):
-                base, _ = _base(script, position + 3)
+            if extends < len(script) and is_identifier(script[extends], "extends"):
+                base, _ = _base(script, extends + 1)
             inner.setdefault(script[position + 1][1], base)
     return inner
 

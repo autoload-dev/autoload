@@ -240,6 +240,13 @@ def is_punctuation(token: tuple, value: str) -> bool:
     return token[:2] == ("punctuation", value)
 
 
+def closes_arguments(script: list, index: int) -> bool:
+    """Whether a `)` at script[index] closes a call's arguments, after an optional comma."""
+    if index < len(script) and is_punctuation(script[index], ","):
+        index += 1
+    return index < len(script) and is_punctuation(script[index], ")")
+
+
 def is_identifier(token: tuple, value: str) -> bool:
     """Whether a token from lex or tokens is the identifier or keyword `value`, not a string."""
     return token[:2] == ("identifier", value)

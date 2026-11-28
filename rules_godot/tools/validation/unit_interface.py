@@ -32,7 +32,6 @@ Sections: Script interface, Asset interface.
 import argparse
 import json
 from collections.abc import Iterator
-from itertools import pairwise
 from pathlib import Path
 from typing import NamedTuple
 
@@ -136,14 +135,14 @@ def _starts_annotation(line: list[Token], index: int) -> bool:
     """Whether line[index] starts an annotation, `@name`."""
     if index + 1 >= len(line):
         return False
-    return line[index].value == "@" and line[index + 1].category == "identifier"
+    return is_punctuation(line[index], "@") and line[index + 1].category == "identifier"
 
 
 def _skip_annotations(line: list[Token], index: int) -> int:
     """The index after the annotations, with their arguments, starting at line[index]."""
     while _starts_annotation(line, index):
         index += 2
-        if index < len(line) and line[index].value == "(":
+        if index < len(line) and is_punctuation(line[index], "("):
             index = skip_arguments(line, index)
     return index
 
@@ -159,21 +158,58 @@ def _block_colon(line: list[Token], index: int) -> int | None:
     return None
 
 
-def _names_node_or_member(before: Token, name: Token) -> bool:
-    """Whether the identifier after the punctuation `before` is part of a node path or member."""
-    if before.category != "punctuation":
-        return False
-    if before.value in ("$", "."):
+def _is_path_separator(token: Token) -> bool:
+    return is_punctuation(token, "/") or is_punctuation(token, "%")
+
+
+def _is_path_name(token: Token) -> bool:
+    return token.category in ("identifier", "string")
+
+
+def _starts_path(before: Token | None) -> bool:
+    """Whether a `%` after this token starts a node path; after an operand it is modulo."""
+    if before is None:
         return True
-    # `%` and `/` are also operators. In a node path, no blank separates them from the name.
-    return before.value in ("%", "/") and before.end == name.start
+    return before.value not in (")", "]") and not before.value.isdigit()
+
+
+def _follows_path_name(body: list[Token], separator: int) -> bool:
+    """Whether the separator at body[separator] follows a name and a separator before it."""
+    return (
+        separator > 1
+        and _is_path_name(body[separator - 1])
+        and _is_path_separator(body[separator - 2])
+    )
+
+
+def _in_node_path(body: list[Token], separator: int) -> bool:
+    """
+    Whether the `/` or `%` at body[separator] belongs to a node path, not an operator.
+
+    A node path alternates names and separators back to the `$` or `%` that starts it.
+    Godot allows blanks between them, and a name may be a string.
+    """
+    while _follows_path_name(body, separator):
+        separator -= 2
+    before = body[separator - 1] if separator else None
+    if before is None or not _is_path_name(before):
+        return _starts_path(before)
+    return separator > 1 and is_punctuation(body[separator - 2], "$")
+
+
+def _names_node_or_member(body: list[Token], position: int) -> bool:
+    """Whether the identifier at body[position] names a node in a path or a member."""
+    before = body[position - 1]
+    if is_punctuation(before, "$") or is_punctuation(before, "."):
+        return True
+    return _is_path_separator(before) and _in_node_path(body, position - 1)
 
 
 def _names_await(body: list[Token]) -> bool:
     """Whether `await` stands in the body as part of a node path or member access."""
     return any(
-        is_identifier(token, "await") and _names_node_or_member(before, token)
-        for before, token in pairwise(body)
+        is_identifier(body[position], "await") and _names_node_or_member(body, position)
+        for position in range(1, len(body))
     )
 
 
@@ -181,9 +217,15 @@ def _return_type(signature: list[Token]) -> list[str] | None:
     """The values of a signature's return type tokens; None if it declares none."""
     # The return type follows the parameters. Their defaults may hold lambdas with
     # return types of their own.
-    values = [token.value for token in signature]
-    after = skip_arguments(signature, values.index("(")) if "(" in values else len(values)
-    return values[after + 2 : -1] if values[after : after + 2] == ["-", ">"] else None
+    opening = next(
+        (i for i, token in enumerate(signature) if is_punctuation(token, "(")),
+        len(signature),
+    )
+    after = skip_arguments(signature, opening)
+    arrow = [token[:2] for token in signature[after : after + 2]]
+    if arrow != [("punctuation", "-"), ("punctuation", ">")]:
+        return None
+    return [token.value for token in signature[after + 2 : -1]]
 
 
 def _stub(signature: list[Token], body: list[Token]) -> str | None:
@@ -230,7 +272,7 @@ def _block_opening(line: list[Token]) -> tuple[int, int] | None:
     that opens its block; None for a member without a block.
     """
     start = _skip_annotations(line, 0)
-    if start < len(line) and line[start].value == "static":
+    if start < len(line) and is_identifier(line[start], "static"):
         start += 1
     if start >= len(line) or line[start].category != "identifier":
         return None
