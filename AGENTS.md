@@ -79,7 +79,9 @@ execution](docs/internal/verification-recipes.md#remote-execution-with-buildbudd
 Take worktrees from the Aspect CLI's pool, which keeps a warm Bazel server and output base
 per worktree slot: `aspect worktree add <branch> --create=origin/main`, and `aspect worktree
 release <branch>` when done. Claude Code's and Codex's worktrees do so through hooks; how is in
-[agent setup](docs/internal/agent-setup.md#worktrees).
+[agent setup](docs/internal/agent-setup.md#worktrees). Give every branch, each pull request of
+a stack included, a worktree of its own and do not switch branches in one: each switch
+invalidates the warm Bazel server's analysis caches and makes checks and pushes slow.
 
 <a id="bazel-package-boundaries"></a>
 
