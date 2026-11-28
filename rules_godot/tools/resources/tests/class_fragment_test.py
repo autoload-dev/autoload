@@ -118,6 +118,8 @@ class ClassFragmentTest(unittest.TestCase):
             '@icon(&"res://i.svg")',
             '@icon("res://" + "i.svg")',
             "@icon(ICON)",
+            '@icon("res://a.svg" if true else "res://b.svg")',
+            '@icon("res://a.svg" as String)',
         ]:
             with self.subTest(icon):
                 header = script_header(
@@ -148,10 +150,27 @@ class ClassFragmentTest(unittest.TestCase):
             with self.subTest(annotation):
                 header = script_header(annotation + "\nclass_name C extends Node\n")
                 self.assertEqual(("", None), (header["class"], header["base"]))
-        for annotation in ['@warning_ignore("x")', "@static_unload", "@unknown"]:
+        for annotation in [
+            '@warning_ignore("x")',
+            "@static_unload",
+            "@unknown",
+            "@exported",
+        ]:
             with self.subTest(annotation):
                 header = script_header(annotation + "\nclass_name C extends Node\n")
                 self.assertEqual("C", header["class"])
+
+    def test_a_member_after_a_cut_annotation_ends_the_header(self) -> None:
+        for script in [
+            "@tool(\nvar x = 1\nclass_name C extends Node\n",
+            '@icon("res://a.svg"\nvar y\nclass_name C\n',
+        ]:
+            with self.subTest(script):
+                self.assertEqual("", script_header(script)["class"])
+
+    def test_a_byte_order_mark_opens_no_member(self) -> None:
+        header = script_header("\ufeffclass_name C extends Node\n")
+        self.assertEqual("C", header["class"])
 
     def test_the_first_icon_counts(self) -> None:
         header = script_header(
@@ -207,6 +226,13 @@ class ClassFragmentTest(unittest.TestCase):
             }
         )
         self.assertEqual({"Chain": "Node2D", "Missing": "", "Plain": "RefCounted"}, bases)
+        outer = (
+            'class A extends Node:\n\tpass\nclass B extends "res://outer.gd".A:\n\tpass\n'
+        )
+        bases = _cache_bases(
+            {"outer.gd": outer, "x.gd": 'class_name X extends "res://outer.gd".B\n'}
+        )
+        self.assertEqual({"X": "Node"}, bases)
 
     def test_member_annotations_leave_the_class(self) -> None:
         header = script_header("extends Node\n@abstract func f()\n")

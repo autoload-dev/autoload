@@ -19,6 +19,7 @@ from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
 from tools.resources.text import (
+    DECLARATION_KEYWORDS,
     Token,
     is_identifier,
     is_punctuation,
@@ -80,12 +81,14 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     return {"path": path, "names": names}, index
 
 
+# The keywords at which Godot's parser reads on after an error, besides an annotation.
+_RESUMING_KEYWORDS = DECLARATION_KEYWORDS | {"for", "if", "match", "while"}
+
+
 def _resumes_header(token: tuple) -> bool:
-    """Whether Godot's parser reads the header on at this token: an annotation, class_name or extends."""
-    return (
-        is_punctuation(token, "@")
-        or is_identifier(token, "class_name")
-        or is_identifier(token, "extends")
+    """Whether Godot's parser reads on at this token after arguments the file cuts off."""
+    return is_punctuation(token, "@") or (
+        token[0] == "identifier" and token[1] in _RESUMING_KEYWORDS
     )
 
 
@@ -98,7 +101,7 @@ def _after_cut_arguments(script: list, index: int) -> int:
 
 def _annotates_member(name: str) -> bool:
     """Whether an annotation belongs to a member, as @export, @onready and @rpc do."""
-    return name.startswith("export") or name in ("onready", "rpc")
+    return name.startswith("export_") or name in ("export", "onready", "rpc")
 
 
 def _annotation(script: list, index: int) -> tuple[str | None, str | None, int]:
@@ -239,6 +242,8 @@ def script_header(text: str) -> dict:
         is_tool, is_abstract, icon as written and inner: the inner classes by name, each a
         dict of its base and its own inner classes.
     """
+    # Godot skips a byte order mark where the file starts.
+    text = text.removeprefix("\ufeff")
     script = [token for token in lex(text) if token.category != "newline"]
     header = {
         "class": "",
@@ -305,7 +310,7 @@ def fragment(scripts: dict[str, str]) -> list[dict]:
 
 
 def _resolve(
-    base: Base | None, scripts: dict[str, dict], visiting: frozenset[str]
+    base: Base | None, scripts: dict[str, dict], visiting: frozenset[tuple]
 ) -> str:
     """The base Godot records for a script or inner class that extends base."""
     if base is None:
@@ -317,9 +322,11 @@ def _resolve(
         return names[0] if len(names) == 1 else ""
     # Godot opens the path as written, so a relative path names no script it scans.
     declared = scripts.get(path)
-    if declared is None or path in visiting:
+    # A base may name another inner class of the same script, so a cycle needs the chain.
+    followed = (path, tuple(names))
+    if declared is None or followed in visiting:
         return ""
-    visiting = visiting | {path}
+    visiting = visiting | {followed}
     # A chain after the path names an inner class of the script, and its inner classes.
     for name in names:
         declared = declared["inner"].get(name)

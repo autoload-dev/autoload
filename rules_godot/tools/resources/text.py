@@ -240,6 +240,12 @@ def is_punctuation(token: tuple, value: str) -> bool:
     return token[:2] == ("punctuation", value)
 
 
+# The keywords that open a declaration. No expression goes on with them.
+DECLARATION_KEYWORDS = frozenset(
+    ("class", "class_name", "const", "enum", "extends", "func", "signal", "static", "var")
+)
+
+
 def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
     """Whether a lone argument ends before script[index], at `)` or where the file cuts it off."""
     if index >= len(script):
@@ -248,8 +254,10 @@ def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
     if category == "punctuation":
         # Any other punctuation continues the argument's expression, such as `+` or `.`.
         return value in (")", "@")
-    # A name or string after a comma is a second argument.
-    return not after_comma
+    # A declaration's keyword ends an argument that the file cuts off. After a comma, it
+    # stands where Godot expects a second argument. Any other name or string goes on with
+    # the expression, such as `if` or `as`.
+    return category == "identifier" and value in DECLARATION_KEYWORDS and not after_comma
 
 
 def string_argument(script: list, paren: int) -> str | None:
