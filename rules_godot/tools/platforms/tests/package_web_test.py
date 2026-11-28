@@ -43,6 +43,31 @@ _FACTS = {
 }
 
 
+_ANALYSIS_DEFAULTS = {
+    "progressive_web_app/enabled": False,
+    "progressive_web_app/ensure_cross_origin_isolation_headers": True,
+}
+
+
+class AnalysisDefaultsTest(unittest.TestCase):
+    def test_godots_defaults_match_the_profile(self) -> None:
+        facts = Facts(_FACTS | {"option_defaults": dict(_ANALYSIS_DEFAULTS)})
+        package_web.check_analysis_defaults(facts, _ANALYSIS_DEFAULTS)
+
+    def test_a_changed_godot_default_fails_and_names_both(self) -> None:
+        changed = _ANALYSIS_DEFAULTS | {
+            "progressive_web_app/ensure_cross_origin_isolation_headers": False
+        }
+        with self.assertRaisesRegex(
+            SystemExit,
+            "progressive_web_app/ensure_cross_origin_isolation_headers: rules_godot's engine "
+            "profile has the default true, Godot's exporter false",
+        ):
+            package_web.check_analysis_defaults(
+                Facts(_FACTS | {"option_defaults": changed}), _ANALYSIS_DEFAULTS
+            )
+
+
 class PageTest(unittest.TestCase):
     def test_placeholders_follow_the_export_as_godot_fills_them(self) -> None:
         page = package_web.page(_SHELL, Facts(_FACTS), {"index.pck": 3, "index.wasm": 5})
@@ -141,6 +166,7 @@ class ExportTest(unittest.TestCase):
                 runtime=runtime,
                 pack=root / "pack.pck",
                 facts=root / "facts.json",
+                analysis_defaults="{}",
                 images=images,
                 shell=None,
                 output=root / "site",

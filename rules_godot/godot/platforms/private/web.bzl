@@ -12,6 +12,7 @@ load("//godot/private:export_options.bzl", "string_option")
 load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private/config:application.bzl", "missing_extension_libraries_report")
 load("//godot/private/config:settings.bzl", "THREADS_CONSTRAINT")
+load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 load(":shell.bzl", "ENGINE_CHECK_ATTRS", "check_engine", "pack_facts")
 
@@ -50,14 +51,15 @@ _ISOLATION_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
-def _authored_true(pack, option, default):
+def _authored_true(pack, option):
     """
     Whether a boolean export option is true, as the pack authors it or by Godot's default.
 
-    Analysis cannot read the probe's facts, so the default of each option this reads
-    stands here; the packager writes the files from the facts.
+    Analysis cannot read the probe's facts, so the default comes from the engine's profile,
+    which the packager checks against the probe's.
     """
-    return pack.export_options.get(option, default).strip() in ["true", "1"]
+    default = engine_profile(pack.version)["web_analysis_defaults"][option]
+    return pack.export_options.get(option, "true" if default else "false").strip() in ["true", "1"]
 
 def _isolation(pack, threads):
     """
@@ -68,8 +70,8 @@ def _isolation(pack, threads):
     """
     if not threads:
         return "none"
-    pwa = _authored_true(pack, "progressive_web_app/enabled", "false")
-    ensures = _authored_true(pack, "progressive_web_app/ensure_cross_origin_isolation_headers", "true")
+    pwa = _authored_true(pack, "progressive_web_app/enabled")
+    ensures = _authored_true(pack, "progressive_web_app/ensure_cross_origin_isolation_headers")
     return "service_worker" if pwa and ensures else "headers"
 
 def _package(ctx, pack, runtime, name):
@@ -81,7 +83,7 @@ def _package(ctx, pack, runtime, name):
         for flag, file in {
             "--shell": _pack_file(ctx, pack, "html/custom_html_shell"),
             # Godot reads the offline page only for a progressive web app.
-            "--offline-page": _pack_file(ctx, pack, "progressive_web_app/offline_page") if _authored_true(pack, "progressive_web_app/enabled", "false") else None,
+            "--offline-page": _pack_file(ctx, pack, "progressive_web_app/offline_page") if _authored_true(pack, "progressive_web_app/enabled") else None,
         }.items()
         if file
     }
@@ -89,6 +91,7 @@ def _package(ctx, pack, runtime, name):
     args.add("--runtime", _template(ctx, runtime).dirname)
     args.add("--pack", pack.pack_file)
     args.add("--facts", pack.facts)
+    args.add("--analysis-defaults", json.encode(engine_profile(pack.version)["web_analysis_defaults"]))
 
     # The web's images are one directory.
     args.add("--images", pack.icons[0].path)

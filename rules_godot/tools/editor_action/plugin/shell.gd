@@ -18,10 +18,12 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 	EditorInterface.get_editor_settings().set_setting("_export_preset_advanced_mode", true)
 	var clean: EditorExportPreset = get_export_platform().create_preset()
 	var options: Dictionary = {}
+	var option_defaults: Dictionary = {}
 	var option_types: Dictionary = {}
 	var actual_types: Dictionary = {}
 	for option_name: String in _option_names(preset, clean):
 		options[option_name] = _plain(preset.get(option_name))
+		option_defaults[option_name] = _plain(clean.get(option_name))
 		option_types[option_name] = type_string(typeof(clean.get(option_name)))
 		actual_types[option_name] = type_string(typeof(preset.get(option_name)))
 	var settings: Dictionary = _settings(preset)
@@ -30,6 +32,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 		"features": Array(features),
 		"editor_version": Engine.get_version_info()["string"],
 		"options": options,
+		"option_defaults": option_defaults,
 		"option_types": option_types,
 		"actual_option_types": actual_types,
 		"preset_settings": {"custom_features": preset.get_custom_features(), "script_export_mode": preset.get_script_export_mode()},

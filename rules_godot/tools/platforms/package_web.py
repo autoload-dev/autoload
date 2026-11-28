@@ -216,6 +216,23 @@ def manifest(facts: Facts) -> str:
     )
 
 
+def check_analysis_defaults(facts: Facts, defaults: Mapping[str, Any]) -> None:
+    """
+    Fail where Godot's default of an option differs from the one analysis read.
+
+    Analysis decides the application's cross-origin isolation from these defaults, which
+    rules_godot's engine profile keeps per Godot minor.
+    """
+    for option, profile in defaults.items():
+        godot = facts.option_defaults.get(option)
+        if godot != profile:
+            raise SystemExit(
+                f"{option}: rules_godot's engine profile has the default {godot_json(profile)}, "
+                f"Godot's exporter {godot_json(godot)}; update web_analysis_defaults in "
+                "godot/private/engine/profiles.bzl"
+            )
+
+
 def check_pwa_icons(facts: Facts) -> None:
     """Fail, as Godot's export does, where an icon option names a file Godot cannot load."""
     for size in _ICON_SIZES:
@@ -292,6 +309,7 @@ def _renderer_note(facts: Facts) -> None:
 
 def export(args: argparse.Namespace) -> None:
     facts = Facts(json.loads(args.facts.read_text(encoding="utf-8")))
+    check_analysis_defaults(facts, json.loads(args.analysis_defaults))
     site: Path = args.output
     site.mkdir(parents=True, exist_ok=True)
     copy_template(args.runtime, site, is_pwa(facts))
@@ -320,6 +338,11 @@ def main() -> None:
     )
     parser.add_argument("--pack", type=Path, required=True)
     parser.add_argument("--facts", type=Path, required=True)
+    parser.add_argument(
+        "--analysis-defaults",
+        required=True,
+        help="JSON of the option defaults analysis read from the engine profile",
+    )
     parser.add_argument(
         "--images", type=Path, required=True, help="the images Godot rendered"
     )

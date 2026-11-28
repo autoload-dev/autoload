@@ -294,6 +294,13 @@ _GODOT_4_7 = {
             "Other",
         ],
     },
+    # Godot's defaults of the web export options that decide an application's cross-origin
+    # isolation, which analysis reads before the shell probe runs. The web packager compares
+    # them with the defaults the probe records and fails when Godot changed one.
+    "web_analysis_defaults": {
+        "progressive_web_app/enabled": False,
+        "progressive_web_app/ensure_cross_origin_isolation_headers": True,
+    },
 }
 
 # ==== Export options ==========================================================
