@@ -147,6 +147,13 @@ class ClassFragmentTest(unittest.TestCase):
             ("res://sub/../a//b.svg", "res://a/b.svg"),
             ("/abs.svg", "/abs.svg"),
             ("user://u.svg", "user://u.svg"),
+            ("uid://b8x3k", "uid://b8x3k"),
+            ("//x.svg", "//x.svg"),
+            ("a\\\\b.svg", "res://sub/a/b.svg"),
+            ("\\\\x.svg", "\\x.svg"),
+            ("res://../../x.svg", "res://../../x.svg"),
+            ("http://h/a/../b.svg", "http://h/b.svg"),
+            ("C:/x.svg", "C:/x.svg"),
         ]:
             with self.subTest(icon):
                 script = f'@icon("{icon}")\nclass_name C\n'

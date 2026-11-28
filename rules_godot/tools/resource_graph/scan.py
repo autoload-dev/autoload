@@ -22,12 +22,12 @@ from tools.resources.text import (
     PROJECT_FILE,
     UID,
     Heading,
-    closes_arguments,
     file_identities,
     headings,
     is_identifier,
     is_punctuation,
     res_path,
+    string_argument,
     tokens,
 )
 
@@ -310,8 +310,8 @@ def _icon_annotation(scan: Scan, path: str, script: list, i: int) -> bool:
     if name != "icon" or not is_punctuation(_at(script, i - 1), "@"):
         return False
     # Godot's scan records an icon only for a single string, not for a constant.
-    icon = _literal_argument(script, i + 1)
-    if icon is None or not closes_arguments(script, i + 3):
+    icon = string_argument(script, i + 1)
+    if icon is None:
         return False
     scan.reference(path, icon, "script_icon", line)
     return True

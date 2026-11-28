@@ -191,6 +191,7 @@ class ScriptInterfaceTest(unittest.TestCase):
             "func f():\n\tprint(% await)\n",
             "func f():\n\tprint($/root/await)\n",
             "func f():\n\tprint($/await)\n",
+            "func f():\n\tvar n = $A/\\\n\t\tawait\n",
             "func f():\n\treturn %await\n",
             "func f():\n\tif not %await:\n\t\tpass\n",
             "func f():\n\tprint(1)\n\t%await.hide()\n",

@@ -236,6 +236,8 @@ def _names_node_or_member(body: list[Token], position: int) -> bool:
 
 def _names_await(statement: list[Token]) -> bool:
     """Whether `await` stands in a logical line as part of a node path or member access."""
+    # A backslash that continues the line may stand inside a node path.
+    statement = [token for token in statement if not is_punctuation(token, "\\")]
     return any(
         is_identifier(statement[position], "await")
         and _names_node_or_member(statement, position)

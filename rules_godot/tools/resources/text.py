@@ -240,11 +240,35 @@ def is_punctuation(token: tuple, value: str) -> bool:
     return token[:2] == ("punctuation", value)
 
 
-def closes_arguments(script: list, index: int) -> bool:
-    """Whether a `)` at script[index] closes a call's arguments, after an optional comma."""
-    if index < len(script) and is_punctuation(script[index], ","):
-        index += 1
-    return index < len(script) and is_punctuation(script[index], ")")
+def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
+    """Whether a lone argument ends before script[index], at `)` or where the file cuts it off."""
+    if index >= len(script):
+        return True
+    category, value = script[index][:2]
+    if category == "punctuation":
+        # Any other punctuation continues the argument's expression, such as `+` or `.`.
+        return value in (")", "@")
+    # A name or string after a comma is a second argument.
+    return not after_comma
+
+
+def string_argument(script: list, paren: int) -> str | None:
+    """
+    The string that the arguments opening at script[paren] consist of, or None.
+
+    Godot takes them for a single string argument with or without a comma after it, also
+    when the file cuts off the arguments after the string. It does not for two arguments or
+    an expression.
+    """
+    if not is_punctuation(script[paren], "(") or paren + 1 >= len(script):
+        return None
+    if script[paren + 1][0] != "string":
+        return None
+    after = paren + 2
+    comma = after < len(script) and is_punctuation(script[after], ",")
+    if comma:
+        after += 1
+    return script[paren + 1][1] if _ends_argument(script, after, comma) else None
 
 
 def is_identifier(token: tuple, value: str) -> bool:

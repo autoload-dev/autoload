@@ -12,12 +12,19 @@ script's fragment, as Godot's scan does.
 import argparse
 import json
 import posixpath
+import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.resources.text import Token, is_identifier, is_punctuation, lex
+from tools.resources.text import (
+    Token,
+    is_identifier,
+    is_punctuation,
+    lex,
+    string_argument,
+)
 
 CACHE = ".godot/global_script_class_cache.cfg"
 
@@ -73,35 +80,6 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     return {"path": path, "names": names}, index
 
 
-def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
-    """Whether a lone argument ends before script[index], at `)` or where the file cuts it off."""
-    if index >= len(script):
-        return True
-    token = script[index]
-    if token[0] == "punctuation":
-        # Any other punctuation continues the argument's expression, such as `+` or `.`.
-        return token[1] in (")", "@")
-    # A name or string after a comma is a second argument.
-    return not after_comma
-
-
-def _icon(script: list, index: int) -> str | None:
-    """
-    The path of the @icon whose arguments open at script[index], or None.
-
-    Godot's editor scan records an icon only for a single string argument, with or without
-    a comma after it. It records the string too when the file cuts off the arguments after
-    it, but none for `@icon(`, two arguments or an expression.
-    """
-    if index + 1 >= len(script) or script[index + 1][0] != "string":
-        return None
-    after = index + 2
-    comma = after < len(script) and is_punctuation(script[after], ",")
-    if comma:
-        after += 1
-    return script[index + 1][1] if _ends_argument(script, after, comma) else None
-
-
 def _after_cut_arguments(script: list, index: int) -> int:
     """Where Godot reads on after arguments that the file cuts off: past a string and comma."""
     if index < len(script) and script[index][0] == "string":
@@ -122,7 +100,7 @@ def _annotation(script: list, index: int) -> tuple[str | None, str | None, int]:
     index += 1
     if index >= len(script) or not is_punctuation(script[index], "("):
         return name, None, index
-    icon = _icon(script, index) if name == "icon" else None
+    icon = string_argument(script, index) if name == "icon" else None
     end = _arguments_end(script, index)
     if end is not None:
         return name, icon, end
@@ -258,17 +236,28 @@ def script_header(text: str) -> dict:
     return header
 
 
+# What opens a path that Godot's simplify_path keeps as it is: a scheme such as res://, a
+# network share's `//`, a root, or a Windows drive.
+_DRIVE = re.compile(r"[A-Za-z0-9]+://|//|\\\\|[/\\]|[^/:]*:/")
+
+
 def _simplified(path: str) -> str:
-    """The path without `.`, `..` and repeated slashes, as Godot's simplify_path writes it."""
-    for prefix in ("res://", "user://"):
-        if path.startswith(prefix):
-            return prefix + _simplified(path[len(prefix) :])
-    return posixpath.normpath(path) if path else path
+    """
+    The path as Godot's simplify_path writes it.
+
+    After its drive, backslashes become slashes, and repeated slashes and `.` go. A `..`
+    goes with the folder before it, but stays at the start.
+    """
+    drive = _DRIVE.match(path)
+    start = drive.end() if drive else 0
+    rest = re.sub("/+", "/", path[start:].replace("\\", "/")).lstrip("/")
+    rest = posixpath.normpath(rest) if rest else rest
+    return path[:start] + ("" if rest == "." else rest)
 
 
 def _is_relative(path: str) -> bool:
-    """Whether a path starts neither at a root nor with a scheme such as res://."""
-    return not path.startswith("/") and ":/" not in path and ":\\" not in path
+    """Whether a path starts neither at a root nor with a drive or scheme, as Godot reads it."""
+    return not path.startswith(("/", "\\")) and ":/" not in path and ":\\" not in path
 
 
 def _icon_path(icon: str, script: str) -> str:
