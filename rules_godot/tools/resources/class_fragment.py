@@ -2,8 +2,8 @@
 The global script classes of one unit's scripts, and the class cache Godot reads from them.
 
 A fragment holds, for each GDScript file of a unit, the header Godot's editor scan reads:
-its class_name, its base as written, its @tool, @abstract and @icon annotations and the
-bases of its inner classes. A validation merges the fragments of a unit's closure into
+its class_name, its base as written, its @tool, @abstract and @icon annotations and its
+inner classes with their bases. A validation merges the fragments of a unit's closure into
 `.godot/global_script_class_cache.cfg`, so its Godot process resolves the closure's classes
 before, and without, an editor scan. A base written as a script path resolves through that
 script's fragment, as Godot's scan does.
@@ -11,18 +11,13 @@ script's fragment, as Godot's scan does.
 
 import argparse
 import json
+import posixpath
 import sys
 from collections.abc import Iterable
 from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.resources.text import (
-    Token,
-    closes_arguments,
-    is_identifier,
-    is_punctuation,
-    lex,
-)
+from tools.resources.text import Token, is_identifier, is_punctuation, lex
 
 CACHE = ".godot/global_script_class_cache.cfg"
 
@@ -36,15 +31,21 @@ Base = dict
 _NESTING = {"(": 1, ")": -1}
 
 
-def skip_arguments(script: list, index: int) -> int:
-    """Return the index after the parenthesized arguments that open at script[index]."""
+def _arguments_end(script: list, index: int) -> int | None:
+    """The index after the `)` that closes the arguments opening at script[index], or None."""
     depth = 0
     for position in range(index, len(script)):
         category, value = script[position][:2]
         depth += _NESTING.get(value, 0) if category == "punctuation" else 0
         if not depth:
             return position + 1
-    return len(script)
+    return None
+
+
+def skip_arguments(script: list, index: int) -> int:
+    """Return the index after the parenthesized arguments that open at script[index]."""
+    end = _arguments_end(script, index)
+    return len(script) if end is None else end
 
 
 def _continues_chain(script: list, index: int) -> bool:
@@ -72,31 +73,85 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     return {"path": path, "names": names}, index
 
 
+def _ends_argument(script: list, index: int, after_comma: bool) -> bool:
+    """Whether a lone argument ends before script[index], at `)` or where the file cuts it off."""
+    if index >= len(script):
+        return True
+    token = script[index]
+    if token[0] == "punctuation":
+        # Any other punctuation continues the argument's expression, such as `+` or `.`.
+        return token[1] in (")", "@")
+    # A name or string after a comma is a second argument.
+    return not after_comma
+
+
 def _icon(script: list, index: int) -> str | None:
     """
     The path of the @icon whose arguments open at script[index], or None.
 
-    Godot's editor scan records an icon only for a single string argument that a `)`
-    closes, with or without a comma between them. It records none for `@icon(`, an
-    unclosed `@icon("x"` or two arguments.
+    Godot's editor scan records an icon only for a single string argument, with or without
+    a comma after it. It records the string too when the file cuts off the arguments after
+    it, but none for `@icon(`, two arguments or an expression.
     """
     if index + 1 >= len(script) or script[index + 1][0] != "string":
         return None
-    return script[index + 1][1] if closes_arguments(script, index + 2) else None
+    after = index + 2
+    comma = after < len(script) and is_punctuation(script[after], ",")
+    if comma:
+        after += 1
+    return script[index + 1][1] if _ends_argument(script, after, comma) else None
 
 
-def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
+def _after_cut_arguments(script: list, index: int) -> int:
+    """Where Godot reads on after arguments that the file cuts off: past a string and comma."""
+    if index < len(script) and script[index][0] == "string":
+        index += 1
+    if index < len(script) and is_punctuation(script[index], ","):
+        index += 1
+    return index
+
+
+def _annotation(script: list, index: int) -> tuple[str | None, str | None, int]:
     """
     Read the annotation whose name is at script[index].
 
-    Returns its name, the path of an `@icon("path")` or else None, and the next index.
+    Returns its name, or None when Godot drops it; the path of an @icon, or None; and the
+    next index.
     """
     name = script[index][1]
     index += 1
     if index >= len(script) or not is_punctuation(script[index], "("):
         return name, None, index
     icon = _icon(script, index) if name == "icon" else None
-    return name, icon, skip_arguments(script, index)
+    end = _arguments_end(script, index)
+    if end is not None:
+        return name, icon, end
+    # Godot drops an annotation whose arguments are cut off, except an icon it still read.
+    return (name if icon else None), icon, _after_cut_arguments(script, index + 1)
+
+
+def _class_annotations(script: list, header: dict) -> tuple[int, bool]:
+    """
+    Read the annotations that open the script into header.
+
+    Returns where they end and whether @abstract is among them. Godot skips strings
+    between them, which serve as comments.
+    """
+    abstract = False
+    index = 0
+    while index + 1 < len(script):
+        if script[index][0] == "string":
+            index += 1
+            continue
+        if not is_punctuation(script[index], "@"):
+            break
+        name, icon, index = _annotation(script, index + 1)
+        # Godot keeps the first @icon and reports the others as errors.
+        if icon is not None and not header["icon"]:
+            header["icon"] = icon
+        header["is_tool"] |= name == "tool"
+        abstract |= name == "abstract"
+    return index, abstract
 
 
 def _declaration(script: list, index: int, header: dict) -> int:
@@ -110,57 +165,72 @@ def _declaration(script: list, index: int, header: dict) -> int:
 
 
 def _script_class(script: list, header: dict) -> int:
-    """Read the script's own annotations, class_name and extends; return where they end."""
-    abstract = False
-    index = 0
+    """
+    Read the script's own annotations, class_name and extends; return where they end.
+
+    As in Godot's parser, the annotations come first. An annotation after class_name or
+    extends ends the header, as does the first member.
+    """
+    index, abstract = _class_annotations(script, header)
     while index < len(script):
         category, value = script[index][:2]
-        if is_punctuation(script[index], "@") and index + 1 < len(script):
-            annotation, icon, index = _annotation(script, index + 1)
-            if icon is not None:
-                header["icon"] = icon
-            header["is_tool"] |= annotation == "tool"
-            abstract |= annotation == "abstract"
+        if category == "string":
+            index += 1
         elif category == "identifier" and value in ("class_name", "extends"):
             index = _declaration(script, index, header)
             # An @abstract before class_name or extends belongs to the class.
             header["is_abstract"] |= abstract
-            abstract = False
         else:
-            # The first member ends the header; its annotations are the member's.
             break
     return index
 
 
-def _unindented(text: str, token: Token) -> bool:
-    """Whether the token's line starts without indentation, as the script's own members do."""
-    line_start = text.rfind("\n", 0, token.start) + 1
-    return not text[line_start : line_start + 1].isspace()
-
-
-def _declares_inner_class(text: str, script: list[Token], position: int) -> bool:
-    """Whether script[position] declares an inner class of the script, not a nested one."""
+def _declares_class(script: list[Token], position: int) -> bool:
+    """Whether script[position] declares an inner class, `class Name`."""
     return (
         is_identifier(script[position], "class")
         and script[position + 1].category == "identifier"
-        and _unindented(text, script[position])
     )
 
 
-def _inner_bases(text: str, script: list[Token], index: int) -> dict[str, Base | None]:
-    """The bases of the inner classes declared from script[index] on, by class name."""
-    inner = {}
-    for position in range(index, len(script) - 2):
-        if _declares_inner_class(text, script, position):
-            # The extends may also stand on the class's next line, after its colon.
-            extends = position + 2
-            if is_punctuation(script[extends], ":"):
-                extends += 1
-            base = None
-            if extends < len(script) and is_identifier(script[extends], "extends"):
-                base, _ = _base(script, extends + 1)
-            inner.setdefault(script[position + 1][1], base)
-    return inner
+def _inner_base(script: list[Token], position: int) -> Base | None:
+    """The base of the inner class declared at script[position], or None."""
+    # The extends may also stand on the class's next line, after its colon.
+    extends = position + 2
+    if extends < len(script) and is_punctuation(script[extends], ":"):
+        extends += 1
+    if extends < len(script) and is_identifier(script[extends], "extends"):
+        return _base(script, extends + 1)[0]
+    return None
+
+
+def _indentation(text: str, token: Token) -> int:
+    """The width of the blanks that open the token's line."""
+    line_start = text.rfind("\n", 0, token.start) + 1
+    line = text[line_start : token.start]
+    return len(line) - len(line.lstrip(" \t"))
+
+
+def _inner_classes(text: str, script: list[Token], index: int) -> dict[str, dict]:
+    """
+    The inner classes declared from script[index] on, by name, each with its base and its
+    own inner classes. A class nests in the class above it whose line is less indented.
+    """
+    classes: dict[str, dict] = {}
+    # The classes that a later class may nest in, with the indentation of their lines.
+    enclosing = [(-1, classes)]
+    for position in range(index, len(script) - 1):
+        if not _declares_class(script, position):
+            continue
+        indentation = _indentation(text, script[position])
+        while enclosing[-1][0] >= indentation:
+            enclosing.pop()
+        declared = enclosing[-1][1].setdefault(
+            script[position + 1].value,
+            {"base": _inner_base(script, position), "inner": {}},
+        )
+        enclosing.append((indentation, declared["inner"]))
+    return classes
 
 
 def script_header(text: str) -> dict:
@@ -172,7 +242,8 @@ def script_header(text: str) -> dict:
 
     Returns:
         A dict of class (the class_name or empty), base (Base, or None without extends),
-        is_tool, is_abstract, icon and inner, the bases of the inner classes by name.
+        is_tool, is_abstract, icon as written and inner: the inner classes by name, each a
+        dict of its base and its own inner classes.
     """
     script = [token for token in lex(text) if token.category != "newline"]
     header = {
@@ -183,8 +254,35 @@ def script_header(text: str) -> dict:
         "icon": "",
         "inner": {},
     }
-    header["inner"] = _inner_bases(text, script, _script_class(script, header))
+    header["inner"] = _inner_classes(text, script, _script_class(script, header))
     return header
+
+
+def _simplified(path: str) -> str:
+    """The path without `.`, `..` and repeated slashes, as Godot's simplify_path writes it."""
+    for prefix in ("res://", "user://"):
+        if path.startswith(prefix):
+            return prefix + _simplified(path[len(prefix) :])
+    return posixpath.normpath(path) if path else path
+
+
+def _is_relative(path: str) -> bool:
+    """Whether a path starts neither at a root nor with a scheme such as res://."""
+    return not path.startswith("/") and ":/" not in path and ":\\" not in path
+
+
+def _icon_path(icon: str, script: str) -> str:
+    """The icon path Godot's scan records: a relative one joins the script's folder."""
+    if icon and _is_relative(icon):
+        icon = posixpath.join("res://" + posixpath.dirname(script), icon)
+    return _simplified(icon)
+
+
+def _script_fragment(path: str, text: str) -> dict:
+    """The fragment's entry for the script at a resource path, without res://."""
+    header = script_header(text)
+    header["icon"] = _icon_path(header["icon"], path)
+    return {"path": "res://" + path} | header
 
 
 def fragment(scripts: dict[str, str]) -> list[dict]:
@@ -197,10 +295,7 @@ def fragment(scripts: dict[str, str]) -> list[dict]:
     Returns:
         The headers with their res:// path, in path order.
     """
-    return [
-        {"path": "res://" + path} | script_header(text)
-        for path, text in sorted(scripts.items())
-    ]
+    return [_script_fragment(path, text) for path, text in sorted(scripts.items())]
 
 
 def _resolve(
@@ -214,19 +309,17 @@ def _resolve(
     if path is None:
         # A chain such as Outer.Inner records no base.
         return names[0] if len(names) == 1 else ""
-    # A script path followed by a chain of inner classes records no base either.
-    if len(names) > 1:
-        return ""
     # Godot opens the path as written, so a relative path names no script it scans.
-    parent = scripts.get(path)
-    if parent is None or path in visiting:
+    declared = scripts.get(path)
+    if declared is None or path in visiting:
         return ""
     visiting = visiting | {path}
-    if not names:
-        return _resolve(parent["base"], scripts, visiting)
-    if names[0] not in parent["inner"]:
-        return ""
-    return _resolve(parent["inner"][names[0]], scripts, visiting)
+    # A chain after the path names an inner class of the script, and its inner classes.
+    for name in names:
+        declared = declared["inner"].get(name)
+        if declared is None:
+            return ""
+    return _resolve(declared["base"], scripts, visiting)
 
 
 def _string(value: str) -> str:

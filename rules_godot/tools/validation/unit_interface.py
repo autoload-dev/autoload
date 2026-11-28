@@ -203,8 +203,10 @@ def _follows_path_name(body: list[Token], separator: int) -> bool:
     )
 
 
-def _follows_dollar_name(body: list[Token], separator: int) -> bool:
-    """Whether the separator at body[separator] follows `$` and a name, as in `$Root/`."""
+def _follows_dollar(body: list[Token], separator: int) -> bool:
+    """Whether the separator at body[separator] follows `$` or `$Name`, as in `$/root`."""
+    if separator > 0 and is_punctuation(body[separator - 1], "$"):
+        return True
     if separator < 2:
         return False
     return _is_path_name(body[separator - 1]) and is_punctuation(body[separator - 2], "$")
@@ -219,7 +221,7 @@ def _in_node_path(body: list[Token], separator: int) -> bool:
     """
     while _follows_path_name(body, separator):
         separator -= 2
-    if _follows_dollar_name(body, separator):
+    if _follows_dollar(body, separator):
         return True
     return _starts_path(body[separator - 1] if separator else None, body[separator])
 
