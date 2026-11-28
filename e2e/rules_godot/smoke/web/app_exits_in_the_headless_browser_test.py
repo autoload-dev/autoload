@@ -7,13 +7,15 @@ import unittest
 
 from python.runfiles import runfiles
 
-
 LAUNCHER = ""
 
 
 class WebSmokeTest(unittest.TestCase):
     def test_app_exits_with_its_code_after_its_log(self) -> None:
-        launcher = runfiles.Create().Rlocation(LAUNCHER)
+        files = runfiles.Create()
+        launcher = files.Rlocation(LAUNCHER) if files else None
+        if launcher is None:
+            self.fail("the test runs with `bazel test`, which supplies the launcher")
         # Port 0: any free port, so parallel tests do not wait for each other's.
         result = subprocess.run(
             [launcher, "--headless", "--port=0"],
