@@ -58,12 +58,17 @@ class ClassFragmentTest(unittest.TestCase):
         )
         self.assertEqual({"Inner": {"path": None, "names": ["Node"]}}, header["inner"])
 
+    def test_an_icon_may_end_in_a_comma(self) -> None:
+        header = script_header('@icon(\n\t"res://i.svg",\n)\nclass_name C\n')
+        self.assertEqual("res://i.svg", header["icon"])
+
     def test_an_icon_without_a_single_closed_string_records_none(self) -> None:
         # Godot 4.7's editor scan records the class and no icon for these.
         for icon in [
             "@icon(",
             '@icon("res://i.svg"',
             '@icon("res://a.svg", "res://b.svg")',
+            '@icon(&"res://i.svg")',
         ]:
             with self.subTest(icon):
                 header = script_header("class_name C\n" + icon)

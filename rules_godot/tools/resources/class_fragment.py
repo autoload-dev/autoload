@@ -71,12 +71,16 @@ def _icon(script: list, index: int) -> str | None:
     The path of the @icon whose arguments open at script[index], or None.
 
     Godot's editor scan records an icon only for a single string argument that a `)`
-    closes. It records none for `@icon(`, an unclosed `@icon("x"` or two arguments.
+    closes, with or without a comma between them. It records none for `@icon(`, an
+    unclosed `@icon("x"` or two arguments.
     """
-    match script[index + 1 : index + 3]:
-        case [("string", path, *_), closing] if is_punctuation(closing, ")"):
-            return path
-    return None
+    if index + 1 >= len(script) or script[index + 1][0] != "string":
+        return None
+    end = index + 2
+    if end < len(script) and is_punctuation(script[end], ","):
+        end += 1
+    closed = end < len(script) and is_punctuation(script[end], ")")
+    return script[index + 1][1] if closed else None
 
 
 def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
