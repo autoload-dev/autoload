@@ -58,6 +58,11 @@ godot_app(
     application_id = "org.example.rulesgodot.petri",
     engine = "simulation",
     pack = ":pack",
+    # The engine simulation builds no web runtime.
+    target_compatible_with = select({
+        "@autoload_rules_godot//godot/platforms:is_web": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 godot_project(

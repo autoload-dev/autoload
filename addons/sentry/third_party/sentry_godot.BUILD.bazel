@@ -1,6 +1,7 @@
 # Sentry for Godot's release, addons/sentry/ of its zip: its files and imports, which
 # @autoload_sentry//sentry assembles into the add-on. Every library comes in a debug and a
-# release build.
+# release build, and is incompatible outside its operating system, so that a wildcard build
+# for another platform skips it.
 load("@package_metadata//licenses/rules:license.bzl", "license")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@autoload_sentry//third_party:archives.bzl", "ARCHIVES")
@@ -51,6 +52,7 @@ _ANDROID_ABIS = {
             cpu: ["bin/android/libsentry.android.%s.%s.so" % (variant, abi)]
             for cpu, abi in _ANDROID_ABIS.items()
         }),
+        target_compatible_with = ["@platforms//os:android"],
     )
     for variant in _VARIANTS
 ]
@@ -83,6 +85,7 @@ _LINUX_ARCHS = {
             cpu: ["bin/linux/%s/libsentry.linux.%s.%s.so" % (arch, variant, arch)]
             for cpu, arch in _LINUX_ARCHS.items()
         }),
+        target_compatible_with = ["@platforms//os:linux"],
     )
     for variant in _VARIANTS
 ]
@@ -96,6 +99,7 @@ filegroup(
         cpu: ["bin/linux/%s/crashpad_handler" % arch]
         for cpu, arch in _LINUX_ARCHS.items()
     }),
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
 # macOS: the extension library loads the Sentry Cocoa SDK, libSentry.dylib, through
@@ -103,12 +107,14 @@ filegroup(
 cc_import(
     name = "sentry_cocoa_macos",
     shared_library = "bin/macos/libSentry.dylib",
+    target_compatible_with = ["@platforms//os:macos"],
 )
 
 [
     cc_import(
         name = "macos_" + variant,
         shared_library = "bin/macos/libsentry.macos.%s.dylib" % variant,
+        target_compatible_with = ["@platforms//os:macos"],
         deps = [":sentry_cocoa_macos"],
     )
     for variant in _VARIANTS
