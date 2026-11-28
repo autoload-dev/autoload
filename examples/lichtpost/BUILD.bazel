@@ -95,6 +95,12 @@ godot_editor(
     deps = ["//examples/lichtpost/tests:suites"],
 )
 
-android_release(name = "android_release")
+android_release(
+    name = "android_release",
+    app = ":app",
+)
 
-ios_release(name = "ios_release")
+ios_release(
+    name = "ios_release",
+    app = ":app",
+)

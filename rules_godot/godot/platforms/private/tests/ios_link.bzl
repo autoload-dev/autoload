@@ -5,8 +5,7 @@ load("//godot/platforms/private:ios.bzl", "ios_application_inputs")
 
 visibility(["//godot/platforms/private/tests/engine_probe/..."])
 
-def ios_unsigned_link(name, pack, runtime):
-    """Link the same production inputs without creating a provisioned device archive."""
+def _ios_unsigned_link_impl(name, visibility, pack, runtime):
     inputs = ios_application_inputs(
         name = name + ".inputs",
         pack = pack,
@@ -22,6 +21,7 @@ def ios_unsigned_link(name, pack, runtime):
     )
     apple_binary(
         name = name,
+        visibility = visibility,
         # The shell's Info.plist, which the beta artifact test inspects.
         data = [pack, ":" + inputs.data],
         minimum_os_version = "15.0",
@@ -29,3 +29,16 @@ def ios_unsigned_link(name, pack, runtime):
         tags = ["manual"],
         deps = inputs.deps,
     )
+
+ios_unsigned_link = macro(
+    doc = "Link the same production inputs without creating a provisioned device archive.",
+    implementation = _ios_unsigned_link_impl,
+    attrs = {
+        "pack": attr.label(doc = "The configured start pack.", mandatory = True, configurable = False),
+        "runtime": attr.label(
+            doc = "The runtime to link, an engine library target.",
+            mandatory = True,
+            configurable = False,
+        ),
+    },
+)
